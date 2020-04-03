@@ -43,22 +43,15 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 // matchStatusCode matches a status code check against an HTTP Response
 func (m *Matcher) matchStatusCode(statusCode int) bool {
 	// Iterate over all the status codes accepted as valid
+	//
+	// Status codes don't support AND conditions.
 	for _, status := range m.Status {
 		// Continue if the status codes don't match
 		if statusCode != status {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
-				return false
-			}
-			// Continue with the flow since its an OR Condition.
 			continue
 		}
-
-		// If the condition was an OR, return on the first match.
-		if m.condition == ORCondition {
-			return true
-		}
+		// Return on the first match.
+		return true
 	}
 	return false
 }
@@ -66,22 +59,15 @@ func (m *Matcher) matchStatusCode(statusCode int) bool {
 // matchStatusCode matches a size check against an HTTP Response
 func (m *Matcher) matchSizeCode(length int) bool {
 	// Iterate over all the sizes accepted as valid
+	//
+	// Sizes codes don't support AND conditions.
 	for _, size := range m.Size {
 		// Continue if the size doesn't match
 		if length != size {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
-				return false
-			}
-			// Continue with the flow since its an OR Condition.
 			continue
 		}
-
-		// If the condition was an OR, return on the first match.
-		if m.condition == ORCondition {
-			return true
-		}
+		// Return on the first match.
+		return true
 	}
 	return false
 }
@@ -89,7 +75,7 @@ func (m *Matcher) matchSizeCode(length int) bool {
 // matchWords matches a word check against an HTTP Response/Headers.
 func (m *Matcher) matchWords(corpus string) bool {
 	// Iterate over all the words accepted as valid
-	for _, word := range m.Words {
+	for i, word := range m.Words {
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
 			// If we are in an AND request and a match failed,
@@ -105,6 +91,11 @@ func (m *Matcher) matchWords(corpus string) bool {
 		if m.condition == ORCondition {
 			return true
 		}
+
+		// If we are at the end of the words, return with true
+		if len(m.Words)-1 == i {
+			return true
+		}
 	}
 	return false
 }
@@ -112,7 +103,7 @@ func (m *Matcher) matchWords(corpus string) bool {
 // matchRegex matches a regex check against an HTTP Response/Headers.
 func (m *Matcher) matchRegex(corpus string) bool {
 	// Iterate over all the regexes accepted as valid
-	for _, regex := range m.regexCompiled {
+	for i, regex := range m.regexCompiled {
 		// Continue if the regex doesn't match
 		if !regex.MatchString(corpus) {
 			// If we are in an AND request and a match failed,
@@ -126,6 +117,11 @@ func (m *Matcher) matchRegex(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
+			return true
+		}
+
+		// If we are at the end of the regex, return with true
+		if len(m.regexCompiled)-1 == i {
 			return true
 		}
 	}
