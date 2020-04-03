@@ -3,9 +3,11 @@ package requests
 import (
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
+	"github.com/valyala/fasttemplate"
 )
 
 // Request contains a request to be made from a template
@@ -25,12 +27,22 @@ type Request struct {
 
 // MakeRequest creates a *http.Request from a request template
 func (r *Request) MakeRequest(baseURL string) ([]*http.Request, error) {
-	var requests []*http.Request
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	hostname := parsed.Hostname()
 
+	requests := make([]*http.Request, 0, len(r.Path))
 	for _, path := range r.Path {
-		// Replace the BaseURL portion with the actual base URL of the host
-		url := strings.Replace(path, "{{BaseURL}}", baseURL, -1)
+		// Replace the dynamic variables in the URL if any
+		t := fasttemplate.New(path, "{{", "}}")
+		url := t.ExecuteString(map[string]interface{}{
+			"BaseURL":  baseURL,
+			"Hostname": hostname,
+		})
 
+		// Build a request on the specified URL
 		req, err := http.NewRequest(r.Method, url, nil)
 		if err != nil {
 			return nil, err
