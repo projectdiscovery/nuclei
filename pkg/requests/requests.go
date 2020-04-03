@@ -1,6 +1,10 @@
 package requests
 
 import (
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 )
 
@@ -17,4 +21,32 @@ type Request struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers"`
+}
+
+// MakeRequest creates a *http.Request from a request template
+func (r *Request) MakeRequest(baseURL string) ([]*http.Request, error) {
+	var requests []*http.Request
+
+	for _, path := range r.Path {
+		// Replace the BaseURL portion with the actual base URL of the host
+		url := strings.Replace(path, "{{BaseURL}}", baseURL, -1)
+
+		req, err := http.NewRequest(r.Method, url, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Check if the user requested a request body
+		if r.Body != "" {
+			req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
+		}
+
+		// Set the header values requested
+		for header, value := range r.Headers {
+			req.Header.Set(header, value)
+		}
+		requests = append(requests, req)
+	}
+
+	return requests, nil
 }
