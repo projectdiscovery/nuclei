@@ -55,7 +55,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -c       | Number of concurrent requests (default 10)            | nuclei -c 100              |
 | -l       | List of urls to run templates                         | nuclei -l urls.txt         |
 | -t       | Templates input file/files to check across hosts      | nuclei -t git-core.yaml    |
-| -t       | Templates input file/files to check across hosts      | nuclei -t templates/*.yaml |
+| -t       | Templates input file/files to check across hosts      | nuclei -t "path/*.yaml"    |
 | -nC      | Don't Use colors in output                            | nuclei -nC                 |
 | -o       | File to save output result (optional)                 | nuclei -o output.txt       |
 | -silent  | Show only found results in output                     | nuclei -silent             |
