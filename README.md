@@ -1,3 +1,3 @@
 # nuclei
 
-Nuceli is a fast tool to scan for things using configurable templates
+Nuclei is a fast tool to scan for things using configurable templates
