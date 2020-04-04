@@ -21,14 +21,20 @@ import (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	client  *retryablehttp.Client
+	// client is the http client with retries
+	client *retryablehttp.Client
+	// output is the output file to write if any
+	output      *os.File
+	outputMutex *sync.Mutex
+	// options contains configuration options for runner
 	options *Options
 }
 
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		options: options,
+		outputMutex: &sync.Mutex{},
+		options:     options,
 	}
 
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
@@ -53,11 +59,22 @@ func New(options *Options) (*Runner, error) {
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	runner.client = client
+
+	// Create the output file if asked
+	if options.Output != "" {
+		output, err := os.Create(options.Output)
+		if err != nil {
+			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, err)
+		}
+		runner.output = output
+	}
 	return runner, nil
 }
 
 // Close releases all the resources and cleans up
-func (r *Runner) Close() {}
+func (r *Runner) Close() {
+	r.output.Close()
+}
 
 // RunEnumeration sets up the input layer for giving input to massdns
 // binary and runs the actual enumeration
@@ -118,6 +135,12 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
 
+	var writer *bufio.Writer
+	if r.output != nil {
+		writer = bufio.NewWriter(r.output)
+		defer writer.Flush()
+	}
+
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -128,7 +151,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 		wg.Add(1)
 
 		go func(URL string) {
-			r.sendRequest(template, URL)
+			r.sendRequest(template, URL, writer)
 			<-limiter
 			wg.Done()
 		}(text)
@@ -138,7 +161,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 }
 
 // sendRequest sends a request to the target based on a template
-func (r *Runner) sendRequest(template *templates.Template, URL string) {
+func (r *Runner) sendRequest(template *templates.Template, URL string, writer *bufio.Writer) {
 	for _, request := range template.Requests {
 		// Compile each request for the template based on the URL
 		compiledRequest, err := request.MakeRequest(URL)
@@ -187,7 +210,14 @@ func (r *Runner) sendRequest(template *templates.Template, URL string) {
 			}
 
 			// All the matchers matched, print the output on the screen
-			gologger.Silentf("[%s] %s\n", template.ID, req.URL.String())
+			output := fmt.Sprintf("[%s] %s\n", template.ID, req.URL.String())
+			gologger.Silentf("%s", output)
+
+			if writer != nil {
+				r.outputMutex.Lock()
+				writer.WriteString(output)
+				r.outputMutex.Unlock()
+			}
 		}
 	}
 }
