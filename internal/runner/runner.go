@@ -59,6 +59,10 @@ func (r *Runner) Close() {}
 // RunEnumeration sets up the input layer for giving input to massdns
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
+	if !strings.HasSuffix(r.options.Templates, ".yaml") {
+		gologger.Fatalf("Could not run recognize template extension: %s\n", r.options.Templates)
+	}
+
 	// If the template path is a single template and not a glob, use that.
 	if !strings.Contains(r.options.Templates, "*") {
 		r.processTemplate(r.options.Templates)

@@ -27,14 +27,14 @@ type Options struct {
 func ParseOptions() *Options {
 	options := &Options{}
 
-	flag.StringVar(&options.Templates, "f", "", "Template/templates to use during enumeration")
-	flag.StringVar(&options.Targets, "l", "", "Targets to scan using templates during enumeration")
+	flag.StringVar(&options.Templates, "t", "", "Template input file/files to run on host")
+	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
-	flag.BoolVar(&options.Silent, "silent", false, "Show only subdomains in output")
-	flag.BoolVar(&options.Version, "version", false, "Show version of shuffledns")
+	flag.BoolVar(&options.Silent, "silent", false, "Show only results in output")
+	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
 	flag.BoolVar(&options.NoColor, "nC", false, "Don't Use colors in output")
-	flag.IntVar(&options.Threads, "t", 100, "Number of concurrent requests to make")
+	flag.IntVar(&options.Threads, "c", 100, "Number of concurrent requests to make")
 	flag.IntVar(&options.Timeout, "timeout", 30, "Time to wait in seconds before timeout")
 
 	flag.Parse()
