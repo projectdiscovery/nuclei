@@ -76,7 +76,7 @@ func (r *Runner) Close() {
 	r.output.Close()
 }
 
-// RunEnumeration sets up the input layer for giving input to massdns
+// RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	if !strings.HasSuffix(r.options.Templates, ".yaml") {
