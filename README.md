@@ -29,7 +29,7 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
  # Features
 
 <h1 align="left">
-  <img src="static/nuclei-run.jpg" alt="nuclei" width="700px"></a>
+  <img src="static/nuclei-run.png" alt="nuclei" width="700px"></a>
   <br>
 </h1>
 
