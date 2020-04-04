@@ -10,7 +10,9 @@
 
 # nuclei
 
-Nuceli is a fast tool to scan for things using configurable templates
+Nuceli is a fast tool for configurable targeted scanning based on templates offering massive extensibility and ease of use.
+
+Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. Main use cases for nuclei are during initial reconnaissance phase to quickly check for low hanging fruits or CVEs across targets that are known and easily detectable.
 
 # Resources
 - [Resources](#resources)
@@ -24,9 +26,6 @@ Nuceli is a fast tool to scan for things using configurable templates
 - [Running nuclei](#running-nuclei)
     - [1. Running nuclei with single template](#1-running-nuclei-with-a-single-template)
     - [2. Running nuclei with multiple template](#2-running-nuclei-with-a-multiple-template)
-
-
-
     - [A note on nuclei](#a-note-on-nuclei)
 - [License](#license)
 
@@ -38,10 +37,10 @@ Nuceli is a fast tool to scan for things using configurable templates
 </h1>
 
  - Simple and modular code base making it easy to contribute.
- - Fast And Simple active subdomain scanning.
- - Handles wildcard subdomains in a smart manner.
+ - Fast And Fully configurable using a template based engine.
+ - Handles edge cases doing retries, backoffs etc for handling WAFs.
  - Optimized for **ease of use**
- - **Stdin** and **stdout** support for integrating in workflows
+ - Smart matching functionality for zero false positive scanning.
 
 # Usage
 
@@ -51,19 +50,19 @@ nuclei -h
 
 This will display help for the tool. Here are all the switches it supports.
 
-| Flag           | Description                                             | Example                              |
-|----------------|---------------------------------------------------------|--------------------------------------|
-| -c             | Number of concurrent requests (default 10)              | nuclei -c 100                    |
-| -l             | List of urls to run templates                           | nuclei -l urls.txt               |
-| -t             | Templates input file/files to check across hosts        | nuclei -t git-core.yaml          |
-| -t             | Templates input file/files to check across hosts        | nuclei -t templates/*.yaml       |
-| -nC            | Don't Use colors in output                              | nuclei -nC                       |
-| -o             | File to save output result (optional)                   | nuclei -o output.txt             |
-| -silent        | Show only found results in output                       | nuclei -silent                   |
-| -retries       | Number of times to retry a failed request (default 1)   | nuclei -retries 1                |
-| -t             | Seconds to wait before timeout (default 5)              | nuclei -t 5                      |
-| -v             | Show Verbose output                                     | nuclei -v                        |
-| -version       | Show version of nuclei                                  | nuclei -version                  |
+| Flag     | Description                                           | Example                    |
+|----------|-------------------------------------------------------|----------------------------|
+| -c       | Number of concurrent requests (default 10)            | nuclei -c 100              |
+| -l       | List of urls to run templates                         | nuclei -l urls.txt         |
+| -t       | Templates input file/files to check across hosts      | nuclei -t git-core.yaml    |
+| -t       | Templates input file/files to check across hosts      | nuclei -t templates/*.yaml |
+| -nC      | Don't Use colors in output                            | nuclei -nC                 |
+| -o       | File to save output result (optional)                 | nuclei -o output.txt       |
+| -silent  | Show only found results in output                     | nuclei -silent             |
+| -retries | Number of times to retry a failed request (default 1) | nuclei -retries 1          |
+| -t       | Seconds to wait before timeout (default 5)            | nuclei -t 5                |
+| -v       | Show Verbose output                                   | nuclei -v                  |
+| -version | Show version of nuclei                                | nuclei -version            |
 
 
 # Installation Instructions
@@ -101,36 +100,23 @@ This will run the tool against all the hosts in `urls.txt` and returns the match
 > nuclei -l urls.txt -t git-core.yaml -o results.txt
 ```
 
-
 You can also pass the list of hosts at standard input (STDIN). This allows for easy integration in automation pipelines.
 
 This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
-
 
 ```bash
 > cat urls.txt | nuclei -t git-core.yaml -o results.txt
 ```
 
-### 2. Running nuclei with a multiple template. 
+### 2. Running nuclei with multiple templates. 
 
-This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
+This will run the tool against all the hosts in `urls.txt` with all the templates in the `path-to-templates` directory and returns the matched results. 
 
 ```bash
 > nuclei -l urls.txt -t "path-to-templates/*.yaml" -o results.txt 
 ```
 
-
-You can also pass the list of hosts at standard input (STDIN). This allows for easy integration in automation pipelines.
-
-This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
-
-
-```bash
-> cat urls.txt | nuclei -t "path-to-templates/*.yaml" -o results.txt 
-```
-
-
-### A note on nuclei
+Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other.
 
 
 # License
