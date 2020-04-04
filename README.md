@@ -73,7 +73,7 @@ This will display help for the tool. Here are all the switches it supports.
 
 ### From Binary
 
-The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your $PATH and you're ready to go.
+The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
 
 ```bash
 > tar -xzvf nuclei-linux-amd64.tar
@@ -93,14 +93,12 @@ In order to update the tool, you can use -u flag with `go get` command.
 
 # Running nuclei
 
-nuclei supports two types of input.
-
 ### 1. Running nuclei with a single template. 
 
 This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
 
 ```bash
-> nuclei -l urls.txt -t git-core.yaml
+> nuclei -l urls.txt -t git-core.yaml -o results.txt
 ```
 
 
@@ -110,7 +108,7 @@ This will run the tool against all the hosts in `urls.txt` and returns the match
 
 
 ```bash
-> cat urls.txt | nuclei -t git-core.yaml
+> cat urls.txt | nuclei -t git-core.yaml -o results.txt
 ```
 
 ### 2. Running nuclei with a multiple template. 
