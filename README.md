@@ -22,8 +22,8 @@ Nuceli is a fast tool to scan for things using configurable templates
     - [From Binary](#from-binary)
     - [From Source](#from-source)
 - [Running nuclei](#running-nuclei)
-    - [1. Running nuclei with single template](#running-nuclei-with-a-single-template)
-    - [2. Running nuclei with multiple template](#running-nuclei-with-a-multiple-template)
+    - [1. Running nuclei with single template](#1-running-nuclei-with-a-single-template)
+    - [2. Running nuclei with multiple template](#2-running-nuclei-with-a-multiple-template)
 
 
 
