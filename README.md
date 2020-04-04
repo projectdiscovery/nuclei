@@ -33,7 +33,7 @@ Nuceli is a fast tool to scan for things using configurable templates
  # Features
 
 <h1 align="left">
-  <img src="static/nuclei-run.png" alt="nuclei" width="700px"></a>
+  <img src="static/nuclei-run.jpg" alt="nuclei" width="700px"></a>
   <br>
 </h1>
 
