@@ -27,7 +27,7 @@ type Options struct {
 func ParseOptions() *Options {
 	options := &Options{}
 
-	flag.StringVar(&options.Templates, "f", "", "Template(s) to use during enumeration")
+	flag.StringVar(&options.Templates, "f", "", "Template/templates to use during enumeration")
 	flag.StringVar(&options.Targets, "l", "", "Targets to scan using templates during enumeration")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.BoolVar(&options.Silent, "silent", false, "Show only subdomains in output")

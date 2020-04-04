@@ -93,3 +93,8 @@ var PartTypes = map[string]Part{
 	"header": HeaderPart,
 	"all":    AllPart,
 }
+
+// GetPart returns the part of the matcher
+func (m *Matcher) GetPart() Part {
+	return m.part
+}

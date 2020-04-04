@@ -57,6 +57,16 @@ func (r *Request) MakeRequest(baseURL string) ([]*http.Request, error) {
 		for header, value := range r.Headers {
 			req.Header.Set(header, value)
 		}
+
+		// Set some headers only if the header wasn't supplied by the user
+		if _, ok := r.Headers["User-Agent"]; !ok {
+			req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
+		}
+		req.Header.Set("Accept", "*/*")
+		req.Header.Set("Accept-Language", "en")
+		req.Header.Set("Connection", "close")
+		req.Close = true
+
 		requests = append(requests, req)
 	}
 

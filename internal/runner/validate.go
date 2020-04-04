@@ -18,6 +18,9 @@ func (options *Options) validateOptions() error {
 		return errors.New("no template/templates provided")
 	}
 
+	if options.Targets == "" && !options.Stdin {
+		return errors.New("no target input provided")
+	}
 	return nil
 }
 
