@@ -66,6 +66,7 @@ func (r *Runner) RunEnumeration() {
 	// If the template path is a single template and not a glob, use that.
 	if !strings.Contains(r.options.Templates, "*") {
 		r.processTemplate(r.options.Templates)
+		return
 	}
 
 	// Handle the glob, evaluate it and run all the template file checks
@@ -144,6 +145,7 @@ func (r *Runner) sendRequest(template *templates.Template, URL string) {
 		}
 
 		// Send the request to the target servers
+	reqLoop:
 		for _, req := range compiledRequest {
 			resp, err := r.client.Do(req)
 			if err != nil {
@@ -177,7 +179,7 @@ func (r *Runner) sendRequest(template *templates.Template, URL string) {
 
 				// Check if the matcher matched
 				if !matcher.Match(resp, body, headers) {
-					continue
+					continue reqLoop
 				}
 			}
 
