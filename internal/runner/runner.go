@@ -46,7 +46,6 @@ func New(options *Options) (*Runner, error) {
 			return http.ErrUseLastResponse
 		},
 	}, retryablehttp.DefaultOptionsSpraying)
-	client.Backoff = retryablehttp.FullJitterBackoff()
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	runner.client = client
