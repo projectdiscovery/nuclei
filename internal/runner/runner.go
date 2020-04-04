@@ -31,6 +31,10 @@ func New(options *Options) (*Runner, error) {
 		options: options,
 	}
 
+	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	retryablehttpOptions.RetryWaitMax = 10 * time.Second
+	retryablehttpOptions.RetryMax = options.Retries
+
 	// Create the HTTP Client
 	client := retryablehttp.NewWithHTTPClient(&http.Client{
 		Transport: &http.Transport{
@@ -45,7 +49,7 @@ func New(options *Options) (*Runner, error) {
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-	}, retryablehttp.DefaultOptionsSpraying)
+	}, retryablehttpOptions)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	runner.client = client

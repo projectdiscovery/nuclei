@@ -21,6 +21,8 @@ github.com/projectdiscovery/massdns v0.0.0-20200331204010-f72d136ae361 h1:HXHngE
 github.com/projectdiscovery/massdns v0.0.0-20200331204010-f72d136ae361/go.mod h1:F4246OEiiR3iUPQDt0BRUdEZdlrQVyM+I3Wl3AcFaUg=
 github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404113336-78da8dcb5040 h1:vQQ/wys6mfOVVRyMw+W9lS52J6Iiy7MZp3DXFI94UY0=
 github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404113336-78da8dcb5040/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
+github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404122901-546f385ed972 h1:cRYSgcJoj1St1ZFW0ZpxoaFkVzE9c5LdXguk0ANlvjk=
+github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404122901-546f385ed972/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/shuffledns v1.0.2 h1:0gvWe6eHNaUr1xkJCRaYVi33dcFVU/bSaOmKp16mTis=
 github.com/projectdiscovery/shuffledns v1.0.2/go.mod h1:sp+rOgvOckLYxyzAM8WtxQKkuPyHNcG/xLWkKwLm/Vo=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
@@ -63,3 +65,5 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+gopkg.in/yaml.v2 v2.2.8 h1:obN1ZagJSUGI0Ek/LBmuj4SNLPfIny3KsKFopxRdj10=
+gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

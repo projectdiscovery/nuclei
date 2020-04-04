@@ -14,6 +14,7 @@ type Options struct {
 	Targets   string // Targets specifies the targets to scan using templates.
 	Threads   int    // Thread controls the number of concurrent requests to make.
 	Timeout   int    // Timeout is the seconds to wait for a response from the server.
+	Retries   int    // Retries is the number of times to retry the request
 	Output    string // Output is the file to write found subdomains to.
 	Silent    bool   // Silent suppresses any extra text and only writes found URLs on screen.
 	Version   bool   // Version specifies if we should just show version and exit
@@ -34,8 +35,9 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
 	flag.BoolVar(&options.NoColor, "nC", false, "Don't Use colors in output")
-	flag.IntVar(&options.Threads, "c", 100, "Number of concurrent requests to make")
-	flag.IntVar(&options.Timeout, "timeout", 30, "Time to wait in seconds before timeout")
+	flag.IntVar(&options.Threads, "c", 10, "Number of concurrent requests to make")
+	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
+	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
 
 	flag.Parse()
 
