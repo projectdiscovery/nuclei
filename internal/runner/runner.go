@@ -94,6 +94,7 @@ func (r *Runner) RunEnumeration() {
 	if err != nil {
 		gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
 	}
+
 	for _, match := range matches {
 		r.processTemplate(match)
 	}
@@ -103,7 +104,8 @@ func (r *Runner) RunEnumeration() {
 func (r *Runner) processTemplate(templatePath string) {
 	template, err := templates.ParseTemplate(templatePath)
 	if err != nil {
-		gologger.Fatalf("Could not parse template file '%s': %s\n", templatePath, err)
+		gologger.Errorf("Could not parse template file '%s': %s\n", templatePath, err)
+		return
 	}
 
 	// Handle a list of hosts as argument
