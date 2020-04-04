@@ -1,4 +1,3 @@
-
 <h1 align="left">
   <img src="static/nuclei-logo.png" alt="nuclei" width="200px"></a>
   <br>
@@ -8,11 +7,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/projectdiscovery/nuclei)](https://goreportcard.com/report/github.com/projectdiscovery/nuclei)
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/projectdiscovery/nuclei/issues)
 
-# nuclei
+Nuceli is a fast tool for configurable targeted scanning based on templates offering massive extensibility and ease of use. 
 
-Nuceli is a fast tool for configurable targeted scanning based on templates offering massive extensibility and ease of use.
+Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. Main use cases for nuclei are during initial reconnaissance phase to quickly check for low hanging fruits or CVEs across targets that are known and easily detectable. It uses [retryablehttp-go library](https://github.com/projectdiscovery/retryablehttp-go) designed to handle various errors and retries in case of blocking by WAFs, this is also one of our core modules from custom-queries.
 
-Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. Main use cases for nuclei are during initial reconnaissance phase to quickly check for low hanging fruits or CVEs across targets that are known and easily detectable.
+We have also [open-sourced a dedicated repository](https://github.com/projectdiscovery/nuclei-templates) to maintain various type of templates, we hope that you will contribute there too. Templates are provided in hopes that these will be useful and will allow everyone to build their own templates for the scanner. 
 
 # Resources
 - [Resources](#resources)
@@ -20,13 +19,11 @@ Nuclei is used to send requests across targets based on a template leading to ze
 - [Usage](#usage)
 - [Installation Instructions](#installation-instructions)
   - [Prerequisite](#prerequisite)
-  - [Direct Installation](#direct-installation)
     - [From Binary](#from-binary)
     - [From Source](#from-source)
 - [Running nuclei](#running-nuclei)
     - [1. Running nuclei with single template](#1-running-nuclei-with-a-single-template)
-    - [2. Running nuclei with multiple template](#2-running-nuclei-with-a-multiple-template)
-    - [A note on nuclei](#a-note-on-nuclei)
+    - [2. Running nuclei with multiple template](#2-running-nuclei-with-a-multiple-templates)
 - [License](#license)
 
  # Features
@@ -37,9 +34,8 @@ Nuclei is used to send requests across targets based on a template leading to ze
 </h1>
 
  - Simple and modular code base making it easy to contribute.
- - Fast And Fully configurable using a template based engine.
+ - Fast And fully configurable using a template based engine.
  - Handles edge cases doing retries, backoffs etc for handling WAFs.
- - Optimized for **ease of use**
  - Smart matching functionality for zero false positive scanning.
 
 # Usage
@@ -67,8 +63,6 @@ This will display help for the tool. Here are all the switches it supports.
 
 # Installation Instructions
 
-
-## Direct Installation
 
 ### From Binary
 
@@ -119,6 +113,6 @@ This will run the tool against all the hosts in `urls.txt` with all the template
 Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other.
 
 
-# License
+# Thanks
 
 nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details.
