@@ -23,7 +23,7 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
     - [From Source](#from-source)
 - [Running nuclei](#running-nuclei)
     - [1. Running nuclei with single template](#1-running-nuclei-with-a-single-template)
-    - [2. Running nuclei with multiple template](#2-running-nuclei-with-a-multiple-templates)
+    - [2. Running nuclei with multiple template](#2-running-nuclei-with-multiple-templates)
 - [License](#license)
 
  # Features
