@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
+	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/valyala/fasttemplate"
 )
 
@@ -26,14 +27,14 @@ type Request struct {
 }
 
 // MakeRequest creates a *http.Request from a request template
-func (r *Request) MakeRequest(baseURL string) ([]*http.Request, error) {
+func (r *Request) MakeRequest(baseURL string) ([]*retryablehttp.Request, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
 	hostname := parsed.Hostname()
 
-	requests := make([]*http.Request, 0, len(r.Path))
+	requests := make([]*retryablehttp.Request, 0, len(r.Path))
 	for _, path := range r.Path {
 		// Replace the dynamic variables in the URL if any
 		t := fasttemplate.New(path, "{{", "}}")
@@ -67,7 +68,12 @@ func (r *Request) MakeRequest(baseURL string) ([]*http.Request, error) {
 		req.Header.Set("Connection", "close")
 		req.Close = true
 
-		requests = append(requests, req)
+		request, err := retryablehttp.FromRequest(req)
+		if err != nil {
+			return nil, err
+		}
+
+		requests = append(requests, request)
 	}
 
 	return requests, nil

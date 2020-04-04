@@ -19,6 +19,8 @@ github.com/projectdiscovery/gologger v1.0.0 h1:XAQ8kHeVKXMjY4rLGh7eT5+oHU077BNEv
 github.com/projectdiscovery/gologger v1.0.0/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/massdns v0.0.0-20200331204010-f72d136ae361 h1:HXHngEMCoJGgEUigUwX5L2PD1Fpj2EcQMplXgPwpkD4=
 github.com/projectdiscovery/massdns v0.0.0-20200331204010-f72d136ae361/go.mod h1:F4246OEiiR3iUPQDt0BRUdEZdlrQVyM+I3Wl3AcFaUg=
+github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404113336-78da8dcb5040 h1:vQQ/wys6mfOVVRyMw+W9lS52J6Iiy7MZp3DXFI94UY0=
+github.com/projectdiscovery/retryablehttp-go v0.0.0-20200404113336-78da8dcb5040/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/shuffledns v1.0.2 h1:0gvWe6eHNaUr1xkJCRaYVi33dcFVU/bSaOmKp16mTis=
 github.com/projectdiscovery/shuffledns v1.0.2/go.mod h1:sp+rOgvOckLYxyzAM8WtxQKkuPyHNcG/xLWkKwLm/Vo=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=

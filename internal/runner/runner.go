@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,15 +11,17 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
+	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	client  *http.Client
+	client  *retryablehttp.Client
 	options *Options
 }
 
@@ -27,6 +30,26 @@ func New(options *Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 	}
+
+	// Create the HTTP Client
+	client := retryablehttp.NewWithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: -1,
+			TLSClientConfig: &tls.Config{
+				Renegotiation:      tls.RenegotiateOnceAsClient,
+				InsecureSkipVerify: true,
+			},
+			DisableKeepAlives: true,
+		},
+		Timeout: time.Duration(options.Timeout) * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}, retryablehttp.DefaultOptionsSpraying)
+	client.Backoff = retryablehttp.FullJitterBackoff()
+	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+
+	runner.client = client
 	return runner, nil
 }
 
