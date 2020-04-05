@@ -4,10 +4,13 @@ import "regexp"
 
 // Extractor is used to extract part of response using a regex.
 type Extractor struct {
+	// Type is the type of the matcher
+	Type string `yaml:"type"`
+
 	// Regex are the regex pattern required to be present in the response
-	Regex string `yaml:"regex"`
+	Regex []string `yaml:"regex"`
 	// regexCompiled is the compiled variant
-	regexCompiled *regexp.Regexp
+	regexCompiled []*regexp.Regexp
 
 	// Part is the part of the request to match
 	//
@@ -15,6 +18,19 @@ type Extractor struct {
 	Part string `yaml:"part,omitempty"`
 	// part is the part of the request to match
 	part Part
+}
+
+// ExtractorType is the type of the extractor specified
+type ExtractorType = int
+
+const (
+	// RegexExtractor extracts responses with regexes
+	RegexExtractor ExtractorType = iota + 1
+)
+
+// ExtractorTypes is an table for conversion of extractor type from string.
+var ExtractorTypes = map[string]ExtractorType{
+	"regex": RegexExtractor,
 }
 
 // Part is the part of the request to match

@@ -18,5 +18,9 @@ func (e *Extractor) Extract(body, headers string) []string {
 
 // extractRegex extracts text from a corpus and returns it
 func (e *Extractor) extractRegex(corpus string) []string {
-	return e.regexCompiled.FindAllString(corpus, -1)
+	results := []string{}
+	for _, regex := range e.regexCompiled {
+		results = append(results, regex.FindAllString(corpus, -1)...)
+	}
+	return results
 }
