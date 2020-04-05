@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
@@ -198,11 +199,9 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 			var headers string
 			for _, matcher := range request.Matchers {
 				// Only build the headers string if the matcher asks for it
-				switch matcher.GetPart() {
-				case matchers.AllPart, matchers.HeaderPart:
-					if headers == "" {
-						headers = headersToString(resp.Header)
-					}
+				part := matcher.GetPart()
+				if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
+					headers = headersToString(resp.Header)
 				}
 
 				// Check if the matcher matched
@@ -211,8 +210,18 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 				}
 			}
 
+			// If there is an extractor, run it.
+			var extractorResults []string
+			for _, extractor := range request.Extractors {
+				part := extractor.GetPart()
+				if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
+					headers = headersToString(resp.Header)
+				}
+				extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
+			}
+
 			// All the matchers matched, print the output on the screen
-			output := fmt.Sprintf("[%s] %s\n", template.ID, req.URL.String())
+			output := buildOutput(template, req, extractorResults)
 			gologger.Silentf("%s", output)
 
 			if writer != nil {
@@ -222,4 +231,28 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 			}
 		}
 	}
+}
+
+// buildOutput builds an output text for writing results
+func buildOutput(template *templates.Template, req *retryablehttp.Request, extractorResults []string) string {
+	builder := &strings.Builder{}
+	builder.WriteRune('[')
+	builder.WriteString(template.ID)
+	builder.WriteString("] ")
+	builder.WriteString(req.URL.String())
+
+	// If any extractors, write the results
+	if len(extractorResults) > 0 {
+		builder.WriteString(" [")
+		for i, result := range extractorResults {
+			builder.WriteString(result)
+			if i != len(extractorResults)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+	builder.WriteRune('\n')
+
+	return builder.String()
 }

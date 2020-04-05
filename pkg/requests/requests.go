@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/valyala/fasttemplate"
@@ -26,7 +27,7 @@ type Request struct {
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
-	Extractors []*matchers.Matcher `yaml:"extractors,omitempty"`
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
 }
 
 // MakeRequest creates a *http.Request from a request template
