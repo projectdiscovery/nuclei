@@ -23,7 +23,10 @@ type Request struct {
 	Body string `yaml:"body,omitempty"`
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
-	Matchers []*matchers.Matcher `yaml:"matchers"`
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// Extractors contains the extraction mechanism for the request to identify
+	// and extract parts of the response.
+	Extractors []*matchers.Matcher `yaml:"extractors,omitempty"`
 }
 
 // MakeRequest creates a *http.Request from a request template
@@ -63,8 +66,12 @@ func (r *Request) MakeRequest(baseURL string) ([]*retryablehttp.Request, error) 
 		if _, ok := r.Headers["User-Agent"]; !ok {
 			req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
 		}
-		req.Header.Set("Accept", "*/*")
-		req.Header.Set("Accept-Language", "en")
+		if _, ok := r.Headers["Accept"]; !ok {
+			req.Header.Set("Accept", "*/*")
+		}
+		if _, ok := r.Headers["Accept-Language"]; !ok {
+			req.Header.Set("Accept-Language", "en")
+		}
 		req.Header.Set("Connection", "close")
 		req.Close = true
 
