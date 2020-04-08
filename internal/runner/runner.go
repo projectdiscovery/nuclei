@@ -239,7 +239,10 @@ func buildOutput(template *templates.Template, req *retryablehttp.Request, extra
 	builder.WriteRune('[')
 	builder.WriteString(template.ID)
 	builder.WriteString("] ")
-	builder.WriteString(req.URL.String())
+	// Escape the URL by replacing all % with %%
+	URL := req.URL.String()
+	escapedURL := strings.Replace(URL, "%", "%%", -1)
+	builder.WriteString(escapedURL)
 
 	// If any extractors, write the results
 	if len(extractorResults) > 0 {
