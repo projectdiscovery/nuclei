@@ -1,6 +1,7 @@
 package matchers
 
 import (
+	"encoding/hex"
 	"net/http"
 	"strings"
 )
@@ -35,6 +36,18 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 				return true
 			}
 			return m.matchRegex(body)
+		}
+	case BinaryMatcher:
+		// Match the parts as required for binary characters check
+		if m.part == BodyPart {
+			return m.matchBinary(body)
+		} else if m.part == HeaderPart {
+			return m.matchBinary(headers)
+		} else {
+			if !m.matchBinary(headers) {
+				return false
+			}
+			return m.matchBinary(body)
 		}
 	}
 	return false
@@ -122,6 +135,37 @@ func (m *Matcher) matchRegex(corpus string) bool {
 
 		// If we are at the end of the regex, return with true
 		if len(m.regexCompiled)-1 == i {
+			return true
+		}
+	}
+	return false
+}
+
+// matchWords matches a word check against an HTTP Response/Headers.
+func (m *Matcher) matchBinary(corpus string) bool {
+
+	// Iterate over all the words accepted as valid
+	for i, binary := range m.Binary {
+		// Continue if the word doesn't match
+
+		hexa, _ := hex.DecodeString(binary)
+		if !strings.Contains(corpus, string(hexa)) {
+			// If we are in an AND request and a match failed,
+			// return false as the AND condition fails on any single mismatch.
+			if m.condition == ANDCondition {
+				return false
+			}
+			// Continue with the flow since its an OR Condition.
+			continue
+		}
+
+		// If the condition was an OR, return on the first match.
+		if m.condition == ORCondition {
+			return true
+		}
+
+		// If we are at the end of the words, return with true
+		if len(m.Binary)-1 == i {
 			return true
 		}
 	}
