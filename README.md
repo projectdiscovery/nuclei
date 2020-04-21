@@ -56,6 +56,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -o       | File to save output result (optional)                 | nuclei -o output.txt       |
 | -silent  | Show only found results in output                     | nuclei -silent             |
 | -retries | Number of times to retry a failed request (default 1) | nuclei -retries 1          |
+| -redirect| Number of times to redirect a request (default 0)     | nuclei -redirect 0         |
 | -timeout | Seconds to wait before timeout (default 5)            | nuclei -timeout 5          |
 | -v       | Show Verbose output                                   | nuclei -v                  |
 | -version | Show version of nuclei                                | nuclei -version            |

@@ -53,8 +53,11 @@ func New(options *Options) (*Runner, error) {
 			DisableKeepAlives: true,
 		},
 		Timeout: time.Duration(options.Timeout) * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
+		CheckRedirect: func(_ *http.Request, redirCount []*http.Request) error {
+			if len(redirCount) > options.Redirect {
+				return http.ErrUseLastResponse
+        	}
+			return nil
 		},
 	}, retryablehttpOptions)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()

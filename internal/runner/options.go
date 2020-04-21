@@ -15,6 +15,7 @@ type Options struct {
 	Threads   int    // Thread controls the number of concurrent requests to make.
 	Timeout   int    // Timeout is the seconds to wait for a response from the server.
 	Retries   int    // Retries is the number of times to retry the request
+	Redirect  int    // Redirect is the number of consecutive time to redirect the request on 301/302/303/307/308.
 	Output    string // Output is the file to write found subdomains to.
 	Silent    bool   // Silent suppresses any extra text and only writes found URLs on screen.
 	Version   bool   // Version specifies if we should just show version and exit
@@ -38,6 +39,7 @@ func ParseOptions() *Options {
 	flag.IntVar(&options.Threads, "c", 10, "Number of concurrent requests to make")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
+	flag.IntVar(&options.Redirect, "redirect", 0, "Number of consecutive redirection")
 
 	flag.Parse()
 
