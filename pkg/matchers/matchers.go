@@ -19,6 +19,8 @@ type Matcher struct {
 	Words []string `yaml:"words,omitempty"`
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex,omitempty"`
+	// Binary are the binary characters required to be present in the response
+	Binary []string `yaml:"binary,omitempty"`
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
 
@@ -45,6 +47,8 @@ const (
 	WordsMatcher MatcherType = iota + 1
 	// RegexMatcher matches responses with regexes
 	RegexMatcher
+	// BinaryMatcher matches responses with words
+	BinaryMatcher MatcherType = iota + 2
 	// StatusMatcher matches responses with status codes
 	StatusMatcher
 	// SizeMatcher matches responses with response size
@@ -57,6 +61,7 @@ var MatcherTypes = map[string]MatcherType{
 	"size":   SizeMatcher,
 	"word":   WordsMatcher,
 	"regex":  RegexMatcher,
+	"binary": BinaryMatcher,
 }
 
 // ConditionType is the type of condition for matcher
