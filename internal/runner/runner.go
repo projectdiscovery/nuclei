@@ -205,40 +205,44 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 				}
 
 				// Check if the matcher matched
-				if !matcher.Match(resp, body, headers) {
-					continue reqLoop
+				if matcher.Match(resp, body, headers) {
+					// If there is an extractor, run it.
+					var extractorResults []string
+					for _, extractor := range request.Extractors {
+						part := extractor.GetPart()
+						if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
+							headers = headersToString(resp.Header)
+						}
+						extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
+					}
+
+					// All the matchers matched, print the output on the screen
+					output := buildOutput(template, req, extractorResults, matcher)
+					gologger.Silentf("%s", output)
+
+					if writer != nil {
+						r.outputMutex.Lock()
+						writer.WriteString(output)
+						r.outputMutex.Unlock()
+					}
 				}
 			}
-
-			// If there is an extractor, run it.
-			var extractorResults []string
-			for _, extractor := range request.Extractors {
-				part := extractor.GetPart()
-				if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
-					headers = headersToString(resp.Header)
-				}
-				extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
-			}
-
-			// All the matchers matched, print the output on the screen
-			output := buildOutput(template, req, extractorResults)
-			gologger.Silentf("%s", output)
-
-			if writer != nil {
-				r.outputMutex.Lock()
-				writer.WriteString(output)
-				r.outputMutex.Unlock()
-			}
+			continue reqLoop
 		}
 	}
 }
 
 // buildOutput builds an output text for writing results
-func buildOutput(template *templates.Template, req *retryablehttp.Request, extractorResults []string) string {
+func buildOutput(template *templates.Template, req *retryablehttp.Request, extractorResults []string, matcher *matchers.Matcher) string {
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(template.ID)
+	if len(matcher.Name) > 0 {
+		builder.WriteString(":")
+		builder.WriteString(matcher.Name)
+	}
 	builder.WriteString("] ")
+
 	// Escape the URL by replacing all % with %%
 	URL := req.URL.String()
 	escapedURL := strings.Replace(URL, "%", "%%", -1)
