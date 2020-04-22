@@ -28,6 +28,10 @@ type Request struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	// Redirects specifies whether redirects should be followed.
+	Redirects bool `yaml:"redirects,omitempty"`
+	// MaxRedirects is the maximum number of redirects that should be followed.
+	MaxRedirects int `yaml:"max-redirects,omitempty"`
 }
 
 // MakeRequest creates a *http.Request from a request template
