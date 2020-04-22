@@ -20,6 +20,8 @@ type Matcher struct {
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex,omitempty"`
 	// regexCompiled is the compiled variant
+	// Matcher Name to be displayed in result output.
+	Name string `yaml:"name,omitempty"`
 	regexCompiled []*regexp.Regexp
 
 	// Condition is the optional condition between two matcher variables
