@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+
+	"github.com/miekg/dns"
 )
 
 // Match matches a http response again a given matcher
@@ -49,6 +51,25 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 			}
 			return m.matchBinary(body)
 		}
+	}
+	return false
+}
+
+// MatchDNS matches a dns response again a given matcher
+func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
+	switch m.matcherType {
+	// [WIP] add dns status code matcher
+	case SizeMatcher:
+		return m.matchSizeCode(msg.Len())
+	case WordsMatcher:
+		// Match for word check
+		return m.matchWords(msg.String())
+	case RegexMatcher:
+		// Match regex check
+		return m.matchRegex(msg.String())
+	case BinaryMatcher:
+		// Match binary characters check
+		return m.matchBinary(msg.String())
 	}
 	return false
 }
