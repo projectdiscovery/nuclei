@@ -22,6 +22,8 @@ type Matcher struct {
 	// Binary are the binary characters required to be present in the response
 	Binary []string `yaml:"binary,omitempty"`
 	// regexCompiled is the compiled variant
+	// Matcher Name to be displayed in result output.
+	Name string `yaml:"name,omitempty"`
 	regexCompiled []*regexp.Regexp
 
 	// Condition is the optional condition between two matcher variables
