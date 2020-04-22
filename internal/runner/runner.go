@@ -13,17 +13,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/miekg/dns"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
+	retryabledns "github.com/projectdiscovery/retryabledns"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	// client is the http client with retries
-	client *retryablehttp.Client
+	// httpClient is the http client with retries
+	httpClient *retryablehttp.Client
+	dnsClient  *retryabledns.Client
 	// output is the output file to write if any
 	output      *os.File
 	outputMutex *sync.Mutex
@@ -43,7 +46,7 @@ func New(options *Options) (*Runner, error) {
 	retryablehttpOptions.RetryMax = options.Retries
 
 	// Create the HTTP Client
-	client := retryablehttp.NewWithHTTPClient(&http.Client{
+	httpClient := retryablehttp.NewWithHTTPClient(&http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: -1,
 			TLSClientConfig: &tls.Config{
@@ -57,9 +60,13 @@ func New(options *Options) (*Runner, error) {
 			return http.ErrUseLastResponse
 		},
 	}, retryablehttpOptions)
-	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+	httpClient.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	runner.client = client
+	runner.httpClient = httpClient
+
+	// Create the dns client
+	dnsClient, _ := retryabledns.New(DefaultResolvers, options.Retries)
+	runner.dnsClient = dnsClient
 
 	// Create the output file if asked
 	if options.Output != "" {
@@ -165,18 +172,19 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 
 // sendRequest sends a request to the target based on a template
 func (r *Runner) sendRequest(template *templates.Template, URL string, writer *bufio.Writer) {
-	for _, request := range template.Requests {
+	// process http requests
+	for _, request := range template.RequestsHTTP {
 		// Compile each request for the template based on the URL
-		compiledRequest, err := request.MakeRequest(URL)
+		compiledRequest, err := request.MakeHTTPRequest(URL)
 		if err != nil {
 			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
 			continue
 		}
 
 		// Send the request to the target servers
-	reqLoop:
+	reqLoopHTTP:
 		for _, req := range compiledRequest {
-			resp, err := r.client.Do(req)
+			resp, err := r.httpClient.Do(req)
 			if err != nil {
 				if resp != nil {
 					resp.Body.Close()
@@ -206,7 +214,7 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 
 				// Check if the matcher matched
 				if !matcher.Match(resp, body, headers) {
-					continue reqLoop
+					continue reqLoopHTTP
 				}
 			}
 
@@ -231,6 +239,46 @@ func (r *Runner) sendRequest(template *templates.Template, URL string, writer *b
 			}
 		}
 	}
+
+	// process dns messages
+	for _, request := range template.RequestsDNS {
+		// Compile each request for the template based on the URL
+		compiledRequest, err := request.MakeDNSRequest(URL)
+		if err != nil {
+			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
+			continue
+		}
+
+		// Send the request to the target servers
+		resp, err := r.dnsClient.Do(compiledRequest)
+		if err != nil {
+			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, URL, err)
+			return
+		}
+
+		for _, matcher := range request.Matchers {
+			// Check if the matcher matched
+			if !matcher.MatchDNS(resp) {
+				continue
+			}
+		}
+
+		// If there is an extractor, run it.
+		var extractorResults []string
+		for _, extractor := range request.Extractors {
+			extractorResults = append(extractorResults, extractor.ExtractDNS(resp.String())...)
+		}
+
+		// All the matchers matched, print the output on the screen
+		output := buildOutputDNS(template, resp, extractorResults)
+		gologger.Silentf("%s", output)
+
+		if writer != nil {
+			r.outputMutex.Lock()
+			writer.WriteString(output)
+			r.outputMutex.Unlock()
+		}
+	}
 }
 
 // buildOutput builds an output text for writing results
@@ -243,6 +291,35 @@ func buildOutput(template *templates.Template, req *retryablehttp.Request, extra
 	URL := req.URL.String()
 	escapedURL := strings.Replace(URL, "%", "%%", -1)
 	builder.WriteString(escapedURL)
+
+	// If any extractors, write the results
+	if len(extractorResults) > 0 {
+		builder.WriteString(" [")
+		for i, result := range extractorResults {
+			builder.WriteString(result)
+			if i != len(extractorResults)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+	builder.WriteRune('\n')
+
+	return builder.String()
+}
+
+// buildOutput builds an output text for writing results
+func buildOutputDNS(template *templates.Template, msg *dns.Msg, extractorResults []string) string {
+	builder := &strings.Builder{}
+	builder.WriteRune('[')
+	builder.WriteString(template.ID)
+	builder.WriteString("] ")
+
+	// domain name from question
+	if len(msg.Question) > 0 {
+		domain := msg.Question[0].Name
+		builder.WriteString(domain)
+	}
 
 	// If any extractors, write the results
 	if len(extractorResults) > 0 {

@@ -16,6 +16,12 @@ func (e *Extractor) Extract(body, headers string) []string {
 	}
 }
 
+// ExtractDNS extracts response from dns message using a regex
+func (e *Extractor) ExtractDNS(msg string) []string {
+	// Match the parts as required for regex check
+	return e.extractRegex(msg)
+}
+
 // extractRegex extracts text from a corpus and returns it
 func (e *Extractor) extractRegex(corpus string) []string {
 	results := []string{}
