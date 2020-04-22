@@ -22,8 +22,23 @@ func ParseTemplate(file string) (*Template, error) {
 	}
 	f.Close()
 
-	// Compile the matchers and the extractors
-	for _, request := range template.Requests {
+	// Compile the matchers and the extractors for http requests
+	for _, request := range template.RequestsHTTP {
+		for _, matcher := range request.Matchers {
+			if err = matcher.CompileMatchers(); err != nil {
+				return nil, err
+			}
+		}
+
+		for _, extractor := range request.Extractors {
+			if err := extractor.CompileExtractors(); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Compile the matchers and the extractors for dns requests
+	for _, request := range template.RequestsDNS {
 		for _, matcher := range request.Matchers {
 			if err = matcher.CompileMatchers(); err != nil {
 				return nil, err
