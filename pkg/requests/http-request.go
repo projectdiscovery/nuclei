@@ -12,8 +12,8 @@ import (
 	"github.com/valyala/fasttemplate"
 )
 
-// Request contains a request to be made from a template
-type Request struct {
+// HTTPRequest contains a request to be made from a template
+type HTTPRequest struct {
 	// Method is the request method, whether GET, POST, PUT, etc
 	Method string `yaml:"method"`
 	// Path contains the path/s for the request
@@ -34,8 +34,8 @@ type Request struct {
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 }
 
-// MakeRequest creates a *http.Request from a request template
-func (r *Request) MakeRequest(baseURL string) ([]*retryablehttp.Request, error) {
+// MakeHTTPRequest creates a *http.Request from a request template
+func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
