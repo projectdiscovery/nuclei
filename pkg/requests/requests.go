@@ -64,7 +64,12 @@ func (r *Request) MakeRequest(baseURL string) ([]*retryablehttp.Request, error) 
 
 		// Set the header values requested
 		for header, value := range r.Headers {
-			req.Header.Set(header, value)
+			t := fasttemplate.New(value, "{{", "}}")
+			val := t.ExecuteString(map[string]interface{}{
+				"BaseURL":  baseURL,
+				"Hostname": hostname,
+			})
+			req.Header.Set(header, val)
 		}
 
 		// Set some headers only if the header wasn't supplied by the user
