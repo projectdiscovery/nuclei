@@ -12,6 +12,7 @@ import (
 type Options struct {
 	Templates string // Signature specifies the template/templates to use
 	Targets   string // Targets specifies the targets to scan using templates.
+	Target    string // Target specifies the target to scan using templates.
 	Threads   int    // Thread controls the number of concurrent requests to make.
 	Timeout   int    // Timeout is the seconds to wait for a response from the server.
 	Retries   int    // Retries is the number of times to retry the request
@@ -30,6 +31,7 @@ func ParseOptions() *Options {
 
 	flag.StringVar(&options.Templates, "t", "", "Template input file/files to run on host")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
+	flag.StringVar(&options.Target, "u", "", "URL to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.BoolVar(&options.Silent, "silent", false, "Show only results in output")
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")

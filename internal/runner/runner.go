@@ -104,6 +104,11 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request *r
 		return
 	}
 
+	if r.options.Target != "" {
+		r.processTemplateWithURL(template, request, r.options.Target)
+		return
+	}
+
 	// Handle stdin input
 	if r.options.Stdin {
 		r.processTemplateWithList(template, request, os.Stdin)
@@ -145,6 +150,39 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request *
 			wg.Done()
 		}(text)
 	}
+	close(limiter)
+	wg.Wait()
+}
+
+// processDomain processes the list with a template
+func (r *Runner) processTemplateWithURL(template *templates.Template, request *requests.Request, text string) {
+	// Display the message for the template
+	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
+	if template.Info.Severity != "" {
+		message += " [" + template.Info.Severity + "]"
+	}
+	gologger.Infof("%s\n", message)
+
+	limiter := make(chan struct{}, r.options.Threads)
+	wg := &sync.WaitGroup{}
+
+	var writer *bufio.Writer
+	if r.output != nil {
+		writer = bufio.NewWriter(r.output)
+		defer writer.Flush()
+	}
+
+	client := r.makeHTTPClient(request.Redirects, request.MaxRedirects)
+
+	limiter <- struct{}{}
+	wg.Add(1)
+
+	go func(URL string) {
+		r.sendRequest(template, request, URL, writer, client)
+		<-limiter
+		wg.Done()
+	}(text)
+
 	close(limiter)
 	wg.Wait()
 }
