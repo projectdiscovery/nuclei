@@ -388,8 +388,7 @@ func (r *Runner) makeHTTPClientByRequest(request interface{}) *retryablehttp.Cli
 // makeHTTPClient creates a HTTP client with configurable redirect field
 func (r *Runner) makeDNSClientByRequest(request interface{}) *retryabledns.Client {
 	retries := r.options.Retries
-	// Request is HTTP
-	if dnsRequest, ok := request.(requests.DNSRequest); ok {
+	if dnsRequest, ok := request.(*requests.DNSRequest); ok {
 		retries = dnsRequest.Retries
 	}
 
