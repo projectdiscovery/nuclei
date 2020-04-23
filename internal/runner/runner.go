@@ -117,14 +117,15 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 
 	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
+	
+	var writer *bufio.Writer
+	if r.output != nil {
+		writer = bufio.NewWriter(r.output)
+		defer writer.Flush()
+	}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		var writer *bufio.Writer
-		if r.output != nil {
-			writer = bufio.NewWriter(r.output)
-			defer writer.Flush()
-		}
 		for _, request := range template.Requests {
 
 			client := r.makeHTTPClient(request.Redirects, request.MaxRedirects)
@@ -142,7 +143,6 @@ func (r *Runner) processTemplateWithList(template *templates.Template, reader io
 			}(text, request)
 		}
 	}
-
 	close(limiter)
 	wg.Wait()
 }
@@ -186,6 +186,7 @@ reqLoop:
 			if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
 				headers = headersToString(resp.Header)
 			}
+
 			// Check if the matcher matched
 			if matcher.Match(resp, body, headers) {
 				// If there is an extractor, run it.
