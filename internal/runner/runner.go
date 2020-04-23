@@ -165,7 +165,12 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 // sendRequest sends a request to the target based on a template
 func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, writer *bufio.Writer, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
 	// Request is HTTP
-	if httpRequest, ok := request.(*requests.HTTPRequest); ok {
+	if isURL(URL) {
+		httpRequest, ok := request.(*requests.HTTPRequest)
+		if !ok {
+			return
+		}
+
 		// Compile each request for the template based on the URL
 		compiledRequest, err := httpRequest.MakeHTTPRequest(URL)
 		if err != nil {
@@ -229,8 +234,11 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		}
 	}
 
-	// process dns messages
-	if dnsRequest, ok := request.(*requests.DNSRequest); ok {
+	if isDNS(URL) {
+		dnsRequest, ok := request.(*requests.DNSRequest)
+		if !ok {
+			return
+		}
 		// Compile each request for the template based on the URL
 		compiledRequest, err := dnsRequest.MakeDNSRequest(URL)
 		if err != nil {
