@@ -229,6 +229,7 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		}
 	}
 
+	// process dns messages
 	if dnsRequest, ok := request.(*requests.DNSRequest); ok {
 		// Compile each request for the template based on the URL
 		compiledRequest, err := dnsRequest.MakeDNSRequest(URL)
@@ -254,46 +255,6 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		// If there is an extractor, run it.
 		var extractorResults []string
 		for _, extractor := range dnsRequest.Extractors {
-			extractorResults = append(extractorResults, extractor.ExtractDNS(resp.String())...)
-		}
-
-		// All the matchers matched, print the output on the screen
-		output := buildOutputDNS(template, resp, extractorResults)
-		gologger.Silentf("%s", output)
-
-		if writer != nil {
-			r.outputMutex.Lock()
-			writer.WriteString(output)
-			r.outputMutex.Unlock()
-		}
-	}
-
-	// process dns messages
-	for _, request := range template.RequestsDNS {
-		// Compile each request for the template based on the URL
-		compiledRequest, err := request.MakeDNSRequest(URL)
-		if err != nil {
-			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
-			continue
-		}
-
-		// Send the request to the target servers
-		resp, err := r.dnsClient.Do(compiledRequest)
-		if err != nil {
-			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, URL, err)
-			return
-		}
-
-		for _, matcher := range request.Matchers {
-			// Check if the matcher matched
-			if !matcher.MatchDNS(resp) {
-				continue
-			}
-		}
-
-		// If there is an extractor, run it.
-		var extractorResults []string
-		for _, extractor := range request.Extractors {
 			extractorResults = append(extractorResults, extractor.ExtractDNS(resp.String())...)
 		}
 
