@@ -51,6 +51,6 @@ func ParseTemplate(file string) (*Template, error) {
 			}
 		}
 	}
-	
+
 	return template, nil
 }
