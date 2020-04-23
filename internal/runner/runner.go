@@ -247,7 +247,7 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		for _, matcher := range dnsRequest.Matchers {
 			// Check if the matcher matched
 			if !matcher.MatchDNS(resp) {
-				continue
+				return
 			}
 		}
 
