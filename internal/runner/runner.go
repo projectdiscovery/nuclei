@@ -67,9 +67,7 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", r.options.Templates, err)
 			return
 		}
-		for _, request := range template.Requests {
-			r.processTemplateRequest(template, request)
-		}
+		r.processTemplateRequests(template)
 		return
 	}
 
@@ -85,33 +83,31 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
 			return
 		}
-		for _, request := range template.Requests {
-			r.processTemplateRequest(template, request)
-		}
+		r.processTemplateRequests(template)
 	}
 }
 
 // processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request *requests.Request) {
+func (r *Runner) processTemplateRequests(template *templates.Template) {
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
 		file, err := os.Open(r.options.Targets)
 		if err != nil {
 			gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
 		}
-		r.processTemplateWithList(template, request, file)
+		r.processTemplateWithList(template, file)
 		file.Close()
 		return
 	}
 
 	// Handle stdin input
 	if r.options.Stdin {
-		r.processTemplateWithList(template, request, os.Stdin)
+		r.processTemplateWithList(template, os.Stdin)
 	}
 }
 
 // processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request *requests.Request, reader io.Reader) {
+func (r *Runner) processTemplateWithList(template *templates.Template, reader io.Reader) {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -122,29 +118,31 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request *
 	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
 
-	var writer *bufio.Writer
-	if r.output != nil {
-		writer = bufio.NewWriter(r.output)
-		defer writer.Flush()
-	}
-
-	client := r.makeHTTPClient(request.Redirects, request.MaxRedirects)
-
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
+		var writer *bufio.Writer
+		if r.output != nil {
+			writer = bufio.NewWriter(r.output)
+			defer writer.Flush()
 		}
-		limiter <- struct{}{}
-		wg.Add(1)
+		for _, request := range template.Requests {
 
-		go func(URL string) {
-			r.sendRequest(template, request, URL, writer, client)
-			<-limiter
-			wg.Done()
-		}(text)
+			client := r.makeHTTPClient(request.Redirects, request.MaxRedirects)
+			text := scanner.Text()
+			if text == "" {
+				continue
+			}
+			limiter <- struct{}{}
+			wg.Add(1)
+
+			go func(URL string, request *requests.Request) {
+				r.sendRequest(template, request, URL, writer, client)
+				<-limiter
+				wg.Done()
+			}(text, request)
+		}
 	}
+
 	close(limiter)
 	wg.Wait()
 }
@@ -188,7 +186,6 @@ reqLoop:
 			if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
 				headers = headersToString(resp.Header)
 			}
-
 			// Check if the matcher matched
 			if matcher.Match(resp, body, headers) {
 				// If there is an extractor, run it.

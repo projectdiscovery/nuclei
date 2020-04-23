@@ -10,7 +10,7 @@ type Template struct {
 	ID string `yaml:"id"`
 	// Info contains information about the template
 	Info Info `yaml:"info"`
-	// Request contains the request to make in the template
+	// Request contains the requests to make in the template
 	Requests []*requests.Request `yaml:"requests"`
 }
 
