@@ -234,22 +234,28 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		}
 	}
 
-	if isDNS(URL) {
+	// eventually extracts dns from url
+	var domain string = URL
+	if isURL(URL) {
+		domain = extractDomain(URL)
+	}
+	// double check we have a valid dns and many times net/http extracts additional URL parts (credentials, port, etc...)
+	if isDNS(domain) {
 		dnsRequest, ok := request.(*requests.DNSRequest)
 		if !ok {
 			return
 		}
 		// Compile each request for the template based on the URL
-		compiledRequest, err := dnsRequest.MakeDNSRequest(URL)
+		compiledRequest, err := dnsRequest.MakeDNSRequest(domain)
 		if err != nil {
-			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
+			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, domain, err)
 			return
 		}
 
 		// Send the request to the target servers
 		resp, err := dnsclient.Do(compiledRequest)
 		if err != nil {
-			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, URL, err)
+			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, domain, err)
 			return
 		}
 
