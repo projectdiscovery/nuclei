@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/miekg/dns"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
@@ -269,7 +268,7 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 		}
 
 		// All the matchers matched, print the output on the screen
-		output := buildOutputDNS(template, resp, extractorResults)
+		output := buildOutputDNS(template, domain, extractorResults)
 		gologger.Silentf("%s", output)
 
 		if writer != nil {
@@ -313,18 +312,13 @@ func buildOutputHTTP(template *templates.Template, req *retryablehttp.Request, e
 }
 
 // buildOutput builds an output text for writing results
-func buildOutputDNS(template *templates.Template, msg *dns.Msg, extractorResults []string) string {
+func buildOutputDNS(template *templates.Template, domain string, extractorResults []string) string {
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(template.ID)
 	builder.WriteString("] [dns] ")
 
-	// domain name from question
-	if len(msg.Question) > 0 {
-		domain := msg.Question[0].Name
-		domain = strings.TrimSuffix(domain, ".")
-		builder.WriteString(domain)
-	}
+	builder.WriteString(domain)
 
 	// If any extractors, write the results
 	if len(extractorResults) > 0 {
