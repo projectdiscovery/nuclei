@@ -11,6 +11,8 @@ type Matcher struct {
 	// matcherType is the internal type of the matcher
 	matcherType MatcherType
 
+	// Name is matcher Name to be displayed in result output.
+	Name string `yaml:"name,omitempty"`
 	// Status are the acceptable status codes for the response
 	Status []int `yaml:"status,omitempty"`
 	// Size is the acceptable size for the response
@@ -19,12 +21,10 @@ type Matcher struct {
 	Words []string `yaml:"words,omitempty"`
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex,omitempty"`
+	// regexCompiled is the compiled variant
+	regexCompiled []*regexp.Regexp
 	// Binary are the binary characters required to be present in the response
 	Binary []string `yaml:"binary,omitempty"`
-	// regexCompiled is the compiled variant
-	// Matcher Name to be displayed in result output.
-	Name string `yaml:"name,omitempty"`
-	regexCompiled []*regexp.Regexp
 
 	// Condition is the optional condition between two matcher variables
 	//
@@ -50,7 +50,7 @@ const (
 	// RegexMatcher matches responses with regexes
 	RegexMatcher
 	// BinaryMatcher matches responses with words
-	BinaryMatcher MatcherType = iota + 2
+	BinaryMatcher
 	// StatusMatcher matches responses with status codes
 	StatusMatcher
 	// SizeMatcher matches responses with response size
