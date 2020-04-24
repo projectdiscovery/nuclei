@@ -48,6 +48,15 @@ func isURL(toTest string) bool {
 	return true
 }
 
+func extractDomain(URL string) string {
+	u, err := url.Parse(URL)
+	if err != nil {
+		return ""
+	}
+
+	return u.Hostname()
+}
+
 // isDNS tests a string to determine if it is a well-structured dns or not
 // even if it's oneliner, we leave it wrapped in a function call for
 // future improvements
