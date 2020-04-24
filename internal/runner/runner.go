@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
+	retryabledns "github.com/projectdiscovery/retryabledns"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -67,7 +68,14 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", r.options.Templates, err)
 			return
 		}
-		for _, request := range template.Requests {
+
+		// process http requests
+		for _, request := range template.RequestsHTTP {
+			r.processTemplateRequest(template, request)
+		}
+
+		// process dns requests
+		for _, request := range template.RequestsDNS {
 			r.processTemplateRequest(template, request)
 		}
 		return
@@ -85,14 +93,17 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
 			return
 		}
-		for _, request := range template.Requests {
+		for _, request := range template.RequestsHTTP {
+			r.processTemplateRequest(template, request)
+		}
+		for _, request := range template.RequestsDNS {
 			r.processTemplateRequest(template, request)
 		}
 	}
 }
 
 // processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request *requests.Request) {
+func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) {
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
 		file, err := os.Open(r.options.Targets)
@@ -111,7 +122,7 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request *r
 }
 
 // processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request *requests.Request, reader io.Reader) {
+func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -128,7 +139,8 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request *
 		defer writer.Flush()
 	}
 
-	client := r.makeHTTPClient(request.Redirects, request.MaxRedirects)
+	httpclient := r.makeHTTPClientByRequest(request)
+	dnsclient := r.makeDNSClientByRequest(request)
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -140,7 +152,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request *
 		wg.Add(1)
 
 		go func(URL string) {
-			r.sendRequest(template, request, URL, writer, client)
+			r.sendRequest(template, request, URL, writer, httpclient, dnsclient)
 			<-limiter
 			wg.Done()
 		}(text)
@@ -150,74 +162,125 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request *
 }
 
 // sendRequest sends a request to the target based on a template
-func (r *Runner) sendRequest(template *templates.Template, request *requests.Request, URL string, writer *bufio.Writer, client *retryablehttp.Client) {
-	// Compile each request for the template based on the URL
-	compiledRequest, err := request.MakeRequest(URL)
-	if err != nil {
-		gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
-		return
-	}
+func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, writer *bufio.Writer, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
+	switch request.(type) {
+	case *requests.HTTPRequest:
+		if !isURL(URL) {
+			break
+		}
+		httpRequest := request.(*requests.HTTPRequest)
 
-	// Send the request to the target servers
-reqLoop:
-	for _, req := range compiledRequest {
-		resp, err := client.Do(req)
+		// Compile each request for the template based on the URL
+		compiledRequest, err := httpRequest.MakeHTTPRequest(URL)
 		if err != nil {
-			if resp != nil {
-				resp.Body.Close()
-			}
-			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, URL, err)
+			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, URL, err)
 			return
 		}
 
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			io.Copy(ioutil.Discard, resp.Body)
+		// Send the request to the target servers
+		for _, req := range compiledRequest {
+			resp, err := httpclient.Do(req)
+			if err != nil {
+				if resp != nil {
+					resp.Body.Close()
+				}
+				gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, URL, err)
+				return
+			}
+
+			data, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				io.Copy(ioutil.Discard, resp.Body)
+				resp.Body.Close()
+				gologger.Warningf("[%s] Could not read body %s: %s\n", template.ID, URL, err)
+				continue
+			}
 			resp.Body.Close()
-			gologger.Warningf("[%s] Could not read body %s: %s\n", template.ID, URL, err)
-			continue
-		}
-		resp.Body.Close()
 
-		body := unsafeToString(data)
+			body := unsafeToString(data)
 
-		var headers string
-		for _, matcher := range request.Matchers {
-			// Only build the headers string if the matcher asks for it
-			part := matcher.GetPart()
-			if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
-				headers = headersToString(resp.Header)
-			}
+			var headers string
+			for _, matcher := range httpRequest.Matchers {
+				// Only build the headers string if the matcher asks for it
+				part := matcher.GetPart()
+				if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
+					headers = headersToString(resp.Header)
+				}
 
-			// Check if the matcher matched
-			if matcher.Match(resp, body, headers) {
-				// If there is an extractor, run it.
-				var extractorResults []string
-				for _, extractor := range request.Extractors {
-					part := extractor.GetPart()
-					if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
-						headers = headersToString(resp.Header)
+				// Check if the matcher matched
+				if matcher.Match(resp, body, headers) {
+					// If there is an extractor, run it.
+					var extractorResults []string
+					for _, extractor := range httpRequest.Extractors {
+						part := extractor.GetPart()
+						if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
+							headers = headersToString(resp.Header)
+						}
+						extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
 					}
-					extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
-				}
 
-				// All the matchers matched, print the output on the screen
-				output := buildOutput(template, req, extractorResults, matcher)
-				gologger.Silentf("%s", output)
+					// All the matchers matched, print the output on the screen
+					output := buildOutputHTTP(template, req, extractorResults, matcher)
+					gologger.Silentf("%s", output)
 
-				if writer != nil {
-					r.outputMutex.Lock()
-					writer.WriteString(output)
-					r.outputMutex.Unlock()
+					if writer != nil {
+						r.outputMutex.Lock()
+						writer.WriteString(output)
+						r.outputMutex.Unlock()
+					}
 				}
 			}
 		}
-		continue reqLoop
+	case *requests.DNSRequest:
+		// eventually extracts dns from url
+		var domain string = URL
+		if isURL(URL) {
+			domain = extractDomain(URL)
+		}
+
+		dnsRequest := request.(*requests.DNSRequest)
+
+		// Compile each request for the template based on the URL
+		compiledRequest, err := dnsRequest.MakeDNSRequest(domain)
+		if err != nil {
+			gologger.Warningf("[%s] Could not make request %s: %s\n", template.ID, domain, err)
+			return
+		}
+
+		// Send the request to the target servers
+		resp, err := dnsclient.Do(compiledRequest)
+		if err != nil {
+			gologger.Warningf("[%s] Could not send request %s: %s\n", template.ID, domain, err)
+			return
+		}
+
+		for _, matcher := range dnsRequest.Matchers {
+			// Check if the matcher matched
+			if !matcher.MatchDNS(resp) {
+				return
+			}
+		}
+
+		// If there is an extractor, run it.
+		var extractorResults []string
+		for _, extractor := range dnsRequest.Extractors {
+			extractorResults = append(extractorResults, extractor.ExtractDNS(resp.String())...)
+		}
+
+		// All the matchers matched, print the output on the screen
+		output := buildOutputDNS(template, domain, extractorResults)
+		gologger.Silentf("%s", output)
+
+		if writer != nil {
+			r.outputMutex.Lock()
+			writer.WriteString(output)
+			r.outputMutex.Unlock()
+		}
 	}
 }
 
-// buildOutput builds an output text for writing results
-func buildOutput(template *templates.Template, req *retryablehttp.Request, extractorResults []string, matcher *matchers.Matcher) string {
+// buildOutputHTTP builds an output text for writing results
+func buildOutputHTTP(template *templates.Template, req *retryablehttp.Request, extractorResults []string, matcher *matchers.Matcher) string {
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(template.ID)
@@ -248,8 +311,42 @@ func buildOutput(template *templates.Template, req *retryablehttp.Request, extra
 	return builder.String()
 }
 
+// buildOutput builds an output text for writing results
+func buildOutputDNS(template *templates.Template, domain string, extractorResults []string) string {
+	builder := &strings.Builder{}
+	builder.WriteRune('[')
+	builder.WriteString(template.ID)
+	builder.WriteString("] [dns] ")
+
+	builder.WriteString(domain)
+
+	// If any extractors, write the results
+	if len(extractorResults) > 0 {
+		builder.WriteString(" [")
+		for i, result := range extractorResults {
+			builder.WriteString(result)
+			if i != len(extractorResults)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+	builder.WriteRune('\n')
+
+	return builder.String()
+}
+
 // makeHTTPClient creates a HTTP client with configurable redirect field
-func (r *Runner) makeHTTPClient(redirects bool, maxRedirects int) *retryablehttp.Client {
+func (r *Runner) makeHTTPClientByRequest(request interface{}) *retryablehttp.Client {
+
+	redirects := false
+	maxRedirects := 0
+	// Request is HTTP
+	if httpRequest, ok := request.(requests.HTTPRequest); ok {
+		redirects = httpRequest.Redirects
+		maxRedirects = httpRequest.MaxRedirects
+	}
+
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	retryablehttpOptions.RetryWaitMax = 10 * time.Second
 	retryablehttpOptions.RetryMax = r.options.Retries
@@ -283,4 +380,15 @@ func (r *Runner) makeHTTPClient(redirects bool, maxRedirects int) *retryablehttp
 	}, retryablehttpOptions)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 	return client
+}
+
+// makeHTTPClient creates a HTTP client with configurable redirect field
+func (r *Runner) makeDNSClientByRequest(request interface{}) *retryabledns.Client {
+	retries := r.options.Retries
+	if dnsRequest, ok := request.(*requests.DNSRequest); ok {
+		retries = dnsRequest.Retries
+	}
+
+	dnsClient, _ := retryabledns.New(DefaultResolvers, retries)
+	return dnsClient
 }

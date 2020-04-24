@@ -2,8 +2,11 @@ package runner
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"unsafe"
+
+	"github.com/asaskevich/govalidator"
 )
 
 // unsafeToString converts byte slice to string with zero allocations
@@ -28,4 +31,35 @@ func headersToString(headers http.Header) string {
 		builder.WriteRune('\n')
 	}
 	return builder.String()
+}
+
+// isURL tests a string to determine if it is a well-structured url or not.
+func isURL(toTest string) bool {
+	_, err := url.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	}
+
+	u, err := url.Parse(toTest)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	return true
+}
+
+func extractDomain(URL string) string {
+	u, err := url.Parse(URL)
+	if err != nil {
+		return ""
+	}
+
+	return u.Hostname()
+}
+
+// isDNS tests a string to determine if it is a well-structured dns or not
+// even if it's oneliner, we leave it wrapped in a function call for
+// future improvements
+func isDNS(toTest string) bool {
+	return govalidator.IsDNSName(toTest)
 }
