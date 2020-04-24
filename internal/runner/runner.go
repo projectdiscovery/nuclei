@@ -164,12 +164,12 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 
 // sendRequest sends a request to the target based on a template
 func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, writer *bufio.Writer, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
-	// Request is HTTP
-	if isURL(URL) {
-		httpRequest, ok := request.(*requests.HTTPRequest)
-		if !ok {
-			return
+	switch request.(type) {
+	case *requests.HTTPRequest:
+		if !isURL(URL) {
+			break
 		}
+		httpRequest := request.(*requests.HTTPRequest)
 
 		// Compile each request for the template based on the URL
 		compiledRequest, err := httpRequest.MakeHTTPRequest(URL)
@@ -232,19 +232,15 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 				}
 			}
 		}
-	}
-
-	// eventually extracts dns from url
-	var domain string = URL
-	if isURL(URL) {
-		domain = extractDomain(URL)
-	}
-	// double check we have a valid dns and many times net/http extracts additional URL parts (credentials, port, etc...)
-	if isDNS(domain) {
-		dnsRequest, ok := request.(*requests.DNSRequest)
-		if !ok {
-			return
+	case *requests.DNSRequest:
+		// eventually extracts dns from url
+		var domain string = URL
+		if isURL(URL) {
+			domain = extractDomain(URL)
 		}
+
+		dnsRequest := request.(*requests.DNSRequest)
+
 		// Compile each request for the template based on the URL
 		compiledRequest, err := dnsRequest.MakeDNSRequest(domain)
 		if err != nil {
