@@ -317,11 +317,12 @@ func buildOutputDNS(template *templates.Template, msg *dns.Msg, extractorResults
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(template.ID)
-	builder.WriteString("] ")
+	builder.WriteString("] [dns] ")
 
 	// domain name from question
 	if len(msg.Question) > 0 {
 		domain := msg.Question[0].Name
+		domain = strings.TrimSuffix(domain, ".")
 		builder.WriteString(domain)
 	}
 

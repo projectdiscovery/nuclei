@@ -55,7 +55,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 	return false
 }
 
-// MatchDNS matches a dns response again a given matcher
+// MatchDNS matches a dns response against a given matcher
 func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	switch m.matcherType {
 	// [WIP] add dns status code matcher
