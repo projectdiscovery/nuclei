@@ -10,8 +10,10 @@ type Template struct {
 	ID string `yaml:"id"`
 	// Info contains information about the template
 	Info Info `yaml:"info"`
-	// Request contains the request to make in the template
-	Requests []*requests.Request `yaml:"requests"`
+	// Request contains the http request to make in the template
+	RequestsHTTP []*requests.HTTPRequest `yaml:"requests"`
+	// Request contains the dns request to make in the template
+	RequestsDNS []*requests.DNSRequest `yaml:"dns"`
 }
 
 // Info contains information about the request template
