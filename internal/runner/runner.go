@@ -61,6 +61,10 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Could not run recognize template extension: %s\n", r.options.Templates)
 	}
 
+	limiter := make(chan struct{}, r.options.Threads)
+	wg := &sync.WaitGroup{}
+	var channels []chan string
+
 	// If the template path is a single template and not a glob, use that.
 	if !strings.Contains(r.options.Templates, "*") {
 		template, err := templates.ParseTemplate(r.options.Templates)
@@ -68,61 +72,101 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", r.options.Templates, err)
 			return
 		}
-
 		// process http requests
 		for _, request := range template.RequestsHTTP {
-			r.processTemplateRequest(template, request)
+			// we need a chan per request
+			targets := make(chan string, 100)
+			channels = append(channels, targets)
+			wg.Add(1)
+			go r.processTemplateWithList(limiter, wg, template, request, targets)
 		}
 
 		// process dns requests
 		for _, request := range template.RequestsDNS {
-			r.processTemplateRequest(template, request)
+			targets := make(chan string, 100)
+			channels = append(channels, targets)
+			wg.Add(1)
+			go r.processTemplateWithList(limiter, wg, template, request, targets)
 		}
-		return
-	}
-
-	// Handle the glob, evaluate it and run all the template file checks
-	matches, err := filepath.Glob(r.options.Templates)
-	if err != nil {
-		gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
-	}
-
-	for _, match := range matches {
-		template, err := templates.ParseTemplate(match)
+	} else {
+		// Handle the glob, evaluate it and run all the template file checks
+		matches, err := filepath.Glob(r.options.Templates)
 		if err != nil {
-			gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
-			return
+			gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
 		}
-		for _, request := range template.RequestsHTTP {
-			r.processTemplateRequest(template, request)
-		}
-		for _, request := range template.RequestsDNS {
-			r.processTemplateRequest(template, request)
+
+		for _, match := range matches {
+			template, err := templates.ParseTemplate(match)
+			if err != nil {
+				gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
+				return
+			}
+			for _, request := range template.RequestsHTTP {
+				targets := make(chan string, 100)
+				channels = append(channels, targets)
+				wg.Add(1)
+				go r.processTemplateWithList(limiter, wg, template, request, targets)
+			}
+			for _, request := range template.RequestsDNS {
+				targets := make(chan string, 100)
+				channels = append(channels, targets)
+				wg.Add(1)
+				go r.processTemplateWithList(limiter, wg, template, request, targets)
+			}
 		}
 	}
+
+	go func() {
+		// stream the same input among templates
+		for target := range r.streamInput() {
+			for _, channel := range channels {
+				channel <- target
+			}
+		}
+
+		for _, channel := range channels {
+			close(channel)
+		}
+	}()
+
+	wg.Wait()
+
+	close(limiter)
 }
 
-// processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) {
-	// Handle a list of hosts as argument
-	if r.options.Targets != "" {
-		file, err := os.Open(r.options.Targets)
-		if err != nil {
-			gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-		}
-		r.processTemplateWithList(template, request, file)
-		file.Close()
-		return
-	}
+func (r *Runner) streamInput() (targets chan string) {
+	targets = make(chan string)
 
-	// Handle stdin input
-	if r.options.Stdin {
-		r.processTemplateWithList(template, request, os.Stdin)
-	}
+	go func() {
+		defer close(targets)
+
+		var file *os.File
+
+		if r.options.Targets != "" {
+			file, err := os.Open(r.options.Targets)
+			if err != nil {
+				gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
+			}
+			defer file.Close()
+			return
+		}
+
+		if r.options.Stdin {
+			file = os.Stdin
+		}
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			targets <- scanner.Text()
+		}
+	}()
+
+	return
 }
 
 // processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) {
+func (r *Runner) processTemplateWithList(limiter chan struct{}, wgt *sync.WaitGroup, template *templates.Template, request interface{}, targets chan string) {
+	defer wgt.Done()
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -130,7 +174,6 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	}
 	gologger.Infof("%s\n", message)
 
-	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
 
 	var writer *bufio.Writer
@@ -142,10 +185,8 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	httpclient := r.makeHTTPClientByRequest(request)
 	dnsclient := r.makeDNSClientByRequest(request)
 
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
+	for target := range targets {
+		if target == "" {
 			continue
 		}
 		limiter <- struct{}{}
@@ -155,9 +196,9 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			r.sendRequest(template, request, URL, writer, httpclient, dnsclient)
 			<-limiter
 			wg.Done()
-		}(text)
+		}(target)
 	}
-	close(limiter)
+
 	wg.Wait()
 }
 
