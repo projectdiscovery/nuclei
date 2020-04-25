@@ -240,18 +240,59 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 
 			body := unsafeToString(data)
 
-			var headers string
-			for _, matcher := range httpRequest.Matchers {
-				// Only build the headers string if the matcher asks for it
-				part := matcher.GetPart()
-				if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
-					headers = headersToString(resp.Header)
-				}
+			if httpRequest.MCondition == matchers.ORCondition {
+				// OR BRANCH - At the first matched matcher exits
+				var headers string
+				var isMatched bool
+				for _, matcher := range httpRequest.Matchers {
+					// Only build the headers string if the matcher asks for it
+					part := matcher.GetPart()
+					if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
+						headers = headersToString(resp.Header)
+					}
 
-				// Check if the matcher matched
-				if matcher.Match(resp, body, headers) {
-					// If there is an extractor, run it.
-					var extractorResults []string
+					isMatched = matcher.Match(resp, body, headers)
+					// Check if the matcher matched
+					if isMatched {
+						// If there is an extractor, run it.
+						var extractorResults []string
+						for _, extractor := range httpRequest.Extractors {
+							part := extractor.GetPart()
+							if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
+								headers = headersToString(resp.Header)
+							}
+							extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
+						}
+
+						// All the matchers matched, print the output on the screen
+						output := buildOutputHTTP(template, req, extractorResults, matcher)
+						gologger.Silentf("%s", output)
+
+						if writer != nil {
+							r.outputMutex.Lock()
+							writer.WriteString(output)
+							r.outputMutex.Unlock()
+						}
+						return
+					}
+				}
+			} else {
+				// AND BRANCH - All matchers are processed and must be valid
+				var headers string
+				var extractorResults []string
+				var isMatched bool
+				for _, matcher := range httpRequest.Matchers {
+					// Only build the headers string if the matcher asks for it
+					part := matcher.GetPart()
+					if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
+						headers = headersToString(resp.Header)
+					}
+
+					isMatched = matcher.Match(resp, body, headers)
+					if !isMatched {
+						return
+					}
+
 					for _, extractor := range httpRequest.Extractors {
 						part := extractor.GetPart()
 						if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
@@ -259,16 +300,16 @@ func (r *Runner) sendRequest(template *templates.Template, request interface{}, 
 						}
 						extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
 					}
+				}
 
-					// All the matchers matched, print the output on the screen
-					output := buildOutputHTTP(template, req, extractorResults, matcher)
-					gologger.Silentf("%s", output)
+				// All the matchers matched, print the output on the screen
+				output := buildOutputHTTP(template, req, extractorResults, &matchers.Matcher{})
+				gologger.Silentf("%s", output)
 
-					if writer != nil {
-						r.outputMutex.Lock()
-						writer.WriteString(output)
-						r.outputMutex.Unlock()
-					}
+				if writer != nil {
+					r.outputMutex.Lock()
+					writer.WriteString(output)
+					r.outputMutex.Unlock()
 				}
 			}
 		}

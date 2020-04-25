@@ -25,6 +25,12 @@ type HTTPRequest struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// Condition is the optional condition between two matcher variables
+	//
+	// By default, the condition is assumed to be OR.
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
+	// condition is the internal condition of the matcher
+	MCondition matchers.ConditionType
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`

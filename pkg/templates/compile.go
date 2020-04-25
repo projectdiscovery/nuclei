@@ -1,8 +1,10 @@
 package templates
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
 
@@ -35,6 +37,17 @@ func ParseTemplate(file string) (*Template, error) {
 				return nil, err
 			}
 		}
+
+		if request.MatchersCondition == "" {
+			request.MCondition = matchers.ANDCondition
+		} else {
+			// compile the condition type
+			var ok bool
+			request.MCondition, ok = matchers.ConditionTypes[request.MatchersCondition]
+			if !ok {
+				return nil, fmt.Errorf("unknown condition specified: %s", request.MatchersCondition)
+			}
+		}
 	}
 
 	// Compile the matchers and the extractors for dns requests
@@ -48,6 +61,17 @@ func ParseTemplate(file string) (*Template, error) {
 		for _, extractor := range request.Extractors {
 			if err := extractor.CompileExtractors(); err != nil {
 				return nil, err
+			}
+		}
+
+		if request.MatchersCondition == "" {
+			request.MCondition = matchers.ANDCondition
+		} else {
+			// compile the condition type
+			var ok bool
+			request.MCondition, ok = matchers.ConditionTypes[request.MatchersCondition]
+			if !ok {
+				return nil, fmt.Errorf("unknown condition specified: %s", request.MatchersCondition)
 			}
 		}
 	}
