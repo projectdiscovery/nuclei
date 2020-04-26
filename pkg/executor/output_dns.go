@@ -2,13 +2,20 @@ package executor
 
 import (
 	"strings"
+
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/pkg/matchers"
 )
 
-// buildOutput builds an output text for writing results
-func (e *DNSExecutor) buildOutputDNS(domain string, extractorResults []string) string {
+// writeOutputDNS writes dns output to streams
+func (e *DNSExecutor) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(e.template.ID)
+	if matcher != nil && len(matcher.Name) > 0 {
+		builder.WriteString(":")
+		builder.WriteString(matcher.Name)
+	}
 	builder.WriteString("] [dns] ")
 
 	builder.WriteString(domain)
@@ -26,5 +33,13 @@ func (e *DNSExecutor) buildOutputDNS(domain string, extractorResults []string) s
 	}
 	builder.WriteRune('\n')
 
-	return builder.String()
+	// Write output to screen as well as any output file
+	message := builder.String()
+	gologger.Silentf("%s", message)
+
+	if e.writer != nil {
+		e.outputMutex.Lock()
+		e.writer.WriteString(message)
+		e.outputMutex.Unlock()
+	}
 }
