@@ -2,24 +2,18 @@ package runner
 
 import (
 	"bufio"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/pkg/extractors"
-	"github.com/projectdiscovery/nuclei/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/pkg/executor"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
-	retryabledns "github.com/projectdiscovery/retryabledns"
-	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Runner is a client for running the enumeration process.
@@ -27,6 +21,8 @@ type Runner struct {
 	// output is the output file to write if any
 	output      *os.File
 	outputMutex *sync.Mutex
+
+	tempFile string
 	// options contains configuration options for runner
 	options *Options
 }
@@ -36,6 +32,19 @@ func New(options *Options) (*Runner, error) {
 	runner := &Runner{
 		outputMutex: &sync.Mutex{},
 		options:     options,
+	}
+
+	// If we have stdin, write it to a new file
+	if options.Stdin {
+		tempInput, err := ioutil.TempFile("", "stdin-input-*")
+		if err != nil {
+			return nil, err
+		}
+		if _, err = io.Copy(os.Stdin, tempInput); err != nil {
+			return nil, err
+		}
+		runner.tempFile = tempInput.Name()
+		tempInput.Close()
 	}
 
 	// Create the output file if asked
@@ -52,6 +61,7 @@ func New(options *Options) (*Runner, error) {
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
 	r.output.Close()
+	os.Remove(r.tempFile)
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -93,10 +103,10 @@ func (r *Runner) RunEnumeration() {
 			gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
 			return
 		}
-		for _, request := range template.RequestsHTTP {
+		for _, request := range template.RequestsDNS {
 			r.processTemplateRequest(template, request)
 		}
-		for _, request := range template.RequestsDNS {
+		for _, request := range template.RequestsHTTP {
 			r.processTemplateRequest(template, request)
 		}
 	}
@@ -104,21 +114,20 @@ func (r *Runner) RunEnumeration() {
 
 // processTemplate processes a template and runs the enumeration on all the targets
 func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) {
+	var file *os.File
+	var err error
+
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
-		file, err := os.Open(r.options.Targets)
-		if err != nil {
-			gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-		}
-		r.processTemplateWithList(template, request, file)
-		file.Close()
-		return
+		file, err = os.Open(r.options.Targets)
+	} else if r.options.Stdin {
+		file, err = os.Open(r.tempFile)
 	}
-
-	// Handle stdin input
-	if r.options.Stdin {
-		r.processTemplateWithList(template, request, os.Stdin)
+	if err != nil {
+		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
 	}
+	r.processTemplateWithList(template, request, file)
+	file.Close()
 }
 
 // processDomain processes the list with a template
@@ -139,8 +148,26 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		defer writer.Flush()
 	}
 
-	httpclient := r.makeHTTPClientByRequest(request)
-	dnsclient := r.makeDNSClientByRequest(request)
+	var httpExecutor *executor.HTTPExecutor
+	var dnsExecutor *executor.DNSExecutor
+
+	// Create an executor based on the request type.
+	switch value := request.(type) {
+	case *requests.DNSRequest:
+		dnsExecutor = executor.NewDNSExecutor(&executor.DNSOptions{
+			Template:   template,
+			DNSRequest: value,
+			Writer:     writer,
+		})
+	case *requests.HTTPRequest:
+		httpExecutor = executor.NewHTTPExecutor(&executor.HTTPOptions{
+			Template:    template,
+			HTTPRequest: value,
+			Writer:      writer,
+			Timeout:     r.options.Timeout,
+			Retries:     r.options.Retries,
+		})
+	}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -152,43 +179,21 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		wg.Add(1)
 
 		go func(URL string) {
-			r.sendRequest(template, request, URL, writer, httpclient, dnsclient)
+			var err error
+
+			if httpExecutor != nil {
+				err = httpExecutor.ExecuteHTTP(text)
+			}
+			if dnsExecutor != nil {
+				err = dnsExecutor.ExecuteDNS(text)
+			}
+			if err != nil {
+				gologger.Warningf("Could not execute step: %s\n", err)
+			}
 			<-limiter
 			wg.Done()
 		}(text)
 	}
 	close(limiter)
 	wg.Wait()
-}
-
-// sendRequest sends a request to the target based on a template
-func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
-	switch request.(type) {
-	case *requests.HTTPRequest:
-	
-
-					// All the matchers matched, print the output on the screen
-					output := buildOutputHTTP(template, req, extractorResults, matcher)
-					gologger.Silentf("%s", output)
-
-					if writer != nil {
-						r.outputMutex.Lock()
-						writer.WriteString(output)
-						r.outputMutex.Unlock()
-					}
-				}
-			}
-		}
-	case *requests.DNSRequest:
-
-		// All the matchers matched, print the output on the screen
-		output := buildOutputDNS(template, domain, extractorResults)
-		gologger.Silentf("%s", output)
-
-		if writer != nil {
-			r.outputMutex.Lock()
-			writer.WriteString(output)
-			r.outputMutex.Unlock()
-		}
-	}
 }

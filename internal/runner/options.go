@@ -54,13 +54,13 @@ func ParseOptions() *Options {
 		gologger.Infof("Current Version: %s\n", Version)
 		os.Exit(0)
 	}
+
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	err := options.validateOptions()
 	if err != nil {
 		gologger.Fatalf("Program exiting: %s\n", err)
 	}
-
 	return options
 }
 
