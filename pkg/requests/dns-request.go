@@ -21,9 +21,24 @@ type DNSRequest struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// matchersCondition is internal condition for the matchers.
+	matchersCondition matchers.ConditionType
+	// MatchersCondition is the condition of the matchers
+	// whether to use AND or OR. Default is OR.
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+}
+
+// GetMatchersCondition returns the condition for the matcher
+func (r *DNSRequest) GetMatchersCondition() matchers.ConditionType {
+	return r.matchersCondition
+}
+
+// SetMatchersCondition sets the condition for the matcher
+func (r *DNSRequest) SetMatchersCondition(condition matchers.ConditionType) {
+	r.matchersCondition = condition
 }
 
 // MakeDNSRequest creates a *dns.Request from a request template

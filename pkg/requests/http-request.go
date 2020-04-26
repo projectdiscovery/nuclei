@@ -28,6 +28,8 @@ type HTTPRequest struct {
 	// MatchersCondition is the condition of the matchers
 	// whether to use AND or OR. Default is OR.
 	MatchersCondition string `yaml:"matchers-condition,omitempty"`
+	// matchersCondition is internal condition for the matchers.
+	matchersCondition matchers.ConditionType
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
@@ -35,6 +37,16 @@ type HTTPRequest struct {
 	Redirects bool `yaml:"redirects,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
+}
+
+// GetMatchersCondition returns the condition for the matcher
+func (r *HTTPRequest) GetMatchersCondition() matchers.ConditionType {
+	return r.matchersCondition
+}
+
+// SetMatchersCondition sets the condition for the matcher
+func (r *HTTPRequest) SetMatchersCondition(condition matchers.ConditionType) {
+	r.matchersCondition = condition
 }
 
 // MakeHTTPRequest creates a *http.Request from a request template

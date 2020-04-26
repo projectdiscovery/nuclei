@@ -3,17 +3,18 @@ package executor
 import (
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-// buildOutputHTTP builds an output text for writing results
-func (e *HTTPExecutor) buildOutputHTTP(req *retryablehttp.Request, extractorResults []string, matcher *matchers.Matcher) string {
+// writeOutputHTTP writes http output to streams
+func (e *HTTPExecutor) writeOutputHTTP(req *retryablehttp.Request, matcher *matchers.Matcher, extractorResults []string) {
 	builder := &strings.Builder{}
 
 	builder.WriteRune('[')
 	builder.WriteString(e.template.ID)
-	if len(matcher.Name) > 0 {
+	if matcher != nil && len(matcher.Name) > 0 {
 		builder.WriteString(":")
 		builder.WriteString(matcher.Name)
 	}
@@ -37,5 +38,13 @@ func (e *HTTPExecutor) buildOutputHTTP(req *retryablehttp.Request, extractorResu
 	}
 	builder.WriteRune('\n')
 
-	return builder.String()
+	// Write output to screen as well as any output file
+	message := builder.String()
+	gologger.Silentf("%s", message)
+
+	if e.writer != nil {
+		e.outputMutex.Lock()
+		e.writer.WriteString(message)
+		e.outputMutex.Unlock()
+	}
 }

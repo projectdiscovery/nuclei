@@ -162,7 +162,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 }
 
 // sendRequest sends a request to the target based on a template
-func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, writer *bufio.Writer, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
+func (r *Runner) sendRequest(template *templates.Template, request interface{}, URL string, httpclient *retryablehttp.Client, dnsclient *retryabledns.Client) {
 	switch request.(type) {
 	case *requests.HTTPRequest:
 	
