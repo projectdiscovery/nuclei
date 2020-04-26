@@ -1,37 +1,10 @@
-package runner
+package executor
 
 import (
-	"net/http"
 	"net/url"
-	"strings"
-	"unsafe"
 
 	"github.com/asaskevich/govalidator"
 )
-
-// unsafeToString converts byte slice to string with zero allocations
-func unsafeToString(bs []byte) string {
-	return *(*string)(unsafe.Pointer(&bs))
-}
-
-// headersToString converts http headers to string
-func headersToString(headers http.Header) string {
-	builder := &strings.Builder{}
-
-	for header, values := range headers {
-		builder.WriteString(header)
-		builder.WriteString(": ")
-
-		for i, value := range values {
-			builder.WriteString(value)
-			if i != len(values)-1 {
-				builder.WriteRune(',')
-			}
-		}
-		builder.WriteRune('\n')
-	}
-	return builder.String()
-}
 
 // isURL tests a string to determine if it is a well-structured url or not.
 func isURL(toTest string) bool {
@@ -44,17 +17,17 @@ func isURL(toTest string) bool {
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		return false
 	}
-
 	return true
 }
 
+// extractDomain extracts the domain name of a URL
 func extractDomain(URL string) string {
 	u, err := url.Parse(URL)
 	if err != nil {
 		return ""
 	}
-
-	return u.Hostname()
+	hostname := u.Hostname()
+	return hostname
 }
 
 // isDNS tests a string to determine if it is a well-structured dns or not
