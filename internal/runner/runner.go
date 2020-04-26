@@ -40,7 +40,7 @@ func New(options *Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, err = io.Copy(os.Stdin, tempInput); err != nil {
+		if _, err := io.Copy(tempInput, os.Stdin); err != nil {
 			return nil, err
 		}
 		runner.tempFile = tempInput.Name()
