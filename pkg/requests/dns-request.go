@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -22,14 +21,28 @@ type DNSRequest struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// matchersCondition is internal condition for the matchers.
+	matchersCondition matchers.ConditionType
+	// MatchersCondition is the condition of the matchers
+	// whether to use AND or OR. Default is OR.
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
 }
 
+// GetMatchersCondition returns the condition for the matcher
+func (r *DNSRequest) GetMatchersCondition() matchers.ConditionType {
+	return r.matchersCondition
+}
+
+// SetMatchersCondition sets the condition for the matcher
+func (r *DNSRequest) SetMatchersCondition(condition matchers.ConditionType) {
+	r.matchersCondition = condition
+}
+
 // MakeDNSRequest creates a *dns.Request from a request template
 func (r *DNSRequest) MakeDNSRequest(domain string) (*dns.Msg, error) {
-
 	domain = dns.Fqdn(domain)
 
 	// Build a request on the specified URL
@@ -40,28 +53,16 @@ func (r *DNSRequest) MakeDNSRequest(domain string) (*dns.Msg, error) {
 	var q dns.Question
 
 	t := fasttemplate.New(r.Name, "{{", "}}")
-	q.Name = dns.Fqdn(t.ExecuteString(map[string]interface{}{
-		"FQDN": domain,
-	}))
-
-	qclass, err := toQClass(r.Class)
-	if err != nil {
-		return nil, err
-	}
-	q.Qclass = qclass
-
-	qtype, err := toQType(r.Type)
-	if err != nil {
-		return nil, err
-	}
-	q.Qtype = qtype
+	q.Name = dns.Fqdn(t.ExecuteString(map[string]interface{}{"FQDN": domain}))
+	q.Qclass = toQClass(r.Class)
+	q.Qtype = toQType(r.Type)
 
 	req.Question = append(req.Question, q)
 
 	return req, nil
 }
 
-func toQType(ttype string) (rtype uint16, err error) {
+func toQType(ttype string) (rtype uint16) {
 	ttype = strings.TrimSpace(strings.ToUpper(ttype))
 
 	switch ttype {
@@ -82,14 +83,12 @@ func toQType(ttype string) (rtype uint16, err error) {
 	case "AAAA":
 		rtype = dns.TypeAAAA
 	default:
-		rtype = dns.TypeNone
-		err = fmt.Errorf("incorrect type")
+		rtype = dns.TypeA
 	}
-
 	return
 }
 
-func toQClass(tclass string) (rclass uint16, err error) {
+func toQClass(tclass string) (rclass uint16) {
 	tclass = strings.TrimSpace(strings.ToUpper(tclass))
 
 	switch tclass {
@@ -106,8 +105,8 @@ func toQClass(tclass string) (rclass uint16, err error) {
 	case "ANY":
 		rclass = dns.ClassANY
 	default:
-		err = fmt.Errorf("incorrect class")
+		// Use INET by default.
+		rclass = dns.ClassINET
 	}
-
 	return
 }

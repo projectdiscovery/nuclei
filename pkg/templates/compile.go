@@ -3,6 +3,7 @@ package templates
 import (
 	"os"
 
+	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
 
@@ -24,6 +25,14 @@ func ParseTemplate(file string) (*Template, error) {
 
 	// Compile the matchers and the extractors for http requests
 	for _, request := range template.RequestsHTTP {
+		// Get the condition between the matchers
+		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
+		if !ok {
+			request.SetMatchersCondition(matchers.ANDCondition)
+		} else {
+			request.SetMatchersCondition(condition)
+		}
+
 		for _, matcher := range request.Matchers {
 			if err = matcher.CompileMatchers(); err != nil {
 				return nil, err
@@ -39,6 +48,14 @@ func ParseTemplate(file string) (*Template, error) {
 
 	// Compile the matchers and the extractors for dns requests
 	for _, request := range template.RequestsDNS {
+		// Get the condition between the matchers
+		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
+		if !ok {
+			request.SetMatchersCondition(matchers.ANDCondition)
+		} else {
+			request.SetMatchersCondition(condition)
+		}
+
 		for _, matcher := range request.Matchers {
 			if err = matcher.CompileMatchers(); err != nil {
 				return nil, err
