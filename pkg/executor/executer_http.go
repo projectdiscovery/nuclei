@@ -127,7 +127,7 @@ mainLoop:
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
-					goto mainLoop
+					continue mainLoop
 				}
 			} else {
 				// If the matcher has matched, and its an OR
