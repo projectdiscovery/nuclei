@@ -42,10 +42,11 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
 	executer := &DNSExecutor{
-		dnsClient:  dnsClient,
-		template:   options.Template,
-		dnsRequest: options.DNSRequest,
-		writer:     options.Writer,
+		dnsClient:   dnsClient,
+		template:    options.Template,
+		dnsRequest:  options.DNSRequest,
+		writer:      options.Writer,
+		outputMutex: &sync.Mutex{},
 	}
 	return executer
 }
