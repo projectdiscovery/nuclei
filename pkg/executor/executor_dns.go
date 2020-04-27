@@ -94,7 +94,9 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// next task which is extraction of input from matchers.
 	var extractorResults []string
 	for _, extractor := range e.dnsRequest.Extractors {
-		extractorResults = append(extractorResults, extractor.ExtractDNS(resp.String())...)
+		for match := range extractor.ExtractDNS(resp.String()) {
+			extractorResults = append(extractorResults, match)
+		}
 	}
 
 	// Write a final string of output if matcher type is
