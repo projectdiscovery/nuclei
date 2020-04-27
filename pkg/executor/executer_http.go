@@ -146,7 +146,9 @@ mainLoop:
 			if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
 				headers = headersToString(resp.Header)
 			}
-			extractorResults = append(extractorResults, extractor.Extract(body, headers)...)
+			for match := range extractor.Extract(body, headers) {
+				extractorResults = append(extractorResults, match)
+			}
 		}
 
 		// Write a final string of output if matcher type is
