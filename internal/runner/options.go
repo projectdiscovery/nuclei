@@ -16,6 +16,7 @@ type Options struct {
 	Timeout   int    // Timeout is the seconds to wait for a response from the server.
 	Retries   int    // Retries is the number of times to retry the request
 	Output    string // Output is the file to write found subdomains to.
+	ProxyURL  string // ProxyURL is the URL for the proxy server
 	Silent    bool   // Silent suppresses any extra text and only writes found URLs on screen.
 	Version   bool   // Version specifies if we should just show version and exit
 	Verbose   bool   // Verbose flag indicates whether to show verbose output or not
@@ -31,6 +32,7 @@ func ParseOptions() *Options {
 	flag.StringVar(&options.Templates, "t", "", "Template input file/files to run on host")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
+	flag.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
 	flag.BoolVar(&options.Silent, "silent", false, "Show only results in output")
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
