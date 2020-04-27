@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -34,20 +35,27 @@ type HTTPOptions struct {
 	Writer      *bufio.Writer
 	Timeout     int
 	Retries     int
+	ProxyURL    string
 }
 
 // NewHTTPExecutor creates a new HTTP executor from a template
 // and a HTTP request query.
-func NewHTTPExecutor(options *HTTPOptions) *HTTPExecutor {
+func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	retryablehttpOptions.RetryWaitMax = 10 * time.Second
 	retryablehttpOptions.RetryMax = options.Retries
 	followRedirects := options.HTTPRequest.Redirects
 	maxRedirects := options.HTTPRequest.MaxRedirects
 
+	proxyURL, err := url.Parse(options.ProxyURL)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the HTTP Client
 	client := retryablehttp.NewWithHTTPClient(&http.Client{
 		Transport: &http.Transport{
+			Proxy:               http.ProxyURL(proxyURL),
 			MaxIdleConnsPerHost: -1,
 			TLSClientConfig: &tls.Config{
 				Renegotiation:      tls.RenegotiateOnceAsClient,
@@ -81,7 +89,7 @@ func NewHTTPExecutor(options *HTTPOptions) *HTTPExecutor {
 		outputMutex: &sync.Mutex{},
 		writer:      options.Writer,
 	}
-	return executer
+	return executer, nil
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
