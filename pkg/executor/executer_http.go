@@ -41,45 +41,18 @@ type HTTPOptions struct {
 // NewHTTPExecutor creates a new HTTP executor from a template
 // and a HTTP request query.
 func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
-	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
-	retryablehttpOptions.RetryWaitMax = 10 * time.Second
-	retryablehttpOptions.RetryMax = options.Retries
-	followRedirects := options.HTTPRequest.Redirects
-	maxRedirects := options.HTTPRequest.MaxRedirects
+	var proxyURL *url.URL
+	var err error
 
-	proxyURL, err := url.Parse(options.ProxyURL)
+	if options.ProxyURL != "" {
+		proxyURL, err = url.Parse(options.ProxyURL)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the HTTP Client
-	client := retryablehttp.NewWithHTTPClient(&http.Client{
-		Transport: &http.Transport{
-			Proxy:               http.ProxyURL(proxyURL),
-			MaxIdleConnsPerHost: -1,
-			TLSClientConfig: &tls.Config{
-				Renegotiation:      tls.RenegotiateOnceAsClient,
-				InsecureSkipVerify: true,
-			},
-			DisableKeepAlives: true,
-		},
-		Timeout: time.Duration(options.Timeout) * time.Second,
-		CheckRedirect: func(_ *http.Request, requests []*http.Request) error {
-			if !followRedirects {
-				return http.ErrUseLastResponse
-			}
-			if maxRedirects == 0 {
-				if len(requests) > 10 {
-					return http.ErrUseLastResponse
-				}
-				return nil
-			}
-			if len(requests) > maxRedirects {
-				return http.ErrUseLastResponse
-			}
-			return nil
-		},
-	}, retryablehttpOptions)
+	client := makeHTTPClient(proxyURL, options)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	executer := &HTTPExecutor{
@@ -173,4 +146,51 @@ func (e *HTTPExecutor) Close() {
 	e.outputMutex.Lock()
 	e.writer.Flush()
 	e.outputMutex.Unlock()
+}
+
+// makeHTTPClient creates a http client
+func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
+	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	retryablehttpOptions.RetryWaitMax = 10 * time.Second
+	retryablehttpOptions.RetryMax = options.Retries
+	followRedirects := options.HTTPRequest.Redirects
+	maxRedirects := options.HTTPRequest.MaxRedirects
+
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: -1,
+		TLSClientConfig: &tls.Config{
+			Renegotiation:      tls.RenegotiateOnceAsClient,
+			InsecureSkipVerify: true,
+		},
+		DisableKeepAlives: true,
+	}
+
+	if proxyURL != nil {
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+	return retryablehttp.NewWithHTTPClient(&http.Client{
+		Transport:     transport,
+		Timeout:       time.Duration(options.Timeout) * time.Second,
+		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
+	}, retryablehttpOptions)
+}
+
+type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error
+
+func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirectFunc {
+	return func(_ *http.Request, requests []*http.Request) error {
+		if !followRedirects {
+			return http.ErrUseLastResponse
+		}
+		if maxRedirects == 0 {
+			if len(requests) > 10 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		}
+		if len(requests) > maxRedirects {
+			return http.ErrUseLastResponse
+		}
+		return nil
+	}
 }
