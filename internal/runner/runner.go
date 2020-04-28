@@ -139,9 +139,6 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	}
 	gologger.Infof("%s\n", message)
 
-	limiter := make(chan struct{}, r.options.Threads)
-	wg := &sync.WaitGroup{}
-
 	var writer *bufio.Writer
 	if r.output != nil {
 		writer = bufio.NewWriter(r.output)
@@ -150,6 +147,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 
 	var httpExecutor *executor.HTTPExecutor
 	var dnsExecutor *executor.DNSExecutor
+	var err error
 
 	// Create an executor based on the request type.
 	switch value := request.(type) {
@@ -160,14 +158,23 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			Writer:     writer,
 		})
 	case *requests.HTTPRequest:
-		httpExecutor = executor.NewHTTPExecutor(&executor.HTTPOptions{
-			Template:    template,
-			HTTPRequest: value,
-			Writer:      writer,
-			Timeout:     r.options.Timeout,
-			Retries:     r.options.Retries,
+		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
+			Template:      template,
+			HTTPRequest:   value,
+			Writer:        writer,
+			Timeout:       r.options.Timeout,
+			Retries:       r.options.Retries,
+			ProxyURL:      r.options.ProxyURL,
+			ProxySocksURL: r.options.ProxySocksURL,
 		})
 	}
+	if err != nil {
+		gologger.Warningf("Could not create http client: %s\n", err)
+		return
+	}
+
+	limiter := make(chan struct{}, r.options.Threads)
+	wg := &sync.WaitGroup{}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
