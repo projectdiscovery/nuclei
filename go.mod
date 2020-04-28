@@ -3,7 +3,7 @@ module github.com/projectdiscovery/nuclei
 go 1.14
 
 require (
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
+	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/miekg/dns v1.1.29
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.0.0
