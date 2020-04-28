@@ -2,6 +2,8 @@ package matchers
 
 import (
 	"regexp"
+
+	"github.com/Knetic/govaluate"
 )
 
 // Matcher is used to identify whether a template was successful.
@@ -25,6 +27,10 @@ type Matcher struct {
 	regexCompiled []*regexp.Regexp
 	// Binary are the binary characters required to be present in the response
 	Binary []string `yaml:"binary,omitempty"`
+	// DSL are the dsl queries
+	DSL []string `yaml:"dsl,omitempty"`
+	// dslCompiled is the compiled variant
+	dslCompiled []*govaluate.EvaluableExpression
 
 	// Condition is the optional condition between two matcher variables
 	//
@@ -55,6 +61,8 @@ const (
 	StatusMatcher
 	// SizeMatcher matches responses with response size
 	SizeMatcher
+	// DSLMatcher matches based upon dsl syntax
+	DSLMatcher
 )
 
 // MatcherTypes is an table for conversion of matcher type from string.
@@ -64,6 +72,7 @@ var MatcherTypes = map[string]MatcherType{
 	"word":   WordsMatcher,
 	"regex":  RegexMatcher,
 	"binary": BinaryMatcher,
+	"dsl":    DSLMatcher,
 }
 
 // ConditionType is the type of condition for matcher

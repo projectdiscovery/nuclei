@@ -51,6 +51,9 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 			}
 			return m.matchBinary(body)
 		}
+	case DSLMatcher:
+		// Match complex query
+		return m.matchDSL(httpToMap(resp, body, headers))
 	}
 	return false
 }
@@ -70,6 +73,9 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	case BinaryMatcher:
 		// Match binary characters check
 		return m.matchBinary(msg.String())
+	case DSLMatcher:
+		// Match complex query
+		return m.matchDSL(dnsToMap(msg))
 	}
 	return false
 }
@@ -187,6 +193,41 @@ func (m *Matcher) matchBinary(corpus string) bool {
 
 		// If we are at the end of the words, return with true
 		if len(m.Binary)-1 == i {
+			return true
+		}
+	}
+	return false
+}
+
+// matchDSL matches on a generic map result
+func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
+	// Iterate over all the regexes accepted as valid
+	for i, expression := range m.dslCompiled {
+		result, err := expression.Evaluate(mp)
+		if err != nil {
+			continue
+		}
+		var bResult bool
+		bResult, ok := result.(bool)
+
+		// Continue if the regex doesn't match
+		if !ok || !bResult {
+			// If we are in an AND request and a match failed,
+			// return false as the AND condition fails on any single mismatch.
+			if m.condition == ANDCondition {
+				return false
+			}
+			// Continue with the flow since its an OR Condition.
+			continue
+		}
+
+		// If the condition was an OR, return on the first match.
+		if m.condition == ORCondition {
+			return true
+		}
+
+		// If we are at the end of the dsl, return with true
+		if len(m.dslCompiled)-1 == i {
 			return true
 		}
 	}
