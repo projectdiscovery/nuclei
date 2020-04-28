@@ -10,17 +10,18 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
-	Templates string // Signature specifies the template/templates to use
-	Targets   string // Targets specifies the targets to scan using templates.
-	Threads   int    // Thread controls the number of concurrent requests to make.
-	Timeout   int    // Timeout is the seconds to wait for a response from the server.
-	Retries   int    // Retries is the number of times to retry the request
-	Output    string // Output is the file to write found subdomains to.
-	ProxyURL  string // ProxyURL is the URL for the proxy server
-	Silent    bool   // Silent suppresses any extra text and only writes found URLs on screen.
-	Version   bool   // Version specifies if we should just show version and exit
-	Verbose   bool   // Verbose flag indicates whether to show verbose output or not
-	NoColor   bool   // No-Color disables the colored output.
+	Templates     string // Signature specifies the template/templates to use
+	Targets       string // Targets specifies the targets to scan using templates.
+	Threads       int    // Thread controls the number of concurrent requests to make.
+	Timeout       int    // Timeout is the seconds to wait for a response from the server.
+	Retries       int    // Retries is the number of times to retry the request
+	Output        string // Output is the file to write found subdomains to.
+	ProxyURL      string // ProxyURL is the URL for the proxy server
+	ProxySocksURL string // ProxySocksURL is the URL for the proxy socks server
+	Silent        bool   // Silent suppresses any extra text and only writes found URLs on screen.
+	Version       bool   // Version specifies if we should just show version and exit
+	Verbose       bool   // Verbose flag indicates whether to show verbose output or not
+	NoColor       bool   // No-Color disables the colored output.
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -33,6 +34,7 @@ func ParseOptions() *Options {
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
+	flag.StringVar(&options.ProxySocksURL, "proxy-socks-url", "", "URL of the proxy socks server")
 	flag.BoolVar(&options.Silent, "silent", false, "Show only results in output")
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")

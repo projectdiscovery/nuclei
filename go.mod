@@ -9,10 +9,7 @@ require (
 	github.com/projectdiscovery/gologger v1.0.0
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
-	github.com/stretchr/testify v1.5.1
 	github.com/valyala/fasttemplate v1.1.0
-	golang.org/x/crypto v0.0.0-20200423211502-4bdfaf469ed5 // indirect
-	golang.org/x/net v0.0.0-20200421231249-e086a090c8fd // indirect
-	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
+	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0
 	gopkg.in/yaml.v2 v2.2.8
 )
