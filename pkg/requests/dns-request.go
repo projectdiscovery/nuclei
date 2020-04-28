@@ -17,6 +17,8 @@ type DNSRequest struct {
 	Type    string `yaml:"type"`
 	Class   string `yaml:"class"`
 	Retries int    `yaml:"retries"`
+	// Raw contains a raw request
+	Raw string `yaml:"raw,omitempty"`
 
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
