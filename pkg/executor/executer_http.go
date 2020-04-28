@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"golang.org/x/net/proxy"
 )
 
 // HTTPExecutor is client for performing HTTP requests
@@ -30,12 +31,13 @@ type HTTPExecutor struct {
 
 // HTTPOptions contains configuration options for the HTTP executor.
 type HTTPOptions struct {
-	Template    *templates.Template
-	HTTPRequest *requests.HTTPRequest
-	Writer      *bufio.Writer
-	Timeout     int
-	Retries     int
-	ProxyURL    string
+	Template      *templates.Template
+	HTTPRequest   *requests.HTTPRequest
+	Writer        *bufio.Writer
+	Timeout       int
+	Retries       int
+	ProxyURL      string
+	ProxySocksURL string
 }
 
 // NewHTTPExecutor creates a new HTTP executor from a template
@@ -163,6 +165,14 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 			InsecureSkipVerify: true,
 		},
 		DisableKeepAlives: true,
+	}
+
+	// Attempts to overwrite the dial function with the socks proxied version
+	if options.ProxySocksURL != "" {
+		dialer, err := proxy.SOCKS5("tcp", options.ProxySocksURL, nil, proxy.Direct)
+		if err == nil {
+			transport.Dial = dialer.Dial
+		}
 	}
 
 	if proxyURL != nil {
