@@ -159,11 +159,13 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		})
 	case *requests.HTTPRequest:
 		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
-			Template:    template,
-			HTTPRequest: value,
-			Writer:      writer,
-			Timeout:     r.options.Timeout,
-			Retries:     r.options.Retries,
+			Template:      template,
+			HTTPRequest:   value,
+			Writer:        writer,
+			Timeout:       r.options.Timeout,
+			Retries:       r.options.Retries,
+			ProxyURL:      r.options.ProxyURL,
+			ProxySocksURL: r.options.ProxySocksURL,
 		})
 	}
 	if err != nil {
