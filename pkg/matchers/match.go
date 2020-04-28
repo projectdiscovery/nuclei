@@ -117,7 +117,7 @@ func (m *Matcher) matchWords(corpus string) bool {
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
 		// Continue if the word doesn't match
-		if !strings.Contains(corpus, word) {
+		if strings.Index(corpus, word) == -1 {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
