@@ -18,12 +18,12 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
 - [Features](#features)
 - [Usage](#usage)
 - [Installation Instructions](#installation-instructions)
-  - [Prerequisite](#prerequisite)
     - [From Binary](#from-binary)
     - [From Source](#from-source)
 - [Running nuclei](#running-nuclei)
-    - [1. Running nuclei with single template](#1-running-nuclei-with-a-single-template)
-    - [2. Running nuclei with multiple template](#2-running-nuclei-with-multiple-templates)
+    - [1. Running nuclei with a single template.](#1-running-nuclei-with-a-single-template)
+    - [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
+    - [3. Automating nuclei with subfinder and any other similar tool.](#3-automating-nuclei-with-subfinder-and-any-other-similar-tool)
 - [Thanks](#thanks)
 
  # Features
@@ -46,19 +46,21 @@ nuclei -h
 
 This will display help for the tool. Here are all the switches it supports.
 
-| Flag     | Description                                           | Example                    |
-|----------|-------------------------------------------------------|----------------------------|
-| -c       | Number of concurrent requests (default 10)            | nuclei -c 100              |
-| -l       | List of urls to run templates                         | nuclei -l urls.txt         |
-| -t       | Templates input file/files to check across hosts      | nuclei -t git-core.yaml    |
-| -t       | Templates input file/files to check across hosts      | nuclei -t "path/*.yaml"    |
-| -nC      | Don't Use colors in output                            | nuclei -nC                 |
-| -o       | File to save output result (optional)                 | nuclei -o output.txt       |
-| -silent  | Show only found results in output                     | nuclei -silent             |
-| -retries | Number of times to retry a failed request (default 1) | nuclei -retries 1          |
-| -timeout | Seconds to wait before timeout (default 5)            | nuclei -timeout 5          |
-| -v       | Show Verbose output                                   | nuclei -v                  |
-| -version | Show version of nuclei                                | nuclei -version            |
+| Flag              | Description                                           | Example                                            |
+|-------------------|-------------------------------------------------------|----------------------------------------------------|
+| -c                | Number of concurrent requests (default 10)            | nuclei -c 100                                      |
+| -l                | List of urls to run templates                         | nuclei -l urls.txt                                 |
+| -t                | Templates input file/files to check across hosts      | nuclei -t git-core.yaml                            |
+| -t                | Templates input file/files to check across hosts      | nuclei -t "path/*.yaml"                            |
+| -nC               | Don't Use colors in output                            | nuclei -nC                                         |
+| -o                | File to save output result (optional)                 | nuclei -o output.txt                               |
+| -silent           | Show only found results in output                     | nuclei -silent                                     |
+| -retries          | Number of times to retry a failed request (default 1) | nuclei -retries 1                                  |
+| -timeout          | Seconds to wait before timeout (default 5)            | nuclei -timeout 5                                  |
+| -v                | Show Verbose output                                   | nuclei -v                                          |
+| -version          | Show version of nuclei                                | nuclei -version                                    |
+| - proxy-url       | Proxy URL                                             | nuclei -proxy-url http://this.is.a.proxy:8080      |
+| - proxy-socks-url | Proxy Socks URL                                       | nuclei -proxy-socks-url this.is.a.proxy.socks:9050 |
 
 
 # Installation Instructions
