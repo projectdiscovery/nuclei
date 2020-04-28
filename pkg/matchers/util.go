@@ -15,7 +15,7 @@ func httpToMap(resp *http.Response, body, headers string) (m map[string]interfac
 	m["content_length"] = resp.ContentLength
 	m["status_code"] = resp.StatusCode
 	for k, v := range resp.Header {
-		k = strings.TrimSpace(strings.Replace(k, "-", "_", -1))
+		k = strings.ToLower(strings.TrimSpace(strings.Replace(k, "-", "_", -1)))
 		m[k] = strings.Join(v, " ")
 	}
 	m["all_headers"] = headers
