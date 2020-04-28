@@ -59,8 +59,8 @@ This will display help for the tool. Here are all the switches it supports.
 | -timeout          | Seconds to wait before timeout (default 5)            | nuclei -timeout 5                                  |
 | -v                | Show Verbose output                                   | nuclei -v                                          |
 | -version          | Show version of nuclei                                | nuclei -version                                    |
-| - proxy-url       | Proxy URL                                             | nuclei -proxy-url http://this.is.a.proxy:8080      |
-| - proxy-socks-url | Proxy Socks URL                                       | nuclei -proxy-socks-url this.is.a.proxy.socks:9050 |
+| -proxy-url        | Proxy URL                                             | nuclei -proxy-url http://this.is.a.proxy:8080      |
+| -proxy-socks-url  | Proxy Socks URL                                       | nuclei -proxy-socks-url this.is.a.proxy.socks:9050 |
 
 
 # Installation Instructions
