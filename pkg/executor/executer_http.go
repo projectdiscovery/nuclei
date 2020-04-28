@@ -3,6 +3,7 @@ package executor
 import (
 	"bufio"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -169,7 +170,14 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 
 	// Attempts to overwrite the dial function with the socks proxied version
 	if options.ProxySocksURL != "" {
-		dialer, err := proxy.SOCKS5("tcp", options.ProxySocksURL, nil, proxy.Direct)
+		var proxyAuth *proxy.Auth
+		socksURL, err := url.Parse(options.ProxySocksURL)
+		if err == nil {
+			proxyAuth = &proxy.Auth{}
+			proxyAuth.User = socksURL.User.Username()
+			proxyAuth.Password, _ = socksURL.User.Password()
+		}
+		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
 		if err == nil {
 			transport.Dial = dialer.Dial
 		}
