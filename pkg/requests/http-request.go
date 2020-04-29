@@ -39,8 +39,8 @@ type HTTPRequest struct {
 	Redirects bool `yaml:"redirects,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
-	// Raw contains a raw request
-	Raw string `yaml:"raw,omitempty"`
+	// Raw contains raw requests
+	Raw []string `yaml:"raw,omitempty"`
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -66,7 +66,7 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request,
 		"Hostname": hostname,
 	}
 
-	if r.Raw != "" {
+	if len(r.Raw) > 0 {
 		return r.makeHTTPRequestFromRaw(baseURL, values)
 	}
 
@@ -98,35 +98,42 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) ([]*retryablehttp.Request, error) {
-	// Replace the dynamic variables in the URL if any
-	t := fasttemplate.New(r.Raw, "{{", "}}")
-	raw := t.ExecuteString(values)
+func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
+	for _, raw := range r.Raw {
+		// Add trailing line
+		raw += "\n"
 
-	// Build a parsed request from raw
-	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
-	if err != nil {
-		return nil, err
+		// Replace the dynamic variables in the URL if any
+		t := fasttemplate.New(raw, "{{", "}}")
+		raw := t.ExecuteString(values)
+
+		// Build a parsed request from raw
+		parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+		if err != nil {
+			return nil, err
+		}
+
+		// requests generated from http.ReadRequest have incorrect RequestURI, so they
+		// cannot be used to perform another request directly, we need to generate a new one
+		// with the new target url
+		finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+		req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		// copy headers
+		req.Header = parsedReq.Header
+
+		request, err := r.fillRequest(req, values)
+		if err != nil {
+			return nil, err
+		}
+
+		requests = append(requests, request)
 	}
 
-	// requests generated from http.ReadRequest have incorrect RequestURI, so they
-	// cannot be used to perform another request directly, we need to generate a new one
-	// with the new target url
-	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-	req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// copy headers
-	req.Header = parsedReq.Header
-
-	request, err := r.fillRequest(req, values)
-	if err != nil {
-		return nil, err
-	}
-
-	return []*retryablehttp.Request{request}, nil
+	return requests, nil
 }
 
 func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
