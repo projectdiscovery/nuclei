@@ -123,7 +123,7 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 		}
 
 		// copy headers
-		req.Header = parsedReq.Header
+		req.Header = parsedReq.Header.Clone()
 
 		request, err := r.fillRequest(req, values)
 		if err != nil {
@@ -150,13 +150,14 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 	}
 
 	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := r.Headers["User-Agent"]; !ok {
+	if _, ok := req.Header["User-Agent"]; !ok {
 		req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
 	}
-	if _, ok := r.Headers["Accept"]; !ok {
+
+	if _, ok := req.Header["Accept"]; !ok {
 		req.Header.Set("Accept", "*/*")
 	}
-	if _, ok := r.Headers["Accept-Language"]; !ok {
+	if _, ok := req.Header["Accept-Language"]; !ok {
 		req.Header.Set("Accept-Language", "en")
 	}
 	req.Header.Set("Connection", "close")
