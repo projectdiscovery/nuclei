@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bufio"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -52,31 +53,32 @@ func (r *HTTPRequest) SetMatchersCondition(condition matchers.ConditionType) {
 	r.matchersCondition = condition
 }
 
-// MakeHTTPRequest creates a *http.Request from a request template
+// MakeHTTPRequest creates a *http.Request from a request configuration
 func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request, error) {
-	if r.Raw != "" {
-		return r.makeHTTPRequestFromRaw(baseURL)
-	}
-
-	return r.makeHTTPRequestFromModel(baseURL)
-}
-
-// MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string) ([]*retryablehttp.Request, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
 	hostname := parsed.Hostname()
 
-	requests := make([]*retryablehttp.Request, 0, len(r.Path))
+	values := map[string]interface{}{
+		"BaseURL":  baseURL,
+		"Hostname": hostname,
+	}
+
+	if r.Raw != "" {
+		return r.makeHTTPRequestFromRaw(baseURL, values)
+	}
+
+	return r.makeHTTPRequestFromModel(baseURL, values)
+}
+
+// MakeHTTPRequestFromModel creates a *http.Request from a request template
+func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
 	for _, path := range r.Path {
 		// Replace the dynamic variables in the URL if any
 		t := fasttemplate.New(path, "{{", "}}")
-		url := t.ExecuteString(map[string]interface{}{
-			"BaseURL":  baseURL,
-			"Hostname": hostname,
-		})
+		url := t.ExecuteString(values)
 
 		// Build a request on the specified URL
 		req, err := http.NewRequest(r.Method, url, nil)
@@ -84,35 +86,7 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string) ([]*retryablehttp
 			return nil, err
 		}
 
-		// Check if the user requested a request body
-		if r.Body != "" {
-			req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-		}
-
-		// Set the header values requested
-		for header, value := range r.Headers {
-			t := fasttemplate.New(value, "{{", "}}")
-			val := t.ExecuteString(map[string]interface{}{
-				"BaseURL":  baseURL,
-				"Hostname": hostname,
-			})
-			req.Header.Set(header, val)
-		}
-
-		// Set some headers only if the header wasn't supplied by the user
-		if _, ok := r.Headers["User-Agent"]; !ok {
-			req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
-		}
-		if _, ok := r.Headers["Accept"]; !ok {
-			req.Header.Set("Accept", "*/*")
-		}
-		if _, ok := r.Headers["Accept-Language"]; !ok {
-			req.Header.Set("Accept-Language", "en")
-		}
-		req.Header.Set("Connection", "close")
-		req.Close = true
-
-		request, err := retryablehttp.FromRequest(req)
+		request, err := r.fillRequest(req, values)
 		if err != nil {
 			return nil, err
 		}
@@ -120,74 +94,66 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string) ([]*retryablehttp
 		requests = append(requests, request)
 	}
 
-	return requests, nil
+	return
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string) ([]*retryablehttp.Request, error) {
-	parsed, err := url.Parse(baseURL)
+func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) ([]*retryablehttp.Request, error) {
+	// Replace the dynamic variables in the URL if any
+	t := fasttemplate.New(r.Raw, "{{", "}}")
+	raw := t.ExecuteString(values)
+
+	// Build a parsed request from raw
+	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		return nil, err
 	}
-	hostname := parsed.Hostname()
 
-	requests := make([]*retryablehttp.Request, 0, len(r.Path))
-	for _, path := range r.Path {
-		// Replace the dynamic variables in the URL if any
-		t := fasttemplate.New(path, "{{", "}}")
-
-		// Build a request from raw
-		req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(r.Raw)))
-		if err != nil {
-			return nil, err
-		}
-
-		// Overwrite the raw requests with template defined fields if defined
-		req.Method = r.Method
-		targetURL, err := url.Parse(t.ExecuteString(map[string]interface{}{
-			"BaseURL":  baseURL,
-			"Hostname": hostname,
-		}))
-		if err != nil {
-			return nil, err
-		}
-		req.URL = targetURL
-
-		// Check if the user requested a request body
-		if r.Body != "" {
-			req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-		}
-
-		// Set the header values requested
-		for header, value := range r.Headers {
-			t := fasttemplate.New(value, "{{", "}}")
-			val := t.ExecuteString(map[string]interface{}{
-				"BaseURL":  baseURL,
-				"Hostname": hostname,
-			})
-			req.Header.Set(header, val)
-		}
-
-		// Set some headers only if the header wasn't supplied by the user
-		if _, ok := r.Headers["User-Agent"]; !ok {
-			req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
-		}
-		if _, ok := r.Headers["Accept"]; !ok {
-			req.Header.Set("Accept", "*/*")
-		}
-		if _, ok := r.Headers["Accept-Language"]; !ok {
-			req.Header.Set("Accept-Language", "en")
-		}
-		req.Header.Set("Connection", "close")
-		req.Close = true
-
-		request, err := retryablehttp.FromRequest(req)
-		if err != nil {
-			return nil, err
-		}
-
-		requests = append(requests, request)
+	// requests generated from http.ReadRequest have incorrect RequestURI, so they
+	// cannot be used to perform another request directly, we need to generate a new one
+	// with the new target url
+	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+	req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return requests, nil
+	// copy headers
+	req.Header = parsedReq.Header
+
+	request, err := r.fillRequest(req, values)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*retryablehttp.Request{request}, nil
+}
+
+func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
+	// Check if the user requested a request body
+	if r.Body != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
+	}
+
+	// Set the header values requested
+	for header, value := range r.Headers {
+		t := fasttemplate.New(value, "{{", "}}")
+		val := t.ExecuteString(values)
+		req.Header.Set(header, val)
+	}
+
+	// Set some headers only if the header wasn't supplied by the user
+	if _, ok := r.Headers["User-Agent"]; !ok {
+		req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
+	}
+	if _, ok := r.Headers["Accept"]; !ok {
+		req.Header.Set("Accept", "*/*")
+	}
+	if _, ok := r.Headers["Accept-Language"]; !ok {
+		req.Header.Set("Accept-Language", "en")
+	}
+	req.Header.Set("Connection", "close")
+	req.Close = true
+
+	return retryablehttp.FromRequest(req)
 }
