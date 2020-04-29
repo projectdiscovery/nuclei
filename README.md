@@ -116,7 +116,7 @@ This will run the tool against all the hosts in `urls.txt` with all the template
 
 
 ```bash
-> subfinder -d hackerone.com | httprob | nuclei -t "path-to-templates/*.yaml" -o results.txt
+> subfinder -d hackerone.com | httprobe | nuclei -t "path-to-templates/*.yaml" -o results.txt
 ```
 
 Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other. Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.
