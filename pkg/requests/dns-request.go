@@ -6,7 +6,6 @@ import (
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
-	"github.com/valyala/fasttemplate"
 )
 
 // DNSRequest contains a request to be made from a template
@@ -17,6 +16,8 @@ type DNSRequest struct {
 	Type    string `yaml:"type"`
 	Class   string `yaml:"class"`
 	Retries int    `yaml:"retries"`
+	// Raw contains a raw request
+	Raw string `yaml:"raw,omitempty"`
 
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
@@ -52,8 +53,9 @@ func (r *DNSRequest) MakeDNSRequest(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	t := fasttemplate.New(r.Name, "{{", "}}")
-	q.Name = dns.Fqdn(t.ExecuteString(map[string]interface{}{"FQDN": domain}))
+	replacer := newReplacer(map[string]interface{}{"FQDN": domain})
+
+	q.Name = dns.Fqdn(replacer.Replace(r.Name))
 	q.Qclass = toQClass(r.Class)
 	q.Qtype = toQType(r.Type)
 
