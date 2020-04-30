@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
-	"github.com/valyala/fasttemplate"
 )
 
 // HTTPRequest contains a request to be made from a template
@@ -75,13 +74,13 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request,
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
+	replacer := newReplacer(values)
 	for _, path := range r.Path {
 		// Replace the dynamic variables in the URL if any
-		t := fasttemplate.New(path, "{{", "}}")
-		url := t.ExecuteString(values)
+		URL := replacer.Replace(path)
 
 		// Build a request on the specified URL
-		req, err := http.NewRequest(r.Method, url, nil)
+		req, err := http.NewRequest(r.Method, URL, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -99,13 +98,13 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
+	replacer := newReplacer(values)
 	for _, raw := range r.Raw {
 		// Add trailing line
 		raw += "\n"
 
 		// Replace the dynamic variables in the URL if any
-		t := fasttemplate.New(raw, "{{", "}}")
-		raw := t.ExecuteString(values)
+		raw = replacer.Replace(raw)
 
 		// Build a parsed request from raw
 		parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
@@ -137,6 +136,7 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 }
 
 func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
+	replacer := newReplacer(values)
 	// Check if the user requested a request body
 	if r.Body != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
@@ -144,9 +144,7 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 
 	// Set the header values requested
 	for header, value := range r.Headers {
-		t := fasttemplate.New(value, "{{", "}}")
-		val := t.ExecuteString(values)
-		req.Header.Set(header, val)
+		req.Header.Set(header, replacer.Replace(value))
 	}
 
 	// Set some headers only if the header wasn't supplied by the user
