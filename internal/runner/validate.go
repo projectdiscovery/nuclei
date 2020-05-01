@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"net/url"
 
 	"github.com/projectdiscovery/gologger"
 )
@@ -21,7 +22,24 @@ func (options *Options) validateOptions() error {
 	if options.Targets == "" && !options.Stdin {
 		return errors.New("no target input provided")
 	}
+
+	// Validate proxy options if provided
+	if options.ProxyURL != "" && !isValidProxyURL(options.ProxyURL) {
+		return errors.New("invalid http proxy format (It should be http(s)://username:password@host:port)")
+	}
+	if options.ProxySocksURL != "" && !isValidProxyURL(options.ProxySocksURL) {
+		return errors.New("invalid socks proxy format (It should be socks5://username:password@host:port)")
+	}
+
 	return nil
+}
+
+func isValidProxyURL(URL string) bool {
+	if _, err := url.Parse(URL); err != nil {
+		return false
+	}
+
+	return true
 }
 
 // configureOutput configures the output on the screen
