@@ -25,7 +25,7 @@ func (options *Options) validateOptions() error {
 
 	// Validate proxy options if provided
 	if options.ProxyURL != "" && !isValidProxyURL(options.ProxyURL) {
-		return errors.New("invalid http proxy format (It should be http(s)://username:password@host:port)")
+		return errors.New("invalid http proxy format (It should be http://username:password@host:port)")
 	}
 	if options.ProxySocksURL != "" && !isValidProxyURL(options.ProxySocksURL) {
 		return errors.New("invalid socks proxy format (It should be socks5://username:password@host:port)")
