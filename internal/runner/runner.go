@@ -126,7 +126,7 @@ func (r *Runner) RunEnumeration() {
 		Unsorted: true,
 	})
 	if err != nil {
-		gologger.Fatalf("Error, walking directory: '%s': %s\n", r.options.Templates, err)
+		gologger.Fatalf("Could not find templates in directory '%s': %s\n", r.options.Templates, err)
 	}
 	// 0 matches means no templates were found in directory
 	if len(matches) == 0 {
