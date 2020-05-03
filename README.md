@@ -51,7 +51,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -c                | Number of concurrent requests (default 10)            | nuclei -c 100                                      |
 | -l                | List of urls to run templates                         | nuclei -l urls.txt                                 |
 | -t                | Templates input file/files to check across hosts      | nuclei -t git-core.yaml                            |
-| -t                | Templates input file/files to check across hosts      | nuclei -t "path/*.yaml"                            |
+| -t                | Templates input file/files to check across hosts      | nuclei -t nuclei-templates/cves/                         |
 | -nC               | Don't Use colors in output                            | nuclei -nC                                         |
 | -o                | File to save output result (optional)                 | nuclei -o output.txt                               |
 | -silent           | Show only found results in output                     | nuclei -silent                                     |
@@ -109,14 +109,14 @@ This will run the tool against all the hosts in `urls.txt` and returns the match
 This will run the tool against all the hosts in `urls.txt` with all the templates in the `path-to-templates` directory and returns the matched results. 
 
 ```bash
-> nuclei -l urls.txt -t "path-to-templates/*.yaml" -o results.txt 
+> nuclei -l urls.txt -t nuclei-templates/cves/ -o results.txt 
 ```
 
 ### 3. Automating nuclei with subfinder and any other similar tool.
 
 
 ```bash
-> subfinder -d hackerone.com -silent | httprobe | nuclei -t "path-to-templates/*.yaml" -o results.txt
+> subfinder -d hackerone.com -silent | httprobe | nuclei -t nuclei-templates/cves/ -o results.txt
 ```
 
 Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other. Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.
