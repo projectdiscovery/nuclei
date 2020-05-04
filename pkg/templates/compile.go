@@ -3,6 +3,7 @@ package templates
 import (
 	"os"
 
+	"github.com/projectdiscovery/nuclei/pkg/generators"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
@@ -31,6 +32,13 @@ func ParseTemplate(file string) (*Template, error) {
 			request.SetMatchersCondition(matchers.ANDCondition)
 		} else {
 			request.SetMatchersCondition(condition)
+		}
+
+		attack, ok := generators.AttackTypes[request.AttackType]
+		if !ok {
+			request.SetAttackType(generators.Sniper)
+		} else {
+			request.SetAttackType(attack)
 		}
 
 		for _, matcher := range request.Matchers {

@@ -4,17 +4,28 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
+	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
+	"github.com/projectdiscovery/nuclei/pkg/generators"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
 // HTTPRequest contains a request to be made from a template
 type HTTPRequest struct {
+	// AttackType is the attack type
+	// Sniper, PitchFork and ClusterBomb. Default is Sniper
+	AttackType string `yaml:"attack,omitempty"`
+	// attackType is internal attack type
+	attackType generators.Type
+	// Path contains the path/s for the request variables
+	Payloads map[string]string `yaml:"payloads,omitempty"`
 	// Method is the request method, whether GET, POST, PUT, etc
 	Method string `yaml:"method"`
 	// Path contains the path/s for the request
@@ -52,8 +63,18 @@ func (r *HTTPRequest) SetMatchersCondition(condition matchers.ConditionType) {
 	r.matchersCondition = condition
 }
 
+// GetAttackType returns the attack
+func (r *HTTPRequest) GetAttackType() generators.Type {
+	return r.attackType
+}
+
+// SetAttackType sets the attack
+func (r *HTTPRequest) SetAttackType(attack generators.Type) {
+	r.attackType = attack
+}
+
 // MakeHTTPRequest creates a *http.Request from a request configuration
-func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request, error) {
+func (r *HTTPRequest) MakeHTTPRequest(baseURL string) (chan *retryablehttp.Request, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -73,64 +94,159 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request,
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
-	replacer := newReplacer(values)
-	for _, path := range r.Path {
-		// Replace the dynamic variables in the URL if any
-		URL := replacer.Replace(path)
+func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests chan *retryablehttp.Request, err error) {
+	requests = make(chan *retryablehttp.Request)
 
-		// Build a request on the specified URL
-		req, err := http.NewRequest(r.Method, URL, nil)
-		if err != nil {
-			return nil, err
+	// request generator
+	go func() {
+		defer close(requests)
+		for _, path := range r.Path {
+			// process base request
+			replacer := newReplacer(values)
+
+			// Replace the dynamic variables in the URL if any
+			URL := replacer.Replace(path)
+
+			// Build a request on the specified URL
+			req, err := http.NewRequest(r.Method, URL, nil)
+			if err != nil {
+				// find a way to pass the error
+				return
+			}
+
+			request, err := r.fillRequest(req, values)
+			if err != nil {
+				// find a way to pass the error
+				return
+			}
+
+			requests <- request
 		}
-
-		request, err := r.fillRequest(req, values)
-		if err != nil {
-			return nil, err
-		}
-
-		requests = append(requests, request)
-	}
+	}()
 
 	return
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
-	replacer := newReplacer(values)
-	for _, raw := range r.Raw {
-		// Add trailing line
-		raw += "\n"
+func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests chan *retryablehttp.Request, err error) {
+	requests = make(chan *retryablehttp.Request)
+	// request generator
+	go func() {
+		defer close(requests)
 
-		// Replace the dynamic variables in the URL if any
-		raw = replacer.Replace(raw)
+		for _, raw := range r.Raw {
+			// Add trailing line
+			raw += "\n"
 
-		// Build a parsed request from raw
-		parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
-		if err != nil {
-			return nil, err
+			if len(r.Payloads) > 0 {
+				basePayloads := generators.LoadWordlists(r.Payloads)
+				generatorFunc := generators.SniperGenerator
+				switch r.attackType {
+				case generators.PitchFork:
+					generatorFunc = generators.PitchforkGenerator
+				case generators.ClusterBomb:
+					generatorFunc = generators.ClusterbombGenerator
+				}
+
+				for genValues := range generatorFunc(basePayloads) {
+					baseValues := generators.CopyMap(values)
+					finValues := generators.MergeMaps(baseValues, genValues)
+
+					replacer := newReplacer(finValues)
+
+					// Replace the dynamic variables in the URL if any
+					raw := replacer.Replace(raw)
+
+					dynamicValues := make(map[string]interface{})
+					// find all potentials tokens between {{}}
+					var re = regexp.MustCompile(`(?m)\{\{.+}}`)
+					for _, match := range re.FindAllString(raw, -1) {
+						// check if the match contains a dynamic variable
+						if generators.StringContainsAnyMapItem(finValues, match) {
+							expr := generators.TrimDelimiters(match)
+							compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+							if err != nil {
+								// Debug only - Remove
+								log.Fatal(err)
+							}
+							result, err := compiled.Evaluate(finValues)
+							if err != nil {
+								// Debug only - Remove
+								log.Fatal(err)
+							}
+							dynamicValues[expr] = result
+						}
+					}
+
+					// replace dynamic values
+					dynamicReplacer := newReplacer(dynamicValues)
+					raw = dynamicReplacer.Replace(raw)
+
+					// log.Println(raw)
+
+					// Build a parsed request from raw
+					parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+					if err != nil {
+						return
+					}
+
+					// requests generated from http.ReadRequest have incorrect RequestURI, so they
+					// cannot be used to perform another request directly, we need to generate a new one
+					// with the new target url
+					finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+					req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
+					if err != nil {
+						return
+					}
+
+					// copy headers
+					req.Header = parsedReq.Header.Clone()
+
+					request, err := r.fillRequest(req, values)
+					if err != nil {
+						return
+					}
+
+					requests <- request
+				}
+			} else {
+				// otherwise continue with normal flow
+
+				// base request
+				replacer := newReplacer(values)
+				// Replace the dynamic variables in the request if any
+				raw = replacer.Replace(raw)
+
+				// Build a parsed request from raw
+				parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+				if err != nil {
+					// find a way to pass the error
+					return
+				}
+
+				// requests generated from http.ReadRequest have incorrect RequestURI, so they
+				// cannot be used to perform another request directly, we need to generate a new one
+				// with the new target url
+				finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+				req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
+				if err != nil {
+					// find a way to pass the error
+					return
+				}
+
+				// copy headers
+				req.Header = parsedReq.Header.Clone()
+
+				request, err := r.fillRequest(req, values)
+				if err != nil {
+					// find a way to pass the error
+					return
+				}
+
+				requests <- request
+			}
 		}
-
-		// requests generated from http.ReadRequest have incorrect RequestURI, so they
-		// cannot be used to perform another request directly, we need to generate a new one
-		// with the new target url
-		finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-		req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		// copy headers
-		req.Header = parsedReq.Header.Clone()
-
-		request, err := r.fillRequest(req, values)
-		if err != nil {
-			return nil, err
-		}
-
-		requests = append(requests, request)
-	}
+	}()
 
 	return requests, nil
 }
