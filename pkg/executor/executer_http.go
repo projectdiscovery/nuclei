@@ -78,7 +78,7 @@ func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
 
 	// Send the request to the target servers
 mainLoop:
-	for _, req := range compiledRequest {
+	for req := range compiledRequest {
 		resp, err := e.httpClient.Do(req)
 		if err != nil {
 			if resp != nil {
