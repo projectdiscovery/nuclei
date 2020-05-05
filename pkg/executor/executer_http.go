@@ -78,7 +78,11 @@ func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
 
 	// Send the request to the target servers
 mainLoop:
-	for req := range compiledRequest {
+	for compiledRequest := range compiledRequest {
+		if compiledRequest.Error != nil {
+			return errors.Wrap(err, "could not make http request")
+		}
+		req := compiledRequest.Request
 		resp, err := e.httpClient.Do(req)
 		if err != nil {
 			if resp != nil {

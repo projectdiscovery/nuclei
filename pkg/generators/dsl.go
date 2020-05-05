@@ -2,6 +2,7 @@ package generators
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -85,7 +86,14 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		return hex.EncodeToString(hash[:]), nil
 	}
 	functions["sha256"] = func(args ...interface{}) (interface{}, error) {
-		return sha256.Sum256([]byte(args[0].(string))), nil
+		h := sha256.New()
+		h.Write([]byte(args[0].(string)))
+		return hex.EncodeToString(h.Sum(nil)), nil
+	}
+	functions["sha1"] = func(args ...interface{}) (interface{}, error) {
+		h := sha1.New()
+		h.Write([]byte(args[0].(string)))
+		return hex.EncodeToString(h.Sum(nil)), nil
 	}
 	// search
 	functions["contains"] = func(args ...interface{}) (interface{}, error) {
