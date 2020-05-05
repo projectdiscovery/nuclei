@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/projectdiscovery/nuclei/pkg/generators"
@@ -34,11 +35,19 @@ func ParseTemplate(file string) (*Template, error) {
 			request.SetMatchersCondition(condition)
 		}
 
+		// Set the attack type - used only in raw requests
 		attack, ok := generators.AttackTypes[request.AttackType]
 		if !ok {
 			request.SetAttackType(generators.Sniper)
 		} else {
 			request.SetAttackType(attack)
+		}
+
+		// Validate the payloads if any
+		for name, wordlist := range request.Payloads {
+			if !generators.FileExists(wordlist) {
+				return nil, fmt.Errorf("The %s file for payload %s does not exist", wordlist, name)
+			}
 		}
 
 		for _, matcher := range request.Matchers {

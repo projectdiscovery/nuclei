@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -74,7 +73,7 @@ func (r *HTTPRequest) SetAttackType(attack generators.Type) {
 }
 
 // MakeHTTPRequest creates a *http.Request from a request configuration
-func (r *HTTPRequest) MakeHTTPRequest(baseURL string) (chan *retryablehttp.Request, error) {
+func (r *HTTPRequest) MakeHTTPRequest(baseURL string) (chan *CompiledHTTP, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -94,8 +93,8 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) (chan *retryablehttp.Reque
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests chan *retryablehttp.Request, err error) {
-	requests = make(chan *retryablehttp.Request)
+func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests chan *CompiledHTTP, err error) {
+	requests = make(chan *CompiledHTTP)
 
 	// request generator
 	go func() {
@@ -110,17 +109,17 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string
 			// Build a request on the specified URL
 			req, err := http.NewRequest(r.Method, URL, nil)
 			if err != nil {
-				// find a way to pass the error
+				requests <- &CompiledHTTP{Request: nil, Error: err}
 				return
 			}
 
 			request, err := r.fillRequest(req, values)
 			if err != nil {
-				// find a way to pass the error
+				requests <- &CompiledHTTP{Request: nil, Error: err}
 				return
 			}
 
-			requests <- request
+			requests <- &CompiledHTTP{Request: request, Error: nil}
 		}
 	}()
 
@@ -128,8 +127,8 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests chan *retryablehttp.Request, err error) {
-	requests = make(chan *retryablehttp.Request)
+func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]interface{}) (requests chan *CompiledHTTP, err error) {
+	requests = make(chan *CompiledHTTP)
 	// request generator
 	go func() {
 		defer close(requests)
@@ -149,101 +148,20 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 				}
 
 				for genValues := range generatorFunc(basePayloads) {
-					baseValues := generators.CopyMap(values)
-					finValues := generators.MergeMaps(baseValues, genValues)
-
-					replacer := newReplacer(finValues)
-
-					// Replace the dynamic variables in the URL if any
-					raw := replacer.Replace(raw)
-
-					dynamicValues := make(map[string]interface{})
-					// find all potentials tokens between {{}}
-					var re = regexp.MustCompile(`(?m)\{\{.+}}`)
-					for _, match := range re.FindAllString(raw, -1) {
-						// check if the match contains a dynamic variable
-						if generators.StringContainsAnyMapItem(finValues, match) {
-							expr := generators.TrimDelimiters(match)
-							compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
-							if err != nil {
-								// Debug only - Remove
-								log.Fatal(err)
-							}
-							result, err := compiled.Evaluate(finValues)
-							if err != nil {
-								// Debug only - Remove
-								log.Fatal(err)
-							}
-							dynamicValues[expr] = result
-						}
-					}
-
-					// replace dynamic values
-					dynamicReplacer := newReplacer(dynamicValues)
-					raw = dynamicReplacer.Replace(raw)
-
-					// log.Println(raw)
-
-					// Build a parsed request from raw
-					parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
-					if err != nil {
+					// otherwise continue with normal flow
+					compiledHTTP := r.handleRawWithPaylods(raw, baseURL, values, genValues)
+					requests <- compiledHTTP
+					if compiledHTTP.Error != nil {
 						return
 					}
-
-					// requests generated from http.ReadRequest have incorrect RequestURI, so they
-					// cannot be used to perform another request directly, we need to generate a new one
-					// with the new target url
-					finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-					req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
-					if err != nil {
-						return
-					}
-
-					// copy headers
-					req.Header = parsedReq.Header.Clone()
-
-					request, err := r.fillRequest(req, values)
-					if err != nil {
-						return
-					}
-
-					requests <- request
 				}
 			} else {
 				// otherwise continue with normal flow
-
-				// base request
-				replacer := newReplacer(values)
-				// Replace the dynamic variables in the request if any
-				raw = replacer.Replace(raw)
-
-				// Build a parsed request from raw
-				parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
-				if err != nil {
-					// find a way to pass the error
+				compiledHTTP := r.handleSimpleRaw(raw, baseURL, values)
+				requests <- compiledHTTP
+				if compiledHTTP.Error != nil {
 					return
 				}
-
-				// requests generated from http.ReadRequest have incorrect RequestURI, so they
-				// cannot be used to perform another request directly, we need to generate a new one
-				// with the new target url
-				finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-				req, err := http.NewRequest(r.Method, finalURL, parsedReq.Body)
-				if err != nil {
-					// find a way to pass the error
-					return
-				}
-
-				// copy headers
-				req.Header = parsedReq.Header.Clone()
-
-				request, err := r.fillRequest(req, values)
-				if err != nil {
-					// find a way to pass the error
-					return
-				}
-
-				requests <- request
 			}
 		}
 	}()
@@ -251,7 +169,109 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 	return requests, nil
 }
 
+func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[string]interface{}) *CompiledHTTP {
+	// base request
+	replacer := newReplacer(values)
+	// Replace the dynamic variables in the request if any
+	raw = replacer.Replace(raw)
+
+	// Build a parsed request from raw
+	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	// requests generated from http.ReadRequest have incorrect RequestURI, so they
+	// cannot be used to perform another request directly, we need to generate a new one
+	// with the new target url
+	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+	req, err := http.NewRequest(parsedReq.Method, finalURL, parsedReq.Body)
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	// copy headers
+	req.Header = parsedReq.Header.Clone()
+
+	request, err := r.fillRequest(req, values)
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	return &CompiledHTTP{Request: request, Error: nil}
+}
+
+func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, genValues map[string]interface{}) *CompiledHTTP {
+	baseValues := generators.CopyMap(values)
+	finValues := generators.MergeMaps(baseValues, genValues)
+
+	replacer := newReplacer(finValues)
+
+	// Replace the dynamic variables in the URL if any
+	raw = replacer.Replace(raw)
+
+	dynamicValues := make(map[string]interface{})
+	// find all potentials tokens between {{}}
+	var re = regexp.MustCompile(`(?m)\{\{.+}}`)
+	for _, match := range re.FindAllString(raw, -1) {
+		// check if the match contains a dynamic variable
+		if generators.StringContainsAnyMapItem(finValues, match) {
+			expr := generators.TrimDelimiters(match)
+			compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+			if err != nil {
+				return &CompiledHTTP{Request: nil, Error: err}
+			}
+			result, err := compiled.Evaluate(finValues)
+			if err != nil {
+				return &CompiledHTTP{Request: nil, Error: err}
+			}
+			dynamicValues[expr] = result
+		}
+	}
+
+	// replace dynamic values
+	dynamicReplacer := newReplacer(dynamicValues)
+	raw = dynamicReplacer.Replace(raw)
+
+	// Build a parsed request from raw
+	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	// Bug: http.ReadRequest does not process request body, so building it manually
+	// need to read from first \n\n till end
+	body := raw[strings.Index(raw, "\n\n"):]
+
+	// requests generated from http.ReadRequest have incorrect RequestURI, so they
+	// cannot be used to perform another request directly, we need to generate a new one
+	// with the new target url
+	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
+	req, err := http.NewRequest(parsedReq.Method, finalURL, strings.NewReader(body))
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	// copy headers
+	req.Header = parsedReq.Header.Clone()
+
+	request, err := r.fillRequest(req, values)
+	if err != nil {
+		return &CompiledHTTP{Request: nil, Error: err}
+	}
+
+	return &CompiledHTTP{Request: request, Error: nil}
+}
+
 func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
+	req.Header.Set("Connection", "close")
+	req.Close = true
+
+	// raw requests are left untouched
+	if len(r.Raw) > 0 {
+		return retryablehttp.FromRequest(req)
+	}
+
 	replacer := newReplacer(values)
 	// Check if the user requested a request body
 	if r.Body != "" {
@@ -274,8 +294,12 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 	if _, ok := req.Header["Accept-Language"]; !ok {
 		req.Header.Set("Accept-Language", "en")
 	}
-	req.Header.Set("Connection", "close")
-	req.Close = true
 
 	return retryablehttp.FromRequest(req)
+}
+
+// CompiledHTTP contains Generated HTTP Request or error
+type CompiledHTTP struct {
+	Request *retryablehttp.Request
+	Error   error
 }
