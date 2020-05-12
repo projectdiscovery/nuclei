@@ -79,6 +79,9 @@ func (e *HTTPExecutor) ConfigureAutoType(URL string) error {
 
 	for _, matcher := range e.httpRequest.Matchers {
 		if matcher.Type == "auto" {
+			matcher.Size = nil
+			matcher.Status = nil
+
 			for _, req := range compiledConfigRequest {
 				resp, err := e.httpClient.Do(req)
 				if err != nil {
