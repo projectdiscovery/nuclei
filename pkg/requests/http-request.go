@@ -72,7 +72,8 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request,
 	return r.makeHTTPRequestFromModel(baseURL, values)
 }
 
-func (r *HTTPRequest) MakeHTTPRequestForAutoConfigure(baseURL string) (requests []*retryablehttp.Request, err error) {
+// Create HTTP requests for auto configuration
+func (r *HTTPRequest) MakeHTTPRequestForAutoConfigure(baseURL string, seqSize int) (requests []*retryablehttp.Request, err error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,8 @@ func (r *HTTPRequest) MakeHTTPRequestForAutoConfigure(baseURL string) (requests 
 		"Hostname": hostname,
 	}
 
-	urlTo404 := baseURL + "/" + randSeq(16)
+	// Create URL with a random path that will indicate a 404
+	urlTo404 := baseURL + "/" + randSeq(seqSize)
 
 	// Build a request on the specified URL
 	req, err := http.NewRequest(r.Method, urlTo404, nil)

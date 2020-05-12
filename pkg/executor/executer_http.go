@@ -68,8 +68,11 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	return executer, nil
 }
 
+// ConfigureAutoType makes HTTP request to random URLs to configure what a 404 looks like
 func (e *HTTPExecutor) ConfigureAutoType(URL string) error {
-	compiledConfigRequest, err := e.httpRequest.MakeHTTPRequestForAutoConfigure(URL)
+	// Create config requests
+	compiledConfigRequest, err := e.httpRequest.MakeHTTPRequestForAutoConfigure(URL, 16)
+	compiledConfigRequest, err = e.httpRequest.MakeHTTPRequestForAutoConfigure(URL, 32)
 	if err != nil {
 		return errors.Wrap(err, "could not make auto configure http request")
 	}
@@ -95,6 +98,13 @@ func (e *HTTPExecutor) ConfigureAutoType(URL string) error {
 
 				// Convert response body from []byte to string with zero copy
 				body := unsafeToString(data)
+
+				// Don't add duplicate response sizes
+				for _, size := range matcher.Size {
+					if size == len(body) {
+						continue
+					}
+				}
 
 				matcher.Size = append(matcher.Size, len(body))
 				matcher.Status = append(matcher.Status, resp.StatusCode)

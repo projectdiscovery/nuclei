@@ -55,6 +55,11 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 		// Match complex query
 		return m.matchDSL(httpToMap(resp, body, headers))
 	case AutoMatcher:
+		// Match on status code, negate since that's an indicator of 404
+		if len(m.Size) > 1 {
+			return !m.matchStatusCode(resp.StatusCode)
+		}
+		// Match on status code and size (404 indicators had same response size), negate result
 		return !m.matchStatusCode(resp.StatusCode) && !m.matchSizeCode(len(body))
 	}
 	return false
