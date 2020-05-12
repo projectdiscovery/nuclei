@@ -72,6 +72,36 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) ([]*retryablehttp.Request,
 	return r.makeHTTPRequestFromModel(baseURL, values)
 }
 
+func (r *HTTPRequest) MakeHTTPRequestForAutoConfigure(baseURL string) (requests []*retryablehttp.Request, err error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	hostname := parsed.Hostname()
+
+	values := map[string]interface{}{
+		"BaseURL":  baseURL,
+		"Hostname": hostname,
+	}
+
+	urlTo404 := baseURL + "/" + randSeq(16)
+
+	// Build a request on the specified URL
+	req, err := http.NewRequest(r.Method, urlTo404, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := r.fillRequest(req, values)
+	if err != nil {
+		return nil, err
+	}
+
+	requests = append(requests, request)
+
+	return
+}
+
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string]interface{}) (requests []*retryablehttp.Request, err error) {
 	replacer := newReplacer(values)

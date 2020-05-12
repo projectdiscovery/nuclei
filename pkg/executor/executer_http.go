@@ -68,13 +68,54 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	return executer, nil
 }
 
+func (e *HTTPExecutor) ConfigureAutoType(URL string) error {
+	compiledConfigRequest, err := e.httpRequest.MakeHTTPRequestForAutoConfigure(URL)
+	if err != nil {
+		return errors.Wrap(err, "could not make auto configure http request")
+	}
+
+	for _, matcher := range e.httpRequest.Matchers {
+		if matcher.Type == "auto" {
+			for _, req := range compiledConfigRequest {
+				resp, err := e.httpClient.Do(req)
+				if err != nil {
+					if resp != nil {
+						resp.Body.Close()
+					}
+					return errors.Wrap(err, "could not make http request")
+				}
+
+				data, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					io.Copy(ioutil.Discard, resp.Body)
+					resp.Body.Close()
+					return errors.Wrap(err, "could not read http body")
+				}
+				resp.Body.Close()
+
+				// Convert response body from []byte to string with zero copy
+				body := unsafeToString(data)
+
+				matcher.Size = append(matcher.Size, len(body))
+				matcher.Status = append(matcher.Status, resp.StatusCode)
+			}
+		}
+	}
+
+	return nil
+}
+
 // ExecuteHTTP executes the HTTP request on a URL
 func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
+	// Possibly configure the matchers here
+
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
+
+	e.ConfigureAutoType(URL)
 
 	// Send the request to the target servers
 mainLoop:

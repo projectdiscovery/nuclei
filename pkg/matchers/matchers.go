@@ -63,6 +63,8 @@ const (
 	SizeMatcher
 	// DSLMatcher matches based upon dsl syntax
 	DSLMatcher
+	// AutoMatcher matches based on auto configuration
+	AutoMatcher
 )
 
 // MatcherTypes is an table for conversion of matcher type from string.
@@ -73,6 +75,7 @@ var MatcherTypes = map[string]MatcherType{
 	"regex":  RegexMatcher,
 	"binary": BinaryMatcher,
 	"dsl":    DSLMatcher,
+	"auto":   AutoMatcher,
 }
 
 // ConditionType is the type of condition for matcher

@@ -54,6 +54,8 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 	case DSLMatcher:
 		// Match complex query
 		return m.matchDSL(httpToMap(resp, body, headers))
+	case AutoMatcher:
+		return !m.matchStatusCode(resp.StatusCode) && !m.matchSizeCode(len(body))
 	}
 	return false
 }
