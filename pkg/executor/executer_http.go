@@ -121,7 +121,7 @@ mainLoop:
 				// If the matcher has matched, and its an OR
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
-					e.writeOutputHTTP(req, matcher, nil)
+					e.writeOutputHTTP(compiledRequest, matcher, nil)
 				}
 			}
 		}
@@ -142,7 +142,7 @@ mainLoop:
 		// Write a final string of output if matcher type is
 		// AND or if we have extractors for the mechanism too.
 		if len(e.httpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-			e.writeOutputHTTP(req, nil, extractorResults)
+			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
 		}
 	}
 	return nil

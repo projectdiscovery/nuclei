@@ -109,17 +109,17 @@ func (r *HTTPRequest) makeHTTPRequestFromModel(baseURL string, values map[string
 			// Build a request on the specified URL
 			req, err := http.NewRequest(r.Method, URL, nil)
 			if err != nil {
-				requests <- &CompiledHTTP{Request: nil, Error: err}
+				requests <- &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 				return
 			}
 
 			request, err := r.fillRequest(req, values)
 			if err != nil {
-				requests <- &CompiledHTTP{Request: nil, Error: err}
+				requests <- &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 				return
 			}
 
-			requests <- &CompiledHTTP{Request: request, Error: nil}
+			requests <- &CompiledHTTP{Request: request, Error: nil, Meta: nil}
 		}
 	}()
 
@@ -148,7 +148,6 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 				}
 
 				for genValues := range generatorFunc(basePayloads) {
-					// otherwise continue with normal flow
 					compiledHTTP := r.handleRawWithPaylods(raw, baseURL, values, genValues)
 					requests <- compiledHTTP
 					if compiledHTTP.Error != nil {
@@ -178,7 +177,7 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 	// Build a parsed request from raw
 	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// requests generated from http.ReadRequest have incorrect RequestURI, so they
@@ -187,7 +186,7 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
 	req, err := http.NewRequest(parsedReq.Method, finalURL, parsedReq.Body)
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// copy headers
@@ -195,10 +194,10 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 
 	request, err := r.fillRequest(req, values)
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
-	return &CompiledHTTP{Request: request, Error: nil}
+	return &CompiledHTTP{Request: request, Error: nil, Meta: nil}
 }
 
 func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, genValues map[string]interface{}) *CompiledHTTP {
@@ -219,11 +218,11 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 			expr := generators.TrimDelimiters(match)
 			compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
 			if err != nil {
-				return &CompiledHTTP{Request: nil, Error: err}
+				return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 			}
 			result, err := compiled.Evaluate(finValues)
 			if err != nil {
-				return &CompiledHTTP{Request: nil, Error: err}
+				return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 			}
 			dynamicValues[expr] = result
 		}
@@ -236,7 +235,7 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 	// Build a parsed request from raw
 	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// Bug: http.ReadRequest does not process request body, so building it manually
@@ -249,7 +248,7 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
 	req, err := http.NewRequest(parsedReq.Method, finalURL, strings.NewReader(body))
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// copy headers
@@ -257,10 +256,10 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 
 	request, err := r.fillRequest(req, values)
 	if err != nil {
-		return &CompiledHTTP{Request: nil, Error: err}
+		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
-	return &CompiledHTTP{Request: request, Error: nil}
+	return &CompiledHTTP{Request: request, Error: nil, Meta: genValues}
 }
 
 func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
@@ -302,4 +301,5 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 type CompiledHTTP struct {
 	Request *retryablehttp.Request
 	Error   error
+	Meta    map[string]interface{}
 }
