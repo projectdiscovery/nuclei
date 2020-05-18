@@ -99,6 +99,13 @@ mainLoop:
 		}
 		resp.Body.Close()
 
+		// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
+		// so in case we have to manually do it
+		data, err = requests.HandleDecompression(compiledRequest.Request, data)
+		if err != nil {
+			return errors.Wrap(err, "could not decompress http body")
+		}
+
 		// Convert response body from []byte to string with zero copy
 		body := unsafeToString(data)
 
