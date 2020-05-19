@@ -20,6 +20,7 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
 - [Installation Instructions](#installation-instructions)
     - [From Binary](#from-binary)
     - [From Source](#from-source)
+    - [Running in a Docker Container](#running-in-a-docker-container)
 - [Running nuclei](#running-nuclei)
     - [1. Running nuclei with a single template.](#1-running-nuclei-with-a-single-template)
     - [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
@@ -85,6 +86,25 @@ nuclei requires go1.13+ to install successfully. Run the following command to ge
 ```
 
 In order to update the tool, you can use -u flag with `go get` command.
+
+### Running in a Docker Container
+
+- Clone the repo using `git clone https://github.com/projectdiscovery/nuclei.git`
+- Build your docker container
+```bash
+> docker build -t projectdiscovery/nuclei .
+```
+
+- After building the container using either way, run the following:
+```bash
+> docker run -it projectdiscovery/nuclei
+```
+
+For example, this will run the tool against all the hosts in `urls.txt` and output the results to your host file system:
+```bash
+> cat urls.txt | docker run -v /path-to-nuclei-templates:/go/src/app/ -i projectdiscovery/nuclei -t ./files/git-config.yaml > results.txt
+```
+Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
 
 # Running nuclei
 
