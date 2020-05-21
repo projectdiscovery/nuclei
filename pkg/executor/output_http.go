@@ -5,11 +5,11 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/nuclei/pkg/requests"
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecutor) writeOutputHTTP(req *retryablehttp.Request, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecutor) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matchers.Matcher, extractorResults []string) {
 	builder := &strings.Builder{}
 
 	builder.WriteRune('[')
@@ -21,7 +21,7 @@ func (e *HTTPExecutor) writeOutputHTTP(req *retryablehttp.Request, matcher *matc
 	builder.WriteString("] [http] ")
 
 	// Escape the URL by replacing all % with %%
-	URL := req.URL.String()
+	URL := req.Request.URL.String()
 	escapedURL := strings.Replace(URL, "%", "%%", -1)
 	builder.WriteString(escapedURL)
 
@@ -36,6 +36,18 @@ func (e *HTTPExecutor) writeOutputHTTP(req *retryablehttp.Request, matcher *matc
 		}
 		builder.WriteString("]")
 	}
+
+	// write meta if any
+	if len(req.Meta) > 0 {
+		builder.WriteString(" [")
+		var metas []string
+		for name, value := range req.Meta {
+			metas = append(metas, name+"="+value.(string))
+		}
+		builder.WriteString(strings.Join(metas, ","))
+		builder.WriteString("]")
+	}
+
 	builder.WriteRune('\n')
 
 	// Write output to screen as well as any output file
