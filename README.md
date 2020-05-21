@@ -150,7 +150,6 @@ nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) 
 [https://portswigger.net/burp](https://portswigger.net/burp)</br>
 [https://github.com/ffuf/ffuf](https://github.com/ffuf/ffuf)</br>
 [https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
-[https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
 [https://github.com/ameenmaali/qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
 [https://github.com/proabiral/inception](https://github.com/proabiral/inception)</br>
 [https://github.com/hannob/snallygaster](https://github.com/hannob/snallygaster)</br>
