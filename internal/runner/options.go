@@ -5,23 +5,25 @@ import (
 	"os"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/pkg/requests"
 )
 
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
-	Templates     string // Signature specifies the template/templates to use
-	Targets       string // Targets specifies the targets to scan using templates.
-	Threads       int    // Thread controls the number of concurrent requests to make.
-	Timeout       int    // Timeout is the seconds to wait for a response from the server.
-	Retries       int    // Retries is the number of times to retry the request
-	Output        string // Output is the file to write found subdomains to.
-	ProxyURL      string // ProxyURL is the URL for the proxy server
-	ProxySocksURL string // ProxySocksURL is the URL for the proxy socks server
-	Silent        bool   // Silent suppresses any extra text and only writes found URLs on screen.
-	Version       bool   // Version specifies if we should just show version and exit
-	Verbose       bool   // Verbose flag indicates whether to show verbose output or not
-	NoColor       bool   // No-Color disables the colored output.
+	Templates     string                 // Signature specifies the template/templates to use
+	Targets       string                 // Targets specifies the targets to scan using templates.
+	Threads       int                    // Thread controls the number of concurrent requests to make.
+	Timeout       int                    // Timeout is the seconds to wait for a response from the server.
+	Retries       int                    // Retries is the number of times to retry the request
+	Output        string                 // Output is the file to write found subdomains to.
+	ProxyURL      string                 // ProxyURL is the URL for the proxy server
+	ProxySocksURL string                 // ProxySocksURL is the URL for the proxy socks server
+	Silent        bool                   // Silent suppresses any extra text and only writes found URLs on screen.
+	Version       bool                   // Version specifies if we should just show version and exit
+	Verbose       bool                   // Verbose flag indicates whether to show verbose output or not
+	NoColor       bool                   // No-Color disables the colored output.
+	CustomHeaders requests.CustomHeaders // Custom global headers
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -42,6 +44,7 @@ func ParseOptions() *Options {
 	flag.IntVar(&options.Threads, "c", 10, "Number of concurrent requests to make")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
+	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
 
 	flag.Parse()
 
