@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,11 +24,12 @@ import (
 // HTTPExecutor is client for performing HTTP requests
 // for a template.
 type HTTPExecutor struct {
-	httpClient  *retryablehttp.Client
-	template    *templates.Template
-	httpRequest *requests.HTTPRequest
-	writer      *bufio.Writer
-	outputMutex *sync.Mutex
+	httpClient    *retryablehttp.Client
+	template      *templates.Template
+	httpRequest   *requests.HTTPRequest
+	writer        *bufio.Writer
+	outputMutex   *sync.Mutex
+	customHeaders requests.CustomHeaders
 }
 
 // HTTPOptions contains configuration options for the HTTP executor.
@@ -39,6 +41,7 @@ type HTTPOptions struct {
 	Retries       int
 	ProxyURL      string
 	ProxySocksURL string
+	CustomHeaders requests.CustomHeaders
 }
 
 // NewHTTPExecutor creates a new HTTP executor from a template
@@ -59,11 +62,12 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	executer := &HTTPExecutor{
-		httpClient:  client,
-		template:    options.Template,
-		httpRequest: options.HTTPRequest,
-		outputMutex: &sync.Mutex{},
-		writer:      options.Writer,
+		httpClient:    client,
+		template:      options.Template,
+		httpRequest:   options.HTTPRequest,
+		outputMutex:   &sync.Mutex{},
+		writer:        options.Writer,
+		customHeaders: options.CustomHeaders,
 	}
 	return executer, nil
 }
@@ -82,6 +86,7 @@ mainLoop:
 		if compiledRequest.Error != nil {
 			return errors.Wrap(err, "could not make http request")
 		}
+		e.setCustomHeaders(compiledRequest)
 		req := compiledRequest.Request
 		resp, err := e.httpClient.Do(req)
 		if err != nil {
@@ -221,5 +226,21 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 			return http.ErrUseLastResponse
 		}
 		return nil
+	}
+}
+
+func (e *HTTPExecutor) setCustomHeaders(r *requests.CompiledHTTP) {
+	for _, customHeader := range e.customHeaders {
+		// This should be pre-computed somewhere and done only once
+		tokens := strings.Split(customHeader, ":")
+		// if it's an invalid header skip it
+		if len(tokens) < 2 {
+			continue
+		}
+
+		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
+		headerName = strings.TrimSpace(headerName)
+		headerValue = strings.TrimSpace(headerValue)
+		r.Request.Header.Set(headerName, headerValue)
 	}
 }
