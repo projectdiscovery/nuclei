@@ -62,6 +62,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -version          | Show version of nuclei                                | nuclei -version                                    |
 | -proxy-url        | Proxy URL                                             | nuclei -proxy-url http://user:pass@this.is.a.proxy:8080      |
 | -proxy-socks-url  | Proxy Socks URL                                       | nuclei -proxy-socks-url socks5://user:pass@this.is.a.proxy.socks:9050 |
+| -H                | Custom Header                                         | nuclei -H "x-bug-bounty: hacker" |
 
 
 # Installation Instructions
@@ -144,8 +145,11 @@ Nuclei supports glob expression ending in `.yaml` meaning multiple templates can
 
 # Thanks
 
-nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. Do also check out these similar awesome open-source projects that may fit in your workflow:
+nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. Do also check out these similar awesome projects that may fit in your workflow:
 
+[https://portswigger.net/burp](https://portswigger.net/burp)</br>
+[https://github.com/ffuf/ffuf](https://github.com/ffuf/ffuf)</br>
+[https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
 [https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
 [https://github.com/ameenmaali/qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
 [https://github.com/proabiral/inception](https://github.com/proabiral/inception)</br>
