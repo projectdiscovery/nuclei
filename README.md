@@ -145,8 +145,11 @@ Nuclei supports glob expression ending in `.yaml` meaning multiple templates can
 
 # Thanks
 
-nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. Do also check out these similar awesome open-source projects that may fit in your workflow:
+nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. Do also check out these similar awesome projects that may fit in your workflow:
 
+[https://portswigger.net/burp](https://portswigger.net/burp)</br>
+[https://github.com/ffuf/ffuf](https://github.com/ffuf/ffuf)</br>
+[https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
 [https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
 [https://github.com/ameenmaali/qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
 [https://github.com/proabiral/inception](https://github.com/proabiral/inception)</br>
