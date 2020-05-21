@@ -78,7 +78,11 @@ func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
 
 	// Send the request to the target servers
 mainLoop:
-	for _, req := range compiledRequest {
+	for compiledRequest := range compiledRequest {
+		if compiledRequest.Error != nil {
+			return errors.Wrap(err, "could not make http request")
+		}
+		req := compiledRequest.Request
 		resp, err := e.httpClient.Do(req)
 		if err != nil {
 			if resp != nil {
@@ -94,6 +98,13 @@ mainLoop:
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
+
+		// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
+		// so in case we have to manually do it
+		data, err = requests.HandleDecompression(compiledRequest.Request, data)
+		if err != nil {
+			return errors.Wrap(err, "could not decompress http body")
+		}
 
 		// Convert response body from []byte to string with zero copy
 		body := unsafeToString(data)
@@ -117,7 +128,7 @@ mainLoop:
 				// If the matcher has matched, and its an OR
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
-					e.writeOutputHTTP(req, matcher, nil)
+					e.writeOutputHTTP(compiledRequest, matcher, nil)
 				}
 			}
 		}
@@ -138,7 +149,7 @@ mainLoop:
 		// Write a final string of output if matcher type is
 		// AND or if we have extractors for the mechanism too.
 		if len(e.httpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-			e.writeOutputHTTP(req, nil, extractorResults)
+			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
 		}
 	}
 	return nil
