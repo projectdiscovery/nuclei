@@ -62,6 +62,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -version          | Show version of nuclei                                | nuclei -version                                    |
 | -proxy-url        | Proxy URL                                             | nuclei -proxy-url http://user:pass@this.is.a.proxy:8080      |
 | -proxy-socks-url  | Proxy Socks URL                                       | nuclei -proxy-socks-url socks5://user:pass@this.is.a.proxy.socks:9050 |
+| -H                | Custom Header                                         | nuclei -H "x-bug-bounty: hacker" |
 
 
 # Installation Instructions
