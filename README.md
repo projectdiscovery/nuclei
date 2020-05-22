@@ -73,7 +73,7 @@ This will display help for the tool. Here are all the switches it supports.
 The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
 
 ```bash
-> tar -xzvf nuclei-linux-amd64.tar
+> tar -xzvf nuclei-linux-amd64.tar.gz
 > mv nuclei-linux-amd64 /usr/bin/nuclei
 > nuclei -h
 ```
