@@ -284,7 +284,7 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 
 	// Set some headers only if the header wasn't supplied by the user
 	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei (@pdiscoveryio)")
+		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 	}
 
 	if _, ok := req.Header["Accept"]; !ok {
