@@ -1,0 +1,21 @@
+builds:
+    - binary: nuclei
+      main: cmd/nuclei/main.go
+      goos:
+        - linux
+        - windows
+        - darwin
+      goarch:
+        - amd64
+        - 386
+        - arm
+        - arm64
+  
+archives:
+    - id: tgz
+      format: tar.gz
+      replacements:
+          darwin: macOS
+      format_overrides:
+          - goos: windows
+            format: zip
