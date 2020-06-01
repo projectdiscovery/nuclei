@@ -11,6 +11,6 @@ require (
 	github.com/projectdiscovery/gologger v1.0.0
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
-	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
+	golang.org/x/net v0.0.0-20200528225125-3c3fba18258b
 	gopkg.in/yaml.v2 v2.3.0
 )
