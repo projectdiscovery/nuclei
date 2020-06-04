@@ -1,0 +1,17 @@
+# dockerhub-push pushes docker build to dockerhub automatically
+# on the creation of a new release
+name: Publish to Dockerhub on creation of a new release
+on: 
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Publish to Dockerhub Registry
+      uses: elgohr/Publish-Docker-Github-Action@master
+      with:
+        name: projectdiscovery/nuclei
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
