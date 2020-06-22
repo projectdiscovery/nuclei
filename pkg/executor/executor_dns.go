@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -18,6 +19,7 @@ import (
 // for a template.
 type DNSExecutor struct {
 	debug       bool
+	results     uint32
 	dnsClient   *retryabledns.Client
 	template    *templates.Template
 	dnsRequest  *requests.DNSRequest
@@ -48,6 +50,7 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 
 	executer := &DNSExecutor{
 		debug:       options.Debug,
+		results:     0,
 		dnsClient:   dnsClient,
 		template:    options.Template,
 		dnsRequest:  options.DNSRequest,
@@ -55,6 +58,14 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 		outputMutex: &sync.Mutex{},
 	}
 	return executer
+}
+
+// GotResults returns true if there were any results for the executor
+func (e *DNSExecutor) GotResults() bool {
+	if atomic.LoadUint32(&e.results) == 0 {
+		return false
+	}
+	return true
 }
 
 // ExecuteDNS executes the DNS request on a URL
@@ -104,6 +115,7 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
 				e.writeOutputDNS(domain, matcher, nil)
+				atomic.CompareAndSwapUint32(&e.results, 0, 1)
 			}
 		}
 	}
@@ -121,6 +133,7 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputDNS(domain, nil, extractorResults)
+		atomic.CompareAndSwapUint32(&e.results, 0, 1)
 	}
 	return nil
 }
