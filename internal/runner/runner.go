@@ -77,13 +77,24 @@ func (r *Runner) RunEnumeration() {
 		}
 
 		// process http requests
+		var results bool
 		for _, request := range template.RequestsHTTP {
-			r.processTemplateRequest(template, request)
+			results = r.processTemplateRequest(template, request)
 		}
-
 		// process dns requests
 		for _, request := range template.RequestsDNS {
-			r.processTemplateRequest(template, request)
+			dnsResults := r.processTemplateRequest(template, request)
+			if !results {
+				results = dnsResults
+			}
+		}
+		if !results {
+			if r.output != nil {
+				outputFile := r.output.Name()
+				r.output.Close()
+				os.Remove(outputFile)
+			}
+			gologger.Infof("No results found for the template. Happy hacking!")
 		}
 		return
 	}
@@ -95,6 +106,7 @@ func (r *Runner) RunEnumeration() {
 			gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
 		}
 
+		var results bool
 		for _, match := range matches {
 			template, err := templates.ParseTemplate(match)
 			if err != nil {
@@ -102,11 +114,25 @@ func (r *Runner) RunEnumeration() {
 				return
 			}
 			for _, request := range template.RequestsDNS {
-				r.processTemplateRequest(template, request)
+				dnsResults := r.processTemplateRequest(template, request)
+				if dnsResults {
+					results = dnsResults
+				}
 			}
 			for _, request := range template.RequestsHTTP {
-				r.processTemplateRequest(template, request)
+				httpResults := r.processTemplateRequest(template, request)
+				if httpResults {
+					results = httpResults
+				}
 			}
+		}
+		if !results {
+			if r.output != nil {
+				outputFile := r.output.Name()
+				r.output.Close()
+				os.Remove(outputFile)
+			}
+			gologger.Infof("No results found for the templates. Happy hacking!")
 		}
 		return
 	}
@@ -132,6 +158,7 @@ func (r *Runner) RunEnumeration() {
 	if len(matches) == 0 {
 		gologger.Fatalf("Error, no templates found in directory: '%s'\n", r.options.Templates)
 	}
+	var results bool
 	for _, match := range matches {
 		template, err := templates.ParseTemplate(match)
 		if err != nil {
@@ -139,17 +166,31 @@ func (r *Runner) RunEnumeration() {
 			return
 		}
 		for _, request := range template.RequestsDNS {
-			r.processTemplateRequest(template, request)
+			dnsResults := r.processTemplateRequest(template, request)
+			if dnsResults {
+				results = dnsResults
+			}
 		}
 		for _, request := range template.RequestsHTTP {
-			r.processTemplateRequest(template, request)
+			httpResults := r.processTemplateRequest(template, request)
+			if httpResults {
+				results = httpResults
+			}
 		}
+	}
+	if !results {
+		if r.output != nil {
+			outputFile := r.output.Name()
+			r.output.Close()
+			os.Remove(outputFile)
+		}
+		gologger.Infof("No results found for the template. Happy hacking!")
 	}
 	return
 }
 
 // processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) {
+func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) bool {
 	var file *os.File
 	var err error
 
@@ -162,12 +203,13 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request in
 	if err != nil {
 		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
 	}
-	r.processTemplateWithList(template, request, file)
+	results := r.processTemplateWithList(template, request, file)
 	file.Close()
+	return results
 }
 
 // processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) {
+func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) bool {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -209,7 +251,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	}
 	if err != nil {
 		gologger.Warningf("Could not create http client: %s\n", err)
-		return
+		return false
 	}
 
 	limiter := make(chan struct{}, r.options.Threads)
@@ -242,4 +284,16 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	}
 	close(limiter)
 	wg.Wait()
+
+	// See if we got any results from the executors
+	var results bool
+	if httpExecutor != nil {
+		results = httpExecutor.GotResults()
+	}
+	if dnsExecutor != nil {
+		if !results {
+			results = dnsExecutor.GotResults()
+		}
+	}
+	return results
 }

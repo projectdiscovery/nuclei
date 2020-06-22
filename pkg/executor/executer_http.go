@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -28,6 +29,7 @@ import (
 // for a template.
 type HTTPExecutor struct {
 	debug         bool
+	results       uint32
 	httpClient    *retryablehttp.Client
 	template      *templates.Template
 	httpRequest   *requests.HTTPRequest
@@ -68,6 +70,7 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 
 	executer := &HTTPExecutor{
 		debug:         options.Debug,
+		results:       0,
 		httpClient:    client,
 		template:      options.Template,
 		httpRequest:   options.HTTPRequest,
@@ -76,6 +79,14 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 		customHeaders: options.CustomHeaders,
 	}
 	return executer, nil
+}
+
+// GotResults returns true if there were any results for the executor
+func (e *HTTPExecutor) GotResults() bool {
+	if atomic.LoadUint32(&e.results) == 0 {
+		return false
+	}
+	return true
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
@@ -159,6 +170,7 @@ mainLoop:
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
 					e.writeOutputHTTP(compiledRequest, matcher, nil)
+					atomic.CompareAndSwapUint32(&e.results, 0, 1)
 				}
 			}
 		}
@@ -180,6 +192,7 @@ mainLoop:
 		// AND or if we have extractors for the mechanism too.
 		if len(e.httpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
 			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
+			atomic.CompareAndSwapUint32(&e.results, 0, 1)
 		}
 	}
 
