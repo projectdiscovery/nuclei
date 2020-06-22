@@ -2,9 +2,12 @@ package executor
 
 import (
 	"bufio"
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
@@ -14,6 +17,7 @@ import (
 // DNSExecutor is a client for performing a DNS request
 // for a template.
 type DNSExecutor struct {
+	debug       bool
 	dnsClient   *retryabledns.Client
 	template    *templates.Template
 	dnsRequest  *requests.DNSRequest
@@ -31,6 +35,7 @@ var DefaultResolvers = []string{
 
 // DNSOptions contains configuration options for the DNS executor.
 type DNSOptions struct {
+	Debug      bool
 	Template   *templates.Template
 	DNSRequest *requests.DNSRequest
 	Writer     *bufio.Writer
@@ -42,6 +47,7 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
 	executer := &DNSExecutor{
+		debug:       options.Debug,
 		dnsClient:   dnsClient,
 		template:    options.Template,
 		dnsRequest:  options.DNSRequest,
@@ -67,10 +73,22 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 		return errors.Wrap(err, "could not make dns request")
 	}
 
+	if e.debug {
+		gologger.Infof("Dumped DNS request for %s (%s)\n\n", URL, e.template.ID)
+		fmt.Fprintf(os.Stderr, "%s\n", compiledRequest.String())
+	}
+
 	// Send the request to the target servers
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		return errors.Wrap(err, "could not send dns request")
+	}
+
+	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
+
+	if e.debug {
+		gologger.Infof("Dumped DNS response for %s (%s)\n\n", URL, e.template.ID)
+		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
 	}
 
 	matcherCondition := e.dnsRequest.GetMatchersCondition()
