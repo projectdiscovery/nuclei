@@ -11,6 +11,7 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
+	Debug         bool                   // Debug mode allows debugging request/responses for the engine
 	Templates     string                 // Signature specifies the template/templates to use
 	Targets       string                 // Targets specifies the targets to scan using templates.
 	Threads       int                    // Thread controls the number of concurrent requests to make.
@@ -45,6 +46,7 @@ func ParseOptions() *Options {
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
+	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 
 	flag.Parse()
 
