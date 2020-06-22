@@ -58,7 +58,8 @@ This will display help for the tool. Here are all the switches it supports.
 | -silent           | Show only found results in output                     | nuclei -silent                                     |
 | -retries          | Number of times to retry a failed request (default 1) | nuclei -retries 1                                  |
 | -timeout          | Seconds to wait before timeout (default 5)            | nuclei -timeout 5                                  |
-| -v                | Show Verbose output                                   | nuclei -v                                          |
+| -debug            | Allow debugging of request/responses.                 | nuclei -debug                                      |
+| -v                | Shows verbose output of all sent requests               | nuclei -v                                          |
 | -version          | Show version of nuclei                                | nuclei -version                                    |
 | -proxy-url        | Proxy URL                                             | nuclei -proxy-url http://user:pass@this.is.a.proxy:8080      |
 | -proxy-socks-url  | Proxy Socks URL                                       | nuclei -proxy-socks-url socks5://user:pass@this.is.a.proxy.socks:9050 |
@@ -137,7 +138,7 @@ This will run the tool against all the hosts in `urls.txt` with all the template
 
 
 ```bash
-> subfinder -d hackerone.com -silent | httprobe | nuclei -t nuclei-templates/cves/ -o results.txt
+> subfinder -d hackerone.com -silent | httpx -silent | nuclei -t nuclei-templates/cves/ -o results.txt
 ```
 
 Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other. Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.
