@@ -7,12 +7,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
@@ -24,6 +27,7 @@ import (
 // HTTPExecutor is client for performing HTTP requests
 // for a template.
 type HTTPExecutor struct {
+	debug         bool
 	httpClient    *retryablehttp.Client
 	template      *templates.Template
 	httpRequest   *requests.HTTPRequest
@@ -41,6 +45,7 @@ type HTTPOptions struct {
 	Retries       int
 	ProxyURL      string
 	ProxySocksURL string
+	Debug         bool
 	CustomHeaders requests.CustomHeaders
 }
 
@@ -62,6 +67,7 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	executer := &HTTPExecutor{
+		debug:         options.Debug,
 		httpClient:    client,
 		template:      options.Template,
 		httpRequest:   options.HTTPRequest,
@@ -88,12 +94,31 @@ mainLoop:
 		}
 		e.setCustomHeaders(compiledRequest)
 		req := compiledRequest.Request
+
+		if e.debug {
+			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
+			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
+			if err != nil {
+				return errors.Wrap(err, "could not dump http request")
+			}
+			fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
+		}
+
 		resp, err := e.httpClient.Do(req)
 		if err != nil {
 			if resp != nil {
 				resp.Body.Close()
 			}
 			return errors.Wrap(err, "could not make http request")
+		}
+
+		if e.debug {
+			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
+			dumpedResponse, err := httputil.DumpResponse(resp, true)
+			if err != nil {
+				return errors.Wrap(err, "could not dump http response")
+			}
+			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 		}
 
 		data, err := ioutil.ReadAll(resp.Body)
@@ -157,6 +182,9 @@ mainLoop:
 			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
 		}
 	}
+
+	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
+
 	return nil
 }
 
