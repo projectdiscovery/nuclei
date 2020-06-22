@@ -189,12 +189,14 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	switch value := request.(type) {
 	case *requests.DNSRequest:
 		dnsExecutor = executor.NewDNSExecutor(&executor.DNSOptions{
+			Debug:      r.options.Debug,
 			Template:   template,
 			DNSRequest: value,
 			Writer:     writer,
 		})
 	case *requests.HTTPRequest:
 		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
+			Debug:         r.options.Debug,
 			Template:      template,
 			HTTPRequest:   value,
 			Writer:        writer,
