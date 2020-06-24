@@ -15,11 +15,11 @@ func (options *Options) validateOptions() error {
 	}
 
 	// Check if a list of resolvers was provided and it exists
-	if options.Templates == "" {
+	if options.Templates == "" && !options.UpdateTemplates {
 		return errors.New("no template/templates provided")
 	}
 
-	if options.Targets == "" && !options.Stdin {
+	if options.Targets == "" && !options.Stdin && !options.UpdateTemplates {
 		return errors.New("no target input provided")
 	}
 
