@@ -5,6 +5,9 @@ go 1.14
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/google/go-github/v32 v32.0.0
+	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.15.6
 	github.com/miekg/dns v1.1.29
 	github.com/pkg/errors v0.9.1
