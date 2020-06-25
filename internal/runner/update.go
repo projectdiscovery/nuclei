@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/google/go-github/v32/github"
@@ -60,13 +61,16 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	}
 
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
-	file, err := os.OpenFile(templatesConfigFile, os.O_RDWR|os.O_CREATE, 0777)
+	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	return jsoniter.NewEncoder(file).Encode(config)
+	if err = jsoniter.NewEncoder(file).Encode(config); err != nil {
+		return err
+	}
+	return nil
 }
 
 // updateTemplates checks if the default list of nuclei-templates
@@ -93,7 +97,7 @@ func (r *Runner) updateTemplates() error {
 	if r.templatesConfig == nil || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		if !r.options.UpdateTemplates {
 			gologger.Warningf("nuclei-templates are not installed, use update-templates flag.\n")
-			return err
+			return nil
 		}
 
 		// Use custom location if user has given a template directory
@@ -101,6 +105,7 @@ func (r *Runner) updateTemplates() error {
 			home = r.options.TemplatesDirectory
 		}
 		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
+		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
 
 		// Download the repository and also write the revision to a HEAD file.
 		version, asset, err := r.getLatestReleaseFromGithub()
@@ -118,7 +123,7 @@ func (r *Runner) updateTemplates() error {
 			return err
 		}
 
-		gologger.Infof("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", "update-templates", version.String())
+		gologger.Infof("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", version.String())
 		return nil
 	}
 
@@ -152,17 +157,20 @@ func (r *Runner) updateTemplates() error {
 		}
 		if r.options.TemplatesDirectory != "" {
 			home = r.options.TemplatesDirectory
+			r.templatesConfig.TemplatesDirectory = path.Join(home, "nuclei-templates")
 		}
+		r.templatesConfig.CurrentVersion = version.String()
+		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
+
 		gologger.Verbosef("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
 
 		if err = r.downloadReleaseAndUnzip(asset.GetZipballURL()); err != nil {
 			return err
 		}
-		r.templatesConfig.CurrentVersion = version.String()
 		if err = r.writeConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Infof("Successfully updated nuclei-templates (v%s). Enjoy!\n", "update-templates", version.String())
+		gologger.Infof("Successfully updated nuclei-templates (v%s). Enjoy!\n", version.String())
 	}
 	return nil
 }
@@ -242,8 +250,13 @@ func (r *Runner) downloadReleaseAndUnzip(downloadURL string) error {
 
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
+		if name == "" {
+			continue
+		}
+		paths := strings.Split(directory, "/")
+		finalPath := strings.Join(paths[1:], "/")
 
-		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, directory)
+		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		os.MkdirAll(templateDirectory, os.ModePerm)
 
 		f, err := os.Create(path.Join(templateDirectory, name))
