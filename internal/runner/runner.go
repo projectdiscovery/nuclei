@@ -23,7 +23,8 @@ type Runner struct {
 	output      *os.File
 	outputMutex *sync.Mutex
 
-	tempFile string
+	tempFile        string
+	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
 }
@@ -33,6 +34,13 @@ func New(options *Options) (*Runner, error) {
 	runner := &Runner{
 		outputMutex: &sync.Mutex{},
 		options:     options,
+	}
+
+	if err := runner.updateTemplates(); err != nil {
+		return nil, err
+	}
+	if (options.Templates == "" || options.Targets == "" && !options.Stdin) && options.UpdateTemplates {
+		os.Exit(0)
 	}
 
 	// If we have stdin, write it to a new file
