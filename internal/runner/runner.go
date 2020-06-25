@@ -39,7 +39,7 @@ func New(options *Options) (*Runner, error) {
 	if err := runner.updateTemplates(); err != nil {
 		return nil, err
 	}
-	if (options.Templates == "" || options.Targets == "" && !options.Stdin) && options.UpdateTemplates {
+	if (options.Templates == "" || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 
@@ -52,6 +52,16 @@ func New(options *Options) (*Runner, error) {
 		if _, err := io.Copy(tempInput, os.Stdin); err != nil {
 			return nil, err
 		}
+		runner.tempFile = tempInput.Name()
+		tempInput.Close()
+	}
+	// If we have single target, write it to a new file
+	if options.Target != "" {
+		tempInput, err := ioutil.TempFile("", "stdin-input-*")
+		if err != nil {
+			return nil, err
+		}
+		tempInput.WriteString(options.Target)
 		runner.tempFile = tempInput.Name()
 		tempInput.Close()
 	}
@@ -205,7 +215,7 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request in
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
 		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin {
+	} else if r.options.Stdin || r.options.Target != "" {
 		file, err = os.Open(r.tempFile)
 	}
 	if err != nil {
