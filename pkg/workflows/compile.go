@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"errors"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -19,6 +20,10 @@ func Parse(file string) (*Workflow, error) {
 	err = yaml.NewDecoder(f).Decode(workflow)
 	if err != nil {
 		return nil, err
+	}
+
+	if workflow.Logic == "" {
+		return nil, errors.New("No logic provided")
 	}
 
 	return workflow, nil
