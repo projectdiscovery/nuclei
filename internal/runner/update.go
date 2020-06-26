@@ -96,7 +96,7 @@ func (r *Runner) updateTemplates() error {
 
 	if r.templatesConfig == nil || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		if !r.options.UpdateTemplates {
-			gologger.Warningf("nuclei-templates are not installed, use update-templates flag.\n")
+			gologger.Labelf("nuclei-templates are not installed, use update-templates flag.\n")
 			return nil
 		}
 
@@ -147,12 +147,12 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Verbosef("Latest version of nuclei-templates installed: v%s\n", "update-templates", oldVersion.String())
+		gologger.Labelf("Latest version of nuclei-templates installed: v%s\n", oldVersion.String())
 		return nil
 	}
 	if version.GT(oldVersion) {
 		if !r.options.UpdateTemplates {
-			gologger.Warningf("You're using outdated nuclei-templates. Latest v%s\n", version.String())
+			gologger.Labelf("You're using outdated nuclei-templates. Latest v%s\n", version.String())
 			return nil
 		}
 		if r.options.TemplatesDirectory != "" {
