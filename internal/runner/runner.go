@@ -2,19 +2,23 @@ package runner
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/d5/tengo/v2"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/executor"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
+	"github.com/projectdiscovery/nuclei/pkg/workflows"
 )
 
 // Runner is a client for running the enumeration process.
@@ -76,6 +80,17 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
+	// handles a single workflow
+	if r.options.WorkflowFile != "" {
+		workflow, err := workflows.Parse(r.options.WorkflowFile)
+		if err != nil {
+			gologger.Errorf("Could not parse workflow file '%s': %s\n", r.options.WorkflowFile, err)
+			return
+		}
+		r.ProcessWorkflowWithList(workflow)
+		return
+	}
+
 	// If the template path is a single template and not a glob, use that.
 	if !strings.Contains(r.options.Templates, "*") && strings.HasSuffix(r.options.Templates, ".yaml") {
 		template, err := templates.ParseTemplate(r.options.Templates)
@@ -278,10 +293,10 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			var err error
 
 			if httpExecutor != nil {
-				err = httpExecutor.ExecuteHTTP(text)
+				err = httpExecutor.ExecuteHTTP(URL)
 			}
 			if dnsExecutor != nil {
-				err = dnsExecutor.ExecuteDNS(text)
+				err = dnsExecutor.ExecuteDNS(URL)
 			}
 			if err != nil {
 				gologger.Warningf("Could not execute step: %s\n", err)
@@ -304,4 +319,69 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		}
 	}
 	return results
+}
+
+// ProcessWorkflowWithList coming from stdin or list of targets
+func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
+	var file *os.File
+	var err error
+	// Handle a list of hosts as argument
+	if r.options.Targets != "" {
+		file, err = os.Open(r.options.Targets)
+	} else if r.options.Stdin {
+		file, err = os.Open(r.tempFile)
+	}
+	if err != nil {
+		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		r.ProcessWorkflow(workflow, text)
+	}
+}
+
+// ProcessWorkflow towards an URL
+func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
+	script := tengo.NewScript([]byte(workflow.Logic))
+	for name, value := range workflow.Variables {
+		var writer *bufio.Writer
+		if r.output != nil {
+			writer = bufio.NewWriter(r.output)
+			defer writer.Flush()
+		}
+		templatePath := path.Join(r.options.TemplatesDirectory, value)
+		template, err := templates.ParseTemplate(templatePath)
+		if err != nil {
+			gologger.Errorf("Could not parse template file '%s': %s\n", value, err)
+			return err
+		}
+
+		httpOptions := &executor.HTTPOptions{
+			Debug:         r.options.Debug,
+			Writer:        writer,
+			Template:      template,
+			Timeout:       r.options.Timeout,
+			Retries:       r.options.Retries,
+			ProxyURL:      r.options.ProxyURL,
+			ProxySocksURL: r.options.ProxySocksURL,
+			CustomHeaders: r.options.CustomHeaders,
+		}
+		script.Add(name, &workflows.NucleiVar{Options: httpOptions, URL: URL})
+	}
+
+	_, err := script.RunContext(context.Background())
+	if err != nil {
+		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
+		return err
+	}
+
+	// OUTPUT - TODO - Any suggestion?
+
+	return nil
 }
