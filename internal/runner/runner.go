@@ -375,7 +375,12 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 			ProxySocksURL: r.options.ProxySocksURL,
 			CustomHeaders: r.options.CustomHeaders,
 		}
-		script.Add(name, &workflows.NucleiVar{Options: httpOptions, URL: URL})
+		dnsOptions := &executor.DNSOptions{
+			Debug:    r.options.Debug,
+			Template: template,
+			Writer:   writer,
+		}
+		script.Add(name, &workflows.NucleiVar{HTTPOptions: httpOptions, DNSOptions: dnsOptions, URL: URL})
 	}
 
 	_, err := script.RunContext(context.Background())
@@ -383,8 +388,6 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 		return err
 	}
-
-	// OUTPUT - TODO - Any suggestion?
 
 	return nil
 }
