@@ -14,13 +14,16 @@ func (options *Options) validateOptions() error {
 		return errors.New("both verbose and silent mode specified")
 	}
 
-	// Check if a list of resolvers was provided and it exists
-	if options.Templates == "" && !options.UpdateTemplates {
-		return errors.New("no template/templates provided")
-	}
+	// Workflow needs to bypass the classical input checks
+	if options.WorkflowFile == "" {
+		// Check if a list of templates was provided and it exists
+		if options.Templates == "" && !options.UpdateTemplates {
+			return errors.New("no template/templates provided")
+		}
 
-	if options.Targets == "" && !options.Stdin && !options.UpdateTemplates {
-		return errors.New("no target input provided")
+		if options.Targets == "" && !options.Stdin && !options.UpdateTemplates {
+			return errors.New("no target input provided")
+		}
 	}
 
 	// Validate proxy options if provided
