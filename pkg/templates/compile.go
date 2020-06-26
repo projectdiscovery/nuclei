@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -20,10 +21,13 @@ func ParseTemplate(file string) (*Template, error) {
 
 	err = yaml.NewDecoder(f).Decode(template)
 	if err != nil {
-		f.Close()
 		return nil, err
 	}
-	f.Close()
+	defer f.Close()
+
+	if len(template.RequestsHTTP)+len(template.RequestsDNS) <= 0 {
+		return nil, errors.New("No requests defined")
+	}
 
 	// Compile the matchers and the extractors for http requests
 	for _, request := range template.RequestsHTTP {
