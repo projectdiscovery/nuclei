@@ -3,12 +3,43 @@ package executor
 import (
 	"strings"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 )
 
 // writeOutputDNS writes dns output to streams
 func (e *DNSExecutor) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
+	if e.jsonOutput {
+		output := jsonOutput{
+			Template: e.template.ID,
+			Type:     "dns",
+			Matched:  domain,
+			Severity: e.template.Info.Severity,
+			Author:   e.template.Info.Author,
+		}
+		if matcher != nil && len(matcher.Name) > 0 {
+			output.MatcherName = matcher.Name
+		}
+		if len(extractorResults) > 0 {
+			output.ExtractedResults = extractorResults
+		}
+		data, err := jsoniter.Marshal(output)
+		if err != nil {
+			gologger.Warningf("Could not marshal json output: %s\n", err)
+		}
+
+		gologger.Silentf("%s", string(data))
+
+		if e.writer != nil {
+			e.outputMutex.Lock()
+			e.writer.Write(data)
+			e.writer.WriteRune('\n')
+			e.outputMutex.Unlock()
+		}
+		return
+	}
+
 	builder := &strings.Builder{}
 	builder.WriteRune('[')
 	builder.WriteString(e.template.ID)
