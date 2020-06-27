@@ -53,7 +53,7 @@ func ParseOptions() *Options {
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
-	flag.StringVar(&options.TemplatesDirectory, "templates-directory", "", "Directory to use for storing nuclei-templates")
+	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 
 	flag.Parse()
