@@ -253,6 +253,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			Template:   template,
 			DNSRequest: value,
 			Writer:     writer,
+			JSON:       r.options.JSON,
 		})
 	case *requests.HTTPRequest:
 		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
@@ -265,6 +266,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			ProxyURL:      r.options.ProxyURL,
 			ProxySocksURL: r.options.ProxySocksURL,
 			CustomHeaders: r.options.CustomHeaders,
+			JSON:          r.options.JSON,
 		})
 	}
 	if err != nil {

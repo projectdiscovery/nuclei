@@ -28,6 +28,7 @@ type Options struct {
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	JSON               bool                   // JSON writes json output to files
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -53,6 +54,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
 	flag.StringVar(&options.TemplatesDirectory, "templates-directory", "", "Directory to use for storing nuclei-templates")
+	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 
 	flag.Parse()
 
