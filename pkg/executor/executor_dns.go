@@ -19,6 +19,7 @@ import (
 // for a template.
 type DNSExecutor struct {
 	debug       bool
+	jsonOutput  bool
 	results     uint32
 	dnsClient   *retryabledns.Client
 	template    *templates.Template
@@ -38,6 +39,7 @@ var DefaultResolvers = []string{
 // DNSOptions contains configuration options for the DNS executor.
 type DNSOptions struct {
 	Debug      bool
+	JSON       bool
 	Template   *templates.Template
 	DNSRequest *requests.DNSRequest
 	Writer     *bufio.Writer
@@ -50,6 +52,7 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 
 	executer := &DNSExecutor{
 		debug:       options.Debug,
+		jsonOutput:  options.JSON,
 		results:     0,
 		dnsClient:   dnsClient,
 		template:    options.Template,
