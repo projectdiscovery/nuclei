@@ -30,6 +30,7 @@ import (
 type HTTPExecutor struct {
 	debug         bool
 	results       uint32
+	jsonOutput    bool
 	httpClient    *retryablehttp.Client
 	template      *templates.Template
 	httpRequest   *requests.HTTPRequest
@@ -48,6 +49,7 @@ type HTTPOptions struct {
 	ProxyURL      string
 	ProxySocksURL string
 	Debug         bool
+	JSON          bool
 	CustomHeaders requests.CustomHeaders
 }
 
@@ -70,6 +72,7 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 
 	executer := &HTTPExecutor{
 		debug:         options.Debug,
+		jsonOutput:    options.JSON,
 		results:       0,
 		httpClient:    client,
 		template:      options.Template,
