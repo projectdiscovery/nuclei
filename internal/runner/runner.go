@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -86,8 +85,20 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
-	// If the template path is a single template and not a glob, use that.
-	if !strings.Contains(r.options.Templates, "*") && strings.HasSuffix(r.options.Templates, ".yaml") {
+	var err error
+
+	// Check if the template is an absolute path or relative path.
+	// If the path is absolute, use it. Otherwise,
+	if r.isRelative(r.options.Templates) {
+		r.options.Templates, err = r.resolvePath(r.options.Templates)
+		if err != nil {
+			gologger.Errorf("Could not find template file '%s': %s\n", r.options.Templates, err)
+			return
+		}
+	}
+
+	// If the template path is a single template and not a folder, use that.
+	if strings.HasSuffix(r.options.Templates, ".yaml") {
 		template, err := templates.ParseTemplate(r.options.Templates)
 		if err != nil {
 			gologger.Errorf("Could not parse template file '%s': %s\n", r.options.Templates, err)
@@ -116,48 +127,11 @@ func (r *Runner) RunEnumeration() {
 		}
 		return
 	}
-	// If the template path is glob
-	if strings.Contains(r.options.Templates, "*") {
-		// Handle the glob, evaluate it and run all the template file checks
-		matches, err := filepath.Glob(r.options.Templates)
-		if err != nil {
-			gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
-		}
-
-		var results bool
-		for _, match := range matches {
-			template, err := templates.ParseTemplate(match)
-			if err != nil {
-				gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
-				return
-			}
-			for _, request := range template.RequestsDNS {
-				dnsResults := r.processTemplateRequest(template, request)
-				if dnsResults {
-					results = dnsResults
-				}
-			}
-			for _, request := range template.RequestsHTTP {
-				httpResults := r.processTemplateRequest(template, request)
-				if httpResults {
-					results = httpResults
-				}
-			}
-		}
-		if !results {
-			if r.output != nil {
-				outputFile := r.output.Name()
-				r.output.Close()
-				os.Remove(outputFile)
-			}
-			gologger.Infof("No results found for the templates. Happy hacking!")
-		}
-		return
-	}
 	// If the template passed is a directory
 	matches := []string{}
+
 	// Recursively walk down the Templates directory and run all the template file checks
-	err := godirwalk.Walk(r.options.Templates, &godirwalk.Options{
+	err = godirwalk.Walk(r.options.Templates, &godirwalk.Options{
 		Callback: func(path string, d *godirwalk.Dirent) error {
 			if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 				matches = append(matches, path)
@@ -176,6 +150,7 @@ func (r *Runner) RunEnumeration() {
 	if len(matches) == 0 {
 		gologger.Fatalf("Error, no templates found in directory: '%s'\n", r.options.Templates)
 	}
+
 	var results bool
 	for _, match := range matches {
 		template, err := templates.ParseTemplate(match)
