@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -43,7 +42,7 @@ func New(options *Options) (*Runner, error) {
 	if err := runner.updateTemplates(); err != nil {
 		return nil, err
 	}
-	if (options.Templates == "" || options.Targets == "" && !options.Stdin) && options.UpdateTemplates {
+	if (options.Templates == "" || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 
@@ -56,6 +55,16 @@ func New(options *Options) (*Runner, error) {
 		if _, err := io.Copy(tempInput, os.Stdin); err != nil {
 			return nil, err
 		}
+		runner.tempFile = tempInput.Name()
+		tempInput.Close()
+	}
+	// If we have single target, write it to a new file
+	if options.Target != "" {
+		tempInput, err := ioutil.TempFile("", "stdin-input-*")
+		if err != nil {
+			return nil, err
+		}
+		tempInput.WriteString(options.Target)
 		runner.tempFile = tempInput.Name()
 		tempInput.Close()
 	}
@@ -80,22 +89,37 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
+	var err error
+
+	// Check if the template is an absolute path or relative path.
+	// If the path is absolute, use it. Otherwise,
+	if r.isRelative(r.options.Templates) {
+		r.options.Templates, err = r.resolvePath(r.options.Templates)
+		if err != nil {
+			gologger.Errorf("Could not find template file '%s': %s\n", r.options.Templates, err)
+			return
+		}
+	}
+
 	// Single yaml provided
-	if !strings.Contains(r.options.Templates, "*") && strings.HasSuffix(r.options.Templates, ".yaml") {
+	if strings.HasSuffix(r.options.Templates, ".yaml") {
 		t := r.parse(r.options.Templates)
 		switch t.(type) {
 		case *templates.Template:
-			results := false
+			var results bool
 			template := t.(*templates.Template)
+			// process http requests
 			for _, request := range template.RequestsHTTP {
 				results = r.processTemplateRequest(template, request)
 			}
+			// process dns requests
 			for _, request := range template.RequestsDNS {
 				dnsResults := r.processTemplateRequest(template, request)
 				if !results {
 					results = dnsResults
 				}
 			}
+
 			if !results {
 				if r.output != nil {
 					outputFile := r.output.Name()
@@ -113,53 +137,11 @@ func (r *Runner) RunEnumeration() {
 		return
 	}
 
-	// If the template path is glob
-	if strings.Contains(r.options.Templates, "*") {
-		// Handle the glob, evaluate it and run all the template file checks
-		matches, err := filepath.Glob(r.options.Templates)
-		if err != nil {
-			gologger.Fatalf("Could not evaluate template path '%s': %s\n", r.options.Templates, err)
-		}
-
-		var results bool
-		for _, match := range matches {
-			t := r.parse(match)
-			switch t.(type) {
-			case *templates.Template:
-				template := t.(*templates.Template)
-				for _, request := range template.RequestsDNS {
-					dnsResults := r.processTemplateRequest(template, request)
-					if dnsResults {
-						results = dnsResults
-					}
-				}
-				for _, request := range template.RequestsHTTP {
-					httpResults := r.processTemplateRequest(template, request)
-					if httpResults {
-						results = httpResults
-					}
-				}
-			case *workflows.Workflow:
-				workflow := t.(*workflows.Workflow)
-				r.ProcessWorkflowWithList(workflow)
-			default:
-				gologger.Errorf("Could not parse file '%s'\n", r.options.Templates)
-			}
-		}
-		if !results {
-			if r.output != nil {
-				outputFile := r.output.Name()
-				r.output.Close()
-				os.Remove(outputFile)
-			}
-			gologger.Infof("No results found for the templates. Happy hacking!")
-		}
-		return
-	}
 	// If the template passed is a directory
 	matches := []string{}
+
 	// Recursively walk down the Templates directory and run all the template file checks
-	err := godirwalk.Walk(r.options.Templates, &godirwalk.Options{
+	err = godirwalk.Walk(r.options.Templates, &godirwalk.Options{
 		Callback: func(path string, d *godirwalk.Dirent) error {
 			if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 				matches = append(matches, path)
@@ -178,13 +160,13 @@ func (r *Runner) RunEnumeration() {
 	if len(matches) == 0 {
 		gologger.Fatalf("Error, no templates found in directory: '%s'\n", r.options.Templates)
 	}
+
 	var results bool
 	for _, match := range matches {
 		t := r.parse(match)
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
-
 			for _, request := range template.RequestsDNS {
 				dnsResults := r.processTemplateRequest(template, request)
 				if dnsResults {
@@ -223,7 +205,7 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request in
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
 		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin {
+	} else if r.options.Stdin || r.options.Target != "" {
 		file, err = os.Open(r.tempFile)
 	}
 	if err != nil {
@@ -261,6 +243,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			Template:   template,
 			DNSRequest: value,
 			Writer:     writer,
+			JSON:       r.options.JSON,
 		})
 	case *requests.HTTPRequest:
 		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
@@ -273,6 +256,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			ProxyURL:      r.options.ProxyURL,
 			ProxySocksURL: r.options.ProxySocksURL,
 			CustomHeaders: r.options.CustomHeaders,
+			JSON:          r.options.JSON,
 		})
 	}
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 type Options struct {
 	Debug              bool                   // Debug mode allows debugging request/responses for the engine
 	Templates          string                 // Signature specifies the template/templates to use
+	Target             string                 // Target is a single URL/Domain to scan usng a template
 	Targets            string                 // Targets specifies the targets to scan using templates.
 	Threads            int                    // Thread controls the number of concurrent requests to make.
 	Timeout            int                    // Timeout is the seconds to wait for a response from the server.
@@ -27,6 +28,7 @@ type Options struct {
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	JSON               bool                   // JSON writes json output to files
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -35,6 +37,7 @@ type Options struct {
 func ParseOptions() *Options {
 	options := &Options{}
 
+	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
 	flag.StringVar(&options.Templates, "t", "", "Template input file/files to run on host")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
@@ -50,7 +53,8 @@ func ParseOptions() *Options {
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
-	flag.StringVar(&options.TemplatesDirectory, "templates-directory", "", "Directory to use for storing nuclei-templates")
+	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
+	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 
 	flag.Parse()
 

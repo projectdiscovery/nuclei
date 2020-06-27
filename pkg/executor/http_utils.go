@@ -6,6 +6,16 @@ import (
 	"unsafe"
 )
 
+type jsonOutput struct {
+	Template         string   `json:"template"`
+	Type             string   `json:"type"`
+	Matched          string   `json:"matched"`
+	MatcherName      string   `json:"matcher_name,omitempty"`
+	ExtractedResults []string `json:"extracted_results,omitempty"`
+	Severity         string   `json:"severity"`
+	Author           string   `json:"author"`
+}
+
 // unsafeToString converts byte slice to string with zero allocations
 func unsafeToString(bs []byte) string {
 	return *(*string)(unsafe.Pointer(&bs))

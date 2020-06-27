@@ -3,6 +3,7 @@ package executor
 import (
 	"strings"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
@@ -10,6 +11,38 @@ import (
 
 // writeOutputHTTP writes http output to streams
 func (e *HTTPExecutor) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matchers.Matcher, extractorResults []string) {
+	URL := req.Request.URL.String()
+
+	if e.jsonOutput {
+		output := jsonOutput{
+			Template: e.template.ID,
+			Type:     "http",
+			Matched:  URL,
+			Severity: e.template.Info.Severity,
+			Author:   e.template.Info.Author,
+		}
+		if matcher != nil && len(matcher.Name) > 0 {
+			output.MatcherName = matcher.Name
+		}
+		if len(extractorResults) > 0 {
+			output.ExtractedResults = extractorResults
+		}
+		data, err := jsoniter.Marshal(output)
+		if err != nil {
+			gologger.Warningf("Could not marshal json output: %s\n", err)
+		}
+
+		gologger.Silentf("%s", string(data))
+
+		if e.writer != nil {
+			e.outputMutex.Lock()
+			e.writer.Write(data)
+			e.writer.WriteRune('\n')
+			e.outputMutex.Unlock()
+		}
+		return
+	}
+
 	builder := &strings.Builder{}
 
 	builder.WriteRune('[')
@@ -21,7 +54,6 @@ func (e *HTTPExecutor) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matc
 	builder.WriteString("] [http] ")
 
 	// Escape the URL by replacing all % with %%
-	URL := req.Request.URL.String()
 	escapedURL := strings.Replace(URL, "%", "%%", -1)
 	builder.WriteString(escapedURL)
 
