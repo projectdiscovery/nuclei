@@ -134,7 +134,7 @@ or download it from [nuclei templates](https://github.com/projectdiscovery/nucle
 This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
 
 ```bash
-> nuclei -l urls.txt -t git-core.yaml -o results.txt
+> nuclei -l urls.txt -t files/git-core.yaml -o results.txt
 ```
 
 You can also pass the list of hosts at standard input (STDIN). This allows for easy integration in automation pipelines.
@@ -142,7 +142,7 @@ You can also pass the list of hosts at standard input (STDIN). This allows for e
 This will run the tool against all the hosts in `urls.txt` and returns the matched results. 
 
 ```bash
-> cat urls.txt | nuclei -t git-core.yaml -o results.txt
+> cat urls.txt | nuclei -t files/git-core.yaml -o results.txt
 ```
 
 ### 2. Running nuclei with multiple templates. 
@@ -150,17 +150,19 @@ This will run the tool against all the hosts in `urls.txt` and returns the match
 This will run the tool against all the hosts in `urls.txt` with all the templates in the `path-to-templates` directory and returns the matched results. 
 
 ```bash
-> nuclei -l urls.txt -t nuclei-templates/cves/ -o results.txt 
+> nuclei -l urls.txt -t cves/ -o results.txt 
 ```
 
 ### 3. Automating nuclei with subfinder and any other similar tool.
 
 
 ```bash
-> subfinder -d hackerone.com -silent | httpx -silent | nuclei -t nuclei-templates/cves/ -o results.txt
+> subfinder -d hackerone.com -silent | httpx -silent | nuclei -t cves/ -o results.txt
 ```
 
-Nuclei supports glob expression ending in `.yaml` meaning multiple templates can be easily passed to be executed one after the other. Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.
+-------
+
+**Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.**
 
 
 # Thanks
