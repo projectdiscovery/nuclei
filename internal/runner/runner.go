@@ -3,11 +3,11 @@ package runner
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 	"sync"
 
@@ -94,11 +94,12 @@ func (r *Runner) RunEnumeration() {
 	// Check if the template is an absolute path or relative path.
 	// If the path is absolute, use it. Otherwise,
 	if r.isRelative(r.options.Templates) {
-		r.options.Templates, err = r.resolvePath(r.options.Templates)
+		newPath, err := r.resolvePath(r.options.Templates)
 		if err != nil {
 			gologger.Errorf("Could not find template file '%s': %s\n", r.options.Templates, err)
 			return
 		}
+		r.options.Templates = newPath
 	}
 
 	// Single yaml provided
@@ -329,42 +330,116 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 		if text == "" {
 			continue
 		}
-		r.ProcessWorkflow(workflow, text)
+		if err := r.ProcessWorkflow(workflow, text); err != nil {
+			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+		}
 	}
 }
 
 // ProcessWorkflow towards an URL
 func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
+
 	for name, value := range workflow.Variables {
 		var writer *bufio.Writer
 		if r.output != nil {
 			writer = bufio.NewWriter(r.output)
 			defer writer.Flush()
 		}
-		templatePath := path.Join(r.options.TemplatesDirectory, value)
-		template, err := templates.ParseTemplate(templatePath)
-		if err != nil {
-			gologger.Errorf("Could not parse template file '%s': %s\n", value, err)
-			return err
+
+		// Check if the template is an absolute path or relative path.
+		// If the path is absolute, use it. Otherwise,
+		if r.isRelative(value) {
+			newPath, err := r.resolvePath(value)
+			if err != nil {
+				return err
+			}
+			value = newPath
 		}
 
-		httpOptions := &executor.HTTPOptions{
-			Debug:         r.options.Debug,
-			Writer:        writer,
-			Template:      template,
-			Timeout:       r.options.Timeout,
-			Retries:       r.options.Retries,
-			ProxyURL:      r.options.ProxyURL,
-			ProxySocksURL: r.options.ProxySocksURL,
-			CustomHeaders: r.options.CustomHeaders,
+		// Single yaml provided
+		var templatesList []*workflows.Template
+		if strings.HasSuffix(value, ".yaml") {
+			t, err := templates.Parse(value)
+			if err != nil {
+				return err
+			}
+			template := &workflows.Template{}
+			if len(t.RequestsHTTP) > 0 {
+				template.HTTPOptions = &executor.HTTPOptions{
+					Debug:         r.options.Debug,
+					Writer:        writer,
+					Template:      t,
+					Timeout:       r.options.Timeout,
+					Retries:       r.options.Retries,
+					ProxyURL:      r.options.ProxyURL,
+					ProxySocksURL: r.options.ProxySocksURL,
+					CustomHeaders: r.options.CustomHeaders,
+				}
+			} else if len(t.RequestsDNS) > 0 {
+				template.DNSOptions = &executor.DNSOptions{
+					Debug:    r.options.Debug,
+					Template: t,
+					Writer:   writer,
+				}
+			}
+			if template.DNSOptions != nil || template.HTTPOptions != nil {
+				templatesList = append(templatesList, template)
+			}
+		} else {
+			matches := []string{}
+
+			err := godirwalk.Walk(value, &godirwalk.Options{
+				Callback: func(path string, d *godirwalk.Dirent) error {
+					if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
+						matches = append(matches, path)
+					}
+					return nil
+				},
+				ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+					return godirwalk.SkipNode
+				},
+				Unsorted: true,
+			})
+			if err != nil {
+				return err
+			}
+			// 0 matches means no templates were found in directory
+			if len(matches) == 0 {
+				return errors.New("no match found in the directory")
+			}
+
+			for _, match := range matches {
+				t, err := templates.Parse(match)
+				if err != nil {
+					return err
+				}
+				template := &workflows.Template{}
+				if len(t.RequestsHTTP) > 0 {
+					template.HTTPOptions = &executor.HTTPOptions{
+						Debug:         r.options.Debug,
+						Writer:        writer,
+						Template:      t,
+						Timeout:       r.options.Timeout,
+						Retries:       r.options.Retries,
+						ProxyURL:      r.options.ProxyURL,
+						ProxySocksURL: r.options.ProxySocksURL,
+						CustomHeaders: r.options.CustomHeaders,
+					}
+				} else if len(t.RequestsDNS) > 0 {
+					template.DNSOptions = &executor.DNSOptions{
+						Debug:    r.options.Debug,
+						Template: t,
+						Writer:   writer,
+					}
+				}
+				if template.DNSOptions != nil || template.HTTPOptions != nil {
+					templatesList = append(templatesList, template)
+				}
+			}
 		}
-		dnsOptions := &executor.DNSOptions{
-			Debug:    r.options.Debug,
-			Template: template,
-			Writer:   writer,
-		}
-		script.Add(name, &workflows.NucleiVar{HTTPOptions: httpOptions, DNSOptions: dnsOptions, URL: URL})
+
+		script.Add(name, &workflows.NucleiVar{Templates: templatesList, URL: URL})
 	}
 
 	_, err := script.RunContext(context.Background())
@@ -372,13 +447,12 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 		return err
 	}
-
 	return nil
 }
 
 func (r *Runner) parse(file string) interface{} {
 	// check if it's a template
-	template, errTemplate := templates.ParseTemplate(r.options.Templates)
+	template, errTemplate := templates.Parse(r.options.Templates)
 	if errTemplate == nil {
 		return template
 	}
@@ -388,6 +462,5 @@ func (r *Runner) parse(file string) interface{} {
 	if errWorkflow == nil {
 		return workflow
 	}
-
 	return nil
 }

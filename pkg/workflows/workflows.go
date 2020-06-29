@@ -1,6 +1,6 @@
 package workflows
 
-// Workflow is workflow parsed from a yaml file
+// Workflow is a workflow to execute with chained requests, etc.
 type Workflow struct {
 	// ID is the unique id for the template
 	ID string `yaml:"id"`
@@ -18,4 +18,6 @@ type Info struct {
 	Name string `yaml:"name"`
 	// Author is the name of the author of the workflow
 	Author string `yaml:"author"`
+	// Severity optionally describes the severity of the template
+	Severity string `yaml:"severity,omitempty"`
 }
