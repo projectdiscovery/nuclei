@@ -10,8 +10,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ParseTemplate parses a yaml request template file
-func ParseTemplate(file string) (*Template, error) {
+// Parse parses a yaml request template file
+func Parse(file string) (*Template, error) {
 	template := &Template{}
 
 	f, err := os.Open(file)
@@ -25,6 +25,7 @@ func ParseTemplate(file string) (*Template, error) {
 	}
 	defer f.Close()
 
+	// If no requests, and it is also not a workflow, return error.
 	if len(template.RequestsHTTP)+len(template.RequestsDNS) <= 0 {
 		return nil, errors.New("No requests defined")
 	}

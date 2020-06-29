@@ -2,15 +2,21 @@ package workflows
 
 import (
 	"github.com/d5/tengo/v2"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/executor"
 )
 
 // NucleiVar within the scripting engine
 type NucleiVar struct {
 	tengo.ObjectImpl
+	Templates []*Template
+	URL       string
+}
+
+// Template contains HTTPOptions and DNSOptions for a single template
+type Template struct {
 	HTTPOptions *executor.HTTPOptions
 	DNSOptions  *executor.DNSOptions
-	URL         string
 }
 
 // TypeName of the variable
@@ -25,34 +31,45 @@ func (n *NucleiVar) CanCall() bool {
 
 // Call logic - actually it doesn't require arguments
 func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
-	for _, request := range n.HTTPOptions.Template.RequestsHTTP {
-		n.HTTPOptions.HTTPRequest = request
-		httpExecutor, err := executor.NewHTTPExecutor(n.HTTPOptions)
-		if err != nil {
-			return nil, err
-		}
-		err = httpExecutor.ExecuteHTTP(n.URL)
-		if err != nil {
-			return nil, err
-		}
-		if httpExecutor.GotResults() {
-			return tengo.TrueValue, nil
-		}
-		return tengo.FalseValue, nil
-	}
+	var gotResult bool
 
-	for _, request := range n.DNSOptions.Template.RequestsDNS {
-		n.DNSOptions.DNSRequest = request
-		dnsExecutor := executor.NewDNSExecutor(n.DNSOptions)
-		err = dnsExecutor.ExecuteDNS(n.URL)
-		if err != nil {
-			return nil, err
+	for _, template := range n.Templates {
+		if template.HTTPOptions != nil {
+			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
+				template.HTTPOptions.HTTPRequest = request
+				httpExecutor, err := executor.NewHTTPExecutor(template.HTTPOptions)
+				if err != nil {
+					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+					continue
+				}
+				err = httpExecutor.ExecuteHTTP(n.URL)
+				if err != nil {
+					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+					continue
+				}
+				if httpExecutor.GotResults() {
+					gotResult = true
+				}
+			}
 		}
-		if dnsExecutor.GotResults() {
-			return tengo.TrueValue, nil
-		}
-		return tengo.FalseValue, nil
-	}
 
-	return nil, nil
+		if template.DNSOptions != nil {
+			for _, request := range template.DNSOptions.Template.RequestsDNS {
+				template.DNSOptions.DNSRequest = request
+				dnsExecutor := executor.NewDNSExecutor(template.DNSOptions)
+				err = dnsExecutor.ExecuteDNS(n.URL)
+				if err != nil {
+					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+					continue
+				}
+				if dnsExecutor.GotResults() {
+					gotResult = true
+				}
+			}
+		}
+	}
+	if gotResult {
+		return tengo.TrueValue, nil
+	}
+	return tengo.FalseValue, nil
 }
