@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,11 +11,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/d5/tengo/v2"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/pkg/executor"
 	"github.com/projectdiscovery/nuclei/pkg/requests"
 	"github.com/projectdiscovery/nuclei/pkg/templates"
+	"github.com/projectdiscovery/nuclei/pkg/workflows"
 )
 
 // Runner is a client for running the enumeration process.
@@ -90,43 +94,50 @@ func (r *Runner) RunEnumeration() {
 	// Check if the template is an absolute path or relative path.
 	// If the path is absolute, use it. Otherwise,
 	if r.isRelative(r.options.Templates) {
-		r.options.Templates, err = r.resolvePath(r.options.Templates)
+		newPath, err := r.resolvePath(r.options.Templates)
 		if err != nil {
 			gologger.Errorf("Could not find template file '%s': %s\n", r.options.Templates, err)
 			return
 		}
+		r.options.Templates = newPath
 	}
 
-	// If the template path is a single template and not a folder, use that.
+	// Single yaml provided
 	if strings.HasSuffix(r.options.Templates, ".yaml") {
-		template, err := templates.ParseTemplate(r.options.Templates)
-		if err != nil {
-			gologger.Errorf("Could not parse template file '%s': %s\n", r.options.Templates, err)
-			return
-		}
+		t := r.parse(r.options.Templates)
+		switch t.(type) {
+		case *templates.Template:
+			var results bool
+			template := t.(*templates.Template)
+			// process http requests
+			for _, request := range template.RequestsHTTP {
+				results = r.processTemplateRequest(template, request)
+			}
+			// process dns requests
+			for _, request := range template.RequestsDNS {
+				dnsResults := r.processTemplateRequest(template, request)
+				if !results {
+					results = dnsResults
+				}
+			}
 
-		// process http requests
-		var results bool
-		for _, request := range template.RequestsHTTP {
-			results = r.processTemplateRequest(template, request)
-		}
-		// process dns requests
-		for _, request := range template.RequestsDNS {
-			dnsResults := r.processTemplateRequest(template, request)
 			if !results {
-				results = dnsResults
+				if r.output != nil {
+					outputFile := r.output.Name()
+					r.output.Close()
+					os.Remove(outputFile)
+				}
+				gologger.Infof("No results found for the template. Happy hacking!")
 			}
-		}
-		if !results {
-			if r.output != nil {
-				outputFile := r.output.Name()
-				r.output.Close()
-				os.Remove(outputFile)
-			}
-			gologger.Infof("No results found for the template. Happy hacking!")
+		case *workflows.Workflow:
+			workflow := t.(*workflows.Workflow)
+			r.ProcessWorkflowWithList(workflow)
+		default:
+			gologger.Errorf("Could not parse file '%s'\n", r.options.Templates)
 		}
 		return
 	}
+
 	// If the template passed is a directory
 	matches := []string{}
 
@@ -153,22 +164,27 @@ func (r *Runner) RunEnumeration() {
 
 	var results bool
 	for _, match := range matches {
-		template, err := templates.ParseTemplate(match)
-		if err != nil {
-			gologger.Errorf("Could not parse template file '%s': %s\n", match, err)
-			return
-		}
-		for _, request := range template.RequestsDNS {
-			dnsResults := r.processTemplateRequest(template, request)
-			if dnsResults {
-				results = dnsResults
+		t := r.parse(match)
+		switch t.(type) {
+		case *templates.Template:
+			template := t.(*templates.Template)
+			for _, request := range template.RequestsDNS {
+				dnsResults := r.processTemplateRequest(template, request)
+				if dnsResults {
+					results = dnsResults
+				}
 			}
-		}
-		for _, request := range template.RequestsHTTP {
-			httpResults := r.processTemplateRequest(template, request)
-			if httpResults {
-				results = httpResults
+			for _, request := range template.RequestsHTTP {
+				httpResults := r.processTemplateRequest(template, request)
+				if httpResults {
+					results = httpResults
+				}
 			}
+		case *workflows.Workflow:
+			workflow := t.(*workflows.Workflow)
+			r.ProcessWorkflowWithList(workflow)
+		default:
+			gologger.Errorf("Could not parse file '%s'\n", r.options.Templates)
 		}
 	}
 	if !results {
@@ -265,10 +281,10 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			var err error
 
 			if httpExecutor != nil {
-				err = httpExecutor.ExecuteHTTP(text)
+				err = httpExecutor.ExecuteHTTP(URL)
 			}
 			if dnsExecutor != nil {
-				err = dnsExecutor.ExecuteDNS(text)
+				err = dnsExecutor.ExecuteDNS(URL)
 			}
 			if err != nil {
 				gologger.Warningf("Could not execute step: %s\n", err)
@@ -291,4 +307,160 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		}
 	}
 	return results
+}
+
+// ProcessWorkflowWithList coming from stdin or list of targets
+func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
+	var file *os.File
+	var err error
+	// Handle a list of hosts as argument
+	if r.options.Targets != "" {
+		file, err = os.Open(r.options.Targets)
+	} else if r.options.Stdin {
+		file, err = os.Open(r.tempFile)
+	}
+	if err != nil {
+		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		if err := r.ProcessWorkflow(workflow, text); err != nil {
+			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+		}
+	}
+}
+
+// ProcessWorkflow towards an URL
+func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
+	script := tengo.NewScript([]byte(workflow.Logic))
+
+	for name, value := range workflow.Variables {
+		var writer *bufio.Writer
+		if r.output != nil {
+			writer = bufio.NewWriter(r.output)
+			defer writer.Flush()
+		}
+
+		// Check if the template is an absolute path or relative path.
+		// If the path is absolute, use it. Otherwise,
+		if r.isRelative(value) {
+			newPath, err := r.resolvePath(value)
+			if err != nil {
+				return err
+			}
+			value = newPath
+		}
+
+		// Single yaml provided
+		var templatesList []*workflows.Template
+		if strings.HasSuffix(value, ".yaml") {
+			t, err := templates.Parse(value)
+			if err != nil {
+				return err
+			}
+			template := &workflows.Template{}
+			if len(t.RequestsHTTP) > 0 {
+				template.HTTPOptions = &executor.HTTPOptions{
+					Debug:         r.options.Debug,
+					Writer:        writer,
+					Template:      t,
+					Timeout:       r.options.Timeout,
+					Retries:       r.options.Retries,
+					ProxyURL:      r.options.ProxyURL,
+					ProxySocksURL: r.options.ProxySocksURL,
+					CustomHeaders: r.options.CustomHeaders,
+				}
+			} else if len(t.RequestsDNS) > 0 {
+				template.DNSOptions = &executor.DNSOptions{
+					Debug:    r.options.Debug,
+					Template: t,
+					Writer:   writer,
+				}
+			}
+			if template.DNSOptions != nil || template.HTTPOptions != nil {
+				templatesList = append(templatesList, template)
+			}
+		} else {
+			matches := []string{}
+
+			err := godirwalk.Walk(value, &godirwalk.Options{
+				Callback: func(path string, d *godirwalk.Dirent) error {
+					if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
+						matches = append(matches, path)
+					}
+					return nil
+				},
+				ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+					return godirwalk.SkipNode
+				},
+				Unsorted: true,
+			})
+			if err != nil {
+				return err
+			}
+			// 0 matches means no templates were found in directory
+			if len(matches) == 0 {
+				return errors.New("no match found in the directory")
+			}
+
+			for _, match := range matches {
+				t, err := templates.Parse(match)
+				if err != nil {
+					return err
+				}
+				template := &workflows.Template{}
+				if len(t.RequestsHTTP) > 0 {
+					template.HTTPOptions = &executor.HTTPOptions{
+						Debug:         r.options.Debug,
+						Writer:        writer,
+						Template:      t,
+						Timeout:       r.options.Timeout,
+						Retries:       r.options.Retries,
+						ProxyURL:      r.options.ProxyURL,
+						ProxySocksURL: r.options.ProxySocksURL,
+						CustomHeaders: r.options.CustomHeaders,
+					}
+				} else if len(t.RequestsDNS) > 0 {
+					template.DNSOptions = &executor.DNSOptions{
+						Debug:    r.options.Debug,
+						Template: t,
+						Writer:   writer,
+					}
+				}
+				if template.DNSOptions != nil || template.HTTPOptions != nil {
+					templatesList = append(templatesList, template)
+				}
+			}
+		}
+
+		script.Add(name, &workflows.NucleiVar{Templates: templatesList, URL: URL})
+	}
+
+	_, err := script.RunContext(context.Background())
+	if err != nil {
+		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
+		return err
+	}
+	return nil
+}
+
+func (r *Runner) parse(file string) interface{} {
+	// check if it's a template
+	template, errTemplate := templates.Parse(r.options.Templates)
+	if errTemplate == nil {
+		return template
+	}
+
+	// check if it's a workflow
+	workflow, errWorkflow := workflows.Parse(r.options.Templates)
+	if errWorkflow == nil {
+		return workflow
+	}
+	return nil
 }

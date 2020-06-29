@@ -11,9 +11,9 @@ type Template struct {
 	// Info contains information about the template
 	Info Info `yaml:"info"`
 	// RequestHTTP contains the http request to make in the template
-	RequestsHTTP []*requests.HTTPRequest `yaml:"requests"`
+	RequestsHTTP []*requests.HTTPRequest `yaml:"requests,omitempty"`
 	// RequestDNS contains the dns request to make in the template
-	RequestsDNS []*requests.DNSRequest `yaml:"dns"`
+	RequestsDNS []*requests.DNSRequest `yaml:"dns,omitempty"`
 }
 
 // Info contains information about the request template
@@ -25,10 +25,3 @@ type Info struct {
 	// Severity optionally describes the severity of the template
 	Severity string `yaml:"severity,omitempty"`
 }
-
-// Levels of severity for a request template
-const (
-	SeverityHigh   = "high"
-	SeverityMedium = "medium"
-	SeverityLow    = "low"
-)

@@ -276,10 +276,10 @@ func (r *Runner) downloadReleaseAndUnzip(downloadURL string) error {
 
 // isRelative checks if a given path is a relative path
 func (r *Runner) isRelative(path string) bool {
-	if !strings.HasPrefix(path, "/") || !strings.Contains(path, ":\\") {
-		return true
+	if strings.HasPrefix(path, "/") || strings.Contains(path, ":\\") {
+		return false
 	}
-	return false
+	return true
 }
 
 // resolvePath gets the absolute path to the template by either
