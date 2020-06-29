@@ -174,8 +174,7 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 	// Replace the dynamic variables in the request if any
 	raw = replacer.Replace(raw)
 
-	// Build a parsed request from raw
-	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	compiledRequest, err := r.parseRawRequest(raw)
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
@@ -183,14 +182,21 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 	// requests generated from http.ReadRequest have incorrect RequestURI, so they
 	// cannot be used to perform another request directly, we need to generate a new one
 	// with the new target url
-	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-	req, err := http.NewRequest(parsedReq.Method, finalURL, parsedReq.Body)
+	var finalURL string
+	if compiledRequest.Path != "?" {
+		finalURL = fmt.Sprintf("%s%s", baseURL, compiledRequest.Path)
+	} else {
+		finalURL = baseURL
+	}
+	req, err := http.NewRequest(compiledRequest.Method, finalURL, strings.NewReader(compiledRequest.Data))
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// copy headers
-	req.Header = parsedReq.Header.Clone()
+	for key, value := range compiledRequest.Headers {
+		req.Header.Set(key, value)
+	}
 
 	request, err := r.fillRequest(req, values)
 	if err != nil {
@@ -232,27 +238,29 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 	dynamicReplacer := newReplacer(dynamicValues)
 	raw = dynamicReplacer.Replace(raw)
 
-	// Build a parsed request from raw
-	parsedReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+	compiledRequest, err := r.parseRawRequest(raw)
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
-	// Bug: http.ReadRequest does not process request body, so building it manually
-	// need to read from first \n\n till end
-	body := raw[strings.Index(raw, "\n\n"):]
-
 	// requests generated from http.ReadRequest have incorrect RequestURI, so they
 	// cannot be used to perform another request directly, we need to generate a new one
 	// with the new target url
-	finalURL := fmt.Sprintf("%s%s", baseURL, parsedReq.URL)
-	req, err := http.NewRequest(parsedReq.Method, finalURL, strings.NewReader(body))
+	var finalURL string
+	if compiledRequest.Path != "?" {
+		finalURL = fmt.Sprintf("%s%s", baseURL, compiledRequest.Path)
+	} else {
+		finalURL = baseURL
+	}
+	req, err := http.NewRequest(compiledRequest.Method, finalURL, strings.NewReader(compiledRequest.Data))
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
 	// copy headers
-	req.Header = parsedReq.Header.Clone()
+	for key, value := range compiledRequest.Headers {
+		req.Header.Set(key, value)
+	}
 
 	request, err := r.fillRequest(req, values)
 	if err != nil {
@@ -316,4 +324,72 @@ func (c *CustomHeaders) String() string {
 func (c *CustomHeaders) Set(value string) error {
 	*c = append(*c, value)
 	return nil
+}
+
+type compiledRawRequest struct {
+	Method  string
+	Path    string
+	Data    string
+	Headers map[string]string
+}
+
+// parseRawRequest parses the raw request as supplied by the user
+func (r *HTTPRequest) parseRawRequest(request string) (*compiledRawRequest, error) {
+	reader := bufio.NewReader(strings.NewReader(request))
+
+	rawRequest := compiledRawRequest{
+		Headers: make(map[string]string),
+	}
+
+	s, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, fmt.Errorf("could not read request: %s", err)
+	}
+	parts := strings.Split(s, " ")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("malformed request supplied")
+	}
+	// Set the request Method
+	rawRequest.Method = parts[0]
+
+	for {
+		line, err := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+
+		if err != nil || line == "" {
+			break
+		}
+
+		p := strings.SplitN(line, ":", 2)
+		if len(p) != 2 {
+			continue
+		}
+
+		if strings.EqualFold(p[0], "content-length") {
+			continue
+		}
+
+		rawRequest.Headers[strings.TrimSpace(p[0])] = strings.TrimSpace(p[1])
+	}
+
+	// Handle case with the full http url in path. In that case,
+	// ignore any host header that we encounter and use the path as request URL
+	if strings.HasPrefix(parts[1], "http") {
+		parsed, err := url.Parse(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse request URL: %s", err)
+		}
+		rawRequest.Path = parts[1]
+		rawRequest.Headers["Host"] = parsed.Host
+	} else {
+		rawRequest.Path = parts[1]
+	}
+
+	// Set the request body
+	b, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("could not read request body: %s", err)
+	}
+	rawRequest.Data = string(b)
+	return &rawRequest, nil
 }
