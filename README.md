@@ -80,7 +80,7 @@ The installation is easy. You can download the pre-built binaries for your platf
 
 ```bash
 > tar -xzvf nuclei-linux-amd64.tar.gz
-> mv nuclei-linux-amd64 /usr/bin/nuclei
+> mv nuclei /usr/bin/
 > nuclei -h
 ```
 
