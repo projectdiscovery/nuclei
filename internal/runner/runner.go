@@ -104,7 +104,7 @@ func (r *Runner) RunEnumeration() {
 
 	// Single yaml provided
 	if strings.HasSuffix(r.options.Templates, ".yaml") {
-		t := r.parse(r.options.Templates)
+		t, err := r.parse(r.options.Templates)
 		switch t.(type) {
 		case *templates.Template:
 			var results bool
@@ -133,7 +133,7 @@ func (r *Runner) RunEnumeration() {
 			workflow := t.(*workflows.Workflow)
 			r.ProcessWorkflowWithList(workflow)
 		default:
-			gologger.Errorf("Could not parse file '%s'\n", r.options.Templates)
+			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
 		}
 		return
 	}
@@ -164,7 +164,7 @@ func (r *Runner) RunEnumeration() {
 
 	var results bool
 	for _, match := range matches {
-		t := r.parse(match)
+		t, err := r.parse(match)
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
@@ -184,7 +184,7 @@ func (r *Runner) RunEnumeration() {
 			workflow := t.(*workflows.Workflow)
 			r.ProcessWorkflowWithList(workflow)
 		default:
-			gologger.Errorf("Could not parse file '%s'\n", r.options.Templates)
+			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
 		}
 	}
 	if !results {
@@ -450,17 +450,24 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 	return nil
 }
 
-func (r *Runner) parse(file string) interface{} {
+func (r *Runner) parse(file string) (interface{}, error) {
 	// check if it's a template
-	template, errTemplate := templates.Parse(r.options.Templates)
+	template, errTemplate := templates.Parse(file)
 	if errTemplate == nil {
-		return template
+		return template, nil
 	}
 
 	// check if it's a workflow
-	workflow, errWorkflow := workflows.Parse(r.options.Templates)
+	workflow, errWorkflow := workflows.Parse(file)
 	if errWorkflow == nil {
-		return workflow
+		return workflow, nil
 	}
-	return nil
+
+	if errTemplate != nil {
+		return nil, errTemplate
+	}
+	if errWorkflow != nil {
+		return nil, errWorkflow
+	}
+	return nil, errors.New("unknown error occured")
 }
