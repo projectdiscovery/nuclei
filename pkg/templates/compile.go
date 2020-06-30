@@ -35,7 +35,7 @@ func Parse(file string) (*Template, error) {
 		// Get the condition between the matchers
 		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
 		if !ok {
-			request.SetMatchersCondition(matchers.ANDCondition)
+			request.SetMatchersCondition(matchers.ORCondition)
 		} else {
 			request.SetMatchersCondition(condition)
 		}
@@ -73,7 +73,7 @@ func Parse(file string) (*Template, error) {
 		// Get the condition between the matchers
 		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
 		if !ok {
-			request.SetMatchersCondition(matchers.ANDCondition)
+			request.SetMatchersCondition(matchers.ORCondition)
 		} else {
 			request.SetMatchersCondition(condition)
 		}
