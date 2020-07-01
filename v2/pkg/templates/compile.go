@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/projectdiscovery/nuclei/pkg/generators"
-	"github.com/projectdiscovery/nuclei/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
 

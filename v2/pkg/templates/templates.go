@@ -1,7 +1,7 @@
 package templates
 
 import (
-	"github.com/projectdiscovery/nuclei/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 )
 
 // Template is a request template parsed from a yaml file

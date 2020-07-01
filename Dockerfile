@@ -5,6 +5,6 @@ RUN go get -u github.com/golang/dep/cmd/dep
 WORKDIR /go/src/app
 
 # Install
-RUN go get -u github.com/projectdiscovery/nuclei/cmd/nuclei
+RUN GO111MODULE=on go get -u github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 
 ENTRYPOINT ["nuclei"]
