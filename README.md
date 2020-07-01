@@ -89,7 +89,7 @@ The installation is easy. You can download the pre-built binaries for your platf
 nuclei requires go1.13+ to install successfully. Run the following command to get the repo - 
 
 ```bash
-> GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/cmd/nuclei
+> GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
 
 In order to update the tool, you can use -u flag with `go get` command.
