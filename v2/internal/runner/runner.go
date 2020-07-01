@@ -14,10 +14,10 @@ import (
 	"github.com/d5/tengo/v2"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/pkg/executor"
-	"github.com/projectdiscovery/nuclei/pkg/requests"
-	"github.com/projectdiscovery/nuclei/pkg/templates"
-	"github.com/projectdiscovery/nuclei/pkg/workflows"
+	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
 // Runner is a client for running the enumeration process.

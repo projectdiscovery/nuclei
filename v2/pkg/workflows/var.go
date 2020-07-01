@@ -3,7 +3,7 @@ package workflows
 import (
 	"github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/pkg/executor"
+	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
 )
 
 // NucleiVar within the scripting engine

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 )
 
 // Options contains the configuration options for tuning
