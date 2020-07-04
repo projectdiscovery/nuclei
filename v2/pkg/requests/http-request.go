@@ -174,21 +174,12 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 	// Replace the dynamic variables in the request if any
 	raw = replacer.Replace(raw)
 
-	compiledRequest, err := r.parseRawRequest(raw)
+	compiledRequest, err := r.parseRawRequest(raw, baseURL)
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
-	// requests generated from http.ReadRequest have incorrect RequestURI, so they
-	// cannot be used to perform another request directly, we need to generate a new one
-	// with the new target url
-	var finalURL string
-	if compiledRequest.Path != "?" {
-		finalURL = fmt.Sprintf("%s%s", baseURL, compiledRequest.Path)
-	} else {
-		finalURL = baseURL
-	}
-	req, err := http.NewRequest(compiledRequest.Method, finalURL, strings.NewReader(compiledRequest.Data))
+	req, err := http.NewRequest(compiledRequest.Method, compiledRequest.FullURL, strings.NewReader(compiledRequest.Data))
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
@@ -238,21 +229,12 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 	dynamicReplacer := newReplacer(dynamicValues)
 	raw = dynamicReplacer.Replace(raw)
 
-	compiledRequest, err := r.parseRawRequest(raw)
+	compiledRequest, err := r.parseRawRequest(raw, baseURL)
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
 
-	// requests generated from http.ReadRequest have incorrect RequestURI, so they
-	// cannot be used to perform another request directly, we need to generate a new one
-	// with the new target url
-	var finalURL string
-	if compiledRequest.Path != "?" {
-		finalURL = fmt.Sprintf("%s%s", baseURL, compiledRequest.Path)
-	} else {
-		finalURL = baseURL
-	}
-	req, err := http.NewRequest(compiledRequest.Method, finalURL, strings.NewReader(compiledRequest.Data))
+	req, err := http.NewRequest(compiledRequest.Method, compiledRequest.FullURL, strings.NewReader(compiledRequest.Data))
 	if err != nil {
 		return &CompiledHTTP{Request: nil, Error: err, Meta: nil}
 	}
@@ -273,13 +255,8 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	req.Header.Set("Connection", "close")
 	req.Close = true
-
-	// raw requests are left untouched
-	if len(r.Raw) > 0 {
-		return retryablehttp.FromRequest(req)
-	}
-
 	replacer := newReplacer(values)
+
 	// Check if the user requested a request body
 	if r.Body != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
@@ -293,6 +270,11 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 	// Set some headers only if the header wasn't supplied by the user
 	if _, ok := req.Header["User-Agent"]; !ok {
 		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+	}
+
+	// raw requests are left untouched
+	if len(r.Raw) > 0 {
+		return retryablehttp.FromRequest(req)
 	}
 
 	if _, ok := req.Header["Accept"]; !ok {
@@ -327,6 +309,7 @@ func (c *CustomHeaders) Set(value string) error {
 }
 
 type compiledRawRequest struct {
+	FullURL string
 	Method  string
 	Path    string
 	Data    string
@@ -334,7 +317,7 @@ type compiledRawRequest struct {
 }
 
 // parseRawRequest parses the raw request as supplied by the user
-func (r *HTTPRequest) parseRawRequest(request string) (*compiledRawRequest, error) {
+func (r *HTTPRequest) parseRawRequest(request string, baseURL string) (*compiledRawRequest, error) {
 	reader := bufio.NewReader(strings.NewReader(request))
 
 	rawRequest := compiledRawRequest{
@@ -384,6 +367,33 @@ func (r *HTTPRequest) parseRawRequest(request string) (*compiledRawRequest, erro
 	} else {
 		rawRequest.Path = parts[1]
 	}
+
+	// If raw request doesn't have a Host header and/ path,
+	// this will be generated from the parsed baseURL
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request URL: %s", err)
+	}
+
+	var hostURL string
+	if len(rawRequest.Headers["Host"]) == 0 {
+		hostURL = parsedURL.Host
+	} else {
+		hostURL = rawRequest.Headers["Host"]
+	}
+
+	if len(rawRequest.Path) == 0 {
+		rawRequest.Path = parsedURL.Path
+	} else {
+		// requests generated from http.ReadRequest have incorrect RequestURI, so they
+		// cannot be used to perform another request directly, we need to generate a new one
+		// with the new target url
+		if strings.HasPrefix(rawRequest.Path, "?") {
+			rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+		}
+	}
+
+	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, hostURL, rawRequest.Path)
 
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)
