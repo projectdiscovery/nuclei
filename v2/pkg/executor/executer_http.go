@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -92,30 +93,46 @@ func (e *HTTPExecutor) GotResults() bool {
 	return true
 }
 
+func (e *HTTPExecutor) GetRequestCount() int64 {
+	return int64( len(e.httpRequest.Raw) | len(e.httpRequest.Path) )
+}
+
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
+func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
 
+	// track progress
+	bar := p.NewBar(e.template.ID, e.GetRequestCount(), URL)
+
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
+		start := time.Now()
+
 		if compiledRequest.Error != nil {
+			bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 		e.setCustomHeaders(compiledRequest)
 		req := compiledRequest.Request
 
 		if e.debug {
+			p.StartStdCapture()
 			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
+			p.StopStdCaptureAndShow()
+
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
+				bar.Abort(true)
 				return errors.Wrap(err, "could not dump http request")
 			}
+			p.StartStdCapture()
 			fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
+			p.StopStdCaptureAndShow()
 		}
 
 		resp, err := e.httpClient.Do(req)
@@ -123,22 +140,30 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
+			bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 
 		if e.debug {
+			p.StartStdCapture()
 			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
+			p.StopStdCaptureAndShow()
+
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
+				bar.Abort(true)
 				return errors.Wrap(err, "could not dump http response")
 			}
+			p.StartStdCapture()
 			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
+			p.StopStdCaptureAndShow()
 		}
 
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
+			bar.Abort(true)
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
@@ -147,6 +172,7 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
+			bar.Abort(true)
 			return errors.Wrap(err, "could not decompress http body")
 		}
 
@@ -166,13 +192,19 @@ mainLoop:
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
+					bar.IncrBy(1)
+					bar.DecoratorEwmaUpdate(time.Since(start))
 					continue mainLoop
 				}
 			} else {
 				// If the matcher has matched, and its an OR
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
+					// capture stdout and emit it via a mpb.BarFiller
+					p.StartStdCapture()
 					e.writeOutputHTTP(compiledRequest, matcher, nil)
+					p.StopStdCaptureAndShow()
+
 					atomic.CompareAndSwapUint32(&e.results, 0, 1)
 				}
 			}
@@ -194,15 +226,25 @@ mainLoop:
 		// Write a final string of output if matcher type is
 		// AND or if we have extractors for the mechanism too.
 		if len(e.httpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
+			// capture stdout and emit it via a mpb.BarFiller
+			p.StartStdCapture()
 			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
+			p.StopStdCaptureAndShow()
+
 			atomic.CompareAndSwapUint32(&e.results, 0, 1)
 		}
+
+		bar.Increment()
+		bar.DecoratorEwmaUpdate(time.Since(start))
 	}
 
+	p.StartStdCapture()
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
+	p.StopStdCaptureAndShow()
 
 	return nil
 }
+
 
 // Close closes the http executor for a template.
 func (e *HTTPExecutor) Close() {

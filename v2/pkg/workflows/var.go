@@ -3,6 +3,7 @@ package workflows
 import (
 	"github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
 )
 
@@ -33,6 +34,9 @@ func (n *NucleiVar) CanCall() bool {
 func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	var gotResult bool
 
+	// track progress
+	p := progress.NewProgress(nil)
+
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
 			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
@@ -42,7 +46,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue
 				}
-				err = httpExecutor.ExecuteHTTP(n.URL)
+				err = httpExecutor.ExecuteHTTP(p, n.URL)
 				if err != nil {
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue

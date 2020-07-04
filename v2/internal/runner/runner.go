@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"io"
 	"io/ioutil"
 	"os"
@@ -268,6 +269,9 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
 
+	// track progress
+	p := progress.NewProgress(wg)
+
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -281,20 +285,24 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			var err error
 
 			if httpExecutor != nil {
-				err = httpExecutor.ExecuteHTTP(URL)
+				err = httpExecutor.ExecuteHTTP(p, URL)
 			}
 			if dnsExecutor != nil {
 				err = dnsExecutor.ExecuteDNS(URL)
 			}
 			if err != nil {
+				p.StartStdCapture()
 				gologger.Warningf("Could not execute step: %s\n", err)
+				p.StopStdCaptureAndShow()
 			}
 			<-limiter
 			wg.Done()
 		}(text)
 	}
 	close(limiter)
-	wg.Wait()
+
+	// Wait for both the WaitGroup and all the bars to complete
+	p.Wait()
 
 	// See if we got any results from the executors
 	var results bool
