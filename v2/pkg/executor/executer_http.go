@@ -93,10 +93,6 @@ func (e *HTTPExecutor) GotResults() bool {
 	return true
 }
 
-func (e *HTTPExecutor) GetRequestCount() int64 {
-	return int64( len(e.httpRequest.Raw) | len(e.httpRequest.Path) )
-}
-
 // ExecuteHTTP executes the HTTP request on a URL
 func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 	// Compile each request for the template based on the URL

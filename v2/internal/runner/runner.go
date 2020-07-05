@@ -5,24 +5,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/d5/tengo/v2"
+	"github.com/karrick/godirwalk"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
-
-	"github.com/d5/tengo/v2"
-	"github.com/karrick/godirwalk"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
+	input 		*os.File
+	inputCount	int64
+
 	// output is the output file to write if any
 	output      *os.File
 	outputMutex *sync.Mutex
@@ -70,6 +72,25 @@ func New(options *Options) (*Runner, error) {
 		tempInput.Close()
 	}
 
+	// Setup input, handle a list of hosts as argument
+	var err error
+	if options.Targets != "" {
+		runner.input, err = os.Open(options.Targets)
+	} else if options.Stdin || options.Target != "" {
+		runner.input, err = os.Open(runner.tempFile)
+	}
+	if err != nil {
+		gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
+	}
+
+	// Precompute total number of targets
+	scanner := bufio.NewScanner(runner.input)
+	runner.inputCount = 0
+	for scanner.Scan() {
+		runner.inputCount++
+	}
+	runner.input.Seek(0,0)
+
 	// Create the output file if asked
 	if options.Output != "" {
 		output, err := os.Create(options.Output)
@@ -84,7 +105,16 @@ func New(options *Options) (*Runner, error) {
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
 	r.output.Close()
+	r.input.Close()
 	os.Remove(r.tempFile)
+}
+
+func (r *Runner) getHTTPRequestsCount(t *templates.Template) int64 {
+	var count int64 = 0
+	for _, request := range t.RequestsHTTP {
+		count += request.GetRequestCount()
+	}
+	return count
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -196,30 +226,11 @@ func (r *Runner) RunEnumeration() {
 		}
 		gologger.Infof("No results found for the template. Happy hacking!")
 	}
-	return
+
 }
 
-// processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) bool {
-	var file *os.File
-	var err error
-
-	// Handle a list of hosts as argument
-	if r.options.Targets != "" {
-		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin || r.options.Target != "" {
-		file, err = os.Open(r.tempFile)
-	}
-	if err != nil {
-		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-	}
-	results := r.processTemplateWithList(template, request, file)
-	file.Close()
-	return results
-}
-
-// processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) bool {
+// processTemplateWithList processes a template and runs the enumeration on all the targets
+func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -269,10 +280,8 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	limiter := make(chan struct{}, r.options.Threads)
 	wg := &sync.WaitGroup{}
 
-	// track progress
-	p := progress.NewProgress(wg)
-
-	scanner := bufio.NewScanner(reader)
+	r.input.Seek(0, 0)
+	scanner := bufio.NewScanner(r.input)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
@@ -319,20 +328,8 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 
 // ProcessWorkflowWithList coming from stdin or list of targets
 func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
-	var file *os.File
-	var err error
-	// Handle a list of hosts as argument
-	if r.options.Targets != "" {
-		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin {
-		file, err = os.Open(r.tempFile)
-	}
-	if err != nil {
-		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	r.input.Seek(0, 0)
+	scanner := bufio.NewScanner(r.input)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
