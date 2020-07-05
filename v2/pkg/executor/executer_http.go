@@ -179,7 +179,7 @@ mainLoop:
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
-					p.Bar.IncrBy(1)
+					p.Bar.Increment()
 					p.Bar.DecoratorEwmaUpdate(time.Since(start))
 					continue mainLoop
 				}
