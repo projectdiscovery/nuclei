@@ -75,19 +75,19 @@ func startStdCapture() *captureData {
 		}
 	}(&c.sync, c.channel, rStdout, rStderr)
 
-	ctx, _ := context.WithTimeout(context.Background(), 50 * time.Millisecond)
-	//defer cancel()
-
-	go func(ctx context.Context, wg *sync.WaitGroup, c *captureData) {
-		defer wg.Done()
+	go func(wg *sync.WaitGroup, c *captureData) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Millisecond)
+		defer cancel()
 
 		select {
 		case out := <-c.channel:
 			c.data += out
+			wg.Done()
 		case <-ctx.Done():
+			wg.Done()
 			break
 		}
-	}(ctx, &c.sync, c)
+	}(&c.sync, c)
 
 	return c
 }
