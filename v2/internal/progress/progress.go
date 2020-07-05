@@ -16,7 +16,7 @@ import (
 
 type Progress struct {
 	progress *mpb.Progress
-	Bar *mpb.Bar
+	bar *mpb.Bar
 	captureData *captureData
 	termWidth int
 }
@@ -35,15 +35,13 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.PopCompletedMode(),
 		),
 		termWidth: tw,
-		Bar: nil,
 	}
 	return p
 }
 
-func (p *Progress) NewBar(name string, total int64) *mpb.Bar {
+func (p *Progress) SetupProgressBar(name string, total int64) *mpb.Bar {
 	barname := "[" + aurora.Green(name).String() + "]"
-
-	return p.progress.AddBar(
+	bar := p.progress.AddBar(
 		total,
 		mpb.BarNoPop(),
 		mpb.BarRemoveOnComplete(),
@@ -59,6 +57,13 @@ func (p *Progress) NewBar(name string, total int64) *mpb.Bar {
 			),
 		),
 	)
+
+	p.bar = bar
+	return bar
+}
+
+func (p *Progress) Update() {
+	p.bar.Increment()
 }
 
 func (p *Progress) Wait() {

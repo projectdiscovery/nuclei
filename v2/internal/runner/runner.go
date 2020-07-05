@@ -144,7 +144,7 @@ func (r *Runner) RunEnumeration() {
 			var results bool
 			template := t.(*templates.Template)
 
-			p.Bar = p.NewBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+			p.SetupProgressBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
 
 			// process http requests
 			for _, request := range template.RequestsHTTP {
@@ -213,7 +213,7 @@ func (r *Runner) RunEnumeration() {
 				}
 			}
 
-			p.Bar = p.NewBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+			p.SetupProgressBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
 
 			for _, request := range template.RequestsHTTP {
 				httpResults := r.processTemplateWithList(p, template, request)
