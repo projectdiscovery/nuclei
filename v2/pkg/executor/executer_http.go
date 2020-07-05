@@ -107,7 +107,6 @@ mainLoop:
 		start := time.Now()
 
 		if compiledRequest.Error != nil {
-			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 		e.setCustomHeaders(compiledRequest)
@@ -120,7 +119,6 @@ mainLoop:
 
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
-				p.Bar.Abort(true)
 				return errors.Wrap(err, "could not dump http request")
 			}
 			p.StartStdCapture()
@@ -133,7 +131,6 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 
@@ -144,7 +141,6 @@ mainLoop:
 
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
-				p.Bar.Abort(true)
 				return errors.Wrap(err, "could not dump http response")
 			}
 			p.StartStdCapture()
@@ -156,7 +152,6 @@ mainLoop:
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
@@ -165,7 +160,6 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
-			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not decompress http body")
 		}
 
