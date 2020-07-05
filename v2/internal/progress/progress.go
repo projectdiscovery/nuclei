@@ -66,6 +66,10 @@ func (p *Progress) Update() {
 	p.bar.Increment()
 }
 
+func (p *Progress) Abort() {
+	p.bar.Abort(true)
+}
+
 func (p *Progress) Wait() {
 	p.progress.Wait()
 }
