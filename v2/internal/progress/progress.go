@@ -54,9 +54,9 @@ func (p *Progress) NewBar(name string, total int64) *mpb.Bar {
 			decor.NewPercentage(aurora.Bold("%d").String(), decor.WCSyncSpace),
 		),
 		mpb.AppendDecorators(
-			decor.EwmaSpeed(0, aurora.Yellow("%.2f req/s ").String(), 60),
+			decor.AverageSpeed(0, aurora.Yellow("%.2f req/s ").String()),
 			decor.OnComplete(
-				decor.EwmaETA(decor.ET_STYLE_GO, 60), aurora.Bold("done!").String(),
+				decor.AverageETA(decor.ET_STYLE_GO), aurora.Bold("done!").String(),
 			),
 		),
 	)
