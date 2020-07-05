@@ -133,6 +133,9 @@ func (r *Runner) RunEnumeration() {
 		r.options.Templates = newPath
 	}
 
+	// track progress
+	p := progress.NewProgress(nil)
+
 	// Single yaml provided
 	if strings.HasSuffix(r.options.Templates, ".yaml") {
 		t, err := r.parse(r.options.Templates)
@@ -140,13 +143,17 @@ func (r *Runner) RunEnumeration() {
 		case *templates.Template:
 			var results bool
 			template := t.(*templates.Template)
+
+			p.Bar = p.NewBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+
 			// process http requests
 			for _, request := range template.RequestsHTTP {
-				results = r.processTemplateRequest(template, request)
+				results = r.processTemplateWithList(p, template, request)
 			}
+
 			// process dns requests
 			for _, request := range template.RequestsDNS {
-				dnsResults := r.processTemplateRequest(template, request)
+				dnsResults := r.processTemplateWithList(p, template, request)
 				if !results {
 					results = dnsResults
 				}
@@ -200,22 +207,28 @@ func (r *Runner) RunEnumeration() {
 		case *templates.Template:
 			template := t.(*templates.Template)
 			for _, request := range template.RequestsDNS {
-				dnsResults := r.processTemplateRequest(template, request)
+				dnsResults := r.processTemplateWithList(p, template, request)
 				if dnsResults {
 					results = dnsResults
 				}
 			}
+
+			p.Bar = p.NewBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+
 			for _, request := range template.RequestsHTTP {
-				httpResults := r.processTemplateRequest(template, request)
+				httpResults := r.processTemplateWithList(p, template, request)
 				if httpResults {
 					results = httpResults
 				}
 			}
+
 		case *workflows.Workflow:
 			workflow := t.(*workflows.Workflow)
 			r.ProcessWorkflowWithList(workflow)
 		default:
+			p.StartStdCapture()
 			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
+			p.StopStdCaptureAndShow()
 		}
 	}
 	if !results {
@@ -224,9 +237,13 @@ func (r *Runner) RunEnumeration() {
 			r.output.Close()
 			os.Remove(outputFile)
 		}
+		p.StartStdCapture()
 		gologger.Infof("No results found for the template. Happy hacking!")
+		p.StopStdCaptureAndShow()
 	}
 
+	p.Wait()
+	return
 }
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
@@ -236,7 +253,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	if template.Info.Severity != "" {
 		message += " [" + template.Info.Severity + "]"
 	}
+	p.StartStdCapture()
 	gologger.Infof("%s\n", message)
+	p.StopStdCaptureAndShow()
 
 	var writer *bufio.Writer
 	if r.output != nil {
@@ -273,7 +292,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		})
 	}
 	if err != nil {
+		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
+		p.StopStdCaptureAndShow()
 		return false
 	}
 
@@ -310,8 +331,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	}
 	close(limiter)
 
-	// Wait for both the WaitGroup and all the bars to complete
-	p.Wait()
+	wg.Wait()
 
 	// See if we got any results from the executors
 	var results bool

@@ -16,6 +16,7 @@ import (
 
 type Progress struct {
 	progress *mpb.Progress
+	Bar *mpb.Bar
 	captureData *captureData
 	termWidth int
 }
@@ -34,16 +35,20 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.PopCompletedMode(),
 		),
 		termWidth: tw,
+		Bar: nil,
 	}
 	return p
 }
 
-func (p *Progress) NewBar(name string, total int64, URL string) *mpb.Bar {
+func (p *Progress) NewBar(name string, total int64) *mpb.Bar {
+	barname := "[" + aurora.Green(name).String() + "]"
+
 	return p.progress.AddBar(
 		total,
 		mpb.BarNoPop(),
+		//mpb.BarQueueAfter(p.Bar),
 		mpb.PrependDecorators(
-			decor.Name("[" + aurora.Green(URL).String() + " / " + aurora.Magenta(name).String() + "]"),
+			decor.Name(barname),
 			decor.CountersNoUnit(aurora.Blue(" %d/%d").String()),
 			decor.NewPercentage(aurora.Bold("%d").String(), decor.WCSyncSpace),
 		),
