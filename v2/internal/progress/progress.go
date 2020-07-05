@@ -46,7 +46,6 @@ func (p *Progress) NewBar(name string, total int64) *mpb.Bar {
 	return p.progress.AddBar(
 		total,
 		mpb.BarNoPop(),
-		//mpb.BarQueueAfter(p.Bar),
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(barname),
