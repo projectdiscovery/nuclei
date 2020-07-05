@@ -101,16 +101,13 @@ func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 		return errors.Wrap(err, "could not make http request")
 	}
 
-	// track progress
-	bar := p.NewBar(e.template.ID, e.GetRequestCount(), URL)
-
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
 		start := time.Now()
 
 		if compiledRequest.Error != nil {
-			bar.Abort(true)
+			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 		e.setCustomHeaders(compiledRequest)
@@ -123,7 +120,7 @@ mainLoop:
 
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
-				bar.Abort(true)
+				p.Bar.Abort(true)
 				return errors.Wrap(err, "could not dump http request")
 			}
 			p.StartStdCapture()
@@ -136,7 +133,7 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			bar.Abort(true)
+			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not make http request")
 		}
 
@@ -147,7 +144,7 @@ mainLoop:
 
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
-				bar.Abort(true)
+				p.Bar.Abort(true)
 				return errors.Wrap(err, "could not dump http response")
 			}
 			p.StartStdCapture()
@@ -159,7 +156,7 @@ mainLoop:
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-			bar.Abort(true)
+			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
@@ -168,7 +165,7 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
-			bar.Abort(true)
+			p.Bar.Abort(true)
 			return errors.Wrap(err, "could not decompress http body")
 		}
 
@@ -188,8 +185,8 @@ mainLoop:
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
-					bar.IncrBy(1)
-					bar.DecoratorEwmaUpdate(time.Since(start))
+					p.Bar.IncrBy(1)
+					p.Bar.DecoratorEwmaUpdate(time.Since(start))
 					continue mainLoop
 				}
 			} else {
@@ -230,8 +227,8 @@ mainLoop:
 			atomic.CompareAndSwapUint32(&e.results, 0, 1)
 		}
 
-		bar.Increment()
-		bar.DecoratorEwmaUpdate(time.Since(start))
+		p.Bar.Increment()
+		p.Bar.DecoratorEwmaUpdate(time.Since(start))
 	}
 
 	p.StartStdCapture()
