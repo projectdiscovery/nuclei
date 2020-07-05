@@ -104,8 +104,6 @@ func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
-		start := time.Now()
-
 		if compiledRequest.Error != nil {
 			return errors.Wrap(err, "could not make http request")
 		}
@@ -179,8 +177,7 @@ mainLoop:
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
-					p.Bar.Increment()
-					p.Bar.DecoratorEwmaUpdate(time.Since(start))
+					p.Update()
 					continue mainLoop
 				}
 			} else {
@@ -221,8 +218,7 @@ mainLoop:
 			atomic.CompareAndSwapUint32(&e.results, 0, 1)
 		}
 
-		p.Bar.Increment()
-		p.Bar.DecoratorEwmaUpdate(time.Since(start))
+		p.Update()
 	}
 
 	p.StartStdCapture()
