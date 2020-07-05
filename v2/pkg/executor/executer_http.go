@@ -98,14 +98,14 @@ func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
-		return errors.Wrap(err, "could not make http request")
+		return errors.Wrap(err, "could not compile http request")
 	}
 
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
 		if compiledRequest.Error != nil {
-			return errors.Wrap(err, "could not make http request")
+			return errors.Wrap(err, "error in compiled http request")
 		}
 		e.setCustomHeaders(compiledRequest)
 		req := compiledRequest.Request
@@ -129,7 +129,7 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			return errors.Wrap(err, "could not make http request")
+			return errors.Wrap(err, "could not issue http request")
 		}
 
 		if e.debug {
