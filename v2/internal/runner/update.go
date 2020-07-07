@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/google/go-github/v32/github"
@@ -23,8 +24,9 @@ import (
 
 // nucleiConfig contains some configuration options for nuclei
 type nucleiConfig struct {
-	TemplatesDirectory string `json:"templates-directory,omitempty"`
-	CurrentVersion     string `json:"current-version,omitempty"`
+	TemplatesDirectory string    `json:"templates-directory,omitempty"`
+	CurrentVersion     string    `json:"current-version,omitempty"`
+	LastChecked        time.Time `json:"last-checked,omitempty"`
 }
 
 // nucleiConfigFilename is the filename of nuclei configuration file.
@@ -104,7 +106,7 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" {
 			home = r.options.TemplatesDirectory
 		}
-		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
+		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates"), LastChecked: time.Now()}
 		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -127,6 +129,13 @@ func (r *Runner) updateTemplates() error {
 		return nil
 	}
 
+	// Check if last checked is more than 24 hours.
+	// If not, return since we don't want to do anything now.
+	if time.Now().Sub(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
+		return nil
+	}
+	r.templatesConfig.LastChecked = time.Now()
+
 	// Get the configuration currently on disk.
 	verText := r.templatesConfig.CurrentVersion
 	indices := reVersion.FindStringIndex(verText)
@@ -148,12 +157,12 @@ func (r *Runner) updateTemplates() error {
 
 	if version.EQ(oldVersion) {
 		gologger.Labelf("Latest version of nuclei-templates installed: v%s\n", oldVersion.String())
-		return nil
+		return r.writeConfiguration(r.templatesConfig)
 	}
 	if version.GT(oldVersion) {
 		if !r.options.UpdateTemplates {
 			gologger.Labelf("You're using outdated nuclei-templates. Latest v%s\n", version.String())
-			return nil
+			return r.writeConfiguration(r.templatesConfig)
 		}
 		if r.options.TemplatesDirectory != "" {
 			home = r.options.TemplatesDirectory

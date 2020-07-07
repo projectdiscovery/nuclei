@@ -20,8 +20,8 @@ jobs:
 
       - name: Test
         run: go test .
-        working-directory: cmd/nuclei/
+        working-directory: v2/cmd/nuclei/
 
       - name: Build
         run: go build .
-        working-directory: cmd/nuclei/
+        working-directory: v2/cmd/nuclei/
