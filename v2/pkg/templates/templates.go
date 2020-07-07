@@ -25,3 +25,11 @@ type Info struct {
 	// Severity optionally describes the severity of the template
 	Severity string `yaml:"severity,omitempty"`
 }
+
+func (t* Template) GetHTTPRequestsCount() int64 {
+	var count int64 = 0
+	for _, request := range t.RequestsHTTP {
+		count += request.GetRequestCount()
+	}
+	return count
+}

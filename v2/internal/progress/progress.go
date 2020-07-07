@@ -17,6 +17,8 @@ import (
 type Progress struct {
 	progress *mpb.Progress
 	bar *mpb.Bar
+	total int64
+	initialTotal int64
 	captureData *captureData
 	termWidth int
 }
@@ -59,6 +61,8 @@ func (p *Progress) SetupProgressBar(name string, total int64) *mpb.Bar {
 	)
 
 	p.bar = bar
+	p.total = total
+	p.initialTotal = total
 	return bar
 }
 
@@ -66,11 +70,16 @@ func (p *Progress) Update() {
 	p.bar.Increment()
 }
 
-func (p *Progress) Abort() {
-	p.bar.Abort(true)
+func (p *Progress) Abort(remaining int64) {
+	p.total -= remaining
+	p.bar.SetTotal(p.total, false)
 }
 
 func (p *Progress) Wait() {
+	if p.initialTotal != p.total {
+		p.bar.SetTotal(p.total, true)
+	}
+
 	p.progress.Wait()
 }
 

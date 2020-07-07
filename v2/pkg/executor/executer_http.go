@@ -101,11 +101,13 @@ func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 		return errors.Wrap(err, "could not compile http request")
 	}
 
+	remaining := e.template.GetHTTPRequestsCount()
+
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
 		if compiledRequest.Error != nil {
-			p.Abort()
+			p.Abort(remaining)
 			return errors.Wrap(err, "error in compiled http request")
 		}
 		e.setCustomHeaders(compiledRequest)
@@ -118,7 +120,7 @@ mainLoop:
 
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
-				p.Abort()
+				p.Abort(remaining)
 				return errors.Wrap(err, "could not dump http request")
 			}
 			p.StartStdCapture()
@@ -131,7 +133,7 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			p.Abort()
+			p.Abort(remaining)
 			return errors.Wrap(err, "could not issue http request")
 		}
 
@@ -142,7 +144,7 @@ mainLoop:
 
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
-				p.Abort()
+				p.Abort(remaining)
 				return errors.Wrap(err, "could not dump http response")
 			}
 			p.StartStdCapture()
@@ -154,7 +156,7 @@ mainLoop:
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-			p.Abort()
+			p.Abort(remaining)
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
@@ -163,7 +165,7 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
-			p.Abort()
+			p.Abort(remaining)
 			return errors.Wrap(err, "could not decompress http body")
 		}
 
@@ -184,6 +186,7 @@ mainLoop:
 				// If the condition is AND we haven't matched, try next request.
 				if matcherCondition == matchers.ANDCondition {
 					p.Update()
+					remaining--
 					continue mainLoop
 				}
 			} else {
@@ -225,6 +228,7 @@ mainLoop:
 		}
 
 		p.Update()
+		remaining--
 	}
 
 	p.StartStdCapture()
