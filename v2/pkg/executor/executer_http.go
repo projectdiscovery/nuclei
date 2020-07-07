@@ -122,7 +122,8 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			return errors.Wrap(err, "could not make http request")
+			gologger.Warningf("Could not do request: %s\n", err)
+			continue
 		}
 
 		if e.debug {
