@@ -131,7 +131,7 @@ func (r *Runner) updateTemplates() error {
 
 	// Check if last checked is more than 24 hours.
 	// If not, return since we don't want to do anything now.
-	if time.Now().Sub(r.templatesConfig.LastChecked) < 24*time.Hour {
+	if time.Now().Sub(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
 	}
 	r.templatesConfig.LastChecked = time.Now()
