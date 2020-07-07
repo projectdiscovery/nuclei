@@ -109,14 +109,6 @@ func (r *Runner) Close() {
 	os.Remove(r.tempFile)
 }
 
-func (r *Runner) getHTTPRequestsCount(t *templates.Template) int64 {
-	var count int64 = 0
-	for _, request := range t.RequestsHTTP {
-		count += request.GetRequestCount()
-	}
-	return count
-}
-
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
@@ -133,18 +125,19 @@ func (r *Runner) RunEnumeration() {
 		r.options.Templates = newPath
 	}
 
-	// track progress
-	p := progress.NewProgress(nil)
-
 	// Single yaml provided
 	if strings.HasSuffix(r.options.Templates, ".yaml") {
 		t, err := r.parse(r.options.Templates)
+
+		// track progress
+		p := progress.NewProgress(nil)
+
 		switch t.(type) {
 		case *templates.Template:
 			var results bool
 			template := t.(*templates.Template)
 
-			p.SetupProgressBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+			p.SetupProgressBar(template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			// process http requests
 			for _, request := range template.RequestsHTTP {
@@ -158,6 +151,8 @@ func (r *Runner) RunEnumeration() {
 					results = dnsResults
 				}
 			}
+
+			p.Wait()
 
 			if !results {
 				if r.output != nil {
@@ -200,6 +195,9 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Error, no templates found in directory: '%s'\n", r.options.Templates)
 	}
 
+	// track progress
+	p := progress.NewProgress(nil)
+
 	var results bool
 	for _, match := range matches {
 		t, err := r.parse(match)
@@ -213,7 +211,7 @@ func (r *Runner) RunEnumeration() {
 				}
 			}
 
-			p.SetupProgressBar(template.ID, r.inputCount * r.getHTTPRequestsCount(template))
+			p.SetupProgressBar(template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			for _, request := range template.RequestsHTTP {
 				httpResults := r.processTemplateWithList(p, template, request)
@@ -231,18 +229,19 @@ func (r *Runner) RunEnumeration() {
 			p.StopStdCaptureAndShow()
 		}
 	}
+	p.Wait()
+
 	if !results {
 		if r.output != nil {
 			outputFile := r.output.Name()
 			r.output.Close()
 			os.Remove(outputFile)
 		}
-		p.StartStdCapture()
+		//p.StartStdCapture()
 		gologger.Infof("No results found for the template. Happy hacking!")
-		p.StopStdCaptureAndShow()
+		//p.StopStdCaptureAndShow()
 	}
 
-	p.Wait()
 	return
 }
 
