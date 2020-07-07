@@ -132,9 +132,10 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			//p.Abort(remaining)
-			//return errors.Wrap(err, "could not issue http request")
+			p.Abort(1)
+			p.StartStdCapture()
 			gologger.Warningf("Could not do request: %s\n", err)
+			p.StopStdCaptureAndShow()
 			continue
 		}
 
