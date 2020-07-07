@@ -85,7 +85,6 @@ func startStdCapture() *captureData {
 			wg.Done()
 		case <-ctx.Done():
 			wg.Done()
-			break
 		}
 	}(&c.sync, c)
 
