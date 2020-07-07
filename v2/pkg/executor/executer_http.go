@@ -18,7 +18,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -133,8 +132,10 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			p.Abort(remaining)
-			return errors.Wrap(err, "could not issue http request")
+			//p.Abort(remaining)
+			//return errors.Wrap(err, "could not issue http request")
+			gologger.Warningf("Could not do request: %s\n", err)
+			continue
 		}
 
 		if e.debug {
@@ -175,12 +176,7 @@ mainLoop:
 		var headers string
 		matcherCondition := e.httpRequest.GetMatchersCondition()
 		for _, matcher := range e.httpRequest.Matchers {
-			// Only build the headers string if the matcher asks for it
-			part := matcher.GetPart()
-			if part == matchers.AllPart || part == matchers.HeaderPart && headers == "" {
-				headers = headersToString(resp.Header)
-			}
-
+			headers = headersToString(resp.Header)
 			// Check if the matcher matched
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
@@ -207,10 +203,7 @@ mainLoop:
 		// next task which is extraction of input from matchers.
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
-			part := extractor.GetPart()
-			if part == extractors.AllPart || part == extractors.HeaderPart && headers == "" {
-				headers = headersToString(resp.Header)
-			}
+			headers = headersToString(resp.Header)
 			for match := range extractor.Extract(body, headers) {
 				extractorResults = append(extractorResults, match)
 			}

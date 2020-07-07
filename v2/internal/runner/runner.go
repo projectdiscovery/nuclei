@@ -43,7 +43,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	if err := runner.updateTemplates(); err != nil {
-		return nil, err
+		gologger.Warningf("Could not update templates: %s\n", err)
 	}
 	if (options.Templates == "" || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
