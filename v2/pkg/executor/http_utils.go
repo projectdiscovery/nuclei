@@ -14,6 +14,7 @@ type jsonOutput struct {
 	ExtractedResults []string `json:"extracted_results,omitempty"`
 	Severity         string   `json:"severity"`
 	Author           string   `json:"author"`
+	Description      string   `json:"description"`
 }
 
 // unsafeToString converts byte slice to string with zero allocations
