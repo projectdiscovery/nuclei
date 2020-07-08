@@ -5,7 +5,6 @@ package progress
  */
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"strings"
@@ -19,21 +18,18 @@ type captureData struct {
 	backupStderr *os.File
 	writerStderr *os.File
 
-	data         string
-	channel      chan string
+	dataStdout string
+	dataStderr string
+	outStdout  chan []byte
+	outStderr  chan []byte
 
-	sync		 sync.WaitGroup
+	//sync		 sync.WaitGroup
 
-	Data []string
+	DataStdOut []string
+	DataStdErr []string
 }
 
-var(
-	mutex = &sync.Mutex{}
-)
-
 func startStdCapture() *captureData {
-	mutex.Lock()
-
 	rStdout, wStdout, errStdout := os.Pipe()
 	if errStdout != nil {
 		panic(errStdout)
@@ -51,42 +47,23 @@ func startStdCapture() *captureData {
 		backupStderr: os.Stderr,
 		writerStderr: wStderr,
 
-		channel: make(chan string),
+		outStdout: make(chan []byte),
+		outStderr: make(chan []byte),
 	}
 
 	os.Stdout = c.writerStdout
 	os.Stderr = c.writerStderr
 
-	c.sync.Add(2)
-
-	go func( wg *sync.WaitGroup, out chan string, readerStdout *os.File, readerStderr *os.File) {
-		defer wg.Done()
-
-		var bufStdout bytes.Buffer
-		_, _ = io.Copy(&bufStdout, readerStdout)
-		if bufStdout.Len() > 0 {
-			out <- bufStdout.String()
+	stdCopy := func(out chan<- []byte, reader *os.File) {
+		var buffer bytes.Buffer
+		_, _ = io.Copy(&buffer, reader)
+		if buffer.Len() > 0 {
+			out <- buffer.Bytes()
 		}
+	}
 
-		var bufStderr bytes.Buffer
-		_, _ = io.Copy(&bufStderr, readerStderr)
-		if bufStderr.Len() > 0 {
-			out <- bufStderr.String()
-		}
-	}(&c.sync, c.channel, rStdout, rStderr)
-
-	go func(wg *sync.WaitGroup, c *captureData) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Millisecond)
-		defer cancel()
-
-		select {
-		case out := <-c.channel:
-			c.data += out
-			wg.Done()
-		case <-ctx.Done():
-			wg.Done()
-		}
-	}(&c.sync, c)
+	go stdCopy(c.outStdout, rStdout)
+	go stdCopy(c.outStderr, rStderr)
 
 	return c
 }
@@ -95,17 +72,27 @@ func stopStdCapture(c *captureData) {
 	_ = c.writerStdout.Close()
 	_ = c.writerStderr.Close()
 
-	c.sync.Wait()
+	var wg sync.WaitGroup
 
-	close(c.channel)
+	stdRead := func(in <-chan []byte, outString *string, outArray *[]string) {
+		defer wg.Done()
+
+		select {
+		case out := <-in:
+			*outString = string(out)
+			*outArray = strings.Split(*outString, "\n")
+			if (*outArray)[len(*outArray)-1] == "" {
+				*outArray = (*outArray)[:len(*outArray)-1]
+			}
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+
+	wg.Add(2)
+	go stdRead(c.outStdout, &c.dataStdout, &c.DataStdOut)
+	go stdRead(c.outStderr, &c.dataStderr, &c.DataStdErr)
+	wg.Wait()
 
 	os.Stdout = c.backupStdout
 	os.Stderr = c.backupStderr
-
-	c.Data = strings.Split(c.data, "\n")
-	if c.Data[len(c.Data)-1] == "" {
-		c.Data = c.Data[:len(c.Data)-1]
-	}
-
-	mutex.Unlock()
 }
