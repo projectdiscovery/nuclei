@@ -16,6 +16,7 @@ import (
 
 type Progress struct {
 	progress *mpb.Progress
+	progress_stdout *mpb.Progress
 	bar *mpb.Bar
 	total int64
 	initialTotal int64
@@ -37,6 +38,13 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
+
+		progress_stdout: mpb.New(
+			mpb.WithWaitGroup(group),
+			mpb.WithOutput(os.Stdout),
+			//mpb.PopCompletedMode(),
+		),
+
 		termWidth: tw,
 		mutex: &sync.Mutex{},
 	}
@@ -83,6 +91,7 @@ func (p *Progress) Wait() {
 	}
 
 	p.progress.Wait()
+	p.progress_stdout.Wait()
 }
 
 //
@@ -94,7 +103,20 @@ func (p *Progress) StartStdCapture() {
 
 func (p *Progress) StopStdCaptureAndShow() {
 	stopStdCapture(p.captureData)
-	for _, captured := range p.captureData.Data {
+
+	// stdout
+	for _, captured := range p.captureData.DataStdOut {
+		var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
+		multiline := r.ReplaceAllString(captured, "$1\n")
+		arr := strings.Split(multiline, "\n")
+
+		for _, msg := range arr {
+			p.progress_stdout.Add(0, makeLogBar(msg)).SetTotal(0, true)
+		}
+	}
+
+	// stderr
+	for _, captured := range p.captureData.DataStdErr {
 		var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
 		multiline := r.ReplaceAllString(captured, "$1\n")
 		arr := strings.Split(multiline, "\n")
@@ -103,6 +125,7 @@ func (p *Progress) StopStdCaptureAndShow() {
 			p.progress.Add(0, makeLogBar(msg)).SetTotal(0, true)
 		}
 	}
+
 	p.mutex.Unlock()
 }
 
