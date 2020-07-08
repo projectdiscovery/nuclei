@@ -62,6 +62,7 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 		return err
 	}
 
+	config.LastChecked = time.Now()
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
@@ -106,7 +107,7 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" {
 			home = r.options.TemplatesDirectory
 		}
-		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates"), LastChecked: time.Now()}
+		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
 		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -134,7 +135,6 @@ func (r *Runner) updateTemplates() error {
 	if time.Now().Sub(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
 	}
-	r.templatesConfig.LastChecked = time.Now()
 
 	// Get the configuration currently on disk.
 	verText := r.templatesConfig.CurrentVersion
