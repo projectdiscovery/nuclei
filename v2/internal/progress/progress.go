@@ -21,6 +21,7 @@ type Progress struct {
 	initialTotal int64
 	captureData *captureData
 	termWidth int
+	mutex *sync.Mutex
 }
 
 func NewProgress(group *sync.WaitGroup) *Progress {
@@ -37,6 +38,7 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.PopCompletedMode(),
 		),
 		termWidth: tw,
+		mutex: &sync.Mutex{},
 	}
 	return p
 }
@@ -86,6 +88,7 @@ func (p *Progress) Wait() {
 //
 
 func (p *Progress) StartStdCapture() {
+	p.mutex.Lock()
 	p.captureData = startStdCapture()
 }
 
@@ -100,6 +103,7 @@ func (p *Progress) StopStdCaptureAndShow() {
 			p.progress.Add(0, makeLogBar(msg)).SetTotal(0, true)
 		}
 	}
+	p.mutex.Unlock()
 }
 
 func makeLogBar(msg string) mpb.BarFiller {
