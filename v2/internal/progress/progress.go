@@ -6,30 +6,28 @@ import (
 	"github.com/vbauerster/mpb/v5"
 	"github.com/vbauerster/mpb/v5/cwriter"
 	"github.com/vbauerster/mpb/v5/decor"
-	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 )
 
 type Progress struct {
 	progress *mpb.Progress
-	progress_stdout *mpb.Progress
 	bar *mpb.Bar
 	total int64
 	initialTotal int64
 	captureData *captureData
 	termWidth int
 	mutex *sync.Mutex
+	stdout *strings.Builder
+	stderr *strings.Builder
 }
 
 func NewProgress(group *sync.WaitGroup) *Progress {
-	w := cwriter.New(os.Stdout)
+	w := cwriter.New(os.Stderr)
 	tw, err := w.GetWidth()
 	if err != nil {
-		panic("Couldn't determine available terminal width.")
+		tw = 80
 	}
 
 	p := &Progress{
@@ -38,15 +36,10 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
-
-		progress_stdout: mpb.New(
-			mpb.WithWaitGroup(group),
-			mpb.WithOutput(os.Stdout),
-			//mpb.PopCompletedMode(),
-		),
-
 		termWidth: tw,
 		mutex: &sync.Mutex{},
+		stdout: &strings.Builder{},
+		stderr: &strings.Builder{},
 	}
 	return p
 }
@@ -89,9 +82,7 @@ func (p *Progress) Wait() {
 	if p.initialTotal != p.total {
 		p.bar.SetTotal(p.total, true)
 	}
-
 	p.progress.Wait()
-	p.progress_stdout.Wait()
 }
 
 //
@@ -101,36 +92,21 @@ func (p *Progress) StartStdCapture() {
 	p.captureData = startStdCapture()
 }
 
-func (p *Progress) StopStdCaptureAndShow() {
+func (p *Progress) StopStdCapture() {
 	stopStdCapture(p.captureData)
-
-	// stdout
-	for _, captured := range p.captureData.DataStdOut {
-		var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
-		multiline := r.ReplaceAllString(captured, "$1\n")
-		arr := strings.Split(multiline, "\n")
-
-		for _, msg := range arr {
-			p.progress_stdout.Add(0, makeLogBar(msg)).SetTotal(0, true)
-		}
-	}
-
-	// stderr
-	for _, captured := range p.captureData.DataStdErr {
-		var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
-		multiline := r.ReplaceAllString(captured, "$1\n")
-		arr := strings.Split(multiline, "\n")
-
-		for _, msg := range arr {
-			p.progress.Add(0, makeLogBar(msg)).SetTotal(0, true)
-		}
-	}
-
+	p.stdout.Write(p.captureData.DataStdOut.Bytes())
+	p.stderr.Write(p.captureData.DataStdErr.Bytes())
 	p.mutex.Unlock()
 }
 
-func makeLogBar(msg string) mpb.BarFiller {
-	return mpb.BarFillerFunc(func(w io.Writer, _ int, st decor.Statistics) {
-		fmt.Fprintf(w, msg)
-	})
+func (p *Progress) ShowStdOut() {
+	if p.stdout.Len() > 0 {
+		fmt.Fprint(os.Stdout, p.stdout.String())
+	}
+}
+
+func (p *Progress) ShowStdErr() {
+	if p.stderr.Len() > 0 {
+		fmt.Fprint(os.Stderr, p.stderr.String())
+	}
 }

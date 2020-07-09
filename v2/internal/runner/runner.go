@@ -153,6 +153,8 @@ func (r *Runner) RunEnumeration() {
 			}
 
 			p.Wait()
+			p.ShowStdErr()
+			p.ShowStdOut()
 
 			if !results {
 				if r.output != nil {
@@ -226,10 +228,12 @@ func (r *Runner) RunEnumeration() {
 		default:
 			p.StartStdCapture()
 			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 		}
 	}
 	p.Wait()
+	p.ShowStdErr()
+	p.ShowStdOut()
 
 	if !results {
 		if r.output != nil {
@@ -239,7 +243,7 @@ func (r *Runner) RunEnumeration() {
 		}
 		//p.StartStdCapture()
 		gologger.Infof("No results found for the template. Happy hacking!")
-		//p.StopStdCaptureAndShow()
+		//p.StopStdCapture()
 	}
 
 	return
@@ -254,7 +258,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	}
 	p.StartStdCapture()
 	gologger.Infof("%s\n", message)
-	p.StopStdCaptureAndShow()
+	p.StopStdCapture()
 
 	var writer *bufio.Writer
 	if r.output != nil {
@@ -293,7 +297,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	if err != nil {
 		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
-		p.StopStdCaptureAndShow()
+		p.StopStdCapture()
 		return false
 	}
 
@@ -322,7 +326,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			if err != nil {
 				p.StartStdCapture()
 				gologger.Warningf("Could not execute step: %s\n", err)
-				p.StopStdCaptureAndShow()
+				p.StopStdCapture()
 			}
 			<-limiter
 			wg.Done()

@@ -7,9 +7,7 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"strings"
 	"sync"
-	"time"
 )
 
 type captureData struct {
@@ -18,15 +16,11 @@ type captureData struct {
 	backupStderr *os.File
 	writerStderr *os.File
 
-	dataStdout string
-	dataStderr string
+	DataStdOut *bytes.Buffer
+	DataStdErr *bytes.Buffer
+
 	outStdout  chan []byte
 	outStderr  chan []byte
-
-	//sync		 sync.WaitGroup
-
-	DataStdOut []string
-	DataStdErr []string
 }
 
 func startStdCapture() *captureData {
@@ -49,6 +43,9 @@ func startStdCapture() *captureData {
 
 		outStdout: make(chan []byte),
 		outStderr: make(chan []byte),
+
+		DataStdOut: &bytes.Buffer{},
+		DataStdErr: &bytes.Buffer{},
 	}
 
 	os.Stdout = c.writerStdout
@@ -74,23 +71,20 @@ func stopStdCapture(c *captureData) {
 
 	var wg sync.WaitGroup
 
-	stdRead := func(in <-chan []byte, outString *string, outArray *[]string) {
+	stdRead := func(in <-chan []byte, outData *bytes.Buffer) {
 		defer wg.Done()
 
 		select {
 		case out := <-in:
-			*outString = string(out)
-			*outArray = strings.Split(*outString, "\n")
-			if (*outArray)[len(*outArray)-1] == "" {
-				*outArray = (*outArray)[:len(*outArray)-1]
-			}
-		case <-time.After(50 * time.Millisecond):
+			outData.Write(out)
+		default:
+		//case <-time.After(10 * time.Millisecond):
 		}
 	}
 
 	wg.Add(2)
-	go stdRead(c.outStdout, &c.dataStdout, &c.DataStdOut)
-	go stdRead(c.outStderr, &c.dataStderr, &c.DataStdErr)
+	go stdRead(c.outStdout, c.DataStdOut)
+	go stdRead(c.outStderr, c.DataStdErr)
 	wg.Wait()
 
 	os.Stdout = c.backupStdout
