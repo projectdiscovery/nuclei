@@ -74,8 +74,8 @@ func (p *Progress) Update() {
 }
 
 func (p *Progress) Abort(remaining int64) {
-	p.total -= remaining
-	p.bar.SetTotal(p.total, false)
+	atomic.AddInt64(&p.total, -remaining)
+	p.bar.SetTotal(atomic.LoadInt64(&p.total), false)
 }
 
 func (p *Progress) Wait() {
