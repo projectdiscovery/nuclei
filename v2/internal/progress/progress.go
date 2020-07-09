@@ -9,18 +9,19 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 type Progress struct {
-	progress *mpb.Progress
-	bar *mpb.Bar
-	total int64
-	initialTotal int64
-	captureData *captureData
-	termWidth int
-	mutex *sync.Mutex
-	stdout *strings.Builder
-	stderr *strings.Builder
+	progress        *mpb.Progress
+	bar             *mpb.Bar
+	total           int64
+	initialTotal    int64
+	captureData     *captureData
+	termWidth       int
+	stdCaptureMutex *sync.Mutex
+	stdout          *strings.Builder
+	stderr          *strings.Builder
 }
 
 func NewProgress(group *sync.WaitGroup) *Progress {
@@ -36,10 +37,10 @@ func NewProgress(group *sync.WaitGroup) *Progress {
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
-		termWidth: tw,
-		mutex: &sync.Mutex{},
-		stdout: &strings.Builder{},
-		stderr: &strings.Builder{},
+		termWidth:       tw,
+		stdCaptureMutex: &sync.Mutex{},
+		stdout:          &strings.Builder{},
+		stderr:          &strings.Builder{},
 	}
 	return p
 }
@@ -88,7 +89,7 @@ func (p *Progress) Wait() {
 //
 
 func (p *Progress) StartStdCapture() {
-	p.mutex.Lock()
+	p.stdCaptureMutex.Lock()
 	p.captureData = startStdCapture()
 }
 
@@ -96,7 +97,7 @@ func (p *Progress) StopStdCapture() {
 	stopStdCapture(p.captureData)
 	p.stdout.Write(p.captureData.DataStdOut.Bytes())
 	p.stderr.Write(p.captureData.DataStdErr.Bytes())
-	p.mutex.Unlock()
+	p.stdCaptureMutex.Unlock()
 }
 
 func (p *Progress) ShowStdOut() {
