@@ -200,6 +200,23 @@ func (r *Runner) RunEnumeration() {
 	// track progress
 	p := progress.NewProgress(nil)
 
+	// precompute request count
+	var totalRequests int64 = 0
+	for _, match := range matches {
+		t, err := r.parse(match)
+		switch t.(type) {
+		case *templates.Template:
+			template := t.(*templates.Template)
+			totalRequests += template.GetHTTPRequestsCount()
+		default:
+			p.StartStdCapture()
+			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
+			p.StopStdCapture()
+		}
+	}
+
+	p.SetupProgressBar("Multiple templates", r.inputCount * totalRequests)
+
 	var results bool
 	for _, match := range matches {
 		t, err := r.parse(match)
@@ -212,8 +229,6 @@ func (r *Runner) RunEnumeration() {
 					results = dnsResults
 				}
 			}
-
-			p.SetupProgressBar(template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			for _, request := range template.RequestsHTTP {
 				httpResults := r.processTemplateWithList(p, template, request)
