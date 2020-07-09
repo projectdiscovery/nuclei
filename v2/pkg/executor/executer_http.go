@@ -115,7 +115,7 @@ mainLoop:
 		if e.debug {
 			p.StartStdCapture()
 			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
@@ -124,7 +124,7 @@ mainLoop:
 			}
 			p.StartStdCapture()
 			fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 		}
 
 		resp, err := e.httpClient.Do(req)
@@ -135,14 +135,14 @@ mainLoop:
 			p.Abort(1)
 			p.StartStdCapture()
 			gologger.Warningf("Could not do request: %s\n", err)
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 			continue
 		}
 
 		if e.debug {
 			p.StartStdCapture()
 			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
@@ -151,7 +151,7 @@ mainLoop:
 			}
 			p.StartStdCapture()
 			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 		}
 
 		data, err := ioutil.ReadAll(resp.Body)
@@ -193,7 +193,7 @@ mainLoop:
 					// capture stdout and emit it via a mpb.BarFiller
 					p.StartStdCapture()
 					e.writeOutputHTTP(compiledRequest, matcher, nil)
-					p.StopStdCaptureAndShow()
+					p.StopStdCapture()
 
 					atomic.CompareAndSwapUint32(&e.results, 0, 1)
 				}
@@ -216,7 +216,7 @@ mainLoop:
 			// capture stdout and emit it via a mpb.BarFiller
 			p.StartStdCapture()
 			e.writeOutputHTTP(compiledRequest, nil, extractorResults)
-			p.StopStdCaptureAndShow()
+			p.StopStdCapture()
 
 			atomic.CompareAndSwapUint32(&e.results, 0, 1)
 		}
@@ -227,7 +227,7 @@ mainLoop:
 
 	p.StartStdCapture()
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
-	p.StopStdCaptureAndShow()
+	p.StopStdCapture()
 
 	return nil
 }
