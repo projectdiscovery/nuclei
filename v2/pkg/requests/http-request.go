@@ -18,6 +18,7 @@ import (
 
 // HTTPRequest contains a request to be made from a template
 type HTTPRequest struct {
+	Name string `yaml:"Name,omitempty"`
 	// AttackType is the attack type
 	// Sniper, PitchFork and ClusterBomb. Default is Sniper
 	AttackType string `yaml:"attack,omitempty"`
