@@ -4,6 +4,8 @@ import "regexp"
 
 // Extractor is used to extract part of response using a regex.
 type Extractor struct {
+	// Name is the extractor's name
+	Name string `yaml:"name,omitempty"`
 	// Type is the type of the matcher
 	Type string `yaml:"type"`
 

@@ -1,7 +1,10 @@
 package workflows
 
 import (
-	"github.com/d5/tengo/v2"
+	"strings"
+	"sync"
+
+	tengo "github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
 )
@@ -9,8 +12,10 @@ import (
 // NucleiVar within the scripting engine
 type NucleiVar struct {
 	tengo.ObjectImpl
-	Templates []*Template
-	URL       string
+	Templates    []*Template
+	URL          string
+	InternalVars map[string]interface{}
+	sync.RWMutex
 }
 
 // Template contains HTTPOptions and DNSOptions for a single template
@@ -31,8 +36,8 @@ func (n *NucleiVar) CanCall() bool {
 
 // Call logic - actually it doesn't require arguments
 func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
+	n.InternalVars = make(map[string]interface{})
 	var gotResult bool
-
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
 			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
@@ -42,13 +47,15 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue
 				}
-				err = httpExecutor.ExecuteHTTP(n.URL)
-				if err != nil {
-					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+				result := httpExecutor.ExecuteHTTP(n.URL)
+				if result.Error != nil {
+					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
 				}
+
 				if httpExecutor.GotResults() {
 					gotResult = true
+					n.addResults(&result)
 				}
 			}
 		}
@@ -57,19 +64,61 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 			for _, request := range template.DNSOptions.Template.RequestsDNS {
 				template.DNSOptions.DNSRequest = request
 				dnsExecutor := executor.NewDNSExecutor(template.DNSOptions)
-				err = dnsExecutor.ExecuteDNS(n.URL)
-				if err != nil {
-					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+				result := dnsExecutor.ExecuteDNS(n.URL)
+				if result.Error != nil {
+					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
 				}
+
 				if dnsExecutor.GotResults() {
 					gotResult = true
+					n.addResults(&result)
 				}
 			}
 		}
 	}
+
 	if gotResult {
 		return tengo.TrueValue, nil
 	}
 	return tengo.FalseValue, nil
+}
+
+func (n *NucleiVar) IsFalsy() bool {
+	n.RLock()
+	defer n.RUnlock()
+
+	return len(n.InternalVars) == 0
+}
+
+func (n *NucleiVar) addResults(r *executor.Result) {
+	n.RLock()
+	defer n.RUnlock()
+
+	for k, v := range r.Matches {
+		n.InternalVars[k] = v
+	}
+
+	for k, v := range r.Extractions {
+		n.InternalVars[k] = v
+	}
+}
+
+// IndexGet returns the value for the given key.
+func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
+	strIdx, ok := tengo.ToString(index)
+	if !ok {
+		err = tengo.ErrInvalidIndexType
+		return
+	}
+
+	r, ok := n.InternalVars[strIdx]
+	if !ok {
+		return tengo.UndefinedValue, nil
+	}
+
+	// Probably can be improved but as of now just joining all extractors with new line
+	res = &tengo.String{Value: strings.Join(r.([]string), "\n")}
+
+	return
 }

@@ -72,7 +72,7 @@ func (e *DNSExecutor) GotResults() bool {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecutor) ExecuteDNS(URL string) error {
+func (e *DNSExecutor) ExecuteDNS(URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -84,7 +84,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
-		return errors.Wrap(err, "could not make dns request")
+		result.Error = errors.Wrap(err, "could not make dns request")
+		return
 	}
 
 	if e.debug {
@@ -95,7 +96,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// Send the request to the target servers
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
-		return errors.Wrap(err, "could not send dns request")
+		result.Error = errors.Wrap(err, "could not send dns request")
+		return
 	}
 
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
@@ -111,7 +113,7 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 		if !matcher.MatchDNS(resp) {
 			// If the condition is AND we haven't matched, return.
 			if matcherCondition == matchers.ANDCondition {
-				return nil
+				return
 			}
 		} else {
 			// If the matcher has matched, and its an OR
@@ -138,7 +140,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 		e.writeOutputDNS(domain, nil, extractorResults)
 		atomic.CompareAndSwapUint32(&e.results, 0, 1)
 	}
-	return nil
+
+	return
 }
 
 // Close closes the dns executor for a template.
