@@ -113,16 +113,13 @@ mainLoop:
 		req := compiledRequest.Request
 
 		if e.debug {
-			p.StartStdCapture()
-			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
-			p.StopStdCapture()
-
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
 				p.Abort(remaining)
 				return errors.Wrap(err, "could not dump http request")
 			}
 			p.StartStdCapture()
+			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 			fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 			p.StopStdCapture()
 		}
@@ -140,16 +137,13 @@ mainLoop:
 		}
 
 		if e.debug {
-			p.StartStdCapture()
-			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
-			p.StopStdCapture()
-
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
 				p.Abort(remaining)
 				return errors.Wrap(err, "could not dump http response")
 			}
 			p.StartStdCapture()
+			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 			p.StopStdCapture()
 		}
