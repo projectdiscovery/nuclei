@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
@@ -50,8 +51,12 @@ func Parse(file string) (*Template, error) {
 
 		// Validate the payloads if any
 		for name, wordlist := range request.Payloads {
-			if !generators.FileExists(wordlist) {
-				return nil, fmt.Errorf("The %s file for payload %s does not exist", wordlist, name)
+			// check if it's a multiline string list
+			if len(strings.Split(wordlist, "\n")) <= 1 {
+				// check if it's a worldlist file
+				if !generators.FileExists(wordlist) {
+					return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", wordlist, name)
+				}
 			}
 		}
 

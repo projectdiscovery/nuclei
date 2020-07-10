@@ -10,8 +10,13 @@ import (
 func LoadWordlists(payloads map[string]string) map[string][]string {
 	wordlists := make(map[string][]string)
 	// load all wordlists
-	for name, filepath := range payloads {
-		wordlists[name] = LoadFile(filepath)
+	for name, wordlist := range payloads {
+		elements := strings.Split(wordlist, "\n")
+		if len(elements) >= 2 {
+			wordlists[name] = elements
+		} else {
+			wordlists[name] = LoadFile(wordlist)
+		}
 	}
 
 	return wordlists
