@@ -57,6 +57,7 @@ func startStdCapture() *captureData {
 		if buffer.Len() > 0 {
 			out <- buffer.Bytes()
 		}
+		close(out)
 	}
 
 	go stdCopy(c.outStdout, rStdout)
@@ -74,11 +75,13 @@ func stopStdCapture(c *captureData) {
 	stdRead := func(in <-chan []byte, outData *bytes.Buffer) {
 		defer wg.Done()
 
-		select {
-		case out := <-in:
-			outData.Write(out)
-		default:
-		//case <-time.After(10 * time.Millisecond):
+		for {
+			out, more := <-in
+			if more {
+				outData.Write(out)
+			} else {
+				return
+			}
 		}
 	}
 
