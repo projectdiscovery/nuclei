@@ -48,7 +48,7 @@ func (p *Progress) SetupTemplateProgressbar(templateIndex int, templateCount int
 	bar := p.setupProgressbar(barName, requestCount)
 
 	if p.barTemplate != nil {
-		// ensure any previous bar has finished and aborted requests have also been considered
+		// ensure any previous bar has finished and dropped requests have also been considered
 		p.barTemplate.finish()
 	}
 
