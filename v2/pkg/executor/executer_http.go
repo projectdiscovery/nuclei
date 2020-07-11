@@ -106,7 +106,7 @@ func (e *HTTPExecutor) ExecuteHTTP(p *progress.Progress, URL string) error {
 mainLoop:
 	for compiledRequest := range compiledRequest {
 		if compiledRequest.Error != nil {
-			p.Abort(remaining)
+			p.Drop(remaining)
 			return errors.Wrap(err, "error in compiled http request")
 		}
 		e.setCustomHeaders(compiledRequest)
@@ -115,7 +115,7 @@ mainLoop:
 		if e.debug {
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
-				p.Abort(remaining)
+				p.Drop(remaining)
 				return errors.Wrap(err, "could not dump http request")
 			}
 			p.StartStdCapture()
@@ -129,7 +129,7 @@ mainLoop:
 			if resp != nil {
 				resp.Body.Close()
 			}
-			p.Abort(1)
+			p.Drop(1)
 			p.StartStdCapture()
 			gologger.Warningf("Could not do request: %s\n", err)
 			p.StopStdCapture()
@@ -139,7 +139,7 @@ mainLoop:
 		if e.debug {
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
-				p.Abort(remaining)
+				p.Drop(remaining)
 				return errors.Wrap(err, "could not dump http response")
 			}
 			p.StartStdCapture()
@@ -152,7 +152,7 @@ mainLoop:
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-			p.Abort(remaining)
+			p.Drop(remaining)
 			return errors.Wrap(err, "could not read http body")
 		}
 		resp.Body.Close()
@@ -161,7 +161,7 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
-			p.Abort(remaining)
+			p.Drop(remaining)
 			return errors.Wrap(err, "could not decompress http body")
 		}
 

@@ -137,7 +137,7 @@ func (r *Runner) RunEnumeration() {
 			var results bool
 			template := t.(*templates.Template)
 
-			p.SetupProgressBar(template.ID, r.inputCount * template.GetHTTPRequestsCount())
+			p.SetupTemplateProgressbar(-1, -1, template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			// process http requests
 			for _, request := range template.RequestsHTTP {
@@ -197,11 +197,9 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Error, no templates found in directory: '%s'\n", r.options.Templates)
 	}
 
-	// track progress
-	p := progress.NewProgress(nil)
-
 	// precompute request count
 	var totalRequests int64 = 0
+	var totalTemplates int = len(matches)
 	for _, match := range matches {
 		t, err := r.parse(match)
 		switch t.(type) {
@@ -209,20 +207,23 @@ func (r *Runner) RunEnumeration() {
 			template := t.(*templates.Template)
 			totalRequests += template.GetHTTPRequestsCount()
 		default:
-			p.StartStdCapture()
 			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
-			p.StopStdCapture()
 		}
 	}
 
-	p.SetupProgressBar("Multiple templates", r.inputCount * totalRequests)
+	// track progress
+	p := progress.NewProgress(nil)
+	p.SetupGlobalProgressbar(r.inputCount, len(matches), r.inputCount * totalRequests)
 
 	var results bool
-	for _, match := range matches {
+	for i, match := range matches {
 		t, err := r.parse(match)
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
+
+			p.SetupTemplateProgressbar(i, totalTemplates, template.ID, r.inputCount * template.GetHTTPRequestsCount())
+
 			for _, request := range template.RequestsDNS {
 				dnsResults := r.processTemplateWithList(p, template, request)
 				if dnsResults {
@@ -256,9 +257,7 @@ func (r *Runner) RunEnumeration() {
 			r.output.Close()
 			os.Remove(outputFile)
 		}
-		//p.StartStdCapture()
 		gologger.Infof("No results found for the template. Happy hacking!")
-		//p.StopStdCapture()
 	}
 
 	return
