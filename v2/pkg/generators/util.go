@@ -67,7 +67,20 @@ func MergeMaps(m1, m2 map[string]interface{}) (m map[string]interface{}) {
 		m[k] = v
 	}
 
-	return m
+	return
+}
+
+// MergeMapsWithStrings into a new string one
+func MergeMapsWithStrings(m1, m2 map[string]string) (m map[string]string) {
+	m = make(map[string]string)
+	for k, v := range m1 {
+		m[k] = v
+	}
+	for k, v := range m2 {
+		m[k] = v
+	}
+
+	return
 }
 
 func reverseString(s string) string {
