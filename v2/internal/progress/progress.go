@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/vbauerster/mpb/v5"
-	"github.com/vbauerster/mpb/v5/cwriter"
 	"github.com/vbauerster/mpb/v5/decor"
 	"os"
 	"strings"
@@ -18,7 +17,6 @@ type Progress struct {
 	barGlobal   *Bar
 
 	captureData     *captureData
-	termWidth       int
 	stdCaptureMutex *sync.Mutex
 	stdout          *strings.Builder
 	stderr          *strings.Builder
@@ -26,19 +24,12 @@ type Progress struct {
 
 // Creates and returns a new progress tracking object.
 func NewProgress(group *sync.WaitGroup) *Progress {
-	w := cwriter.New(os.Stderr)
-	tw, err := w.GetWidth()
-	if err != nil {
-		tw = 80
-	}
-
 	p := &Progress{
 		progress: mpb.New(
 			mpb.WithWaitGroup(group),
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
-		termWidth:       tw,
 		stdCaptureMutex: &sync.Mutex{},
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
