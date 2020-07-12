@@ -20,29 +20,34 @@ type Progress struct {
 	stdCaptureMutex *sync.Mutex
 	stdout          *strings.Builder
 	stderr          *strings.Builder
+
+	colorizer		aurora.Aurora
 }
 
 // Creates and returns a new progress tracking object.
-func NewProgress(group *sync.WaitGroup) *Progress {
+func NewProgress(noColor bool) *Progress {
 	p := &Progress{
 		progress: mpb.New(
-			mpb.WithWaitGroup(group),
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
 		stdCaptureMutex: &sync.Mutex{},
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
+		colorizer: 		 aurora.NewAurora(!noColor),
 	}
 	return p
 }
 
 // Creates and returns a progress bar that tracks request progress for a specific template.
 func (p *Progress) SetupTemplateProgressbar(templateIndex int, templateCount int, name string, requestCount int64) {
-	barName := "[" + aurora.Green(name).String() + "]"
+	color := p.colorizer
+	barName := "[" + color.Green(name).String() + "]"
 
 	if templateIndex > -1 && templateCount > -1 {
-		barName = aurora.Sprintf("[%d/%d] ", aurora.Bold(aurora.Cyan(templateIndex)), aurora.Cyan(templateCount)) + barName
+		barName = color.Sprintf("[%d/%d] ",
+			color.Bold(color.Cyan(templateIndex)),
+			color.Cyan(templateCount)) + barName
 	}
 
 	bar := p.setupProgressbar(barName, requestCount)
@@ -62,15 +67,17 @@ func (p *Progress) SetupTemplateProgressbar(templateIndex int, templateCount int
 // Creates and returns a progress bar that tracks all the requests progress.
 // This is only useful when multiple templates are processed within the same run.
 func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, requestCount int64) {
+	color := p.colorizer
+
 	hostPlural := "host"
 	if hostCount > 1 {
 		hostPlural = "hosts"
 	}
 
-	barName := "[" + aurora.Sprintf(
-		aurora.Cyan("%d templates, %d %s"),
-		aurora.Bold(aurora.Cyan(templateCount)),
-		aurora.Bold(aurora.Cyan(hostCount)),
+	barName := "[" + color.Sprintf(
+		color.Cyan("%d templates, %d %s"),
+		color.Bold(color.Cyan(templateCount)),
+		color.Bold(color.Cyan(hostCount)),
 		hostPlural) + "]"
 
 	bar := p.setupProgressbar(barName, requestCount)
@@ -118,17 +125,19 @@ func (p *Progress) Wait() {
 
 // Creates and returns a progress bar.
 func (p *Progress) setupProgressbar(name string, total int64) *mpb.Bar {
+	color := p.colorizer
 	return p.progress.AddBar(
 		total,
 		mpb.BarNoPop(),
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WCSyncSpaceR),
-			decor.CountersNoUnit(aurora.Blue(" %d/%d").String(), decor.WCSyncSpace),
-			decor.NewPercentage(aurora.Bold("%d").String(), decor.WCSyncSpace),
+			decor.CountersNoUnit(color.Blue(" %d/%d").String(), decor.WCSyncSpace),
+			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
 		),
 		mpb.AppendDecorators(
-			decor.AverageSpeed(0, aurora.Yellow("%.2f r/s ").String(), decor.WCSyncSpace),
+			decor.AverageSpeed(0, color.Yellow("%.2f r/s ").String(), decor.WCSyncSpace),
+			decor.Elapsed(decor.ET_STYLE_GO, decor.WCSyncSpace),
 			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
 		),
 	)

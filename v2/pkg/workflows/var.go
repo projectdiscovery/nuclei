@@ -35,7 +35,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	var gotResult bool
 
 	// track progress
-	p := progress.NewProgress(nil)
+	p := progress.NewProgress(false)
 
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
