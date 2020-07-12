@@ -33,6 +33,9 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
+
+	// progress tracking
+	progress *progress.Progress
 }
 
 // New creates a new client for running enumeration process.
@@ -99,6 +102,10 @@ func New(options *Options) (*Runner, error) {
 		}
 		runner.output = output
 	}
+
+	// Creates the progress tracking object
+	runner.progress = progress.NewProgress(runner.options.NoColor)
+
 	return runner, nil
 }
 
@@ -125,18 +132,18 @@ func (r *Runner) RunEnumeration() {
 		r.options.Templates = newPath
 	}
 
+	p := r.progress
+
 	// Single yaml provided
 	if strings.HasSuffix(r.options.Templates, ".yaml") {
 		t, err := r.parse(r.options.Templates)
-
-		// track progress
-		p := progress.NewProgress(nil)
 
 		switch t.(type) {
 		case *templates.Template:
 			var results bool
 			template := t.(*templates.Template)
 
+			// track single template progress
 			p.SetupTemplateProgressbar(-1, -1, template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			// process http requests
@@ -211,8 +218,7 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
-	// track progress
-	p := progress.NewProgress(nil)
+	// track global progress
 	p.SetupGlobalProgressbar(r.inputCount, len(matches), r.inputCount * totalRequests)
 
 	var results bool
@@ -222,6 +228,7 @@ func (r *Runner) RunEnumeration() {
 		case *templates.Template:
 			template := t.(*templates.Template)
 
+			// track template progress
 			p.SetupTemplateProgressbar(i, totalTemplates, template.ID, r.inputCount * template.GetHTTPRequestsCount())
 
 			for _, request := range template.RequestsDNS {
