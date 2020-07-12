@@ -20,6 +20,7 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
 - [Installation Instructions](#installation-instructions)
     - [From Binary](#from-binary)
     - [From Source](#from-source)
+    - [From Github](#from-github)
     - [Running in a Docker Container](#running-in-a-docker-container)
 - [Nuclei templates](#nuclei-templates)
 - [Running nuclei](#running-nuclei)
@@ -93,6 +94,17 @@ nuclei requires go1.13+ to install successfully. Run the following command to ge
 ```
 
 In order to update the tool, you can use -u flag with `go get` command.
+
+
+### From Github
+
+```bash
+git clone https://github.com/projectdiscovery/nuclei.git
+cd v2/cmd/nuclei/
+go build .
+mv nuclei /usr/local/bin/
+nuclei -h
+```
 
 ### Running in a Docker Container
 
