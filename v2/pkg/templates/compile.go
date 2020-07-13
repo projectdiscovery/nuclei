@@ -50,13 +50,23 @@ func Parse(file string) (*Template, error) {
 		}
 
 		// Validate the payloads if any
-		for name, wordlist := range request.Payloads {
-			// check if it's a multiline string list
-			if len(strings.Split(wordlist, "\n")) <= 1 {
-				// check if it's a worldlist file
-				if !generators.FileExists(wordlist) {
-					return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", wordlist, name)
+		for name, payload := range request.Payloads {
+			switch payload.(type) {
+			case string:
+				v := payload.(string)
+				// check if it's a multiline string list
+				if len(strings.Split(v, "\n")) <= 1 {
+					// check if it's a worldlist file
+					if !generators.FileExists(v) {
+						return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", v, name)
+					}
 				}
+			case []string, []interface{}:
+				if len(payload.([]interface{})) <= 0 {
+					return nil, fmt.Errorf("The payload %s does not contain enough elements", name)
+				}
+			default:
+				return nil, fmt.Errorf("The payload %s has invalid type", name)
 			}
 		}
 

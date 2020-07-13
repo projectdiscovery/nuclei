@@ -6,20 +6,31 @@ import (
 	"strings"
 )
 
-// LoadWordlists creating proper data structure
-func LoadWordlists(payloads map[string]string) map[string][]string {
-	wordlists := make(map[string][]string)
+// LoadPayloads creating proper data structure
+func LoadPayloads(payloads map[string]interface{}) map[string][]string {
+	loadedPayloads := make(map[string][]string)
 	// load all wordlists
-	for name, wordlist := range payloads {
-		elements := strings.Split(wordlist, "\n")
-		if len(elements) >= 2 {
-			wordlists[name] = elements
-		} else {
-			wordlists[name] = LoadFile(wordlist)
+	for name, payload := range payloads {
+		switch payload.(type) {
+		case string:
+			v := payload.(string)
+			elements := strings.Split(v, "\n")
+			if len(elements) >= 2 {
+				loadedPayloads[name] = elements
+			} else {
+				loadedPayloads[name] = LoadFile(v)
+			}
+		case interface{}:
+			vv := payload.([]interface{})
+			var v []string
+			for _, vvv := range vv {
+				v = append(v, vvv.(string))
+			}
+			loadedPayloads[name] = v
 		}
 	}
 
-	return wordlists
+	return loadedPayloads
 }
 
 // LoadFile into slice of strings

@@ -38,7 +38,7 @@ func (n *NucleiVar) CanCall() bool {
 // Call logic - actually it doesn't require arguments
 func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	n.InternalVars = make(map[string]interface{})
-	externalVars := make(map[string]string)
+	externalVars := make(map[string]interface{})
 
 	// if external variables are specified and matches the template ones, these gets overwritten
 	if len(args) == 1 {
@@ -50,10 +50,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				if !ok {
 					continue
 				}
-				value, ok := tengo.ToString(i.Value())
-				if !ok {
-					continue
-				}
+				value := tengo.ToInterface(i.Value())
 				externalVars[key] = value
 			}
 		}
@@ -63,7 +60,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
 			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
-				request.Payloads = generators.MergeMapsWithStrings(request.Payloads, externalVars)
+				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)
 				template.HTTPOptions.HTTPRequest = request
 				httpExecutor, err := executor.NewHTTPExecutor(template.HTTPOptions)
 				if err != nil {
