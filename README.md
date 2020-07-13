@@ -27,7 +27,6 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
     - [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
     - [3. Automating nuclei with subfinder and any other similar tool.](#3-automating-nuclei-with-subfinder-and-any-other-similar-tool)
     - [4. Running nuclei in a Docker](#running-in-a-docker-container)
-
 - [Thanks](#thanks)
 
  # Features
