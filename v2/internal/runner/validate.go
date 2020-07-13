@@ -15,7 +15,7 @@ func (options *Options) validateOptions() error {
 	}
 
 	// Check if a list of templates was provided and it exists
-	if options.Templates == "" && !options.UpdateTemplates {
+	if len(options.Templates) == 0 && !options.UpdateTemplates {
 		return errors.New("no template/templates provided")
 	}
 
