@@ -4,22 +4,25 @@ on:
     tags:
       - v*
 
-jobs:
-  release:
-    name: Release on GitHub
+jobs: 
+  release: 
     runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v1
-
-      - name: Validates GO releaser config
-        uses: docker://goreleaser/goreleaser:latest
-        with:
-          args: check
-
-      - name: Create release on GitHub
-        uses: docker://goreleaser/goreleaser:latest
-        with:
-          args: release
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    steps: 
+      - 
+        name: "Check out code"
+        uses: actions/checkout@v2
+        with: 
+          fetch-depth: 0
+      - 
+        name: "Set up Go"
+        uses: actions/setup-go@v2
+        with: 
+          go-version: 1.14
+      - 
+        env: 
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        name: "Create release on GitHub"
+        uses: goreleaser/goreleaser-action@v2
+        with: 
+          args: "release --rm-dist"
+          version: latest
