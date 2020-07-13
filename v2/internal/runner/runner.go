@@ -207,20 +207,21 @@ func (r *Runner) RunEnumeration() {
 					results = httpResults
 				}
 			}
+
+			if !results {
+				if r.output != nil {
+					outputFile := r.output.Name()
+					r.output.Close()
+					os.Remove(outputFile)
+				}
+				gologger.Infof("No results found for [%s]. Happy hacking!", template.ID)
+			}
 		case *workflows.Workflow:
 			workflow := t.(*workflows.Workflow)
 			r.ProcessWorkflowWithList(workflow)
 		default:
-			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
+			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
-	}
-	if !results {
-		if r.output != nil {
-			outputFile := r.output.Name()
-			r.output.Close()
-			os.Remove(outputFile)
-		}
-		gologger.Infof("No results found for the template. Happy hacking!")
 	}
 	return
 }
