@@ -161,10 +161,9 @@ mainLoop:
 		// Convert response body from []byte to string with zero copy
 		body := unsafeToString(data)
 
-		var headers string
+		headers = headersToString(resp.Header)
 		matcherCondition := e.httpRequest.GetMatchersCondition()
 		for _, matcher := range e.httpRequest.Matchers {
-			headers = headersToString(resp.Header)
 			// Check if the matcher matched
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
@@ -186,7 +185,6 @@ mainLoop:
 		// next task which is extraction of input from matchers.
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
-			headers = headersToString(resp.Header)
 			for match := range extractor.Extract(body, headers) {
 				extractorResults = append(extractorResults, match)
 			}
