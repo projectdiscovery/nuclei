@@ -161,7 +161,7 @@ mainLoop:
 		// Convert response body from []byte to string with zero copy
 		body := unsafeToString(data)
 
-		headers = headersToString(resp.Header)
+		headers := headersToString(resp.Header)
 		matcherCondition := e.httpRequest.GetMatchersCondition()
 		for _, matcher := range e.httpRequest.Matchers {
 			// Check if the matcher matched
@@ -175,6 +175,8 @@ mainLoop:
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
 					result.Matches[matcher.Name] = nil
+					// probably redundant but ensures we snapshot current payload values when matchers are valid
+					result.Meta = compiledRequest.Meta
 					e.writeOutputHTTP(compiledRequest, matcher, nil)
 					atomic.CompareAndSwapUint32(&e.results, 0, 1)
 				}
@@ -188,6 +190,8 @@ mainLoop:
 			for match := range extractor.Extract(body, headers) {
 				extractorResults = append(extractorResults, match)
 			}
+			// probably redundant but ensures we snapshot current payload values when extractors are valid
+			result.Meta = compiledRequest.Meta
 			result.Extractions[extractor.Name] = extractorResults
 		}
 
@@ -290,6 +294,7 @@ func (e *HTTPExecutor) setCustomHeaders(r *requests.CompiledHTTP) {
 }
 
 type Result struct {
+	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
 	GotResults  bool
