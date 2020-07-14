@@ -20,6 +20,7 @@ func (e *HTTPExecutor) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matc
 			Matched:  URL,
 			Severity: e.template.Info.Severity,
 			Author:   e.template.Info.Author,
+			Description:   e.template.Info.Description,
 		}
 		if matcher != nil && len(matcher.Name) > 0 {
 			output.MatcherName = matcher.Name

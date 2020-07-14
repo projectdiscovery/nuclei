@@ -17,6 +17,7 @@ func (e *DNSExecutor) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 			Matched:  domain,
 			Severity: e.template.Info.Severity,
 			Author:   e.template.Info.Author,
+			Description:   e.template.Info.Description,
 		}
 		if matcher != nil && len(matcher.Name) > 0 {
 			output.MatcherName = matcher.Name
