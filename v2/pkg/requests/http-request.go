@@ -18,13 +18,14 @@ import (
 
 // HTTPRequest contains a request to be made from a template
 type HTTPRequest struct {
+	Name string `yaml:"Name,omitempty"`
 	// AttackType is the attack type
 	// Sniper, PitchFork and ClusterBomb. Default is Sniper
 	AttackType string `yaml:"attack,omitempty"`
 	// attackType is internal attack type
 	attackType generators.Type
 	// Path contains the path/s for the request variables
-	Payloads map[string]string `yaml:"payloads,omitempty"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
 	// Method is the request method, whether GET, POST, PUT, etc
 	Method string `yaml:"method"`
 	// Path contains the path/s for the request
@@ -138,7 +139,7 @@ func (r *HTTPRequest) makeHTTPRequestFromRaw(baseURL string, values map[string]i
 			raw += "\n"
 
 			if len(r.Payloads) > 0 {
-				basePayloads := generators.LoadWordlists(r.Payloads)
+				basePayloads := generators.LoadPayloads(r.Payloads)
 				generatorFunc := generators.SniperGenerator
 				switch r.attackType {
 				case generators.PitchFork:

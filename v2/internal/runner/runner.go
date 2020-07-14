@@ -11,7 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/d5/tengo/v2"
+	tengo "github.com/d5/tengo/v2"
+	"github.com/d5/tengo/v2/stdlib"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
@@ -278,16 +279,16 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		wg.Add(1)
 
 		go func(URL string) {
-			var err error
+			var result executor.Result
 
 			if httpExecutor != nil {
-				err = httpExecutor.ExecuteHTTP(URL)
+				result = httpExecutor.ExecuteHTTP(URL)
 			}
 			if dnsExecutor != nil {
-				err = dnsExecutor.ExecuteDNS(URL)
+				result = dnsExecutor.ExecuteDNS(URL)
 			}
-			if err != nil {
-				gologger.Warningf("Could not execute step: %s\n", err)
+			if result.Error != nil {
+				gologger.Warningf("Could not execute step: %s\n", result.Error)
 			}
 			<-limiter
 			wg.Done()
@@ -339,7 +340,7 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 // ProcessWorkflow towards an URL
 func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
-
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	for name, value := range workflow.Variables {
 		var writer *bufio.Writer
 		if r.output != nil {
