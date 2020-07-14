@@ -114,6 +114,12 @@ func (n *NucleiVar) addResults(r *executor.Result) {
 	n.RLock()
 	defer n.RUnlock()
 
+	// add payload values as first, they will be accessible if not overwritter through
+	// payload_name (from template) => value
+	for k, v := range r.Meta {
+		n.InternalVars[k] = v
+	}
+
 	for k, v := range r.Matches {
 		n.InternalVars[k] = v
 	}
@@ -136,18 +142,20 @@ func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
 		return tengo.UndefinedValue, nil
 	}
 
-	var resA []tengo.Object
-
-	rr, ok := r.([]string)
-	if !ok {
-		return
+	switch r.(type) {
+	case string:
+		res = &tengo.String{Value: r.(string)}
+	case []string:
+		rr, ok := r.([]string)
+		if !ok {
+			break
+		}
+		var resA []tengo.Object
+		for _, rrr := range rr {
+			resA = append(resA, &tengo.String{Value: rrr})
+		}
+		res = &tengo.Array{Value: resA}
 	}
-	for _, rrr := range rr {
-		resA = append(resA, &tengo.String{Value: rrr})
-	}
-
-	// Probably can be improved but as of now just joining all extractors with new line
-	res = &tengo.Array{Value: resA}
 
 	return
 }
