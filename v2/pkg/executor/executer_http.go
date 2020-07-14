@@ -92,18 +92,22 @@ func (e *HTTPExecutor) GotResults() bool {
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecutor) ExecuteHTTP(URL string) error {
+func (e *HTTPExecutor) ExecuteHTTP(URL string) (result Result) {
+	result.Matches = make(map[string]interface{})
+	result.Extractions = make(map[string]interface{})
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
-		return errors.Wrap(err, "could not make http request")
+		result.Error = errors.Wrap(err, "could not make http request")
+		return
 	}
 
 	// Send the request to the target servers
 mainLoop:
 	for compiledRequest := range compiledRequest {
 		if compiledRequest.Error != nil {
-			return errors.Wrap(err, "could not make http request")
+			result.Error = errors.Wrap(err, "could not make http request")
+			return
 		}
 		e.setCustomHeaders(compiledRequest)
 		req := compiledRequest.Request
@@ -112,7 +116,8 @@ mainLoop:
 			gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 			dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 			if err != nil {
-				return errors.Wrap(err, "could not dump http request")
+				result.Error = errors.Wrap(err, "could not make http request")
+				return
 			}
 			fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 		}
@@ -130,7 +135,8 @@ mainLoop:
 			gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
-				return errors.Wrap(err, "could not dump http response")
+				result.Error = errors.Wrap(err, "could not dump http response")
+				return
 			}
 			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 		}
@@ -139,7 +145,8 @@ mainLoop:
 		if err != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-			return errors.Wrap(err, "could not read http body")
+			result.Error = errors.Wrap(err, "could not read http body")
+			return
 		}
 		resp.Body.Close()
 
@@ -147,16 +154,16 @@ mainLoop:
 		// so in case we have to manually do it
 		data, err = requests.HandleDecompression(compiledRequest.Request, data)
 		if err != nil {
-			return errors.Wrap(err, "could not decompress http body")
+			result.Error = errors.Wrap(err, "could not decompress http body")
+			return
 		}
 
 		// Convert response body from []byte to string with zero copy
 		body := unsafeToString(data)
 
-		var headers string
+		headers := headersToString(resp.Header)
 		matcherCondition := e.httpRequest.GetMatchersCondition()
 		for _, matcher := range e.httpRequest.Matchers {
-			headers = headersToString(resp.Header)
 			// Check if the matcher matched
 			if !matcher.Match(resp, body, headers) {
 				// If the condition is AND we haven't matched, try next request.
@@ -167,6 +174,9 @@ mainLoop:
 				// If the matcher has matched, and its an OR
 				// write the first output then move to next matcher.
 				if matcherCondition == matchers.ORCondition && len(e.httpRequest.Extractors) == 0 {
+					result.Matches[matcher.Name] = nil
+					// probably redundant but ensures we snapshot current payload values when matchers are valid
+					result.Meta = compiledRequest.Meta
 					e.writeOutputHTTP(compiledRequest, matcher, nil)
 					atomic.CompareAndSwapUint32(&e.results, 0, 1)
 				}
@@ -177,10 +187,12 @@ mainLoop:
 		// next task which is extraction of input from matchers.
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
-			headers = headersToString(resp.Header)
 			for match := range extractor.Extract(body, headers) {
 				extractorResults = append(extractorResults, match)
 			}
+			// probably redundant but ensures we snapshot current payload values when extractors are valid
+			result.Meta = compiledRequest.Meta
+			result.Extractions[extractor.Name] = extractorResults
 		}
 
 		// Write a final string of output if matcher type is
@@ -193,7 +205,7 @@ mainLoop:
 
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
 
-	return nil
+	return
 }
 
 // Close closes the http executor for a template.
@@ -279,4 +291,12 @@ func (e *HTTPExecutor) setCustomHeaders(r *requests.CompiledHTTP) {
 		headerValue = strings.TrimSpace(headerValue)
 		r.Request.Header.Set(headerName, headerValue)
 	}
+}
+
+type Result struct {
+	Meta        map[string]interface{}
+	Matches     map[string]interface{}
+	Extractions map[string]interface{}
+	GotResults  bool
+	Error       error
 }
