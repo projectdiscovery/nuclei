@@ -6,8 +6,10 @@ import "regexp"
 type Extractor struct {
 	// Name is the extractor's name
 	Name string `yaml:"name,omitempty"`
-	// Type is the type of the matcher
+	// Type is the type of the extractor
 	Type string `yaml:"type"`
+	// extractorType is the internal type of the extractor
+	extractorType ExtractorType
 
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex"`
@@ -28,11 +30,14 @@ type ExtractorType = int
 const (
 	// RegexExtractor extracts responses with regexes
 	RegexExtractor ExtractorType = iota + 1
+	// KValExtractor extracts responses with key:value
+	KValExtractor
 )
 
 // ExtractorTypes is an table for conversion of extractor type from string.
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
+	"kval":  KValExtractor,
 }
 
 // Part is the part of the request to match
