@@ -184,7 +184,7 @@ func (r *Runner) RunEnumeration() {
 			workflow := t.(*workflows.Workflow)
 			r.ProcessWorkflowWithList(workflow)
 		default:
-			gologger.Errorf("Could not parse file '%s': %s\n", r.options.Templates, err)
+			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
 	}
 	if !results {
