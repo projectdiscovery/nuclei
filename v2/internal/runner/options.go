@@ -29,6 +29,7 @@ type Options struct {
 	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
 	JSON               bool                   // JSON writes json output to files
+	JSONRequests       bool                   // write requests/responses for matches in JSON output
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -66,6 +67,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
 	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
+	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 
 	flag.Parse()
 
