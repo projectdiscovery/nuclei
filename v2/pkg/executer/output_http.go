@@ -1,6 +1,8 @@
 package executer
 
 import (
+	"net/http"
+	"net/http/httputil"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -10,7 +12,7 @@ import (
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string) {
 	URL := req.Request.URL.String()
 
 	if e.jsonOutput {
@@ -27,6 +29,21 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, matcher *match
 		}
 		if len(extractorResults) > 0 {
 			output.ExtractedResults = extractorResults
+		}
+		if e.jsonRequest {
+			dumpedRequest, err := httputil.DumpRequest(req.Request.Request, true)
+			if err != nil {
+				gologger.Warningf("could not dump request: %s\n", err)
+			} else {
+				output.Request = string(dumpedRequest)
+			}
+			dumpedResponse, err := httputil.DumpResponse(resp, false)
+			if err != nil {
+				gologger.Warningf("could not dump response: %s\n", err)
+			} else {
+				output.Response = string(dumpedResponse) + body
+			}
+
 		}
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
