@@ -7,7 +7,6 @@ github.com/blang/semver v1.1.0 h1:ol1rO7QQB5uy7umSNV7VAmLugfLRD+17sYJujRNYPhg=
 github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdnnjpJbkM4JQ=
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/d5/tengo v1.24.8 h1:PRJ+NWt7ae/9sSbIfThOBTkPSvNV+dwYoBAvwfNgNJY=
-github.com/d5/tengo v1.24.8/go.mod h1:VhLq8Q2QFhCIJO3NhvM934qOThykMqJi9y9Siqd1ocQ=
 github.com/d5/tengo/v2 v2.6.0 h1:D0cJtpiBzaLJ/Smv6nnUc/LIfO46oKwDx85NZtIRNRI=
 github.com/d5/tengo/v2 v2.6.0/go.mod h1:XRGjEs5I9jYIKTxly6HCF8oiiilk5E/RYXOZ5b0DZC8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
