@@ -30,7 +30,7 @@ func (e *Extractor) Extract(resp *http.Response, body, headers string) map[strin
 			if len(matches) > 0 {
 				return matches
 			}
-			return e.extractInlineKVal(resp, "cookies")
+			return e.extractInlineKVal(resp, "set-cookie")
 		}
 	}
 
@@ -75,7 +75,7 @@ func (e *Extractor) extractKVal(r *http.Response) map[string]struct{} {
 func (e *Extractor) extractInlineKVal(r *http.Response, key string) map[string]struct{} {
 	results := make(map[string]struct{})
 	for _, v := range r.Header.Values(key) {
-		for _, token := range strings.Split(v, " ") {
+		for _, token := range strings.Split(v, ";") {
 			semicolon := strings.Index(token, ":")
 			key, value := token[:semicolon], token[semicolon:]
 			for _, k := range e.KVal {
