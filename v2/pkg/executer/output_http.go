@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"strings"
@@ -10,17 +10,17 @@ import (
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecutor) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matchers.Matcher, extractorResults []string) {
 	URL := req.Request.URL.String()
 
 	if e.jsonOutput {
 		output := jsonOutput{
-			Template: e.template.ID,
-			Type:     "http",
-			Matched:  URL,
-			Severity: e.template.Info.Severity,
-			Author:   e.template.Info.Author,
-			Description:   e.template.Info.Description,
+			Template:    e.template.ID,
+			Type:        "http",
+			Matched:     URL,
+			Severity:    e.template.Info.Severity,
+			Author:      e.template.Info.Author,
+			Description: e.template.Info.Description,
 		}
 		if matcher != nil && len(matcher.Name) > 0 {
 			output.MatcherName = matcher.Name

@@ -6,7 +6,6 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/d5/tengo v1.24.8
 	github.com/d5/tengo/v2 v2.6.0
 	github.com/google/go-github/v32 v32.0.0
 	github.com/json-iterator/go v1.1.10
