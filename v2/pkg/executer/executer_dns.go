@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"bufio"
@@ -15,9 +15,9 @@ import (
 	retryabledns "github.com/projectdiscovery/retryabledns"
 )
 
-// DNSExecutor is a client for performing a DNS request
+// DNSExecuter is a client for performing a DNS request
 // for a template.
-type DNSExecutor struct {
+type DNSExecuter struct {
 	debug       bool
 	jsonOutput  bool
 	results     uint32
@@ -36,7 +36,7 @@ var DefaultResolvers = []string{
 	"8.8.4.4:53", // Google
 }
 
-// DNSOptions contains configuration options for the DNS executor.
+// DNSOptions contains configuration options for the DNS executer.
 type DNSOptions struct {
 	Debug      bool
 	JSON       bool
@@ -45,12 +45,12 @@ type DNSOptions struct {
 	Writer     *bufio.Writer
 }
 
-// NewDNSExecutor creates a new DNS executor from a template
+// NewDNSExecuter creates a new DNS executer from a template
 // and a DNS request query.
-func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
+func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
-	executer := &DNSExecutor{
+	executer := &DNSExecuter{
 		debug:       options.Debug,
 		jsonOutput:  options.JSON,
 		results:     0,
@@ -63,8 +63,8 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 	return executer
 }
 
-// GotResults returns true if there were any results for the executor
-func (e *DNSExecutor) GotResults() bool {
+// GotResults returns true if there were any results for the executer
+func (e *DNSExecuter) GotResults() bool {
 	if atomic.LoadUint32(&e.results) == 0 {
 		return false
 	}
@@ -72,7 +72,7 @@ func (e *DNSExecutor) GotResults() bool {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecutor) ExecuteDNS(URL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -144,8 +144,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) (result Result) {
 	return
 }
 
-// Close closes the dns executor for a template.
-func (e *DNSExecutor) Close() {
+// Close closes the dns executer for a template.
+func (e *DNSExecuter) Close() {
 	e.outputMutex.Lock()
 	e.writer.Flush()
 	e.outputMutex.Unlock()

@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"bufio"
@@ -24,9 +24,9 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-// HTTPExecutor is client for performing HTTP requests
+// HTTPExecuter is client for performing HTTP requests
 // for a template.
-type HTTPExecutor struct {
+type HTTPExecuter struct {
 	debug         bool
 	results       uint32
 	jsonOutput    bool
@@ -38,7 +38,7 @@ type HTTPExecutor struct {
 	customHeaders requests.CustomHeaders
 }
 
-// HTTPOptions contains configuration options for the HTTP executor.
+// HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
 	Template      *templates.Template
 	HTTPRequest   *requests.HTTPRequest
@@ -52,9 +52,9 @@ type HTTPOptions struct {
 	CustomHeaders requests.CustomHeaders
 }
 
-// NewHTTPExecutor creates a new HTTP executor from a template
+// NewHTTPExecuter creates a new HTTP executer from a template
 // and a HTTP request query.
-func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
+func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	var proxyURL *url.URL
 	var err error
 
@@ -69,7 +69,7 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	client := makeHTTPClient(proxyURL, options)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	executer := &HTTPExecutor{
+	executer := &HTTPExecuter{
 		debug:         options.Debug,
 		jsonOutput:    options.JSON,
 		results:       0,
@@ -83,8 +83,8 @@ func NewHTTPExecutor(options *HTTPOptions) (*HTTPExecutor, error) {
 	return executer, nil
 }
 
-// GotResults returns true if there were any results for the executor
-func (e *HTTPExecutor) GotResults() bool {
+// GotResults returns true if there were any results for the executer
+func (e *HTTPExecuter) GotResults() bool {
 	if atomic.LoadUint32(&e.results) == 0 {
 		return false
 	}
@@ -92,7 +92,7 @@ func (e *HTTPExecutor) GotResults() bool {
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecutor) ExecuteHTTP(URL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	// Compile each request for the template based on the URL
@@ -208,8 +208,8 @@ mainLoop:
 	return
 }
 
-// Close closes the http executor for a template.
-func (e *HTTPExecutor) Close() {
+// Close closes the http executer for a template.
+func (e *HTTPExecuter) Close() {
 	e.outputMutex.Lock()
 	e.writer.Flush()
 	e.outputMutex.Unlock()
@@ -277,7 +277,7 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 	}
 }
 
-func (e *HTTPExecutor) setCustomHeaders(r *requests.CompiledHTTP) {
+func (e *HTTPExecuter) setCustomHeaders(r *requests.CompiledHTTP) {
 	for _, customHeader := range e.customHeaders {
 		// This should be pre-computed somewhere and done only once
 		tokens := strings.Split(customHeader, ":")
