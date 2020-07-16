@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"net/url"
