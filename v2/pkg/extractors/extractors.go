@@ -16,6 +16,9 @@ type Extractor struct {
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
 
+	// KVal are the kval to be present in the response headers/cookies
+	KVal []string `yaml:"kval,omitempty"`
+
 	// Part is the part of the request to match
 	//
 	// By default, matching is performed in request body.
