@@ -187,7 +187,7 @@ mainLoop:
 		// next task which is extraction of input from matchers.
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
-			for match := range extractor.Extract(body, headers) {
+			for match := range extractor.Extract(resp, body, headers) {
 				extractorResults = append(extractorResults, match)
 			}
 			// probably redundant but ensures we snapshot current payload values when extractors are valid
