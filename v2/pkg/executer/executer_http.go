@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -36,6 +37,7 @@ type HTTPExecuter struct {
 	writer        *bufio.Writer
 	outputMutex   *sync.Mutex
 	customHeaders requests.CustomHeaders
+	CookieJar     *cookiejar.Jar
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -50,6 +52,8 @@ type HTTPOptions struct {
 	Debug         bool
 	JSON          bool
 	CustomHeaders requests.CustomHeaders
+	CookieReuse   bool
+	CookieJar     *cookiejar.Jar
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -68,6 +72,15 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	// Create the HTTP Client
 	client := makeHTTPClient(proxyURL, options)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+	if options.CookieJar != nil {
+		client.HTTPClient.Jar = options.CookieJar
+	} else if options.CookieReuse {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			return nil, err
+		}
+		client.HTTPClient.Jar = jar
+	}
 
 	executer := &HTTPExecuter{
 		debug:         options.Debug,
@@ -79,6 +92,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		outputMutex:   &sync.Mutex{},
 		writer:        options.Writer,
 		customHeaders: options.CustomHeaders,
+		CookieJar:     options.CookieJar,
 	}
 	return executer, nil
 }

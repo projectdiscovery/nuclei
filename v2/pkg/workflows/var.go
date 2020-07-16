@@ -42,12 +42,12 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 
 	// if external variables are specified and matches the template ones, these gets overwritten
 	if len(args) >= 1 {
-		headers = iterableToMapString(&args[0])
+		headers = iterableToMapString(args[0])
 	}
 
 	// if external variables are specified and matches the template ones, these gets overwritten
 	if len(args) >= 2 {
-		externalVars = iterableToMap(&args[1])
+		externalVars = iterableToMap(args[1])
 	}
 
 	var gotResult bool
