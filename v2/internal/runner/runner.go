@@ -259,6 +259,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			ProxySocksURL: r.options.ProxySocksURL,
 			CustomHeaders: r.options.CustomHeaders,
 			JSON:          r.options.JSON,
+			CookieReuse:   value.CookieReuse,
 		})
 	}
 	if err != nil {

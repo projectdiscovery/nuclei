@@ -34,6 +34,8 @@ type HTTPRequest struct {
 	Headers map[string]string `yaml:"headers,omitempty"`
 	// Body is an optional parameter which contains the request body for POST methods, etc
 	Body string `yaml:"body,omitempty"`
+	// CookieReuse is an optional setting that makes cookies shared within requests
+	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
