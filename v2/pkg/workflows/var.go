@@ -158,7 +158,7 @@ func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
 	return
 }
 
-func iterableToMap(t *tengo.Object) map[string]interface{} {
+func iterableToMap(t tengo.Object) map[string]interface{} {
 	m := make(map[string]interface{})
 	if t.CanIterate() {
 		i := t.Iterate()
@@ -175,7 +175,7 @@ func iterableToMap(t *tengo.Object) map[string]interface{} {
 	return m
 }
 
-func iterableToMapString(t *tengo.Object) map[string]string {
+func iterableToMapString(t tengo.Object) map[string]string {
 	m := make(map[string]string)
 	if t.CanIterate() {
 		i := t.Iterate()
