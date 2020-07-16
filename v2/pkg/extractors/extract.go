@@ -2,7 +2,6 @@ package extractors
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -30,7 +29,7 @@ func (e *Extractor) Extract(resp *http.Response, body, headers string) map[strin
 			if len(matches) > 0 {
 				return matches
 			}
-			return e.extractInlineKVal(resp, "set-cookie")
+			return e.extractCookieKVal(resp, "set-cookie")
 		}
 	}
 
@@ -71,17 +70,13 @@ func (e *Extractor) extractKVal(r *http.Response) map[string]struct{} {
 	return results
 }
 
-// extractInlineKVal extracts text from inline corpus
-func (e *Extractor) extractInlineKVal(r *http.Response, key string) map[string]struct{} {
+// extractCookieKVal extracts text from cookies
+func (e *Extractor) extractCookieKVal(r *http.Response, key string) map[string]struct{} {
 	results := make(map[string]struct{})
-	for _, v := range r.Header.Values(key) {
-		for _, token := range strings.Split(v, ";") {
-			semicolon := strings.Index(token, ":")
-			key, value := token[:semicolon], token[semicolon:]
-			for _, k := range e.KVal {
-				if key == k {
-					results[value] = struct{}{}
-				}
+	for _, k := range e.KVal {
+		for _, cookie := range r.Cookies() {
+			if cookie.Name == k {
+				results[cookie.Value] = struct{}{}
 			}
 		}
 	}
