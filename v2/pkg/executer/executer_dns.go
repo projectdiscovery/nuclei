@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"bufio"
@@ -15,9 +15,9 @@ import (
 	retryabledns "github.com/projectdiscovery/retryabledns"
 )
 
-// DNSExecutor is a client for performing a DNS request
+// DNSExecuter is a client for performing a DNS request
 // for a template.
-type DNSExecutor struct {
+type DNSExecuter struct {
 	debug       bool
 	jsonOutput  bool
 	results     uint32
@@ -36,7 +36,7 @@ var DefaultResolvers = []string{
 	"8.8.4.4:53", // Google
 }
 
-// DNSOptions contains configuration options for the DNS executor.
+// DNSOptions contains configuration options for the DNS executer.
 type DNSOptions struct {
 	Debug      bool
 	JSON       bool
@@ -45,12 +45,12 @@ type DNSOptions struct {
 	Writer     *bufio.Writer
 }
 
-// NewDNSExecutor creates a new DNS executor from a template
+// NewDNSExecuter creates a new DNS executer from a template
 // and a DNS request query.
-func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
+func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
-	executer := &DNSExecutor{
+	executer := &DNSExecuter{
 		debug:       options.Debug,
 		jsonOutput:  options.JSON,
 		results:     0,
@@ -63,8 +63,8 @@ func NewDNSExecutor(options *DNSOptions) *DNSExecutor {
 	return executer
 }
 
-// GotResults returns true if there were any results for the executor
-func (e *DNSExecutor) GotResults() bool {
+// GotResults returns true if there were any results for the executer
+func (e *DNSExecuter) GotResults() bool {
 	if atomic.LoadUint32(&e.results) == 0 {
 		return false
 	}
@@ -72,7 +72,7 @@ func (e *DNSExecutor) GotResults() bool {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecutor) ExecuteDNS(URL string) error {
+func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -84,7 +84,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
-		return errors.Wrap(err, "could not make dns request")
+		result.Error = errors.Wrap(err, "could not make dns request")
+		return
 	}
 
 	if e.debug {
@@ -95,7 +96,8 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// Send the request to the target servers
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
-		return errors.Wrap(err, "could not send dns request")
+		result.Error = errors.Wrap(err, "could not send dns request")
+		return
 	}
 
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
@@ -111,7 +113,7 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 		if !matcher.MatchDNS(resp) {
 			// If the condition is AND we haven't matched, return.
 			if matcherCondition == matchers.ANDCondition {
-				return nil
+				return
 			}
 		} else {
 			// If the matcher has matched, and its an OR
@@ -127,7 +129,7 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 	// next task which is extraction of input from matchers.
 	var extractorResults []string
 	for _, extractor := range e.dnsRequest.Extractors {
-		for match := range extractor.ExtractDNS(resp.String()) {
+		for match := range extractor.ExtractDNS(resp) {
 			extractorResults = append(extractorResults, match)
 		}
 	}
@@ -138,11 +140,12 @@ func (e *DNSExecutor) ExecuteDNS(URL string) error {
 		e.writeOutputDNS(domain, nil, extractorResults)
 		atomic.CompareAndSwapUint32(&e.results, 0, 1)
 	}
-	return nil
+
+	return
 }
 
-// Close closes the dns executor for a template.
-func (e *DNSExecutor) Close() {
+// Close closes the dns executer for a template.
+func (e *DNSExecuter) Close() {
 	e.outputMutex.Lock()
 	e.writer.Flush()
 	e.outputMutex.Unlock()
