@@ -79,11 +79,27 @@ func (r *HTTPRequest) MakeHTTPRequest(baseURL string) (chan *CompiledHTTP, error
 	if err != nil {
 		return nil, err
 	}
-	hostname := parsed.Hostname()
+
+	hostname, port := parsed.Hostname(), parsed.Port()
+	portOrDefault := port
+	portWithColon := ""
+
+	if len(port) == 0 {
+		if strings.HasPrefix(baseURL, "https") {
+			portOrDefault = "443"
+		} else if strings.HasPrefix(baseURL, "http") {
+			portOrDefault = "80"
+		}
+	} else {
+		portWithColon = ":" + port
+	}
 
 	values := map[string]interface{}{
-		"BaseURL":  baseURL,
-		"Hostname": hostname,
+		"BaseURL":       baseURL,		// http(s)://host	http://host:9999
+		"Hostname":      hostname,		// host				host
+		"Port":          port,			// 					9999
+		"PortWithColon": portWithColon,	// 					:9999
+		"PortOrDefault": portOrDefault, // 80 (443)			9999
 	}
 
 	if len(r.Raw) > 0 {
