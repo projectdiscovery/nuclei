@@ -124,6 +124,7 @@ mainLoop:
 			return
 		}
 		e.setCustomHeaders(compiledRequest)
+		e.setDynamicValues(compiledRequest, result.Extractions)
 		req := compiledRequest.Request
 
 		if e.debug {
@@ -304,6 +305,23 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.CompiledHTTP) {
 		headerName = strings.TrimSpace(headerName)
 		headerValue = strings.TrimSpace(headerValue)
 		r.Request.Header.Set(headerName, headerValue)
+	}
+}
+
+// for now supports only headers
+func (e *HTTPExecuter) setDynamicValues(r *requests.CompiledHTTP, dynamicValues map[string]interface{}) {
+	for dk, dv := range dynamicValues {
+		// replace within header values
+		for k, v := range r.Request.Header {
+			for i, vv := range v {
+				if strings.Contains(vv, "{{"+dk+"}}") {
+					// coerce values to string and picks only the first value
+					if dvv, ok := dv.([]string); ok && len(dvv) > 0 {
+						r.Request.Header[k][i] = strings.ReplaceAll(r.Request.Header[k][i], "{{"+dk+"}}", dvv[0])
+					}
+				}
+			}
+		}
 	}
 }
 
