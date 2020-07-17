@@ -109,6 +109,7 @@ func (e *HTTPExecuter) GotResults() bool {
 func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
+	dynamicvalues := make(map[string]string)
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
@@ -124,7 +125,7 @@ mainLoop:
 			return
 		}
 		e.setCustomHeaders(compiledRequest)
-		e.setDynamicValues(compiledRequest, result.Extractions)
+		e.setDynamicValues(compiledRequest, dynamicvalues)
 		req := compiledRequest.Request
 
 		if e.debug {
@@ -203,6 +204,9 @@ mainLoop:
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
 			for match := range extractor.Extract(resp, body, headers) {
+				if _, ok := dynamicvalues[extractor.Name]; !ok {
+					dynamicvalues[extractor.Name] = match
+				}
 				extractorResults = append(extractorResults, match)
 			}
 			// probably redundant but ensures we snapshot current payload values when extractors are valid
@@ -309,16 +313,14 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.CompiledHTTP) {
 }
 
 // for now supports only headers
-func (e *HTTPExecuter) setDynamicValues(r *requests.CompiledHTTP, dynamicValues map[string]interface{}) {
+func (e *HTTPExecuter) setDynamicValues(r *requests.CompiledHTTP, dynamicValues map[string]string) {
 	for dk, dv := range dynamicValues {
 		// replace within header values
 		for k, v := range r.Request.Header {
 			for i, vv := range v {
 				if strings.Contains(vv, "{{"+dk+"}}") {
 					// coerce values to string and picks only the first value
-					if dvv, ok := dv.([]string); ok && len(dvv) > 0 {
-						r.Request.Header[k][i] = strings.ReplaceAll(r.Request.Header[k][i], "{{"+dk+"}}", dvv[0])
-					}
+					r.Request.Header[k][i] = strings.ReplaceAll(r.Request.Header[k][i], "{{"+dk+"}}", dv)
 				}
 			}
 		}
