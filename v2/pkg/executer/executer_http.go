@@ -304,7 +304,7 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.CompiledHTTP) {
 		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
 		headerName = strings.TrimSpace(headerName)
 		headerValue = strings.TrimSpace(headerValue)
-		r.Request.Header.Set(headerName, headerValue)
+		r.Request.Header[headerName] = []string{headerValue}
 	}
 }
 
