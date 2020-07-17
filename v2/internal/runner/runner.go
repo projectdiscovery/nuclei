@@ -11,10 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/d5/tengo/v2"
+	tengo "github.com/d5/tengo/v2"
+	"github.com/d5/tengo/v2/stdlib"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/executor"
+	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
@@ -214,7 +215,7 @@ func (r *Runner) RunEnumeration() {
 					r.output.Close()
 					os.Remove(outputFile)
 				}
-				gologger.Infof("No results found for [%s]. Happy hacking!", template.ID)
+				gologger.Infof("No results found for template [%s]. Happy hacking!", template.ID)
 			}
 		case *workflows.Workflow:
 			workflow := t.(*workflows.Workflow)
@@ -260,14 +261,14 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		defer writer.Flush()
 	}
 
-	var httpExecutor *executor.HTTPExecutor
-	var dnsExecutor *executor.DNSExecutor
+	var httpExecuter *executer.HTTPExecuter
+	var dnsExecuter *executer.DNSExecuter
 	var err error
 
-	// Create an executor based on the request type.
+	// Create an executer based on the request type.
 	switch value := request.(type) {
 	case *requests.DNSRequest:
-		dnsExecutor = executor.NewDNSExecutor(&executor.DNSOptions{
+		dnsExecuter = executer.NewDNSExecuter(&executer.DNSOptions{
 			Debug:      r.options.Debug,
 			Template:   template,
 			DNSRequest: value,
@@ -275,7 +276,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			JSON:       r.options.JSON,
 		})
 	case *requests.HTTPRequest:
-		httpExecutor, err = executor.NewHTTPExecutor(&executor.HTTPOptions{
+		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
 			Debug:         r.options.Debug,
 			Template:      template,
 			HTTPRequest:   value,
@@ -306,16 +307,16 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		wg.Add(1)
 
 		go func(URL string) {
-			var err error
+			var result executer.Result
 
-			if httpExecutor != nil {
-				err = httpExecutor.ExecuteHTTP(URL)
+			if httpExecuter != nil {
+				result = httpExecuter.ExecuteHTTP(URL)
 			}
-			if dnsExecutor != nil {
-				err = dnsExecutor.ExecuteDNS(URL)
+			if dnsExecuter != nil {
+				result = dnsExecuter.ExecuteDNS(URL)
 			}
-			if err != nil {
-				gologger.Warningf("Could not execute step: %s\n", err)
+			if result.Error != nil {
+				gologger.Warningf("Could not execute step: %s\n", result.Error)
 			}
 			<-limiter
 			wg.Done()
@@ -324,14 +325,14 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	close(limiter)
 	wg.Wait()
 
-	// See if we got any results from the executors
+	// See if we got any results from the executers
 	var results bool
-	if httpExecutor != nil {
-		results = httpExecutor.GotResults()
+	if httpExecuter != nil {
+		results = httpExecuter.GotResults()
 	}
-	if dnsExecutor != nil {
+	if dnsExecuter != nil {
 		if !results {
-			results = dnsExecutor.GotResults()
+			results = dnsExecuter.GotResults()
 		}
 	}
 	return results
@@ -367,7 +368,7 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 // ProcessWorkflow towards an URL
 func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
-
+	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	for name, value := range workflow.Variables {
 		var writer *bufio.Writer
 		if r.output != nil {
@@ -394,7 +395,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 			}
 			template := &workflows.Template{}
 			if len(t.RequestsHTTP) > 0 {
-				template.HTTPOptions = &executor.HTTPOptions{
+				template.HTTPOptions = &executer.HTTPOptions{
 					Debug:         r.options.Debug,
 					Writer:        writer,
 					Template:      t,
@@ -405,7 +406,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 					CustomHeaders: r.options.CustomHeaders,
 				}
 			} else if len(t.RequestsDNS) > 0 {
-				template.DNSOptions = &executor.DNSOptions{
+				template.DNSOptions = &executer.DNSOptions{
 					Debug:    r.options.Debug,
 					Template: t,
 					Writer:   writer,
@@ -444,7 +445,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 				}
 				template := &workflows.Template{}
 				if len(t.RequestsHTTP) > 0 {
-					template.HTTPOptions = &executor.HTTPOptions{
+					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
 						Writer:        writer,
 						Template:      t,
@@ -455,7 +456,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 						CustomHeaders: r.options.CustomHeaders,
 					}
 				} else if len(t.RequestsDNS) > 0 {
-					template.DNSOptions = &executor.DNSOptions{
+					template.DNSOptions = &executer.DNSOptions{
 						Debug:    r.options.Debug,
 						Template: t,
 						Writer:   writer,

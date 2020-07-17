@@ -24,4 +24,6 @@ type Info struct {
 	Author string `yaml:"author"`
 	// Severity optionally describes the severity of the template
 	Severity string `yaml:"severity,omitempty"`
+	// Description optionally describes the template.
+	Description string `yaml:"description,omitempty"`
 }
