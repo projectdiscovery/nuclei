@@ -171,13 +171,14 @@ func (r *Runner) RunEnumeration() {
 
 			// directory couldn't be walked
 			if err != nil {
-				gologger.Warningf("Could not find templates in directory '%s': %s\n", absPath, err)
+				gologger.Labelf("Could not find templates in directory '%s': %s\n", absPath, err)
 				continue
 			}
 
 			// couldn't find templates in directory
 			if len(matches) == 0 {
-				gologger.Warningf("Error, no templates were found in '%s'.\n", absPath)
+				gologger.Labelf("Error, no templates were found in '%s'.\n", absPath)
+				continue
 			}
 
 			allTemplates = append(allTemplates, matches...)
