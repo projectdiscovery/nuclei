@@ -34,6 +34,8 @@ type HTTPRequest struct {
 	Headers map[string]string `yaml:"headers,omitempty"`
 	// Body is an optional parameter which contains the request body for POST methods, etc
 	Body string `yaml:"body,omitempty"`
+	// CookieReuse is an optional setting that makes cookies shared within requests
+	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
@@ -203,7 +205,7 @@ func (r *HTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[str
 
 	// copy headers
 	for key, value := range compiledRequest.Headers {
-		req.Header.Set(key, value)
+		req.Header[key] = []string{value}
 	}
 
 	request, err := r.fillRequest(req, values)
@@ -258,7 +260,7 @@ func (r *HTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, g
 
 	// copy headers
 	for key, value := range compiledRequest.Headers {
-		req.Header.Set(key, value)
+		req.Header[key] = []string{value}
 	}
 
 	request, err := r.fillRequest(req, values)
@@ -281,7 +283,7 @@ func (r *HTTPRequest) fillRequest(req *http.Request, values map[string]interface
 
 	// Set the header values requested
 	for header, value := range r.Headers {
-		req.Header.Set(header, replacer.Replace(value))
+		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
 	// Set some headers only if the header wasn't supplied by the user

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -36,6 +37,7 @@ type HTTPExecuter struct {
 	writer        *bufio.Writer
 	outputMutex   *sync.Mutex
 	customHeaders requests.CustomHeaders
+	CookieJar     *cookiejar.Jar
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -50,6 +52,8 @@ type HTTPOptions struct {
 	Debug         bool
 	JSON          bool
 	CustomHeaders requests.CustomHeaders
+	CookieReuse   bool
+	CookieJar     *cookiejar.Jar
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -68,6 +72,15 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	// Create the HTTP Client
 	client := makeHTTPClient(proxyURL, options)
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+	if options.CookieJar != nil {
+		client.HTTPClient.Jar = options.CookieJar
+	} else if options.CookieReuse {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			return nil, err
+		}
+		client.HTTPClient.Jar = jar
+	}
 
 	executer := &HTTPExecuter{
 		debug:         options.Debug,
@@ -79,6 +92,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		outputMutex:   &sync.Mutex{},
 		writer:        options.Writer,
 		customHeaders: options.CustomHeaders,
+		CookieJar:     options.CookieJar,
 	}
 	return executer, nil
 }
@@ -95,6 +109,7 @@ func (e *HTTPExecuter) GotResults() bool {
 func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
+	dynamicvalues := make(map[string]string)
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.httpRequest.MakeHTTPRequest(URL)
 	if err != nil {
@@ -110,6 +125,7 @@ mainLoop:
 			return
 		}
 		e.setCustomHeaders(compiledRequest)
+		e.setDynamicValues(compiledRequest, dynamicvalues)
 		req := compiledRequest.Request
 
 		if e.debug {
@@ -188,6 +204,9 @@ mainLoop:
 		var extractorResults []string
 		for _, extractor := range e.httpRequest.Extractors {
 			for match := range extractor.Extract(resp, body, headers) {
+				if _, ok := dynamicvalues[extractor.Name]; !ok {
+					dynamicvalues[extractor.Name] = match
+				}
 				extractorResults = append(extractorResults, match)
 			}
 			// probably redundant but ensures we snapshot current payload values when extractors are valid
@@ -289,7 +308,22 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.CompiledHTTP) {
 		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
 		headerName = strings.TrimSpace(headerName)
 		headerValue = strings.TrimSpace(headerValue)
-		r.Request.Header.Set(headerName, headerValue)
+		r.Request.Header[headerName] = []string{headerValue}
+	}
+}
+
+// for now supports only headers
+func (e *HTTPExecuter) setDynamicValues(r *requests.CompiledHTTP, dynamicValues map[string]string) {
+	for dk, dv := range dynamicValues {
+		// replace within header values
+		for k, v := range r.Request.Header {
+			for i, vv := range v {
+				if strings.Contains(vv, "{{"+dk+"}}") {
+					// coerce values to string and picks only the first value
+					r.Request.Header[k][i] = strings.ReplaceAll(r.Request.Header[k][i], "{{"+dk+"}}", dv)
+				}
+			}
+		}
 	}
 }
 
