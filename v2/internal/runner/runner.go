@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http/cookiejar"
 	"os"
 	"strings"
 	"sync"
@@ -287,6 +288,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			ProxySocksURL: r.options.ProxySocksURL,
 			CustomHeaders: r.options.CustomHeaders,
 			JSON:          r.options.JSON,
+			CookieReuse:   value.CookieReuse,
 		})
 	}
 	if err != nil {
@@ -369,6 +371,14 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
 	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+	var jar *cookiejar.Jar
+	if workflow.CookieReuse {
+		var err error
+		jar, err = cookiejar.New(nil)
+		if err != nil {
+			return err
+		}
+	}
 	for name, value := range workflow.Variables {
 		var writer *bufio.Writer
 		if r.output != nil {
@@ -404,6 +414,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 					ProxyURL:      r.options.ProxyURL,
 					ProxySocksURL: r.options.ProxySocksURL,
 					CustomHeaders: r.options.CustomHeaders,
+					CookieJar:     jar,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
@@ -454,6 +465,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 						ProxyURL:      r.options.ProxyURL,
 						ProxySocksURL: r.options.ProxySocksURL,
 						CustomHeaders: r.options.CustomHeaders,
+						CookieJar:     jar,
 					}
 				} else if len(t.RequestsDNS) > 0 {
 					template.DNSOptions = &executer.DNSOptions{
