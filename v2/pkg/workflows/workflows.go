@@ -6,6 +6,8 @@ type Workflow struct {
 	ID string `yaml:"id"`
 	// Info contains information about the template
 	Info Info `yaml:"info"`
+	// CookieReuse makes all cookies shared by templates within the workflow
+	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
 	// Variables contains the variables accessible to the pseudo-code
 	Variables map[string]string `yaml:"variables"`
 	// Logic contains the workflow pseudo-code

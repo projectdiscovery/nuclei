@@ -34,31 +34,29 @@ func (n *NucleiVar) CanCall() bool {
 	return true
 }
 
-// Call logic - actually it doesn't require arguments
+// Call logic - args[0]=headers, args[1]=payloads
 func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	n.InternalVars = make(map[string]interface{})
+	headers := make(map[string]string)
 	externalVars := make(map[string]interface{})
 
 	// if external variables are specified and matches the template ones, these gets overwritten
-	if len(args) == 1 {
-		m := args[0]
-		if m.CanIterate() {
-			i := m.Iterate()
-			for i.Next() {
-				key, ok := tengo.ToString(i.Key())
-				if !ok {
-					continue
-				}
-				value := tengo.ToInterface(i.Value())
-				externalVars[key] = value
-			}
-		}
+	if len(args) >= 1 {
+		headers = iterableToMapString(args[0])
+	}
+
+	// if external variables are specified and matches the template ones, these gets overwritten
+	if len(args) >= 2 {
+		externalVars = iterableToMap(args[1])
 	}
 
 	var gotResult bool
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
 			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
+				// apply externally supplied payloads if any
+				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
+				// apply externally supplied payloads if any
 				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)
 				template.HTTPOptions.HTTPRequest = request
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
@@ -158,4 +156,39 @@ func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
 	}
 
 	return
+}
+
+func iterableToMap(t tengo.Object) map[string]interface{} {
+	m := make(map[string]interface{})
+	if t.CanIterate() {
+		i := t.Iterate()
+		for i.Next() {
+			key, ok := tengo.ToString(i.Key())
+			if !ok {
+				continue
+			}
+			value := tengo.ToInterface(i.Value())
+			m[key] = value
+		}
+	}
+
+	return m
+}
+
+func iterableToMapString(t tengo.Object) map[string]string {
+	m := make(map[string]string)
+	if t.CanIterate() {
+		i := t.Iterate()
+		for i.Next() {
+			key, ok := tengo.ToString(i.Key())
+			if !ok {
+				continue
+			}
+			if value, ok := tengo.ToString(i.Value()); ok {
+				m[key] = value
+			}
+		}
+	}
+
+	return m
 }
