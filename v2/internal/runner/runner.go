@@ -112,7 +112,7 @@ func (r *Runner) RunEnumeration() {
 			var results bool
 			template := t.(*templates.Template)
 			// process http requests
-			for _, request := range template.RequestsHTTP {
+			for _, request := range template.BulkRequestsHTTP {
 				results = r.processTemplateRequest(template, request)
 			}
 			// process dns requests
@@ -176,7 +176,7 @@ func (r *Runner) RunEnumeration() {
 					results = dnsResults
 				}
 			}
-			for _, request := range template.RequestsHTTP {
+			for _, request := range template.BulkRequestsHTTP {
 				httpResults := r.processTemplateRequest(template, request)
 				if httpResults {
 					results = httpResults
@@ -248,19 +248,19 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			Writer:     writer,
 			JSON:       r.options.JSON,
 		})
-	case *requests.HTTPRequest:
+	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
-			Debug:         r.options.Debug,
-			Template:      template,
-			HTTPRequest:   value,
-			Writer:        writer,
-			Timeout:       r.options.Timeout,
-			Retries:       r.options.Retries,
-			ProxyURL:      r.options.ProxyURL,
-			ProxySocksURL: r.options.ProxySocksURL,
-			CustomHeaders: r.options.CustomHeaders,
-			JSON:          r.options.JSON,
-			CookieReuse:   value.CookieReuse,
+			Debug:           r.options.Debug,
+			Template:        template,
+			BulkHttpRequest: value,
+			Writer:          writer,
+			Timeout:         r.options.Timeout,
+			Retries:         r.options.Retries,
+			ProxyURL:        r.options.ProxyURL,
+			ProxySocksURL:   r.options.ProxySocksURL,
+			CustomHeaders:   r.options.CustomHeaders,
+			JSON:            r.options.JSON,
+			CookieReuse:     value.CookieReuse,
 		})
 	}
 	if err != nil {
@@ -302,11 +302,11 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	// See if we got any results from the executers
 	var results bool
 	if httpExecuter != nil {
-		results = httpExecuter.GotResults()
+		results = httpExecuter.Results
 	}
 	if dnsExecuter != nil {
 		if !results {
-			results = dnsExecuter.GotResults()
+			results = dnsExecuter.Results
 		}
 	}
 	return results
@@ -376,7 +376,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 				return err
 			}
 			template := &workflows.Template{}
-			if len(t.RequestsHTTP) > 0 {
+			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
 					Debug:         r.options.Debug,
 					Writer:        writer,
@@ -427,7 +427,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 					return err
 				}
 				template := &workflows.Template{}
-				if len(t.RequestsHTTP) > 0 {
+				if len(t.BulkRequestsHTTP) > 0 {
 					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
 						Writer:        writer,

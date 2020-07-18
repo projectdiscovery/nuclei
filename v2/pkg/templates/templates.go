@@ -10,9 +10,9 @@ type Template struct {
 	ID string `yaml:"id"`
 	// Info contains information about the template
 	Info Info `yaml:"info"`
-	// RequestHTTP contains the http request to make in the template
-	RequestsHTTP []*requests.HTTPRequest `yaml:"requests,omitempty"`
-	// RequestDNS contains the dns request to make in the template
+	// BulkRequestsHTTP contains the http request to make in the template
+	BulkRequestsHTTP []*requests.BulkHTTPRequest `yaml:"requests,omitempty"`
+	// RequestsDNS contains the dns request to make in the template
 	RequestsDNS []*requests.DNSRequest `yaml:"dns,omitempty"`
 }
 

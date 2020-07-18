@@ -27,12 +27,12 @@ func Parse(file string) (*Template, error) {
 	defer f.Close()
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsHTTP)+len(template.RequestsDNS) <= 0 {
+	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
 		return nil, errors.New("No requests defined")
 	}
 
 	// Compile the matchers and the extractors for http requests
-	for _, request := range template.RequestsHTTP {
+	for _, request := range template.BulkRequestsHTTP {
 		// Get the condition between the matchers
 		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
 		if !ok {
