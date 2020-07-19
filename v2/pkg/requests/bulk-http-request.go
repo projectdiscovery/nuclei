@@ -157,36 +157,7 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(baseURL string, data string, va
 	}
 
 	// otherwise continue with normal flow
-	return r.handleSimpleRaw(data, baseURL, values)
-}
-
-func (r *BulkHTTPRequest) handleSimpleRaw(raw string, baseURL string, values map[string]interface{}) (*HttpRequest, error) {
-	// base request
-	replacer := newReplacer(values)
-	// Replace the dynamic variables in the request if any
-	raw = replacer.Replace(raw)
-
-	rawRequest, err := r.parseRawRequest(raw, baseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(rawRequest.Method, rawRequest.FullURL, strings.NewReader(rawRequest.Data))
-	if err != nil {
-		return nil, err
-	}
-
-	// copy headers
-	for key, value := range rawRequest.Headers {
-		req.Header[key] = []string{value}
-	}
-
-	request, err := r.fillRequest(req, values)
-	if err != nil {
-		return nil, err
-	}
-
-	return &HttpRequest{Request: request}, nil
+	return r.handleRawWithPaylods(data, baseURL, values, nil)
 }
 
 func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, genValues map[string]interface{}) (*HttpRequest, error) {
