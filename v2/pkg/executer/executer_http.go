@@ -99,17 +99,20 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
-	dynamicvalues := make(map[string]string)
+	dynamicvalues := make(map[string]interface{})
 
-	// Requests defined via Model
-	for e.bulkHttpRequest.Next() {
-		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, e.bulkHttpRequest.Current())
+	for e.bulkHttpRequest.Next() && !result.Done {
+		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current())
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not make http request")
 			return
 		}
 
 		e.handleHTTP(URL, httpRequest, dynamicvalues, &result)
+		if err != nil {
+			result.Error = errors.Wrap(err, "could not make http request")
+			return
+		}
 
 		e.bulkHttpRequest.Increment()
 	}
@@ -119,9 +122,8 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	return
 }
 
-func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dynamicvalues map[string]string, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
-	e.setDynamicValues(request, dynamicvalues)
 	req := request.Request
 
 	if e.debug {
@@ -300,25 +302,11 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HttpRequest) {
 	}
 }
 
-// for now supports only headers
-func (e *HTTPExecuter) setDynamicValues(r *requests.HttpRequest, dynamicValues map[string]string) {
-	for dk, dv := range dynamicValues {
-		// replace within header values
-		for k, v := range r.Request.Header {
-			for i, vv := range v {
-				if strings.Contains(vv, "{{"+dk+"}}") {
-					// coerce values to string and picks only the first value
-					r.Request.Header[k][i] = strings.ReplaceAll(r.Request.Header[k][i], "{{"+dk+"}}", dv)
-				}
-			}
-		}
-	}
-}
-
 type Result struct {
 	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
 	GotResults  bool
 	Error       error
+	Done        bool
 }
