@@ -174,18 +174,16 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 	var re = regexp.MustCompile(`(?m)\{\{.+}}`)
 	for _, match := range re.FindAllString(raw, -1) {
 		// check if the match contains a dynamic variable
-		if generators.StringContainsAnyMapItem(finValues, match) {
-			expr := generators.TrimDelimiters(match)
-			compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
-			if err != nil {
-				return nil, err
-			}
-			result, err := compiled.Evaluate(finValues)
-			if err != nil {
-				return nil, err
-			}
-			dynamicValues[expr] = result
+		expr := generators.TrimDelimiters(match)
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+		if err != nil {
+			return nil, err
 		}
+		result, err := compiled.Evaluate(finValues)
+		if err != nil {
+			return nil, err
+		}
+		dynamicValues[expr] = result
 	}
 
 	// replace dynamic values
