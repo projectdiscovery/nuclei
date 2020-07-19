@@ -124,17 +124,17 @@ func (r *Runner) RunEnumeration() {
 
 	// parses user input, handle file/directory cases and produce a list of unique templates
 	for _, t := range r.options.Templates {
-		// determine file/directory
-		isFile, err := isFilePath(t)
-		if err != nil {
-			gologger.Errorf("Could not stat '%s': %s\n", t, err)
-			continue
-		}
-
-		// convert relative to absolute path
+		// resolve and convert relative to absolute path
 		absPath, err := r.translateToAbsolutePath(t)
 		if err != nil {
 			gologger.Errorf("Could not find template file '%s': %s\n", t, err)
+			continue
+		}
+
+		// determine file/directory
+		isFile, err := isFilePath(absPath)
+		if err != nil {
+			gologger.Errorf("Could not stat '%s': %s\n", absPath, err)
 			continue
 		}
 
