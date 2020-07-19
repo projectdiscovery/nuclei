@@ -82,17 +82,17 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 	r.attackType = attack
 }
 
-func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, data string) (*HttpRequest, error) {
+func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HttpRequest, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
 	hostname := parsed.Hostname()
 
-	values := map[string]interface{}{
+	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
 		"BaseURL":  baseURL,
 		"Hostname": hostname,
-	}
+	})
 
 	// if data contains \n it's a raw request
 	if strings.Contains(data, "\n") {
