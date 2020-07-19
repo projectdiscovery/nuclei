@@ -96,7 +96,7 @@ func isFilePath(path string) (bool, error) {
 	return info.Mode().IsRegular(), nil
 }
 
-func (r *Runner) translateToAbsolutePath(path string) (string, error) {
+func (r *Runner) resolvePathIfRelative(path string) (string, error) {
 	if r.isRelative(path) {
 		newPath, err := r.resolvePath(path)
 		if err != nil {
@@ -125,7 +125,7 @@ func (r *Runner) RunEnumeration() {
 	// parses user input, handle file/directory cases and produce a list of unique templates
 	for _, t := range r.options.Templates {
 		// resolve and convert relative to absolute path
-		absPath, err := r.translateToAbsolutePath(t)
+		absPath, err := r.resolvePathIfRelative(t)
 		if err != nil {
 			gologger.Errorf("Could not find template file '%s': %s\n", t, err)
 			continue
