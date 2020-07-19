@@ -87,7 +87,7 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[stri
 	if err != nil {
 		return nil, err
 	}
-	hostname := parsed.Hostname()
+	hostname := parsed.Host
 
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
 		"BaseURL":  baseURL,
