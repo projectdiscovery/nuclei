@@ -108,7 +108,7 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 			return
 		}
 
-		e.handleHTTP(URL, httpRequest, dynamicvalues, &result)
+		err = e.handleHTTP(URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not make http request")
 			return
@@ -140,16 +140,16 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 		if resp != nil {
 			resp.Body.Close()
 		}
-		gologger.Warningf("Could not do request: %s\n", err)
+		return errors.Wrap(err, "Could not do request")
 	}
 
 	if e.debug {
 		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		dumpedResponse, err := httputil.DumpResponse(resp, true)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 			return errors.Wrap(err, "could not dump http response")
 		}
+		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
