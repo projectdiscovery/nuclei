@@ -53,12 +53,12 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	var gotResult bool
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
-			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
+			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
 				// apply externally supplied payloads if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
 				// apply externally supplied payloads if any
 				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)
-				template.HTTPOptions.HTTPRequest = request
+				template.HTTPOptions.BulkHttpRequest = request
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
 				if err != nil {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
@@ -70,7 +70,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					continue
 				}
 
-				if httpExecuter.GotResults() {
+				if httpExecuter.Results {
 					gotResult = true
 					n.addResults(&result)
 				}
@@ -87,7 +87,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					continue
 				}
 
-				if dnsExecuter.GotResults() {
+				if dnsExecuter.Results {
 					gotResult = true
 					n.addResults(&result)
 				}

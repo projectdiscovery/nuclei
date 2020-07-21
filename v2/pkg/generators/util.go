@@ -2,6 +2,7 @@ package generators
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -20,11 +21,11 @@ func LoadPayloads(payloads map[string]interface{}) map[string][]string {
 			} else {
 				loadedPayloads[name] = LoadFile(v)
 			}
-		case interface{}:
+		case []interface{}, interface{}:
 			vv := payload.([]interface{})
 			var v []string
 			for _, vvv := range vv {
-				v = append(v, vvv.(string))
+				v = append(v, fmt.Sprintf("%v", vvv))
 			}
 			loadedPayloads[name] = v
 		}

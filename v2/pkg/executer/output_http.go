@@ -10,7 +10,7 @@ import (
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecuter) writeOutputHTTP(req *requests.CompiledHTTP, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, matcher *matchers.Matcher, extractorResults []string) {
 	URL := req.Request.URL.String()
 
 	if e.jsonOutput {
