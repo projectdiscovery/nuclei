@@ -101,6 +101,8 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
+	e.bulkHttpRequest.Reset()
+
 	for e.bulkHttpRequest.Next() && !result.Done {
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current())
 		if err != nil {
@@ -134,7 +136,6 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 		}
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
-
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		if resp != nil {

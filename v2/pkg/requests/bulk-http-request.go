@@ -377,7 +377,7 @@ func (r *BulkHTTPRequest) Reset() {
 	r.positionRaw = 0
 }
 func (r *BulkHTTPRequest) Current() string {
-	if r.positionPath <= len(r.Path) && len(r.Path) != 0 && r.positionRaw == 0 {
+	if r.positionPath < len(r.Path) && len(r.Path) != 0 {
 		return r.Path[r.positionPath]
 	}
 
@@ -387,16 +387,16 @@ func (r *BulkHTTPRequest) Total() int {
 	return len(r.Path) + len(r.Raw)
 }
 
-func (r *BulkHTTPRequest) Increment() int {
-	if r.positionPath <= len(r.Path) && len(r.Path) != 0 && r.positionRaw == 0 {
+func (r *BulkHTTPRequest) Increment() {
+	if len(r.Path) > 0 && r.positionPath < len(r.Path) {
 		r.positionPath++
-		return r.positionPath
+		return
 	}
 
-	// if we have payloads increment only when the generators are done
-	if r.generator == nil {
-		r.positionRaw++
+	if len(r.Raw) > 0 && r.positionRaw < len(r.Raw) {
+		// if we have payloads increment only when the generators are done
+		if r.generator == nil {
+			r.positionRaw++
+		}
 	}
-
-	return r.positionPath + r.positionRaw
 }
