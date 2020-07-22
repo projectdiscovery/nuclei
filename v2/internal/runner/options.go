@@ -12,7 +12,7 @@ import (
 // the template requesting process.
 type Options struct {
 	Debug              bool                   // Debug mode allows debugging request/responses for the engine
-	Templates          string                 // Signature specifies the template/templates to use
+	Templates          multiStringFlag        // Signature specifies the template/templates to use
 	Target             string                 // Target is a single URL/Domain to scan usng a template
 	Targets            string                 // Targets specifies the targets to scan using templates.
 	Threads            int                    // Thread controls the number of concurrent requests to make.
@@ -29,8 +29,20 @@ type Options struct {
 	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
 	JSON               bool                   // JSON writes json output to files
+	JSONRequests       bool                   // write requests/responses for matches in JSON output
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
+}
+
+type multiStringFlag []string
+
+func (m *multiStringFlag) String() string {
+	return ""
+}
+
+func (m *multiStringFlag) Set(value string) error {
+	*m = append(*m, value)
+	return nil
 }
 
 // ParseOptions parses the command line flags provided by a user
@@ -38,7 +50,7 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
-	flag.StringVar(&options.Templates, "t", "", "Template input file/files to run on host")
+	flag.Var(&options.Templates, "t","Template input file/files to run on host. Can be used multiple times.")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
@@ -55,6 +67,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
 	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
+	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 
 	flag.Parse()
 

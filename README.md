@@ -21,12 +21,12 @@ We have also [open-sourced a dedicated repository](https://github.com/projectdis
     - [From Binary](#from-binary)
     - [From Source](#from-source)
     - [From Github](#from-github)
-    - [Running in a Docker Container](#running-in-a-docker-container)
 - [Nuclei templates](#nuclei-templates)
 - [Running nuclei](#running-nuclei)
     - [1. Running nuclei with a single template.](#1-running-nuclei-with-a-single-template)
     - [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
     - [3. Automating nuclei with subfinder and any other similar tool.](#3-automating-nuclei-with-subfinder-and-any-other-similar-tool)
+    - [4. Running nuclei in a Docker](#running-in-a-docker-container)
 - [Thanks](#thanks)
 
  # Features
@@ -100,30 +100,11 @@ In order to update the tool, you can use -u flag with `go get` command.
 
 ```bash
 git clone https://github.com/projectdiscovery/nuclei.git
-cd v2/cmd/nuclei/
+cd nuclei/v2/cmd/nuclei/
 go build .
 mv nuclei /usr/local/bin/
 nuclei -h
 ```
-
-### Running in a Docker Container
-
-You can use the [nuclei dockerhub image](https://hub.docker.com/r/projectdiscovery/nuclei). Simply run -
-
-```bash
-> docker pull projectdiscovery/nuclei
-```
-
-- After downloading or building the container, run the following:
-```bash
-> docker run -it projectdiscovery/nuclei
-```
-
-For example, this will run the tool against all the hosts in `urls.txt` and output the results to your host file system:
-```bash
-> cat urls.txt | docker run -v /path-to-nuclei-templates:/go/src/app/ -i projectdiscovery/nuclei -t ./files/git-config.yaml > results.txt
-```
-Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
 
 # Nuclei templates
 
@@ -138,6 +119,8 @@ or download it from [nuclei templates](https://github.com/projectdiscovery/nucle
 ```bash
 > git clone https://github.com/projectdiscovery/nuclei-templates.git
 ```
+
+**Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to writing your own custom templates.**
 
 # Running nuclei
 
@@ -172,9 +155,27 @@ This will run the tool against all the hosts in `urls.txt` with all the template
 > subfinder -d hackerone.com -silent | httpx -silent | nuclei -t cves/ -o results.txt
 ```
 
--------
+### Running in a Docker Container
 
-**Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to build your own custom templates.**
+You can use the [nuclei dockerhub image](https://hub.docker.com/r/projectdiscovery/nuclei). Simply run -
+
+```bash
+> docker pull projectdiscovery/nuclei
+```
+
+- After downloading or building the container, run the following:
+```bash
+> docker run -it projectdiscovery/nuclei
+```
+
+For example, this will run the tool against all the hosts in `urls.txt` and output the results to your host file system:
+```bash
+> cat urls.txt | docker run -v /path-to-nuclei-templates:/go/src/app/ -i projectdiscovery/nuclei -t ./files/git-config.yaml > results.txt
+```
+Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
+
+
+-------
 
 
 # Thanks

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
@@ -26,12 +27,12 @@ func Parse(file string) (*Template, error) {
 	defer f.Close()
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsHTTP)+len(template.RequestsDNS) <= 0 {
+	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
 		return nil, errors.New("No requests defined")
 	}
 
 	// Compile the matchers and the extractors for http requests
-	for _, request := range template.RequestsHTTP {
+	for _, request := range template.BulkRequestsHTTP {
 		// Get the condition between the matchers
 		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
 		if !ok {
@@ -49,9 +50,23 @@ func Parse(file string) (*Template, error) {
 		}
 
 		// Validate the payloads if any
-		for name, wordlist := range request.Payloads {
-			if !generators.FileExists(wordlist) {
-				return nil, fmt.Errorf("The %s file for payload %s does not exist", wordlist, name)
+		for name, payload := range request.Payloads {
+			switch payload.(type) {
+			case string:
+				v := payload.(string)
+				// check if it's a multiline string list
+				if len(strings.Split(v, "\n")) <= 1 {
+					// check if it's a worldlist file
+					if !generators.FileExists(v) {
+						return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", v, name)
+					}
+				}
+			case []string, []interface{}:
+				if len(payload.([]interface{})) <= 0 {
+					return nil, fmt.Errorf("The payload %s does not contain enough elements", name)
+				}
+			default:
+				return nil, fmt.Errorf("The payload %s has invalid type", name)
 			}
 		}
 

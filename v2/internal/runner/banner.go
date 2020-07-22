@@ -11,7 +11,7 @@ const banner = `
 `
 
 // Version is the current version of nuclei
-const Version = `2.0.2`
+const Version = `2.0.4`
 
 // showBanner is used to show the banner to the user
 func showBanner() {

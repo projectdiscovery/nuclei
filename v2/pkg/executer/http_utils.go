@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"net/http"
@@ -14,6 +14,9 @@ type jsonOutput struct {
 	ExtractedResults []string `json:"extracted_results,omitempty"`
 	Severity         string   `json:"severity"`
 	Author           string   `json:"author"`
+	Description      string   `json:"description"`
+	Request          string   `json:"request,omitempty"`
+	Response         string   `json:"response,omitempty"`
 }
 
 // unsafeToString converts byte slice to string with zero allocations
