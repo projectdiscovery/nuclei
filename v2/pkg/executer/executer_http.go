@@ -30,6 +30,7 @@ type HTTPExecuter struct {
 	debug           bool
 	Results         bool
 	jsonOutput      bool
+	jsonRequest     bool
 	httpClient      *retryablehttp.Client
 	template        *templates.Template
 	bulkHttpRequest *requests.BulkHTTPRequest
@@ -50,6 +51,7 @@ type HTTPOptions struct {
 	ProxySocksURL   string
 	Debug           bool
 	JSON            bool
+	JSONRequests    bool
 	CustomHeaders   requests.CustomHeaders
 	CookieReuse     bool
 	CookieJar       *cookiejar.Jar
@@ -84,6 +86,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	executer := &HTTPExecuter{
 		debug:           options.Debug,
 		jsonOutput:      options.JSON,
+		jsonRequest:   options.JSONRequests,
 		httpClient:      client,
 		template:        options.Template,
 		bulkHttpRequest: options.BulkHttpRequest,
@@ -187,7 +190,7 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				e.writeOutputHTTP(request, matcher, nil)
+				e.writeOutputHTTP(request, resp, body, matcher, nil)
 				e.Results = true
 			}
 		}
@@ -211,7 +214,7 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(e.bulkHttpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, nil, extractorResults)
+		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
 		e.Results = true
 	}
 
