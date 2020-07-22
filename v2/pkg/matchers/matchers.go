@@ -13,7 +13,7 @@ type Matcher struct {
 	// matcherType is the internal type of the matcher
 	matcherType MatcherType
 
-	// Name is matcher Name to be displayed in result output.
+	// Name is matcher Name
 	Name string `yaml:"name,omitempty"`
 	// Status are the acceptable status codes for the response
 	Status []int `yaml:"status,omitempty"`

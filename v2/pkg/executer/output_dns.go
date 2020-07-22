@@ -1,4 +1,4 @@
-package executor
+package executer
 
 import (
 	"strings"
@@ -9,14 +9,15 @@ import (
 )
 
 // writeOutputDNS writes dns output to streams
-func (e *DNSExecutor) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
+func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
 	if e.jsonOutput {
 		output := jsonOutput{
-			Template: e.template.ID,
-			Type:     "dns",
-			Matched:  domain,
-			Severity: e.template.Info.Severity,
-			Author:   e.template.Info.Author,
+			Template:    e.template.ID,
+			Type:        "dns",
+			Matched:     domain,
+			Severity:    e.template.Info.Severity,
+			Author:      e.template.Info.Author,
+			Description: e.template.Info.Description,
 		}
 		if matcher != nil && len(matcher.Name) > 0 {
 			output.MatcherName = matcher.Name

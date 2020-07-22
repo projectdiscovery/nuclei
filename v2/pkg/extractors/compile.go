@@ -7,8 +7,9 @@ import (
 
 // CompileExtractors performs the initial setup operation on a extractor
 func (e *Extractor) CompileExtractors() error {
-	// Setup the matcher type
-	_, ok := ExtractorTypes[e.Type]
+	var ok bool
+	// Setup the extractor type
+	e.extractorType, ok = ExtractorTypes[e.Type]
 	if !ok {
 		return fmt.Errorf("unknown extractor type specified: %s", e.Type)
 	}
