@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
@@ -55,6 +56,7 @@ type BulkHTTPRequest struct {
 	Raw                   []string `yaml:"raw,omitempty"`
 	positionPath          int
 	positionRaw           int
+	positionMutex         sync.Mutex
 	generator             func(payloads map[string][]string) (out chan map[string]interface{})
 	currentPayloads       map[string]interface{}
 	basePayloads          map[string][]string
@@ -83,8 +85,8 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 }
 
 // Returns the total number of requests the YAML rule will perform
-func (r *HTTPRequest) GetRequestCount() int64 {
-	return int64( len(r.Raw) | len(r.Path) )
+func (r *BulkHTTPRequest) GetRequestCount() int64 {
+	return int64(len(r.Raw) | len(r.Path))
 }
 
 func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HttpRequest, error) {
@@ -369,19 +371,30 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 }
 
 func (r *BulkHTTPRequest) Next() bool {
+	r.positionMutex.Lock()
+	defer r.positionMutex.Unlock()
+
 	if r.positionPath+r.positionRaw >= len(r.Path)+len(r.Raw) {
 		return false
 	}
 	return true
 }
 func (r *BulkHTTPRequest) Position() int {
+	r.positionMutex.Lock()
+	defer r.positionMutex.Unlock()
+
 	return r.positionPath + r.positionRaw
 }
 func (r *BulkHTTPRequest) Reset() {
+	r.positionMutex.Lock()
 	r.positionPath = 0
 	r.positionRaw = 0
+	r.positionMutex.Unlock()
 }
 func (r *BulkHTTPRequest) Current() string {
+	r.positionMutex.Lock()
+	defer r.positionMutex.Unlock()
+
 	if r.positionPath < len(r.Path) && len(r.Path) != 0 {
 		return r.Path[r.positionPath]
 	}
@@ -393,6 +406,9 @@ func (r *BulkHTTPRequest) Total() int {
 }
 
 func (r *BulkHTTPRequest) Increment() {
+	r.positionMutex.Lock()
+	defer r.positionMutex.Unlock()
+
 	if len(r.Path) > 0 && r.positionPath < len(r.Path) {
 		r.positionPath++
 		return

@@ -51,6 +51,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		externalVars = iterableToMap(args[1])
 	}
 
+	// track progress
+	p := progress.NewProgress(false)
+
 	var gotResult bool
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
@@ -65,7 +68,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue
 				}
-				result := httpExecuter.ExecuteHTTP(n.URL)
+				result := httpExecuter.ExecuteHTTP(p, n.URL)
 				if result.Error != nil {
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue

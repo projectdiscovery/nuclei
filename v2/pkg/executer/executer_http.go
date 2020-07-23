@@ -17,6 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -99,45 +100,54 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
 	e.bulkHttpRequest.Reset()
 
+	remaining := e.template.GetHTTPRequestsCount()
+
 	for e.bulkHttpRequest.Next() && !result.Done {
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current())
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not make http request")
+			result.Error = errors.Wrap(err, "could not build http request")
 			return
 		}
 
-		err = e.handleHTTP(URL, httpRequest, dynamicvalues, &result)
+		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not make http request")
+			result.Error = errors.Wrap(err, "could not handle http request")
+			p.Drop(remaining)
 			return
 		}
 
 		e.bulkHttpRequest.Increment()
+		p.Update()
+		remaining--
 	}
 
+	p.StartStdCapture()
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
+	p.StopStdCapture()
 
 	return
 }
 
-func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
 	req := request.Request
 
 	if e.debug {
-		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 		if err != nil {
 			return errors.Wrap(err, "could not make http request")
 		}
+		p.StartStdCapture()
+		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
+		p.StopStdCapture()
 	}
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
@@ -148,12 +158,14 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 	}
 
 	if e.debug {
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		dumpedResponse, err := httputil.DumpResponse(resp, true)
 		if err != nil {
 			return errors.Wrap(err, "could not dump http response")
 		}
+		p.StartStdCapture()
+		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
+		p.StopStdCapture()
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -190,7 +202,9 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
+				p.StartStdCapture()
 				e.writeOutputHTTP(request, resp, body, matcher, nil)
+				p.StopStdCapture()
 				e.Results = true
 			}
 		}
@@ -214,7 +228,9 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(e.bulkHttpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
+		p.StartStdCapture()
 		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
+		p.StopStdCapture()
 		e.Results = true
 	}
 

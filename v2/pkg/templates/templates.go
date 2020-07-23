@@ -30,7 +30,7 @@ type Info struct {
 
 func (t* Template) GetHTTPRequestsCount() int64 {
 	var count int64 = 0
-	for _, request := range t.RequestsHTTP {
+	for _, request := range t.BulkRequestsHTTP {
 		count += request.GetRequestCount()
 	}
 	return count
