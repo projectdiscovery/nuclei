@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http/cookiejar"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -126,63 +127,85 @@ func (r *Runner) RunEnumeration() {
 	for _, t := range r.options.Templates {
 		// resolve and convert relative to absolute path
 		absPath, err := r.resolvePathIfRelative(t)
-		if err != nil {
+		if err != nil && !strings.Contains(t, "*") {
 			gologger.Errorf("Could not find template file '%s': %s\n", t, err)
 			continue
 		}
 
-		// determine file/directory
-		isFile, err := isFilePath(absPath)
-		if err != nil {
-			gologger.Errorf("Could not stat '%s': %s\n", absPath, err)
-			continue
-		}
-
-		// test for uniqueness
-		if !isNewPath(absPath, processed) {
-			continue
-		}
-
-		// mark this absolute path as processed
-		// - if it's a file, we'll never process it again
-		// - if it's a dir, we'll never walk it again
-		processed[absPath] = true
-
-		if isFile {
-			allTemplates = append(allTemplates, absPath)
-		} else {
+		// Template input includes a wildcard
+		if strings.Contains(t, "*") {
 			matches := []string{}
-
-			// Recursively walk down the Templates directory and run all the template file checks
-			err = godirwalk.Walk(absPath, &godirwalk.Options{
-				Callback: func(path string, d *godirwalk.Dirent) error {
-					if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
-						if isNewPath(path, processed) {
-							matches = append(matches, path)
-							processed[path] = true
-						}
-					}
-					return nil
-				},
-				ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
-					return godirwalk.SkipNode
-				},
-				Unsorted: true,
-			})
-
-			// directory couldn't be walked
+			matches, err = filepath.Glob(t)
 			if err != nil {
-				gologger.Labelf("Could not find templates in directory '%s': %s\n", absPath, err)
+				gologger.Labelf("Wildcard found, but unable to glob '%s': %s\n", t, err)
 				continue
+			}
+
+			for _, i := range matches {
+				processed[i] = true
 			}
 
 			// couldn't find templates in directory
 			if len(matches) == 0 {
-				gologger.Labelf("Error, no templates were found in '%s'.\n", absPath)
+				gologger.Labelf("Error, no templates were found with '%s'.\n", t)
 				continue
+			} else {
+				gologger.Labelf("Identified %d templates\n", len(matches))
 			}
 
 			allTemplates = append(allTemplates, matches...)
+		} else {
+			// determine file/directory
+			isFile, err := isFilePath(absPath)
+			if err != nil {
+				gologger.Errorf("Could not stat '%s': %s\n", absPath, err)
+				continue
+			}
+			// test for uniqueness
+			if !isNewPath(absPath, processed) {
+				continue
+			}
+			// mark this absolute path as processed
+			// - if it's a file, we'll never process it again
+			// - if it's a dir, we'll never walk it again
+			processed[absPath] = true
+
+			if isFile {
+				allTemplates = append(allTemplates, absPath)
+			} else {
+				matches := []string{}
+
+				// Recursively walk down the Templates directory and run all the template file checks
+				err = godirwalk.Walk(absPath, &godirwalk.Options{
+					Callback: func(path string, d *godirwalk.Dirent) error {
+						if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
+							if isNewPath(path, processed) {
+								matches = append(matches, path)
+								processed[path] = true
+							}
+						}
+						return nil
+					},
+					ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+						return godirwalk.SkipNode
+					},
+					Unsorted: true,
+				})
+
+				// directory couldn't be walked
+				if err != nil {
+					gologger.Labelf("Could not find templates in directory '%s': %s\n", absPath, err)
+					continue
+				}
+
+				// couldn't find templates in directory
+				if len(matches) == 0 {
+					gologger.Labelf("Error, no templates were found in '%s'.\n", absPath)
+					continue
+				}
+
+				allTemplates = append(allTemplates, matches...)
+			}
 		}
 	}
 
