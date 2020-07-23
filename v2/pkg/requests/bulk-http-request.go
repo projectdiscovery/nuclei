@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
@@ -52,13 +53,18 @@ type BulkHTTPRequest struct {
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
-	Raw                   []string `yaml:"raw,omitempty"`
+	Raw            []string `yaml:"raw,omitempty"`
+	basePayloads   map[string][]string
+	generator      func(payloads map[string][]string) (out chan map[string]interface{})
+	Generators     map[string]*Generator
+	generatormutex sync.RWMutex
+}
+
+type Generator struct {
 	positionPath          int
 	positionRaw           int
-	generator             func(payloads map[string][]string) (out chan map[string]interface{})
 	currentPayloads       map[string]interface{}
-	basePayloads          map[string][]string
-	generatorChan         chan map[string]interface{}
+	gchan                 chan map[string]interface{}
 	currentGeneratorValue map[string]interface{}
 }
 
@@ -121,16 +127,43 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(baseURL string, data string, 
 	return &HttpRequest{Request: request}, nil
 }
 
-func (r *BulkHTTPRequest) StartGenerator() {
-	r.generatorChan = r.generator(r.basePayloads)
+func (r *BulkHTTPRequest) CreateGenerator(URL string) {
+	r.generatormutex.Lock()
+	defer r.generatormutex.Unlock()
+
+	if r.Generators == nil {
+		r.Generators = make(map[string]*Generator)
+	}
+
+	if r.Generators[URL] == nil {
+		r.Generators[URL] = &Generator{}
+	}
+
+	if r.basePayloads == nil {
+		r.basePayloads = generators.LoadPayloads(r.Payloads)
+	}
+
+	if len(r.Payloads) > 0 {
+		// load payloads if not already done
+		generatorFunc := generators.SniperGenerator
+		switch r.attackType {
+		case generators.PitchFork:
+			generatorFunc = generators.PitchforkGenerator
+		case generators.ClusterBomb:
+			generatorFunc = generators.ClusterbombGenerator
+		}
+		r.generator = generatorFunc
+	}
 }
 
-func (r *BulkHTTPRequest) PickOne() {
+func (r *BulkHTTPRequest) PickOne(URL string) {
+	r.generatormutex.Lock()
+	defer r.generatormutex.Unlock()
 	var ok bool
-	r.currentGeneratorValue, ok = <-r.generatorChan
-	if !ok {
-		r.generator = nil
+	if r.Generators[URL].currentGeneratorValue, ok = <-r.Generators[URL].gchan; !ok {
+		r.Generators[URL].gchan = nil
 	}
+
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -138,22 +171,13 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(baseURL string, data string, va
 	// Add trailing line
 	data += "\n"
 	if len(r.Payloads) > 0 {
-		if r.generator == nil {
-			r.basePayloads = generators.LoadPayloads(r.Payloads)
-			generatorFunc := generators.SniperGenerator
-			switch r.attackType {
-			case generators.PitchFork:
-				generatorFunc = generators.PitchforkGenerator
-			case generators.ClusterBomb:
-				generatorFunc = generators.ClusterbombGenerator
-			}
-			r.generator = generatorFunc
-			r.StartGenerator()
+		r.generatormutex.Lock()
+		if r.Generators[baseURL].gchan == nil {
+			r.Generators[baseURL].gchan = r.generator(r.basePayloads)
 		}
-
-		r.PickOne()
-
-		return r.handleRawWithPaylods(data, baseURL, values, r.currentGeneratorValue)
+		r.generatormutex.Unlock()
+		r.PickOne(baseURL)
+		return r.handleRawWithPaylods(data, baseURL, values, r.Generators[baseURL].currentGeneratorValue)
 	}
 
 	// otherwise continue with normal flow
@@ -363,40 +387,61 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	return &rawRequest, nil
 }
 
-func (r *BulkHTTPRequest) Next() bool {
-	if r.positionPath+r.positionRaw >= len(r.Path)+len(r.Raw) {
+func (r *BulkHTTPRequest) Next(URL string) bool {
+	r.generatormutex.RLock()
+	defer r.generatormutex.RUnlock()
+
+	if r.Generators[URL].positionPath+r.Generators[URL].positionRaw >= len(r.Path)+len(r.Raw) {
 		return false
 	}
 	return true
 }
-func (r *BulkHTTPRequest) Position() int {
-	return r.positionPath + r.positionRaw
+func (r *BulkHTTPRequest) Position(URL string) int {
+	r.generatormutex.RLock()
+	defer r.generatormutex.RUnlock()
+
+	return r.Generators[URL].positionPath + r.Generators[URL].positionRaw
 }
-func (r *BulkHTTPRequest) Reset() {
-	r.positionPath = 0
-	r.positionRaw = 0
+
+func (r *BulkHTTPRequest) Reset(URL string) {
+	r.CreateGenerator(URL)
+
+	r.generatormutex.Lock()
+	r.Generators[URL].positionPath = 0
+	r.Generators[URL].positionRaw = 0
+	r.generatormutex.Unlock()
 }
-func (r *BulkHTTPRequest) Current() string {
-	if r.positionPath < len(r.Path) && len(r.Path) != 0 {
-		return r.Path[r.positionPath]
+
+func (r *BulkHTTPRequest) Current(URL string) string {
+	r.generatormutex.RLock()
+	defer r.generatormutex.RUnlock()
+
+	if r.Generators[URL].positionPath < len(r.Path) && len(r.Path) != 0 {
+		return r.Path[r.Generators[URL].positionPath]
 	}
 
-	return r.Raw[r.positionRaw]
+	return r.Raw[r.Generators[URL].positionRaw]
 }
 func (r *BulkHTTPRequest) Total() int {
+	r.generatormutex.RLock()
+	defer r.generatormutex.RUnlock()
+
 	return len(r.Path) + len(r.Raw)
 }
 
-func (r *BulkHTTPRequest) Increment() {
-	if len(r.Path) > 0 && r.positionPath < len(r.Path) {
-		r.positionPath++
+func (r *BulkHTTPRequest) Increment(URL string) {
+	r.generatormutex.Lock()
+	defer r.generatormutex.Unlock()
+
+	if len(r.Path) > 0 && r.Generators[URL].positionPath < len(r.Path) {
+		r.Generators[URL].positionPath++
 		return
 	}
 
-	if len(r.Raw) > 0 && r.positionRaw < len(r.Raw) {
+	if len(r.Raw) > 0 && r.Generators[URL].positionRaw < len(r.Raw) {
 		// if we have payloads increment only when the generators are done
-		if r.generator == nil {
-			r.positionRaw++
+		if r.Generators[URL].gchan == nil {
+			r.Generators[URL].positionRaw++
 		}
 	}
 }

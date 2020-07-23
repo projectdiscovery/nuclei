@@ -86,7 +86,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	executer := &HTTPExecuter{
 		debug:           options.Debug,
 		jsonOutput:      options.JSON,
-		jsonRequest:   options.JSONRequests,
+		jsonRequest:     options.JSONRequests,
 		httpClient:      client,
 		template:        options.Template,
 		bulkHttpRequest: options.BulkHttpRequest,
@@ -104,10 +104,10 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
-	e.bulkHttpRequest.Reset()
+	e.bulkHttpRequest.Reset(URL)
 
-	for e.bulkHttpRequest.Next() && !result.Done {
-		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current())
+	for e.bulkHttpRequest.Next(URL) && !result.Done {
+		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not make http request")
 			return
@@ -119,7 +119,7 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 			return
 		}
 
-		e.bulkHttpRequest.Increment()
+		e.bulkHttpRequest.Increment(URL)
 	}
 
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
