@@ -125,19 +125,30 @@ func (r *Runner) RunEnumeration() {
 
 	// parses user input, handle file/directory cases and produce a list of unique templates
 	for _, t := range r.options.Templates {
-		// resolve and convert relative to absolute path
-		absPath, err := r.resolvePathIfRelative(t)
-		if err != nil && !strings.Contains(t, "*") {
+		var absPath string
+		var err error
+
+		if strings.Contains(t, "*") {
+			dirs := strings.Split(t, "/")
+			priorDir := strings.Join(dirs[:len(dirs)-1], "/")
+			absPath, err = r.resolvePathIfRelative(priorDir)
+			absPath += "/" + dirs[len(dirs)-1]
+		} else {
+			// resolve and convert relative to absolute path
+			absPath, err = r.resolvePathIfRelative(t)
+		}
+
+		if err != nil {
 			gologger.Errorf("Could not find template file '%s': %s\n", t, err)
 			continue
 		}
 
 		// Template input includes a wildcard
-		if strings.Contains(t, "*") {
+		if strings.Contains(absPath, "*") {
 			matches := []string{}
-			matches, err = filepath.Glob(t)
+			matches, err = filepath.Glob(absPath)
 			if err != nil {
-				gologger.Labelf("Wildcard found, but unable to glob '%s': %s\n", t, err)
+				gologger.Labelf("Wildcard found, but unable to glob '%s': %s\n", absPath, err)
 				continue
 			}
 
@@ -147,7 +158,7 @@ func (r *Runner) RunEnumeration() {
 
 			// couldn't find templates in directory
 			if len(matches) == 0 {
-				gologger.Labelf("Error, no templates were found with '%s'.\n", t)
+				gologger.Labelf("Error, no templates were found with '%s'.\n", absPath)
 				continue
 			} else {
 				gologger.Labelf("Identified %d templates\n", len(matches))
