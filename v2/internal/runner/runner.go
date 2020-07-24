@@ -17,6 +17,7 @@ import (
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -36,6 +37,7 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
+	limiter chan struct{}
 
 	// progress tracking
 	progress *progress.Progress
@@ -108,6 +110,8 @@ func New(options *Options) (*Runner, error) {
 
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.options.NoColor)
+
+	runner.limiter = make(chan struct{}, options.Threads)
 
 	return runner, nil
 }
@@ -222,12 +226,23 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Error, no templates were found.\n")
 	}
 
+	// progress tracking
 	p := r.progress
 	templateCount := len(allTemplates)
 	isSingleTemplate := templateCount == 1
 
-	if !isSingleTemplate {
-		// precompute request count
+	// precompute total request count if we are executing more than one template
+	if isSingleTemplate {
+		match := allTemplates[0]
+		t, err := r.parse(match)
+		switch t.(type) {
+		case *templates.Template:
+			template := t.(*templates.Template)
+			p.SetupTemplateProgressbar(-1, -1, template.ID, r.inputCount*template.GetHTTPRequestsCount())
+		default:
+			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+		}
+	} else {
 		var totalRequests int64 = 0
 		for _, match := range allTemplates {
 			t, err := r.parse(match)
@@ -244,47 +259,48 @@ func (r *Runner) RunEnumeration() {
 		p.SetupGlobalProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
 	}
 
-	// run with the specified templates
-	var results bool
+	var (
+		wgtemplates sync.WaitGroup
+		results     atomicboolean.AtomBool
+	)
+
 	for i, match := range allTemplates {
-		t, err := r.parse(match)
-		switch t.(type) {
-		case *templates.Template:
-			template := t.(*templates.Template)
+		wgtemplates.Add(1)
 
-			if isSingleTemplate {
-				// track single template progress
-				p.SetupTemplateProgressbar(-1, -1, template.ID, r.inputCount*template.GetHTTPRequestsCount())
-			} else {
-				p.SetupTemplateProgressbar(i, templateCount, template.ID, r.inputCount * template.GetHTTPRequestsCount())
-			}
+		go func(match string, templateIndex int) {
+			defer wgtemplates.Done()
+			t, err := r.parse(match)
+			switch t.(type) {
+			case *templates.Template:
+				template := t.(*templates.Template)
 
-			for _, request := range template.RequestsDNS {
-				dnsResults := r.processTemplateWithList(p, template, request)
-				if dnsResults {
-					results = dnsResults
+				if !isSingleTemplate {
+					p.SetupTemplateProgressbar(templateIndex, templateCount, template.ID, r.inputCount * template.GetHTTPRequestsCount())
 				}
-			}
-			for _, request := range template.BulkRequestsHTTP {
-				httpResults := r.processTemplateWithList(p, template, request)
-				if httpResults {
-					results = httpResults
+
+				for _, request := range template.RequestsDNS {
+					results.Or(r.processTemplateWithList(p, template, request))
 				}
+				for _, request := range template.BulkRequestsHTTP {
+					results.Or(r.processTemplateWithList(p, template, request))
+				}
+			case *workflows.Workflow:
+				workflow := t.(*workflows.Workflow)
+				r.ProcessWorkflowWithList(workflow)
+			default:
+				p.StartStdCapture()
+				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+				p.StopStdCapture()
 			}
-		case *workflows.Workflow:
-			workflow := t.(*workflows.Workflow)
-			r.ProcessWorkflowWithList(workflow)
-		default:
-			p.StartStdCapture()
-			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-			p.StopStdCapture()
-		}
+		}(match, i)
 	}
+
+	wgtemplates.Wait()
 	p.Wait()
 	p.ShowStdErr()
 	p.ShowStdOut()
 
-	if !results {
+	if !results.Get() {
 		if r.output != nil {
 			outputFile := r.output.Name()
 			r.output.Close()
@@ -347,9 +363,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		return false
 	}
 
-	limiter := make(chan struct{}, r.options.Threads)
-	wg := &sync.WaitGroup{}
-
+	var wg sync.WaitGroup
 	r.input.Seek(0, 0)
 	scanner := bufio.NewScanner(r.input)
 	for scanner.Scan() {
@@ -357,10 +371,12 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		if text == "" {
 			continue
 		}
-		limiter <- struct{}{}
+
+		r.limiter <- struct{}{}
 		wg.Add(1)
 
 		go func(URL string) {
+			defer wg.Done()
 			var result executer.Result
 
 			if httpExecuter != nil {
@@ -374,11 +390,10 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 				gologger.Warningf("Could not execute step: %s\n", result.Error)
 				p.StopStdCapture()
 			}
-			<-limiter
-			wg.Done()
+			<-r.limiter
 		}(text)
 	}
-	close(limiter)
+
 	wg.Wait()
 
 	// See if we got any results from the executers

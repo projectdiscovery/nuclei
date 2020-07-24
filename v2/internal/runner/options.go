@@ -50,7 +50,7 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
-	flag.Var(&options.Templates, "t","Template input file/files to run on host. Can be used multiple times.")
+	flag.Var(&options.Templates, "t", "Template input file/files to run on host. Can be used multiple times.")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
@@ -59,7 +59,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
 	flag.BoolVar(&options.NoColor, "nC", false, "Don't Use colors in output")
-	flag.IntVar(&options.Threads, "c", 10, "Number of concurrent requests to make")
+	flag.IntVar(&options.Threads, "c", 50, "Number of concurrent requests to make")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
