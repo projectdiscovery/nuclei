@@ -238,22 +238,29 @@ func (r *Runner) RunEnumeration() {
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
-			p.SetupTemplateProgressbar(-1, -1, template.ID, r.inputCount*template.GetHTTPRequestsCount())
+			p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), 0)
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
 	} else {
 		var totalRequests int64 = 0
-		for _, match := range allTemplates {
+		parsedTemplates := []string{}
+
+		for i, match := range allTemplates {
 			t, err := r.parse(match)
 			switch t.(type) {
 			case *templates.Template:
 				template := t.(*templates.Template)
 				totalRequests += template.GetHTTPRequestsCount()
+				p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), i+1)
+				parsedTemplates = append(parsedTemplates, match)
 			default:
 				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 			}
 		}
+
+		// ensure only successfully parsed templates are processed
+		allTemplates = parsedTemplates
 
 		// track global progress
 		p.SetupGlobalProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
@@ -264,20 +271,14 @@ func (r *Runner) RunEnumeration() {
 		results     atomicboolean.AtomBool
 	)
 
-	for i, match := range allTemplates {
+	for _, match := range allTemplates {
 		wgtemplates.Add(1)
-
-		go func(match string, templateIndex int) {
+		go func(match string) {
 			defer wgtemplates.Done()
 			t, err := r.parse(match)
 			switch t.(type) {
 			case *templates.Template:
 				template := t.(*templates.Template)
-
-				if !isSingleTemplate {
-					p.SetupTemplateProgressbar(templateIndex, templateCount, template.ID, r.inputCount * template.GetHTTPRequestsCount())
-				}
-
 				for _, request := range template.RequestsDNS {
 					results.Or(r.processTemplateWithList(p, template, request))
 				}
@@ -292,7 +293,7 @@ func (r *Runner) RunEnumeration() {
 				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 				p.StopStdCapture()
 			}
-		}(match, i)
+		}(match)
 	}
 
 	wgtemplates.Wait()
