@@ -119,12 +119,12 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
-			p.Drop(remaining)
+			p.Drop(e.template.ID, remaining)
 			return
 		}
 
 		e.bulkHttpRequest.Increment(URL)
-		p.Update()
+		p.Update(e.template.ID)
 		remaining--
 	}
 

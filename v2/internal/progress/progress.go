@@ -13,8 +13,8 @@ import (
 // Encapsulates progress tracking.
 type Progress struct {
 	progress    *mpb.Progress
-	barTemplate *Bar
-	barGlobal   *Bar
+	bars		map[string]*Bar
+	gbar 		*Bar
 
 	captureData     *captureData
 	stdCaptureMutex *sync.Mutex
@@ -35,29 +35,22 @@ func NewProgress(noColor bool) *Progress {
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
 		colorizer: 		 aurora.NewAurora(!noColor),
+		bars:			make(map[string]*Bar),
 	}
 	return p
 }
 
 // Creates and returns a progress bar that tracks request progress for a specific template.
-func (p *Progress) SetupTemplateProgressbar(templateIndex int, templateCount int, name string, requestCount int64) {
+func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int64, priority int) {
+	if p.bars[templateId] != nil {
+		panic(fmt.Sprintf("A progressbar is already bound to [%s].", templateId))
+	}
+
 	color := p.colorizer
-	barName := "[" + color.Green(name).String() + "]"
+	barName := "[" + color.Green(templateId).String() + "]"
+	bar := p.setupProgressbar(barName, requestCount, priority)
 
-	if templateIndex > -1 && templateCount > -1 {
-		barName = color.Sprintf("[%d/%d] ",
-			color.Bold(color.Cyan(templateIndex)),
-			color.Cyan(templateCount)) + barName
-	}
-
-	bar := p.setupProgressbar(barName, requestCount)
-
-	if p.barTemplate != nil {
-		// ensure any previous bar has finished and dropped requests have also been considered
-		p.barTemplate.finish()
-	}
-
-	p.barTemplate = &Bar{
+	p.bars[templateId] = &Bar{
 		bar:          bar,
 		total:        requestCount,
 		initialTotal: requestCount,
@@ -67,6 +60,10 @@ func (p *Progress) SetupTemplateProgressbar(templateIndex int, templateCount int
 // Creates and returns a progress bar that tracks all the requests progress.
 // This is only useful when multiple templates are processed within the same run.
 func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, requestCount int64) {
+	if p.gbar != nil {
+		panic("A global progressbar is already present.")
+	}
+
 	color := p.colorizer
 
 	hostPlural := "host"
@@ -80,9 +77,9 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 		color.Bold(color.Cyan(hostCount)),
 		hostPlural) + "]"
 
-	bar := p.setupProgressbar(barName, requestCount)
+	bar := p.setupProgressbar(barName, requestCount, 0)
 
-	p.barGlobal = &Bar{
+	p.gbar = &Bar{
 		bar:          bar,
 		total:        requestCount,
 		initialTotal: requestCount,
@@ -91,22 +88,20 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 
 // Update progress tracking information and increments the request counter by one unit.
 // If a global progress bar is present it will be updated as well.
-func (p *Progress) Update() {
-	p.barTemplate.bar.Increment()
-
-	if p.barGlobal != nil {
-		p.barGlobal.bar.Increment()
+func (p *Progress) Update(templateId string) {
+	p.bars[templateId].increment()
+	if p.gbar != nil {
+		p.gbar.increment()
 	}
 }
 
 // Drops the specified number of requests from the progress bar total.
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
 // If a global progress bar is present it will be updated as well.
-func (p *Progress) Drop(count int64) {
-	p.barTemplate.Drop(count)
-
-	if p.barGlobal != nil {
-		p.barGlobal.Drop(count)
+func (p *Progress) Drop(templateId string, count int64) {
+	p.bars[templateId].drop(count)
+	if p.gbar != nil {
+		p.gbar.drop(count)
 	}
 }
 
@@ -114,20 +109,21 @@ func (p *Progress) Drop(count int64) {
 // wait for all the progress bars to finish.
 // If a global progress bar is present it will be updated as well.
 func (p *Progress) Wait() {
-	p.barTemplate.finish()
-
-	if p.barGlobal != nil {
-		p.barGlobal.finish()
+	for _, bar := range p.bars {
+		bar.finish()
 	}
-
+	if p.gbar != nil {
+		p.gbar.finish()
+	}
 	p.progress.Wait()
 }
 
 // Creates and returns a progress bar.
-func (p *Progress) setupProgressbar(name string, total int64) *mpb.Bar {
+func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
 	color := p.colorizer
 	return p.progress.AddBar(
 		total,
+		mpb.BarPriority(priority),
 		mpb.BarNoPop(),
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(

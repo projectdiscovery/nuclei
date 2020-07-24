@@ -14,7 +14,7 @@ type Bar struct {
 
 // Drops the specified number of requests from the progress bar total.
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
-func (b *Bar) Drop(count int64) {
+func (b *Bar) drop(count int64) {
 	atomic.AddInt64(&b.total, -count)
 	b.bar.SetTotal(atomic.LoadInt64(&b.total), false)
 }
@@ -24,4 +24,9 @@ func (b *Bar) finish() {
 	if b.initialTotal != b.total {
 		b.bar.SetTotal(b.total, true)
 	}
+}
+
+// Update progress tracking information and increments the request counter by one unit.
+func (b *Bar) increment() {
+	b.bar.Increment()
 }
