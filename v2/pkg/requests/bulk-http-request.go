@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
@@ -53,15 +52,8 @@ type BulkHTTPRequest struct {
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
-	Raw                   []string `yaml:"raw,omitempty"`
-	positionPath          int
-	positionRaw           int
-	positionMutex         sync.Mutex
-	generator             func(payloads map[string][]string) (out chan map[string]interface{})
-	currentPayloads       map[string]interface{}
-	basePayloads          map[string][]string
-	generatorChan         chan map[string]interface{}
-	currentGeneratorValue map[string]interface{}
+	Raw  []string `yaml:"raw,omitempty"`
+	gsfm *GeneratorFSM
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -128,16 +120,16 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(baseURL string, data string, 
 	return &HttpRequest{Request: request}, nil
 }
 
-func (r *BulkHTTPRequest) StartGenerator() {
-	r.generatorChan = r.generator(r.basePayloads)
+func (r *BulkHTTPRequest) InitGenerator() {
+	r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
 }
 
-func (r *BulkHTTPRequest) PickOne() {
-	var ok bool
-	r.currentGeneratorValue, ok = <-r.generatorChan
-	if !ok {
-		r.generator = nil
-	}
+func (r *BulkHTTPRequest) CreateGenerator(URL string) {
+	r.gsfm.Add(URL)
+}
+
+func (r *BulkHTTPRequest) ReadOne(URL string) {
+	r.gsfm.ReadOne(URL)
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -145,22 +137,9 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(baseURL string, data string, va
 	// Add trailing line
 	data += "\n"
 	if len(r.Payloads) > 0 {
-		if r.generator == nil {
-			r.basePayloads = generators.LoadPayloads(r.Payloads)
-			generatorFunc := generators.SniperGenerator
-			switch r.attackType {
-			case generators.PitchFork:
-				generatorFunc = generators.PitchforkGenerator
-			case generators.ClusterBomb:
-				generatorFunc = generators.ClusterbombGenerator
-			}
-			r.generator = generatorFunc
-			r.StartGenerator()
-		}
-
-		r.PickOne()
-
-		return r.handleRawWithPaylods(data, baseURL, values, r.currentGeneratorValue)
+		r.gsfm.InitOrSkip(baseURL)
+		r.ReadOne(baseURL)
+		return r.handleRawWithPaylods(data, baseURL, values, r.gsfm.Value(baseURL))
 	}
 
 	// otherwise continue with normal flow
@@ -370,54 +349,25 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	return &rawRequest, nil
 }
 
-func (r *BulkHTTPRequest) Next() bool {
-	r.positionMutex.Lock()
-	defer r.positionMutex.Unlock()
-
-	if r.positionPath+r.positionRaw >= len(r.Path)+len(r.Raw) {
-		return false
-	}
-	return true
+func (r *BulkHTTPRequest) Next(URL string) bool {
+	return r.gsfm.Next(URL)
 }
-func (r *BulkHTTPRequest) Position() int {
-	r.positionMutex.Lock()
-	defer r.positionMutex.Unlock()
-
-	return r.positionPath + r.positionRaw
+func (r *BulkHTTPRequest) Position(URL string) int {
+	return r.gsfm.Position(URL)
 }
-func (r *BulkHTTPRequest) Reset() {
-	r.positionMutex.Lock()
-	r.positionPath = 0
-	r.positionRaw = 0
-	r.positionMutex.Unlock()
-}
-func (r *BulkHTTPRequest) Current() string {
-	r.positionMutex.Lock()
-	defer r.positionMutex.Unlock()
 
-	if r.positionPath < len(r.Path) && len(r.Path) != 0 {
-		return r.Path[r.positionPath]
-	}
-
-	return r.Raw[r.positionRaw]
+func (r *BulkHTTPRequest) Reset(URL string) {
+	r.gsfm.Reset(URL)
 }
+
+func (r *BulkHTTPRequest) Current(URL string) string {
+	return r.gsfm.Current(URL)
+}
+
 func (r *BulkHTTPRequest) Total() int {
 	return len(r.Path) + len(r.Raw)
 }
 
-func (r *BulkHTTPRequest) Increment() {
-	r.positionMutex.Lock()
-	defer r.positionMutex.Unlock()
-
-	if len(r.Path) > 0 && r.positionPath < len(r.Path) {
-		r.positionPath++
-		return
-	}
-
-	if len(r.Raw) > 0 && r.positionRaw < len(r.Raw) {
-		// if we have payloads increment only when the generators are done
-		if r.generator == nil {
-			r.positionRaw++
-		}
-	}
+func (r *BulkHTTPRequest) Increment(URL string) {
+	r.gsfm.Increment(URL)
 }
