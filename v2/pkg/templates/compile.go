@@ -81,6 +81,8 @@ func Parse(file string) (*Template, error) {
 				return nil, err
 			}
 		}
+
+		request.InitGenerator()
 	}
 
 	// Compile the matchers and the extractors for dns requests

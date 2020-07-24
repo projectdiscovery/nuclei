@@ -115,11 +115,11 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(baseURL string, data string, 
 	return &HttpRequest{Request: request}, nil
 }
 
-func (r *BulkHTTPRequest) CreateGenerator(URL string) {
-	if r.gsfm == nil {
-		r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
-	}
+func (r *BulkHTTPRequest) InitGenerator() {
+	r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
+}
 
+func (r *BulkHTTPRequest) CreateGenerator(URL string) {
 	r.gsfm.Add(URL)
 }
 
