@@ -12,16 +12,14 @@ import (
 
 // Encapsulates progress tracking.
 type Progress struct {
-	progress    *mpb.Progress
-	bars		map[string]*Bar
-	gbar 		*Bar
-
+	progress        *mpb.Progress
+	bars            map[string]*Bar
+	gbar            *Bar
 	captureData     *captureData
 	stdCaptureMutex *sync.Mutex
 	stdout          *strings.Builder
 	stderr          *strings.Builder
-
-	colorizer		aurora.Aurora
+	colorizer       aurora.Aurora
 }
 
 // Creates and returns a new progress tracking object.
@@ -34,8 +32,8 @@ func NewProgress(noColor bool) *Progress {
 		stdCaptureMutex: &sync.Mutex{},
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
-		colorizer: 		 aurora.NewAurora(!noColor),
-		bars:			make(map[string]*Bar),
+		colorizer:       aurora.NewAurora(!noColor),
+		bars:            make(map[string]*Bar),
 	}
 	return p
 }
@@ -47,7 +45,7 @@ func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int6
 	}
 
 	color := p.colorizer
-	barName := "[" + color.Green(templateId).String() + "]"
+	barName := color.Green(templateId).String()
 	bar := p.setupProgressbar(barName, requestCount, priority)
 
 	p.bars[templateId] = &Bar{
@@ -71,11 +69,11 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 		hostPlural = "hosts"
 	}
 
-	barName := "[" + color.Sprintf(
+	barName := color.Sprintf(
 		color.Cyan("%d templates, %d %s"),
 		color.Bold(color.Cyan(templateCount)),
 		color.Bold(color.Cyan(hostCount)),
-		hostPlural) + "]"
+		hostPlural)
 
 	bar := p.setupProgressbar(barName, requestCount, 0)
 
@@ -109,25 +107,20 @@ func (p *Progress) Drop(templateId string, count int64) {
 // wait for all the progress bars to finish.
 // If a global progress bar is present it will be updated as well.
 func (p *Progress) Wait() {
-	for _, bar := range p.bars {
-		bar.finish()
-	}
-	if p.gbar != nil {
-		p.gbar.finish()
-	}
 	p.progress.Wait()
 }
 
 // Creates and returns a progress bar.
 func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
 	color := p.colorizer
+
 	return p.progress.AddBar(
 		total,
 		mpb.BarPriority(priority),
 		mpb.BarNoPop(),
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
-			decor.Name(name, decor.WCSyncSpaceR),
+			decor.Name(fmt.Sprintf("[%s]", name), decor.WCSyncSpaceR),
 			decor.CountersNoUnit(color.Blue(" %d/%d").String(), decor.WCSyncSpace),
 			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
 		),

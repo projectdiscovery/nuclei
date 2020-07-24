@@ -113,6 +113,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not build http request")
+			p.Drop(e.template.ID, remaining)
 			return
 		}
 

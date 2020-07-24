@@ -360,7 +360,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		})
 	}
 	if err != nil {
+		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
+		p.StopStdCapture()
 		return false
 	}
 
