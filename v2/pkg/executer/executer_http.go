@@ -95,6 +95,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		customHeaders:   options.CustomHeaders,
 		CookieJar:       options.CookieJar,
 	}
+
 	return executer, nil
 }
 
@@ -104,8 +105,7 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
-	e.bulkHttpRequest.Reset(URL)
-
+	e.bulkHttpRequest.CreateGenerator(URL)
 	for e.bulkHttpRequest.Next(URL) && !result.Done {
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
