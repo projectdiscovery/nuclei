@@ -106,6 +106,11 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
+	// verify if the URL is already being processed
+	if e.bulkHttpRequest.HasGenerator(URL) {
+		return
+	}
+	
 	remaining := e.template.GetHTTPRequestsCount()
 
 	e.bulkHttpRequest.CreateGenerator(URL)

@@ -128,6 +128,10 @@ func (r *BulkHTTPRequest) CreateGenerator(URL string) {
 	r.gsfm.Add(URL)
 }
 
+func (r *BulkHTTPRequest) HasGenerator(URL string) bool {
+	return r.gsfm.Has(URL)
+}
+
 func (r *BulkHTTPRequest) ReadOne(URL string) {
 	r.gsfm.ReadOne(URL)
 }
