@@ -13,8 +13,8 @@ import (
 // Encapsulates progress tracking.
 type Progress struct {
 	progress        *mpb.Progress
-	bars            map[string]*Bar
-	gbar            *Bar
+	bars            map[string]*mpb.Bar
+	gbar            *mpb.Bar
 	captureData     *captureData
 	stdCaptureMutex *sync.Mutex
 	stdout          *strings.Builder
@@ -33,7 +33,7 @@ func NewProgress(noColor bool) *Progress {
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
 		colorizer:       aurora.NewAurora(!noColor),
-		bars:            make(map[string]*Bar),
+		bars:            make(map[string]*mpb.Bar),
 	}
 	return p
 }
@@ -53,13 +53,7 @@ func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int6
 	}
 
 	uiBarName = fmt.Sprintf(fmt.Sprintf("%%-%ds", MaxLen), "[" + color.BrightYellow(uiBarName).String() + "]")
-	bar := p.setupProgressbar(uiBarName, requestCount, priority)
-
-	p.bars[templateId] = &Bar{
-		bar:          bar,
-		total:        requestCount,
-		initialTotal: requestCount,
-	}
+	p.bars[templateId] = p.setupProgressbar(uiBarName, requestCount, priority)
 }
 
 // Creates and returns a progress bar that tracks all the requests progress.
@@ -78,13 +72,7 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 		color.Bold(color.Cyan(hostCount)),
 		pluralize(hostCount, "host", "hosts"))
 
-	bar := p.setupProgressbar("[" + barName + "]", requestCount, 0)
-
-	p.gbar = &Bar{
-		bar:          bar,
-		total:        requestCount,
-		initialTotal: requestCount,
-	}
+	p.gbar = p.setupProgressbar("[" + barName + "]", requestCount, 0)
 }
 
 func pluralize(count int64, singular, plural string) string {
@@ -97,9 +85,9 @@ func pluralize(count int64, singular, plural string) string {
 // Update progress tracking information and increments the request counter by one unit.
 // If a global progress bar is present it will be updated as well.
 func (p *Progress) Update(templateId string) {
-	p.bars[templateId].increment()
+	p.bars[templateId].Increment()
 	if p.gbar != nil {
-		p.gbar.increment()
+		p.gbar.Increment()
 	}
 }
 
@@ -107,9 +95,9 @@ func (p *Progress) Update(templateId string) {
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
 // If a global progress bar is present it will be updated as well.
 func (p *Progress) Drop(templateId string, count int64) {
-	p.bars[templateId].drop(count)
+	p.bars[templateId].IncrInt64(count)
 	if p.gbar != nil {
-		p.gbar.drop(count)
+		p.gbar.IncrInt64(count)
 	}
 }
 
