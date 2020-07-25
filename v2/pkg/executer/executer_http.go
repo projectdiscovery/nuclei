@@ -191,6 +191,7 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
 				e.writeOutputHTTP(request, resp, body, matcher, nil)
+				result.GotResults = true
 			}
 		}
 	}
@@ -214,6 +215,7 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 	// AND or if we have extractors for the mechanism too.
 	if len(e.bulkHttpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
+		result.GotResults = true
 	}
 
 	return nil
