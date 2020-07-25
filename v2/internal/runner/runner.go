@@ -28,6 +28,7 @@ import (
 type Runner struct {
 	input      *os.File
 	inputCount int64
+	inputMutex *sync.Mutex
 
 	// output is the output file to write if any
 	output      *os.File
@@ -46,6 +47,7 @@ type Runner struct {
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
+		inputMutex: &sync.Mutex{},
 		outputMutex: &sync.Mutex{},
 		options:     options,
 	}
@@ -229,42 +231,31 @@ func (r *Runner) RunEnumeration() {
 	// progress tracking
 	p := r.progress
 	templateCount := len(allTemplates)
-	isSingleTemplate := templateCount == 1
 
 	// precompute total request count if we are executing more than one template
-	if isSingleTemplate {
-		match := allTemplates[0]
+	var totalRequests int64 = 0
+	barIndex := 0
+	parsedTemplates := []string{}
+
+	for _, match := range allTemplates {
 		t, err := r.parse(match)
 		switch t.(type) {
 		case *templates.Template:
+			barIndex++
 			template := t.(*templates.Template)
-			p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), 0)
+			totalRequests += template.GetHTTPRequestsCount()
+			p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), barIndex)
+			parsedTemplates = append(parsedTemplates, match)
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
-	} else {
-		var totalRequests int64 = 0
-		parsedTemplates := []string{}
-
-		for i, match := range allTemplates {
-			t, err := r.parse(match)
-			switch t.(type) {
-			case *templates.Template:
-				template := t.(*templates.Template)
-				totalRequests += template.GetHTTPRequestsCount()
-				p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), i+1)
-				parsedTemplates = append(parsedTemplates, match)
-			default:
-				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-			}
-		}
-
-		// ensure only successfully parsed templates are processed
-		allTemplates = parsedTemplates
-
-		// track global progress
-		p.SetupGlobalProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
 	}
+
+	// ensure only successfully parsed templates are processed
+	allTemplates = parsedTemplates
+
+	// track global progress
+	p.SetupGlobalProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
 
 	var (
 		wgtemplates sync.WaitGroup
@@ -367,6 +358,8 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	}
 
 	var wg sync.WaitGroup
+
+	r.inputMutex.Lock()
 	r.input.Seek(0, 0)
 	scanner := bufio.NewScanner(r.input)
 	for scanner.Scan() {
@@ -396,6 +389,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			<-r.limiter
 		}(text)
 	}
+	r.inputMutex.Unlock()
 
 	wg.Wait()
 
