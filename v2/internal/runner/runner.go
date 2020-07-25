@@ -26,9 +26,8 @@ import (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	input      *os.File
+	input      string
 	inputCount int64
-	inputMutex *sync.Mutex
 
 	// output is the output file to write if any
 	output      *os.File
@@ -47,7 +46,6 @@ type Runner struct {
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		inputMutex: &sync.Mutex{},
 		outputMutex: &sync.Mutex{},
 		options:     options,
 	}
@@ -84,22 +82,37 @@ func New(options *Options) (*Runner, error) {
 
 	// Setup input, handle a list of hosts as argument
 	var err error
+	var input *os.File
 	if options.Targets != "" {
-		runner.input, err = os.Open(options.Targets)
+		input, err = os.Open(options.Targets)
 	} else if options.Stdin || options.Target != "" {
-		runner.input, err = os.Open(runner.tempFile)
+		input, err = os.Open(runner.tempFile)
 	}
 	if err != nil {
 		gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
 	}
 
-	// Precompute total number of targets
-	scanner := bufio.NewScanner(runner.input)
+	// Deduplicate input and pre-compute total number of targets
+	var usedInput = make(map[string]bool)
+	dupeCount := 0
+	sb := strings.Builder{}
+	scanner := bufio.NewScanner(input)
 	runner.inputCount = 0
 	for scanner.Scan() {
-		runner.inputCount++
+		url := scanner.Text()
+		if _, ok := usedInput[url]; !ok {
+			usedInput[url] = true
+			runner.inputCount++
+			sb.WriteString(url)
+			sb.WriteString("\n")
+		} else {
+			dupeCount++
+		}
 	}
-	runner.input.Seek(0, 0)
+	runner.input = sb.String()
+	if dupeCount > 0 {
+		gologger.Labelf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
+	}
 
 	// Create the output file if asked
 	if options.Output != "" {
@@ -121,7 +134,6 @@ func New(options *Options) (*Runner, error) {
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
 	r.output.Close()
-	r.input.Close()
 	os.Remove(r.tempFile)
 }
 
@@ -361,9 +373,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 
 	var wg sync.WaitGroup
 
-	r.inputMutex.Lock()
-	r.input.Seek(0, 0)
-	scanner := bufio.NewScanner(r.input)
+	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
@@ -393,7 +403,6 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			<-r.limiter
 		}(text)
 	}
-	r.inputMutex.Unlock()
 
 	wg.Wait()
 
@@ -403,8 +412,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 
 // ProcessWorkflowWithList coming from stdin or list of targets
 func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
-	r.input.Seek(0, 0)
-	scanner := bufio.NewScanner(r.input)
+	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
