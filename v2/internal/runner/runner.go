@@ -357,6 +357,8 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		return false
 	}
 
+	var globalresult atomicboolean.AtomBool
+
 	var wg sync.WaitGroup
 
 	r.inputMutex.Lock()
@@ -377,9 +379,11 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 
 			if httpExecuter != nil {
 				result = httpExecuter.ExecuteHTTP(p, URL)
+				globalresult.Or(result.GotResults)
 			}
 			if dnsExecuter != nil {
 				result = dnsExecuter.ExecuteDNS(URL)
+				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
 				p.StartStdCapture()
@@ -394,16 +398,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	wg.Wait()
 
 	// See if we got any results from the executers
-	var results bool
-	if httpExecuter != nil {
-		results = httpExecuter.Results
-	}
-	if dnsExecuter != nil {
-		if !results {
-			results = dnsExecuter.Results
-		}
-	}
-	return results
+	return globalresult.Get()
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets

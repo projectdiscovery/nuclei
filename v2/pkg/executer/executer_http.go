@@ -206,7 +206,6 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 				p.StartStdCapture()
 				e.writeOutputHTTP(request, resp, body, matcher, nil)
 				p.StopStdCapture()
-				e.Results = true
 			}
 		}
 	}
@@ -232,7 +231,6 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 		p.StartStdCapture()
 		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
 		p.StopStdCapture()
-		e.Results = true
 	}
 
 	return nil
