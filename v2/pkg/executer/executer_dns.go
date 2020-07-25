@@ -120,7 +120,9 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	var extractorResults []string
 	for _, extractor := range e.dnsRequest.Extractors {
 		for match := range extractor.ExtractDNS(resp) {
-			extractorResults = append(extractorResults, match)
+			if !extractor.Internal {
+				extractorResults = append(extractorResults, match)
+			}
 		}
 	}
 

@@ -32,5 +32,6 @@ func (e *Extractor) CompileExtractors() error {
 	} else {
 		e.part = BodyPart
 	}
+
 	return nil
 }
