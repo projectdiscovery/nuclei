@@ -17,6 +17,7 @@ import (
 	"github.com/d5/tengo/v2/stdlib"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -33,6 +34,7 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
+	limiter chan struct{}
 }
 
 // New creates a new client for running enumeration process.
@@ -80,6 +82,9 @@ func New(options *Options) (*Runner, error) {
 		}
 		runner.output = output
 	}
+
+	runner.limiter = make(chan struct{}, options.Threads)
+
 	return runner, nil
 }
 
@@ -225,33 +230,37 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Error, no templates were found.\n")
 	}
 
-	// run with the specified templates
-	var results bool
+	var (
+		wgtemplates sync.WaitGroup
+		results     atomicboolean.AtomBool
+	)
+
 	for _, match := range allTemplates {
-		t, err := r.parse(match)
-		switch t.(type) {
-		case *templates.Template:
-			template := t.(*templates.Template)
-			for _, request := range template.RequestsDNS {
-				dnsResults := r.processTemplateRequest(template, request)
-				if dnsResults {
-					results = dnsResults
+		wgtemplates.Add(1)
+		go func(match string) {
+			defer wgtemplates.Done()
+			t, err := r.parse(match)
+			switch t.(type) {
+			case *templates.Template:
+				template := t.(*templates.Template)
+				for _, request := range template.RequestsDNS {
+					results.Or(r.processTemplateRequest(template, request))
 				}
-			}
-			for _, request := range template.BulkRequestsHTTP {
-				httpResults := r.processTemplateRequest(template, request)
-				if httpResults {
-					results = httpResults
+				for _, request := range template.BulkRequestsHTTP {
+					results.Or(r.processTemplateRequest(template, request))
 				}
+			case *workflows.Workflow:
+				workflow := t.(*workflows.Workflow)
+				r.ProcessWorkflowWithList(workflow)
+			default:
+				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 			}
-		case *workflows.Workflow:
-			workflow := t.(*workflows.Workflow)
-			r.ProcessWorkflowWithList(workflow)
-		default:
-			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-		}
+		}(match)
 	}
-	if !results {
+
+	wgtemplates.Wait()
+
+	if !results.Get() {
 		if r.output != nil {
 			outputFile := r.output.Name()
 			r.output.Close()
@@ -276,9 +285,9 @@ func (r *Runner) processTemplateRequest(template *templates.Template, request in
 	if err != nil {
 		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
 	}
-	results := r.processTemplateWithList(template, request, file)
-	file.Close()
-	return results
+	defer file.Close()
+
+	return r.processTemplateWithList(template, request, file)
 }
 
 // processDomain processes the list with a template
@@ -331,48 +340,42 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		return false
 	}
 
-	limiter := make(chan struct{}, r.options.Threads)
-	wg := &sync.WaitGroup{}
+	var globalresult atomicboolean.AtomBool
 
+	var wg sync.WaitGroup
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
 			continue
 		}
-		limiter <- struct{}{}
+
+		r.limiter <- struct{}{}
 		wg.Add(1)
 
 		go func(URL string) {
+			defer wg.Done()
 			var result executer.Result
 
 			if httpExecuter != nil {
 				result = httpExecuter.ExecuteHTTP(URL)
+				globalresult.Or(result.GotResults)
 			}
 			if dnsExecuter != nil {
 				result = dnsExecuter.ExecuteDNS(URL)
+				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
 				gologger.Warningf("Could not execute step: %s\n", result.Error)
 			}
-			<-limiter
-			wg.Done()
+			<-r.limiter
 		}(text)
 	}
-	close(limiter)
+
 	wg.Wait()
 
 	// See if we got any results from the executers
-	var results bool
-	if httpExecuter != nil {
-		results = httpExecuter.Results
-	}
-	if dnsExecuter != nil {
-		if !results {
-			results = dnsExecuter.Results
-		}
-	}
-	return results
+	return globalresult.Get()
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets

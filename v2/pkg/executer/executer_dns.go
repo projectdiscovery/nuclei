@@ -110,7 +110,7 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
 				e.writeOutputDNS(domain, matcher, nil)
-				e.Results = true
+				result.GotResults = true
 			}
 		}
 	}
@@ -120,7 +120,9 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	var extractorResults []string
 	for _, extractor := range e.dnsRequest.Extractors {
 		for match := range extractor.ExtractDNS(resp) {
-			extractorResults = append(extractorResults, match)
+			if !extractor.Internal {
+				extractorResults = append(extractorResults, match)
+			}
 		}
 	}
 
@@ -128,7 +130,6 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputDNS(domain, nil, extractorResults)
-		e.Results = true
 	}
 
 	return

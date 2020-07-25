@@ -86,7 +86,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	executer := &HTTPExecuter{
 		debug:           options.Debug,
 		jsonOutput:      options.JSON,
-		jsonRequest:   options.JSONRequests,
+		jsonRequest:     options.JSONRequests,
 		httpClient:      client,
 		template:        options.Template,
 		bulkHttpRequest: options.BulkHttpRequest,
@@ -95,6 +95,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		customHeaders:   options.CustomHeaders,
 		CookieJar:       options.CookieJar,
 	}
+
 	return executer, nil
 }
 
@@ -104,10 +105,14 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
-	e.bulkHttpRequest.Reset()
+	// verify if the URL is already being processed
+	if e.bulkHttpRequest.HasGenerator(URL) {
+		return
+	}
 
-	for e.bulkHttpRequest.Next() && !result.Done {
-		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current())
+	e.bulkHttpRequest.CreateGenerator(URL)
+	for e.bulkHttpRequest.Next(URL) && !result.Done {
+		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not make http request")
 			return
@@ -119,7 +124,7 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 			return
 		}
 
-		e.bulkHttpRequest.Increment()
+		e.bulkHttpRequest.Increment(URL)
 	}
 
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
@@ -186,25 +191,28 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 		} else {
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && len(e.bulkHttpRequest.Extractors) == 0 {
+			if matcherCondition == matchers.ORCondition {
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
 				e.writeOutputHTTP(request, resp, body, matcher, nil)
-				e.Results = true
+				result.GotResults = true
 			}
 		}
 	}
 
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
-	var extractorResults []string
+	var extractorResults, outputExtractorResults []string
 	for _, extractor := range e.bulkHttpRequest.Extractors {
 		for match := range extractor.Extract(resp, body, headers) {
 			if _, ok := dynamicvalues[extractor.Name]; !ok {
 				dynamicvalues[extractor.Name] = match
 			}
 			extractorResults = append(extractorResults, match)
+			if !extractor.Internal {
+				outputExtractorResults = append(outputExtractorResults, match)
+			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
 		result.Meta = request.Meta
@@ -213,9 +221,9 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(e.bulkHttpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
-		e.Results = true
+	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
+		result.GotResults = true
 	}
 
 	return nil
