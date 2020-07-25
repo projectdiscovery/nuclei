@@ -52,21 +52,14 @@ func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int6
 		uiBarName = uiBarName[:MaxLen] + ".."
 	}
 
-	barName := color.BrightYellow(uiBarName).String()
-	bar := p.setupProgressbar(barName, requestCount, priority)
+	uiBarName = fmt.Sprintf(fmt.Sprintf("%%-%ds", MaxLen), "[" + color.BrightYellow(uiBarName).String() + "]")
+	bar := p.setupProgressbar(uiBarName, requestCount, priority)
 
 	p.bars[templateId] = &Bar{
 		bar:          bar,
 		total:        requestCount,
 		initialTotal: requestCount,
 	}
-}
-
-func pluralize(count int64, singular, plural string) string {
-	if count > 1 {
-		return plural
-	}
-	return singular
 }
 
 // Creates and returns a progress bar that tracks all the requests progress.
@@ -85,13 +78,20 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 		color.Bold(color.Cyan(hostCount)),
 		pluralize(hostCount, "host", "hosts"))
 
-	bar := p.setupProgressbar(barName, requestCount, 0)
+	bar := p.setupProgressbar("[" + barName + "]", requestCount, 0)
 
 	p.gbar = &Bar{
 		bar:          bar,
 		total:        requestCount,
 		initialTotal: requestCount,
 	}
+}
+
+func pluralize(count int64, singular, plural string) string {
+	if count > 1 {
+		return plural
+	}
+	return singular
 }
 
 // Update progress tracking information and increments the request counter by one unit.
@@ -130,7 +130,7 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 		mpb.BarNoPop(),
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
-			decor.Name(fmt.Sprintf("[%s]", name), decor.WCSyncSpaceR),
+			decor.Name(name, decor.WCSyncSpaceR),
 			decor.CountersNoUnit(color.BrightBlue(" %d/%d").String(), decor.WCSyncSpace),
 			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
 		),
