@@ -55,6 +55,13 @@ func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int6
 	}
 }
 
+func pluralize(count int64, singular, plural string) string {
+	if count > 1 {
+		return plural
+	}
+	return singular
+}
+
 // Creates and returns a progress bar that tracks all the requests progress.
 // This is only useful when multiple templates are processed within the same run.
 func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, requestCount int64) {
@@ -64,16 +71,12 @@ func (p *Progress) SetupGlobalProgressbar(hostCount int64, templateCount int, re
 
 	color := p.colorizer
 
-	hostPlural := "host"
-	if hostCount > 1 {
-		hostPlural = "hosts"
-	}
-
 	barName := color.Sprintf(
-		color.Cyan("%d templates, %d %s"),
+		color.Cyan("%d %s, %d %s"),
 		color.Bold(color.Cyan(templateCount)),
+		pluralize(int64(templateCount), "template", "templates"),
 		color.Bold(color.Cyan(hostCount)),
-		hostPlural)
+		pluralize(hostCount, "host", "hosts"))
 
 	bar := p.setupProgressbar(barName, requestCount, 0)
 
