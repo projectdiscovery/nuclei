@@ -45,7 +45,14 @@ func (p *Progress) SetupTemplateProgressbar(templateId string, requestCount int6
 	}
 
 	color := p.colorizer
-	barName := color.Green(templateId).String()
+	uiBarName := templateId
+
+	const MaxLen = 40
+	if len(uiBarName) > MaxLen {
+		uiBarName = uiBarName[:MaxLen] + ".."
+	}
+
+	barName := color.BrightYellow(uiBarName).String()
 	bar := p.setupProgressbar(barName, requestCount, priority)
 
 	p.bars[templateId] = &Bar{
@@ -124,11 +131,11 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(fmt.Sprintf("[%s]", name), decor.WCSyncSpaceR),
-			decor.CountersNoUnit(color.Blue(" %d/%d").String(), decor.WCSyncSpace),
+			decor.CountersNoUnit(color.BrightBlue(" %d/%d").String(), decor.WCSyncSpace),
 			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
 		),
 		mpb.AppendDecorators(
-			decor.AverageSpeed(0, color.Yellow("%.2f r/s ").String(), decor.WCSyncSpace),
+			decor.AverageSpeed(0, color.BrightBlue("%.2f r/s ").String(), decor.WCSyncSpace),
 			decor.Elapsed(decor.ET_STYLE_GO, decor.WCSyncSpace),
 			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
 		),
