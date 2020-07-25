@@ -186,7 +186,7 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 		} else {
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && len(e.bulkHttpRequest.Extractors) == 0 {
+			if matcherCondition == matchers.ORCondition {
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
@@ -198,23 +198,24 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
-	var extractorResults []string
+	var extractorResults, outputExtractorResults []string
 	for _, extractor := range e.bulkHttpRequest.Extractors {
 		for match := range extractor.Extract(resp, body, headers) {
 			if _, ok := dynamicvalues[extractor.Name]; !ok {
 				dynamicvalues[extractor.Name] = match
 			}
 			extractorResults = append(extractorResults, match)
+			if !extractor.Internal {
+				outputExtractorResults = append(outputExtractorResults, match)
+			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
 		result.Meta = request.Meta
 		result.Extractions[extractor.Name] = extractorResults
 	}
 
-	// Write a final string of output if matcher type is
-	// AND or if we have extractors for the mechanism too.
-	if len(e.bulkHttpRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, extractorResults)
+	if len(outputExtractorResults) > 0 {
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
 		result.GotResults = true
 	}
 
