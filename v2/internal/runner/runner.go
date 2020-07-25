@@ -244,7 +244,7 @@ func (r *Runner) RunEnumeration() {
 	p := r.progress
 	templateCount := len(allTemplates)
 
-	// precompute total request count if we are executing more than one template
+	// precompute total request count
 	var totalRequests int64 = 0
 	barIndex := 0
 	parsedTemplates := []string{}
@@ -256,6 +256,7 @@ func (r *Runner) RunEnumeration() {
 			barIndex++
 			template := t.(*templates.Template)
 			totalRequests += template.GetHTTPRequestsCount()
+			// track per-template progress
 			p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), barIndex)
 			parsedTemplates = append(parsedTemplates, match)
 		default:
