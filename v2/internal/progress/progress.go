@@ -132,7 +132,7 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WCSyncSpaceR),
 			decor.CountersNoUnit(color.BrightBlue(" %d/%d").String(), decor.WCSyncSpace),
-			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
+			customFormattedPercentage(color.Bold("%3.0f%%").String(), decor.WCSyncSpace),
 		),
 		mpb.AppendDecorators(
 			decor.AverageSpeed(0, color.BrightBlue("%.2f r/s ").String(), decor.WCSyncSpace),
@@ -140,6 +140,26 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
 		),
 	)
+}
+
+// Helper function to calculate percentage
+func computePercentage(total, current int64, width int) float64 {
+	if total <= 0 {
+		return 0
+	}
+	if current >= total {
+		return float64(width)
+	}
+	return float64(int64(width)*current) / float64(total)
+}
+
+// Percentage decorator with custom formatting
+func customFormattedPercentage(format string, wcc ...decor.WC) decor.Decorator {
+	f := func(s decor.Statistics) string {
+		p := computePercentage(s.Total, s.Current, 100)
+		return fmt.Sprintf(format, p)
+	}
+	return decor.Any(f, wcc...)
 }
 
 // Starts capturing stdout and stderr instead of producing visual output that may interfere with the progress bars.
