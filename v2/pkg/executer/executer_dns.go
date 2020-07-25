@@ -110,6 +110,7 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
 				e.writeOutputDNS(domain, matcher, nil)
+				result.GotResults = true
 			}
 		}
 	}
