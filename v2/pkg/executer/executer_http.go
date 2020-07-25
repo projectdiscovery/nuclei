@@ -214,7 +214,9 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 		result.Extractions[extractor.Name] = extractorResults
 	}
 
-	if len(outputExtractorResults) > 0 {
+	// Write a final string of output if matcher type is
+	// AND or if we have extractors for the mechanism too.
+	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
 		result.GotResults = true
 	}
