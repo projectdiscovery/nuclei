@@ -5,6 +5,7 @@ import (
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
@@ -50,7 +51,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		externalVars = iterableToMap(args[1])
 	}
 
-	var gotResult bool
+	var gotResult atomicboolean.AtomBool
 	for _, template := range n.Templates {
 		if template.HTTPOptions != nil {
 			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
@@ -70,8 +71,8 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					continue
 				}
 
-				if httpExecuter.Results {
-					gotResult = true
+				if result.GotResults {
+					gotResult.Or(result.GotResults)
 					n.addResults(&result)
 				}
 			}
@@ -87,15 +88,15 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					continue
 				}
 
-				if dnsExecuter.Results {
-					gotResult = true
+				if result.GotResults {
+					gotResult.Or(result.GotResults)
 					n.addResults(&result)
 				}
 			}
 		}
 	}
 
-	if gotResult {
+	if gotResult.Get() {
 		return tengo.TrueValue, nil
 	}
 	return tengo.FalseValue, nil

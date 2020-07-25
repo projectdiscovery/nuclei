@@ -25,6 +25,9 @@ type Extractor struct {
 	Part string `yaml:"part,omitempty"`
 	// part is the part of the request to match
 	part Part
+
+	// Internal defines if this is used internally
+	Internal bool `yaml:"internal,omitempty"`
 }
 
 // ExtractorType is the type of the extractor specified
