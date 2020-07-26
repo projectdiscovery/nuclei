@@ -282,10 +282,10 @@ func (r *Runner) RunEnumeration() {
 
 	// progress tracking
 	p := r.progress
-	templateCount := len(allTemplates)
 
 	// precompute total request count
 	var totalRequests int64 = 0
+	templateCount := len(allTemplates)
 	parsedTemplates := []string{}
 
 	for _, match := range allTemplates {
@@ -293,8 +293,11 @@ func (r *Runner) RunEnumeration() {
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
-			totalRequests += template.GetHTTPRequestCount()
-			totalRequests += template.GetDNSRequestCount()
+			totalRequests += template.GetHTTPRequestCount() + template.GetDNSRequestCount()
+			parsedTemplates = append(parsedTemplates, match)
+		case *workflows.Workflow:
+			// workflows will dynamically adjust the totals while running, as
+			// it can't be know in advance which requests will be called
 			parsedTemplates = append(parsedTemplates, match)
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -328,7 +331,7 @@ func (r *Runner) RunEnumeration() {
 				}
 			case *workflows.Workflow:
 				workflow := t.(*workflows.Workflow)
-				r.ProcessWorkflowWithList(workflow)
+				r.ProcessWorkflowWithList(p, workflow)
 			default:
 				p.StartStdCapture()
 				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -401,6 +404,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		})
 	}
 	if err != nil {
+		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
 		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
 		p.StopStdCapture()
@@ -414,9 +418,6 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if text == "" {
-			continue
-		}
 
 		r.limiter <- struct{}{}
 		wg.Add(1)
@@ -449,18 +450,18 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
+func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflows.Workflow) {
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if err := r.ProcessWorkflow(workflow, text); err != nil {
+		if err := r.ProcessWorkflow(p, workflow, text); err != nil {
 			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
 		}
 	}
 }
 
 // ProcessWorkflow towards an URL
-func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
+func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
 	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	var jar *cookiejar.Jar
@@ -481,7 +482,9 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 		// Check if the template is an absolute path or relative path.
 		// If the path is absolute, use it. Otherwise,
 		if r.isRelative(value) {
+			p.StartStdCapture()
 			newPath, err := r.resolvePath(value)
+			p.StopStdCapture()
 			if err != nil {
 				return err
 			}
@@ -495,7 +498,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 			if err != nil {
 				return err
 			}
-			template := &workflows.Template{}
+			template := &workflows.Template{Progress: p}
 			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
 					Debug:         r.options.Debug,
@@ -546,7 +549,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 				if err != nil {
 					return err
 				}
-				template := &workflows.Template{}
+				template := &workflows.Template{Progress: p}
 				if len(t.BulkRequestsHTTP) > 0 {
 					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
