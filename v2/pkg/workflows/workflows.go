@@ -12,6 +12,12 @@ type Workflow struct {
 	Variables map[string]string `yaml:"variables"`
 	// Logic contains the workflow pseudo-code
 	Logic string `yaml:"logic"`
+	path  string
+}
+
+// GetPath of the workflow
+func (w *Workflow) GetPath() string {
+	return w.path
 }
 
 // Info contains information about workflow
