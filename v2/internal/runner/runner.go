@@ -286,14 +286,12 @@ func (r *Runner) RunEnumeration() {
 
 	// precompute total request count
 	var totalRequests int64 = 0
-	barIndex := 0
 	parsedTemplates := []string{}
 
 	for _, match := range allTemplates {
 		t, err := r.parse(match)
 		switch t.(type) {
 		case *templates.Template:
-			barIndex++
 			template := t.(*templates.Template)
 			totalRequests += template.GetHTTPRequestCount()
 			totalRequests += template.GetDNSRequestCount()
