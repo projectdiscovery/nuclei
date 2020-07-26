@@ -69,7 +69,7 @@ func New(options *Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		tempInput.WriteString(options.Target)
+		fmt.Fprintf(tempInput, "%s\n", options.Target)
 		runner.tempFile = tempInput.Name()
 		tempInput.Close()
 	}
@@ -385,7 +385,7 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 	// Handle a list of hosts as argument
 	if r.options.Targets != "" {
 		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin {
+	} else if r.options.Stdin || r.options.Target != "" {
 		file, err = os.Open(r.tempFile)
 	}
 	if err != nil {
