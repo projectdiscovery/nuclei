@@ -110,7 +110,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 	if e.bulkHttpRequest.HasGenerator(URL) {
 		return
 	}
-	
+
 	remaining := e.template.GetHTTPRequestsCount()
 
 	e.bulkHttpRequest.CreateGenerator(URL)
@@ -118,19 +118,19 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not build http request")
-			p.Drop(e.template.ID, remaining)
+			p.Drop(remaining)
 			return
 		}
 
 		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
-			p.Drop(e.template.ID, remaining)
+			p.Drop(remaining)
 			return
 		}
 
 		e.bulkHttpRequest.Increment(URL)
-		p.Update(e.template.ID)
+		p.Update()
 		remaining--
 	}
 
