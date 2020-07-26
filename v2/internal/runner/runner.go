@@ -93,7 +93,7 @@ func New(options *Options) (*Runner, error) {
 		gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
 	}
 
-	// Deduplicate input and pre-compute total number of targets
+	// Sanitize input and pre-compute total number of targets
 	var usedInput = make(map[string]bool)
 	dupeCount := 0
 	sb := strings.Builder{}
@@ -101,6 +101,11 @@ func New(options *Options) (*Runner, error) {
 	runner.inputCount = 0
 	for scanner.Scan() {
 		url := scanner.Text()
+		// skip empty lines
+		if len(url) == 0 {
+			continue
+		}
+		// deduplication
 		if _, ok := usedInput[url]; !ok {
 			usedInput[url] = true
 			runner.inputCount++
@@ -450,9 +455,6 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if text == "" {
-			continue
-		}
 		if err := r.ProcessWorkflow(workflow, text); err != nil {
 			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
 		}
