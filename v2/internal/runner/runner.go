@@ -109,6 +109,7 @@ func New(options *Options) (*Runner, error) {
 			dupeCount++
 		}
 	}
+	input.Close()
 	runner.input = sb.String()
 	if dupeCount > 0 {
 		gologger.Labelf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
