@@ -429,7 +429,10 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 		if r.isRelative(value) {
 			newPath, err := r.resolvePath(value)
 			if err != nil {
-				return err
+				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
+				if err != nil {
+					return err
+				}
 			}
 			value = newPath
 		}

@@ -314,3 +314,13 @@ func (r *Runner) resolvePath(templateName string) (string, error) {
 	}
 	return "", fmt.Errorf("no such path found: %s", templateName)
 }
+
+func (r *Runner) resolvePathWithBaseFolder(baseFolder, templateName string) (string, error) {
+	templatePath := path.Join(baseFolder, templateName)
+	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
+		gologger.Infof("Found template in current directory: %s\n", templatePath)
+		return templatePath, nil
+	}
+
+	return "", fmt.Errorf("no such path found: %s", templateName)
+}
