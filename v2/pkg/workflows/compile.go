@@ -26,5 +26,7 @@ func Parse(file string) (*Workflow, error) {
 		return nil, errors.New("No logic provided")
 	}
 
+	workflow.path = file
+
 	return workflow, nil
 }
