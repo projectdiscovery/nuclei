@@ -256,8 +256,6 @@ func (r *Runner) RunEnumeration() {
 			barIndex++
 			template := t.(*templates.Template)
 			totalRequests += template.GetHTTPRequestsCount()
-			// track per-template progress
-			p.SetupTemplateProgressbar(template.ID, r.inputCount*template.GetHTTPRequestsCount(), barIndex)
 			parsedTemplates = append(parsedTemplates, match)
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -268,7 +266,7 @@ func (r *Runner) RunEnumeration() {
 	allTemplates = parsedTemplates
 
 	// track global progress
-	p.SetupGlobalProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
+	p.InitProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
 
 	var (
 		wgtemplates sync.WaitGroup
