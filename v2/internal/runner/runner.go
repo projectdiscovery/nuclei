@@ -104,7 +104,7 @@ func isFilePath(path string) (bool, error) {
 
 func (r *Runner) resolvePathIfRelative(path string) (string, error) {
 	if r.isRelative(path) {
-		newPath, err := r.resolvePath(path)
+		newPath, err := r.resolvePath(path, false)
 		if err != nil {
 			return "", err
 		}
@@ -427,7 +427,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 		// Check if the template is an absolute path or relative path.
 		// If the path is absolute, use it. Otherwise,
 		if r.isRelative(value) {
-			newPath, err := r.resolvePath(value)
+			newPath, err := r.resolvePath(value, true)
 			if err != nil {
 				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
 				if err != nil {

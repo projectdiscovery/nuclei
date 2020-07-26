@@ -295,7 +295,7 @@ func (r *Runner) isRelative(path string) bool {
 // looking in the current directory or checking the nuclei templates directory.
 //
 // Current directory is given preference over the nuclei-templates directory.
-func (r *Runner) resolvePath(templateName string) (string, error) {
+func (r *Runner) resolvePath(templateName string, silent bool) (string, error) {
 	curDirectory, err := os.Getwd()
 	if err != nil {
 		return "", err
