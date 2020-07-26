@@ -76,7 +76,7 @@ func New(options *Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		tempInput.WriteString(options.Target)
+		fmt.Fprintf(tempInput, "%s\n", options.Target)
 		runner.tempFile = tempInput.Name()
 		tempInput.Close()
 	}
@@ -486,7 +486,10 @@ func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workf
 			newPath, err := r.resolvePath(value)
 			p.StopStdCapture()
 			if err != nil {
-				return err
+				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
+				if err != nil {
+					return err
+				}
 			}
 			value = newPath
 		}

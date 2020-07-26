@@ -302,15 +302,25 @@ func (r *Runner) resolvePath(templateName string) (string, error) {
 	}
 	templatePath := path.Join(curDirectory, templateName)
 	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		gologger.Infof("Found template in current directory: %s\n", templatePath)
+		gologger.Debugf("Found template in current directory: %s\n", templatePath)
 		return templatePath, nil
 	}
 	if r.templatesConfig != nil {
 		templatePath := path.Join(r.templatesConfig.TemplatesDirectory, templateName)
 		if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-			gologger.Infof("Found template in nuclei-templates directory: %s\n", templatePath)
+			gologger.Debugf("Found template in nuclei-templates directory: %s\n", templatePath)
 			return templatePath, nil
 		}
 	}
+	return "", fmt.Errorf("no such path found: %s", templateName)
+}
+
+func (r *Runner) resolvePathWithBaseFolder(baseFolder, templateName string) (string, error) {
+	templatePath := path.Join(baseFolder, templateName)
+	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
+		gologger.Debugf("Found template in current directory: %s\n", templatePath)
+		return templatePath, nil
+	}
+
 	return "", fmt.Errorf("no such path found: %s", templateName)
 }

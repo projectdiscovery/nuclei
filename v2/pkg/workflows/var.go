@@ -131,8 +131,8 @@ func (n *NucleiVar) addResults(r *executer.Result) {
 		n.InternalVars[k] = v
 	}
 
-	for k, v := range r.Matches {
-		n.InternalVars[k] = v
+	for k := range r.Matches {
+		n.InternalVars[k] = true
 	}
 
 	for k, v := range r.Extractions {
@@ -154,6 +154,12 @@ func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
 	}
 
 	switch r.(type) {
+	case bool:
+		if r.(bool) {
+			res = tengo.TrueValue
+		} else {
+			res = tengo.FalseValue
+		}
 	case string:
 		res = &tengo.String{Value: r.(string)}
 	case []string:
