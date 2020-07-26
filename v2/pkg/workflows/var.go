@@ -86,7 +86,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 			for _, request := range template.DNSOptions.Template.RequestsDNS {
 				template.DNSOptions.DNSRequest = request
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
-				result := dnsExecuter.ExecuteDNS(n.URL)
+				result := dnsExecuter.ExecuteDNS(p,n.URL)
 				if result.Error != nil {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue

@@ -290,7 +290,8 @@ func (r *Runner) RunEnumeration() {
 		case *templates.Template:
 			barIndex++
 			template := t.(*templates.Template)
-			totalRequests += template.GetHTTPRequestsCount()
+			totalRequests += template.GetHTTPRequestCount()
+			totalRequests += template.GetDNSRequestCount()
 			parsedTemplates = append(parsedTemplates, match)
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -426,7 +427,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 				globalresult.Or(result.GotResults)
 			}
 			if dnsExecuter != nil {
-				result = dnsExecuter.ExecuteDNS(URL)
+				result = dnsExecuter.ExecuteDNS(p, URL)
 				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
