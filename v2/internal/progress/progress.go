@@ -14,6 +14,9 @@ import (
 type Progress struct {
 	progress        *mpb.Progress
 	gbar            *mpb.Bar
+	total           int64
+	initialTotal    int64
+	totalMutex      *sync.Mutex
 	captureData     *captureData
 	stdCaptureMutex *sync.Mutex
 	stdout          *strings.Builder
@@ -28,6 +31,7 @@ func NewProgress(noColor bool) *Progress {
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
 		),
+		totalMutex:      &sync.Mutex{},
 		stdCaptureMutex: &sync.Mutex{},
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
@@ -62,6 +66,14 @@ func pluralize(count int64, singular, plural string) string {
 	return singular
 }
 
+// Update total progress request count
+func (p *Progress) AddToTotal(delta int64) {
+	p.totalMutex.Lock()
+	p.total += delta
+	p.gbar.SetTotal(p.total, false)
+	p.totalMutex.Unlock()
+}
+
 // Update progress tracking information and increments the request counter by one unit.
 func (p *Progress) Update() {
 	p.gbar.Increment()
@@ -72,18 +84,26 @@ func (p *Progress) Update() {
 func (p *Progress) Drop(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.gbar.IncrInt64(count)
+
 }
 
 // Ensures that a progress bar's total count is up-to-date if during an enumeration there were uncompleted requests and
 // wait for all the progress bars to finish.
-// If a global progress bar is present it will be updated as well.
 func (p *Progress) Wait() {
+	p.totalMutex.Lock()
+	if p.initialTotal != p.total {
+		p.gbar.SetTotal(p.total, true)
+	}
+	p.totalMutex.Unlock()
 	p.progress.Wait()
 }
 
 // Creates and returns a progress bar.
 func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
 	color := p.colorizer
+
+	p.total = total
+	p.initialTotal = total
 
 	return p.progress.AddBar(
 		total,
@@ -96,7 +116,7 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
 		),
 		mpb.AppendDecorators(
-			decor.AverageSpeed(0, color.BrightYellow("%.2f").Bold().String() + color.BrightYellow("r/s").String(), decor.WCSyncSpace),
+			decor.AverageSpeed(0, color.BrightYellow("%.2f").Bold().String()+color.BrightYellow("r/s").String(), decor.WCSyncSpace),
 			decor.Elapsed(decor.ET_STYLE_GO, decor.WCSyncSpace),
 			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
 		),
