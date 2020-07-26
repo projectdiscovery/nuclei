@@ -42,6 +42,11 @@ func (r *DNSRequest) SetMatchersCondition(condition matchers.ConditionType) {
 	r.matchersCondition = condition
 }
 
+// Returns the total number of requests the YAML rule will perform
+func (r *DNSRequest) GetRequestCount() int64 {
+	return 1
+}
+
 // MakeDNSRequest creates a *dns.Request from a request template
 func (r *DNSRequest) MakeDNSRequest(domain string) (*dns.Msg, error) {
 	domain = dns.Fqdn(domain)

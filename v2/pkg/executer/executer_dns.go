@@ -3,6 +3,7 @@ package executer
 import (
 	"bufio"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"os"
 	"sync"
 
@@ -62,7 +63,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -75,26 +76,34 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not make dns request")
+		p.Drop(1)
 		return
 	}
 
 	if e.debug {
+		p.StartStdCapture()
 		gologger.Infof("Dumped DNS request for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", compiledRequest.String())
+		p.StopStdCapture()
 	}
 
 	// Send the request to the target servers
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not send dns request")
+		p.Drop(1)
 		return
 	}
+
+	p.Update()
 
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
 
 	if e.debug {
+		p.StartStdCapture()
 		gologger.Infof("Dumped DNS response for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
+		p.StopStdCapture()
 	}
 
 	matcherCondition := e.dnsRequest.GetMatchersCondition()
@@ -109,7 +118,9 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
+				p.StartStdCapture()
 				e.writeOutputDNS(domain, matcher, nil)
+				p.StopStdCapture()
 				result.GotResults = true
 			}
 		}
@@ -129,7 +140,9 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
+		p.StartStdCapture()
 		e.writeOutputDNS(domain, nil, extractorResults)
+		p.StopStdCapture()
 	}
 
 	return

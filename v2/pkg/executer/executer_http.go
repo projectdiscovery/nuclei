@@ -111,7 +111,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		return
 	}
 
-	remaining := e.template.GetHTTPRequestsCount()
+	remaining := e.template.GetHTTPRequestCount()
 
 	e.bulkHttpRequest.CreateGenerator(URL)
 	for e.bulkHttpRequest.Next(URL) && !result.Done {

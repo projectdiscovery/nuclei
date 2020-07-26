@@ -28,9 +28,17 @@ type Info struct {
 	Description string `yaml:"description,omitempty"`
 }
 
-func (t* Template) GetHTTPRequestsCount() int64 {
+func (t* Template) GetHTTPRequestCount() int64 {
 	var count int64 = 0
 	for _, request := range t.BulkRequestsHTTP {
+		count += request.GetRequestCount()
+	}
+	return count
+}
+
+func (t *Template) GetDNSRequestCount() int64 {
+	var count int64 = 0
+	for _, request := range t.RequestsDNS {
 		count += request.GetRequestCount()
 	}
 	return count
