@@ -91,7 +91,9 @@ func (p *Progress) Drop(count int64) {
 // wait for all the progress bars to finish.
 func (p *Progress) Wait() {
 	p.totalMutex.Lock()
-	if p.initialTotal != p.total {
+	if p.total == 0 {
+		p.gbar.Abort(true)
+	} else if p.initialTotal != p.total {
 		p.gbar.SetTotal(p.total, true)
 	}
 	p.totalMutex.Unlock()
