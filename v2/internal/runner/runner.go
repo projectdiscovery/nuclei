@@ -458,15 +458,26 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 
 // ProcessWorkflowWithList coming from stdin or list of targets
 func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflows.Workflow) {
+	var wg sync.WaitGroup
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if err := r.ProcessWorkflow(p, workflow, text); err != nil {
-			p.StartStdCapture()
-			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
-			p.StopStdCapture()
-		}
+		r.limiter <- struct{}{}
+		wg.Add(1)
+
+		go func(URL string) {
+			defer wg.Done()
+
+			if err := r.ProcessWorkflow(p, workflow, text); err != nil {
+				p.StartStdCapture()
+				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+				p.StopStdCapture()
+			}
+			<-r.limiter
+		}(text)
 	}
+
+	wg.Wait()
 }
 
 // ProcessWorkflow towards an URL
