@@ -293,7 +293,7 @@ func (r *Runner) RunEnumeration() {
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
-			totalRequests += template.GetHTTPRequestCount() + template.GetDNSRequestCount()
+			totalRequests += (template.GetHTTPRequestCount() + template.GetDNSRequestCount()) * r.inputCount
 			parsedTemplates = append(parsedTemplates, match)
 		case *workflows.Workflow:
 			// workflows will dynamically adjust the totals while running, as
@@ -304,46 +304,50 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
-	// ensure only successfully parsed templates are processed
-	allTemplates = parsedTemplates
-
-	// track global progress
-	p.InitProgressbar(r.inputCount, templateCount, r.inputCount*totalRequests)
-
 	var (
 		wgtemplates sync.WaitGroup
 		results     atomicboolean.AtomBool
 	)
 
-	for _, match := range allTemplates {
-		wgtemplates.Add(1)
-		go func(match string) {
-			defer wgtemplates.Done()
-			t, err := r.parse(match)
-			switch t.(type) {
-			case *templates.Template:
-				template := t.(*templates.Template)
-				for _, request := range template.RequestsDNS {
-					results.Or(r.processTemplateWithList(p, template, request))
-				}
-				for _, request := range template.BulkRequestsHTTP {
-					results.Or(r.processTemplateWithList(p, template, request))
-				}
-			case *workflows.Workflow:
-				workflow := t.(*workflows.Workflow)
-				r.ProcessWorkflowWithList(p, workflow)
-			default:
-				p.StartStdCapture()
-				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-				p.StopStdCapture()
-			}
-		}(match)
-	}
+	if r.inputCount == 0 {
+		gologger.Errorf("Could not find any valid input URLs.")
+	} else if totalRequests > 0 {
+		// ensure only successfully parsed templates are processed
+		allTemplates = parsedTemplates
 
-	wgtemplates.Wait()
-	p.Wait()
-	p.ShowStdErr()
-	p.ShowStdOut()
+		// track global progress
+		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+
+		for _, match := range allTemplates {
+			wgtemplates.Add(1)
+			go func(match string) {
+				defer wgtemplates.Done()
+				t, err := r.parse(match)
+				switch t.(type) {
+				case *templates.Template:
+					template := t.(*templates.Template)
+					for _, request := range template.RequestsDNS {
+						results.Or(r.processTemplateWithList(p, template, request))
+					}
+					for _, request := range template.BulkRequestsHTTP {
+						results.Or(r.processTemplateWithList(p, template, request))
+					}
+				case *workflows.Workflow:
+					workflow := t.(*workflows.Workflow)
+					r.ProcessWorkflowWithList(p, workflow)
+				default:
+					p.StartStdCapture()
+					gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+					p.StopStdCapture()
+				}
+			}(match)
+		}
+
+		wgtemplates.Wait()
+		p.Wait()
+		p.ShowStdErr()
+		p.ShowStdOut()
+	}
 
 	if !results.Get() {
 		if r.output != nil {
