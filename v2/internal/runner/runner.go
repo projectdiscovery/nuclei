@@ -285,7 +285,7 @@ func (r *Runner) RunEnumeration() {
 
 	// precompute total request count
 	var totalRequests int64 = 0
-	templateCount := len(allTemplates)
+	hasWorkflows := false
 	parsedTemplates := []string{}
 
 	for _, match := range allTemplates {
@@ -299,10 +299,15 @@ func (r *Runner) RunEnumeration() {
 			// workflows will dynamically adjust the totals while running, as
 			// it can't be know in advance which requests will be called
 			parsedTemplates = append(parsedTemplates, match)
+			hasWorkflows = true
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
 	}
+
+	// ensure only successfully parsed templates are processed
+	allTemplates = parsedTemplates
+	templateCount := len(allTemplates)
 
 	var (
 		wgtemplates sync.WaitGroup
@@ -311,9 +316,7 @@ func (r *Runner) RunEnumeration() {
 
 	if r.inputCount == 0 {
 		gologger.Errorf("Could not find any valid input URLs.")
-	} else if totalRequests > 0 {
-		// ensure only successfully parsed templates are processed
-		allTemplates = parsedTemplates
+	} else if totalRequests > 0 || hasWorkflows {
 
 		// track global progress
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
@@ -459,7 +462,9 @@ func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflo
 	for scanner.Scan() {
 		text := scanner.Text()
 		if err := r.ProcessWorkflow(p, workflow, text); err != nil {
+			p.StartStdCapture()
 			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+			p.StopStdCapture()
 		}
 	}
 }
