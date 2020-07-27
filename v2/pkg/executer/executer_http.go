@@ -17,6 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -100,7 +101,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
@@ -110,21 +111,27 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 		return
 	}
 
+	remaining := e.bulkHttpRequest.GetRequestCount()
+
 	e.bulkHttpRequest.CreateGenerator(URL)
 	for e.bulkHttpRequest.Next(URL) && !result.Done {
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not make http request")
+			result.Error = errors.Wrap(err, "could not build http request")
+			p.Drop(remaining)
 			return
 		}
 
-		err = e.handleHTTP(URL, httpRequest, dynamicvalues, &result)
+		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not make http request")
+			result.Error = errors.Wrap(err, "could not handle http request")
+			p.Drop(remaining)
 			return
 		}
 
 		e.bulkHttpRequest.Increment(URL)
+		p.Update()
+		remaining--
 	}
 
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
@@ -132,16 +139,16 @@ func (e *HTTPExecuter) ExecuteHTTP(URL string) (result Result) {
 	return
 }
 
-func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
 	req := request.Request
 
 	if e.debug {
-		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 		if err != nil {
 			return errors.Wrap(err, "could not make http request")
 		}
+		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 	resp, err := e.httpClient.Do(req)
@@ -153,11 +160,11 @@ func (e *HTTPExecuter) handleHTTP(URL string, request *requests.HttpRequest, dyn
 	}
 
 	if e.debug {
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		dumpedResponse, err := httputil.DumpResponse(resp, true)
 		if err != nil {
 			return errors.Wrap(err, "could not dump http response")
 		}
+		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 

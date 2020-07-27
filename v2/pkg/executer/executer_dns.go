@@ -3,6 +3,7 @@ package executer
 import (
 	"bufio"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"os"
 	"sync"
 
@@ -62,7 +63,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -75,6 +76,7 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not make dns request")
+		p.Drop(1)
 		return
 	}
 
@@ -87,8 +89,11 @@ func (e *DNSExecuter) ExecuteDNS(URL string) (result Result) {
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not send dns request")
+		p.Drop(1)
 		return
 	}
+
+	p.Update()
 
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
 

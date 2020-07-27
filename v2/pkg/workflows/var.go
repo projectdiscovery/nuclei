@@ -5,6 +5,7 @@ import (
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
@@ -23,6 +24,7 @@ type NucleiVar struct {
 type Template struct {
 	HTTPOptions *executer.HTTPOptions
 	DNSOptions  *executer.DNSOptions
+	Progress    *progress.Progress
 }
 
 // TypeName of the variable
@@ -53,7 +55,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 
 	var gotResult atomicboolean.AtomBool
 	for _, template := range n.Templates {
+		p := template.Progress
 		if template.HTTPOptions != nil {
+			p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
 			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
 				// apply externally supplied payloads if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
@@ -62,10 +66,11 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				template.HTTPOptions.BulkHttpRequest = request
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
 				if err != nil {
+					p.Drop(request.GetRequestCount())
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue
 				}
-				result := httpExecuter.ExecuteHTTP(n.URL)
+				result := httpExecuter.ExecuteHTTP(p, n.URL)
 				if result.Error != nil {
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
@@ -79,10 +84,11 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		}
 
 		if template.DNSOptions != nil {
+			p.AddToTotal(template.DNSOptions.Template.GetDNSRequestCount())
 			for _, request := range template.DNSOptions.Template.RequestsDNS {
 				template.DNSOptions.DNSRequest = request
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
-				result := dnsExecuter.ExecuteDNS(n.URL)
+				result := dnsExecuter.ExecuteDNS(p, n.URL)
 				if result.Error != nil {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
