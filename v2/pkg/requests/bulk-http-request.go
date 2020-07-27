@@ -76,6 +76,11 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 	r.attackType = attack
 }
 
+// Returns the total number of requests the YAML rule will perform
+func (r *BulkHTTPRequest) GetRequestCount() int64 {
+	return int64(len(r.Raw) | len(r.Path))
+}
+
 func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HttpRequest, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {

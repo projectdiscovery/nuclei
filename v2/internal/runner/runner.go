@@ -17,6 +17,7 @@ import (
 	"github.com/d5/tengo/v2/stdlib"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -26,6 +27,9 @@ import (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
+	input      string
+	inputCount int64
+
 	// output is the output file to write if any
 	output      *os.File
 	outputMutex *sync.Mutex
@@ -35,6 +39,9 @@ type Runner struct {
 	// options contains configuration options for runner
 	options *Options
 	limiter chan struct{}
+
+	// progress tracking
+	progress *progress.Progress
 }
 
 // New creates a new client for running enumeration process.
@@ -74,6 +81,46 @@ func New(options *Options) (*Runner, error) {
 		tempInput.Close()
 	}
 
+	// Setup input, handle a list of hosts as argument
+	var err error
+	var input *os.File
+	if options.Targets != "" {
+		input, err = os.Open(options.Targets)
+	} else if options.Stdin || options.Target != "" {
+		input, err = os.Open(runner.tempFile)
+	}
+	if err != nil {
+		gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
+	}
+
+	// Sanitize input and pre-compute total number of targets
+	var usedInput = make(map[string]bool)
+	dupeCount := 0
+	sb := strings.Builder{}
+	scanner := bufio.NewScanner(input)
+	runner.inputCount = 0
+	for scanner.Scan() {
+		url := scanner.Text()
+		// skip empty lines
+		if len(url) == 0 {
+			continue
+		}
+		// deduplication
+		if _, ok := usedInput[url]; !ok {
+			usedInput[url] = true
+			runner.inputCount++
+			sb.WriteString(url)
+			sb.WriteString("\n")
+		} else {
+			dupeCount++
+		}
+	}
+	input.Close()
+	runner.input = sb.String()
+	if dupeCount > 0 {
+		gologger.Labelf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
+	}
+
 	// Create the output file if asked
 	if options.Output != "" {
 		output, err := os.Create(options.Output)
@@ -82,6 +129,9 @@ func New(options *Options) (*Runner, error) {
 		}
 		runner.output = output
 	}
+
+	// Creates the progress tracking object
+	runner.progress = progress.NewProgress(runner.options.NoColor)
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
@@ -230,35 +280,78 @@ func (r *Runner) RunEnumeration() {
 		gologger.Fatalf("Error, no templates were found.\n")
 	}
 
+	// progress tracking
+	p := r.progress
+
+	// precompute total request count
+	var totalRequests int64 = 0
+	hasWorkflows := false
+	parsedTemplates := []string{}
+
+	for _, match := range allTemplates {
+		t, err := r.parse(match)
+		switch t.(type) {
+		case *templates.Template:
+			template := t.(*templates.Template)
+			totalRequests += (template.GetHTTPRequestCount() + template.GetDNSRequestCount()) * r.inputCount
+			parsedTemplates = append(parsedTemplates, match)
+		case *workflows.Workflow:
+			// workflows will dynamically adjust the totals while running, as
+			// it can't be know in advance which requests will be called
+			parsedTemplates = append(parsedTemplates, match)
+			hasWorkflows = true
+		default:
+			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+		}
+	}
+
+	// ensure only successfully parsed templates are processed
+	allTemplates = parsedTemplates
+	templateCount := len(allTemplates)
+
 	var (
 		wgtemplates sync.WaitGroup
 		results     atomicboolean.AtomBool
 	)
 
-	for _, match := range allTemplates {
-		wgtemplates.Add(1)
-		go func(match string) {
-			defer wgtemplates.Done()
-			t, err := r.parse(match)
-			switch t.(type) {
-			case *templates.Template:
-				template := t.(*templates.Template)
-				for _, request := range template.RequestsDNS {
-					results.Or(r.processTemplateRequest(template, request))
-				}
-				for _, request := range template.BulkRequestsHTTP {
-					results.Or(r.processTemplateRequest(template, request))
-				}
-			case *workflows.Workflow:
-				workflow := t.(*workflows.Workflow)
-				r.ProcessWorkflowWithList(workflow)
-			default:
-				gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-			}
-		}(match)
-	}
+	if r.inputCount == 0 {
+		gologger.Errorf("Could not find any valid input URLs.")
+	} else if totalRequests > 0 || hasWorkflows {
 
-	wgtemplates.Wait()
+		// track global progress
+		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+		p.StartStdCapture()
+
+		for _, match := range allTemplates {
+			wgtemplates.Add(1)
+			go func(match string) {
+				defer wgtemplates.Done()
+				t, err := r.parse(match)
+				switch t.(type) {
+				case *templates.Template:
+					template := t.(*templates.Template)
+					for _, request := range template.RequestsDNS {
+						results.Or(r.processTemplateWithList(p, template, request))
+					}
+					for _, request := range template.BulkRequestsHTTP {
+						results.Or(r.processTemplateWithList(p, template, request))
+					}
+				case *workflows.Workflow:
+					workflow := t.(*workflows.Workflow)
+					r.ProcessWorkflowWithList(p, workflow)
+				default:
+					gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+				}
+			}(match)
+		}
+
+		wgtemplates.Wait()
+		p.Wait()
+
+		p.StopStdCapture()
+		p.ShowStdErr()
+		p.ShowStdOut()
+	}
 
 	if !results.Get() {
 		if r.output != nil {
@@ -271,27 +364,8 @@ func (r *Runner) RunEnumeration() {
 	return
 }
 
-// processTemplate processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateRequest(template *templates.Template, request interface{}) bool {
-	var file *os.File
-	var err error
-
-	// Handle a list of hosts as argument
-	if r.options.Targets != "" {
-		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin || r.options.Target != "" {
-		file, err = os.Open(r.tempFile)
-	}
-	if err != nil {
-		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-	}
-	defer file.Close()
-
-	return r.processTemplateWithList(template, request, file)
-}
-
-// processDomain processes the list with a template
-func (r *Runner) processTemplateWithList(template *templates.Template, request interface{}, reader io.Reader) bool {
+// processTemplateWithList processes a template and runs the enumeration on all the targets
+func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -336,6 +410,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 		})
 	}
 	if err != nil {
+		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
 		gologger.Warningf("Could not create http client: %s\n", err)
 		return false
 	}
@@ -343,12 +418,10 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 	var globalresult atomicboolean.AtomBool
 
 	var wg sync.WaitGroup
-	scanner := bufio.NewScanner(reader)
+
+	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if text == "" {
-			continue
-		}
 
 		r.limiter <- struct{}{}
 		wg.Add(1)
@@ -358,11 +431,11 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 			var result executer.Result
 
 			if httpExecuter != nil {
-				result = httpExecuter.ExecuteHTTP(URL)
+				result = httpExecuter.ExecuteHTTP(p, URL)
 				globalresult.Or(result.GotResults)
 			}
 			if dnsExecuter != nil {
-				result = dnsExecuter.ExecuteDNS(URL)
+				result = dnsExecuter.ExecuteDNS(p, URL)
 				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
@@ -379,35 +452,18 @@ func (r *Runner) processTemplateWithList(template *templates.Template, request i
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
-	var file *os.File
-	var err error
-	// Handle a list of hosts as argument
-	if r.options.Targets != "" {
-		file, err = os.Open(r.options.Targets)
-	} else if r.options.Stdin || r.options.Target != "" {
-		file, err = os.Open(r.tempFile)
-	}
-	if err != nil {
-		gologger.Fatalf("Could not open targets file '%s': %s\n", r.options.Targets, err)
-	}
-	defer file.Close()
-
+func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflows.Workflow) {
 	var wg sync.WaitGroup
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-
 		r.limiter <- struct{}{}
 		wg.Add(1)
 
 		go func(URL string) {
 			defer wg.Done()
 
-			if err := r.ProcessWorkflow(workflow, text); err != nil {
+			if err := r.ProcessWorkflow(p, workflow, text); err != nil {
 				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
 			}
 			<-r.limiter
@@ -418,7 +474,7 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 }
 
 // ProcessWorkflow towards an URL
-func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error {
+func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
 	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	var jar *cookiejar.Jar
@@ -456,7 +512,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 			if err != nil {
 				return err
 			}
-			template := &workflows.Template{}
+			template := &workflows.Template{Progress: p}
 			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
 					Debug:         r.options.Debug,
@@ -507,7 +563,7 @@ func (r *Runner) ProcessWorkflow(workflow *workflows.Workflow, URL string) error
 				if err != nil {
 					return err
 				}
-				template := &workflows.Template{}
+				template := &workflows.Template{Progress: p}
 				if len(t.BulkRequestsHTTP) > 0 {
 					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
