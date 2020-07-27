@@ -393,16 +393,28 @@ func (r *Runner) ProcessWorkflowWithList(workflow *workflows.Workflow) {
 	}
 	defer file.Close()
 
+	var wg sync.WaitGroup
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
 			continue
 		}
-		if err := r.ProcessWorkflow(workflow, text); err != nil {
-			gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
-		}
+
+		r.limiter <- struct{}{}
+		wg.Add(1)
+
+		go func(URL string) {
+			defer wg.Done()
+
+			if err := r.ProcessWorkflow(workflow, text); err != nil {
+				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+			}
+			<-r.limiter
+		}(text)
 	}
+
+	wg.Wait()
 }
 
 // ProcessWorkflow towards an URL
