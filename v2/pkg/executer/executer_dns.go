@@ -97,7 +97,9 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 
 	p.Update()
 
+	p.StartStdCapture()
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
+	p.StopStdCapture()
 
 	if e.debug {
 		p.StartStdCapture()
