@@ -67,16 +67,12 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
 				if err != nil {
 					p.Drop(request.GetRequestCount())
-					p.StartStdCapture()
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
-					p.StopStdCapture()
 					continue
 				}
 				result := httpExecuter.ExecuteHTTP(p, n.URL)
 				if result.Error != nil {
-					p.StartStdCapture()
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
-					p.StopStdCapture()
 					continue
 				}
 
@@ -94,9 +90,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
 				result := dnsExecuter.ExecuteDNS(p, n.URL)
 				if result.Error != nil {
-					p.StartStdCapture()
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
-					p.StopStdCapture()
 					continue
 				}
 
