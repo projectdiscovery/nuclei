@@ -320,6 +320,7 @@ func (r *Runner) RunEnumeration() {
 
 		// track global progress
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+		p.StartStdCapture()
 
 		for _, match := range allTemplates {
 			wgtemplates.Add(1)
@@ -339,15 +340,15 @@ func (r *Runner) RunEnumeration() {
 					workflow := t.(*workflows.Workflow)
 					r.ProcessWorkflowWithList(p, workflow)
 				default:
-					p.StartStdCapture()
 					gologger.Errorf("Could not parse file '%s': %s\n", match, err)
-					p.StopStdCapture()
 				}
 			}(match)
 		}
 
 		wgtemplates.Wait()
 		p.Wait()
+
+		p.StopStdCapture()
 		p.ShowStdErr()
 		p.ShowStdOut()
 	}
@@ -370,9 +371,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	if template.Info.Severity != "" {
 		message += " [" + template.Info.Severity + "]"
 	}
-	p.StartStdCapture()
 	gologger.Infof("%s\n", message)
-	p.StopStdCapture()
 
 	var writer *bufio.Writer
 	if r.output != nil {
@@ -412,9 +411,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 	}
 	if err != nil {
 		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
-		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
-		p.StopStdCapture()
 		return false
 	}
 
@@ -442,9 +439,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
-				p.StartStdCapture()
 				gologger.Warningf("Could not execute step: %s\n", result.Error)
-				p.StopStdCapture()
 			}
 			<-r.limiter
 		}(text)
@@ -469,9 +464,7 @@ func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflo
 			defer wg.Done()
 
 			if err := r.ProcessWorkflow(p, workflow, text); err != nil {
-				p.StartStdCapture()
 				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
-				p.StopStdCapture()
 			}
 			<-r.limiter
 		}(text)
@@ -502,9 +495,7 @@ func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workf
 		// Check if the template is an absolute path or relative path.
 		// If the path is absolute, use it. Otherwise,
 		if r.isRelative(value) {
-			p.StartStdCapture()
 			newPath, err := r.resolvePath(value)
-			p.StopStdCapture()
 			if err != nil {
 				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
 				if err != nil {

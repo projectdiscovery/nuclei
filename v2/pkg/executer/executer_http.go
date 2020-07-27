@@ -134,9 +134,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		remaining--
 	}
 
-	p.StartStdCapture()
 	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", URL)
-	p.StopStdCapture()
 
 	return
 }
@@ -150,10 +148,8 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 		if err != nil {
 			return errors.Wrap(err, "could not make http request")
 		}
-		p.StartStdCapture()
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
-		p.StopStdCapture()
 	}
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
@@ -168,10 +164,8 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 		if err != nil {
 			return errors.Wrap(err, "could not dump http response")
 		}
-		p.StartStdCapture()
 		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
-		p.StopStdCapture()
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -208,9 +202,7 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				p.StartStdCapture()
 				e.writeOutputHTTP(request, resp, body, matcher, nil)
-				p.StopStdCapture()
 				result.GotResults = true
 			}
 		}
@@ -237,9 +229,7 @@ func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *req
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		p.StartStdCapture()
 		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
-		p.StopStdCapture()
 		result.GotResults = true
 	}
 
