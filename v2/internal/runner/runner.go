@@ -148,8 +148,10 @@ func New(options *Options) (*Runner, error) {
 		runner.output = output
 	}
 
-	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.options.NoColor)
+	if !options.Silent {
+		// Creates the progress tracking object
+		runner.progress = progress.NewProgress(runner.options.NoColor)
+	}
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
@@ -337,8 +339,10 @@ func (r *Runner) RunEnumeration() {
 	} else if totalRequests > 0 || hasWorkflows {
 
 		// track global progress
-		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
-		p.StartStdCapture()
+		if p != nil {
+			p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+			p.StartStdCapture()
+		}
 
 		for _, match := range allTemplates {
 			wgtemplates.Add(1)
@@ -364,11 +368,14 @@ func (r *Runner) RunEnumeration() {
 		}
 
 		wgtemplates.Wait()
-		p.Wait()
 
-		p.StopStdCapture()
-		p.ShowStdErr()
-		p.ShowStdOut()
+		if p != nil {
+			p.Wait()
+
+			p.StopStdCapture()
+			p.ShowStdErr()
+			p.ShowStdOut()
+		}
 	}
 
 	if !results.Get() {
@@ -434,7 +441,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		})
 	}
 	if err != nil {
-		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
+		if p != nil {
+			p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
+		}
 		gologger.Warningf("Could not create http client: %s\n", err)
 		return false
 	}
