@@ -57,7 +57,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	for _, template := range n.Templates {
 		p := template.Progress
 		if template.HTTPOptions != nil {
-			p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
+			if p != nil {
+				p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
+			}
 			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
 				// apply externally supplied payloads if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
@@ -66,7 +68,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				template.HTTPOptions.BulkHttpRequest = request
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
 				if err != nil {
-					p.Drop(request.GetRequestCount())
+					if p != nil {
+						p.Drop(request.GetRequestCount())
+					}
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
 					continue
 				}
@@ -84,7 +88,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		}
 
 		if template.DNSOptions != nil {
-			p.AddToTotal(template.DNSOptions.Template.GetDNSRequestCount())
+			if p != nil {
+				p.AddToTotal(template.DNSOptions.Template.GetDNSRequestCount())
+			}
 			for _, request := range template.DNSOptions.Template.RequestsDNS {
 				template.DNSOptions.DNSRequest = request
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
