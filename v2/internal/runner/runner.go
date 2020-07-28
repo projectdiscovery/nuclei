@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/logrusorgru/aurora"
 	"io"
 	"io/ioutil"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -42,6 +44,10 @@ type Runner struct {
 
 	// progress tracking
 	progress *progress.Progress
+
+	// output coloring
+	colorizer   aurora.Aurora
+	decolorizer *regexp.Regexp
 }
 
 // New creates a new client for running enumeration process.
@@ -56,6 +62,18 @@ func New(options *Options) (*Runner, error) {
 	}
 	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
+	}
+
+	// output coloring
+	useColor := !options.NoColor
+	runner.colorizer = aurora.NewAurora(useColor)
+	if useColor {
+		// compile a decolorization regex to cleanup file output messages
+		compiled, err := regexp.Compile("\\x1B\\[[0-9;]*[a-zA-Z]")
+		if err != nil {
+			return nil, err
+		}
+		runner.decolorizer = compiled
 	}
 
 	// If we have stdin, write it to a new file
@@ -392,6 +410,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			DNSRequest: value,
 			Writer:     writer,
 			JSON:       r.options.JSON,
+			ColoredOutput:   !r.options.NoColor,
+			Colorizer:       r.colorizer,
+			Decolorizer:     r.decolorizer,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -407,6 +428,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			JSON:            r.options.JSON,
 			JSONRequests:    r.options.JSONRequests,
 			CookieReuse:     value.CookieReuse,
+			ColoredOutput:   !r.options.NoColor,
+			Colorizer:       r.colorizer,
+			Decolorizer:     r.decolorizer,
 		})
 	}
 	if err != nil {
@@ -524,12 +548,18 @@ func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workf
 					ProxySocksURL: r.options.ProxySocksURL,
 					CustomHeaders: r.options.CustomHeaders,
 					CookieJar:     jar,
+					ColoredOutput:   !r.options.NoColor,
+					Colorizer:       r.colorizer,
+					Decolorizer:     r.decolorizer,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
 					Debug:    r.options.Debug,
 					Template: t,
 					Writer:   writer,
+					ColoredOutput:   !r.options.NoColor,
+					Colorizer:       r.colorizer,
+					Decolorizer:     r.decolorizer,
 				}
 			}
 			if template.DNSOptions != nil || template.HTTPOptions != nil {

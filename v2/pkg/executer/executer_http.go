@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
+	"github.com/logrusorgru/aurora"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +41,10 @@ type HTTPExecuter struct {
 	outputMutex     *sync.Mutex
 	customHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
+
+	coloredOutput	bool
+	colorizer		aurora.Aurora
+	decolorizer		*regexp.Regexp
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -56,6 +62,9 @@ type HTTPOptions struct {
 	CustomHeaders   requests.CustomHeaders
 	CookieReuse     bool
 	CookieJar       *cookiejar.Jar
+	ColoredOutput	bool
+	Colorizer		aurora.Aurora
+	Decolorizer		*regexp.Regexp
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -95,6 +104,9 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		writer:          options.Writer,
 		customHeaders:   options.CustomHeaders,
 		CookieJar:       options.CookieJar,
+		coloredOutput:   options.ColoredOutput,
+		colorizer:       options.Colorizer,
+		decolorizer:     options.Decolorizer,
 	}
 
 	return executer, nil
