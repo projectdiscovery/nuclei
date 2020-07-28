@@ -3,9 +3,10 @@ package executer
 import (
 	"bufio"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"os"
 	"sync"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -76,7 +77,9 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not make dns request")
-		p.Drop(1)
+		if p != nil {
+			p.Drop(1)
+		}
 		return
 	}
 
@@ -89,11 +92,15 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not send dns request")
-		p.Drop(1)
+		if p != nil {
+			p.Drop(1)
+		}
 		return
 	}
 
-	p.Update()
+	if p != nil {
+		p.Update()
+	}
 
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
 
