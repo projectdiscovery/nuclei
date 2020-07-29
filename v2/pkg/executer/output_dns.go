@@ -42,13 +42,17 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 	}
 
 	builder := &strings.Builder{}
+	colorizer := e.colorizer
+
 	builder.WriteRune('[')
-	builder.WriteString(e.template.ID)
+	builder.WriteString(colorizer.BrightGreen(e.template.ID).String())
 	if matcher != nil && len(matcher.Name) > 0 {
 		builder.WriteString(":")
-		builder.WriteString(matcher.Name)
+		builder.WriteString(colorizer.BrightGreen(matcher.Name).Bold().String())
 	}
-	builder.WriteString("] [dns] ")
+	builder.WriteString("] [")
+	builder.WriteString(colorizer.BrightBlue("dns").String())
+	builder.WriteString("] ")
 
 	builder.WriteString(domain)
 
@@ -56,7 +60,7 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 	if len(extractorResults) > 0 {
 		builder.WriteString(" [")
 		for i, result := range extractorResults {
-			builder.WriteString(result)
+			builder.WriteString(colorizer.BrightCyan(result).String())
 			if i != len(extractorResults)-1 {
 				builder.WriteRune(',')
 			}
@@ -71,6 +75,9 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 
 	if e.writer != nil {
 		e.outputMutex.Lock()
+		if e.coloredOutput {
+			message = e.decolorizer.ReplaceAllString(message, "")
+		}
 		e.writer.WriteString(message)
 		e.outputMutex.Unlock()
 	}

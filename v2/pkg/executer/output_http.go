@@ -62,14 +62,17 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 	}
 
 	builder := &strings.Builder{}
+	colorizer := e.colorizer
 
 	builder.WriteRune('[')
-	builder.WriteString(e.template.ID)
+	builder.WriteString(colorizer.BrightGreen(e.template.ID).String())
 	if matcher != nil && len(matcher.Name) > 0 {
 		builder.WriteString(":")
-		builder.WriteString(matcher.Name)
+		builder.WriteString(colorizer.BrightGreen(matcher.Name).Bold().String())
 	}
-	builder.WriteString("] [http] ")
+	builder.WriteString("] [")
+	builder.WriteString(colorizer.BrightBlue("http").String())
+	builder.WriteString("] ")
 
 	// Escape the URL by replacing all % with %%
 	escapedURL := strings.Replace(URL, "%", "%%", -1)
@@ -79,7 +82,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 	if len(extractorResults) > 0 {
 		builder.WriteString(" [")
 		for i, result := range extractorResults {
-			builder.WriteString(result)
+			builder.WriteString(colorizer.BrightCyan(result).String())
 			if i != len(extractorResults)-1 {
 				builder.WriteRune(',')
 			}
@@ -92,7 +95,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 		builder.WriteString(" [")
 		var metas []string
 		for name, value := range req.Meta {
-			metas = append(metas, name+"="+value.(string))
+			metas = append(metas, colorizer.BrightYellow(name).Bold().String()+"="+ colorizer.BrightYellow(value.(string)).String() )
 		}
 		builder.WriteString(strings.Join(metas, ","))
 		builder.WriteString("]")
@@ -106,6 +109,9 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 
 	if e.writer != nil {
 		e.outputMutex.Lock()
+		if e.coloredOutput {
+			message = e.decolorizer.ReplaceAllString(message, "")
+		}
 		e.writer.WriteString(message)
 		e.outputMutex.Unlock()
 	}
