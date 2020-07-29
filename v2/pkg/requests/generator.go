@@ -7,6 +7,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
 
+type GeneratorState int
+
+const (
+	Init GeneratorState = iota
+	Running
+	Done
+)
+
 type Generator struct {
 	sync.RWMutex
 	positionPath          int
@@ -14,6 +22,7 @@ type Generator struct {
 	currentPayloads       map[string]interface{}
 	gchan                 chan map[string]interface{}
 	currentGeneratorValue map[string]interface{}
+	state                 GeneratorState
 }
 
 type GeneratorFSM struct {
@@ -58,7 +67,7 @@ func (gfsm *GeneratorFSM) Add(key string) {
 	defer gfsm.Unlock()
 
 	if _, ok := gfsm.Generators[key]; !ok {
-		gfsm.Generators[key] = &Generator{}
+		gfsm.Generators[key] = &Generator{state: Init}
 	}
 }
 
@@ -92,6 +101,8 @@ func (gfsm *GeneratorFSM) ReadOne(key string) {
 			if !ok {
 				g.Lock()
 				g.gchan = nil
+				g.state = Done
+				g.currentGeneratorValue = nil
 				g.Unlock()
 				return
 			}
@@ -102,6 +113,7 @@ func (gfsm *GeneratorFSM) ReadOne(key string) {
 		case <-afterCh:
 			g.Lock()
 			g.gchan = nil
+			g.state = Done
 			g.Unlock()
 			return
 		}
@@ -122,6 +134,7 @@ func (gfsm *GeneratorFSM) InitOrSkip(key string) {
 		defer g.Unlock()
 		if g.gchan == nil {
 			g.gchan = gfsm.generator(gfsm.basePayloads)
+			g.state = Running
 		}
 	}
 }
@@ -138,6 +151,10 @@ func (gfsm *GeneratorFSM) Value(key string) map[string]interface{} {
 	return g.currentGeneratorValue
 }
 
+func (gfsm *GeneratorFSM) hasPayloads() bool {
+	return len(gfsm.basePayloads) > 0
+}
+
 func (gfsm *GeneratorFSM) Next(key string) bool {
 	gfsm.RLock()
 	defer gfsm.RUnlock()
@@ -147,11 +164,16 @@ func (gfsm *GeneratorFSM) Next(key string) bool {
 		return false
 	}
 
+	if gfsm.hasPayloads() && g.state == Done {
+		return false
+	}
+
 	if g.positionPath+g.positionRaw >= len(gfsm.Paths)+len(gfsm.Raws) {
 		return false
 	}
 	return true
 }
+
 func (gfsm *GeneratorFSM) Position(key string) int {
 	gfsm.RLock()
 	defer gfsm.RUnlock()
@@ -216,6 +238,7 @@ func (gfsm *GeneratorFSM) Increment(key string) {
 	if len(gfsm.Raws) > 0 && g.positionRaw < len(gfsm.Raws) {
 		// if we have payloads increment only when the generators are done
 		if g.gchan == nil {
+			g.state = Done
 			g.positionRaw++
 		}
 	}
