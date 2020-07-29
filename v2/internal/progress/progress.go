@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/vbauerster/mpb/v5"
+	"github.com/vbauerster/mpb/v5/cwriter"
 	"github.com/vbauerster/mpb/v5/decor"
+	"io"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -22,10 +26,17 @@ type Progress struct {
 	stdout          *strings.Builder
 	stderr          *strings.Builder
 	colorizer       aurora.Aurora
+	termWidth int
 }
 
 // Creates and returns a new progress tracking object.
 func NewProgress(noColor bool) *Progress {
+	w := cwriter.New(os.Stdout)
+	tw, err := w.GetWidth()
+	if err != nil {
+		panic("Couldn't determine available terminal width.")
+	}
+
 	p := &Progress{
 		progress: mpb.New(
 			mpb.WithOutput(os.Stderr),
@@ -36,6 +47,7 @@ func NewProgress(noColor bool) *Progress {
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
 		colorizer:       aurora.NewAurora(!noColor),
+		termWidth: tw,
 	}
 	return p
 }
@@ -136,19 +148,38 @@ func (p *Progress) StopStdCapture() {
 	stopStdCapture(p.captureData)
 	p.stdout.Write(p.captureData.DataStdOut.Bytes())
 	p.stderr.Write(p.captureData.DataStdErr.Bytes())
+
+	//
+	var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
+	multiline := r.ReplaceAllString(p.stdout.String(), "$1\n")
+	arr := strings.Split(multiline, "\n")
+	for _, msg := range arr {
+		if len(msg) > 0 {
+			p.progress.Add(0, makeLogBar(msg)).SetTotal(0, true)
+		}
+	}
+	p.stdout.Reset()
+	//
+
 	p.stdCaptureMutex.Unlock()
 }
 
 // Writes the captured stdout data to stdout, if any.
 func (p *Progress) ShowStdOut() {
-	if p.stdout.Len() > 0 {
-		fmt.Fprint(os.Stdout, p.stdout.String())
-	}
+	//if p.stdout.Len() > 0 {
+	//	fmt.Fprint(os.Stdout, p.stdout.String())
+	//}
 }
 
 // Writes the captured stderr data to stderr, if any.
 func (p *Progress) ShowStdErr() {
-	if p.stderr.Len() > 0 {
-		fmt.Fprint(os.Stderr, p.stderr.String())
-	}
+	//if p.stderr.Len() > 0 {
+	//	fmt.Fprint(os.Stderr, p.stderr.String())
+	//}
+}
+
+func makeLogBar(msg string) mpb.BarFiller {
+	return mpb.BarFillerFunc(func(w io.Writer, _ int, st decor.Statistics) {
+		fmt.Fprintf(w, msg)
+	})
 }

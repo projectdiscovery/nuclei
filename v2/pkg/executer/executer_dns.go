@@ -96,8 +96,10 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	}
 
 	if e.debug {
+		p.StartStdCapture()
 		gologger.Infof("Dumped DNS request for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", compiledRequest.String())
+		p.StopStdCapture()
 	}
 
 	// Send the request to the target servers
@@ -117,8 +119,10 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
 
 	if e.debug {
+		p.StartStdCapture()
 		gologger.Infof("Dumped DNS response for %s (%s)\n\n", URL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
+		p.StopStdCapture()
 	}
 
 	matcherCondition := e.dnsRequest.GetMatchersCondition()
@@ -133,7 +137,9 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
+				p.StartStdCapture()
 				e.writeOutputDNS(domain, matcher, nil)
+				p.StopStdCapture()
 				result.GotResults = true
 			}
 		}
@@ -153,7 +159,9 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
+		p.StartStdCapture()
 		e.writeOutputDNS(domain, nil, extractorResults)
+		p.StopStdCapture()
 	}
 
 	return
