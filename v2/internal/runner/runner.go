@@ -148,7 +148,7 @@ func New(options *Options) (*Runner, error) {
 		runner.output = output
 	}
 
-	if !options.Silent && !options.DisableProgressBar {
+	if !options.Silent && options.EnableProgressBar {
 		// Creates the progress tracking object
 		runner.progress = progress.NewProgress(runner.options.NoColor)
 	}
