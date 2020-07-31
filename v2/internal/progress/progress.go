@@ -3,21 +3,31 @@ package progress
 import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/gologger"
 	"github.com/vbauerster/mpb/v5"
-	"github.com/vbauerster/mpb/v5/cwriter"
 	"github.com/vbauerster/mpb/v5/decor"
-	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Encapsulates progress tracking.
+type IProgress interface {
+	setupProgressbar(name string, total int64, priority int) *mpb.Bar
+	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
+	AddToTotal(delta int64)
+	Update()
+	render()
+	Drop(count int64)
+	Wait()
+	StartStdCapture()
+	StopStdCapture()
+}
+
 type Progress struct {
 	progress        *mpb.Progress
-	gbar            *mpb.Bar
+	bar             *mpb.Bar
 	total           int64
 	initialTotal    int64
 	totalMutex      *sync.Mutex
@@ -26,28 +36,32 @@ type Progress struct {
 	stdout          *strings.Builder
 	stderr          *strings.Builder
 	colorizer       aurora.Aurora
-	termWidth int
+	renderChan      chan time.Time
+	renderMutex     *sync.Mutex
+	firstTimeOutput bool
 }
 
 // Creates and returns a new progress tracking object.
-func NewProgress(noColor bool) *Progress {
-	w := cwriter.New(os.Stdout)
-	tw, err := w.GetWidth()
-	if err != nil {
-		panic("Couldn't determine available terminal width.")
+func NewProgress(noColor bool, active bool) IProgress {
+	if !active {
+		return &NoOpProgress{}
 	}
 
+	renderChan := make(chan time.Time)
 	p := &Progress{
 		progress: mpb.New(
 			mpb.WithOutput(os.Stderr),
 			mpb.PopCompletedMode(),
+			mpb.WithManualRefresh(renderChan),
 		),
 		totalMutex:      &sync.Mutex{},
 		stdCaptureMutex: &sync.Mutex{},
 		stdout:          &strings.Builder{},
 		stderr:          &strings.Builder{},
 		colorizer:       aurora.NewAurora(!noColor),
-		termWidth: tw,
+		renderChan:      renderChan,
+		renderMutex:     &sync.Mutex{},
+		firstTimeOutput: true,
 	}
 	return p
 }
@@ -55,7 +69,7 @@ func NewProgress(noColor bool) *Progress {
 // Creates and returns a progress bar that tracks all the requests progress.
 // This is only useful when multiple templates are processed within the same run.
 func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCount int64) {
-	if p.gbar != nil {
+	if p.bar != nil {
 		panic("A global progressbar is already present.")
 	}
 
@@ -68,35 +82,29 @@ func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCo
 		color.Bold(color.Cyan(hostCount)),
 		pluralize(hostCount, "host", "hosts"))
 
-	p.gbar = p.setupProgressbar("["+barName+"]", requestCount, 0)
-}
-
-func pluralize(count int64, singular, plural string) string {
-	if count > 1 {
-		return plural
-	}
-	return singular
+	p.bar = p.setupProgressbar("["+barName+"]", requestCount, 0)
 }
 
 // Update total progress request count
 func (p *Progress) AddToTotal(delta int64) {
 	p.totalMutex.Lock()
 	p.total += delta
-	p.gbar.SetTotal(p.total, false)
+	p.bar.SetTotal(p.total, false)
 	p.totalMutex.Unlock()
 }
 
 // Update progress tracking information and increments the request counter by one unit.
 func (p *Progress) Update() {
-	p.gbar.Increment()
+	p.bar.Increment()
+	p.render()
 }
 
 // Drops the specified number of requests from the progress bar total.
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
 func (p *Progress) Drop(count int64) {
 	// mimic dropping by incrementing the completed requests
-	p.gbar.IncrInt64(count)
-
+	p.bar.IncrInt64(count)
+	p.render()
 }
 
 // Ensures that a progress bar's total count is up-to-date if during an enumeration there were uncompleted requests and
@@ -104,12 +112,61 @@ func (p *Progress) Drop(count int64) {
 func (p *Progress) Wait() {
 	p.totalMutex.Lock()
 	if p.total == 0 {
-		p.gbar.Abort(true)
+		p.bar.Abort(true)
 	} else if p.initialTotal != p.total {
-		p.gbar.SetTotal(p.total, true)
+		p.bar.SetTotal(p.total, true)
 	}
 	p.totalMutex.Unlock()
 	p.progress.Wait()
+}
+
+// Starts capturing stdout and stderr instead of producing visual output that may interfere with the progress bars.
+func (p *Progress) StartStdCapture() {
+	p.stdCaptureMutex.Lock()
+	p.captureData = startStdCapture()
+}
+
+// Stops capturing stdout and stderr and store both output to be shown later.
+func (p *Progress) StopStdCapture() {
+	stopStdCapture(p.captureData)
+	p.stdout.Write(p.captureData.DataStdOut.Bytes())
+	p.stderr.Write(p.captureData.DataStdErr.Bytes())
+
+	p.renderMutex.Lock()
+	{
+		hasStdout := p.stdout.Len() > 0
+		hasStderr := p.stderr.Len() > 0
+		hasOutput := hasStdout || hasStderr
+
+		if hasOutput {
+			if p.firstTimeOutput {
+				// trigger a render event
+				p.renderChan <- time.Time{}
+				gologger.Infof("Waiting for your terminal to settle..")
+				// no way to sync to it? :(
+				time.Sleep(time.Millisecond * 250)
+				p.firstTimeOutput = false
+			}
+			// go back one line and clean it all
+			fmt.Fprint(os.Stderr, "\u001b[1A\u001b[2K")
+			if hasStdout {
+				fmt.Fprint(os.Stdout, p.stdout.String())
+			}
+			if hasStderr {
+				fmt.Fprint(os.Stderr, p.stderr.String())
+			}
+			// make space for the progressbar to render itself
+			fmt.Fprintln(os.Stderr, "")
+			// always trigger a render event to try ensure it's visible even with fast output
+			p.renderChan <- time.Time{}
+		}
+	}
+	p.renderMutex.Unlock()
+
+	p.stdout.Reset()
+	p.stderr.Reset()
+
+	p.stdCaptureMutex.Unlock()
 }
 
 // Creates and returns a progress bar.
@@ -137,49 +194,15 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 	)
 }
 
-// Starts capturing stdout and stderr instead of producing visual output that may interfere with the progress bars.
-func (p *Progress) StartStdCapture() {
-	p.stdCaptureMutex.Lock()
-	p.captureData = startStdCapture()
+func (p *Progress) render() {
+	p.renderMutex.Lock()
+	p.renderChan <- time.Now()
+	p.renderMutex.Unlock()
 }
 
-// Stops capturing stdout and stderr and store both output to be shown later.
-func (p *Progress) StopStdCapture() {
-	stopStdCapture(p.captureData)
-	p.stdout.Write(p.captureData.DataStdOut.Bytes())
-	p.stderr.Write(p.captureData.DataStdErr.Bytes())
-
-	//
-	var r = regexp.MustCompile("(.{" + strconv.Itoa(p.termWidth) + "})")
-	multiline := r.ReplaceAllString(p.stdout.String(), "$1\n")
-	arr := strings.Split(multiline, "\n")
-	for _, msg := range arr {
-		if len(msg) > 0 {
-			p.progress.Add(0, makeLogBar(msg)).SetTotal(0, true)
-		}
+func pluralize(count int64, singular, plural string) string {
+	if count > 1 {
+		return plural
 	}
-	p.stdout.Reset()
-	//
-
-	p.stdCaptureMutex.Unlock()
-}
-
-// Writes the captured stdout data to stdout, if any.
-func (p *Progress) ShowStdOut() {
-	//if p.stdout.Len() > 0 {
-	//	fmt.Fprint(os.Stdout, p.stdout.String())
-	//}
-}
-
-// Writes the captured stderr data to stderr, if any.
-func (p *Progress) ShowStdErr() {
-	//if p.stderr.Len() > 0 {
-	//	fmt.Fprint(os.Stderr, p.stderr.String())
-	//}
-}
-
-func makeLogBar(msg string) mpb.BarFiller {
-	return mpb.BarFillerFunc(func(w io.Writer, _ int, st decor.Statistics) {
-		fmt.Fprintf(w, msg)
-	})
+	return singular
 }

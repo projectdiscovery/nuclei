@@ -29,9 +29,9 @@ type DNSExecuter struct {
 	writer      *bufio.Writer
 	outputMutex *sync.Mutex
 
-	coloredOutput	bool
-	colorizer		aurora.Aurora
-	decolorizer		*regexp.Regexp
+	coloredOutput bool
+	colorizer     aurora.Aurora
+	decolorizer   *regexp.Regexp
 }
 
 // DefaultResolvers contains the list of resolvers known to be trusted.
@@ -50,9 +50,9 @@ type DNSOptions struct {
 	DNSRequest *requests.DNSRequest
 	Writer     *bufio.Writer
 
-	ColoredOutput	bool
-	Colorizer		aurora.Aurora
-	Decolorizer		*regexp.Regexp
+	ColoredOutput bool
+	Colorizer     aurora.Aurora
+	Decolorizer   *regexp.Regexp
 }
 
 // NewDNSExecuter creates a new DNS executer from a template
@@ -61,22 +61,22 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
 	executer := &DNSExecuter{
-		debug:       options.Debug,
-		jsonOutput:  options.JSON,
-		dnsClient:   dnsClient,
-		template:    options.Template,
-		dnsRequest:  options.DNSRequest,
-		writer:      options.Writer,
-		outputMutex: &sync.Mutex{},
-		coloredOutput:   options.ColoredOutput,
-		colorizer:       options.Colorizer,
-		decolorizer:     options.Decolorizer,
+		debug:         options.Debug,
+		jsonOutput:    options.JSON,
+		dnsClient:     dnsClient,
+		template:      options.Template,
+		dnsRequest:    options.DNSRequest,
+		writer:        options.Writer,
+		outputMutex:   &sync.Mutex{},
+		coloredOutput: options.ColoredOutput,
+		colorizer:     options.Colorizer,
+		decolorizer:   options.Decolorizer,
 	}
 	return executer
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(URL) {
@@ -89,9 +89,7 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not make dns request")
-		if p != nil {
-			p.Drop(1)
-		}
+		p.Drop(1)
 		return
 	}
 
@@ -106,17 +104,15 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, URL string) (result Resul
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not send dns request")
-		if p != nil {
-			p.Drop(1)
-		}
+		p.Drop(1)
 		return
 	}
 
-	if p != nil {
-		p.Update()
-	}
+	p.Update()
 
+	p.StartStdCapture()
 	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", URL)
+	p.StopStdCapture()
 
 	if e.debug {
 		p.StartStdCapture()
