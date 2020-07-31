@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
@@ -25,6 +26,8 @@ func Parse(file string) (*Template, error) {
 		return nil, err
 	}
 	defer f.Close()
+
+	template.path = file
 
 	// If no requests, and it is also not a workflow, return error.
 	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
@@ -58,7 +61,20 @@ func Parse(file string) (*Template, error) {
 				if len(strings.Split(v, "\n")) <= 1 {
 					// check if it's a worldlist file
 					if !generators.FileExists(v) {
-						return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", v, name)
+						// attempt to load the file by taking the full path, tokezining it and searching the template in such paths
+						changed := false
+						pathTokens := strings.Split(template.path, "/")
+						for i := range pathTokens {
+							tpath := path.Join(strings.Join(pathTokens[:i], "/"), v)
+							if generators.FileExists(tpath) {
+								request.Payloads[name] = tpath
+								changed = true
+								break
+							}
+						}
+						if !changed {
+							return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", v, name)
+						}
 					}
 				}
 			case []string, []interface{}:

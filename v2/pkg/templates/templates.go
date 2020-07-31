@@ -14,6 +14,12 @@ type Template struct {
 	BulkRequestsHTTP []*requests.BulkHTTPRequest `yaml:"requests,omitempty"`
 	// RequestsDNS contains the dns request to make in the template
 	RequestsDNS []*requests.DNSRequest `yaml:"dns,omitempty"`
+	path        string
+}
+
+// GetPath of the workflow
+func (t *Template) GetPath() string {
+	return t.path
 }
 
 // Info contains information about the request template
@@ -28,7 +34,7 @@ type Info struct {
 	Description string `yaml:"description,omitempty"`
 }
 
-func (t* Template) GetHTTPRequestCount() int64 {
+func (t *Template) GetHTTPRequestCount() int64 {
 	var count int64 = 0
 	for _, request := range t.BulkRequestsHTTP {
 		count += request.GetRequestCount()
