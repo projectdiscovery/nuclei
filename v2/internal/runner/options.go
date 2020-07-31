@@ -30,7 +30,7 @@ type Options struct {
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
 	JSON               bool                   // JSON writes json output to files
 	JSONRequests       bool                   // write requests/responses for matches in JSON output
-	DisableProgressBar bool                   // Disable progrss bar
+	EnableProgressBar  bool                   // Enable progrss bar
 
 	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
@@ -69,7 +69,7 @@ func ParseOptions() *Options {
 	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
-	flag.BoolVar(&options.DisableProgressBar, "no-pbar", false, "Disable the progress bar")
+	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 
 	flag.Parse()
 
