@@ -34,7 +34,6 @@ type Progress struct {
 	totalMutex *sync.Mutex
 	colorizer  aurora.Aurora
 
-	// stdio capture and rendering
 	renderChan         chan time.Time
 	captureData        *captureData
 	stdCaptureMutex    *sync.Mutex
@@ -63,7 +62,6 @@ func NewProgress(noColor bool, active bool) IProgress {
 		totalMutex: &sync.Mutex{},
 		colorizer:  aurora.NewAurora(!noColor),
 
-		// stdio capture and rendering
 		renderChan:         renderChan,
 		stdCaptureMutex:    &sync.Mutex{},
 		stdOut:             &strings.Builder{},
@@ -75,8 +73,7 @@ func NewProgress(noColor bool, active bool) IProgress {
 	return p
 }
 
-// Creates and returns a progress bar that tracks all the requests progress.
-// This is only useful when multiple templates are processed within the same run.
+// Creates and returns a progress bar that tracks all the progress.
 func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCount int64) {
 	if p.bar != nil {
 		panic("A global progressbar is already present.")
@@ -93,10 +90,10 @@ func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCo
 
 	p.bar = p.setupProgressbar("["+barName+"]", requestCount, 0)
 
-	// creates r/w pipes and divert stdout+stderr writers to them and start capturing their output
+	// creates r/w pipes and divert stdout/stderr writers to them and start capturing their output
 	p.captureData = startCapture(p.stdCaptureMutex, p.stdOut, p.stdErr)
 
-	// starts rendering the captured stdout+stderr data
+	// starts rendering both the progressbar and the captured stdout/stderr data
 	p.renderStdData()
 }
 
