@@ -336,7 +336,7 @@ func (r *Runner) RunEnumeration() {
 		gologger.Errorf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
 
-		// track global progress
+		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
 
 		for _, match := range allTemplates {
@@ -384,9 +384,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 	if template.Info.Severity != "" {
 		message += " [" + template.Info.Severity + "]"
 	}
-	p.StartStdCapture()
 	gologger.Infof("%s\n", message)
-	p.StopStdCapture()
 
 	var writer *bufio.Writer
 	if r.output != nil {
@@ -432,9 +430,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 	}
 	if err != nil {
 		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
-		p.StartStdCapture()
 		gologger.Warningf("Could not create http client: %s\n", err)
-		p.StopStdCapture()
 		return false
 	}
 
@@ -462,9 +458,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 				globalresult.Or(result.GotResults)
 			}
 			if result.Error != nil {
-				p.StartStdCapture()
 				gologger.Warningf("Could not execute step: %s\n", result.Error)
-				p.StopStdCapture()
 			}
 			<-r.limiter
 		}(text)
@@ -489,9 +483,7 @@ func (r *Runner) ProcessWorkflowWithList(p progress.IProgress, workflow *workflo
 			defer wg.Done()
 
 			if err := r.ProcessWorkflow(p, workflow, text); err != nil {
-				p.StartStdCapture()
 				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
-				p.StopStdCapture()
 			}
 			<-r.limiter
 		}(text)
@@ -522,9 +514,7 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 		// Check if the template is an absolute path or relative path.
 		// If the path is absolute, use it. Otherwise,
 		if r.isRelative(value) {
-			p.StartStdCapture()
 			newPath, err := r.resolvePath(value)
-			p.StopStdCapture()
 			if err != nil {
 				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
 				if err != nil {
@@ -629,9 +619,7 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 
 	_, err := script.RunContext(context.Background())
 	if err != nil {
-		p.StartStdCapture()
 		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
-		p.StopStdCapture()
 		return err
 	}
 	return nil
