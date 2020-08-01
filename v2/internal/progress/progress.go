@@ -13,38 +13,36 @@ import (
 	"time"
 )
 
-var (
-	RefreshHz     = 4.
-	RefreshMillis = int64((1. / RefreshHz) * 1000.)
-)
+// global output refresh rate
+const RefreshHz = 8
 
 // Encapsulates progress tracking.
 type IProgress interface {
 	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
 	AddToTotal(delta int64)
 	Update()
-	render()
 	Drop(count int64)
 	Wait()
-	StartStdCapture()
-	StopStdCapture()
 }
 
 type Progress struct {
-	progress        *mpb.Progress
-	bar             *mpb.Bar
-	total           int64
-	initialTotal    int64
-	totalMutex      *sync.Mutex
-	captureData     *captureData
-	stdCaptureMutex *sync.Mutex
-	stdout          *strings.Builder
-	stderr          *strings.Builder
-	colorizer       aurora.Aurora
-	renderChan      chan time.Time
-	renderMutex     *sync.Mutex
-	renderTime      time.Time
-	firstTimeOutput bool
+	progress     *mpb.Progress
+	bar          *mpb.Bar
+	total        int64
+	initialTotal int64
+
+	totalMutex *sync.Mutex
+	colorizer  aurora.Aurora
+
+	// stdio capture and rendering
+	renderChan         chan time.Time
+	captureData        *captureData
+	stdCaptureMutex    *sync.Mutex
+	stdOut             *strings.Builder
+	stdErr             *strings.Builder
+	stdStopRenderEvent chan bool
+	stdRenderEvent     *time.Ticker
+	stdRenderWaitGroup *sync.WaitGroup
 }
 
 // Creates and returns a new progress tracking object.
@@ -53,6 +51,8 @@ func NewProgress(noColor bool, active bool) IProgress {
 		return &NoOpProgress{}
 	}
 
+	refreshMillis := int64(1. / float64(RefreshHz) * 1000.)
+
 	renderChan := make(chan time.Time)
 	p := &Progress{
 		progress: mpb.New(
@@ -60,15 +60,17 @@ func NewProgress(noColor bool, active bool) IProgress {
 			mpb.PopCompletedMode(),
 			mpb.WithManualRefresh(renderChan),
 		),
-		totalMutex:      &sync.Mutex{},
-		stdCaptureMutex: &sync.Mutex{},
-		stdout:          &strings.Builder{},
-		stderr:          &strings.Builder{},
-		colorizer:       aurora.NewAurora(!noColor),
-		renderChan:      renderChan,
-		renderMutex:     &sync.Mutex{},
-		renderTime:      time.Now(),
-		firstTimeOutput: true,
+		totalMutex: &sync.Mutex{},
+		colorizer:  aurora.NewAurora(!noColor),
+
+		// stdio capture and rendering
+		renderChan:         renderChan,
+		stdCaptureMutex:    &sync.Mutex{},
+		stdOut:             &strings.Builder{},
+		stdErr:             &strings.Builder{},
+		stdStopRenderEvent: make(chan bool),
+		stdRenderEvent:     time.NewTicker(time.Millisecond * time.Duration(refreshMillis)),
+		stdRenderWaitGroup: &sync.WaitGroup{},
 	}
 	return p
 }
@@ -90,6 +92,12 @@ func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCo
 		pluralize(hostCount, "host", "hosts"))
 
 	p.bar = p.setupProgressbar("["+barName+"]", requestCount, 0)
+
+	// creates r/w pipes and divert stdout+stderr writers to them and start capturing their output
+	p.captureData = startCapture(p.stdCaptureMutex, p.stdOut, p.stdErr)
+
+	// starts rendering the captured stdout+stderr data
+	p.renderStdData()
 }
 
 // Update total progress request count
@@ -103,7 +111,6 @@ func (p *Progress) AddToTotal(delta int64) {
 // Update progress tracking information and increments the request counter by one unit.
 func (p *Progress) Update() {
 	p.bar.Increment()
-	p.render()
 }
 
 // Drops the specified number of requests from the progress bar total.
@@ -111,7 +118,6 @@ func (p *Progress) Update() {
 func (p *Progress) Drop(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.bar.IncrInt64(count)
-	p.render()
 }
 
 // Ensures that a progress bar's total count is up-to-date if during an enumeration there were uncompleted requests and
@@ -126,56 +132,60 @@ func (p *Progress) Wait() {
 	p.totalMutex.Unlock()
 	p.progress.Wait()
 
+	// close the writers and wait for the EOF condition
+	stopCapture(p.captureData)
+
+	// stop the renderer and wait for it
+	p.stdStopRenderEvent <- true
+	p.stdRenderWaitGroup.Wait()
+
 	// drain any stdout/stderr data
-	p.drainStringBuilderTo(p.stdout, os.Stdout)
-	p.drainStringBuilderTo(p.stderr, os.Stderr)
+	p.drainStringBuilderTo(p.stdOut, os.Stdout)
+	p.drainStringBuilderTo(p.stdErr, os.Stderr)
 }
 
-// Starts capturing stdout and stderr instead of producing visual output that may interfere with the progress bars.
-func (p *Progress) StartStdCapture() {
-	p.stdCaptureMutex.Lock()
-	p.captureData = startStdCapture()
-}
+func (p *Progress) renderStdData() {
+	// trigger a render event
+	p.renderChan <- time.Now()
+	gologger.Infof("Waiting for your terminal to settle..")
+	time.Sleep(time.Millisecond * 250)
 
-// Stops capturing stdout and stderr and store both output to be shown later.
-func (p *Progress) StopStdCapture() {
-	stopStdCapture(p.captureData)
-	p.stdout.Write(p.captureData.DataStdOut.Bytes())
-	p.stderr.Write(p.captureData.DataStdErr.Bytes())
+	count := 0
+	p.stdRenderWaitGroup.Add(1)
+	go func(waitGroup *sync.WaitGroup) {
+		for {
+			select {
+			case <-p.stdStopRenderEvent:
+				waitGroup.Done()
+				return
+			case _ = <-p.stdRenderEvent.C:
+				p.stdCaptureMutex.Lock()
+				{
+					hasStdout := p.stdOut.Len() > 0
+					hasStderr := p.stdErr.Len() > 0
+					hasOutput := hasStdout || hasStderr
 
-	p.renderMutex.Lock()
-	{
-		hasStdout := p.stdout.Len() > 0
-		hasStderr := p.stderr.Len() > 0
-		hasOutput := hasStdout || hasStderr
+					if hasOutput {
+						count++
+						stdout := p.captureData.backupStdout
+						stderr := p.captureData.backupStderr
 
-		if hasOutput {
-			if p.firstTimeOutput {
-				// trigger a render event
-				p.renderChan <- time.Now()
-				gologger.Infof("Waiting for your terminal to settle..")
-				// no way to sync to it? :(
-				time.Sleep(time.Millisecond * 250)
-				p.firstTimeOutput = false
-			}
+						// go back one line and clean it all
+						fmt.Fprint(stderr, "\u001b[1A\u001b[2K")
+						p.drainStringBuilderTo(p.stdOut, stdout)
+						p.drainStringBuilderTo(p.stdErr, stderr)
 
-			if can, now := p.canRender(); can {
-				// go back one line and clean it all
-				fmt.Fprint(os.Stderr, "\u001b[1A\u001b[2K")
-				p.drainStringBuilderTo(p.stdout, os.Stdout)
-				p.drainStringBuilderTo(p.stderr, os.Stderr)
+						// make space for the progressbar to render itself
+						fmt.Fprintln(stderr, "")
+					}
 
-				// make space for the progressbar to render itself
-				fmt.Fprintln(os.Stderr, "")
-
-				// always trigger a render event to try ensure it's visible even with fast output
-				p.renderChan <- now
-				p.renderTime = now
+					// always trigger a render event to try ensure it's visible even with fast output
+					p.renderChan <- time.Now()
+				}
+				p.stdCaptureMutex.Unlock()
 			}
 		}
-	}
-	p.renderMutex.Unlock()
-	p.stdCaptureMutex.Unlock()
+	}(p.stdRenderWaitGroup)
 }
 
 // Creates and returns a progress bar.
@@ -201,23 +211,6 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
 		),
 	)
-}
-
-func (p *Progress) render() {
-	p.renderMutex.Lock()
-	if can, now := p.canRender(); can {
-		p.renderChan <- now
-		p.renderTime = now
-	}
-	p.renderMutex.Unlock()
-}
-
-func (p *Progress) canRender() (bool, time.Time) {
-	now := time.Now()
-	if now.Sub(p.renderTime).Milliseconds() >= RefreshMillis {
-		return true, now
-	}
-	return false, now
 }
 
 func pluralize(count int64, singular, plural string) string {
