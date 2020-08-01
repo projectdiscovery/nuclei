@@ -147,7 +147,6 @@ func (p *Progress) renderStdData() {
 	gologger.Infof("Waiting for your terminal to settle..")
 	time.Sleep(time.Millisecond * 250)
 
-	count := 0
 	p.stdRenderWaitGroup.Add(1)
 	go func(waitGroup *sync.WaitGroup) {
 		for {
@@ -163,7 +162,6 @@ func (p *Progress) renderStdData() {
 					hasOutput := hasStdout || hasStderr
 
 					if hasOutput {
-						count++
 						stdout := p.captureData.backupStdout
 						stderr := p.captureData.backupStderr
 
