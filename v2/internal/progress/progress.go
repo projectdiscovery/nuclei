@@ -6,15 +6,20 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/vbauerster/mpb/v5"
 	"github.com/vbauerster/mpb/v5/decor"
+	"io"
 	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
+var (
+	RefreshHz     = 4.
+	RefreshMillis = int64((1. / RefreshHz) * 1000.)
+)
+
 // Encapsulates progress tracking.
 type IProgress interface {
-	setupProgressbar(name string, total int64, priority int) *mpb.Bar
 	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
 	AddToTotal(delta int64)
 	Update()
@@ -38,6 +43,7 @@ type Progress struct {
 	colorizer       aurora.Aurora
 	renderChan      chan time.Time
 	renderMutex     *sync.Mutex
+	renderTime      time.Time
 	firstTimeOutput bool
 }
 
@@ -61,6 +67,7 @@ func NewProgress(noColor bool, active bool) IProgress {
 		colorizer:       aurora.NewAurora(!noColor),
 		renderChan:      renderChan,
 		renderMutex:     &sync.Mutex{},
+		renderTime:      time.Now(),
 		firstTimeOutput: true,
 	}
 	return p
@@ -118,6 +125,10 @@ func (p *Progress) Wait() {
 	}
 	p.totalMutex.Unlock()
 	p.progress.Wait()
+
+	// drain any stdout/stderr data
+	p.drainStringBuilderTo(p.stdout, os.Stdout)
+	p.drainStringBuilderTo(p.stderr, os.Stderr)
 }
 
 // Starts capturing stdout and stderr instead of producing visual output that may interfere with the progress bars.
@@ -141,31 +152,29 @@ func (p *Progress) StopStdCapture() {
 		if hasOutput {
 			if p.firstTimeOutput {
 				// trigger a render event
-				p.renderChan <- time.Time{}
+				p.renderChan <- time.Now()
 				gologger.Infof("Waiting for your terminal to settle..")
 				// no way to sync to it? :(
 				time.Sleep(time.Millisecond * 250)
 				p.firstTimeOutput = false
 			}
-			// go back one line and clean it all
-			fmt.Fprint(os.Stderr, "\u001b[1A\u001b[2K")
-			if hasStdout {
-				fmt.Fprint(os.Stdout, p.stdout.String())
+
+			if can, now := p.canRender(); can {
+				// go back one line and clean it all
+				fmt.Fprint(os.Stderr, "\u001b[1A\u001b[2K")
+				p.drainStringBuilderTo(p.stdout, os.Stdout)
+				p.drainStringBuilderTo(p.stderr, os.Stderr)
+
+				// make space for the progressbar to render itself
+				fmt.Fprintln(os.Stderr, "")
+
+				// always trigger a render event to try ensure it's visible even with fast output
+				p.renderChan <- now
+				p.renderTime = now
 			}
-			if hasStderr {
-				fmt.Fprint(os.Stderr, p.stderr.String())
-			}
-			// make space for the progressbar to render itself
-			fmt.Fprintln(os.Stderr, "")
-			// always trigger a render event to try ensure it's visible even with fast output
-			p.renderChan <- time.Time{}
 		}
 	}
 	p.renderMutex.Unlock()
-
-	p.stdout.Reset()
-	p.stderr.Reset()
-
 	p.stdCaptureMutex.Unlock()
 }
 
@@ -196,8 +205,19 @@ func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb
 
 func (p *Progress) render() {
 	p.renderMutex.Lock()
-	p.renderChan <- time.Now()
+	if can, now := p.canRender(); can {
+		p.renderChan <- now
+		p.renderTime = now
+	}
 	p.renderMutex.Unlock()
+}
+
+func (p *Progress) canRender() (bool, time.Time) {
+	now := time.Now()
+	if now.Sub(p.renderTime).Milliseconds() >= RefreshMillis {
+		return true, now
+	}
+	return false, now
 }
 
 func pluralize(count int64, singular, plural string) string {
@@ -205,4 +225,11 @@ func pluralize(count int64, singular, plural string) string {
 		return plural
 	}
 	return singular
+}
+
+func (p *Progress) drainStringBuilderTo(builder *strings.Builder, writer io.Writer) {
+	if builder.Len() > 0 {
+		fmt.Fprint(writer, builder.String())
+		builder.Reset()
+	}
 }
