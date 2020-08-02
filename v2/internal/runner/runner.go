@@ -298,8 +298,26 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
-	// resolves input templates
-	allTemplates := r.getTemplatesFor(r.options.Templates)
+	// resolves input templates definitions and any optional exclusion
+	includedTemplates := r.getTemplatesFor(r.options.Templates)
+	excludedTemplates := r.getTemplatesFor(r.options.ExcludedTemplates)
+	// defaults to all templates
+	allTemplates := includedTemplates
+	if len(excludedTemplates) > 0 {
+		excludedMap := make(map[string]struct{}, len(excludedTemplates))
+		for _, excl := range excludedTemplates {
+			excludedMap[excl] = struct{}{}
+		}
+		// rebuild list with only non-excluded templates
+		allTemplates = []string{}
+		for _, incl := range includedTemplates {
+			if _, found := excludedMap[incl]; !found {
+				allTemplates = append(allTemplates, incl)
+			} else {
+				gologger.Warningf("Excluding '%s'", incl)
+			}
+		}
+	}
 
 	// 0 matches means no templates were found in directory
 	if len(allTemplates) == 0 {
