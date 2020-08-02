@@ -121,7 +121,7 @@ or download it from [nuclei templates](https://github.com/projectdiscovery/nucle
 > git clone https://github.com/projectdiscovery/nuclei-templates.git
 ```
 
-**Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to writing your own custom templates.**
+**Please refer to [this guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
 
 # Running nuclei
 
