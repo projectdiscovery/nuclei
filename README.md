@@ -50,7 +50,7 @@ nuclei -h
 This will display help for the tool. Here are all the switches it supports.
 
 | Flag              | Description                                           | Example                                            |
-|-------------------|-------------------------------------------------------|----------------------------------------------------|
+|:-------------------:|:-------------------------------------------------------:|:----------------------------------------------------:|
 | -c                | Number of concurrent requests (default 10)            | nuclei -c 100                                      |
 | -l                | List of urls to run templates                         | nuclei -l urls.txt                                 |
 | -target           | Target to scan using templates                        | nuclei -target hxxps://example.com                 |
@@ -59,6 +59,7 @@ This will display help for the tool. Here are all the switches it supports.
 | -nC               | Don't Use colors in output                            | nuclei -nC                                         |
 | -json             | Prints and write output in json format                | nuclei -json                                       |
 | -o                | File to save output result (optional)                 | nuclei -o output.txt                               |
+| -pbar             | Enable the progress bar (optional)                    | nuclei -pbar                                       |
 | -silent           | Show only found results in output                     | nuclei -silent                                     |
 | -retries          | Number of times to retry a failed request (default 1) | nuclei -retries 1                                  |
 | -timeout          | Seconds to wait before timeout (default 5)            | nuclei -timeout 5                                  |
