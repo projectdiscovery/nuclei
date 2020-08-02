@@ -11,7 +11,7 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.15.6
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.30
+	github.com/miekg/dns v1.1.31
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/retryabledns v1.0.4
