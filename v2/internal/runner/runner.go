@@ -43,7 +43,7 @@ type Runner struct {
 	limiter chan struct{}
 
 	// progress tracking
-	progress *progress.Progress
+	progress progress.IProgress
 
 	// output coloring
 	colorizer   aurora.Aurora
@@ -148,10 +148,8 @@ func New(options *Options) (*Runner, error) {
 		runner.output = output
 	}
 
-	if !options.Silent && options.EnableProgressBar {
-		// Creates the progress tracking object
-		runner.progress = progress.NewProgress(runner.options.NoColor)
-	}
+	// Creates the progress tracking object
+	runner.progress = progress.NewProgress(runner.options.NoColor, !options.Silent && options.EnableProgressBar)
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
@@ -338,11 +336,8 @@ func (r *Runner) RunEnumeration() {
 		gologger.Errorf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
 
-		// track global progress
-		if p != nil {
-			p.InitProgressbar(r.inputCount, templateCount, totalRequests)
-			p.StartStdCapture()
-		}
+		// tracks global progress and captures stdout/stderr until p.Wait finishes
+		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
 
 		for _, match := range allTemplates {
 			wgtemplates.Add(1)
@@ -368,14 +363,7 @@ func (r *Runner) RunEnumeration() {
 		}
 
 		wgtemplates.Wait()
-
-		if p != nil {
-			p.Wait()
-
-			p.StopStdCapture()
-			p.ShowStdErr()
-			p.ShowStdOut()
-		}
+		p.Wait()
 	}
 
 	if !results.Get() {
@@ -390,7 +378,7 @@ func (r *Runner) RunEnumeration() {
 }
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
+func (r *Runner) processTemplateWithList(p progress.IProgress, template *templates.Template, request interface{}) bool {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
 	if template.Info.Severity != "" {
@@ -441,9 +429,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 		})
 	}
 	if err != nil {
-		if p != nil {
-			p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
-		}
+		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
 		gologger.Warningf("Could not create http client: %s\n", err)
 		return false
 	}
@@ -485,7 +471,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflows.Workflow) {
+func (r *Runner) ProcessWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) {
 	var wg sync.WaitGroup
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
@@ -507,7 +493,7 @@ func (r *Runner) ProcessWorkflowWithList(p *progress.Progress, workflow *workflo
 }
 
 // ProcessWorkflow towards an URL
-func (r *Runner) ProcessWorkflow(p *progress.Progress, workflow *workflows.Workflow, URL string) error {
+func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workflow, URL string) error {
 	script := tengo.NewScript([]byte(workflow.Logic))
 	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 	var jar *cookiejar.Jar
