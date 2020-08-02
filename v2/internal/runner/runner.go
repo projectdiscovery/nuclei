@@ -218,7 +218,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 			if !filterBySeverity || hasMatchingSeverity(sev, allSeverities) {
 				parsedTemplates = append(parsedTemplates, template)
 			} else {
-				gologger.Infof("Excluding template %s due to severity filter (%s not in [%s])", id, sev, severities)
+				gologger.Warningf("Excluding template %s due to severity filter (%s not in [%s])", id, sev, severities)
 			}
 		case *workflows.Workflow:
 			workflow := t.(*workflows.Workflow)
