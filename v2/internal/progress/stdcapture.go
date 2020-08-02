@@ -2,28 +2,25 @@ package progress
 
 /**
   Inspired by the https://github.com/PumpkinSeed/cage module
- */
+*/
 import (
-	"bytes"
+	"bufio"
+	"github.com/projectdiscovery/gologger"
 	"io"
 	"os"
+	"strings"
 	"sync"
 )
 
 type captureData struct {
-	backupStdout *os.File
-	writerStdout *os.File
-	backupStderr *os.File
-	writerStderr *os.File
-
-	DataStdOut *bytes.Buffer
-	DataStdErr *bytes.Buffer
-
-	outStdout  chan []byte
-	outStderr  chan []byte
+	backupStdout   *os.File
+	writerStdout   *os.File
+	backupStderr   *os.File
+	writerStderr   *os.File
+	waitFinishRead *sync.WaitGroup
 }
 
-func startStdCapture() *captureData {
+func startCapture(writeMutex *sync.Mutex, stdout *strings.Builder, stderr *strings.Builder) *captureData {
 	rStdout, wStdout, errStdout := os.Pipe()
 	if errStdout != nil {
 		panic(errStdout)
@@ -41,54 +38,51 @@ func startStdCapture() *captureData {
 		backupStderr: os.Stderr,
 		writerStderr: wStderr,
 
-		outStdout: make(chan []byte),
-		outStderr: make(chan []byte),
-
-		DataStdOut: &bytes.Buffer{},
-		DataStdErr: &bytes.Buffer{},
+		waitFinishRead: &sync.WaitGroup{},
 	}
 
 	os.Stdout = c.writerStdout
 	os.Stderr = c.writerStderr
 
-	stdCopy := func(out chan<- []byte, reader *os.File) {
-		var buffer bytes.Buffer
-		_, _ = io.Copy(&buffer, reader)
-		if buffer.Len() > 0 {
-			out <- buffer.Bytes()
+	stdCopy := func(builder *strings.Builder, reader *os.File, waitGroup *sync.WaitGroup) {
+		r := bufio.NewReader(reader)
+		buf := make([]byte, 0, 4*1024)
+		for {
+			n, err := r.Read(buf[:cap(buf)])
+			buf = buf[:n]
+			if n == 0 {
+				if err == nil {
+					continue
+				}
+				if err == io.EOF {
+					waitGroup.Done()
+					break
+				}
+				waitGroup.Done()
+				gologger.Fatalf("stdcapture error: %s", err)
+			}
+			if err != nil && err != io.EOF {
+				waitGroup.Done()
+				gologger.Fatalf("stdcapture error: %s", err)
+			}
+			writeMutex.Lock()
+			builder.Write(buf)
+			writeMutex.Unlock()
 		}
-		close(out)
 	}
 
-	go stdCopy(c.outStdout, rStdout)
-	go stdCopy(c.outStderr, rStderr)
+	c.waitFinishRead.Add(2)
+	go stdCopy(stdout, rStdout, c.waitFinishRead)
+	go stdCopy(stderr, rStderr, c.waitFinishRead)
 
 	return c
 }
 
-func stopStdCapture(c *captureData) {
+func stopCapture(c *captureData) {
 	_ = c.writerStdout.Close()
 	_ = c.writerStderr.Close()
 
-	var wg sync.WaitGroup
-
-	stdRead := func(in <-chan []byte, outData *bytes.Buffer) {
-		defer wg.Done()
-
-		for {
-			out, more := <-in
-			if more {
-				outData.Write(out)
-			} else {
-				return
-			}
-		}
-	}
-
-	wg.Add(2)
-	go stdRead(c.outStdout, c.DataStdOut)
-	go stdRead(c.outStderr, c.DataStdErr)
-	wg.Wait()
+	c.waitFinishRead.Wait()
 
 	os.Stdout = c.backupStdout
 	os.Stderr = c.backupStderr

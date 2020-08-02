@@ -42,9 +42,9 @@ type HTTPExecuter struct {
 	customHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
 
-	coloredOutput	bool
-	colorizer		aurora.Aurora
-	decolorizer		*regexp.Regexp
+	coloredOutput bool
+	colorizer     aurora.Aurora
+	decolorizer   *regexp.Regexp
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -62,9 +62,9 @@ type HTTPOptions struct {
 	CustomHeaders   requests.CustomHeaders
 	CookieReuse     bool
 	CookieJar       *cookiejar.Jar
-	ColoredOutput	bool
-	Colorizer		aurora.Aurora
-	Decolorizer		*regexp.Regexp
+	ColoredOutput   bool
+	Colorizer       aurora.Aurora
+	Decolorizer     *regexp.Regexp
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -113,7 +113,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
@@ -130,25 +130,19 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 		httpRequest, err := e.bulkHttpRequest.MakeHTTPRequest(URL, dynamicvalues, e.bulkHttpRequest.Current(URL))
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not build http request")
-			if p != nil {
-				p.Drop(remaining)
-			}
+			p.Drop(remaining)
 			return
 		}
 
 		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
-			if p != nil {
-				p.Drop(remaining)
-			}
+			p.Drop(remaining)
 			return
 		}
 
 		e.bulkHttpRequest.Increment(URL)
-		if p != nil {
-			p.Update()
-		}
+		p.Update()
 		remaining--
 	}
 
@@ -157,7 +151,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, URL string) (result Res
 	return
 }
 
-func (e *HTTPExecuter) handleHTTP(p *progress.Progress, URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *requests.HttpRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
 	req := request.Request
 
