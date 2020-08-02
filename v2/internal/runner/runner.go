@@ -189,15 +189,14 @@ func isNewPath(path string, pathMap map[string]bool) bool {
 	return true
 }
 
-// RunEnumeration sets up the input layer for giving input nuclei.
-// binary and runs the actual enumeration
-func (r *Runner) RunEnumeration() {
+// getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
+func (r *Runner) getTemplatesFor(definitions []string) []string {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
 
 	// parses user input, handle file/directory cases and produce a list of unique templates
-	for _, t := range r.options.Templates {
+	for _, t := range definitions {
 		var absPath string
 		var err error
 
@@ -292,6 +291,15 @@ func (r *Runner) RunEnumeration() {
 			}
 		}
 	}
+
+	return allTemplates
+}
+
+// RunEnumeration sets up the input layer for giving input nuclei.
+// binary and runs the actual enumeration
+func (r *Runner) RunEnumeration() {
+	// resolves input templates
+	allTemplates := r.getTemplatesFor(r.options.Templates)
 
 	// 0 matches means no templates were found in directory
 	if len(allTemplates) == 0 {
