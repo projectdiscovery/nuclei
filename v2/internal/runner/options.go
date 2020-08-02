@@ -13,6 +13,7 @@ import (
 type Options struct {
 	Debug              bool                   // Debug mode allows debugging request/responses for the engine
 	Templates          multiStringFlag        // Signature specifies the template/templates to use
+	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
 	Target             string                 // Target is a single URL/Domain to scan usng a template
 	Targets            string                 // Targets specifies the targets to scan using templates.
 	Threads            int                    // Thread controls the number of concurrent requests to make.
@@ -51,7 +52,8 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
-	flag.Var(&options.Templates, "t", "Template input file/files to run on host. Can be used multiple times.")
+	flag.Var(&options.Templates, "t", "Template input dir/file/files to run on host. Can be used multiple times. Supports globbing.")
+	flag.Var(&options.ExcludedTemplates, "exclude", "Template input dir/file/files to exclude. Can be used multiple times. Supports globbing.")
 	flag.StringVar(&options.Targets, "l", "", "List of URLs to run templates on")
 	flag.StringVar(&options.Output, "o", "", "File to write output to (optional)")
 	flag.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
