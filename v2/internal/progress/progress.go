@@ -74,7 +74,7 @@ func NewProgress(noColor bool, active bool) IProgress {
 }
 
 // Creates and returns a progress bar that tracks all the progress.
-func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCount int64) {
+func (p *Progress) InitProgressbar(hostCount int64, rulesCount int, requestCount int64) {
 	if p.bar != nil {
 		panic("A global progressbar is already present.")
 	}
@@ -83,8 +83,8 @@ func (p *Progress) InitProgressbar(hostCount int64, templateCount int, requestCo
 
 	barName := color.Sprintf(
 		color.Cyan("%d %s, %d %s"),
-		color.Bold(color.Cyan(templateCount)),
-		pluralize(int64(templateCount), "template", "templates"),
+		color.Bold(color.Cyan(rulesCount)),
+		pluralize(int64(rulesCount), "rule", "rules"),
 		color.Bold(color.Cyan(hostCount)),
 		pluralize(hostCount, "host", "hosts"))
 
