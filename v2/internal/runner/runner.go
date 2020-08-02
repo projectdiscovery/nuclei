@@ -189,6 +189,48 @@ func isNewPath(path string, pathMap map[string]bool) bool {
 	return true
 }
 
+func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
+	for _, s := range allowedSeverities {
+		if strings.HasPrefix(templateSeverity, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
+// by severity, along with a flag indicating if workflows are present.
+func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string) (parsedTemplates []interface{}, workflowCount int) {
+	workflowCount = 0
+	severities = strings.ToLower(severities)
+	allSeverities := strings.Split(severities, ",")
+	filterBySeverity := len(severities) > 0
+
+	for _, match := range templatePaths {
+		t, err := r.parse(match)
+		switch t.(type) {
+		case *templates.Template:
+			template := t.(*templates.Template)
+			id := template.ID
+
+			// only include if severity matches or no severity filtering
+			sev := strings.ToLower(template.Info.Severity)
+			if !filterBySeverity || hasMatchingSeverity(sev, allSeverities) {
+				parsedTemplates = append(parsedTemplates, template)
+			} else {
+				gologger.Infof("Excluding template %s due to severity filter (%s not in [%s])", id, sev, severities)
+			}
+		case *workflows.Workflow:
+			workflow := t.(*workflows.Workflow)
+			parsedTemplates = append(parsedTemplates, workflow)
+			workflowCount++
+		default:
+			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
+		}
+	}
+	return parsedTemplates, workflowCount
+}
+
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
@@ -293,39 +335,34 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
+	// pre-parse all the templates, apply filters
+	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
+	templateCount := len(availableTemplates)
+	hasWorkflows := workflowCount > 0
+
 	// 0 matches means no templates were found in directory
-	if len(allTemplates) == 0 {
+	if templateCount == 0 {
 		gologger.Fatalf("Error, no templates were found.\n")
 	}
 
-	// progress tracking
-	p := r.progress
+	gologger.Infof("Using %s rules (%s templates, %s workflows)",
+		r.colorizer.Bold(templateCount).String(),
+		r.colorizer.Bold(templateCount-workflowCount).String(),
+		r.colorizer.Bold(workflowCount).String())
 
 	// precompute total request count
 	var totalRequests int64 = 0
-	hasWorkflows := false
-	parsedTemplates := []string{}
 
-	for _, match := range allTemplates {
-		t, err := r.parse(match)
+	for _, t := range availableTemplates {
 		switch t.(type) {
 		case *templates.Template:
 			template := t.(*templates.Template)
 			totalRequests += (template.GetHTTPRequestCount() + template.GetDNSRequestCount()) * r.inputCount
-			parsedTemplates = append(parsedTemplates, match)
 		case *workflows.Workflow:
 			// workflows will dynamically adjust the totals while running, as
 			// it can't be know in advance which requests will be called
-			parsedTemplates = append(parsedTemplates, match)
-			hasWorkflows = true
-		default:
-			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 		}
 	}
-
-	// ensure only successfully parsed templates are processed
-	allTemplates = parsedTemplates
-	templateCount := len(allTemplates)
 
 	var (
 		wgtemplates sync.WaitGroup
@@ -337,29 +374,27 @@ func (r *Runner) RunEnumeration() {
 	} else if totalRequests > 0 || hasWorkflows {
 
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
+		p := r.progress
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
 
-		for _, match := range allTemplates {
+		for _, t := range availableTemplates {
 			wgtemplates.Add(1)
-			go func(match string) {
+			go func(template interface{}) {
 				defer wgtemplates.Done()
-				t, err := r.parse(match)
-				switch t.(type) {
+				switch template.(type) {
 				case *templates.Template:
-					template := t.(*templates.Template)
-					for _, request := range template.RequestsDNS {
-						results.Or(r.processTemplateWithList(p, template, request))
+					t := template.(*templates.Template)
+					for _, request := range t.RequestsDNS {
+						results.Or(r.processTemplateWithList(p, t, request))
 					}
-					for _, request := range template.BulkRequestsHTTP {
-						results.Or(r.processTemplateWithList(p, template, request))
+					for _, request := range t.BulkRequestsHTTP {
+						results.Or(r.processTemplateWithList(p, t, request))
 					}
 				case *workflows.Workflow:
-					workflow := t.(*workflows.Workflow)
+					workflow := template.(*workflows.Workflow)
 					r.ProcessWorkflowWithList(p, workflow)
-				default:
-					gologger.Errorf("Could not parse file '%s': %s\n", match, err)
 				}
-			}(match)
+			}(t)
 		}
 
 		wgtemplates.Wait()
