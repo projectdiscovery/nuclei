@@ -148,6 +148,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputDNS(domain, nil, extractorResults)
+		result.GotResults = true
 	}
 
 	return
