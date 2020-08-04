@@ -1,6 +1,7 @@
 package executer
 
 import (
+	"github.com/miekg/dns"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -9,7 +10,7 @@ import (
 )
 
 // writeOutputDNS writes dns output to streams
-func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
+func (e *DNSExecuter) writeOutputDNS(domain string, req *dns.Msg, resp *dns.Msg, matcher *matchers.Matcher, extractorResults []string) {
 	if e.jsonOutput {
 		output := jsonOutput{
 			Template:    e.template.ID,
@@ -24,6 +25,10 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 		}
 		if len(extractorResults) > 0 {
 			output.ExtractedResults = extractorResults
+		}
+		if e.jsonRequest {
+			output.Request = req.String()
+			output.Response = resp.String()
 		}
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
