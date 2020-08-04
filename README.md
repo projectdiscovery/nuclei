@@ -11,7 +11,7 @@ Nuclei is a fast tool for configurable targeted scanning based on templates offe
 
 Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. Main use cases for nuclei are during initial reconnaissance phase to quickly check for low hanging fruits or CVEs across targets that are known and easily detectable. It uses [retryablehttp-go library](https://github.com/projectdiscovery/retryablehttp-go) designed to handle various errors and retries in case of blocking by WAFs, this is also one of our core modules from custom-queries.
 
-We have also [open-sourced a dedicated repository](https://github.com/projectdiscovery/nuclei-templates) to maintain various type of templates, we hope that you will contribute there too. Templates are provided in hopes that these will be useful and will allow everyone to build their own templates for the scanner. Checkout the guide at [**GUIDE.md**](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) for a primer on nuclei templates.
+We have also [open-sourced a dedicated repository](https://github.com/projectdiscovery/nuclei-templates) to maintain various type of templates, we hope that you will contribute there too. Templates are provided in hopes that these will be useful and will allow everyone to build their own templates for the scanner. Checkout the templating guide at [**nuclei.projectdiscovery.io**](https://nuclei.projectdiscovery.io/templating-guide/) for a primer on nuclei templates.
 
 # Resources
 - [Resources](#resources)
@@ -121,7 +121,7 @@ or download it from [nuclei templates](https://github.com/projectdiscovery/nucle
 > git clone https://github.com/projectdiscovery/nuclei-templates.git
 ```
 
-**Please refer to [this guide](https://github.com/projectdiscovery/nuclei-templates/blob/master/GUIDE.md) to writing your own custom templates.**
+**Please refer to [this guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
 
 # Running nuclei
 
