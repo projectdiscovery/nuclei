@@ -231,15 +231,14 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 	return parsedTemplates, workflowCount
 }
 
-// RunEnumeration sets up the input layer for giving input nuclei.
-// binary and runs the actual enumeration
-func (r *Runner) RunEnumeration() {
+// getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
+func (r *Runner) getTemplatesFor(definitions []string) []string {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
 
 	// parses user input, handle file/directory cases and produce a list of unique templates
-	for _, t := range r.options.Templates {
+	for _, t := range definitions {
 		var absPath string
 		var err error
 
@@ -331,6 +330,33 @@ func (r *Runner) RunEnumeration() {
 				}
 
 				allTemplates = append(allTemplates, matches...)
+			}
+		}
+	}
+
+	return allTemplates
+}
+
+// RunEnumeration sets up the input layer for giving input nuclei.
+// binary and runs the actual enumeration
+func (r *Runner) RunEnumeration() {
+	// resolves input templates definitions and any optional exclusion
+	includedTemplates := r.getTemplatesFor(r.options.Templates)
+	excludedTemplates := r.getTemplatesFor(r.options.ExcludedTemplates)
+	// defaults to all templates
+	allTemplates := includedTemplates
+	if len(excludedTemplates) > 0 {
+		excludedMap := make(map[string]struct{}, len(excludedTemplates))
+		for _, excl := range excludedTemplates {
+			excludedMap[excl] = struct{}{}
+		}
+		// rebuild list with only non-excluded templates
+		allTemplates = []string{}
+		for _, incl := range includedTemplates {
+			if _, found := excludedMap[incl]; !found {
+				allTemplates = append(allTemplates, incl)
+			} else {
+				gologger.Warningf("Excluding '%s'", incl)
 			}
 		}
 	}
