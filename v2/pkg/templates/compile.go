@@ -7,10 +7,29 @@ import (
 	"path"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
+
+// extendMatcher tries to use the matcher as specified in the Matcher.Extends field as the base for this matcher: any
+// additionally defined field will have precedence and will overwrite the template's ones.
+func extendMatcher(allMatchers map[string]*matchers.Matcher, matcher *matchers.Matcher) error {
+	if referenced, found := allMatchers[matcher.Extends]; found {
+		if referenced.Extends != "" {
+			extendMatcher(allMatchers, referenced)
+		}
+		err := mergo.Merge(matcher, referenced)
+		if err != nil {
+			return fmt.Errorf("could not inherit from '%s' for matcher definition '%s': %s", referenced.Name, matcher.Name, err)
+		}
+		matcher.Extends = ""
+	} else {
+		return fmt.Errorf("could not find referenced matcher '%s' from '%s'", matcher.Extends, matcher.Name)
+	}
+	return nil
+}
 
 // Parse parses a yaml request template file
 func Parse(file string) (*Template, error) {
@@ -32,6 +51,34 @@ func Parse(file string) (*Template, error) {
 	// If no requests, and it is also not a workflow, return error.
 	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
 		return nil, errors.New("No requests defined")
+	}
+
+	// builds a map of all the matchers
+	matchersMap := make(map[string]*matchers.Matcher)
+	for _, request := range template.BulkRequestsHTTP {
+		for _, matcher := range request.Matchers {
+			if matcher.Extends != "" {
+				// requires a new name
+				if matcher.Name == "" {
+					return nil, fmt.Errorf("an extending matcher is required to also provide a new name")
+				}
+				if _, already := matchersMap[matcher.Name]; already {
+					return nil, fmt.Errorf("a matcher with name '%s' is defined multiple times", matcher.Name)
+				}
+			}
+			matchersMap[matcher.Name] = matcher
+		}
+	}
+
+	// resolves matcher definitions extending other matchers (templates), merge the fields and overwrite the template's
+	// ones with the provided values
+	for _, m := range matchersMap {
+		if m.Extends != "" {
+			err := extendMatcher(matchersMap, m)
+			if err != nil {
+				return nil, fmt.Errorf("could not extend matcher '%s': %s", m.Name, err)
+			}
+		}
 	}
 
 	// Compile the matchers and the extractors for http requests

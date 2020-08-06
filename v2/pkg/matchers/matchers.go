@@ -13,6 +13,9 @@ type Matcher struct {
 	// matcherType is the internal type of the matcher
 	matcherType MatcherType
 
+	// Extends is the name of another matcher name to use as a template, any other additional field will have
+	// precedence and will overwrite the template's ones
+	Extends string `yaml:"extends,omitempty"`
 	// Name is matcher Name
 	Name string `yaml:"name,omitempty"`
 	// Status are the acceptable status codes for the response
