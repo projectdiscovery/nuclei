@@ -198,6 +198,16 @@ func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bo
 	return false
 }
 
+func (r *Runner) logTemplateLoaded(id, name, author, severity string) {
+	// Display the message for the template
+	message := fmt.Sprintf("[%s] Loaded template %s (%s)",
+		r.colorizer.BrightBlue(id).String(), r.colorizer.Bold(name).String(), r.colorizer.BrightYellow("@"+author).String())
+	if severity != "" {
+		message += " [" + r.colorizer.Yellow(severity).String() + "]"
+	}
+	gologger.Infof("%s\n", message)
+}
+
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
 func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string) (parsedTemplates []interface{}, workflowCount int) {
@@ -217,12 +227,14 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 			sev := strings.ToLower(template.Info.Severity)
 			if !filterBySeverity || hasMatchingSeverity(sev, allSeverities) {
 				parsedTemplates = append(parsedTemplates, template)
+				r.logTemplateLoaded(template.ID, template.Info.Name, template.Info.Author, template.Info.Severity)
 			} else {
 				gologger.Warningf("Excluding template %s due to severity filter (%s not in [%s])", id, sev, severities)
 			}
 		case *workflows.Workflow:
 			workflow := t.(*workflows.Workflow)
 			parsedTemplates = append(parsedTemplates, workflow)
+			r.logTemplateLoaded(workflow.ID, workflow.Info.Name, workflow.Info.Author, workflow.Info.Severity)
 			workflowCount++
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -440,13 +452,6 @@ func (r *Runner) RunEnumeration() {
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
 func (r *Runner) processTemplateWithList(p progress.IProgress, template *templates.Template, request interface{}) bool {
-	// Display the message for the template
-	message := fmt.Sprintf("[%s] Loaded template %s (@%s)", template.ID, template.Info.Name, template.Info.Author)
-	if template.Info.Severity != "" {
-		message += " [" + template.Info.Severity + "]"
-	}
-	gologger.Infof("%s\n", message)
-
 	var writer *bufio.Writer
 	if r.output != nil {
 		writer = bufio.NewWriter(r.output)
