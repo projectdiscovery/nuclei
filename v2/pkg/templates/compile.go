@@ -14,7 +14,7 @@ import (
 )
 
 // extendMatcher tries to use the matcher as specified in the Matcher.Extends field as the base for this matcher: any
-// additionally defined field will have precedence and will overwrite the template's ones.
+// additionally defined field will not be overridden by the template's ones.
 func extendMatcher(allMatchers map[string]*matchers.Matcher, matcher *matchers.Matcher) error {
 	if referenced, found := allMatchers[matcher.Extends]; found {
 		if referenced.NeedsExtension() {

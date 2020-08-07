@@ -13,8 +13,8 @@ type Matcher struct {
 	// matcherType is the internal type of the matcher
 	matcherType MatcherType
 
-	// Extends is the name of another matcher to use as a template, any other additional field will have
-	// precedence and will overwrite the template's ones
+	// Extends is the name of another matcher to use as a template, any additionally defined field will not be
+	// overridden by the template's ones
 	Extends string `yaml:"extends,omitempty"`
 	// Whether this matcher has been extended already
 	extended bool
