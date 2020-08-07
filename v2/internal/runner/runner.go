@@ -191,7 +191,7 @@ func isNewPath(path string, pathMap map[string]bool) bool {
 
 func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
 	for _, s := range allowedSeverities {
-		if strings.HasPrefix(templateSeverity, s) {
+		if s != "" && strings.HasPrefix(templateSeverity, s) {
 			return true
 		}
 	}
