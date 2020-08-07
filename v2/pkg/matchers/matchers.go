@@ -16,6 +16,8 @@ type Matcher struct {
 	// Extends is the name of another matcher to use as a template, any other additional field will have
 	// precedence and will overwrite the template's ones
 	Extends string `yaml:"extends,omitempty"`
+	// Whether this matcher has been extended already
+	extended bool
 	// Name is matcher Name
 	Name string `yaml:"name,omitempty"`
 	// Status are the acceptable status codes for the response
@@ -116,4 +118,14 @@ var PartTypes = map[string]Part{
 // GetPart returns the part of the matcher
 func (m *Matcher) GetPart() Part {
 	return m.part
+}
+
+// NeedsExtension returns whether this matcher needs to be extended
+func (m *Matcher) NeedsExtension() bool {
+	return m.Extends != "" && !m.extended
+}
+
+// SetExtended marks this Matcher as being extended and resolved
+func (m *Matcher) SetExtended() {
+	m.extended = true
 }
