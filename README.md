@@ -81,14 +81,15 @@ This will display help for the tool. Here are all the switches it supports.
 The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
 
 ```bash
-> tar -xzvf nuclei-linux-amd64.tar.gz
-> mv nuclei /usr/bin/
-> nuclei -h
+https://github.com/projectdiscovery/nuclei/releases
+tar -xzvf nuclei-linux-amd64.tar.gz
+mv nuclei /usr/local/bin/
+nuclei -h
 ```
 
 ### From Source
 
-nuclei requires go1.13+ to install successfully. Run the following command to get the repo - 
+nuclei requires **go1.14+** to install successfully. Run the following command to get the repo - 
 
 ```bash
 > GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
@@ -181,11 +182,17 @@ Remember to change `/path-to-nuclei-templates` to the real path on your host fil
 
 # Thanks
 
-nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. Do also check out these similar awesome projects that may fit in your workflow:
+nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details. 
 
-[https://portswigger.net/burp](https://portswigger.net/burp)</br>
-[https://github.com/ffuf/ffuf](https://github.com/ffuf/ffuf)</br>
-[https://github.com/jaeles-project/jaeles](https://github.com/jaeles-project/jaeles)</br>
-[https://github.com/ameenmaali/qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
-[https://github.com/proabiral/inception](https://github.com/proabiral/inception)</br>
-[https://github.com/hannob/snallygaster](https://github.com/hannob/snallygaster)</br>
+Do also check out these similar awesome projects that may fit in your workflow:
+
+- [Burp Suite](https://portswigger.net/burp)</br>
+- [FFuF](https://github.com/ffuf/ffuf)</br>
+- [Jaeles](https://github.com/jaeles-project/jaeles)</br>
+- [Qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
+- [Inception](https://github.com/proabiral/inception)</br>
+- [Snallygaster](https://github.com/hannob/snallygaster)</br>
+- [Gofingerprint](https://github.com/Static-Flow/gofingerprint)</br>
+- [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates)</br>
+- [Google tsunami](https://github.com/google/tsunami-security-scanner)</br>
+- [ChopChop](https://github.com/michelin/ChopChop)<br>
