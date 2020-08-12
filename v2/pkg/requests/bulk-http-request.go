@@ -204,8 +204,6 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	req.Header.Set("Connection", "close")
-	req.Close = true
 	replacer := newReplacer(values)
 
 	// Check if the user requested a request body
@@ -218,14 +216,17 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
-	}
-
 	// raw requests are left untouched
 	if len(r.Raw) > 0 {
 		return retryablehttp.FromRequest(req)
+	}
+    
+	req.Header.Set("Connection", "close")
+	req.Close = true
+    
+	// Set some headers only if the header wasn't supplied by the user
+	if _, ok := req.Header["User-Agent"]; !ok {
+		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 	}
 
 	if _, ok := req.Header["Accept"]; !ok {
