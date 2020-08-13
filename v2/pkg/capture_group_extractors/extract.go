@@ -16,11 +16,8 @@ func (e *CaptureGroupExtractor) Extract(resp *http.Response, body, headers strin
 			return e.extractRegex(headers)
 		} else {
 			matches := e.extractRegex(headers)
-			// TODO: this it seems like its not the same as all
-			if len(matches) > 0 {
-				return matches
-			}
-			return e.extractRegex(body)
+			matches = append(matches,e.extractRegex(body)...)
+			return matches
 		}
 	}
 
@@ -40,8 +37,7 @@ func (e *CaptureGroupExtractor) ExtractDNS(msg *dns.Msg) []map[string]string {
 // extractRegex extracts text from a corpus and returns it
 func (e *CaptureGroupExtractor) extractRegex(corpus string) []map[string]string {
 	results := make([]map[string]string, 0)
-	for regex_index, regex := range e.regexCompiled {
-		print(regex_index)
+	for _, regex := range e.regexCompiled {
 		tags := false
 		matches := regex.FindAllStringSubmatch(corpus, -1)
 		for _, match := range matches {

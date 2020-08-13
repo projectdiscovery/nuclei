@@ -127,7 +127,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
-				e.writeOutputDNS(domain, matcher, nil)
+				e.writeOutputDNS(domain, matcher, nil, nil)
 				result.GotResults = true
 			}
 		}
@@ -144,10 +144,23 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 		}
 	}
 
+	// All matchers have successfully completed so now start with the
+	// next task which is extraction of input from matchers.
+	var captureGroupExtractorResults []map[string]string
+	for _, capture_group_extractor := range e.dnsRequest.CaptureGroupExtractors {
+		for _, match := range capture_group_extractor.ExtractDNS(resp) {
+			if !capture_group_extractor.Internal {
+				captureGroupExtractorResults = append(captureGroupExtractorResults, match)
+			}
+		}
+		// probably redundant but ensures we snapshot current payload values when capture_group_extractors are valid
+		//result.CaptureGroupExtractions[capture_group_extractor.Name] = captureGroupExtractorResults
+	}
+
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputDNS(domain, nil, extractorResults)
+		e.writeOutputDNS(domain, nil, extractorResults, captureGroupExtractorResults)
 		result.GotResults = true
 	}
 

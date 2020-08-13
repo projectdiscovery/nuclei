@@ -16,10 +16,11 @@ func (e *Extractor) Extract(resp *http.Response, body, headers string) map[strin
 			return e.extractRegex(headers)
 		} else {
 			matches := e.extractRegex(headers)
-			if len(matches) > 0 {
-				return matches
+			//all should merge both.
+			for k, v := range e.extractRegex(body) {
+				matches[k] = v
 			}
-			return e.extractRegex(body)
+			return matches
 		}
 	case KValExtractor:
 		if e.part == HeaderPart {

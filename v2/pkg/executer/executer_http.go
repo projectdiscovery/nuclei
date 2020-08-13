@@ -236,8 +236,6 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
 		result.Meta = request.Meta
-		test := extractor.Name
-		print(test)
 		result.Extractions[extractor.Name] = extractorResults
 	}
 
@@ -256,8 +254,6 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 		}
 		// probably redundant but ensures we snapshot current payload values when capture_group_extractors are valid
 		result.Meta = request.Meta
-		test2 := capture_group_extractor.Name
-		print(test2)
 		result.CaptureGroupExtractions[capture_group_extractor.Name] = captureGroupExtractorResults
 	}
 

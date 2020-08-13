@@ -9,7 +9,7 @@ import (
 )
 
 // writeOutputDNS writes dns output to streams
-func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string) {
+func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, extractorResults []string, captureGroupExtractorResults []map[string]string) {
 	if e.jsonOutput {
 		output := jsonOutput{
 			Template:    e.template.ID,
@@ -24,6 +24,9 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 		}
 		if len(extractorResults) > 0 {
 			output.ExtractedResults = extractorResults
+		}
+		if len(captureGroupExtractorResults) > 0 {
+			output.CaptureGroupExtractedResults = captureGroupExtractorResults
 		}
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
@@ -67,6 +70,19 @@ func (e *DNSExecuter) writeOutputDNS(domain string, matcher *matchers.Matcher, e
 		}
 		builder.WriteString("]")
 	}
+
+	// If any extractors, write the results
+	if len(captureGroupExtractorResults) > 0 {
+		builder.WriteString(" [")
+		for i, result := range captureGroupExtractorResults {
+			builder.WriteString(colorizer.BrightCyan(result).String())
+			if i != len(captureGroupExtractorResults)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+
 	builder.WriteRune('\n')
 
 	// Write output to screen as well as any output file
