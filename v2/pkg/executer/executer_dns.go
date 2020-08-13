@@ -22,6 +22,7 @@ import (
 type DNSExecuter struct {
 	debug       bool
 	jsonOutput  bool
+	jsonRequest bool
 	Results     bool
 	dnsClient   *retryabledns.Client
 	template    *templates.Template
@@ -44,11 +45,12 @@ var DefaultResolvers = []string{
 
 // DNSOptions contains configuration options for the DNS executer.
 type DNSOptions struct {
-	Debug      bool
-	JSON       bool
-	Template   *templates.Template
-	DNSRequest *requests.DNSRequest
-	Writer     *bufio.Writer
+	Debug        bool
+	JSON         bool
+	JSONRequests bool
+	Template     *templates.Template
+	DNSRequest   *requests.DNSRequest
+	Writer       *bufio.Writer
 
 	ColoredOutput bool
 	Colorizer     aurora.Aurora
@@ -63,6 +65,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 	executer := &DNSExecuter{
 		debug:         options.Debug,
 		jsonOutput:    options.JSON,
+		jsonRequest:   options.JSONRequests,
 		dnsClient:     dnsClient,
 		template:      options.Template,
 		dnsRequest:    options.DNSRequest,
@@ -127,7 +130,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
-				e.writeOutputDNS(domain, matcher, nil, nil)
+				e.writeOutputDNS(domain, compiledRequest, resp, matcher, nil,nil)
 				result.GotResults = true
 			}
 		}
@@ -159,8 +162,9 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
+
 	if len(e.dnsRequest.Extractors) > 0 || len(e.dnsRequest.CaptureGroupExtractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputDNS(domain, nil, extractorResults, captureGroupExtractorResults)
+		e.writeOutputDNS(domain, compiledRequest, resp, nil, extractorResults, captureGroupExtractorResults)
 		result.GotResults = true
 	}
 
