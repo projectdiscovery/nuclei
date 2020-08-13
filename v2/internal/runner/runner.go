@@ -466,14 +466,15 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 	switch value := request.(type) {
 	case *requests.DNSRequest:
 		dnsExecuter = executer.NewDNSExecuter(&executer.DNSOptions{
-			Debug:      r.options.Debug,
-			Template:   template,
-			DNSRequest: value,
-			Writer:     writer,
-			JSON:       r.options.JSON,
-			ColoredOutput:   !r.options.NoColor,
-			Colorizer:       r.colorizer,
-			Decolorizer:     r.decolorizer,
+			Debug:         r.options.Debug,
+			Template:      template,
+			DNSRequest:    value,
+			Writer:        writer,
+			JSON:          r.options.JSON,
+			JSONRequests:  r.options.JSONRequests,
+			ColoredOutput: !r.options.NoColor,
+			Colorizer:     r.colorizer,
+			Decolorizer:   r.decolorizer,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -609,18 +610,18 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 					ProxySocksURL: r.options.ProxySocksURL,
 					CustomHeaders: r.options.CustomHeaders,
 					CookieJar:     jar,
-					ColoredOutput:   !r.options.NoColor,
-					Colorizer:       r.colorizer,
-					Decolorizer:     r.decolorizer,
+					ColoredOutput: !r.options.NoColor,
+					Colorizer:     r.colorizer,
+					Decolorizer:   r.decolorizer,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
-					Debug:    r.options.Debug,
-					Template: t,
-					Writer:   writer,
-					ColoredOutput:   !r.options.NoColor,
-					Colorizer:       r.colorizer,
-					Decolorizer:     r.decolorizer,
+					Debug:         r.options.Debug,
+					Template:      t,
+					Writer:        writer,
+					ColoredOutput: !r.options.NoColor,
+					Colorizer:     r.colorizer,
+					Decolorizer:   r.decolorizer,
 				}
 			}
 			if template.DNSOptions != nil || template.HTTPOptions != nil {
