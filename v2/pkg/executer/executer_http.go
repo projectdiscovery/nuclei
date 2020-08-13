@@ -19,10 +19,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/tracertea/nuclei/v2/internal/progress"
-	"github.com/tracertea/nuclei/v2/pkg/matchers"
-	"github.com/tracertea/nuclei/v2/pkg/requests"
-	"github.com/tracertea/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )

@@ -7,8 +7,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/tracertea/nuclei/v2/pkg/generators"
-	"github.com/tracertea/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
 

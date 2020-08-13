@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tracertea/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
 
 type GeneratorState int

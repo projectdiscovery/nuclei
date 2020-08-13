@@ -7,8 +7,8 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/gologger"
-	"github.com/tracertea/nuclei/v2/pkg/matchers"
-	"github.com/tracertea/nuclei/v2/pkg/requests"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 )
 
 // writeOutputHTTP writes http output to streams

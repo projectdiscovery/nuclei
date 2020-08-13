@@ -5,7 +5,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/gologger"
-	"github.com/tracertea/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 )
 
 // writeOutputDNS writes dns output to streams

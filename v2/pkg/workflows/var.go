@@ -5,10 +5,10 @@ import (
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/projectdiscovery/gologger"
-	"github.com/tracertea/nuclei/v2/internal/progress"
-	"github.com/tracertea/nuclei/v2/pkg/atomicboolean"
-	"github.com/tracertea/nuclei/v2/pkg/executer"
-	"github.com/tracertea/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
 
 // NucleiVar within the scripting engine

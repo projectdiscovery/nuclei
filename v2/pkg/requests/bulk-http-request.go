@@ -3,7 +3,7 @@ package requests
 import (
 	"bufio"
 	"fmt"
-	"github.com/tracertea/nuclei/v2/pkg/capture_group_extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/capture_group_extractors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/tracertea/nuclei/v2/pkg/extractors"
-	"github.com/tracertea/nuclei/v2/pkg/generators"
-	"github.com/tracertea/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -224,7 +224,7 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 
 	// Set some headers only if the header wasn't supplied by the user
 	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/tracertea/nuclei)")
+		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 	}
 
 	// raw requests are left untouched
