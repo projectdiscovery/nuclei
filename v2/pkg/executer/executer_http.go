@@ -19,10 +19,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/tracertea/nuclei/v2/internal/progress"
+	"github.com/tracertea/nuclei/v2/pkg/matchers"
+	"github.com/tracertea/nuclei/v2/pkg/requests"
+	"github.com/tracertea/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )
@@ -116,6 +116,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
+	result.CaptureGroupExtractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
@@ -214,7 +215,7 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
+				e.writeOutputHTTP(request, resp, body, matcher, nil, nil)
 				result.GotResults = true
 			}
 		}
@@ -235,13 +236,35 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
 		result.Meta = request.Meta
+		test := extractor.Name
+		print(test)
 		result.Extractions[extractor.Name] = extractorResults
+	}
+
+	// All matchers have successfully completed so now start with the
+	// next task which is extraction of input from matchers.
+	var captureGroupExtractorResults, outputCaptureGroupExtractorResults []map[string]string
+	for _, capture_group_extractor := range e.bulkHttpRequest.CaptureGroupExtractors {
+		for _, match := range capture_group_extractor.Extract(resp, body, headers) {
+			if _, ok := dynamicvalues[capture_group_extractor.Name]; !ok {
+				dynamicvalues[capture_group_extractor.Name] = match
+			}
+			captureGroupExtractorResults = append(captureGroupExtractorResults, match)
+			if !capture_group_extractor.Internal {
+				outputCaptureGroupExtractorResults = append(outputCaptureGroupExtractorResults, match)
+			}
+		}
+		// probably redundant but ensures we snapshot current payload values when capture_group_extractors are valid
+		result.Meta = request.Meta
+		test2 := capture_group_extractor.Name
+		print(test2)
+		result.CaptureGroupExtractions[capture_group_extractor.Name] = captureGroupExtractorResults
 	}
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
+	if len(outputExtractorResults) > 0 || len(outputCaptureGroupExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, outputCaptureGroupExtractorResults)
 		result.GotResults = true
 	}
 
@@ -337,6 +360,7 @@ type Result struct {
 	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
+	CaptureGroupExtractions map[string]interface{}
 	GotResults  bool
 	Error       error
 	Done        bool

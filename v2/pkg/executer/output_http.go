@@ -7,12 +7,12 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
+	"github.com/tracertea/nuclei/v2/pkg/matchers"
+	"github.com/tracertea/nuclei/v2/pkg/requests"
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string, captureGroupExtractorResults []map[string]string) {
 	URL := req.Request.URL.String()
 
 	if e.jsonOutput {
@@ -29,6 +29,9 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 		}
 		if len(extractorResults) > 0 {
 			output.ExtractedResults = extractorResults
+		}
+		if len(captureGroupExtractorResults) > 0 {
+			output.CaptureGroupExtractedResults = captureGroupExtractorResults
 		}
 		if e.jsonRequest {
 			dumpedRequest, err := httputil.DumpRequest(req.Request.Request, true)
@@ -84,6 +87,18 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HttpRequest, resp *http.Res
 		for i, result := range extractorResults {
 			builder.WriteString(colorizer.BrightCyan(result).String())
 			if i != len(extractorResults)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+
+	// If any extractors, write the results
+	if len(captureGroupExtractorResults) > 0 {
+		builder.WriteString(" [")
+		for i, result := range captureGroupExtractorResults {
+			builder.WriteString(colorizer.BrightCyan(result).String())
+			if i != len(captureGroupExtractorResults)-1 {
 				builder.WriteRune(',')
 			}
 		}

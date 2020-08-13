@@ -3,6 +3,7 @@ package requests
 import (
 	"bufio"
 	"fmt"
+	"github.com/tracertea/nuclei/v2/pkg/capture_group_extractors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -10,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/tracertea/nuclei/v2/pkg/extractors"
+	"github.com/tracertea/nuclei/v2/pkg/generators"
+	"github.com/tracertea/nuclei/v2/pkg/matchers"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -47,6 +48,9 @@ type BulkHTTPRequest struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	// CaptureGroupExtractors contains the extraction mechanism for the request to identify
+	// and extract parts of the response using named capture groups
+	CaptureGroupExtractors []*capture_group_extractors.CaptureGroupExtractor `yaml:"capture_group_extractors,omitempty"`
 	// Redirects specifies whether redirects should be followed.
 	Redirects bool `yaml:"redirects,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.
@@ -220,7 +224,7 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 
 	// Set some headers only if the header wasn't supplied by the user
 	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/tracertea/nuclei)")
 	}
 
 	// raw requests are left untouched

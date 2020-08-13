@@ -1,11 +1,12 @@
 package requests
 
 import (
+	"github.com/tracertea/nuclei/v2/pkg/capture_group_extractors"
 	"strings"
 
 	"github.com/miekg/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/tracertea/nuclei/v2/pkg/extractors"
+	"github.com/tracertea/nuclei/v2/pkg/matchers"
 )
 
 // DNSRequest contains a request to be made from a template
@@ -30,6 +31,9 @@ type DNSRequest struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	// CaptureGroupExtractors contains the extraction mechanism for the request to identify
+	// and extract parts of the response using named capture groups
+	CaptureGroupExtractors []*capture_group_extractors.CaptureGroupExtractor `yaml:"capture_group_extractors,omitempty"`
 }
 
 // GetMatchersCondition returns the condition for the matcher

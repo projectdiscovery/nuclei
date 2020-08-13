@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/tracertea/nuclei/v2/internal/runner"
 )
 
 func main() {

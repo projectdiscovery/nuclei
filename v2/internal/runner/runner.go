@@ -19,12 +19,12 @@ import (
 	"github.com/d5/tengo/v2/stdlib"
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
-	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/tracertea/nuclei/v2/internal/progress"
+	"github.com/tracertea/nuclei/v2/pkg/atomicboolean"
+	"github.com/tracertea/nuclei/v2/pkg/executer"
+	"github.com/tracertea/nuclei/v2/pkg/requests"
+	"github.com/tracertea/nuclei/v2/pkg/templates"
+	"github.com/tracertea/nuclei/v2/pkg/workflows"
 )
 
 // Runner is a client for running the enumeration process.

@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/tracertea/nuclei/v2/pkg/generators"
 )
 
 // CompileMatchers performs the initial setup operation on a matcher

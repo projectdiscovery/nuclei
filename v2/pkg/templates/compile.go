@@ -7,8 +7,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/tracertea/nuclei/v2/pkg/generators"
+	"github.com/tracertea/nuclei/v2/pkg/matchers"
 	"gopkg.in/yaml.v2"
 )
 
@@ -98,6 +98,12 @@ func Parse(file string) (*Template, error) {
 			}
 		}
 
+		for _, capture_group_extractor := range request.CaptureGroupExtractors {
+			if err := capture_group_extractor.CompileExtractors(); err != nil {
+				return nil, err
+			}
+		}
+
 		request.InitGenerator()
 	}
 
@@ -119,6 +125,12 @@ func Parse(file string) (*Template, error) {
 
 		for _, extractor := range request.Extractors {
 			if err := extractor.CompileExtractors(); err != nil {
+				return nil, err
+			}
+		}
+
+		for _, capture_group_extractor := range request.CaptureGroupExtractors {
+			if err := capture_group_extractor.CompileExtractors(); err != nil {
 				return nil, err
 			}
 		}
