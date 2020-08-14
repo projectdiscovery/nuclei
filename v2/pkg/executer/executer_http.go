@@ -116,7 +116,6 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, URL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
-	result.CaptureGroupExtractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
@@ -224,37 +223,36 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
 	var extractorResults, outputExtractorResults []string
+	var captureGroupExtractorResults, outputCaptureGroupExtractorResults []map[string]string
 	for _, extractor := range e.bulkHttpRequest.Extractors {
-		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
+		for _, match := range extractor.Extract(resp, body, headers) {
+			if extractor.Group == false {
+				uniqueMap := make(map[string]struct{})
+				for _, val  := range match {
+					uniqueMap[val] = struct{}{}
+				}
+				for stringMatch := range uniqueMap {
+					if _, ok := dynamicvalues[extractor.Name]; !ok {
+						dynamicvalues[extractor.Name] = stringMatch
+					}
+					extractorResults = append(extractorResults, stringMatch)
+					if !extractor.Internal {
+						outputExtractorResults = append(outputExtractorResults, stringMatch)
+					}
+				}
+			} else {
+				if _, ok := dynamicvalues[extractor.Name]; !ok {
 				dynamicvalues[extractor.Name] = match
-			}
-			extractorResults = append(extractorResults, match)
-			if !extractor.Internal {
-				outputExtractorResults = append(outputExtractorResults, match)
+				}
+				captureGroupExtractorResults = append(captureGroupExtractorResults, match)
+				if !extractor.Internal {
+					outputCaptureGroupExtractorResults = append(outputCaptureGroupExtractorResults, match)
+				}
 			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
 		result.Meta = request.Meta
 		result.Extractions[extractor.Name] = extractorResults
-	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
-	var captureGroupExtractorResults, outputCaptureGroupExtractorResults []map[string]string
-	for _, capture_group_extractor := range e.bulkHttpRequest.CaptureGroupExtractors {
-		for _, match := range capture_group_extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[capture_group_extractor.Name]; !ok {
-				dynamicvalues[capture_group_extractor.Name] = match
-			}
-			captureGroupExtractorResults = append(captureGroupExtractorResults, match)
-			if !capture_group_extractor.Internal {
-				outputCaptureGroupExtractorResults = append(outputCaptureGroupExtractorResults, match)
-			}
-		}
-		// probably redundant but ensures we snapshot current payload values when capture_group_extractors are valid
-		result.Meta = request.Meta
-		result.CaptureGroupExtractions[capture_group_extractor.Name] = captureGroupExtractorResults
 	}
 
 	// Write a final string of output if matcher type is
@@ -356,7 +354,6 @@ type Result struct {
 	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
-	CaptureGroupExtractions map[string]interface{}
 	GotResults  bool
 	Error       error
 	Done        bool

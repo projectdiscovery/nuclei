@@ -98,12 +98,6 @@ func Parse(file string) (*Template, error) {
 			}
 		}
 
-		for _, capture_group_extractor := range request.CaptureGroupExtractors {
-			if err := capture_group_extractor.CompileExtractors(); err != nil {
-				return nil, err
-			}
-		}
-
 		request.InitGenerator()
 	}
 
@@ -125,12 +119,6 @@ func Parse(file string) (*Template, error) {
 
 		for _, extractor := range request.Extractors {
 			if err := extractor.CompileExtractors(); err != nil {
-				return nil, err
-			}
-		}
-
-		for _, capture_group_extractor := range request.CaptureGroupExtractors {
-			if err := capture_group_extractor.CompileExtractors(); err != nil {
 				return nil, err
 			}
 		}

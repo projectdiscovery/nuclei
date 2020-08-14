@@ -35,7 +35,7 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req *dns.Msg, resp *dns.Msg,
 			output.Request = req.String()
 			output.Response = resp.String()
 		}
-    
+
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
 			gologger.Warningf("Could not marshal json output: %s\n", err)

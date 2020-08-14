@@ -3,7 +3,6 @@ package requests
 import (
 	"bufio"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/capture_group_extractors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -48,9 +47,6 @@ type BulkHTTPRequest struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
-	// CaptureGroupExtractors contains the extraction mechanism for the request to identify
-	// and extract parts of the response using named capture groups
-	CaptureGroupExtractors []*capture_group_extractors.CaptureGroupExtractor `yaml:"capture_group_extractors,omitempty"`
 	// Redirects specifies whether redirects should be followed.
 	Redirects bool `yaml:"redirects,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.

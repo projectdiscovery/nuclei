@@ -19,6 +19,9 @@ type Extractor struct {
 	// KVal are the kval to be present in the response headers/cookies
 	KVal []string `yaml:"kval,omitempty"`
 
+	// Group Use regex matching groups to extract values
+	Group bool `yaml:"group,omitempty"`
+
 	// Part is the part of the request to match
 	//
 	// By default, matching is performed in request body.
