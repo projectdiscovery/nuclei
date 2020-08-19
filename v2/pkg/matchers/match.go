@@ -22,10 +22,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 		} else if m.part == HeaderPart {
 			return m.matchWords(headers)
 		} else {
-			if !m.matchWords(headers) {
-				return false
-			}
-			return m.matchWords(body)
+			return m.matchWords(headers) || m.matchWords(body)
 		}
 	case RegexMatcher:
 		// Match the parts as required for regex check
@@ -34,10 +31,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 		} else if m.part == HeaderPart {
 			return m.matchRegex(headers)
 		} else {
-			if m.matchRegex(headers) {
-				return true
-			}
-			return m.matchRegex(body)
+			return m.matchRegex(headers) || m.matchRegex(body)
 		}
 	case BinaryMatcher:
 		// Match the parts as required for binary characters check
@@ -46,10 +40,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 		} else if m.part == HeaderPart {
 			return m.matchBinary(headers)
 		} else {
-			if !m.matchBinary(headers) {
-				return false
-			}
-			return m.matchBinary(body)
+			return m.matchBinary(headers) || m.matchBinary(body)
 		}
 	case DSLMatcher:
 		// Match complex query
