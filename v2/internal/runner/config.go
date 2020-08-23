@@ -104,7 +104,7 @@ func (r *Runner) readNucleiIgnoreFile() {
 func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 	for _, paths := range r.templatesConfig.ignorePaths {
 		// If we have a path to ignore, check if it's in the item.
-		if paths[len(paths)] == '/' {
+		if paths[len(paths)-1] == '/' {
 			if strings.Contains(item, paths) {
 				return true
 			}
