@@ -102,6 +102,9 @@ func (r *Runner) readNucleiIgnoreFile() {
 
 // checkIfInNucleiIgnore checks if a path falls under nuclei-ignore rules.
 func (r *Runner) checkIfInNucleiIgnore(item string) bool {
+	if r.templatesConfig == nil {
+		return false
+	}
 	for _, paths := range r.templatesConfig.ignorePaths {
 		// If we have a path to ignore, check if it's in the item.
 		if paths[len(paths)-1] == '/' {
