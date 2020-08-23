@@ -108,7 +108,6 @@ func (r *Runner) updateTemplates() error {
 			home = r.options.TemplatesDirectory
 		}
 		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
-		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
 
 		// Download the repository and also write the revision to a HEAD file.
 		version, asset, err := r.getLatestReleaseFromGithub()
@@ -169,7 +168,6 @@ func (r *Runner) updateTemplates() error {
 			r.templatesConfig.TemplatesDirectory = path.Join(home, "nuclei-templates")
 		}
 		r.templatesConfig.CurrentVersion = version.String()
-		os.RemoveAll(r.templatesConfig.TemplatesDirectory)
 
 		gologger.Verbosef("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
 
@@ -268,17 +266,18 @@ func (r *Runner) downloadReleaseAndUnzip(downloadURL string) error {
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		os.MkdirAll(templateDirectory, os.ModePerm)
 
-		f, err := os.Create(path.Join(templateDirectory, name))
+		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			return fmt.Errorf("Could not create uncompressed file: %s", err)
 		}
-		defer f.Close()
 
 		reader, err := file.Open()
 		if err != nil {
+			f.Close()
 			return fmt.Errorf("Could not open archive to extract file: %s", err)
 		}
 		io.Copy(f, reader)
+		f.Close()
 	}
 	return nil
 }
