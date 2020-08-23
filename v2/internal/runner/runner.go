@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/logrusorgru/aurora"
 	"io"
 	"io/ioutil"
 	"net/http/cookiejar"
@@ -14,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/logrusorgru/aurora"
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -62,6 +63,10 @@ func New(options *Options) (*Runner, error) {
 	}
 	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
+	}
+	// Read nucleiignore file if given a templateconfig
+	if runner.templatesConfig != nil {
+		runner.readNucleiIgnoreFile()
 	}
 
 	// output coloring
@@ -278,10 +283,6 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 				continue
 			}
 
-			for _, i := range matches {
-				processed[i] = true
-			}
-
 			// couldn't find templates in directory
 			if len(matches) == 0 {
 				gologger.Labelf("Error, no templates were found with '%s'.\n", absPath)
@@ -290,7 +291,12 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 				gologger.Labelf("Identified %d templates\n", len(matches))
 			}
 
-			allTemplates = append(allTemplates, matches...)
+			for _, match := range matches {
+				if !r.checkIfInNucleiIgnore(match) {
+					processed[match] = true
+					allTemplates = append(allTemplates, match)
+				}
+			}
 		} else {
 			// determine file/directory
 			isFile, err := isFilePath(absPath)
@@ -316,7 +322,7 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 				err = godirwalk.Walk(absPath, &godirwalk.Options{
 					Callback: func(path string, d *godirwalk.Dirent) error {
 						if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
-							if isNewPath(path, processed) {
+							if !r.checkIfInNucleiIgnore(path) && isNewPath(path, processed) {
 								matches = append(matches, path)
 								processed[path] = true
 							}

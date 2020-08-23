@@ -2,6 +2,7 @@ package runner
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -27,6 +28,9 @@ type nucleiConfig struct {
 	TemplatesDirectory string    `json:"templates-directory,omitempty"`
 	CurrentVersion     string    `json:"current-version,omitempty"`
 	LastChecked        time.Time `json:"last-checked,omitempty"`
+
+	// ignorePaths ignores all the paths listed unless specified manually
+	ignorePaths []string `json:"ignore-paths,omitempty"`
 }
 
 // nucleiConfigFilename is the filename of nuclei configuration file.
@@ -74,6 +78,44 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 		return err
 	}
 	return nil
+}
+
+const nucleiIgnoreFile = ".nuclei-ignore"
+
+// readNucleiIgnoreFile reads the nuclei ignore file marking it in map
+func (r *Runner) readNucleiIgnoreFile() {
+	file, err := os.Open(path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile))
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		r.templatesConfig.ignorePaths = append(r.templatesConfig.ignorePaths, text)
+	}
+}
+
+// checkIfInNucleiIgnore checks if a path falls under nuclei-ignore rules.
+func (r *Runner) checkIfInNucleiIgnore(item string) bool {
+	for _, paths := range r.templatesConfig.ignorePaths {
+		// If we have a path to ignore, check if it's in the item.
+		if paths[len(paths)-1] == '/' {
+			if strings.Contains(item, paths) {
+				return true
+			}
+			continue
+		}
+		// Check for file based extension in ignores
+		if strings.HasSuffix(item, paths) {
+			return true
+		}
+	}
+	return false
 }
 
 // updateTemplates checks if the default list of nuclei-templates
