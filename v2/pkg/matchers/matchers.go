@@ -45,6 +45,10 @@ type Matcher struct {
 	Part string `yaml:"part,omitempty"`
 	// part is the part of the request to match
 	part Part
+
+	// Negative specifies if the match should be reversed
+	// It will only match if the condition is not true.
+	Negative bool `yaml:"negative,omitempty"`
 }
 
 // MatcherType is the type of the matcher specified
@@ -113,4 +117,13 @@ var PartTypes = map[string]Part{
 // GetPart returns the part of the matcher
 func (m *Matcher) GetPart() Part {
 	return m.part
+}
+
+// isNegative reverts the results of the match if the matcher
+// is of type negative.
+func (m *Matcher) isNegative(data bool) bool {
+	if m.Negative {
+		return !data
+	}
+	return data
 }
