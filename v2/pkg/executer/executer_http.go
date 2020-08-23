@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"github.com/logrusorgru/aurora"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/logrusorgru/aurora"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -131,14 +132,14 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, URL string) (result Res
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not build http request")
 			p.Drop(remaining)
-			return
+			continue
 		}
 
 		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
 			p.Drop(remaining)
-			return
+			continue
 		}
 
 		e.bulkHttpRequest.Increment(URL)
