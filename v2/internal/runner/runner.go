@@ -205,7 +205,7 @@ func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bo
 
 func (r *Runner) logTemplateLoaded(id, name, author, severity string) {
 	// Display the message for the template
-	message := fmt.Sprintf("[%s] Loaded template %s (%s)",
+	message := fmt.Sprintf("[%s] %s (%s)",
 		r.colorizer.BrightBlue(id).String(), r.colorizer.Bold(name).String(), r.colorizer.BrightYellow("@"+author).String())
 	if severity != "" {
 		message += " [" + r.colorizer.Yellow(severity).String() + "]"
@@ -221,6 +221,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 	allSeverities := strings.Split(severities, ",")
 	filterBySeverity := len(severities) > 0
 
+	gologger.Infof("Loading templates...")
 	for _, match := range templatePaths {
 		t, err := r.parse(match)
 		switch t.(type) {
