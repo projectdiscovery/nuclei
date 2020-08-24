@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	tengo "github.com/d5/tengo/v2"
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
@@ -64,6 +65,9 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				// apply externally supplied payloads if any
 				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)
 				template.HTTPOptions.BulkHttpRequest = request
+				if template.HTTPOptions.Colorizer == nil {
+					template.HTTPOptions.Colorizer = aurora.NewAurora(true)
+				}
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
 				if err != nil {
 					p.Drop(request.GetRequestCount())
