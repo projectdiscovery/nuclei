@@ -130,7 +130,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
-				e.writeOutputDNS(domain, compiledRequest, resp, matcher, nil)
+				e.writeOutputDNS(domain, compiledRequest, resp, matcher, nil, nil)
 				result.GotResults = true
 			}
 		}
@@ -139,18 +139,29 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, URL string) (result Resul
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
 	var extractorResults []string
+	var captureGroupExtractorResults []map[string]string
 	for _, extractor := range e.dnsRequest.Extractors {
-		for match := range extractor.ExtractDNS(resp) {
+		for _, match := range extractor.ExtractDNS(resp) {
 			if !extractor.Internal {
-				extractorResults = append(extractorResults, match)
+				if extractor.Group == false {
+					uniqueMap := make(map[string]struct{})
+					for _, val  := range match {
+						uniqueMap[val] = struct{}{}
+					}
+					for stringMatch := range uniqueMap {
+						extractorResults = append(extractorResults, stringMatch)
+					}
+				} else {
+					captureGroupExtractorResults = append(captureGroupExtractorResults, match)
+				}
 			}
 		}
 	}
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputDNS(domain, compiledRequest, resp, nil, extractorResults)
+	if len(e.dnsRequest.Extractors) > 0 || len(captureGroupExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
+		e.writeOutputDNS(domain, compiledRequest, resp, nil, extractorResults, captureGroupExtractorResults)
 		result.GotResults = true
 	}
 

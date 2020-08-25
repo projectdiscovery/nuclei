@@ -214,7 +214,7 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
+				e.writeOutputHTTP(request, resp, body, matcher, nil, nil)
 				result.GotResults = true
 			}
 		}
@@ -223,14 +223,31 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
 	var extractorResults, outputExtractorResults []string
+	var captureGroupExtractorResults, outputCaptureGroupExtractorResults []map[string]string
 	for _, extractor := range e.bulkHttpRequest.Extractors {
-		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
+		for _, match := range extractor.Extract(resp, body, headers) {
+			if extractor.Group == false {
+				uniqueMap := make(map[string]struct{})
+				for _, val  := range match {
+					uniqueMap[val] = struct{}{}
+				}
+				for stringMatch := range uniqueMap {
+					if _, ok := dynamicvalues[extractor.Name]; !ok {
+						dynamicvalues[extractor.Name] = stringMatch
+					}
+					extractorResults = append(extractorResults, stringMatch)
+					if !extractor.Internal {
+						outputExtractorResults = append(outputExtractorResults, stringMatch)
+					}
+				}
+			} else {
+				if _, ok := dynamicvalues[extractor.Name]; !ok {
 				dynamicvalues[extractor.Name] = match
-			}
-			extractorResults = append(extractorResults, match)
-			if !extractor.Internal {
-				outputExtractorResults = append(outputExtractorResults, match)
+				}
+				captureGroupExtractorResults = append(captureGroupExtractorResults, match)
+				if !extractor.Internal {
+					outputCaptureGroupExtractorResults = append(outputCaptureGroupExtractorResults, match)
+				}
 			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
@@ -240,8 +257,8 @@ func (e *HTTPExecuter) handleHTTP(p progress.IProgress, URL string, request *req
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
+	if len(outputExtractorResults) > 0 || len(outputCaptureGroupExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, outputCaptureGroupExtractorResults)
 		result.GotResults = true
 	}
 
