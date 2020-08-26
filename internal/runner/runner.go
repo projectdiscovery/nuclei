@@ -590,6 +590,8 @@ func (r *Runner) ProcessWorkflowWithList(p progress.IProgress, workflow *workflo
 		return
 	}
 
+	logicBytes := []byte(workflow.Logic)
+
 	var wg sync.WaitGroup
 
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
@@ -602,7 +604,7 @@ func (r *Runner) ProcessWorkflowWithList(p progress.IProgress, workflow *workflo
 		go func(targetURL string) {
 			defer wg.Done()
 
-			script := tengo.NewScript([]byte(workflow.Logic))
+			script := tengo.NewScript(logicBytes)
 			script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 
 			for _, workflowTemplate := range *workflowTemplatesList {
