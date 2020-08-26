@@ -106,6 +106,7 @@ func (r *Runner) readNucleiIgnoreFile() {
 		if text == "" {
 			continue
 		}
+
 		r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, text)
 	}
 }
@@ -115,12 +116,14 @@ func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 	if r.templatesConfig == nil {
 		return false
 	}
+
 	for _, paths := range r.templatesConfig.IgnorePaths {
 		// If we have a path to ignore, check if it's in the item.
 		if paths[len(paths)-1] == '/' {
 			if strings.Contains(item, paths) {
 				return true
 			}
+
 			continue
 		}
 		// Check for file based extension in ignores
@@ -128,6 +131,7 @@ func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
