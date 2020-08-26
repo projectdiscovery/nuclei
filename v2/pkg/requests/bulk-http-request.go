@@ -205,7 +205,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	//req.Header.Set("Connection", "close")
-	req.Close = true
+	//req.Close = true
 	replacer := newReplacer(values)
 
 	// Check if the user requested a request body
