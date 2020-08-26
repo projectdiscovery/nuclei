@@ -51,6 +51,12 @@ type Runner struct {
 	decolorizer *regexp.Regexp
 }
 
+// WorkflowTemplates contains the initialized workflow templates per template group
+type WorkflowTemplates struct {
+	Name      string
+	Templates []*workflows.Template
+}
+
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
@@ -240,6 +246,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 	filterBySeverity := len(severities) > 0
 
 	gologger.Infof("Loading templates...")
+
 	for _, match := range templatePaths {
 		t, err := r.parse(match)
 		switch tp := t.(type) {
@@ -315,6 +322,7 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 			for _, match := range matches {
 				if !r.checkIfInNucleiIgnore(match) {
 					processed[match] = true
+
 					allTemplates = append(allTemplates, match)
 				}
 			}
@@ -427,7 +435,7 @@ func (r *Runner) RunEnumeration() {
 		case *workflows.Workflow:
 			// workflows will dynamically adjust the totals while running, as
 			// it can't be know in advance which requests will be called
-		}
+		} // nolint:wsl // comment
 	}
 
 	var (
@@ -575,34 +583,51 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 
 // ProcessWorkflowWithList coming from stdin or list of targets
 func (r *Runner) ProcessWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) {
+	workflowTemplatesList, err := r.PreloadTemplates(p, workflow)
+	if err != nil {
+		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
+
+		return
+	}
+
 	var wg sync.WaitGroup
 
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
-		text := scanner.Text()
+		targetURL := scanner.Text()
 		r.limiter <- struct{}{}
 
 		wg.Add(1)
 
-		go func(text string) {
+		go func(targetURL string) {
 			defer wg.Done()
 
-			if err := r.ProcessWorkflow(p, workflow, text); err != nil {
-				gologger.Warningf("Could not run workflow for %s: %s\n", text, err)
+			script := tengo.NewScript([]byte(workflow.Logic))
+			script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+
+			for _, workflowTemplate := range *workflowTemplatesList {
+				err := script.Add(workflowTemplate.Name, &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL})
+				if err != nil {
+					gologger.Errorf("Could not initialize script for workflow '%s': %s\n", workflow.ID, err)
+
+					continue
+				}
+			}
+
+			_, err := script.RunContext(context.Background())
+			if err != nil {
+				gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 			}
 
 			<-r.limiter
-		}(text)
+		}(targetURL)
 	}
 
 	wg.Wait()
 }
 
-// ProcessWorkflow towards an URL
-func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workflow, towardURL string) error {
-	script := tengo.NewScript([]byte(workflow.Logic))
-	script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
-
+// PreloadTemplates preload the workflow templates once
+func (r *Runner) PreloadTemplates(p progress.IProgress, workflow *workflows.Workflow) (*[]WorkflowTemplates, error) {
 	var jar *cookiejar.Jar
 
 	if workflow.CookieReuse {
@@ -610,9 +635,12 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 		jar, err = cookiejar.New(nil)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
+
+	// Single yaml provided
+	var wflTemplatesList []WorkflowTemplates
 
 	for name, value := range workflow.Variables {
 		var writer *bufio.Writer
@@ -628,20 +656,19 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 			if err != nil {
 				newPath, err = r.resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 
 			value = newPath
 		}
 
-		// Single yaml provided
-		var templatesList []*workflows.Template
+		var wtlst []*workflows.Template
 
 		if strings.HasSuffix(value, ".yaml") {
 			t, err := templates.Parse(value)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			template := &workflows.Template{Progress: p}
@@ -672,7 +699,7 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 			}
 
 			if template.DNSOptions != nil || template.HTTPOptions != nil {
-				templatesList = append(templatesList, template)
+				wtlst = append(wtlst, template)
 			}
 		} else {
 			matches := []string{}
@@ -682,6 +709,7 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 					if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 						matches = append(matches, path)
 					}
+
 					return nil
 				},
 				ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
@@ -689,18 +717,20 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 				},
 				Unsorted: true,
 			})
+
 			if err != nil {
-				return err
+				return nil, err
 			}
+
 			// 0 matches means no templates were found in directory
 			if len(matches) == 0 {
-				return errors.New("no match found in the directory")
+				return nil, fmt.Errorf("no match found in the directory %s", value)
 			}
 
 			for _, match := range matches {
 				t, err := templates.Parse(match)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				template := &workflows.Template{Progress: p}
 				if len(t.BulkRequestsHTTP) > 0 {
@@ -723,25 +753,15 @@ func (r *Runner) ProcessWorkflow(p progress.IProgress, workflow *workflows.Workf
 					}
 				}
 				if template.DNSOptions != nil || template.HTTPOptions != nil {
-					templatesList = append(templatesList, template)
+					wtlst = append(wtlst, template)
 				}
 			}
 		}
 
-		err := script.Add(name, &workflows.NucleiVar{Templates: templatesList, URL: towardURL})
-		if err != nil {
-			gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
-			return err
-		}
+		wflTemplatesList = append(wflTemplatesList, WorkflowTemplates{Name: name, Templates: wtlst})
 	}
 
-	_, err := script.RunContext(context.Background())
-	if err != nil {
-		gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
-		return err
-	}
-
-	return nil
+	return &wflTemplatesList, nil
 }
 
 func (r *Runner) parse(file string) (interface{}, error) {

@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -31,7 +30,7 @@ func Parse(file string) (*Template, error) {
 
 	// If no requests, and it is also not a workflow, return error.
 	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
-		return nil, errors.New("no requests defined")
+		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the matchers and the extractors for http requests
