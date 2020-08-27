@@ -358,35 +358,27 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err = os.MkdirAll(templateDirectory, os.ModePerm)
-
 		if err != nil {
 			return fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
-		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_CREATE|os.O_WRONLY, 0777)
-
+		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			f.Close()
-
 			return fmt.Errorf("could not create uncompressed file: %s", err)
 		}
 
 		reader, err := file.Open()
-
 		if err != nil {
 			f.Close()
-
 			return fmt.Errorf("could not open archive to extract file: %s", err)
 		}
 
 		_, err = io.Copy(f, reader)
-
 		if err != nil {
 			f.Close()
-
 			return fmt.Errorf("could not write template file: %s", err)
 		}
-
 		f.Close()
 	}
 
