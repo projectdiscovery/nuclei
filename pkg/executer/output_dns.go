@@ -18,6 +18,7 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 			Template:    e.template.ID,
 			Type:        "dns",
 			Matched:     domain,
+			Name:        e.template.Info.Name,
 			Severity:    e.template.Info.Severity,
 			Author:      e.template.Info.Author,
 			Description: e.template.Info.Description,

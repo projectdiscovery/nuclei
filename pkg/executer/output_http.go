@@ -20,6 +20,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 			Template:    e.template.ID,
 			Type:        "http",
 			Matched:     URL,
+			Name:        e.template.Info.Name,
 			Severity:    e.template.Info.Severity,
 			Author:      e.template.Info.Author,
 			Description: e.template.Info.Description,
