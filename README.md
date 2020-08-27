@@ -107,7 +107,7 @@ In order to update the tool, you can use -u flag with `go get` command.
 
 ```bash
 git clone https://github.com/projectdiscovery/nuclei.git
-cd nuclei/v2/cmd/nuclei/
+cd nuclei/cmd/nuclei/
 go build .
 mv nuclei /usr/local/bin/
 nuclei -h
@@ -191,13 +191,4 @@ nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) 
 
 Do also check out these similar awesome projects that may fit in your workflow:
 
-- [Burp Suite](https://portswigger.net/burp)</br>
-- [FFuF](https://github.com/ffuf/ffuf)</br>
-- [Jaeles](https://github.com/jaeles-project/jaeles)</br>
-- [Qsfuzz](https://github.com/ameenmaali/qsfuzz)</br>
-- [Inception](https://github.com/proabiral/inception)</br>
-- [Snallygaster](https://github.com/hannob/snallygaster)</br>
-- [Gofingerprint](https://github.com/Static-Flow/gofingerprint)</br>
-- [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates)</br>
-- [Google tsunami](https://github.com/google/tsunami-security-scanner)</br>
-- [ChopChop](https://github.com/michelin/ChopChop)<br>
+- [Burp Suite](https://portswigger.net/burp), [FFuF](https://github.com/ffuf/ffuf), [Jaeles](https://github.com/jaeles-project/jaeles), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [ChopChop](https://github.com/michelin/ChopChop)
