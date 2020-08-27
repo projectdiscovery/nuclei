@@ -311,7 +311,7 @@ func (r *Runner) downloadReleaseAndUnzip(downloadURL string) error {
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		os.MkdirAll(templateDirectory, os.ModePerm)
 
-		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_CREATE|os.O_WRONLY, 0777)
+		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			return fmt.Errorf("Could not create uncompressed file: %s", err)
 		}
