@@ -68,6 +68,11 @@ func New(options *Options) (*Runner, error) {
 		gologger.Warningf("Could not update templates: %s\n", err)
 	}
 
+	if options.ListTemplates {
+		runner.ListAvailableTemplates()
+		os.Exit(0)
+	}
+
 	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
@@ -348,8 +353,9 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 				matches := []string{}
 
 				// Recursively walk down the Templates directory and run all the template file checks
-				err = godirwalk.Walk(absPath, &godirwalk.Options{
-					Callback: func(path string, d *godirwalk.Dirent) error {
+				err := directoryWalker(
+					absPath,
+					func(path string, d *godirwalk.Dirent) error {
 						if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 							if !r.checkIfInNucleiIgnore(path) && isNewPath(path, processed) {
 								matches = append(matches, path)
@@ -358,11 +364,7 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 						}
 						return nil
 					},
-					ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
-						return godirwalk.SkipNode
-					},
-					Unsorted: true,
-				})
+				)
 
 				// directory couldn't be walked
 				if err != nil {
@@ -788,4 +790,51 @@ func (r *Runner) parse(file string) (interface{}, error) {
 	}
 
 	return nil, errors.New("unknown error occurred")
+}
+
+func directoryWalker(path string, callback func(path string, d *godirwalk.Dirent) error) error {
+	err := godirwalk.Walk(path, &godirwalk.Options{
+		Callback: callback,
+		ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+			return godirwalk.SkipNode
+		},
+		Unsorted: true,
+	})
+
+	// directory couldn't be walked
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ListAvailableTemplates prints available templates to stdout
+func (r *Runner) ListAvailableTemplates() {
+	gologger.Infof("Listing available templates...")
+	if r.templatesConfig != nil {
+		r.colorizer = aurora.NewAurora(true)
+		err := directoryWalker(
+			r.templatesConfig.TemplatesDirectory,
+			func(path string, d *godirwalk.Dirent) error {
+				if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
+					t, err := r.parse(path)
+					switch tp := t.(type) {
+					case *templates.Template:
+						r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+					case *workflows.Workflow:
+						r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+					default:
+						gologger.Errorf("Could not parse file '%s': %s\n", path, err)
+					}
+				}
+				return nil
+			},
+		)
+
+		// directory couldn't be walked
+		if err != nil {
+			gologger.Labelf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
+		}
+	}
 }
