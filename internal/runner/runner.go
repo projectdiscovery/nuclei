@@ -819,13 +819,15 @@ func (r *Runner) ListAvailableTemplates() {
 			func(path string, d *godirwalk.Dirent) error {
 				if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 					t, err := r.parse(path)
-					switch tp := t.(type) {
-					case *templates.Template:
-						r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
-					case *workflows.Workflow:
-						r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
-					default:
-						gologger.Errorf("Could not parse file '%s': %s\n", path, err)
+					if t != nil {
+						switch tp := t.(type) {
+						case *templates.Template:
+							r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+						case *workflows.Workflow:
+							r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+						default:
+							gologger.Errorf("Could not parse file '%s': %s\n", path, err)
+						}
 					}
 				}
 				return nil
