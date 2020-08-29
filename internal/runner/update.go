@@ -243,6 +243,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err = os.MkdirAll(templateDirectory, os.ModePerm)
+
 		if err != nil {
 			return fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
@@ -264,6 +265,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			f.Close()
 			return fmt.Errorf("could not write template file: %s", err)
 		}
+
 		f.Close()
 	}
 

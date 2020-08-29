@@ -53,8 +53,8 @@ func New(options *Options) (*Runner, error) {
 		gologger.Warningf("Could not update templates: %s\n", err)
 	}
 
-	if options.TemplateList || options.TemplateSearch != "" {
-		runner.listAvailableTemplates(options.TemplateSearch)
+	if options.TemplateList {
+		runner.listAvailableTemplates()
 		os.Exit(0)
 	}
 
