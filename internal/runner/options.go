@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"errors"
 	"flag"
+	"net/url"
 	"os"
 
 	"github.com/projectdiscovery/gologger"
@@ -20,7 +22,7 @@ type Options struct {
 	JSON              bool // JSON writes json output to files
 	JSONRequests      bool // write requests/responses for matches in JSON output
 	EnableProgressBar bool // Enable progrss bar
-	ListTemplates     bool // List available templates
+	TemplateList      bool // List available templates
 
 	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	Templates          multiStringFlag        // Signature specifies the template/templates to use
@@ -36,6 +38,7 @@ type Options struct {
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	TemplateSearch     string                 // Search templates
 }
 
 type multiStringFlag []string
@@ -75,7 +78,8 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
-	flag.BoolVar(&options.ListTemplates, "lt", false, "List available templates")
+	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
+	flag.StringVar(&options.TemplateSearch, "ts", "", "Search templates")
 
 	flag.Parse()
 
@@ -114,4 +118,56 @@ func hasStdin() bool {
 	}
 
 	return true
+}
+
+// validateOptions validates the configuration options passed
+func (options *Options) validateOptions() error {
+	// Both verbose and silent flags were used
+	if options.Verbose && options.Silent {
+		return errors.New("both verbose and silent mode specified")
+	}
+
+	if !options.TemplateList && options.TemplateSearch == "" {
+		// Check if a list of templates was provided and it exists
+		if len(options.Templates) == 0 && !options.UpdateTemplates {
+			return errors.New("no template/templates provided")
+		}
+
+		if options.Targets == "" && !options.Stdin && options.Target == "" && !options.UpdateTemplates {
+			return errors.New("no target input provided")
+		}
+	}
+
+	// Validate proxy options if provided
+	if options.ProxyURL != "" && !isValidProxyURL(options.ProxyURL) {
+		return errors.New("invalid http proxy format (It should be http://username:password@host:port)")
+	}
+
+	if options.ProxySocksURL != "" && !isValidProxyURL(options.ProxySocksURL) {
+		return errors.New("invalid socks proxy format (It should be socks5://username:password@host:port)")
+	}
+
+	return nil
+}
+
+func isValidProxyURL(proxyURL string) bool {
+	_, err := url.Parse(proxyURL)
+
+	return err == nil
+}
+
+// configureOutput configures the output on the screen
+func (options *Options) configureOutput() {
+	// If the user desires verbose output, show verbose output
+	if options.Verbose {
+		gologger.MaxLevel = gologger.Verbose
+	}
+
+	if options.NoColor {
+		gologger.UseColors = false
+	}
+
+	if options.Silent {
+		gologger.MaxLevel = gologger.Silent
+	}
 }
