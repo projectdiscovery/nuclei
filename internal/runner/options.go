@@ -38,7 +38,6 @@ type Options struct {
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
-	TemplateSearch     string                 // Search templates
 }
 
 type multiStringFlag []string
@@ -79,7 +78,6 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
-	flag.StringVar(&options.TemplateSearch, "ts", "", "Search templates")
 
 	flag.Parse()
 
@@ -127,7 +125,7 @@ func (options *Options) validateOptions() error {
 		return errors.New("both verbose and silent mode specified")
 	}
 
-	if !options.TemplateList && options.TemplateSearch == "" {
+	if !options.TemplateList {
 		// Check if a list of templates was provided and it exists
 		if len(options.Templates) == 0 && !options.UpdateTemplates {
 			return errors.New("no template/templates provided")

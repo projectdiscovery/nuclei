@@ -14,6 +14,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
+var severityMap = map[string]string{
+	"info":   aurora.Cyan("info").String(),
+	"low":    aurora.Green("low").String(),
+	"medium": aurora.Yellow("medium").String(),
+	"high":   aurora.Red("high").String(),
+}
+
 // getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
 func (r *Runner) getTemplatesFor(definitions []string) []string {
 	// keeps track of processed dirs and files
@@ -136,19 +143,17 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities string
 		t, err := r.parseTemplateFile(match)
 		switch tp := t.(type) {
 		case *templates.Template:
-			id := tp.ID
-
 			// only include if severity matches or no severity filtering
 			sev := strings.ToLower(tp.Info.Severity)
 			if !filterBySeverity || hasMatchingSeverity(sev, allSeverities) {
 				parsedTemplates = append(parsedTemplates, tp)
-				r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+				gologger.Infof("%s\n", r.templateLogMsg(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity))
 			} else {
-				gologger.Warningf("Excluding template %s due to severity filter (%s not in [%s])", id, sev, severities)
+				gologger.Warningf("Excluding template %s due to severity filter (%s not in [%s])", tp.ID, sev, severities)
 			}
 		case *workflows.Workflow:
 			parsedTemplates = append(parsedTemplates, tp)
-			r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
+			gologger.Infof("%s\n", r.templateLogMsg(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity))
 			workflowCount++
 		default:
 			gologger.Errorf("Could not parse file '%s': %s\n", match, err)
@@ -182,56 +187,58 @@ func (r *Runner) parseTemplateFile(file string) (interface{}, error) {
 	return nil, errors.New("unknown error occurred")
 }
 
-// LogTemplateLoaded logs a message for loaded template
-func (r *Runner) logTemplateLoaded(id, name, author, severity string) {
+func (r *Runner) templateLogMsg(id, name, author, severity string) string {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] %s (%s)",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
 		r.colorizer.BrightYellow("@"+author).String())
+
 	if severity != "" {
-		message += " [" + r.colorizer.Yellow(severity).String() + "]"
+		message += " [" + severityMap[severity] + "]"
 	}
 
-	gologger.Infof("%s\n", message)
+	return message
+}
+
+func (r *Runner) logAvailableTemplate(tplPath string) {
+	t, err := r.parseTemplateFile(tplPath)
+	if t != nil {
+		switch tp := t.(type) {
+		case *templates.Template:
+			gologger.Silentf("%s\n", r.templateLogMsg(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity))
+		case *workflows.Workflow:
+			gologger.Silentf("%s\n", r.templateLogMsg(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity))
+		default:
+			gologger.Errorf("Could not parse file '%s': %s\n", tplPath, err)
+		}
+	}
 }
 
 // ListAvailableTemplates prints available templates to stdout
-func (r *Runner) listAvailableTemplates(criteria string) {
-	if criteria == "" {
-		gologger.Infof("Listing available templates...")
-	} else {
-		gologger.Infof("Searching available templates for %s", criteria)
+func (r *Runner) listAvailableTemplates() {
+	if r.templatesConfig == nil {
+		return
 	}
-	if r.templatesConfig != nil {
-		r.colorizer = aurora.NewAurora(true)
-		err := directoryWalker(
-			r.templatesConfig.TemplatesDirectory,
-			func(path string, d *godirwalk.Dirent) error {
-				if d.IsDir() {
-					gologger.Silentf("%s\n", d.Name())
-				} else if strings.HasSuffix(path, ".yaml") {
-					t, err := r.parseTemplateFile(path)
-					if t != nil {
-						switch tp := t.(type) {
-						case *templates.Template:
-							r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
-						case *workflows.Workflow:
-							r.logTemplateLoaded(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity)
-						default:
-							gologger.Errorf("Could not parse file '%s': %s\n", path, err)
-						}
-					}
-				}
 
-				return nil
-			},
-		)
+	gologger.Silentf("\nListing available v.%s nuclei templates for %s", r.templatesConfig.CurrentVersion, r.templatesConfig.TemplatesDirectory)
+	r.colorizer = aurora.NewAurora(true)
+	err := directoryWalker(
+		r.templatesConfig.TemplatesDirectory,
+		func(path string, d *godirwalk.Dirent) error {
+			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
+				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(strings.Title(d.Name()))).String())
+			} else if strings.HasSuffix(path, ".yaml") {
+				r.logAvailableTemplate(path)
+			}
 
-		// directory couldn't be walked
-		if err != nil {
-			gologger.Labelf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
-		}
+			return nil
+		},
+	)
+
+	// directory couldn't be walked
+	if err != nil {
+		gologger.Labelf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
 	}
 }
 
