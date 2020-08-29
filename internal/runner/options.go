@@ -139,19 +139,35 @@ func (options *Options) validateOptions() error {
 	}
 
 	// Validate proxy options if provided
-	if options.ProxyURL != "" && !isValidProxyURL(options.ProxyURL) {
-		return errors.New("invalid http proxy format (It should be http://username:password@host:port)")
+	err := validateProxyURL(
+		options.ProxyURL,
+		"invalid http proxy format (It should be http://username:password@host:port)",
+	)
+	if err != nil {
+		return err
 	}
 
-	if options.ProxySocksURL != "" && !isValidProxyURL(options.ProxySocksURL) {
-		return errors.New("invalid socks proxy format (It should be socks5://username:password@host:port)")
+	err = validateProxyURL(
+		options.ProxySocksURL,
+		"invalid socks proxy format (It should be socks5://username:password@host:port)",
+	)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func isValidProxyURL(proxyURL string) bool {
-	_, err := url.Parse(proxyURL)
+func validateProxyURL(proxyURL, message string) error {
+	if proxyURL != "" && !isValidURL(proxyURL) {
+		return errors.New(message)
+	}
+
+	return nil
+}
+
+func isValidURL(urlString string) bool {
+	_, err := url.Parse(urlString)
 
 	return err == nil
 }
