@@ -215,6 +215,13 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	return &HTTPRequest{Request: request, Meta: genValues}, nil
 }
 
+func setHeader(req *http.Request, name, value string) {
+	// Set some headers only if the header wasn't supplied by the user
+	if _, ok := req.Header[name]; !ok {
+		req.Header.Set(name, value)
+	}
+}
+
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	req.Header.Set("Connection", "close")
 	req.Close = true
@@ -230,23 +237,15 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
-	}
+	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 
 	// raw requests are left untouched
 	if len(r.Raw) > 0 {
 		return retryablehttp.FromRequest(req)
 	}
 
-	if _, ok := req.Header["Accept"]; !ok {
-		req.Header.Set("Accept", "*/*")
-	}
-
-	if _, ok := req.Header["Accept-Language"]; !ok {
-		req.Header.Set("Accept-Language", "en")
-	}
+	setHeader(req, "Accept", "*/*")
+	setHeader(req, "Accept-Language", "en")
 
 	return retryablehttp.FromRequest(req)
 }
