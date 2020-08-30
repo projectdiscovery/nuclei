@@ -19,20 +19,20 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
 
 # Resources
 
--   [Resources](#resources)
--   [Features](#features)
--   [Usage](#usage)
--   [Installation Instructions](#installation-instructions)
-    -   [From Binary](#from-binary)
-    -   [From Source](#from-source)
-    -   [From Github](#from-github)
--   [Nuclei templates](#nuclei-templates)
--   [Running nuclei](#running-nuclei)
-    -   [1. Running nuclei with a single template.](#1-running-nuclei-with-a-single-template)
-    -   [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
-    -   [3. Automating nuclei with subfinder and any other similar tool.](#3-automating-nuclei-with-subfinder-and-any-other-similar-tool)
-    -   [4. Running nuclei in a Docker](#running-in-a-docker-container)
--   [Thanks](#thanks)
+- [Resources](#resources)
+- [Features](#features)
+- [Usage](#usage)
+- [Installation Instructions](#installation-instructions)
+    - [From Binary](#from-binary)
+    - [From Source](#from-source)
+    - [From Github](#from-github)
+- [Nuclei templates](#nuclei-templates)
+- [Running nuclei](#running-nuclei)
+    - [1. Running nuclei with a single template.](#1-running-nuclei-with-a-single-template)
+    - [2. Running nuclei with multiple templates.](#2-running-nuclei-with-multiple-templates)
+    - [3. Automating nuclei with subfinder and any other similar tool.](#3-automating-nuclei-with-subfinder-and-any-other-similar-tool)
+    - [4. Running nuclei in a Docker](#running-in-a-docker-container)
+- Thanks](#thanks)
 
     # Features
 
