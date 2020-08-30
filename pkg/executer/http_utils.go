@@ -12,6 +12,7 @@ type jsonOutput struct {
 	Matched          string   `json:"matched"`
 	MatcherName      string   `json:"matcher_name,omitempty"`
 	ExtractedResults []string `json:"extracted_results,omitempty"`
+	Name             string   `json:"name"`
 	Severity         string   `json:"severity"`
 	Author           string   `json:"author"`
 	Description      string   `json:"description"`
