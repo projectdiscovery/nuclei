@@ -221,7 +221,16 @@ func (r *Runner) listAvailableTemplates() {
 		return
 	}
 
-	gologger.Silentf("\nListing available v.%s nuclei templates for %s", r.templatesConfig.CurrentVersion, r.templatesConfig.TemplatesDirectory)
+	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+		gologger.Errorf("%s does not exists", r.templatesConfig.TemplatesDirectory)
+		return
+	}
+
+	gologger.Silentf(
+		"\nListing available v.%s nuclei templates for %s",
+		r.templatesConfig.CurrentVersion,
+		r.templatesConfig.TemplatesDirectory,
+	)
 	r.colorizer = aurora.NewAurora(true)
 	err := directoryWalker(
 		r.templatesConfig.TemplatesDirectory,
