@@ -116,7 +116,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Re
 
 	p.Update()
 
-	gologger.Verbosef("Sent DNS request to %s\n", "dns-request", reqURL)
+	gologger.Verbosef("Sent for [%s] to %s\n", "dns-request", e.template.ID, reqURL)
 
 	if e.debug {
 		gologger.Infof("Dumped DNS response for %s (%s)\n\n", reqURL, e.template.ID)
