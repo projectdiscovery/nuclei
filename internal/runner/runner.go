@@ -50,7 +50,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Warningf("Could not update templates: %s\n", err)
+		gologger.Labelf("Could not update templates: %s\n", err)
 	}
 
 	if options.TemplateList {
