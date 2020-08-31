@@ -105,8 +105,6 @@ nuclei requires **go1.14+** to install successfully. Run the following command t
 ▶ GO111MODULE=auto go get -u -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
 
-In order to update the tool, you can use -u flag with `go get` command.
-
 ### From Github
 
 ```sh
@@ -167,7 +165,7 @@ You can use the [nuclei dockerhub image](https://hub.docker.com/r/projectdiscove
 ▶ docker pull projectdiscovery/nuclei
 ```
 
--   After downloading or building the container, run the following:
+After downloading or building the container, run the following:
 
 ```sh
 ▶ docker run -it projectdiscovery/nuclei
