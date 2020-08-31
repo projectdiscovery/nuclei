@@ -162,7 +162,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 		remaining--
 	}
 
-	gologger.Verbosef("Sent HTTP request to %s\n", "http-request", reqURL)
+	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
 
 	return result
 }
