@@ -118,13 +118,13 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Labelf("Latest version of nuclei-templates installed: v%s\n", oldVersion.String())
+		gologger.Infof("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
 		return r.writeConfiguration(r.templatesConfig)
 	}
 
 	if version.GT(oldVersion) {
 		if !r.options.UpdateTemplates {
-			gologger.Labelf("You're using outdated nuclei-templates. Latest v%s\n", version.String())
+			gologger.Labelf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
 			return r.writeConfiguration(r.templatesConfig)
 		}
 
