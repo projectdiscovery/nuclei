@@ -15,10 +15,11 @@ import (
 )
 
 var severityMap = map[string]string{
-	"info":   aurora.Cyan("info").String(),
-	"low":    aurora.Green("low").String(),
-	"medium": aurora.Yellow("medium").String(),
-	"high":   aurora.Red("high").String(),
+	"info":     aurora.Blue("info").String(),
+	"low":      aurora.Green("low").String(),
+	"medium":   aurora.Yellow("medium").String(),
+	"high":     aurora.Red("high").String(),
+	"critical": aurora.Red("critical").Bold().String(),
 }
 
 // getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
@@ -195,7 +196,7 @@ func (r *Runner) templateLogMsg(id, name, author, severity string) string {
 		r.colorizer.BrightYellow("@"+author).String())
 
 	if severity != "" {
-		message += " [" + severityMap[severity] + "]"
+		message += " [" + severityMap[strings.ToLower(severity)] + "]"
 	}
 
 	return message
