@@ -24,7 +24,7 @@ const (
 )
 
 var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
-var urlWithPathRgx = regexp.MustCompile(`{{BaseURL}}.*\/`)
+var urlWithPathRgx = regexp.MustCompile(`{{BaseURL}}.*/`)
 
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
@@ -267,7 +267,7 @@ func setHeader(req *http.Request, name, value string) {
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping
 // the template port and path preference
-func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string{
+func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
 	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
 	if hasPort {
