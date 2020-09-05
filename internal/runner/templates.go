@@ -14,12 +14,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
+const fgOrange uint8 = 208
+
 var severityMap = map[string]string{
 	"info":     aurora.Blue("info").String(),
 	"low":      aurora.Green("low").String(),
 	"medium":   aurora.Yellow("medium").String(),
-	"high":     aurora.Red("high").String(),
-	"critical": aurora.Red("critical").Bold().String(),
+	"high":     aurora.Index(fgOrange, "high").String(),
+	"critical": aurora.Red("critical").String(),
 }
 
 // getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
