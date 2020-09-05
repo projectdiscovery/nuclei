@@ -15,10 +15,11 @@ import (
 )
 
 var severityMap = map[string]string{
-	"info":   aurora.Cyan("info").String(),
-	"low":    aurora.Green("low").String(),
-	"medium": aurora.Yellow("medium").String(),
-	"high":   aurora.Red("high").String(),
+	"info":     aurora.Blue("info").String(),
+	"low":      aurora.Green("low").String(),
+	"medium":   aurora.Yellow("medium").String(),
+	"high":     aurora.Red("high").String(),
+	"critical": aurora.Red("critical").Bold().String(),
 }
 
 // getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
@@ -195,7 +196,7 @@ func (r *Runner) templateLogMsg(id, name, author, severity string) string {
 		r.colorizer.BrightYellow("@"+author).String())
 
 	if severity != "" {
-		message += " [" + severityMap[severity] + "]"
+		message += " [" + severityMap[strings.ToLower(severity)] + "]"
 	}
 
 	return message
@@ -236,7 +237,7 @@ func (r *Runner) listAvailableTemplates() {
 		r.templatesConfig.TemplatesDirectory,
 		func(path string, d *godirwalk.Dirent) error {
 			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
-				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(strings.Title(d.Name()))).String())
+				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(d.Name())).String())
 			} else if strings.HasSuffix(path, ".yaml") {
 				r.logAvailableTemplate(path)
 			}
