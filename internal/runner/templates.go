@@ -237,7 +237,7 @@ func (r *Runner) listAvailableTemplates() {
 		r.templatesConfig.TemplatesDirectory,
 		func(path string, d *godirwalk.Dirent) error {
 			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
-				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(strings.Title(d.Name()))).String())
+				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(d.Name())).String())
 			} else if strings.HasSuffix(path, ".yaml") {
 				r.logAvailableTemplate(path)
 			}
