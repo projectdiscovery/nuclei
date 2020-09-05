@@ -22,19 +22,19 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
 <details>
 <summary>Resources</summary>
 
-- [Features](#features)
-- [Usage](#usage)
-- [Installation Instructions](#installation-instructions)
-    - [From Binary](#from-binary)
-    - [From Source](#from-source)
-    - [From Github](#from-github)
-- [Nuclei templates](#nuclei-templates)
-- [Running nuclei](#running-nuclei)
-    - [Running with a single template.](#running-with-single-template)
-    - [Running with multiple templates.](#running-with-multiple-templates)
-    - [Running with subfinder](#running-with-subfinder)
-    - [Running in Docker](#running-in-docker-container)
-- [Thanks](#thanks)
+-   [Features](#features)
+-   [Usage](#usage)
+-   [Installation Instructions](#installation-instructions)
+    -   [From Binary](#from-binary)
+    -   [From Source](#from-source)
+    -   [From Github](#from-github)
+-   [Nuclei templates](#nuclei-templates)
+-   [Running nuclei](#running-nuclei)
+    -   [Running with a single template.](#running-with-single-template)
+    -   [Running with multiple templates.](#running-with-multiple-templates)
+    -   [Running with subfinder](#running-with-subfinder)
+    -   [Running in Docker](#running-in-docker-container)
+-   [Thanks](#thanks)
 
 </details>
 
@@ -71,12 +71,13 @@ This will display help for the tool. Here are all the switches it supports.
 |         -o        |         File to save output result (optional)         |               nuclei -o output.txt              |
 |       -pbar       |           Enable the progress bar (optional)          |                   nuclei -pbar                  |
 |      -silent      |           Show only found results in output           |                  nuclei -silent                 |
+|                   |             (except when using with pbar)             |                                                 |
 |      -retries     | Number of times to retry a failed request (default 1) |                nuclei -retries 1                |
 |      -timeout     |       Seconds to wait before timeout (default 5)      |                nuclei -timeout 5                |
 |       -debug      |         Allow debugging of request/responses.         |                  nuclei -debug                  |
 | -update-templates |         Download and updates nuclei templates         |             nuclei -update-templates            |
 | -update-directory |    Directory for storing nuclei-templates(optional)   |        nuclei -update-directory templates       |
-|        -lt        |                List available templates               |                    nuclei -lt                   |
+|        -tl        |                List available templates               |                    nuclei -tl                   |
 |         -v        |       Shows verbose output of all sent requests       |                    nuclei -v                    |
 |      -version     |                 Show version of nuclei                |                 nuclei -version                 |
 |     -proxy-url    |                       Proxy URL                       |     nuclei -proxy-url hxxp://127.0.0.1:8080     |
