@@ -161,7 +161,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.options.NoColor, !options.Silent && options.EnableProgressBar)
+	runner.progress = progress.NewProgress(runner.options.NoColor, options.EnableProgressBar)
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
