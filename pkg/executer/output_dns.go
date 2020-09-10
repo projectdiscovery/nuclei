@@ -45,27 +45,11 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 		gologger.Silentf("%s", string(data))
 
 		if e.writer != nil {
-			e.outputMutex.Lock()
-			_, err := e.writer.Write(data)
-
-			if err != nil {
-				e.outputMutex.Unlock()
+			if err := e.writer.Write(data); err != nil {
 				gologger.Errorf("Could not write output data: %s\n", err)
-
 				return
 			}
-
-			_, err = e.writer.WriteRune('\n')
-
-			if err != nil {
-				e.outputMutex.Unlock()
-				gologger.Errorf("Could not write output data: %s\n", err)
-
-				return
-			}
-			e.outputMutex.Unlock()
 		}
-
 		return
 	}
 
@@ -107,19 +91,13 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 	gologger.Silentf("%s", message)
 
 	if e.writer != nil {
-		e.outputMutex.Lock()
 		if e.coloredOutput {
 			message = e.decolorizer.ReplaceAllString(message, "")
 		}
 
-		_, err := e.writer.WriteString(message)
-
-		if err != nil {
-			e.outputMutex.Unlock()
+		if err := e.writer.WriteString(message); err != nil {
 			gologger.Errorf("Could not write output data: %s\n", err)
-
 			return
 		}
-		e.outputMutex.Unlock()
 	}
 }
