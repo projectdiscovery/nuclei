@@ -1,7 +1,6 @@
 package executer
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -15,13 +14,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/logrusorgru/aurora"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -46,8 +45,7 @@ type HTTPExecuter struct {
 	httpClient      *retryablehttp.Client
 	template        *templates.Template
 	bulkHTTPRequest *requests.BulkHTTPRequest
-	writer          *bufio.Writer
-	outputMutex     *sync.Mutex
+	writer          *bufwriter.Writer
 	customHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
 
@@ -64,7 +62,7 @@ type HTTPOptions struct {
 	ColoredOutput   bool
 	Template        *templates.Template
 	BulkHTTPRequest *requests.BulkHTTPRequest
-	Writer          *bufio.Writer
+	Writer          *bufwriter.Writer
 	Timeout         int
 	Retries         int
 	ProxyURL        string
@@ -112,7 +110,6 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		httpClient:      client,
 		template:        options.Template,
 		bulkHTTPRequest: options.BulkHTTPRequest,
-		outputMutex:     &sync.Mutex{},
 		writer:          options.Writer,
 		customHeaders:   options.CustomHeaders,
 		CookieJar:       options.CookieJar,
@@ -282,11 +279,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 }
 
 // Close closes the http executer for a template.
-func (e *HTTPExecuter) Close() {
-	e.outputMutex.Lock()
-	defer e.outputMutex.Unlock()
-	e.writer.Flush()
-}
+func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
 func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
