@@ -13,6 +13,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -25,8 +26,7 @@ type Runner struct {
 	inputCount int64
 
 	// output is the output file to write if any
-	output      *os.File
-	outputMutex *sync.Mutex
+	output *bufwriter.Writer
 
 	tempFile        string
 	templatesConfig *nucleiConfig
@@ -45,8 +45,7 @@ type Runner struct {
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		outputMutex: &sync.Mutex{},
-		options:     options,
+		options: options,
 	}
 
 	if err := runner.updateTemplates(); err != nil {
@@ -152,11 +151,10 @@ func New(options *Options) (*Runner, error) {
 
 	// Create the output file if asked
 	if options.Output != "" {
-		output, err := os.Create(options.Output)
+		output, err := bufwriter.New(options.Output)
 		if err != nil {
 			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, err)
 		}
-
 		runner.output = output
 	}
 
@@ -170,7 +168,9 @@ func New(options *Options) (*Runner, error) {
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
-	r.output.Close()
+	if r.output != nil {
+		r.output.Close()
+	}
 	os.Remove(r.tempFile)
 }
 
@@ -266,9 +266,8 @@ func (r *Runner) RunEnumeration() {
 
 	if !results.Get() {
 		if r.output != nil {
-			outputFile := r.output.Name()
 			r.output.Close()
-			os.Remove(outputFile)
+			os.Remove(r.options.Output)
 		}
 
 		gologger.Infof("No results found. Happy hacking!")
