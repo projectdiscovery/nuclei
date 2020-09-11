@@ -26,8 +26,7 @@ type Runner struct {
 	inputCount int64
 
 	// output is the output file to write if any
-	output      *bufwriter.Writer
-	outputMutex *sync.Mutex
+	output *bufwriter.Writer
 
 	tempFile        string
 	templatesConfig *nucleiConfig
@@ -46,8 +45,7 @@ type Runner struct {
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		outputMutex: &sync.Mutex{},
-		options:     options,
+		options: options,
 	}
 
 	if err := runner.updateTemplates(); err != nil {
@@ -170,7 +168,9 @@ func New(options *Options) (*Runner, error) {
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
-	r.output.Close()
+	if r.output != nil {
+		r.output.Close()
+	}
 	os.Remove(r.tempFile)
 }
 
