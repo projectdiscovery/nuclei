@@ -46,7 +46,7 @@ func (w *Writer) Write(data []byte) error {
 //
 // It also writes a newline if the last byte isn't a newline character.
 func (w *Writer) WriteString(data string) error {
-	if len(data) == 0 {
+	if data == "" {
 		return nil
 	}
 	w.mutex.Lock()
@@ -67,6 +67,7 @@ func (w *Writer) Close() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
+	//nolint:errcheck
 	w.writer.Flush()
 	w.file.Sync()
 	return w.file.Close()
