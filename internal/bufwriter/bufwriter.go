@@ -67,8 +67,8 @@ func (w *Writer) Close() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	//nolint:errcheck
 	w.writer.Flush()
+	//nolint:errcheck // we don't care whether sync failed or succeeded.
 	w.file.Sync()
 	return w.file.Close()
 }
