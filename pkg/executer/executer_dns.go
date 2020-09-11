@@ -1,15 +1,14 @@
 package executer
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"regexp"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -28,8 +27,7 @@ type DNSExecuter struct {
 	dnsClient     *retryabledns.Client
 	template      *templates.Template
 	dnsRequest    *requests.DNSRequest
-	writer        *bufio.Writer
-	outputMutex   *sync.Mutex
+	writer        *bufwriter.Writer
 
 	colorizer   aurora.Aurora
 	decolorizer *regexp.Regexp
@@ -51,7 +49,7 @@ type DNSOptions struct {
 	JSONRequests  bool
 	Template      *templates.Template
 	DNSRequest    *requests.DNSRequest
-	Writer        *bufio.Writer
+	Writer        *bufwriter.Writer
 
 	Colorizer   aurora.Aurora
 	Decolorizer *regexp.Regexp
@@ -70,7 +68,6 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		template:      options.Template,
 		dnsRequest:    options.DNSRequest,
 		writer:        options.Writer,
-		outputMutex:   &sync.Mutex{},
 		coloredOutput: options.ColoredOutput,
 		colorizer:     options.Colorizer,
 		decolorizer:   options.Decolorizer,
@@ -166,8 +163,4 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Re
 }
 
 // Close closes the dns executer for a template.
-func (e *DNSExecuter) Close() {
-	e.outputMutex.Lock()
-	defer e.outputMutex.Unlock()
-	e.writer.Flush()
-}
+func (e *DNSExecuter) Close() {}
