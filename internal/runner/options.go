@@ -79,7 +79,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
-	flag.IntVar(&options.RateLimit, "rl", 0, "Rate-Limit of requests per specified target") // 0 as default to turn the flag "off"
+	flag.IntVar(&options.RateLimit, "rl", 9999999, "Rate-Limit of requests per specified target") // 9999999 to avoid limiting
 
 	flag.Parse()
 
