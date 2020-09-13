@@ -103,7 +103,7 @@ Download latest binary from https://github.com/projectdiscovery/nuclei/releases
 nuclei requires **go1.14+** to install successfully. Run the following command to get the repo -
 
 ```sh
-▶ GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+▶ GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/cmd/nuclei
 ```
 
 ### From Github
