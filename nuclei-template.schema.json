@@ -3,7 +3,7 @@
     "$id": "https://projectdiscovery.io/nuclei-template.schema.json",
     "title": "Nuclei Templates YAML format validation",
     "description": "A validation format for validating nuclei-template files.",
-    "required": [ "latitude", "longitude" ],
+    "required": [ "id", "info" ],
     "type": "object",
     "properties": {
       "id": {
