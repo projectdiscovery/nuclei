@@ -213,7 +213,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 		case *workflows.Workflow:
 			gologger.Silentf("%s\n", r.templateLogMsg(tp.ID, tp.Info.Name, tp.Info.Author, tp.Info.Severity))
 		default:
-			gologger.Errorf("Could not parse file '%s': %s\n", tplPath, err)
+			gologger.Errorf("Could not parse template '%s': %s\n", tplPath, err)
 		}
 	}
 }

@@ -10,11 +10,13 @@ type Template struct {
 	ID string `yaml:"id"`
 	// Info contains information about the template
 	Info Info `yaml:"info"`
-	// BulkRequestsHTTP contains the http request to make in the template
-	BulkRequestsHTTP []*requests.BulkHTTPRequest `yaml:"requests,omitempty"`
-	// RequestsDNS contains the dns request to make in the template
-	RequestsDNS []*requests.DNSRequest `yaml:"dns,omitempty"`
-	path        string
+
+	// HTTPRequests contains the http requests to make in the template
+	HTTPRequests []requests.BulkHTTPRequest `yaml:"requests,omitempty"`
+	// DNSRequests contains the dns requests to make in the template
+	DNSRequests []requests.DNSRequest `yaml:"dns,omitempty"`
+
+	path string
 }
 
 // GetPath of the workflow
