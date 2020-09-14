@@ -30,6 +30,12 @@ type Input struct {
 	workflows.Workflow `yaml:",inline"`
 }
 
+// CompiledInput is the compiled version of a input
+type CompiledInput struct {
+	templates.CompiledTemplate
+	workflows.CompiledWorkflow
+}
+
 // Info contains information about the request template
 type Info struct {
 	// Name is the name of the template
