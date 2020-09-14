@@ -129,6 +129,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
+	dynvars := make(map[string][]string)
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
@@ -148,7 +149,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 			return
 		}
 
-		err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+		err, dynvars = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
 
@@ -160,6 +161,34 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 		e.bulkHTTPRequest.Increment(reqURL)
 		p.Update()
 		remaining--
+
+		if len(dynvars) > 0 {
+			for extractor, dynvar := range dynvars {
+				for _, dyn := range dynvar {
+					dynamicvalues[extractor] = dyn
+					httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+					if err != nil {
+						result.Error = errors.Wrap(err, "could not build http request")
+
+						p.Drop(remaining)
+
+						return
+					}
+
+					err, dynvars = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+					if err != nil {
+						result.Error = errors.Wrap(err, "could not handle http request")
+
+						p.Drop(remaining)
+
+						return
+					}
+				}
+			}
+			e.bulkHTTPRequest.Increment(reqURL)
+			p.Update()
+			remaining--
+		}
 	}
 
 	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
@@ -167,14 +196,15 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	return result
 }
 
-func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) (error, map[string][]string) {
+	dynvars := make(map[string][]string)
 	e.setCustomHeaders(request)
 	req := request.Request
 
 	if e.debug {
 		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 		if err != nil {
-			return errors.Wrap(err, "could not make http request")
+			return errors.Wrap(err, "could not make http request"), dynvars
 		}
 
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
@@ -188,13 +218,13 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			resp.Body.Close()
 		}
 
-		return errors.Wrap(err, "Could not do request")
+		return errors.Wrap(err, "Could not do request"), dynvars
 	}
 
 	if e.debug {
 		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
-			return errors.Wrap(dumpErr, "could not dump http response")
+			return errors.Wrap(dumpErr, "could not dump http response"), dynvars
 		}
 
 		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
@@ -206,12 +236,12 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		_, copyErr := io.Copy(ioutil.Discard, resp.Body)
 		if copyErr != nil {
 			resp.Body.Close()
-			return copyErr
+			return copyErr, dynvars
 		}
 
 		resp.Body.Close()
 
-		return errors.Wrap(err, "could not read http body")
+		return errors.Wrap(err, "could not read http body"), dynvars
 	}
 
 	resp.Body.Close()
@@ -220,7 +250,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// so in case we have to manually do it
 	data, err = requests.HandleDecompression(req, data)
 	if err != nil {
-		return errors.Wrap(err, "could not decompress http body")
+		return errors.Wrap(err, "could not decompress http body"), dynvars
 	}
 
 	// Convert response body from []byte to string with zero copy
@@ -234,7 +264,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		if !matcher.Match(resp, body, headers) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
-				return nil
+				return nil, dynvars
 			}
 		} else {
 			// If the matcher has matched, and its an OR
@@ -255,9 +285,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	for _, extractor := range e.bulkHTTPRequest.Extractors {
 		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
-				dynamicvalues[extractor.Name] = match
-			}
+			dynvars[extractor.Name] = append(dynvars[extractor.Name], match)
 
 			extractorResults = append(extractorResults, match)
 
@@ -278,7 +306,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		result.GotResults = true
 	}
 
-	return nil
+	return nil, dynvars
 }
 
 // Close closes the http executer for a template.
