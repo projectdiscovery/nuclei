@@ -4,4 +4,6 @@ package extractors
 type Extractor struct{}
 
 // CompiledExtractor is the compiled extractor parsed from yaml file.
-type CompiledExtractor struct{}
+type CompiledExtractor struct {
+	Internal bool
+}

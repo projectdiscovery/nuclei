@@ -20,20 +20,25 @@ type Input struct {
 	// Info contains information about the template
 	Info Info `yaml:"info"`
 
-	// Type is the type of the input provided
-	Type Type
-
 	// Embed the template structure in the input itself.
-	templates.Template `yaml:",inline"`
+	*templates.Template `yaml:",inline"`
 
 	// Embed the workflow structure in the input itself.
-	workflows.Workflow `yaml:",inline"`
+	*workflows.Workflow `yaml:",inline"`
 }
 
 // CompiledInput is the compiled version of a input
 type CompiledInput struct {
-	templates.CompiledTemplate
-	workflows.CompiledWorkflow
+	// ID is the unique id for the template
+	ID string `yaml:"id"`
+	// Info contains information about the template
+	Info Info `yaml:"info"`
+
+	// Type is the type of the input provided
+	Type Type
+
+	*templates.CompiledTemplate
+	*workflows.CompiledWorkflow
 }
 
 // Info contains information about the request template
@@ -82,13 +87,16 @@ func ReadInput(path string) (*Input, error) {
 	if err := yaml.Unmarshal(data, input); err != nil {
 		return nil, err
 	}
-
-	Type, ok := input.getType()
-	if !ok {
-		return nil, errors.New("input appears to be a malformed")
-	}
-	input.Type = Type
 	return input, nil
+}
+
+// Compile returns the compiled version of the input
+func (i *Input) Compile() (*CompiledInput, error) {
+	Type, ok := i.getType()
+	if !ok {
+		return nil, errors.New("invalid template/workflow supplied")
+	}
+	i.Template.
 }
 
 // Type is the type of the input provided

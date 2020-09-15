@@ -10,33 +10,33 @@ import (
 // CompiledRequest is the compiled dns request structure created
 // by parsing and processing the data from read file.
 type CompiledRequest struct {
-	AtomicRequests []AtomicRequest
+	AtomicRequests []*AtomicRequest
 }
 
 // AtomicRequest is a single atomic dns request sent to a server
 type AtomicRequest struct {
-	retries   int
-	recursive bool
-	reqType   uint16
-	class     uint16
-	fqdn      string
+	Retries   int
+	Recursive bool
+	ReqType   uint16
+	Class     uint16
+	FQDN      string
 
-	matchers   []matchers.CompiledMatcher
-	extractors []extractors.CompiledExtractor
+	Matchers   []*matchers.CompiledMatcher
+	Extractors []*extractors.CompiledExtractor
 }
 
 // Compare checks if an atomic request is exactly same as the other request.
 func (a *AtomicRequest) Compare(req *AtomicRequest) bool {
-	if a.class != req.class {
+	if a.Class != req.Class {
 		return false
 	}
-	if a.reqType != req.reqType {
+	if a.ReqType != req.ReqType {
 		return false
 	}
-	if a.retries != req.retries || a.recursive != req.recursive {
+	if a.Retries != req.Retries || a.Recursive != req.Recursive {
 		return false
 	}
-	if !strings.EqualFold(a.fqdn, req.fqdn) {
+	if !strings.EqualFold(a.FQDN, req.FQDN) {
 		return false
 	}
 	return true

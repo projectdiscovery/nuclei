@@ -9,8 +9,8 @@ import (
 type Request struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
-	Matchers []matchers.Matcher `yaml:"matchers"`
+	Matchers []*matchers.Matcher `yaml:"matchers"`
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
-	Extractors []extractors.Extractor `yaml:"extractors"`
+	Extractors []*extractors.Extractor `yaml:"extractors"`
 }

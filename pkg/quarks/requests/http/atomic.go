@@ -11,7 +11,7 @@ import (
 // CompiledRequest is the compiled http request structure created
 // by parsing and processing the data from read file.
 type CompiledRequest struct {
-	AtomicRequests    []AtomicRequest
+	AtomicRequests    []*AtomicRequest
 	RequestsCondition Condition
 }
 
@@ -33,32 +33,32 @@ var Conditions = map[string]Condition{
 
 // AtomicRequest is a single atomic http request sent to a server
 type AtomicRequest struct {
-	method       string
-	redirects    int
-	maxRedirects int
-	path         string
-	headers      map[string]string
-	body         string
+	Method       string
+	Redirects    int
+	MaxRedirects int
+	Path         string
+	Headers      map[string]string
+	Body         string
 
-	matchers   []matchers.CompiledMatcher
-	extractors []extractors.CompiledExtractor
+	Matchers   []*matchers.CompiledMatcher
+	Extractors []*extractors.CompiledExtractor
 }
 
 // Compare checks if an atomic request is exactly same as the other request.
 func (a *AtomicRequest) Compare(req *AtomicRequest) bool {
-	if !strings.EqualFold(a.method, req.method) {
+	if !strings.EqualFold(a.Method, req.Method) {
 		return false
 	}
-	if a.redirects != req.redirects || a.maxRedirects != req.maxRedirects {
+	if a.Redirects != req.Redirects || a.MaxRedirects != req.MaxRedirects {
 		return false
 	}
-	if !strings.EqualFold(a.path, req.path) {
+	if !strings.EqualFold(a.Path, req.Path) {
 		return false
 	}
-	if !reflect.DeepEqual(a.headers, req.headers) {
+	if !reflect.DeepEqual(a.Headers, req.Headers) {
 		return false
 	}
-	if len(a.body) != len(req.body) || a.body != req.body {
+	if len(a.Body) != len(req.Body) || a.Body != req.Body {
 		return false
 	}
 	return true
