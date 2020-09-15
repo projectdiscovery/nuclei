@@ -29,6 +29,7 @@ func toQType(ttype string) (rtype uint16) {
 	default:
 		rtype = dns.TypeA
 	}
+	return
 }
 
 func toQClass(tclass string) (rclass uint16) {
@@ -51,4 +52,5 @@ func toQClass(tclass string) (rclass uint16) {
 		// Use INET by default.
 		rclass = dns.ClassINET
 	}
+	return
 }

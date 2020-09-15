@@ -27,13 +27,17 @@ type AtomicRequest struct {
 
 // Compare checks if an atomic request is exactly same as the other request.
 func (a *AtomicRequest) Compare(req *AtomicRequest) bool {
-	if (a.class == req.class &&
-		a.reqType == req.reqType &&
-		a.retries == req.retries &&
-		a.recursive == req.recursive &&
-		strings.EqualFold(a.fqdn, req.fqdn
-	)) {
-		return true
+	if a.class != req.class {
+		return false
 	}
-	return false
+	if a.reqType != req.reqType {
+		return false
+	}
+	if a.retries != req.retries || a.recursive != req.recursive {
+		return false
+	}
+	if !strings.EqualFold(a.fqdn, req.fqdn) {
+		return false
+	}
+	return true
 }
