@@ -149,7 +149,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 			return
 		}
 
-		err, dynvars = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+		dynvars, err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
 
@@ -175,7 +175,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 						return
 					}
 
-					err, dynvars = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+					dynvars, err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 					if err != nil {
 						result.Error = errors.Wrap(err, "could not handle http request")
 
@@ -204,7 +204,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	if e.debug {
 		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 		if err != nil {
-			return errors.Wrap(err, "could not make http request"), dynvars
+			return dynvars, errors.Wrap(err, "could not make http request")
 		}
 
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
@@ -218,13 +218,13 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			resp.Body.Close()
 		}
 
-		return errors.Wrap(err, "Could not do request"), dynvars
+		return dynvars, errors.Wrap(err, "Could not do request")
 	}
 
 	if e.debug {
 		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
-			return errors.Wrap(dumpErr, "could not dump http response"), dynvars
+			return dynvars, errors.Wrap(dumpErr, "could not dump http response")
 		}
 
 		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
@@ -236,12 +236,12 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		_, copyErr := io.Copy(ioutil.Discard, resp.Body)
 		if copyErr != nil {
 			resp.Body.Close()
-			return copyErr, dynvars
+			return dynvars, copyErr
 		}
 
 		resp.Body.Close()
 
-		return errors.Wrap(err, "could not read http body"), dynvars
+		return dynvars, errors.Wrap(err, "could not read http body")
 	}
 
 	resp.Body.Close()
@@ -250,7 +250,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// so in case we have to manually do it
 	data, err = requests.HandleDecompression(req, data)
 	if err != nil {
-		return errors.Wrap(err, "could not decompress http body"), dynvars
+		return dynvars, errors.Wrap(err, "could not decompress http body")
 	}
 
 	// Convert response body from []byte to string with zero copy
@@ -264,7 +264,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		if !matcher.Match(resp, body, headers) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
-				return nil, dynvars
+				return dynvars, nil
 			}
 		} else {
 			// If the matcher has matched, and its an OR
@@ -306,7 +306,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		result.GotResults = true
 	}
 
-	return nil, dynvars
+	return dynvars, nil
 }
 
 // Close closes the http executer for a template.
