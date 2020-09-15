@@ -21,10 +21,10 @@ type Input struct {
 	Info Info `yaml:"info"`
 
 	// Embed the template structure in the input itself.
-	*templates.Template `yaml:",inline"`
+	templates.Template `yaml:",inline"`
 
 	// Embed the workflow structure in the input itself.
-	*workflows.Workflow `yaml:",inline"`
+	workflows.Workflow `yaml:",inline"`
 }
 
 // CompiledInput is the compiled version of a input

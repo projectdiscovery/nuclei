@@ -1,6 +1,10 @@
 package catalogue
 
-import "github.com/projectdiscovery/gologger"
+import (
+	"fmt"
+
+	"github.com/projectdiscovery/gologger"
+)
 
 // readInputPaths reads initial input after performing exclusions, etc.
 func (c *Catalogue) readInputPaths(templates, excludes []string) ([]string, error) {
@@ -27,11 +31,12 @@ func (c *Catalogue) readInputPaths(templates, excludes []string) ([]string, erro
 }
 
 // compileInputPaths compiles a list of input paths into a compact structure.
-func (c *Catalogue) compileInputPaths(inputs []string) []*CompiledInput {
-	compiledInput := make([]*CompiledInput, 0, len(inputs))
-	for _, template := range inputs {
+func (c *Catalogue) compileInputPaths() []*CompiledInput {
+	compiledInput := make([]*CompiledInput, 0, len(c.inputFiles))
+	for _, template := range c.inputFiles {
 		input, err := ReadInput(template)
 		if err != nil {
+			fmt.Printf("error %s: %v\n", template, err)
 			gologger.Verbosef("Could not read template %s: %s\n", template, err)
 			continue
 		}

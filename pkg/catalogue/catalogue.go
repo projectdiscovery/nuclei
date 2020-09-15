@@ -3,6 +3,7 @@ package catalogue
 // Catalogue is an inventory of inputs loaded for execution.
 type Catalogue struct {
 	compiledInput []*CompiledInput
+	inputFiles    []string
 	ignoreFiles   []string
 
 	templatesDirectory string
@@ -17,6 +18,17 @@ func New(directory string, templates, excludes []string) (*Catalogue, error) {
 	if err != nil {
 		return nil, err
 	}
-	catalogue.compiledInput = catalogue.compileInputPaths(templates)
+	catalogue.inputFiles = templates
+	catalogue.compiledInput = catalogue.compileInputPaths()
 	return catalogue, nil
+}
+
+// GetCompiledInput returns the current compiled input
+func (c *Catalogue) GetCompiledInput() []*CompiledInput {
+	return c.compiledInput
+}
+
+// GetInputFiles returns the current input file catalogue
+func (c *Catalogue) GetInputFiles() []string {
+	return c.inputFiles
 }

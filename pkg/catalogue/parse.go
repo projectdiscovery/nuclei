@@ -15,7 +15,6 @@ import (
 // or folders provided as in
 func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
-	results := []string{}
 
 	absPath, err := c.convertPathToAbsolute(target)
 	if err != nil {
@@ -55,7 +54,7 @@ func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 	if len(matches) == 0 {
 		return nil, errors.Errorf("no templates found in path")
 	}
-	return results, nil
+	return matches, nil
 }
 
 // convertPathToAbsolute resolves the paths provided to absolute paths

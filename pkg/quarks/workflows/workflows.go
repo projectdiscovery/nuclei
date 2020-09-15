@@ -20,6 +20,6 @@ type CompiledWorkflow struct {
 }
 
 // Compile compiles a workflow performing all processing structure.
-func (t *Workflow) Compile() (*CompiledWorkflow, error) {
-	return nil, nil
+func (t Workflow) Compile() (*CompiledWorkflow, error) {
+	return &CompiledWorkflow{}, nil
 }

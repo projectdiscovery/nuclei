@@ -59,7 +59,7 @@ var schemaLoader = gojsonschema.NewBytesLoader([]byte(`{
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[a-z0-9\\-]{1,32}$"
+      "pattern": "^[a-z0-9\\-]{1,64}$"
     },
     "info": {
       "type": "object",
