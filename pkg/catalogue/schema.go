@@ -1,4 +1,4 @@
-package input
+package catalogue
 
 import (
 	"fmt"

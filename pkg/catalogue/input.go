@@ -1,4 +1,4 @@
-package input
+package catalogue
 
 import (
 	"io/ioutil"
@@ -96,7 +96,8 @@ func (i *Input) Compile() (*CompiledInput, error) {
 	if !ok {
 		return nil, errors.New("invalid template/workflow supplied")
 	}
-	i.Template.
+	_ = Type
+	return nil, nil
 }
 
 // Type is the type of the input provided

@@ -5,8 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http/cookiejar"
-	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -297,14 +295,4 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 	}
 
 	return &wflTemplatesList, nil
-}
-
-func resolvePathWithBaseFolder(baseFolder, templateName string) (string, error) {
-	templatePath := path.Join(baseFolder, templateName)
-	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		gologger.Debugf("Found template in current directory: %s\n", templatePath)
-		return templatePath, nil
-	}
-
-	return "", fmt.Errorf("no such path found: %s", templateName)
 }

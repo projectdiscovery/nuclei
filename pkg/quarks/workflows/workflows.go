@@ -16,10 +16,10 @@ type CompiledWorkflow struct {
 	Logic string
 
 	// Templates contains the list of templates loaded for workflow.
-	Templates []*templates.CompiledTemplate
+	Templates map[string][]*templates.CompiledTemplate
 }
 
 // Compile compiles a workflow performing all processing structure.
 func (t *Workflow) Compile() (*CompiledWorkflow, error) {
-
+	return nil, nil
 }
