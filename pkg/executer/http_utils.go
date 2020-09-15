@@ -37,7 +37,9 @@ func headersToString(headers http.Header) string {
 			builder.WriteString(value)
 
 			if i != len(values)-1 {
-				builder.WriteRune(',')
+				builder.WriteRune('\n')
+				builder.WriteString(header)
+				builder.WriteString(": ")
 			}
 		}
 
