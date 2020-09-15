@@ -183,7 +183,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 		if isRelative(value) {
 			newPath, err := r.resolvePath(value)
 			if err != nil {
-				newPath, err = resolvePathWithBaseFolder(filepath.Dir(workflow.GetPath()), value)
+				newPath, err = resolvePathWithBaseFolder(), value)
 				if err != nil {
 					return nil, err
 				}

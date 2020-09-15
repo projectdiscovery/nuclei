@@ -33,6 +33,10 @@ type CompiledTemplate struct {
 
 // Compile compiles a template performing all processing structure.
 func (t *Template) Compile() (*CompiledTemplate, error) {
+	if len(t.DNS) > 0 && (len(t.HTTP) > 0 || len(t.HTTPRequests) > 0) {
+		return nil, errors.New("http and dns requests can't be used together")
+	}
+
 	compiled := &CompiledTemplate{
 		MaintainSession:   t.MaintainSession,
 		RequestsCondition: t.RequestsCondition,

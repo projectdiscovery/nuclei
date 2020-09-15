@@ -128,7 +128,6 @@ func (r *Runner) getTemplatesFor(definitions []string) []string {
 			}
 		}
 	}
-
 	return allTemplates
 }
 
@@ -254,20 +253,6 @@ func (r *Runner) listAvailableTemplates() {
 	}
 }
 
-func (r *Runner) resolvePathIfRelative(filePath string) (string, error) {
-	if isRelative(filePath) {
-		newPath, err := r.resolvePath(filePath)
-
-		if err != nil {
-			return "", err
-		}
-
-		return newPath, nil
-	}
-
-	return filePath, nil
-}
-
 func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
 	for _, s := range allowedSeverities {
 		if s != "" && strings.HasPrefix(templateSeverity, s) {
@@ -293,22 +278,4 @@ func directoryWalker(fsPath string, callback func(fsPath string, d *godirwalk.Di
 	}
 
 	return nil
-}
-
-func isFilePath(filePath string) (bool, error) {
-	info, err := os.Stat(filePath)
-	if err != nil {
-		return false, err
-	}
-
-	return info.Mode().IsRegular(), nil
-}
-
-func isNewPath(filePath string, pathMap map[string]bool) bool {
-	if _, already := pathMap[filePath]; already {
-		gologger.Warningf("Skipping already specified path '%s'", filePath)
-		return false
-	}
-
-	return true
 }
