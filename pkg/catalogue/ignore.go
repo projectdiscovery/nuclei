@@ -49,3 +49,19 @@ func (c *Catalogue) checkIfInNucleiIgnore(item string) bool {
 	}
 	return false
 }
+
+// ignoreFilesWithExcludes ignores results with exclude paths
+func (c *Catalogue) ignoreFilesWithExcludes(results, excluded []string) []string {
+	excludeMap := make(map[string]struct{}, len(excluded))
+	for _, excl := range excluded {
+		excludeMap[excl] = struct{}{}
+	}
+
+	templates := make([]string, 0, len(results))
+	for _, incl := range results {
+		if _, found := excludeMap[incl]; !found {
+			templates = append(templates, incl)
+		}
+	}
+	return templates
+}

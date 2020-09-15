@@ -60,11 +60,6 @@ func New(options *Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	// Read nucleiignore file if given a templateconfig
-	if runner.templatesConfig != nil {
-		runner.readNucleiIgnoreFile()
-	}
-
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)

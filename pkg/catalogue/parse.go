@@ -8,66 +8,54 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 )
 
-// GetTemplatePaths parses the specified input templates and returns a compiled
+// GetTemplatePath parses the specified input template path and returns a compiled
 // list of finished absolute paths to the templates evaluating any glob patterns
 // or folders provided as in
-func (c *Catalogue) GetTemplatePaths(definitions []string) []string {
+func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 	results := []string{}
 
-	for _, t := range definitions {
-		absPath, err := c.convertPathToAbsolute(t)
-		if err != nil {
-			gologger.Errorf("Could not find template file '%s': %s\n", t, err)
-			continue
-		}
+	absPath, err := c.convertPathToAbsolute(target)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not find template file")
+	}
 
-		// Template input includes a wildcard
-		if strings.Contains(absPath, "*") {
-			matches, err := c.findGlobPathMatches(absPath, processed)
-			if err != nil {
-				gologger.Errorf("Could not find glob matches '%s': %s\n", t, err)
-				continue
-			}
-			if len(matches) == 0 {
-				gologger.Verbosef("Error, no templates were found with '%s'.\n", "VER", absPath)
-			} else {
-				gologger.Verbosef("Identified %d templates with %s glob\n", "VER", len(matches), absPath)
-			}
-			results = append(results, matches...)
-			continue
-		}
-
-		// Template input is either a file or a directory
-		match, file, err := c.findFileMatches(absPath, processed)
+	// Template input includes a wildcard
+	if strings.Contains(absPath, "*") {
+		matches, err := c.findGlobPathMatches(absPath, processed)
 		if err != nil {
-			gologger.Errorf("Could not stat '%s': %s\n", absPath, err)
-			continue
-		}
-		if file {
-			if match != "" {
-				results = append(results, match)
-			}
-			continue
-		}
-
-		// Recursively walk down the Templates directory and run all
-		// the template file checks
-		matches, err := c.findDirectoryMatches(absPath, processed)
-		if err != nil {
-			gologger.Labelf("Could not find templates in directory '%s': %s\n", absPath, err)
-			continue
+			return nil, errors.Wrap(err, "could not find glob matches")
 		}
 		if len(matches) == 0 {
-			gologger.Labelf("Error, no templates were found in '%s'.\n", absPath)
-			continue
+			return nil, errors.Errorf("no templates found for path")
 		}
-		results = append(results, matches...)
+		return matches, nil
 	}
-	return results
+
+	// Template input is either a file or a directory
+	match, file, err := c.findFileMatches(absPath, processed)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find file")
+	}
+	if file {
+		if match != "" {
+			return []string{match}, nil
+		}
+		return nil, nil
+	}
+
+	// Recursively walk down the Templates directory and run all
+	// the template file checks
+	matches, err := c.findDirectoryMatches(absPath, processed)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find directory matches")
+	}
+	if len(matches) == 0 {
+		return nil, errors.Errorf("no templates found in path")
+	}
+	return results, nil
 }
 
 // convertPathToAbsolute resolves the paths provided to absolute paths

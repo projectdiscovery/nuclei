@@ -96,8 +96,27 @@ func (i *Input) Compile() (*CompiledInput, error) {
 	if !ok {
 		return nil, errors.New("invalid template/workflow supplied")
 	}
-	_ = Type
-	return nil, nil
+
+	compiled := &CompiledInput{
+		ID:   i.ID,
+		Info: i.Info,
+		Type: Type,
+	}
+	if Type == TemplateInputType {
+		compiledTemplate, err := i.Template.Compile()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not compile template")
+		}
+		compiled.CompiledTemplate = compiledTemplate
+	}
+	if Type == WorkflowInputType {
+		compiledWorkflow, err := i.Workflow.Compile()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not compile workflow")
+		}
+		compiled.CompiledWorkflow = compiledWorkflow
+	}
+	return compiled, nil
 }
 
 // Type is the type of the input provided
