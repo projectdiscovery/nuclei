@@ -1,10 +1,7 @@
 package requests
 
 import (
-	"bufio"
 	"context"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -104,7 +101,6 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, d
 	if strings.Contains(data, "\n") {
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
 	}
-
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
 
@@ -215,41 +211,6 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	return &HTTPRequest{Request: request, Meta: genValues}, nil
 }
 
-func setHeader(req *http.Request, name, value string) {
-	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := req.Header[name]; !ok {
-		req.Header.Set(name, value)
-	}
-}
-
-func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	req.Header.Set("Connection", "close")
-	req.Close = true
-	replacer := newReplacer(values)
-
-	// Check if the user requested a request body
-	if r.Body != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-	}
-
-	// Set the header values requested
-	for header, value := range r.Headers {
-		req.Header[header] = []string{replacer.Replace(value)}
-	}
-
-	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
-
-	// raw requests are left untouched
-	if len(r.Raw) > 0 {
-		return retryablehttp.FromRequest(req)
-	}
-
-	setHeader(req, "Accept", "*/*")
-	setHeader(req, "Accept-Language", "en")
-
-	return retryablehttp.FromRequest(req)
-}
-
 type HTTPRequest struct {
 	Request *retryablehttp.Request
 	Meta    map[string]interface{}
@@ -267,105 +228,6 @@ func (c *CustomHeaders) String() string {
 func (c *CustomHeaders) Set(value string) error {
 	*c = append(*c, value)
 	return nil
-}
-
-type RawRequest struct {
-	FullURL string
-	Method  string
-	Path    string
-	Data    string
-	Headers map[string]string
-}
-
-// parseRawRequest parses the raw request as supplied by the user
-func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest, error) {
-	reader := bufio.NewReader(strings.NewReader(request))
-
-	rawRequest := RawRequest{
-		Headers: make(map[string]string),
-	}
-
-	s, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("could not read request: %s", err)
-	}
-
-	parts := strings.Split(s, " ")
-
-	if len(parts) < three {
-		return nil, fmt.Errorf("malformed request supplied")
-	}
-	// Set the request Method
-	rawRequest.Method = parts[0]
-
-	for {
-		line, readErr := reader.ReadString('\n')
-		line = strings.TrimSpace(line)
-
-		if readErr != nil || line == "" {
-			break
-		}
-
-		p := strings.SplitN(line, ":", two)
-		if len(p) != two {
-			continue
-		}
-
-		if strings.EqualFold(p[0], "content-length") {
-			continue
-		}
-
-		rawRequest.Headers[strings.TrimSpace(p[0])] = strings.TrimSpace(p[1])
-	}
-
-	// Handle case with the full http url in path. In that case,
-	// ignore any host header that we encounter and use the path as request URL
-	if strings.HasPrefix(parts[1], "http") {
-		parsed, parseErr := url.Parse(parts[1])
-		if parseErr != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
-		}
-
-		rawRequest.Path = parts[1]
-		rawRequest.Headers["Host"] = parsed.Host
-	} else {
-		rawRequest.Path = parts[1]
-	}
-
-	// If raw request doesn't have a Host header and/ path,
-	// this will be generated from the parsed baseURL
-	parsedURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %s", err)
-	}
-
-	var hostURL string
-	if rawRequest.Headers["Host"] == "" {
-		hostURL = parsedURL.Host
-	} else {
-		hostURL = rawRequest.Headers["Host"]
-	}
-
-	if rawRequest.Path == "" {
-		rawRequest.Path = parsedURL.Path
-	} else if strings.HasPrefix(rawRequest.Path, "?") {
-		// requests generated from http.ReadRequest have incorrect RequestURI, so they
-		// cannot be used to perform another request directly, we need to generate a new one
-		// with the new target url
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, hostURL, rawRequest.Path)
-
-	// Set the request body
-	b, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %s", err)
-	}
-
-	rawRequest.Data = string(b)
-
-	return &rawRequest, nil
 }
 
 func (r *BulkHTTPRequest) Next(reqURL string) bool {

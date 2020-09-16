@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/post/extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/post/matchers"
 )
 
 // CompiledRequest is the compiled http request structure created
@@ -42,6 +43,12 @@ type AtomicRequest struct {
 
 	Matchers   []*matchers.CompiledMatcher
 	Extractors []*extractors.CompiledExtractor
+
+	// matchersCondition is internal condition for the matchers.
+	matchersCondition matchers.ConditionType
+
+	// attackType is internal attack type
+	attackType generators.Type
 }
 
 // Compare checks if an atomic request is exactly same as the other request.

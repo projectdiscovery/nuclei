@@ -129,7 +129,6 @@ func CopyMapWithDefaultValue(originalMap map[string][]string, defaultValue inter
 	for key := range originalMap {
 		newMap[key] = defaultValue
 	}
-
 	return newMap
 }
 
