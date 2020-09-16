@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/quarks"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/workflows"
 	"github.com/xeipuuv/gojsonschema"
@@ -92,7 +91,7 @@ func ReadInput(path string) (*Input, error) {
 }
 
 // Compile returns the compiled version of the input
-func (i *Input) Compile(resolver quarks.PathResolver, path string) (*CompiledInput, error) {
+func (i *Input) Compile(catalog *Catalogue, path string) (*CompiledInput, error) {
 	Type, ok := i.getType()
 	if !ok {
 		return nil, errors.New("invalid template/workflow supplied")
@@ -104,14 +103,14 @@ func (i *Input) Compile(resolver quarks.PathResolver, path string) (*CompiledInp
 		Type: Type,
 	}
 	if Type == TemplateInputType {
-		compiledTemplate, err := i.Template.Compile(resolver, path)
+		compiledTemplate, err := i.Template.Compile(catalog, path)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not compile template")
 		}
 		compiled.CompiledTemplate = compiledTemplate
 	}
 	if Type == WorkflowInputType {
-		compiledWorkflow, err := i.Workflow.Compile(resolver, path)
+		compiledWorkflow, err := i.Workflow.Compile(catalog, catalog, path)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}

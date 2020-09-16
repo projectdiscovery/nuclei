@@ -23,9 +23,15 @@ type CompiledWorkflow struct {
 	Templates map[string][]*templates.CompiledTemplate
 }
 
+// TemplateCompiler is an interface used for compiling templates for workflows
+type TemplateCompiler interface {
+	// GetTemplatesForWorkflow returns compiled templates for a workflow
+	GetTemplatesForWorkflow(templates []string) ([]*templates.CompiledTemplate, error)
+}
+
 // Compile compiles a workflow performing all processing structure.
-func (t Workflow) Compile(resolver quarks.PathResolver, path string) (*CompiledWorkflow, error) {
-	compiled := &CompiledWorkflow{
+func (t Workflow) Compile(resolver quarks.PathResolver, compiler TemplateCompiler, path string) (*CompiledWorkflow, error) {
+	result := &CompiledWorkflow{
 		Logic:     t.Logic,
 		Templates: make(map[string][]*templates.CompiledTemplate, len(t.Variables)),
 	}
@@ -35,20 +41,11 @@ func (t Workflow) Compile(resolver quarks.PathResolver, path string) (*CompiledW
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get templates for workflow")
 		}
-		for _, template := range templates {
-			//	input, err := input.Read(template)
-			//	if err != nil {
-			//		continue
-			//	}
-			//
-			//	compiledTemplate, err := i.Template.Compile(catalogue, path)
-			//	if err != nil {
-			//		return nil, errors.Wrap(err, "could not compile template")
-			//	}
-			//	compiled.CompiledTemplate = compiledTemplate
+		compiled, err := compiler.GetTemplatesForWorkflow(templates)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not compile template for workflow: %s", value)
 		}
-		_ = key
-		_ = value
+		result.Templates[key] = compiled
 	}
-	return compiled, nil
+	return result, nil
 }

@@ -6,7 +6,7 @@ import "github.com/projectdiscovery/gologger"
 func (c *Catalogue) GetTemplatesForWorkflow(templates []string) ([]*CompiledInput, error) {
 	compiledInput := make([]*CompiledInput, 0, len(c.inputFiles))
 	for _, template := range c.inputFiles {
-		input, err := input.Read(template)
+		input, err := Read(template)
 		if err != nil {
 			gologger.Verbosef("Could not read template %s: %s\n", template, err)
 			continue
