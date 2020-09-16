@@ -129,7 +129,6 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
-	dynvars := make(map[string][]string)
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
@@ -149,7 +148,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 			return
 		}
 
-		dynvars, err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+		dynvars, err := e.handleHTTP(reqURL, httpRequest, &result)
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not handle http request")
 
@@ -175,7 +174,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 						return
 					}
 
-					dynvars, err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+					_, err = e.handleHTTP(reqURL, httpRequest, &result)
 					if err != nil {
 						result.Error = errors.Wrap(err, "could not handle http request")
 
@@ -196,7 +195,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	return result
 }
 
-func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) (map[string][]string, error) {
+func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, result *Result) (map[string][]string, error) {
 	dynvars := make(map[string][]string)
 	e.setCustomHeaders(request)
 	req := request.Request
