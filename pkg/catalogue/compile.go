@@ -1,8 +1,6 @@
 package catalogue
 
 import (
-	"fmt"
-
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -36,11 +34,10 @@ func (c *Catalogue) compileInputPaths() []*CompiledInput {
 	for _, template := range c.inputFiles {
 		input, err := ReadInput(template)
 		if err != nil {
-			fmt.Printf("error %s: %v\n", template, err)
 			gologger.Verbosef("Could not read template %s: %s\n", template, err)
 			continue
 		}
-		compiled, err := input.Compile()
+		compiled, err := input.Compile(c, template)
 		if err != nil {
 			gologger.Verbosef("Could not compile template %s: %s\n", template, err)
 			continue

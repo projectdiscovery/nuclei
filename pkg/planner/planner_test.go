@@ -9,7 +9,7 @@ import (
 )
 
 func TestPlanning(t *testing.T) {
-	catalogue, err := catalogue.New("projectdiscovery/nuclei-templates", []string{
+	catalogue, err := catalogue.New("/Users/ice3man/projectdiscovery/nuclei-templates", []string{
 		"tokens/",
 		"dns/",
 		"panels/",

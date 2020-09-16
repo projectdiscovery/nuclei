@@ -12,7 +12,7 @@ import (
 
 // GetTemplatePath parses the specified input template path and returns a compiled
 // list of finished absolute paths to the templates evaluating any glob patterns
-// or folders provided as in
+// or folders provided as in.
 func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 

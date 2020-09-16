@@ -2,6 +2,7 @@ package templates
 
 import (
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/quarks"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/requests/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/requests/http"
 )
@@ -32,7 +33,7 @@ type CompiledTemplate struct {
 }
 
 // Compile compiles a template performing all processing structure.
-func (t Template) Compile() (*CompiledTemplate, error) {
+func (t Template) Compile(resolver quarks.PathResolver, path string) (*CompiledTemplate, error) {
 	if len(t.DNS) > 0 && (len(t.HTTP) > 0 || len(t.HTTPRequests) > 0) {
 		return nil, errors.New("http and dns requests can't be used together")
 	}

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// ResolvePath resolves the path to a template in various ways.
+// ResolvePath resolves the path to an absolute one in various ways.
 //
 // It checks if the filename is an absolute path, looks in the current directory
 // or checking the nuclei templates directory. If a second path is given,
