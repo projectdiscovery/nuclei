@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/quarks"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/quarks/workflows"
 	"github.com/xeipuuv/gojsonschema"
@@ -18,7 +19,7 @@ type Input struct {
 	// ID is the unique id for the template
 	ID string `yaml:"id"`
 	// Info contains information about the template
-	Info Info `yaml:"info"`
+	Info quarks.Info `yaml:"info"`
 
 	// Embed the template structure in the input itself.
 	templates.Template `yaml:",inline"`
@@ -29,28 +30,11 @@ type Input struct {
 
 // CompiledInput is the compiled version of a input
 type CompiledInput struct {
-	// ID is the unique id for the template
-	ID string `yaml:"id"`
-	// Info contains information about the template
-	Info Info `yaml:"info"`
-
 	// Type is the type of the input provided
 	Type Type
 
 	*templates.CompiledTemplate
 	*workflows.CompiledWorkflow
-}
-
-// Info contains information about the request template
-type Info struct {
-	// Name is the name of the template
-	Name string `yaml:"name"`
-	// Author is the name of the author of the template
-	Author string `yaml:"author"`
-	// Severity optionally describes the severity of the template
-	Severity string `yaml:"severity,omitempty"`
-	// Description optionally describes the template.
-	Description string `yaml:"description,omitempty"`
 }
 
 // ReadInput reads a template input from disk returning
@@ -98,19 +82,28 @@ func (i *Input) Compile(catalog *Catalogue, path string) (*CompiledInput, error)
 	}
 
 	compiled := &CompiledInput{
-		ID:   i.ID,
-		Info: i.Info,
 		Type: Type,
 	}
 	if Type == TemplateInputType {
-		compiledTemplate, err := i.Template.Compile(catalog, path)
+		compiledTemplate, err := i.Template.Compile(templates.CompileOptions{
+			ID:       i.ID,
+			Info:     i.Info,
+			Path:     path,
+			Resolver: catalog,
+		})
 		if err != nil {
 			return nil, errors.Wrap(err, "could not compile template")
 		}
 		compiled.CompiledTemplate = compiledTemplate
 	}
 	if Type == WorkflowInputType {
-		compiledWorkflow, err := i.Workflow.Compile(catalog, catalog, path)
+		compiledWorkflow, err := i.Workflow.Compile(workflows.CompileOptions{
+			ID:       i.ID,
+			Info:     i.Info,
+			Path:     path,
+			Resolver: catalog,
+			Compiler: catalog,
+		})
 		if err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}

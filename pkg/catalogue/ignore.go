@@ -23,6 +23,9 @@ func (c *Catalogue) readNucleiIgnoreFile() {
 		if text == "" {
 			continue
 		}
+		if strings.HasPrefix(text, "#") {
+			continue
+		}
 		c.ignoreFiles = append(c.ignoreFiles, text)
 	}
 }

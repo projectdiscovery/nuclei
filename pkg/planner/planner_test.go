@@ -33,6 +33,9 @@ func TestPlanning(t *testing.T) {
 	}
 
 	for i, step := range plan.steps {
+		if step.Type == WorkflowStepType {
+			fmt.Printf("workflow: %+v\n", step.Workflows[0])
+		}
 		fmt.Printf("[%d] %v\n", i+1, step)
 	}
 }

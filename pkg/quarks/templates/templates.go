@@ -25,6 +25,9 @@ type Template struct {
 
 // CompiledTemplate is the compiled template workflow parsed from yaml file.
 type CompiledTemplate struct {
+	ID   string
+	Info quarks.Info
+
 	MaintainSession   bool
 	RequestsCondition bool
 
@@ -32,13 +35,23 @@ type CompiledTemplate struct {
 	HTTP []*http.CompiledRequest
 }
 
+// CompileOptions contains the options for template compilation
+type CompileOptions struct {
+	ID       string
+	Path     string
+	Info     quarks.Info
+	Resolver quarks.PathResolver
+}
+
 // Compile compiles a template performing all processing structure.
-func (t Template) Compile(resolver quarks.PathResolver, path string) (*CompiledTemplate, error) {
+func (t Template) Compile(opts CompileOptions) (*CompiledTemplate, error) {
 	if len(t.DNS) > 0 && (len(t.HTTP) > 0 || len(t.HTTPRequests) > 0) {
 		return nil, errors.New("http and dns requests can't be used together")
 	}
 
 	compiled := &CompiledTemplate{
+		ID:                opts.ID,
+		Info:              opts.Info,
 		MaintainSession:   t.MaintainSession,
 		RequestsCondition: t.RequestsCondition,
 	}
