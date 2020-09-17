@@ -12,30 +12,13 @@ import (
 // CompiledRequest is the compiled http request structure created
 // by parsing and processing the data from read file.
 type CompiledRequest struct {
-	AtomicRequests    []*AtomicRequest
-	RequestsCondition Condition
-}
-
-// Condition is the type of condition for matcher
-type Condition int
-
-const (
-	// ANDCondition matches responses with AND condition in arguments.
-	ANDCondition Condition = iota + 1
-	// ORCondition matches responses with AND condition in arguments.
-	ORCondition
-)
-
-// Conditions is an table for conversion of condition type from string.
-var Conditions = map[string]Condition{
-	"and": ANDCondition,
-	"or":  ORCondition,
+	AtomicRequests []*AtomicRequest
 }
 
 // AtomicRequest is a single atomic http request sent to a server
 type AtomicRequest struct {
 	Method       string
-	Redirects    int
+	Redirects    bool
 	MaxRedirects int
 	Path         string
 	Headers      map[string]string

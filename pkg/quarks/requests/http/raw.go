@@ -12,11 +12,44 @@ import (
 
 // rawRequest is a request structure used for making raw http requests
 type rawRequest struct {
-	FullURL string
 	Method  string
 	Path    string
 	Data    string
 	Headers map[string]string
+}
+
+const baseURLVariable = "{{BaseURL}}"
+
+// compileRawRequests returns a compiled version o fh
+func (r *Request) compileRawRequests() (*CompiledRequest, error) {
+	compiledRequest := &CompiledRequest{
+		AtomicRequests: make([]*AtomicRequest, 0, len(r.Raw)),
+	}
+	for _, request := range r.Raw {
+		rawRequest, err := r.parseRawRequest(request)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse raw request")
+		}
+
+		if strings.HasPrefix(rawRequest.Path, "/") {
+			rawRequest.Path = baseURLVariable + rawRequest.Path
+		} else if strings.HasPrefix(rawRequest.Path, "?") {
+			rawRequest.Path = baseURLVariable + "/" + rawRequest.Path
+		} else {
+			rawRequest.Path = baseURLVariable
+		}
+
+		atomicRequest := AtomicRequest{
+			Method:       rawRequest.Method,
+			Redirects:    r.Redirects,
+			MaxRedirects: r.MaxRedirects,
+			Path:         rawRequest.Path,
+			Headers:      rawRequest.Headers,
+			Body:         rawRequest.Data,
+		}
+		fmt.Printf("%+v\n", atomicRequest)
+	}
+	return compiledRequest, nil
 }
 
 const (
@@ -25,7 +58,7 @@ const (
 )
 
 // parseRawRequest parses the raw request as supplied by the user
-func (r *Request) parseRawRequest(request, baseURL string) (*rawRequest, error) {
+func (r *Request) parseRawRequest(request string) (*rawRequest, error) {
 	reader := bufio.NewReader(strings.NewReader(request))
 
 	rawRequest := rawRequest{
@@ -79,36 +112,11 @@ func (r *Request) parseRawRequest(request, baseURL string) (*rawRequest, error) 
 		rawRequest.Path = parts[1]
 	}
 
-	// If raw request doesn't have a Host header and/ path,
-	// this will be generated from the parsed baseURL
-	parsedURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not parse request URL")
-	}
-
-	var hostURL string
-	if rawRequest.Headers["Host"] == "" {
-		hostURL = parsedURL.Host
-	} else {
-		hostURL = rawRequest.Headers["Host"]
-	}
-
-	if rawRequest.Path == "" {
-		rawRequest.Path = parsedURL.Path
-	} else if strings.HasPrefix(rawRequest.Path, "?") {
-		// requests generated from http.ReadRequest have incorrect RequestURI, so they
-		// cannot be used to perform another request directly, we need to generate a new one
-		// with the new target url
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, hostURL, rawRequest.Path)
-
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read request body")
 	}
 	rawRequest.Data = string(b)
-
 	return &rawRequest, nil
 }

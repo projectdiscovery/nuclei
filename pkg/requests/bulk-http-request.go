@@ -180,7 +180,6 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 		if err != nil {
 			return nil, err
 		}
-
 		dynamicValues[expr] = result
 	}
 
