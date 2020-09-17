@@ -54,13 +54,15 @@ func (e *Extractor) ExtractDNS(msg *dns.Msg) map[string]struct{} {
 func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
+	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
-		matches := regex.FindAllString(corpus, -1)
+		matches := regex.FindAllStringSubmatch(corpus, -1)
 		for _, match := range matches {
-			results[match] = struct{}{}
+			if len(match) >= groupPlusOne {
+				results[match[e.RegexGroup]] = struct{}{}
+			}
 		}
 	}
-
 	return results
 }
 
