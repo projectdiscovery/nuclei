@@ -403,7 +403,7 @@ func (r *BulkHTTPRequest) Next(reqURL string) bool {
 	return r.gsfm.Next(reqURL)
 }
 
-// Position returns the next generator by URL
+// Position returns the current generator's position by URL
 func (r *BulkHTTPRequest) Position(reqURL string) int {
 	return r.gsfm.Position(reqURL)
 }
