@@ -31,16 +31,8 @@ type workflowTemplates struct {
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
 func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgress, template *templates.Template, request interface{}) bool {
-	var writer *bufio.Writer
-	if r.output != nil {
-		writer = bufio.NewWriter(r.output)
-		defer writer.Flush()
-	}
-
 	var httpExecuter *executer.HTTPExecuter
-
 	var dnsExecuter *executer.DNSExecuter
-
 	var err error
 
 	// Create an executer based on the request type.
@@ -50,7 +42,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			Debug:         r.options.Debug,
 			Template:      template,
 			DNSRequest:    value,
-			Writer:        writer,
+			Writer:        r.output,
 			JSON:          r.options.JSON,
 			JSONRequests:  r.options.JSONRequests,
 			ColoredOutput: !r.options.NoColor,
@@ -62,7 +54,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			Debug:           r.options.Debug,
 			Template:        template,
 			BulkHTTPRequest: value,
-			Writer:          writer,
+			Writer:          r.output,
 			Timeout:         r.options.Timeout,
 			Retries:         r.options.Retries,
 			ProxyURL:        r.options.ProxyURL,
@@ -72,7 +64,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			JSONRequests:    r.options.JSONRequests,
 			CookieReuse:     value.CookieReuse,
 			ColoredOutput:   !r.options.NoColor,
-			Colorizer:       r.colorizer,
+			Colorizer:       &r.colorizer,
 			Decolorizer:     r.decolorizer,
 		})
 	}
@@ -126,12 +118,14 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) {
+func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) bool {
+	result := false
+
 	workflowTemplatesList, err := r.preloadWorkflowTemplates(p, workflow)
 	if err != nil {
 		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
 
-		return
+		return result
 	}
 
 	logicBytes := []byte(workflow.Logic)
@@ -151,13 +145,18 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 			script := tengo.NewScript(logicBytes)
 			script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 
+			variables := make(map[string]*workflows.NucleiVar)
+
 			for _, workflowTemplate := range *workflowTemplatesList {
-				err := script.Add(workflowTemplate.Name, &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL})
+				name := workflowTemplate.Name
+				variable := &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL}
+				err := script.Add(name, variable)
 				if err != nil {
 					gologger.Errorf("Could not initialize script for workflow '%s': %s\n", workflow.ID, err)
 
 					continue
 				}
+				variables[name] = variable
 			}
 
 			_, err := script.RunContext(context.Background())
@@ -165,11 +164,20 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 				gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 			}
 
+			for _, variable := range variables {
+				result = !variable.IsFalsy()
+				if result {
+					break
+				}
+			}
+
 			<-r.limiter
 		}(targetURL)
 	}
 
 	wg.Wait()
+
+	return result
 }
 
 func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workflows.Workflow) (*[]workflowTemplates, error) {
@@ -188,12 +196,6 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 	var wflTemplatesList []workflowTemplates
 
 	for name, value := range workflow.Variables {
-		var writer *bufio.Writer
-		if r.output != nil {
-			writer = bufio.NewWriter(r.output)
-			defer writer.Flush()
-		}
-
 		// Check if the template is an absolute path or relative path.
 		// If the path is absolute, use it. Otherwise,
 		if isRelative(value) {
@@ -220,23 +222,27 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
 					Debug:         r.options.Debug,
-					Writer:        writer,
+					Writer:        r.output,
 					Template:      t,
 					Timeout:       r.options.Timeout,
 					Retries:       r.options.Retries,
 					ProxyURL:      r.options.ProxyURL,
 					ProxySocksURL: r.options.ProxySocksURL,
 					CustomHeaders: r.options.CustomHeaders,
+					JSON:          r.options.JSON,
+					JSONRequests:  r.options.JSONRequests,
 					CookieJar:     jar,
 					ColoredOutput: !r.options.NoColor,
-					Colorizer:     r.colorizer,
+					Colorizer:     &r.colorizer,
 					Decolorizer:   r.decolorizer,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
 					Debug:         r.options.Debug,
 					Template:      t,
-					Writer:        writer,
+					Writer:        r.output,
+					JSON:          r.options.JSON,
+					JSONRequests:  r.options.JSONRequests,
 					ColoredOutput: !r.options.NoColor,
 					Colorizer:     r.colorizer,
 					Decolorizer:   r.decolorizer,
@@ -281,7 +287,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 				if len(t.BulkRequestsHTTP) > 0 {
 					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
-						Writer:        writer,
+						Writer:        r.output,
 						Template:      t,
 						Timeout:       r.options.Timeout,
 						Retries:       r.options.Retries,
@@ -294,7 +300,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 					template.DNSOptions = &executer.DNSOptions{
 						Debug:    r.options.Debug,
 						Template: t,
-						Writer:   writer,
+						Writer:   r.output,
 					}
 				}
 				if template.DNSOptions != nil || template.HTTPOptions != nil {
