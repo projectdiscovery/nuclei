@@ -1,10 +1,19 @@
-FROM golang:1.14-alpine AS build-env
+FROM golang:alpine as builder
 
-RUN apk add --no-cache --upgrade git openssh-client ca-certificates
-RUN go get -u github.com/golang/dep/cmd/dep
-WORKDIR /go/src/app
+RUN mkdir -p /app
+WORKDIR /app
+COPY ./go.mod .
+RUN go mod download
 
-# Install
-RUN GO111MODULE=on go get -u github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+COPY . .
+RUN cd ./cmd/nuclei && go build -o nuclei .
 
-ENTRYPOINT ["nuclei"]
+FROM alpine
+
+RUN mkdir /app
+RUN adduser -S -D -H -h /app appuser
+USER appuser
+COPY --from=builder /app/cmd/nuclei/nuclei /app
+
+WORKDIR /app
+CMD ["./nuclei"]

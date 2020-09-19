@@ -60,25 +60,10 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		gologger.Silentf("%s", string(data))
 
 		if e.writer != nil {
-			e.outputMutex.Lock()
-			_, err := e.writer.Write(data)
-
-			if err != nil {
-				e.outputMutex.Unlock()
+			if err := e.writer.Write(data); err != nil {
 				gologger.Errorf("Could not write output data: %s\n", err)
-
 				return
 			}
-
-			_, err = e.writer.WriteRune('\n')
-
-			if err != nil {
-				e.outputMutex.Unlock()
-				gologger.Errorf("Could not write output data: %s\n", err)
-
-				return
-			}
-			e.outputMutex.Unlock()
 		}
 
 		return
@@ -88,16 +73,22 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 	colorizer := e.colorizer
 
 	builder.WriteRune('[')
-	builder.WriteString(colorizer.BrightGreen(e.template.ID).String())
+	builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
 
 	if matcher != nil && len(matcher.Name) > 0 {
 		builder.WriteString(":")
-		builder.WriteString(colorizer.BrightGreen(matcher.Name).Bold().String())
+		builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
 	}
 
 	builder.WriteString("] [")
-	builder.WriteString(colorizer.BrightBlue("http").String())
+	builder.WriteString(colorizer.Colorizer.BrightBlue("http").String())
 	builder.WriteString("] ")
+
+	if e.template.Info.Severity != "" {
+		builder.WriteString("[")
+		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString("] ")
+	}
 
 	// Escape the URL by replacing all % with %%
 	escapedURL := strings.ReplaceAll(URL, "%", "%%")
@@ -108,7 +99,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		builder.WriteString(" [")
 
 		for i, result := range extractorResults {
-			builder.WriteString(colorizer.BrightCyan(result).String())
+			builder.WriteString(colorizer.Colorizer.BrightCyan(result).String())
 
 			if i != len(extractorResults)-1 {
 				builder.WriteRune(',')
@@ -125,7 +116,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		var metas []string
 
 		for name, value := range req.Meta {
-			metas = append(metas, colorizer.BrightYellow(name).Bold().String()+"="+colorizer.BrightYellow(value.(string)).String())
+			metas = append(metas, colorizer.Colorizer.BrightYellow(name).Bold().String()+"="+colorizer.Colorizer.BrightYellow(value.(string)).String())
 		}
 
 		builder.WriteString(strings.Join(metas, ","))
@@ -139,19 +130,13 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 	gologger.Silentf("%s", message)
 
 	if e.writer != nil {
-		e.outputMutex.Lock()
 		if e.coloredOutput {
 			message = e.decolorizer.ReplaceAllString(message, "")
 		}
 
-		_, err := e.writer.WriteString(message)
-
-		if err != nil {
-			e.outputMutex.Unlock()
+		if err := e.writer.WriteString(message); err != nil {
 			gologger.Errorf("Could not write output data: %s\n", err)
-
 			return
 		}
-		e.outputMutex.Unlock()
 	}
 }

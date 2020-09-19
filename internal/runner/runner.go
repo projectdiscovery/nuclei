@@ -13,8 +13,10 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
@@ -25,8 +27,7 @@ type Runner struct {
 	inputCount int64
 
 	// output is the output file to write if any
-	output      *os.File
-	outputMutex *sync.Mutex
+	output *bufwriter.Writer
 
 	tempFile        string
 	templatesConfig *nucleiConfig
@@ -38,19 +39,27 @@ type Runner struct {
 	progress progress.IProgress
 
 	// output coloring
-	colorizer   aurora.Aurora
+	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
 }
 
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		outputMutex: &sync.Mutex{},
-		options:     options,
+		options: options,
 	}
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Labelf("Could not update templates: %s\n", err)
+	}
+
+	// output coloring
+	useColor := !options.NoColor
+	runner.colorizer = *colorizer.NewNucleiColorizer(aurora.NewAurora(useColor))
+
+	if useColor {
+		// compile a decolorization regex to cleanup file output messages
+		runner.decolorizer = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 	}
 
 	if options.TemplateList {
@@ -64,15 +73,6 @@ func New(options *Options) (*Runner, error) {
 	// Read nucleiignore file if given a templateconfig
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
-	}
-
-	// output coloring
-	useColor := !options.NoColor
-	runner.colorizer = aurora.NewAurora(useColor)
-
-	if useColor {
-		// compile a decolorization regex to cleanup file output messages
-		runner.decolorizer = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 	}
 
 	// If we have stdin, write it to a new file
@@ -152,16 +152,15 @@ func New(options *Options) (*Runner, error) {
 
 	// Create the output file if asked
 	if options.Output != "" {
-		output, err := os.Create(options.Output)
+		output, err := bufwriter.New(options.Output)
 		if err != nil {
 			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, err)
 		}
-
 		runner.output = output
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.options.NoColor, !options.Silent && options.EnableProgressBar)
+	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
@@ -170,7 +169,9 @@ func New(options *Options) (*Runner, error) {
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
-	r.output.Close()
+	if r.output != nil {
+		r.output.Close()
+	}
 	os.Remove(r.tempFile)
 }
 
@@ -211,9 +212,9 @@ func (r *Runner) RunEnumeration() {
 	}
 
 	gologger.Infof("Using %s rules (%s templates, %s workflows)",
-		r.colorizer.Bold(templateCount).String(),
-		r.colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Bold(workflowCount).String())
+		r.colorizer.Colorizer.Bold(templateCount).String(),
+		r.colorizer.Colorizer.Bold(templateCount-workflowCount).String(),
+		r.colorizer.Colorizer.Bold(workflowCount).String())
 
 	// precompute total request count
 	var totalRequests int64 = 0
@@ -254,8 +255,7 @@ func (r *Runner) RunEnumeration() {
 						results.Or(r.processTemplateWithList(ctx, p, tt, request))
 					}
 				case *workflows.Workflow:
-					workflow := template.(*workflows.Workflow)
-					r.processWorkflowWithList(p, workflow)
+					results.Or(r.processWorkflowWithList(p, template.(*workflows.Workflow)))
 				}
 			}(t)
 		}
@@ -266,9 +266,8 @@ func (r *Runner) RunEnumeration() {
 
 	if !results.Get() {
 		if r.output != nil {
-			outputFile := r.output.Name()
 			r.output.Close()
-			os.Remove(outputFile)
+			os.Remove(r.options.Output)
 		}
 
 		gologger.Infof("No results found. Happy hacking!")

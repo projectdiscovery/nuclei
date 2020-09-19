@@ -13,6 +13,8 @@ type Extractor struct {
 
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex"`
+	// RegexGroup specifies a group to extract from the regex
+	RegexGroup int `yaml:"group"`
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
 
@@ -25,7 +27,6 @@ type Extractor struct {
 	Part string `yaml:"part,omitempty"`
 	// part is the part of the request to match
 	part Part
-
 	// Internal defines if this is used internally
 	Internal bool `yaml:"internal,omitempty"`
 }

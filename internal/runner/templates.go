@@ -8,18 +8,10 @@ import (
 	"strings"
 
 	"github.com/karrick/godirwalk"
-	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
-
-var severityMap = map[string]string{
-	"info":   aurora.Cyan("info").String(),
-	"low":    aurora.Green("low").String(),
-	"medium": aurora.Yellow("medium").String(),
-	"high":   aurora.Red("high").String(),
-}
 
 // getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
 func (r *Runner) getTemplatesFor(definitions []string) []string {
@@ -190,12 +182,12 @@ func (r *Runner) parseTemplateFile(file string) (interface{}, error) {
 func (r *Runner) templateLogMsg(id, name, author, severity string) string {
 	// Display the message for the template
 	message := fmt.Sprintf("[%s] %s (%s)",
-		r.colorizer.BrightBlue(id).String(),
-		r.colorizer.Bold(name).String(),
-		r.colorizer.BrightYellow("@"+author).String())
+		r.colorizer.Colorizer.BrightBlue(id).String(),
+		r.colorizer.Colorizer.Bold(name).String(),
+		r.colorizer.Colorizer.BrightYellow("@"+author).String())
 
 	if severity != "" {
-		message += " [" + severityMap[severity] + "]"
+		message += " [" + r.colorizer.GetColorizedSeverity(severity) + "]"
 	}
 
 	return message
@@ -231,12 +223,11 @@ func (r *Runner) listAvailableTemplates() {
 		r.templatesConfig.CurrentVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	r.colorizer = aurora.NewAurora(true)
 	err := directoryWalker(
 		r.templatesConfig.TemplatesDirectory,
 		func(path string, d *godirwalk.Dirent) error {
 			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
-				gologger.Silentf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(strings.Title(d.Name()))).String())
+				gologger.Silentf("\n%s:\n\n", r.colorizer.Colorizer.Bold(r.colorizer.Colorizer.BgBrightBlue(d.Name())).String())
 			} else if strings.HasSuffix(path, ".yaml") {
 				r.logAvailableTemplate(path)
 			}
