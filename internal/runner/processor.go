@@ -165,7 +165,7 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 			}
 
 			for _, variable := range variables {
-				result = variable.IsFalsy()
+				result = !variable.IsFalsy()
 				if result {
 					break
 				}
