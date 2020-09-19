@@ -104,7 +104,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			}
 
 			if result.Error != nil {
-				gologger.Warningf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), result.Error)
+				gologger.Warningf("[%s] Could not execute step: %s\n", r.colorizer.Colorizer.BrightBlue(template.ID), result.Error)
 			}
 
 			<-r.limiter
