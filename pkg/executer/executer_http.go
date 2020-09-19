@@ -16,12 +16,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/logrusorgru/aurora"
-
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -49,7 +48,7 @@ type HTTPExecuter struct {
 	customHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
 
-	colorizer   aurora.Aurora
+	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
 }
 
@@ -69,7 +68,7 @@ type HTTPOptions struct {
 	ProxySocksURL   string
 	CustomHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
-	Colorizer       aurora.Aurora
+	Colorizer       *colorizer.NucleiColorizer
 	Decolorizer     *regexp.Regexp
 }
 
@@ -114,7 +113,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		customHeaders:   options.CustomHeaders,
 		CookieJar:       options.CookieJar,
 		coloredOutput:   options.ColoredOutput,
-		colorizer:       options.Colorizer,
+		colorizer:       *options.Colorizer,
 		decolorizer:     options.Decolorizer,
 	}
 

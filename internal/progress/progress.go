@@ -21,7 +21,7 @@ const (
 	mili        = 1000.
 )
 
-// Encapsulates progress tracking.
+// IProgress encapsulates progress tracking.
 type IProgress interface {
 	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
 	AddToTotal(delta int64)
@@ -37,7 +37,7 @@ type Progress struct {
 	initialTotal int64
 
 	totalMutex *sync.Mutex
-	colorizer  aurora.Aurora
+	colorizer  *aurora.Aurora
 
 	renderChan         chan time.Time
 	captureData        *captureData
@@ -49,8 +49,8 @@ type Progress struct {
 	stdRenderWaitGroup *sync.WaitGroup
 }
 
-// Creates and returns a new progress tracking object.
-func NewProgress(noColor, active bool) IProgress {
+// NewProgress creates and returns a new progress tracking object.
+func NewProgress(colorizer aurora.Aurora, active bool) IProgress {
 	if !active {
 		return &NoOpProgress{}
 	}
@@ -65,7 +65,7 @@ func NewProgress(noColor, active bool) IProgress {
 			mpb.WithManualRefresh(renderChan),
 		),
 		totalMutex: &sync.Mutex{},
-		colorizer:  aurora.NewAurora(!noColor),
+		colorizer:  &colorizer,
 
 		renderChan:         renderChan,
 		stdCaptureMutex:    &sync.Mutex{},
@@ -85,7 +85,7 @@ func (p *Progress) InitProgressbar(hostCount int64, rulesCount int, requestCount
 		panic("A global progressbar is already present.")
 	}
 
-	color := p.colorizer
+	color := *p.colorizer
 
 	barName := color.Sprintf(
 		color.Cyan("%d %s, %d %s"),
@@ -193,7 +193,7 @@ func (p *Progress) renderStdData() {
 
 // Creates and returns a progress bar.
 func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
-	color := p.colorizer
+	color := *p.colorizer
 
 	p.total = total
 	p.initialTotal = total

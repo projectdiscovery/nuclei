@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
@@ -76,7 +77,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				template.HTTPOptions.BulkHTTPRequest = request
 
 				if template.HTTPOptions.Colorizer == nil {
-					template.HTTPOptions.Colorizer = aurora.NewAurora(true)
+					template.HTTPOptions.Colorizer = colorizer.NewNucleiColorizer(aurora.NewAurora(true))
 				}
 
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)

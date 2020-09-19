@@ -64,7 +64,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			JSONRequests:    r.options.JSONRequests,
 			CookieReuse:     value.CookieReuse,
 			ColoredOutput:   !r.options.NoColor,
-			Colorizer:       r.colorizer,
+			Colorizer:       &r.colorizer,
 			Decolorizer:     r.decolorizer,
 		})
 	}
@@ -233,7 +233,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 					JSONRequests:  r.options.JSONRequests,
 					CookieJar:     jar,
 					ColoredOutput: !r.options.NoColor,
-					Colorizer:     r.colorizer,
+					Colorizer:     &r.colorizer,
 					Decolorizer:   r.decolorizer,
 				}
 			} else if len(t.RequestsDNS) > 0 {

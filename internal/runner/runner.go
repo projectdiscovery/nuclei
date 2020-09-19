@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
@@ -38,7 +39,7 @@ type Runner struct {
 	progress progress.IProgress
 
 	// output coloring
-	colorizer   aurora.Aurora
+	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
 }
 
@@ -52,6 +53,15 @@ func New(options *Options) (*Runner, error) {
 		gologger.Labelf("Could not update templates: %s\n", err)
 	}
 
+	// output coloring
+	useColor := !options.NoColor
+	runner.colorizer = *colorizer.NewNucleiColorizer(aurora.NewAurora(useColor))
+
+	if useColor {
+		// compile a decolorization regex to cleanup file output messages
+		runner.decolorizer = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
+	}
+
 	if options.TemplateList {
 		runner.listAvailableTemplates()
 		os.Exit(0)
@@ -63,15 +73,6 @@ func New(options *Options) (*Runner, error) {
 	// Read nucleiignore file if given a templateconfig
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
-	}
-
-	// output coloring
-	useColor := !options.NoColor
-	runner.colorizer = aurora.NewAurora(useColor)
-
-	if useColor {
-		// compile a decolorization regex to cleanup file output messages
-		runner.decolorizer = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 	}
 
 	// If we have stdin, write it to a new file
@@ -159,7 +160,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.options.NoColor, options.EnableProgressBar)
+	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
 	runner.limiter = make(chan struct{}, options.Threads)
 
@@ -211,9 +212,9 @@ func (r *Runner) RunEnumeration() {
 	}
 
 	gologger.Infof("Using %s rules (%s templates, %s workflows)",
-		r.colorizer.Bold(templateCount).String(),
-		r.colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Bold(workflowCount).String())
+		r.colorizer.Colorizer.Bold(templateCount).String(),
+		r.colorizer.Colorizer.Bold(templateCount-workflowCount).String(),
+		r.colorizer.Colorizer.Bold(workflowCount).String())
 
 	// precompute total request count
 	var totalRequests int64 = 0
