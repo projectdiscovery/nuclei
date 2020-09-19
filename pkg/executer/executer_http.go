@@ -137,7 +137,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not build http request")
+			result.Error = err
 
 			p.Drop(remaining)
 
@@ -146,7 +146,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 
 		err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 		if err != nil {
-			result.Error = errors.Wrap(err, "could not handle http request")
+			result.Error = err
 
 			p.Drop(remaining)
 
@@ -170,7 +170,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	if e.debug {
 		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
 		if err != nil {
-			return errors.Wrap(err, "could not make http request")
+			return err
 		}
 
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
@@ -184,7 +184,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			resp.Body.Close()
 		}
 
-		return errors.Wrap(err, "Could not do request")
+		return err
 	}
 
 	if e.debug {
