@@ -57,16 +57,23 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 	colorizer := e.colorizer
 
 	builder.WriteRune('[')
-	builder.WriteString(colorizer.BrightGreen(e.template.ID).String())
+	builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
 
 	if matcher != nil && len(matcher.Name) > 0 {
 		builder.WriteString(":")
-		builder.WriteString(colorizer.BrightGreen(matcher.Name).Bold().String())
+		builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
 	}
 
 	builder.WriteString("] [")
-	builder.WriteString(colorizer.BrightBlue("dns").String())
+	builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
 	builder.WriteString("] ")
+
+	if e.template.Info.Severity != "" {
+		builder.WriteString("[")
+		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString("] ")
+	}
+
 	builder.WriteString(domain)
 
 	// If any extractors, write the results
@@ -74,7 +81,7 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 		builder.WriteString(" [")
 
 		for i, result := range extractorResults {
-			builder.WriteString(colorizer.BrightCyan(result).String())
+			builder.WriteString(colorizer.Colorizer.BrightCyan(result).String())
 
 			if i != len(extractorResults)-1 {
 				builder.WriteRune(',')
