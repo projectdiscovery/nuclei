@@ -254,8 +254,7 @@ func (r *Runner) RunEnumeration() {
 						results.Or(r.processTemplateWithList(ctx, p, tt, request))
 					}
 				case *workflows.Workflow:
-					workflow := template.(*workflows.Workflow)
-					r.processWorkflowWithList(p, workflow)
+					results.Or(r.processWorkflowWithList(p, template.(*workflows.Workflow)))
 				}
 			}(t)
 		}
