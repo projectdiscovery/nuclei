@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -21,6 +22,9 @@ const (
 	two   = 2
 	three = 3
 )
+
+var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+var urlWithPathRgx = regexp.MustCompile(`{{BaseURL}}.*/`)
 
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
@@ -82,11 +86,12 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 	r.attackType = attack
 }
 
-// Returns the total number of requests the YAML rule will perform
+// GetRequestCount returns the total number of requests the YAML rule will perform
 func (r *BulkHTTPRequest) GetRequestCount() int64 {
 	return int64(len(r.Raw) | len(r.Path))
 }
 
+// MakeHTTPRequest makes the HTTP request
 func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, dynamicValues map[string]interface{}, data string) (*HTTPRequest, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
@@ -96,7 +101,7 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, d
 	hostname := parsed.Host
 
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"BaseURL":  baseURL,
+		"BaseURL":  baseURLWithTemplatePrefs(data, parsed),
 		"Hostname": hostname,
 	})
 
@@ -127,18 +132,22 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data str
 	return &HTTPRequest{Request: request}, nil
 }
 
+// InitGenerator initializes the generator
 func (r *BulkHTTPRequest) InitGenerator() {
 	r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
 }
 
+// CreateGenerator creates the generator
 func (r *BulkHTTPRequest) CreateGenerator(reqURL string) {
 	r.gsfm.Add(reqURL)
 }
 
+// HasGenerator check if an URL has a generator
 func (r *BulkHTTPRequest) HasGenerator(reqURL string) bool {
 	return r.gsfm.Has(reqURL)
 }
 
+// ReadOne reads and return a generator by URL
 func (r *BulkHTTPRequest) ReadOne(reqURL string) {
 	r.gsfm.ReadOne(reqURL)
 }
@@ -215,15 +224,8 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	return &HTTPRequest{Request: request, Meta: genValues}, nil
 }
 
-func setHeader(req *http.Request, name, value string) {
-	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := req.Header[name]; !ok {
-		req.Header.Set(name, value)
-	}
-}
-
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	req.Header.Set("Connection", "close")
+	setHeader(req, "Connection", "close")
 	req.Close = true
 	replacer := newReplacer(values)
 
@@ -250,9 +252,36 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 	return retryablehttp.FromRequest(req)
 }
 
+// HTTPRequest is the basic HTTP request
 type HTTPRequest struct {
 	Request *retryablehttp.Request
 	Meta    map[string]interface{}
+}
+
+func setHeader(req *http.Request, name, value string) {
+	// Set some headers only if the header wasn't supplied by the user
+	if _, ok := req.Header[name]; !ok {
+		req.Header.Set(name, value)
+	}
+}
+
+// baseURLWithTemplatePrefs returns the url for BaseURL keeping
+// the template port and path preference
+func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
+	// template port preference over input URL port
+	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
+	if hasPort {
+		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
+		parsedURL.Host = hostname
+	}
+
+	// template path preference over input URL path
+	hasPath := len(urlWithPathRgx.FindStringSubmatch(data)) > 0
+	if hasPath {
+		parsedURL.Path = ""
+	}
+
+	return parsedURL.String()
 }
 
 // CustomHeaders valid for all requests
@@ -269,6 +298,7 @@ func (c *CustomHeaders) Set(value string) error {
 	return nil
 }
 
+// RawRequest defines a basic HTTP raw request
 type RawRequest struct {
 	FullURL string
 	Method  string
@@ -368,25 +398,32 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 	return &rawRequest, nil
 }
 
+// Next returns the next generator by URL
 func (r *BulkHTTPRequest) Next(reqURL string) bool {
 	return r.gsfm.Next(reqURL)
 }
+
+// Position returns the current generator's position by URL
 func (r *BulkHTTPRequest) Position(reqURL string) int {
 	return r.gsfm.Position(reqURL)
 }
 
+// Reset resets the generator by URL
 func (r *BulkHTTPRequest) Reset(reqURL string) {
 	r.gsfm.Reset(reqURL)
 }
 
+// Current returns the current generator by URL
 func (r *BulkHTTPRequest) Current(reqURL string) string {
 	return r.gsfm.Current(reqURL)
 }
 
+// Total is the total number of requests
 func (r *BulkHTTPRequest) Total() int {
 	return len(r.Path) + len(r.Raw)
 }
 
+// Increment increments the processed request
 func (r *BulkHTTPRequest) Increment(reqURL string) {
 	r.gsfm.Increment(reqURL)
 }
