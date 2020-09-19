@@ -118,12 +118,14 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) {
+func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) bool {
+	result := false
+
 	workflowTemplatesList, err := r.preloadWorkflowTemplates(p, workflow)
 	if err != nil {
 		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
 
-		return
+		return result
 	}
 
 	logicBytes := []byte(workflow.Logic)
@@ -143,13 +145,18 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 			script := tengo.NewScript(logicBytes)
 			script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
 
+			variables := make(map[string]*workflows.NucleiVar)
+
 			for _, workflowTemplate := range *workflowTemplatesList {
-				err := script.Add(workflowTemplate.Name, &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL})
+				name := workflowTemplate.Name
+				variable := &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL}
+				err := script.Add(name, variable)
 				if err != nil {
 					gologger.Errorf("Could not initialize script for workflow '%s': %s\n", workflow.ID, err)
 
 					continue
 				}
+				variables[name] = variable
 			}
 
 			_, err := script.RunContext(context.Background())
@@ -157,11 +164,20 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 				gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 			}
 
+			for _, variable := range variables {
+				result = variable.IsFalsy()
+				if result {
+					break
+				}
+			}
+
 			<-r.limiter
 		}(targetURL)
 	}
 
 	wg.Wait()
+
+	return result
 }
 
 func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workflows.Workflow) (*[]workflowTemplates, error) {
