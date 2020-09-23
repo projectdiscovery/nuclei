@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-    "log"
+
 	"github.com/Knetic/govaluate"
 )
 
@@ -72,14 +72,9 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		return sEnc, nil
 	}
 
-     functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
-        sDec, err := base64.StdEncoding.DecodeString(args[0].(string))
-            if err != nil {
-            log.Fatal("error:", err)
-            }
-
-        return sDec, nil
-    }
+	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
+		return base64.StdEncoding.DecodeString(args[0].(string))
+	}
 
 	functions["url_encode"] = func(args ...interface{}) (interface{}, error) {
 		return url.PathEscape(args[0].(string)), nil
