@@ -3,15 +3,15 @@ package runner
 import "github.com/projectdiscovery/gologger"
 
 const banner = `
-                       __     _ 
+                       __     _
      ____  __  _______/ /__  (_)
-    / __ \/ / / / ___/ / _ \/ / 
-   / / / / /_/ / /__/ /  __/ /  
-  /_/ /_/\__,_/\___/_/\___/_/   v2.1									  
+    / __ \/ / / / ___/ / _ \/ /
+   / / / / /_/ / /__/ /  __/ /
+  /_/ /_/\__,_/\___/_/\___/_/   v2.1.1
 `
 
 // Version is the current version of nuclei
-const Version = `2.1.0`
+const Version = `2.1.1`
 
 // showBanner is used to show the banner to the user
 func showBanner() {

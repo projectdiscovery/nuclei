@@ -57,5 +57,6 @@ func (m *Matcher) CompileMatchers() error {
 	} else {
 		m.part = BodyPart
 	}
+
 	return nil
 }

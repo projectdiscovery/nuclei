@@ -12,40 +12,41 @@ import (
 func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 	switch m.matcherType {
 	case StatusMatcher:
-		return m.matchStatusCode(resp.StatusCode)
+		return m.isNegative(m.matchStatusCode(resp.StatusCode))
 	case SizeMatcher:
-		return m.matchSizeCode(len(body))
+		return m.isNegative(m.matchSizeCode(len(body)))
 	case WordsMatcher:
 		// Match the parts as required for word check
 		if m.part == BodyPart {
-			return m.matchWords(body)
+			return m.isNegative(m.matchWords(body))
 		} else if m.part == HeaderPart {
-			return m.matchWords(headers)
+			return m.isNegative(m.matchWords(headers))
 		} else {
-			return m.matchWords(headers) || m.matchWords(body)
+			return m.isNegative(m.matchWords(headers) || m.matchWords(body))
 		}
 	case RegexMatcher:
 		// Match the parts as required for regex check
 		if m.part == BodyPart {
-			return m.matchRegex(body)
+			return m.isNegative(m.matchRegex(body))
 		} else if m.part == HeaderPart {
-			return m.matchRegex(headers)
+			return m.isNegative(m.matchRegex(headers))
 		} else {
-			return m.matchRegex(headers) || m.matchRegex(body)
+			return m.isNegative(m.matchRegex(headers) || m.matchRegex(body))
 		}
 	case BinaryMatcher:
 		// Match the parts as required for binary characters check
 		if m.part == BodyPart {
-			return m.matchBinary(body)
+			return m.isNegative(m.matchBinary(body))
 		} else if m.part == HeaderPart {
-			return m.matchBinary(headers)
+			return m.isNegative(m.matchBinary(headers))
 		} else {
-			return m.matchBinary(headers) || m.matchBinary(body)
+			return m.isNegative(m.matchBinary(headers) || m.matchBinary(body))
 		}
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(httpToMap(resp, body, headers))
+		return m.isNegative(m.matchDSL(httpToMap(resp, body, headers)))
 	}
+
 	return false
 }
 
@@ -68,6 +69,7 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 		// Match complex query
 		return m.matchDSL(dnsToMap(msg))
 	}
+
 	return false
 }
 
@@ -84,6 +86,7 @@ func (m *Matcher) matchStatusCode(statusCode int) bool {
 		// Return on the first match.
 		return true
 	}
+
 	return false
 }
 
@@ -100,6 +103,7 @@ func (m *Matcher) matchSizeCode(length int) bool {
 		// Return on the first match.
 		return true
 	}
+
 	return false
 }
 
@@ -108,7 +112,7 @@ func (m *Matcher) matchWords(corpus string) bool {
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
 		// Continue if the word doesn't match
-		if strings.Index(corpus, word) == -1 {
+		if !strings.Contains(corpus, word) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
@@ -128,6 +132,7 @@ func (m *Matcher) matchWords(corpus string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -156,16 +161,15 @@ func (m *Matcher) matchRegex(corpus string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
 // matchWords matches a word check against an HTTP Response/Headers.
 func (m *Matcher) matchBinary(corpus string) bool {
-
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
-
 		hexa, _ := hex.DecodeString(binary)
 		if !strings.Contains(corpus, string(hexa)) {
 			// If we are in an AND request and a match failed,
@@ -187,6 +191,7 @@ func (m *Matcher) matchBinary(corpus string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -198,6 +203,7 @@ func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
 		if err != nil {
 			continue
 		}
+
 		var bResult bool
 		bResult, ok := result.(bool)
 
@@ -222,5 +228,6 @@ func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
 			return true
 		}
 	}
+
 	return false
 }

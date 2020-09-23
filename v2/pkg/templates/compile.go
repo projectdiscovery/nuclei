@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -31,7 +30,7 @@ func Parse(file string) (*Template, error) {
 
 	// If no requests, and it is also not a workflow, return error.
 	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
-		return nil, errors.New("No requests defined")
+		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the matchers and the extractors for http requests
@@ -54,47 +53,51 @@ func Parse(file string) (*Template, error) {
 
 		// Validate the payloads if any
 		for name, payload := range request.Payloads {
-			switch payload.(type) {
+			switch pt := payload.(type) {
 			case string:
-				v := payload.(string)
 				// check if it's a multiline string list
-				if len(strings.Split(v, "\n")) <= 1 {
+				if len(strings.Split(pt, "\n")) <= 1 {
 					// check if it's a worldlist file
-					if !generators.FileExists(v) {
+					if !generators.FileExists(pt) {
 						// attempt to load the file by taking the full path, tokezining it and searching the template in such paths
 						changed := false
 						pathTokens := strings.Split(template.path, "/")
+
 						for i := range pathTokens {
-							tpath := path.Join(strings.Join(pathTokens[:i], "/"), v)
+							tpath := path.Join(strings.Join(pathTokens[:i], "/"), pt)
 							if generators.FileExists(tpath) {
 								request.Payloads[name] = tpath
 								changed = true
+
 								break
 							}
 						}
+
 						if !changed {
-							return nil, fmt.Errorf("The %s file for payload %s does not exist or does not contain enough elements", v, name)
+							return nil, fmt.Errorf("the %s file for payload %s does not exist or does not contain enough elements", pt, name)
 						}
 					}
 				}
 			case []string, []interface{}:
-				if len(payload.([]interface{})) <= 0 {
-					return nil, fmt.Errorf("The payload %s does not contain enough elements", name)
+				if len(payload.([]interface{})) == 0 {
+					return nil, fmt.Errorf("the payload %s does not contain enough elements", name)
 				}
 			default:
-				return nil, fmt.Errorf("The payload %s has invalid type", name)
+				return nil, fmt.Errorf("the payload %s has invalid type", name)
 			}
 		}
 
 		for _, matcher := range request.Matchers {
-			if err = matcher.CompileMatchers(); err != nil {
-				return nil, err
+			matchErr := matcher.CompileMatchers()
+			if matchErr != nil {
+				return nil, matchErr
 			}
 		}
 
 		for _, extractor := range request.Extractors {
-			if err := extractor.CompileExtractors(); err != nil {
-				return nil, err
+			extractErr := extractor.CompileExtractors()
+			if extractErr != nil {
+				return nil, extractErr
 			}
 		}
 
@@ -112,13 +115,15 @@ func Parse(file string) (*Template, error) {
 		}
 
 		for _, matcher := range request.Matchers {
-			if err = matcher.CompileMatchers(); err != nil {
+			err = matcher.CompileMatchers()
+			if err != nil {
 				return nil, err
 			}
 		}
 
 		for _, extractor := range request.Extractors {
-			if err := extractor.CompileExtractors(); err != nil {
+			err := extractor.CompileExtractors()
+			if err != nil {
 				return nil, err
 			}
 		}

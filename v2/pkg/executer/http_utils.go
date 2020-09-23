@@ -12,6 +12,7 @@ type jsonOutput struct {
 	Matched          string   `json:"matched"`
 	MatcherName      string   `json:"matcher_name,omitempty"`
 	ExtractedResults []string `json:"extracted_results,omitempty"`
+	Name             string   `json:"name"`
 	Severity         string   `json:"severity"`
 	Author           string   `json:"author"`
 	Description      string   `json:"description"`
@@ -34,11 +35,16 @@ func headersToString(headers http.Header) string {
 
 		for i, value := range values {
 			builder.WriteString(value)
+
 			if i != len(values)-1 {
-				builder.WriteRune(',')
+				builder.WriteRune('\n')
+				builder.WriteString(header)
+				builder.WriteString(": ")
 			}
 		}
+
 		builder.WriteRune('\n')
 	}
+
 	return builder.String()
 }

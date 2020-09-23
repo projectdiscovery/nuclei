@@ -20,6 +20,7 @@ func (e *Extractor) CompileExtractors() error {
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
+
 		e.regexCompiled = append(e.regexCompiled, compiled)
 	}
 

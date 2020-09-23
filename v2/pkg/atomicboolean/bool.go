@@ -32,7 +32,7 @@ func (b *AtomBool) Set(value bool) {
 
 func (b *AtomBool) Get() bool {
 	b.RLock()
-	defer b.RUnlock()
+	defer b.RUnlock() //nolint
 
 	return b.flag
 }

@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"errors"
 	"flag"
+	"net/url"
 	"os"
 
 	"github.com/projectdiscovery/gologger"
@@ -11,10 +13,21 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
-	Debug              bool                   // Debug mode allows debugging request/responses for the engine
+	Debug             bool // Debug mode allows debugging request/responses for the engine
+	Silent            bool // Silent suppresses any extra text and only writes found URLs on screen.
+	Version           bool // Version specifies if we should just show version and exit
+	Verbose           bool // Verbose flag indicates whether to show verbose output or not
+	NoColor           bool // No-Color disables the colored output.
+	UpdateTemplates   bool // UpdateTemplates updates the templates installed at startup
+	JSON              bool // JSON writes json output to files
+	JSONRequests      bool // write requests/responses for matches in JSON output
+	EnableProgressBar bool // Enable progrss bar
+	TemplateList      bool // List available templates
+
+	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	Templates          multiStringFlag        // Signature specifies the template/templates to use
 	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
-	Severity 		   string 				  // Filter templates based on their severity and only run the matching ones.
+	Severity           string                 // Filter templates based on their severity and only run the matching ones.
 	Target             string                 // Target is a single URL/Domain to scan usng a template
 	Targets            string                 // Targets specifies the targets to scan using templates.
 	Threads            int                    // Thread controls the number of concurrent requests to make.
@@ -23,18 +36,8 @@ type Options struct {
 	Output             string                 // Output is the file to write found subdomains to.
 	ProxyURL           string                 // ProxyURL is the URL for the proxy server
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
-	Silent             bool                   // Silent suppresses any extra text and only writes found URLs on screen.
-	Version            bool                   // Version specifies if we should just show version and exit
-	Verbose            bool                   // Verbose flag indicates whether to show verbose output or not
-	NoColor            bool                   // No-Color disables the colored output.
 	CustomHeaders      requests.CustomHeaders // Custom global headers
-	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
-	JSON               bool                   // JSON writes json output to files
-	JSONRequests       bool                   // write requests/responses for matches in JSON output
-	EnableProgressBar  bool                   // Enable progrss bar
-
-	Stdin bool // Stdin specifies whether stdin input was given to the process
 }
 
 type multiStringFlag []string
@@ -74,6 +77,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
+	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
 
 	flag.Parse()
 
@@ -97,6 +101,7 @@ func ParseOptions() *Options {
 	if err != nil {
 		gologger.Fatalf("Program exiting: %s\n", err)
 	}
+
 	return options
 }
 
@@ -105,8 +110,78 @@ func hasStdin() bool {
 	if err != nil {
 		return false
 	}
+
 	if fi.Mode()&os.ModeNamedPipe == 0 {
 		return false
 	}
+
 	return true
+}
+
+// validateOptions validates the configuration options passed
+func (options *Options) validateOptions() error {
+	// Both verbose and silent flags were used
+	if options.Verbose && options.Silent {
+		return errors.New("both verbose and silent mode specified")
+	}
+
+	if !options.TemplateList {
+		// Check if a list of templates was provided and it exists
+		if len(options.Templates) == 0 && !options.UpdateTemplates {
+			return errors.New("no template/templates provided")
+		}
+
+		if options.Targets == "" && !options.Stdin && options.Target == "" && !options.UpdateTemplates {
+			return errors.New("no target input provided")
+		}
+	}
+
+	// Validate proxy options if provided
+	err := validateProxyURL(
+		options.ProxyURL,
+		"invalid http proxy format (It should be http://username:password@host:port)",
+	)
+	if err != nil {
+		return err
+	}
+
+	err = validateProxyURL(
+		options.ProxySocksURL,
+		"invalid socks proxy format (It should be socks5://username:password@host:port)",
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateProxyURL(proxyURL, message string) error {
+	if proxyURL != "" && !isValidURL(proxyURL) {
+		return errors.New(message)
+	}
+
+	return nil
+}
+
+func isValidURL(urlString string) bool {
+	_, err := url.Parse(urlString)
+
+	return err == nil
+}
+
+// configureOutput configures the output on the screen
+func (options *Options) configureOutput() {
+	// If the user desires verbose output, show verbose output
+	if options.Verbose {
+		gologger.MaxLevel = gologger.Verbose
+	}
+
+	if options.NoColor {
+		gologger.UseColors = false
+	}
+
+	if options.Silent {
+		gologger.MaxLevel = gologger.Silent
+	}
 }

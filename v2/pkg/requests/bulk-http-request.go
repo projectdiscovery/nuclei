@@ -2,8 +2,10 @@ package requests
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,9 +18,21 @@ import (
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
+const (
+	two   = 2
+	three = 3
+)
+
+var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+var urlWithPathRgx = regexp.MustCompile(`{{BaseURL}}.*/`)
+
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
-	Name string `yaml:"Name,omitempty"`
+	// CookieReuse is an optional setting that makes cookies shared within requests
+	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
+	// Redirects specifies whether redirects should be followed.
+	Redirects bool   `yaml:"redirects,omitempty"`
+	Name      string `yaml:"Name,omitempty"`
 	// AttackType is the attack type
 	// Sniper, PitchFork and ClusterBomb. Default is Sniper
 	AttackType string `yaml:"attack,omitempty"`
@@ -34,8 +48,6 @@ type BulkHTTPRequest struct {
 	Headers map[string]string `yaml:"headers,omitempty"`
 	// Body is an optional parameter which contains the request body for POST methods, etc
 	Body string `yaml:"body,omitempty"`
-	// CookieReuse is an optional setting that makes cookies shared within requests
-	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
@@ -47,8 +59,6 @@ type BulkHTTPRequest struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
-	// Redirects specifies whether redirects should be followed.
-	Redirects bool `yaml:"redirects,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
@@ -76,38 +86,40 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 	r.attackType = attack
 }
 
-// Returns the total number of requests the YAML rule will perform
+// GetRequestCount returns the total number of requests the YAML rule will perform
 func (r *BulkHTTPRequest) GetRequestCount() int64 {
 	return int64(len(r.Raw) | len(r.Path))
 }
 
-func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HttpRequest, error) {
+// MakeHTTPRequest makes the HTTP request
+func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, dynamicValues map[string]interface{}, data string) (*HTTPRequest, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
+
 	hostname := parsed.Host
 
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"BaseURL":  baseURL,
+		"BaseURL":  baseURLWithTemplatePrefs(data, parsed),
 		"Hostname": hostname,
 	})
 
 	// if data contains \n it's a raw request
 	if strings.Contains(data, "\n") {
-		return r.makeHTTPRequestFromRaw(baseURL, data, values)
+		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
 	}
 
-	return r.makeHTTPRequestFromModel(baseURL, data, values)
+	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *BulkHTTPRequest) makeHTTPRequestFromModel(baseURL string, data string, values map[string]interface{}) (*HttpRequest, error) {
+func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*HTTPRequest, error) {
 	replacer := newReplacer(values)
 	URL := replacer.Replace(data)
 
 	// Build a request on the specified URL
-	req, err := http.NewRequest(r.Method, URL, nil)
+	req, err := http.NewRequestWithContext(ctx, r.Method, URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -117,40 +129,46 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(baseURL string, data string, 
 		return nil, err
 	}
 
-	return &HttpRequest{Request: request}, nil
+	return &HTTPRequest{Request: request}, nil
 }
 
+// InitGenerator initializes the generator
 func (r *BulkHTTPRequest) InitGenerator() {
 	r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
 }
 
-func (r *BulkHTTPRequest) CreateGenerator(URL string) {
-	r.gsfm.Add(URL)
+// CreateGenerator creates the generator
+func (r *BulkHTTPRequest) CreateGenerator(reqURL string) {
+	r.gsfm.Add(reqURL)
 }
 
-func (r *BulkHTTPRequest) HasGenerator(URL string) bool {
-	return r.gsfm.Has(URL)
+// HasGenerator check if an URL has a generator
+func (r *BulkHTTPRequest) HasGenerator(reqURL string) bool {
+	return r.gsfm.Has(reqURL)
 }
 
-func (r *BulkHTTPRequest) ReadOne(URL string) {
-	r.gsfm.ReadOne(URL)
+// ReadOne reads and return a generator by URL
+func (r *BulkHTTPRequest) ReadOne(reqURL string) {
+	r.gsfm.ReadOne(reqURL)
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(baseURL string, data string, values map[string]interface{}) (*HttpRequest, error) {
+func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values map[string]interface{}) (*HTTPRequest, error) {
 	// Add trailing line
 	data += "\n"
+
 	if len(r.Payloads) > 0 {
 		r.gsfm.InitOrSkip(baseURL)
 		r.ReadOne(baseURL)
-		return r.handleRawWithPaylods(data, baseURL, values, r.gsfm.Value(baseURL))
+
+		return r.handleRawWithPaylods(ctx, data, baseURL, values, r.gsfm.Value(baseURL))
 	}
 
 	// otherwise continue with normal flow
-	return r.handleRawWithPaylods(data, baseURL, values, nil)
+	return r.handleRawWithPaylods(ctx, data, baseURL, values, nil)
 }
 
-func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, values, genValues map[string]interface{}) (*HttpRequest, error) {
+func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL string, values, genValues map[string]interface{}) (*HTTPRequest, error) {
 	baseValues := generators.CopyMap(values)
 	finValues := generators.MergeMaps(baseValues, genValues)
 
@@ -166,13 +184,16 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+
 		if err != nil {
 			return nil, err
 		}
+
 		result, err := compiled.Evaluate(finValues)
 		if err != nil {
 			return nil, err
 		}
+
 		dynamicValues[expr] = result
 	}
 
@@ -185,7 +206,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 		return nil, err
 	}
 
-	req, err := http.NewRequest(compiledRequest.Method, compiledRequest.FullURL, strings.NewReader(compiledRequest.Data))
+	req, err := http.NewRequestWithContext(ctx, compiledRequest.Method, compiledRequest.FullURL, strings.NewReader(compiledRequest.Data))
 	if err != nil {
 		return nil, err
 	}
@@ -200,11 +221,11 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw string, baseURL string, value
 		return nil, err
 	}
 
-	return &HttpRequest{Request: request, Meta: genValues}, nil
+	return &HTTPRequest{Request: request, Meta: genValues}, nil
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	req.Header.Set("Connection", "close")
+	setHeader(req, "Connection", "close")
 	req.Close = true
 	replacer := newReplacer(values)
 
@@ -218,29 +239,49 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// Set some headers only if the header wasn't supplied by the user
-	if _, ok := req.Header["User-Agent"]; !ok {
-		req.Header.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
-	}
+	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 
 	// raw requests are left untouched
 	if len(r.Raw) > 0 {
 		return retryablehttp.FromRequest(req)
 	}
 
-	if _, ok := req.Header["Accept"]; !ok {
-		req.Header.Set("Accept", "*/*")
-	}
-	if _, ok := req.Header["Accept-Language"]; !ok {
-		req.Header.Set("Accept-Language", "en")
-	}
+	setHeader(req, "Accept", "*/*")
+	setHeader(req, "Accept-Language", "en")
 
 	return retryablehttp.FromRequest(req)
 }
 
-type HttpRequest struct {
+// HTTPRequest is the basic HTTP request
+type HTTPRequest struct {
 	Request *retryablehttp.Request
 	Meta    map[string]interface{}
+}
+
+func setHeader(req *http.Request, name, value string) {
+	// Set some headers only if the header wasn't supplied by the user
+	if _, ok := req.Header[name]; !ok {
+		req.Header.Set(name, value)
+	}
+}
+
+// baseURLWithTemplatePrefs returns the url for BaseURL keeping
+// the template port and path preference
+func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
+	// template port preference over input URL port
+	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
+	if hasPort {
+		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
+		parsedURL.Host = hostname
+	}
+
+	// template path preference over input URL path
+	hasPath := len(urlWithPathRgx.FindStringSubmatch(data)) > 0
+	if hasPath {
+		parsedURL.Path = ""
+	}
+
+	return parsedURL.String()
 }
 
 // CustomHeaders valid for all requests
@@ -257,6 +298,7 @@ func (c *CustomHeaders) Set(value string) error {
 	return nil
 }
 
+// RawRequest defines a basic HTTP raw request
 type RawRequest struct {
 	FullURL string
 	Method  string
@@ -266,7 +308,7 @@ type RawRequest struct {
 }
 
 // parseRawRequest parses the raw request as supplied by the user
-func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawRequest, error) {
+func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest, error) {
 	reader := bufio.NewReader(strings.NewReader(request))
 
 	rawRequest := RawRequest{
@@ -277,23 +319,25 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %s", err)
 	}
+
 	parts := strings.Split(s, " ")
-	if len(parts) < 3 {
+
+	if len(parts) < three {
 		return nil, fmt.Errorf("malformed request supplied")
 	}
 	// Set the request Method
 	rawRequest.Method = parts[0]
 
 	for {
-		line, err := reader.ReadString('\n')
+		line, readErr := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
 
-		if err != nil || line == "" {
+		if readErr != nil || line == "" {
 			break
 		}
 
-		p := strings.SplitN(line, ":", 2)
-		if len(p) != 2 {
+		p := strings.SplitN(line, ":", two)
+		if len(p) != two {
 			continue
 		}
 
@@ -307,10 +351,11 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	// Handle case with the full http url in path. In that case,
 	// ignore any host header that we encounter and use the path as request URL
 	if strings.HasPrefix(parts[1], "http") {
-		parsed, err := url.Parse(parts[1])
-		if err != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", err)
+		parsed, parseErr := url.Parse(parts[1])
+		if parseErr != nil {
+			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
 		}
+
 		rawRequest.Path = parts[1]
 		rawRequest.Headers["Host"] = parsed.Host
 	} else {
@@ -325,21 +370,19 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	}
 
 	var hostURL string
-	if len(rawRequest.Headers["Host"]) == 0 {
+	if rawRequest.Headers["Host"] == "" {
 		hostURL = parsedURL.Host
 	} else {
 		hostURL = rawRequest.Headers["Host"]
 	}
 
-	if len(rawRequest.Path) == 0 {
+	if rawRequest.Path == "" {
 		rawRequest.Path = parsedURL.Path
-	} else {
+	} else if strings.HasPrefix(rawRequest.Path, "?") {
 		// requests generated from http.ReadRequest have incorrect RequestURI, so they
 		// cannot be used to perform another request directly, we need to generate a new one
 		// with the new target url
-		if strings.HasPrefix(rawRequest.Path, "?") {
-			rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-		}
+		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
 
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, hostURL, rawRequest.Path)
@@ -349,29 +392,38 @@ func (r *BulkHTTPRequest) parseRawRequest(request string, baseURL string) (*RawR
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %s", err)
 	}
+
 	rawRequest.Data = string(b)
+
 	return &rawRequest, nil
 }
 
-func (r *BulkHTTPRequest) Next(URL string) bool {
-	return r.gsfm.Next(URL)
-}
-func (r *BulkHTTPRequest) Position(URL string) int {
-	return r.gsfm.Position(URL)
+// Next returns the next generator by URL
+func (r *BulkHTTPRequest) Next(reqURL string) bool {
+	return r.gsfm.Next(reqURL)
 }
 
-func (r *BulkHTTPRequest) Reset(URL string) {
-	r.gsfm.Reset(URL)
+// Position returns the current generator's position by URL
+func (r *BulkHTTPRequest) Position(reqURL string) int {
+	return r.gsfm.Position(reqURL)
 }
 
-func (r *BulkHTTPRequest) Current(URL string) string {
-	return r.gsfm.Current(URL)
+// Reset resets the generator by URL
+func (r *BulkHTTPRequest) Reset(reqURL string) {
+	r.gsfm.Reset(reqURL)
 }
 
+// Current returns the current generator by URL
+func (r *BulkHTTPRequest) Current(reqURL string) string {
+	return r.gsfm.Current(reqURL)
+}
+
+// Total is the total number of requests
 func (r *BulkHTTPRequest) Total() int {
 	return len(r.Path) + len(r.Raw)
 }
 
-func (r *BulkHTTPRequest) Increment(URL string) {
-	r.gsfm.Increment(URL)
+// Increment increments the processed request
+func (r *BulkHTTPRequest) Increment(reqURL string) {
+	r.gsfm.Increment(reqURL)
 }

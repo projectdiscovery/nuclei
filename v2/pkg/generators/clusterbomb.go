@@ -8,8 +8,11 @@ func ClusterbombGenerator(payloads map[string][]string) (out chan map[string]int
 	// generator
 	go func() {
 		defer close(out)
+
 		var order []string
+
 		var parts [][]string
+
 		for name, wordlist := range payloads {
 			order = append(order, name)
 			parts = append(parts, wordlist)

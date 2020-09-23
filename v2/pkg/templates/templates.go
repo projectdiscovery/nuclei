@@ -39,6 +39,7 @@ func (t *Template) GetHTTPRequestCount() int64 {
 	for _, request := range t.BulkRequestsHTTP {
 		count += request.GetRequestCount()
 	}
+
 	return count
 }
 
@@ -47,5 +48,6 @@ func (t *Template) GetDNSRequestCount() int64 {
 	for _, request := range t.RequestsDNS {
 		count += request.GetRequestCount()
 	}
+
 	return count
 }

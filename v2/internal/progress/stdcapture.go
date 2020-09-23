@@ -5,11 +5,17 @@ package progress
 */
 import (
 	"bufio"
-	"github.com/projectdiscovery/gologger"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/projectdiscovery/gologger"
+)
+
+const (
+	fourMegas = 4 * 1024
+	two       = 2
 )
 
 type captureData struct {
@@ -20,7 +26,7 @@ type captureData struct {
 	waitFinishRead *sync.WaitGroup
 }
 
-func startCapture(writeMutex *sync.Mutex, stdout *strings.Builder, stderr *strings.Builder) *captureData {
+func startCapture(writeLocker sync.Locker, stdout, stderr *strings.Builder) *captureData {
 	rStdout, wStdout, errStdout := os.Pipe()
 	if errStdout != nil {
 		panic(errStdout)
@@ -46,32 +52,39 @@ func startCapture(writeMutex *sync.Mutex, stdout *strings.Builder, stderr *strin
 
 	stdCopy := func(builder *strings.Builder, reader *os.File, waitGroup *sync.WaitGroup) {
 		r := bufio.NewReader(reader)
-		buf := make([]byte, 0, 4*1024)
+		buf := make([]byte, 0, fourMegas)
+
 		for {
 			n, err := r.Read(buf[:cap(buf)])
 			buf = buf[:n]
+
 			if n == 0 {
 				if err == nil {
 					continue
 				}
+
 				if err == io.EOF {
 					waitGroup.Done()
 					break
 				}
+
 				waitGroup.Done()
 				gologger.Fatalf("stdcapture error: %s", err)
 			}
+
 			if err != nil && err != io.EOF {
 				waitGroup.Done()
 				gologger.Fatalf("stdcapture error: %s", err)
 			}
-			writeMutex.Lock()
+
+			writeLocker.Lock()
 			builder.Write(buf)
-			writeMutex.Unlock()
+			writeLocker.Unlock()
 		}
 	}
 
-	c.waitFinishRead.Add(2)
+	c.waitFinishRead.Add(two)
+
 	go stdCopy(stdout, rStdout, c.waitFinishRead)
 	go stdCopy(stderr, rStderr, c.waitFinishRead)
 
