@@ -17,9 +17,6 @@ require (
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/vbauerster/mpb/v5 v5.3.0
 	golang.org/x/net v0.0.0-20200923182212-328152dc79b1
-	github.com/stretchr/testify v1.5.1
-	github.com/vbauerster/mpb/v5 v5.2.4
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/yaml.v2 v2.3.0
 )
