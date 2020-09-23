@@ -138,21 +138,17 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
-
 			p.Drop(remaining)
-
-			return
+		} else {
+			// If the request was built correctly then execute it
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+			if err != nil {
+				result.Error = errors.Wrap(err, "could not handle http request")
+				p.Drop(remaining)
+			}
 		}
 
-		err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
-		if err != nil {
-			result.Error = err
-
-			p.Drop(remaining)
-
-			return
-		}
-
+		// move always forward with requests
 		e.bulkHTTPRequest.Increment(reqURL)
 		p.Update()
 		remaining--
