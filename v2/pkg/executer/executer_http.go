@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/logrusorgru/aurora"
-
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
@@ -140,11 +138,10 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
-
 			p.Drop(remaining)
 		} else {
 			// If the request was built correctly then execute it
-			err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
@@ -152,7 +149,7 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 		}
 
 		// move always forward with requests
-		e.bulkHttpRequest.Increment(URL)
+		e.bulkHTTPRequest.Increment(reqURL)
 		p.Update()
 		remaining--
 	}
