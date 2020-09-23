@@ -38,6 +38,7 @@ type Options struct {
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	RateLimit          int                    // Rate-Limit of requests per specified target
 }
 
 type multiStringFlag []string
@@ -78,6 +79,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
+	flag.IntVar(&options.RateLimit, "rl", 9999999, "Rate-Limit of requests per specified target") // 9999999 to avoid limiting
 
 	flag.Parse()
 
