@@ -132,16 +132,16 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, URL string) (result Res
 		if err != nil {
 			result.Error = errors.Wrap(err, "could not build http request")
 			p.Drop(remaining)
-			continue
+		} else {
+			// If the request was built correctly then execute it
+			err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
+			if err != nil {
+				result.Error = errors.Wrap(err, "could not handle http request")
+				p.Drop(remaining)
+			}
 		}
 
-		err = e.handleHTTP(p, URL, httpRequest, dynamicvalues, &result)
-		if err != nil {
-			result.Error = errors.Wrap(err, "could not handle http request")
-			p.Drop(remaining)
-			continue
-		}
-
+		// move always forward with requests
 		e.bulkHttpRequest.Increment(URL)
 		p.Update()
 		remaining--
