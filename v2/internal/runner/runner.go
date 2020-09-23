@@ -10,6 +10,9 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -238,6 +241,8 @@ func (r *Runner) RunEnumeration() {
 		gologger.Errorf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
 		ctx := context.Background()
+		// Limiter that will add to the tokenbucket every second and set the max size to -rl flag
+		rateLimit := rate.NewLimiter(rate.Every(1*time.Second), r.options.RateLimit)
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p := r.progress
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
@@ -246,6 +251,10 @@ func (r *Runner) RunEnumeration() {
 			wgtemplates.Add(1)
 			go func(template interface{}) {
 				defer wgtemplates.Done()
+				err := rateLimit.Wait(ctx)
+				if err != nil {
+					gologger.Errorf("Issue with rate-limit")
+				}
 				switch tt := template.(type) {
 				case *templates.Template:
 					for _, request := range tt.RequestsDNS {
