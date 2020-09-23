@@ -14,7 +14,7 @@ func PitchforkGenerator(payloads map[string][]string) (out chan map[string]inter
 		}
 
 		if len(wordlist) != size {
-			//set size = 0 and exit the cycle
+			// set size = 0 and exit the cycle
 			size = 0
 			break
 		}

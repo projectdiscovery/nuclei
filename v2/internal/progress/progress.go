@@ -2,21 +2,26 @@ package progress
 
 import (
 	"fmt"
-	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/gologger"
-	"github.com/vbauerster/mpb/v5"
-	"github.com/vbauerster/mpb/v5/decor"
 	"io"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/gologger"
+	"github.com/vbauerster/mpb/v5"
+	"github.com/vbauerster/mpb/v5/decor"
 )
 
-// global output refresh rate
-const RefreshHz = 8
+const (
+	// global output refresh rate
+	refreshHz   = 8
+	settleMilis = 250
+	mili        = 1000.
+)
 
-// Encapsulates progress tracking.
+// IProgress encapsulates progress tracking.
 type IProgress interface {
 	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
 	AddToTotal(delta int64)
@@ -32,7 +37,7 @@ type Progress struct {
 	initialTotal int64
 
 	totalMutex *sync.Mutex
-	colorizer  aurora.Aurora
+	colorizer  *aurora.Aurora
 
 	renderChan         chan time.Time
 	captureData        *captureData
@@ -44,13 +49,13 @@ type Progress struct {
 	stdRenderWaitGroup *sync.WaitGroup
 }
 
-// Creates and returns a new progress tracking object.
-func NewProgress(noColor bool, active bool) IProgress {
+// NewProgress creates and returns a new progress tracking object.
+func NewProgress(colorizer aurora.Aurora, active bool) IProgress {
 	if !active {
 		return &NoOpProgress{}
 	}
 
-	refreshMillis := int64(1. / float64(RefreshHz) * 1000.)
+	refreshMillis := int64(1. / float64(refreshHz) * mili)
 
 	renderChan := make(chan time.Time)
 	p := &Progress{
@@ -60,7 +65,7 @@ func NewProgress(noColor bool, active bool) IProgress {
 			mpb.WithManualRefresh(renderChan),
 		),
 		totalMutex: &sync.Mutex{},
-		colorizer:  aurora.NewAurora(!noColor),
+		colorizer:  &colorizer,
 
 		renderChan:         renderChan,
 		stdCaptureMutex:    &sync.Mutex{},
@@ -70,6 +75,7 @@ func NewProgress(noColor bool, active bool) IProgress {
 		stdRenderEvent:     time.NewTicker(time.Millisecond * time.Duration(refreshMillis)),
 		stdRenderWaitGroup: &sync.WaitGroup{},
 	}
+
 	return p
 }
 
@@ -79,7 +85,7 @@ func (p *Progress) InitProgressbar(hostCount int64, rulesCount int, requestCount
 		panic("A global progressbar is already present.")
 	}
 
-	color := p.colorizer
+	color := *p.colorizer
 
 	barName := color.Sprintf(
 		color.Cyan("%d %s, %d %s"),
@@ -144,17 +150,19 @@ func (p *Progress) Wait() {
 func (p *Progress) renderStdData() {
 	// trigger a render event
 	p.renderChan <- time.Now()
+
 	gologger.Infof("Waiting for your terminal to settle..")
-	time.Sleep(time.Millisecond * 250)
+	time.Sleep(time.Millisecond * settleMilis)
 
 	p.stdRenderWaitGroup.Add(1)
+
 	go func(waitGroup *sync.WaitGroup) {
 		for {
 			select {
 			case <-p.stdStopRenderEvent:
 				waitGroup.Done()
 				return
-			case _ = <-p.stdRenderEvent.C:
+			case <-p.stdRenderEvent.C:
 				p.stdCaptureMutex.Lock()
 				{
 					hasStdout := p.stdOut.Len() > 0
@@ -185,7 +193,7 @@ func (p *Progress) renderStdData() {
 
 // Creates and returns a progress bar.
 func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
-	color := p.colorizer
+	color := *p.colorizer
 
 	p.total = total
 	p.initialTotal = total
@@ -212,6 +220,7 @@ func pluralize(count int64, singular, plural string) string {
 	if count > 1 {
 		return plural
 	}
+
 	return singular
 }
 

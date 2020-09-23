@@ -10,16 +10,16 @@ import (
 type GeneratorState int
 
 const (
-	Init GeneratorState = iota
-	Running
-	Done
+	fifteen                = 15
+	initial GeneratorState = iota
+	running
+	done
 )
 
 type Generator struct {
 	sync.RWMutex
 	positionPath          int
 	positionRaw           int
-	currentPayloads       map[string]interface{}
 	gchan                 chan map[string]interface{}
 	currentGeneratorValue map[string]interface{}
 	state                 GeneratorState
@@ -49,14 +49,19 @@ func NewGeneratorFSM(typ generators.Type, payloads map[string]interface{}, paths
 		}
 
 		generatorFunc := generators.SniperGenerator
+
 		switch typ {
 		case generators.PitchFork:
 			generatorFunc = generators.PitchforkGenerator
 		case generators.ClusterBomb:
 			generatorFunc = generators.ClusterbombGenerator
+		case generators.Sniper:
+			generatorFunc = generators.SniperGenerator
 		}
+
 		gsfm.generator = generatorFunc
 	}
+
 	gsfm.Generators = make(map[string]*Generator)
 
 	return &gsfm
@@ -67,7 +72,7 @@ func (gfsm *GeneratorFSM) Add(key string) {
 	defer gfsm.Unlock()
 
 	if _, ok := gfsm.Generators[key]; !ok {
-		gfsm.Generators[key] = &Generator{state: Init}
+		gfsm.Generators[key] = &Generator{state: initial}
 	}
 }
 
@@ -76,6 +81,7 @@ func (gfsm *GeneratorFSM) Has(key string) bool {
 	defer gfsm.RUnlock()
 
 	_, ok := gfsm.Generators[key]
+
 	return ok
 }
 
@@ -90,31 +96,35 @@ func (gfsm *GeneratorFSM) ReadOne(key string) {
 	gfsm.RLock()
 	defer gfsm.RUnlock()
 	g, ok := gfsm.Generators[key]
+
 	if !ok {
 		return
 	}
 
-	for afterCh := time.After(15 * time.Second); ; {
+	for afterCh := time.After(fifteen * time.Second); ; {
 		select {
 		// got a value
 		case curGenValue, ok := <-g.gchan:
 			if !ok {
 				g.Lock()
 				g.gchan = nil
-				g.state = Done
+				g.state = done
 				g.currentGeneratorValue = nil
 				g.Unlock()
+
 				return
 			}
 
 			g.currentGeneratorValue = curGenValue
+
 			return
 		// timeout
 		case <-afterCh:
 			g.Lock()
 			g.gchan = nil
-			g.state = Done
+			g.state = done
 			g.Unlock()
+
 			return
 		}
 	}
@@ -132,9 +142,10 @@ func (gfsm *GeneratorFSM) InitOrSkip(key string) {
 	if len(gfsm.payloads) > 0 {
 		g.Lock()
 		defer g.Unlock()
+
 		if g.gchan == nil {
 			g.gchan = gfsm.generator(gfsm.basePayloads)
-			g.state = Running
+			g.state = running
 		}
 	}
 }
@@ -164,13 +175,14 @@ func (gfsm *GeneratorFSM) Next(key string) bool {
 		return false
 	}
 
-	if gfsm.hasPayloads() && g.state == Done {
+	if gfsm.hasPayloads() && g.state == done {
 		return false
 	}
 
 	if g.positionPath+g.positionRaw >= len(gfsm.Paths)+len(gfsm.Raws) {
 		return false
 	}
+
 	return true
 }
 
@@ -189,6 +201,7 @@ func (gfsm *GeneratorFSM) Position(key string) int {
 func (gfsm *GeneratorFSM) Reset(key string) {
 	gfsm.Lock()
 	defer gfsm.Unlock()
+
 	if !gfsm.Has(key) {
 		gfsm.Add(key)
 	}
@@ -238,7 +251,7 @@ func (gfsm *GeneratorFSM) Increment(key string) {
 	if len(gfsm.Raws) > 0 && g.positionRaw < len(gfsm.Raws) {
 		// if we have payloads increment only when the generators are done
 		if g.gchan == nil {
-			g.state = Done
+			g.state = done
 			g.positionRaw++
 		}
 	}

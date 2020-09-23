@@ -1,15 +1,20 @@
 package workflows
 
 import (
+	"context"
 	"sync"
 
 	tengo "github.com/d5/tengo/v2"
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
+
+const two = 2
 
 // NucleiVar within the scripting engine
 type NucleiVar struct {
@@ -49,28 +54,43 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	}
 
 	// if external variables are specified and matches the template ones, these gets overwritten
-	if len(args) >= 2 {
+	if len(args) >= two {
 		externalVars = iterableToMap(args[1])
 	}
 
+	ctx := context.Background()
+
 	var gotResult atomicboolean.AtomBool
+
 	for _, template := range n.Templates {
 		p := template.Progress
+
 		if template.HTTPOptions != nil {
 			p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
+
 			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
 				// apply externally supplied payloads if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
 				// apply externally supplied payloads if any
 				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)
-				template.HTTPOptions.BulkHttpRequest = request
+
+				template.HTTPOptions.BulkHTTPRequest = request
+
+				if template.HTTPOptions.Colorizer == nil {
+					template.HTTPOptions.Colorizer = colorizer.NewNucleiColorizer(aurora.NewAurora(true))
+				}
+
 				httpExecuter, err := executer.NewHTTPExecuter(template.HTTPOptions)
+
 				if err != nil {
 					p.Drop(request.GetRequestCount())
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, err)
+
 					continue
 				}
-				result := httpExecuter.ExecuteHTTP(p, n.URL)
+
+				result := httpExecuter.ExecuteHTTP(ctx, p, n.URL)
+
 				if result.Error != nil {
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
@@ -85,10 +105,12 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 
 		if template.DNSOptions != nil {
 			p.AddToTotal(template.DNSOptions.Template.GetDNSRequestCount())
+
 			for _, request := range template.DNSOptions.Template.RequestsDNS {
 				template.DNSOptions.DNSRequest = request
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
 				result := dnsExecuter.ExecuteDNS(p, n.URL)
+
 				if result.Error != nil {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
@@ -105,6 +127,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 	if gotResult.Get() {
 		return tengo.TrueValue, nil
 	}
+
 	return tengo.FalseValue, nil
 }
 
@@ -147,32 +170,36 @@ func (n *NucleiVar) IndexGet(index tengo.Object) (res tengo.Object, err error) {
 		return tengo.UndefinedValue, nil
 	}
 
-	switch r.(type) {
+	switch rt := r.(type) {
 	case bool:
-		if r.(bool) {
+		if rt {
 			res = tengo.TrueValue
 		} else {
 			res = tengo.FalseValue
 		}
 	case string:
-		res = &tengo.String{Value: r.(string)}
+		res = &tengo.String{Value: rt}
 	case []string:
 		rr, ok := r.([]string)
 		if !ok {
 			break
 		}
+
 		var resA []tengo.Object
+
 		for _, rrr := range rr {
 			resA = append(resA, &tengo.String{Value: rrr})
 		}
+
 		res = &tengo.Array{Value: resA}
 	}
 
-	return
+	return res, nil
 }
 
 func iterableToMap(t tengo.Object) map[string]interface{} {
 	m := make(map[string]interface{})
+
 	if t.CanIterate() {
 		i := t.Iterate()
 		for i.Next() {
@@ -180,6 +207,7 @@ func iterableToMap(t tengo.Object) map[string]interface{} {
 			if !ok {
 				continue
 			}
+
 			value := tengo.ToInterface(i.Value())
 			m[key] = value
 		}
@@ -190,6 +218,7 @@ func iterableToMap(t tengo.Object) map[string]interface{} {
 
 func iterableToMapString(t tengo.Object) map[string]string {
 	m := make(map[string]string)
+
 	if t.CanIterate() {
 		i := t.Iterate()
 		for i.Next() {
@@ -197,6 +226,7 @@ func iterableToMapString(t tengo.Object) map[string]string {
 			if !ok {
 				continue
 			}
+
 			if value, ok := tengo.ToString(i.Value()); ok {
 				m[key] = value
 			}

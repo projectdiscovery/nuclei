@@ -24,19 +24,22 @@ func (e *Extractor) Extract(resp *http.Response, body, headers string) map[strin
 	case KValExtractor:
 		if e.part == HeaderPart {
 			return e.extractKVal(resp)
-		} else {
-			matches := e.extractKVal(resp)
-			if len(matches) > 0 {
-				return matches
-			}
-			return e.extractCookieKVal(resp, "set-cookie")
 		}
+
+		matches := e.extractKVal(resp)
+
+		if len(matches) > 0 {
+			return matches
+		}
+
+		return e.extractCookieKVal(resp)
 	}
 
 	return nil
 }
 
 // ExtractDNS extracts response from dns message using a regex
+// nolint:interfacer // dns.Msg is out of current scope
 func (e *Extractor) ExtractDNS(msg *dns.Msg) map[string]struct{} {
 	switch e.extractorType {
 	case RegexExtractor:
@@ -50,10 +53,14 @@ func (e *Extractor) ExtractDNS(msg *dns.Msg) map[string]struct{} {
 // extractRegex extracts text from a corpus and returns it
 func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
+
+	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
-		matches := regex.FindAllString(corpus, -1)
+		matches := regex.FindAllStringSubmatch(corpus, -1)
 		for _, match := range matches {
-			results[match] = struct{}{}
+			if len(match) >= groupPlusOne {
+				results[match[e.RegexGroup]] = struct{}{}
+			}
 		}
 	}
 	return results
@@ -62,17 +69,20 @@ func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
 // extractKVal extracts text from http response
 func (e *Extractor) extractKVal(r *http.Response) map[string]struct{} {
 	results := make(map[string]struct{})
+
 	for _, k := range e.KVal {
 		for _, v := range r.Header.Values(k) {
 			results[v] = struct{}{}
 		}
 	}
+
 	return results
 }
 
 // extractCookieKVal extracts text from cookies
-func (e *Extractor) extractCookieKVal(r *http.Response, key string) map[string]struct{} {
+func (e *Extractor) extractCookieKVal(r *http.Response) map[string]struct{} {
 	results := make(map[string]struct{})
+
 	for _, k := range e.KVal {
 		for _, cookie := range r.Cookies() {
 			if cookie.Name == k {
@@ -80,5 +90,6 @@ func (e *Extractor) extractCookieKVal(r *http.Response, key string) map[string]s
 			}
 		}
 	}
+
 	return results
 }

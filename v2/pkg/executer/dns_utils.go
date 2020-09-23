@@ -1,10 +1,6 @@
 package executer
 
-import (
-	"net/url"
-
-	"github.com/asaskevich/govalidator"
-)
+import "net/url"
 
 // isURL tests a string to determine if it is a well-structured url or not.
 func isURL(toTest string) bool {
@@ -17,22 +13,18 @@ func isURL(toTest string) bool {
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		return false
 	}
+
 	return true
 }
 
 // extractDomain extracts the domain name of a URL
-func extractDomain(URL string) string {
-	u, err := url.Parse(URL)
+func extractDomain(theURL string) string {
+	u, err := url.Parse(theURL)
 	if err != nil {
 		return ""
 	}
-	hostname := u.Hostname()
-	return hostname
-}
 
-// isDNS tests a string to determine if it is a well-structured dns or not
-// even if it's oneliner, we leave it wrapped in a function call for
-// future improvements
-func isDNS(toTest string) bool {
-	return govalidator.IsDNSName(toTest)
+	hostname := u.Hostname()
+
+	return hostname
 }
