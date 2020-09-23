@@ -1,6 +1,6 @@
 builds:
     - binary: nuclei
-      main: cmd/nuclei/main.go
+      main: v2/cmd/nuclei/main.go
       goos:
         - linux
         - windows
