@@ -109,7 +109,7 @@ nuclei requires **go1.14+** to install successfully. Run the following command t
 ### From Github
 
 ```sh
-▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -h
+▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -h
 ```
 
 ## Nuclei templates
