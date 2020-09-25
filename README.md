@@ -76,8 +76,7 @@ This will display help for the tool. Here are all the switches it supports.
 |      -timeout     |       Seconds to wait before timeout (default 5)      |                nuclei -timeout 5                |
 |      -rl          |       Rate-Limit of requests per specified target     |                nuclei -rl 100                   |
 |      -severity    |Filter templates based on their severity and only run the matching ones|                nuclei -severity critical, low                |
-|      -exclude     |Template input dir/file/files to exclude               |                nuclei -exclude panels           |
-
+|      -exclude     |Template input dir/file/files to exclude               |                nuclei -exclude panels, tokens           |
 |       -debug      |         Allow debugging of request/responses.         |                  nuclei -debug                  |
 | -update-templates |         Download and updates nuclei templates         |             nuclei -update-templates            |
 | -update-directory |    Directory for storing nuclei-templates(optional)   |        nuclei -update-directory templates       |
