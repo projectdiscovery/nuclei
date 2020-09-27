@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )
@@ -42,6 +43,7 @@ type HTTPExecuter struct {
 	jsonOutput      bool
 	jsonRequest     bool
 	httpClient      *retryablehttp.Client
+	rawHttpClient   *rawhttp.Client
 	template        *templates.Template
 	bulkHTTPRequest *requests.BulkHTTPRequest
 	writer          *bufwriter.Writer
@@ -102,11 +104,15 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		client.HTTPClient.Jar = jar
 	}
 
+	// initiate raw http client
+	rawClient := rawhttp.NewClient(rawhttp.DefaultOptions)
+
 	executer := &HTTPExecuter{
 		debug:           options.Debug,
 		jsonOutput:      options.JSON,
 		jsonRequest:     options.JSONRequests,
 		httpClient:      client,
+		rawHttpClient:   rawClient,
 		template:        options.Template,
 		bulkHTTPRequest: options.BulkHTTPRequest,
 		writer:          options.Writer,
