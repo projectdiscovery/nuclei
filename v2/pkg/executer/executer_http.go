@@ -167,10 +167,14 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
-	req := request.Request
+
+	var (
+		resp *http.Response
+		err  error
+	)
 
 	if e.debug {
-		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
+		dumpedRequest, err := requests.Dump(request, reqURL)
 		if err != nil {
 			return err
 		}
@@ -179,14 +183,22 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
-	resp, err := e.httpClient.Do(req)
-
-	if err != nil {
-		if resp != nil {
-			resp.Body.Close()
+	// rawhttp
+	if request.RawRequest != nil {
+		// ignore all flags and options for now
+		resp, err = e.rawHttpClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
+		if err != nil {
+			return err
 		}
-
-		return err
+	} else {
+		// retryablehttp
+		resp, err = e.httpClient.Do(request.Request)
+		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			return err
+		}
 	}
 
 	if e.debug {
@@ -216,7 +228,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
 	// so in case we have to manually do it
-	data, err = requests.HandleDecompression(req, data)
+	data, err = requests.HandleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
 	}
@@ -370,9 +382,15 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 		}
 
 		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
-		headerName = strings.TrimSpace(headerName)
-		headerValue = strings.TrimSpace(headerValue)
-		r.Request.Header[headerName] = []string{headerValue}
+		if r.RawRequest != nil {
+			// rawhttp
+			r.RawRequest.Headers[headerName] = headerValue
+		} else {
+			// retryablehttp
+			headerName = strings.TrimSpace(headerName)
+			headerValue = strings.TrimSpace(headerValue)
+			r.Request.Header[headerName] = []string{headerValue}
+		}
 	}
 }
 
