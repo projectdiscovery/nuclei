@@ -13,12 +13,15 @@ import (
 
 // writeOutputHTTP writes http output to streams
 func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string) {
-	// TODO: RAW REQUESTS
-	if req.Request == nil {
-		return
+	var URL string
+	// rawhttp
+	if req.RawRequest != nil {
+		URL = req.RawRequest.FullURL
 	}
-
-	URL := req.Request.URL.String()
+	// retryablehttp
+	if req.Request != nil {
+		URL = req.Request.URL.String()
+	}
 
 	if e.jsonOutput {
 		output := jsonOutput{
@@ -39,8 +42,9 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 			output.ExtractedResults = extractorResults
 		}
 
+		// TODO: URL should be an argument
 		if e.jsonRequest {
-			dumpedRequest, err := httputil.DumpRequest(req.Request.Request, true)
+			dumpedRequest, err := requests.Dump(req, URL)
 			if err != nil {
 				gologger.Warningf("could not dump request: %s\n", err)
 			} else {
