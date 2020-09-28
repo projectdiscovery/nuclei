@@ -13,6 +13,11 @@ import (
 
 // writeOutputHTTP writes http output to streams
 func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string) {
+	// TODO: RAW REQUESTS
+	if req.Request == nil {
+		return
+	}
+
 	URL := req.Request.URL.String()
 
 	if e.jsonOutput {
