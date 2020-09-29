@@ -12,8 +12,9 @@ FROM alpine
 
 RUN mkdir /app
 RUN adduser -S -D -H -h /app appuser
-USER appuser
 COPY --from=builder /app/v2/cmd/nuclei/nuclei /app
+RUN chown appuser -R /app
+USER appuser
 
 WORKDIR /app
-CMD ["./nuclei"]
+ENTRYPOINT ["/app/nuclei"]
