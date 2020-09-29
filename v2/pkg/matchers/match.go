@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 )
 
 // Match matches a http response again a given matcher
-func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
+func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration) bool {
 	switch m.matcherType {
 	case StatusMatcher:
 		return m.isNegative(m.matchStatusCode(resp.StatusCode))
@@ -44,7 +45,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string) bool {
 		}
 	case DSLMatcher:
 		// Match complex query
-		return m.isNegative(m.matchDSL(httpToMap(resp, body, headers)))
+		return m.isNegative(m.matchDSL(httpToMap(resp, body, headers, duration)))
 	}
 
 	return false
