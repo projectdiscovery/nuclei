@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 )
 
-func httpToMap(resp *http.Response, body, headers string) (m map[string]interface{}) {
+func httpToMap(resp *http.Response, body, headers string, duration time.Duration) (m map[string]interface{}) {
 	m = make(map[string]interface{})
 
 	m["content_length"] = resp.ContentLength
@@ -26,6 +27,9 @@ func httpToMap(resp *http.Response, body, headers string) (m map[string]interfac
 	if r, err := httputil.DumpResponse(resp, true); err == nil {
 		m["raw"] = string(r)
 	}
+
+	// should be used as int64 within DSL syntax
+	m["duration"] = duration
 
 	return m
 }
