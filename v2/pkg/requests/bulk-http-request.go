@@ -62,8 +62,11 @@ type BulkHTTPRequest struct {
 	// MaxRedirects is the maximum number of redirects that should be followed.
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
-	Raw  []string `yaml:"raw,omitempty"`
-	gsfm *GeneratorFSM
+	Raw []string `yaml:"raw,omitempty"`
+	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
+	// All requests must be indempotent (GET/POST)
+	Pipeline bool `yaml:"pipeline,omitempty"`
+	gsfm     *GeneratorFSM
 }
 
 // GetMatchersCondition returns the condition for the matcher
