@@ -41,6 +41,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/projectdiscovery/gologger v1.0.1 h1:FzoYQZnxz9DCvSi/eg5A6+ET4CQ0CDUs27l6Exr8zMQ=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
+github.com/projectdiscovery/rawhttp v0.0.1 h1:g9lzZPNBZsIAscTS2VLgv8RGQJcFXsOOTlzU49mDeBk=
+github.com/projectdiscovery/rawhttp v0.0.1/go.mod h1:RkML6Yq6hf4z2wAUXisa15al4bS+wuJnlhM5ZOfn9k4=
 github.com/projectdiscovery/retryabledns v1.0.4 h1:0Va7qHlWQsIXjRLISTjzfN3tnJmHYDudY05Nu3IJd60=
 github.com/projectdiscovery/retryabledns v1.0.4/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.1 h1:V7wUvsZNq1Rcz7+IlcyoyQlNwshuwptuBVYWw9lx8RE=

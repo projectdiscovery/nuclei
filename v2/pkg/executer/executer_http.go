@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )
@@ -36,17 +37,18 @@ const (
 // HTTPExecuter is client for performing HTTP requests
 // for a template.
 type HTTPExecuter struct {
-	coloredOutput   bool
-	debug           bool
-	Results         bool
-	jsonOutput      bool
-	jsonRequest     bool
-	httpClient      *retryablehttp.Client
-	template        *templates.Template
-	bulkHTTPRequest *requests.BulkHTTPRequest
-	writer          *bufwriter.Writer
-	customHeaders   requests.CustomHeaders
-	CookieJar       *cookiejar.Jar
+	coloredOutput         bool
+	debug                 bool
+	Results               bool
+	jsonOutput            bool
+	jsonRequest           bool
+	httpClient            *retryablehttp.Client
+	rawPipelineHTTPClient *rawhttp.PipelineClient
+	template              *templates.Template
+	bulkHTTPRequest       *requests.BulkHTTPRequest
+	writer                *bufwriter.Writer
+	customHeaders         requests.CustomHeaders
+	CookieJar             *cookiejar.Jar
 
 	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
@@ -102,19 +104,22 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		client.HTTPClient.Jar = jar
 	}
 
+	rawPipelineHTTPClient := rawhttp.NewPipelineClient(rawhttp.DefaultPipelineOptions)
+
 	executer := &HTTPExecuter{
-		debug:           options.Debug,
-		jsonOutput:      options.JSON,
-		jsonRequest:     options.JSONRequests,
-		httpClient:      client,
-		template:        options.Template,
-		bulkHTTPRequest: options.BulkHTTPRequest,
-		writer:          options.Writer,
-		customHeaders:   options.CustomHeaders,
-		CookieJar:       options.CookieJar,
-		coloredOutput:   options.ColoredOutput,
-		colorizer:       *options.Colorizer,
-		decolorizer:     options.Decolorizer,
+		debug:                 options.Debug,
+		jsonOutput:            options.JSON,
+		jsonRequest:           options.JSONRequests,
+		httpClient:            client,
+		rawPipelineHTTPClient: rawPipelineHTTPClient,
+		template:              options.Template,
+		bulkHTTPRequest:       options.BulkHTTPRequest,
+		writer:                options.Writer,
+		customHeaders:         options.CustomHeaders,
+		CookieJar:             options.CookieJar,
+		coloredOutput:         options.ColoredOutput,
+		colorizer:             *options.Colorizer,
+		decolorizer:           options.Decolorizer,
 	}
 
 	return executer, nil
