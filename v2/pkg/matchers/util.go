@@ -29,7 +29,7 @@ func httpToMap(resp *http.Response, body, headers string, duration time.Duration
 	}
 
 	// should be used as int64 within DSL syntax
-	m["duration"] = duration
+	m["duration"] = int64(duration)
 
 	return m
 }
