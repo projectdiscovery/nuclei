@@ -173,7 +173,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
+	timeStart := time.Now()
 	resp, err := e.httpClient.Do(req)
+	duration := time.Since(timeStart)
 
 	if err != nil {
 		if resp != nil {
@@ -223,7 +225,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	for _, matcher := range e.bulkHTTPRequest.Matchers {
 		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers) {
+		if !matcher.Match(resp, body, headers, duration) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
 				return nil
