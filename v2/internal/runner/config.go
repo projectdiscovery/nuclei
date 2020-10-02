@@ -35,27 +35,22 @@ func (r *Runner) readConfiguration() (*nucleiConfig, error) {
 
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	file, err := os.Open(templatesConfigFile)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer file.Close()
 
 	config := &nucleiConfig{}
 	err = jsoniter.NewDecoder(file).Decode(config)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return config, nil
 }
 
 // readConfiguration reads the nuclei configuration file from disk.
 func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	home, err := os.UserHomeDir()
-
 	if err != nil {
 		return err
 	}
@@ -63,18 +58,15 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	config.LastChecked = time.Now()
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
-
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
 
 	err = jsoniter.NewEncoder(file).Encode(config)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -94,7 +86,9 @@ func (r *Runner) readNucleiIgnoreFile() {
 		if text == "" {
 			continue
 		}
-
+		if strings.HasPrefix(text, "#") {
+			continue
+		}
 		r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, text)
 	}
 }
