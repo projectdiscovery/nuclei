@@ -183,6 +183,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
+timeStart := time.Now()
 	// rawhttp
 	if request.RawRequest != nil {
 		// ignore all flags and options for now
@@ -198,8 +199,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 				resp.Body.Close()
 			}
 			return err
-		}
-	}
+    }
+  }
+  duration := time.Since(timeStart)
 
 	if e.debug {
 		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
@@ -241,7 +243,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	for _, matcher := range e.bulkHTTPRequest.Matchers {
 		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers) {
+		if !matcher.Match(resp, body, headers, duration) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
 				return nil
