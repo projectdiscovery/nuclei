@@ -98,7 +98,7 @@ Download latest binary from https://github.com/projectdiscovery/nuclei/releases
 
 ▶ tar -xzvf nuclei-linux-amd64.tar.gz
 ▶ mv nuclei /usr/local/bin/
-▶ nuclei -h
+▶ nuclei -version
 ```
 
 ### From Source
