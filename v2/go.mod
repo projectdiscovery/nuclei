@@ -16,8 +16,9 @@ require (
 	github.com/projectdiscovery/rawhttp v0.0.2-0.20200929200351-394a0e5b5a8a
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
+	github.com/stretchr/testify v1.5.1
 	github.com/vbauerster/mpb/v5 v5.3.0
-	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
+	golang.org/x/net v0.0.0-20201002202402-0a1ea396d57c
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/yaml.v2 v2.3.0
 )
