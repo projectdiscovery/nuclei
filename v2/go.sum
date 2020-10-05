@@ -43,6 +43,12 @@ github.com/projectdiscovery/rawhttp v0.0.2-0.20200929200351-394a0e5b5a8a h1:+Mys
 github.com/projectdiscovery/rawhttp v0.0.2-0.20200929200351-394a0e5b5a8a/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/rawhttp v0.0.2-0.20201005001033-5c3b518c4288 h1:0gWt2HFAIj1KP/aflQ0wjxRnSMAD0eECd/FGX+aA7F8=
 github.com/projectdiscovery/rawhttp v0.0.2-0.20201005001033-5c3b518c4288/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005194701-94f961939048 h1:o3ohMDTWYgTRQb7nivDZyk0acxEf7F2cG+qj8hdpCzc=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005194701-94f961939048/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200243-8cd4c43f84dc h1:Igp422RKczdlWm7XOEUpH3OCJxDGZ5L2oiAglbxtX6k=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200243-8cd4c43f84dc/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200949-0a5c878e6ee1 h1:I3aE8ta92M2XbrYKNYOTlXhodxyH+zQOt1jIatorhQA=
+github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200949-0a5c878e6ee1/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/retryabledns v1.0.4 h1:0Va7qHlWQsIXjRLISTjzfN3tnJmHYDudY05Nu3IJd60=
 github.com/projectdiscovery/retryabledns v1.0.4/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.1 h1:V7wUvsZNq1Rcz7+IlcyoyQlNwshuwptuBVYWw9lx8RE=
