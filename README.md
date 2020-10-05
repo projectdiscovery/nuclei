@@ -1,4 +1,4 @@
-<h1 align="left">
+<h1 align="center">
   <img src="static/nuclei-logo.png" alt="nuclei" width="200px"></a>
   <br>
 </h1>
@@ -11,7 +11,10 @@
 [![Docker Images](https://img.shields.io/docker/pulls/projectdiscovery/nuclei.svg)](https://hub.docker.com/r/projectdiscovery/nuclei)
 [![Chat on Discord](https://img.shields.io/discord/695645237418131507.svg?logo=discord)](https://discord.gg/KECAGdH)
 
-<a href="https://nuclei.projectdiscovery.io/templating-guide/" target="_blank"><img src="static/read-the-docs-button.png" height="34px"/></a>  <a href="https://github.com/projectdiscovery/nuclei-templates" target="_blank"><img src="static/download-templates-button.png" height="34px"/></a>
+<p align="center">
+<a href="https://nuclei.projectdiscovery.io/templating-guide/" target="_blank"><img src="static/read-the-docs-button.png" height="42px"/></center></a>  <a href="https://github.com/projectdiscovery/nuclei-templates" target="_blank"><img src="static/download-templates-button.png" height="42px"/></a>
+</p>
+
 
 Nuclei is a fast tool for configurable targeted scanning based on templates offering massive extensibility and ease of use.
 
