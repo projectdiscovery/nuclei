@@ -184,10 +184,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	}
 
 	timeStart := time.Now()
-	// rawhttp
-	// burp uses "\r\n" as new line character
-	request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
 	if request.RawRequest != nil {
+		// rawhttp
+		// burp uses "\r\n" as new line character
+		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
 		resp, err = e.rawHttpClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
 		if err != nil {
 			return err
