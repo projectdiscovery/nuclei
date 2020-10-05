@@ -65,6 +65,10 @@ type BulkHTTPRequest struct {
 	Raw []string `yaml:"raw,omitempty"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
+	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
+	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
+	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
+	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
 	// Internal Finite State Machine keeping track of scan process
 	gsfm *GeneratorFSM
 }
@@ -211,6 +215,8 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	// rawhttp
 	if r.Unsafe {
+		rawRequest.AutomaticContentLength = !r.DisableAutoContentLength
+		rawRequest.AutomaticHostHeader = !r.DisableAutoHostname
 		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues}, nil
 	}
 
@@ -310,11 +316,13 @@ func (c *CustomHeaders) Set(value string) error {
 
 // RawRequest defines a basic HTTP raw request
 type RawRequest struct {
-	FullURL string
-	Method  string
-	Path    string
-	Data    string
-	Headers map[string]string
+	FullURL                string
+	Method                 string
+	Path                   string
+	Data                   string
+	Headers                map[string]string
+	AutomaticHostHeader    bool
+	AutomaticContentLength bool
 }
 
 // parseRawRequest parses the raw request as supplied by the user
