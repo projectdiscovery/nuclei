@@ -39,6 +39,7 @@ type Options struct {
 	CustomHeaders      requests.CustomHeaders // Custom global headers
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
 	RateLimit          int                    // Rate-Limit of requests per specified target
+	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
 }
 
 type multiStringFlag []string
@@ -80,6 +81,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
 	flag.IntVar(&options.RateLimit, "rl", 9999999, "Rate-Limit of requests per specified target") // 9999999 to avoid limiting
+	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
 
 	flag.Parse()
 

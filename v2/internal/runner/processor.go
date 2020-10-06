@@ -51,21 +51,22 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
-			Debug:           r.options.Debug,
-			Template:        template,
-			BulkHTTPRequest: value,
-			Writer:          r.output,
-			Timeout:         r.options.Timeout,
-			Retries:         r.options.Retries,
-			ProxyURL:        r.options.ProxyURL,
-			ProxySocksURL:   r.options.ProxySocksURL,
-			CustomHeaders:   r.options.CustomHeaders,
-			JSON:            r.options.JSON,
-			JSONRequests:    r.options.JSONRequests,
-			CookieReuse:     value.CookieReuse,
-			ColoredOutput:   !r.options.NoColor,
-			Colorizer:       &r.colorizer,
-			Decolorizer:     r.decolorizer,
+			Debug:            r.options.Debug,
+			Template:         template,
+			BulkHTTPRequest:  value,
+			Writer:           r.output,
+			Timeout:          r.options.Timeout,
+			Retries:          r.options.Retries,
+			ProxyURL:         r.options.ProxyURL,
+			ProxySocksURL:    r.options.ProxySocksURL,
+			CustomHeaders:    r.options.CustomHeaders,
+			JSON:             r.options.JSON,
+			JSONRequests:     r.options.JSONRequests,
+			CookieReuse:      value.CookieReuse,
+			ColoredOutput:    !r.options.NoColor,
+			Colorizer:        &r.colorizer,
+			Decolorizer:      r.decolorizer,
+			StopAtFirstMatch: r.options.StopAtFirstMatch,
 		})
 	}
 
