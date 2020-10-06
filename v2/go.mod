@@ -13,10 +13,12 @@ require (
 	github.com/miekg/dns v1.1.31
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.0.1
+	github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200949-0a5c878e6ee1
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
+	github.com/stretchr/testify v1.5.1
 	github.com/vbauerster/mpb/v5 v5.3.0
-	golang.org/x/net v0.0.0-20200923182212-328152dc79b1
+	golang.org/x/net v0.0.0-20201002202402-0a1ea396d57c
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/yaml.v2 v2.3.0
 )
