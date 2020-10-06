@@ -63,10 +63,21 @@ type BulkHTTPRequest struct {
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
 	Raw []string `yaml:"raw,omitempty"`
+<<<<<<< HEAD
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
 	Pipeline bool `yaml:"pipeline,omitempty"`
 	gsfm     *GeneratorFSM
+=======
+	// Specify in order to skip request RFC normalization
+	Unsafe bool `yaml:"unsafe,omitempty"`
+	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
+	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
+	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
+	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
+	// Internal Finite State Machine keeping track of scan process
+	gsfm *GeneratorFSM
+>>>>>>> master
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -204,18 +215,26 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	dynamicReplacer := newReplacer(dynamicValues)
 	raw = dynamicReplacer.Replace(raw)
 
-	compiledRequest, err := r.parseRawRequest(raw, baseURL)
+	rawRequest, err := r.parseRawRequest(raw, baseURL)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, compiledRequest.Method, compiledRequest.FullURL, strings.NewReader(compiledRequest.Data))
+	// rawhttp
+	if r.Unsafe {
+		rawRequest.AutomaticContentLength = !r.DisableAutoContentLength
+		rawRequest.AutomaticHostHeader = !r.DisableAutoHostname
+		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues}, nil
+	}
+
+	// retryablehttp
+	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, strings.NewReader(rawRequest.Data))
 	if err != nil {
 		return nil, err
 	}
 
 	// copy headers
-	for key, value := range compiledRequest.Headers {
+	for key, value := range rawRequest.Headers {
 		req.Header[key] = []string{value}
 	}
 
@@ -257,8 +276,9 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 
 // HTTPRequest is the basic HTTP request
 type HTTPRequest struct {
-	Request *retryablehttp.Request
-	Meta    map[string]interface{}
+	Request    *retryablehttp.Request
+	RawRequest *RawRequest
+	Meta       map[string]interface{}
 }
 
 func setHeader(req *http.Request, name, value string) {
@@ -303,11 +323,13 @@ func (c *CustomHeaders) Set(value string) error {
 
 // RawRequest defines a basic HTTP raw request
 type RawRequest struct {
-	FullURL string
-	Method  string
-	Path    string
-	Data    string
-	Headers map[string]string
+	FullURL                string
+	Method                 string
+	Path                   string
+	Data                   string
+	Headers                map[string]string
+	AutomaticHostHeader    bool
+	AutomaticContentLength bool
 }
 
 // parseRawRequest parses the raw request as supplied by the user
@@ -331,6 +353,8 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 	// Set the request Method
 	rawRequest.Method = parts[0]
 
+	// Accepts all malformed headers
+	var key, value string
 	for {
 		line, readErr := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
@@ -340,15 +364,12 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 		}
 
 		p := strings.SplitN(line, ":", two)
-		if len(p) != two {
-			continue
+		key = p[0]
+		if len(p) > 1 {
+			value = p[1]
 		}
 
-		if strings.EqualFold(p[0], "content-length") {
-			continue
-		}
-
-		rawRequest.Headers[strings.TrimSpace(p[0])] = strings.TrimSpace(p[1])
+		rawRequest.Headers[key] = value
 	}
 
 	// Handle case with the full http url in path. In that case,
@@ -388,7 +409,7 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
 
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, hostURL, rawRequest.Path)
+	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)
