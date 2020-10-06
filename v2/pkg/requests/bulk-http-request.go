@@ -63,12 +63,9 @@ type BulkHTTPRequest struct {
 	MaxRedirects int `yaml:"max-redirects,omitempty"`
 	// Raw contains raw requests
 	Raw []string `yaml:"raw,omitempty"`
-<<<<<<< HEAD
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
 	Pipeline bool `yaml:"pipeline,omitempty"`
-	gsfm     *GeneratorFSM
-=======
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
 	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
@@ -77,7 +74,6 @@ type BulkHTTPRequest struct {
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
 	// Internal Finite State Machine keeping track of scan process
 	gsfm *GeneratorFSM
->>>>>>> master
 }
 
 // GetMatchersCondition returns the condition for the matcher
