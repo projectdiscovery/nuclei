@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )
@@ -42,6 +43,7 @@ type HTTPExecuter struct {
 	jsonOutput      bool
 	jsonRequest     bool
 	httpClient      *retryablehttp.Client
+	rawHttpClient   *rawhttp.Client
 	template        *templates.Template
 	bulkHTTPRequest *requests.BulkHTTPRequest
 	writer          *bufwriter.Writer
@@ -102,11 +104,15 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		client.HTTPClient.Jar = jar
 	}
 
+	// initiate raw http client
+	rawClient := rawhttp.NewClient(rawhttp.DefaultOptions)
+
 	executer := &HTTPExecuter{
 		debug:           options.Debug,
 		jsonOutput:      options.JSON,
 		jsonRequest:     options.JSONRequests,
 		httpClient:      client,
+		rawHttpClient:   rawClient,
 		template:        options.Template,
 		bulkHTTPRequest: options.BulkHTTPRequest,
 		writer:          options.Writer,
@@ -161,10 +167,14 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
-	req := request.Request
+
+	var (
+		resp *http.Response
+		err  error
+	)
 
 	if e.debug {
-		dumpedRequest, err := httputil.DumpRequest(req.Request, true)
+		dumpedRequest, err := requests.Dump(request, reqURL)
 		if err != nil {
 			return err
 		}
@@ -174,16 +184,28 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	}
 
 	timeStart := time.Now()
-	resp, err := e.httpClient.Do(req)
-	duration := time.Since(timeStart)
-
-	if err != nil {
-		if resp != nil {
-			resp.Body.Close()
+	if request.RawRequest != nil {
+		// rawhttp
+		// burp uses "\r\n" as new line character
+		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
+		options := e.rawHttpClient.Options
+		options.AutomaticContentLength = request.RawRequest.AutomaticContentLength
+		options.AutomaticHostHeader = request.RawRequest.AutomaticHostHeader
+		resp, err = e.rawHttpClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
+		if err != nil {
+			return err
 		}
-
-		return err
+	} else {
+		// retryablehttp
+		resp, err = e.httpClient.Do(request.Request)
+		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			return err
+		}
 	}
+	duration := time.Since(timeStart)
 
 	if e.debug {
 		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
@@ -212,7 +234,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
 	// so in case we have to manually do it
-	data, err = requests.HandleDecompression(req, data)
+	data, err = requests.HandleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
 	}
@@ -366,9 +388,15 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 		}
 
 		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
-		headerName = strings.TrimSpace(headerName)
-		headerValue = strings.TrimSpace(headerValue)
-		r.Request.Header[headerName] = []string{headerValue}
+		if r.RawRequest != nil {
+			// rawhttp
+			r.RawRequest.Headers[headerName] = headerValue
+		} else {
+			// retryablehttp
+			headerName = strings.TrimSpace(headerName)
+			headerValue = strings.TrimSpace(headerValue)
+			r.Request.Header[headerName] = []string{headerValue}
+		}
 	}
 }
 
