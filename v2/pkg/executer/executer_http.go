@@ -50,28 +50,30 @@ type HTTPExecuter struct {
 	customHeaders   requests.CustomHeaders
 	CookieJar       *cookiejar.Jar
 
-	colorizer   colorizer.NucleiColorizer
-	decolorizer *regexp.Regexp
+	colorizer        colorizer.NucleiColorizer
+	decolorizer      *regexp.Regexp
+	stopAtFirstMatch bool
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
-	Debug           bool
-	JSON            bool
-	JSONRequests    bool
-	CookieReuse     bool
-	ColoredOutput   bool
-	Template        *templates.Template
-	BulkHTTPRequest *requests.BulkHTTPRequest
-	Writer          *bufwriter.Writer
-	Timeout         int
-	Retries         int
-	ProxyURL        string
-	ProxySocksURL   string
-	CustomHeaders   requests.CustomHeaders
-	CookieJar       *cookiejar.Jar
-	Colorizer       *colorizer.NucleiColorizer
-	Decolorizer     *regexp.Regexp
+	Debug            bool
+	JSON             bool
+	JSONRequests     bool
+	CookieReuse      bool
+	ColoredOutput    bool
+	Template         *templates.Template
+	BulkHTTPRequest  *requests.BulkHTTPRequest
+	Writer           *bufwriter.Writer
+	Timeout          int
+	Retries          int
+	ProxyURL         string
+	ProxySocksURL    string
+	CustomHeaders    requests.CustomHeaders
+	CookieJar        *cookiejar.Jar
+	Colorizer        *colorizer.NucleiColorizer
+	Decolorizer      *regexp.Regexp
+	StopAtFirstMatch bool
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -108,19 +110,20 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	rawClient := rawhttp.NewClient(rawhttp.DefaultOptions)
 
 	executer := &HTTPExecuter{
-		debug:           options.Debug,
-		jsonOutput:      options.JSON,
-		jsonRequest:     options.JSONRequests,
-		httpClient:      client,
-		rawHttpClient:   rawClient,
-		template:        options.Template,
-		bulkHTTPRequest: options.BulkHTTPRequest,
-		writer:          options.Writer,
-		customHeaders:   options.CustomHeaders,
-		CookieJar:       options.CookieJar,
-		coloredOutput:   options.ColoredOutput,
-		colorizer:       *options.Colorizer,
-		decolorizer:     options.Decolorizer,
+		debug:            options.Debug,
+		jsonOutput:       options.JSON,
+		jsonRequest:      options.JSONRequests,
+		httpClient:       client,
+		rawHttpClient:    rawClient,
+		template:         options.Template,
+		bulkHTTPRequest:  options.BulkHTTPRequest,
+		writer:           options.Writer,
+		customHeaders:    options.CustomHeaders,
+		CookieJar:        options.CookieJar,
+		coloredOutput:    options.ColoredOutput,
+		colorizer:        *options.Colorizer,
+		decolorizer:      options.Decolorizer,
+		stopAtFirstMatch: options.StopAtFirstMatch,
 	}
 
 	return executer, nil
@@ -152,6 +155,12 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
 			}
+		}
+
+		// Check if has to stop processing at first valid result
+		if e.stopAtFirstMatch && result.GotResults {
+			p.Drop(remaining)
+			break
 		}
 
 		// move always forward with requests
