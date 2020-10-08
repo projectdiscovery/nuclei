@@ -24,9 +24,6 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
 
 ## Resources
 
-<details>
-<summary>Resources</summary>
-
 -   [Features](#features)
 -   [Usage](#usage)
 -   [Installation Instructions](#installation-instructions)
@@ -41,7 +38,6 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
     -   [Running in Docker](#running-in-docker-container)
 -   [Thanks](#thanks)
 
-</details>
 
 ## Features
 
