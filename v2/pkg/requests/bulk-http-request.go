@@ -65,7 +65,9 @@ type BulkHTTPRequest struct {
 	Raw []string `yaml:"raw,omitempty"`
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
-	Pipeline bool `yaml:"pipeline,omitempty"`
+	Pipeline               bool `yaml:"pipeline,omitempty"`
+	PipelineMaxConnections int  `yaml:"pipeline-max-connections,omitempty"`
+	PipelineMaxWorkers     int  `yaml:"pipeline-max-workers,omitempty"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
 	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
