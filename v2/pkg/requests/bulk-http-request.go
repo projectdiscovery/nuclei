@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/rawhttp"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -220,9 +221,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	// rawhttp
 	if r.Unsafe {
-		rawRequest.AutomaticContentLength = !r.DisableAutoContentLength
-		rawRequest.AutomaticHostHeader = !r.DisableAutoHostname
-		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues}, nil
+		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues, AutomaticHostHeader: !r.DisableAutoHostname, AutomaticContentLengthHeader: !r.DisableAutoContentLength, Unsafe: true}, nil
 	}
 
 	// retryablehttp
@@ -277,6 +276,16 @@ type HTTPRequest struct {
 	Request    *retryablehttp.Request
 	RawRequest *RawRequest
 	Meta       map[string]interface{}
+
+	// flags
+	Unsafe                       bool
+	Pipeline                     bool
+	AutomaticHostHeader          bool
+	AutomaticContentLengthHeader bool
+	AutomaticConnectionHeader    bool
+	Rawclient                    *rawhttp.Client
+	Httpclient                   *retryablehttp.Client
+	PipelineClient               *rawhttp.PipelineClient
 }
 
 func setHeader(req *http.Request, name, value string) {
@@ -321,13 +330,11 @@ func (c *CustomHeaders) Set(value string) error {
 
 // RawRequest defines a basic HTTP raw request
 type RawRequest struct {
-	FullURL                string
-	Method                 string
-	Path                   string
-	Data                   string
-	Headers                map[string]string
-	AutomaticHostHeader    bool
-	AutomaticContentLength bool
+	FullURL string
+	Method  string
+	Path    string
+	Data    string
+	Headers map[string]string
 }
 
 // parseRawRequest parses the raw request as supplied by the user
