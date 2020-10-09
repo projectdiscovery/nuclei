@@ -22,13 +22,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/ratelimit"
 	"golang.org/x/net/proxy"
 )
 
@@ -139,13 +139,6 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 		return
 	}
 
-	var rateLimit ratelimit.Limiter
-	if e.bulkHTTPRequest.RateLimit > 0 {
-		rateLimit = ratelimit.New(e.bulkHTTPRequest.RateLimit)
-	} else {
-		rateLimit = ratelimit.NewUnlimited()
-	}
-
 	remaining := e.bulkHTTPRequest.GetRequestCount()
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
@@ -153,7 +146,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 	maxWorkers := e.bulkHTTPRequest.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
-		request, err := e.bulkHTTPRequest.MakeHTTPRequest(context.Background(), reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
 			p.Drop(remaining)
@@ -162,7 +155,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 			go func(httpRequest *requests.HTTPRequest) {
 				defer swg.Done()
 
-				rateLimit.Take()
+				globalratelimiter.Take(reqURL)
 
 				// If the request was built correctly then execute it
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
@@ -215,7 +208,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
-		request, err := e.bulkHTTPRequest.MakeHTTPRequest(context.Background(), reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
 			p.Drop(remaining)
@@ -223,6 +216,8 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
 				defer swg.Done()
+
+				// HTTP pipelining ignores rate limit
 
 				// If the request was built correctly then execute it
 				request.PipelineClient = pipeclient
@@ -245,7 +240,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, reqURL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result Result) {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(p, reqURL)
@@ -268,11 +263,12 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
-		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
 			p.Drop(remaining)
 		} else {
+			globalratelimiter.Take(reqURL)
 			// If the request was built correctly then execute it
 			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 			if err != nil {

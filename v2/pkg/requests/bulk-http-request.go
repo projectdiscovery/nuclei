@@ -2,7 +2,6 @@ package requests
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -108,7 +107,7 @@ func (r *BulkHTTPRequest) GetRequestCount() int64 {
 }
 
 // MakeHTTPRequest makes the HTTP request
-func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, dynamicValues map[string]interface{}, data string) (*HTTPRequest, error) {
+func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HTTPRequest, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -123,19 +122,19 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(ctx context.Context, baseURL string, d
 
 	// if data contains \n it's a raw request
 	if strings.Contains(data, "\n") {
-		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
+		return r.makeHTTPRequestFromRaw(baseURL, data, values)
 	}
 
-	return r.makeHTTPRequestFromModel(ctx, data, values)
+	return r.makeHTTPRequestFromModel(data, values)
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*HTTPRequest, error) {
+func (r *BulkHTTPRequest) makeHTTPRequestFromModel(data string, values map[string]interface{}) (*HTTPRequest, error) {
 	replacer := newReplacer(values)
 	URL := replacer.Replace(data)
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.Method, URL, nil)
+	req, err := http.NewRequest(r.Method, URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +168,7 @@ func (r *BulkHTTPRequest) ReadOne(reqURL string) {
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values map[string]interface{}) (*HTTPRequest, error) {
+func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(baseURL, data string, values map[string]interface{}) (*HTTPRequest, error) {
 	// Add trailing line
 	data += "\n"
 
@@ -177,14 +176,14 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(ctx context.Context, baseURL, d
 		r.gsfm.InitOrSkip(baseURL)
 		r.ReadOne(baseURL)
 
-		return r.handleRawWithPaylods(ctx, data, baseURL, values, r.gsfm.Value(baseURL))
+		return r.handleRawWithPaylods(data, baseURL, values, r.gsfm.Value(baseURL))
 	}
 
 	// otherwise continue with normal flow
-	return r.handleRawWithPaylods(ctx, data, baseURL, values, nil)
+	return r.handleRawWithPaylods(data, baseURL, values, nil)
 }
 
-func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL string, values, genValues map[string]interface{}) (*HTTPRequest, error) {
+func (r *BulkHTTPRequest) handleRawWithPaylods(raw, baseURL string, values, genValues map[string]interface{}) (*HTTPRequest, error) {
 	baseValues := generators.CopyMap(values)
 	finValues := generators.MergeMaps(baseValues, genValues)
 
@@ -228,7 +227,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	}
 
 	// retryablehttp
-	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, strings.NewReader(rawRequest.Data))
+	req, err := http.NewRequest(rawRequest.Method, rawRequest.FullURL, strings.NewReader(rawRequest.Data))
 	if err != nil {
 		return nil, err
 	}

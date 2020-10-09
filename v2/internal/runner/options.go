@@ -68,7 +68,6 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
 	flag.BoolVar(&options.NoColor, "nC", false, "Don't Use colors in output")
-	flag.IntVar(&options.Threads, "c", 50, "Number of concurrent requests to make")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
@@ -79,7 +78,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
-	flag.IntVar(&options.RateLimit, "rl", 9999999, "Rate-Limit of requests per specified target") // 9999999 to avoid limiting
+	flag.IntVar(&options.RateLimit, "rate-limit", -1, "Per Target Rate-Limit")
 
 	flag.Parse()
 
