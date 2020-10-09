@@ -30,7 +30,7 @@ type workflowTemplates struct {
 }
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgress, template *templates.Template, request interface{}) bool {
+func (r *Runner) processTemplateWithList(p progress.IProgress, template *templates.Template, request interface{}) bool {
 	var httpExecuter *executer.HTTPExecuter
 	var dnsExecuter *executer.DNSExecuter
 	var err error
@@ -83,19 +83,15 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
-		text := scanner.Text()
-
-		r.limiter <- struct{}{}
-
+		URL := scanner.Text()
 		wg.Add(1)
-
 		go func(URL string) {
 			defer wg.Done()
 
 			var result executer.Result
 
 			if httpExecuter != nil {
-				result = httpExecuter.ExecuteHTTP(ctx, p, URL)
+				result = httpExecuter.ExecuteHTTP(p, URL)
 				globalresult.Or(result.GotResults)
 			}
 
@@ -107,9 +103,7 @@ func (r *Runner) processTemplateWithList(ctx context.Context, p progress.IProgre
 			if result.Error != nil {
 				gologger.Warningf("[%s] Could not execute step: %s\n", r.colorizer.Colorizer.BrightBlue(template.ID), result.Error)
 			}
-
-			<-r.limiter
-		}(text)
+		}(URL)
 	}
 
 	wg.Wait()
@@ -136,8 +130,6 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		targetURL := scanner.Text()
-		r.limiter <- struct{}{}
-
 		wg.Add(1)
 
 		go func(targetURL string) {
@@ -171,8 +163,6 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 					break
 				}
 			}
-
-			<-r.limiter
 		}(targetURL)
 	}
 

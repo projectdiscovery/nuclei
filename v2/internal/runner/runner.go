@@ -2,7 +2,6 @@ package runner
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,9 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
-
-	"golang.org/x/time/rate"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -20,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
@@ -36,7 +33,6 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
-	limiter chan struct{}
 
 	// progress tracking
 	progress progress.IProgress
@@ -121,7 +117,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Sanitize input and pre-compute total number of targets
-	var usedInput = make(map[string]bool)
+	var usedInput = make(map[string]struct{})
 
 	dupeCount := 0
 	sb := strings.Builder{}
@@ -136,8 +132,11 @@ func New(options *Options) (*Runner, error) {
 		}
 		// deduplication
 		if _, ok := usedInput[url]; !ok {
-			usedInput[url] = true
+			usedInput[url] = struct{}{}
 			runner.inputCount++
+
+			// allocate global rate limiters
+			globalratelimiter.Add(url, options.RateLimit)
 
 			sb.WriteString(url)
 			sb.WriteString("\n")
@@ -164,8 +163,6 @@ func New(options *Options) (*Runner, error) {
 
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
-
-	runner.limiter = make(chan struct{}, options.Threads)
 
 	return runner, nil
 }
@@ -240,9 +237,6 @@ func (r *Runner) RunEnumeration() {
 	if r.inputCount == 0 {
 		gologger.Errorf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
-		ctx := context.Background()
-		// Limiter that will add to the tokenbucket every second and set the max size to -rl flag
-		rateLimit := rate.NewLimiter(rate.Every(1*time.Second), r.options.RateLimit)
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p := r.progress
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
@@ -251,17 +245,13 @@ func (r *Runner) RunEnumeration() {
 			wgtemplates.Add(1)
 			go func(template interface{}) {
 				defer wgtemplates.Done()
-				err := rateLimit.Wait(ctx)
-				if err != nil {
-					gologger.Errorf("Issue with rate-limit")
-				}
 				switch tt := template.(type) {
 				case *templates.Template:
 					for _, request := range tt.RequestsDNS {
-						results.Or(r.processTemplateWithList(ctx, p, tt, request))
+						results.Or(r.processTemplateWithList(p, tt, request))
 					}
 					for _, request := range tt.BulkRequestsHTTP {
-						results.Or(r.processTemplateWithList(ctx, p, tt, request))
+						results.Or(r.processTemplateWithList(p, tt, request))
 					}
 				case *workflows.Workflow:
 					results.Or(r.processWorkflowWithList(p, template.(*workflows.Workflow)))

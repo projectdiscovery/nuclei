@@ -1,7 +1,6 @@
 package workflows
 
 import (
-	"context"
 	"sync"
 
 	tengo "github.com/d5/tengo/v2"
@@ -58,8 +57,6 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		externalVars = iterableToMap(args[1])
 	}
 
-	ctx := context.Background()
-
 	var gotResult atomicboolean.AtomBool
 
 	for _, template := range n.Templates {
@@ -89,7 +86,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 					continue
 				}
 
-				result := httpExecuter.ExecuteHTTP(ctx, p, n.URL)
+				result := httpExecuter.ExecuteHTTP(p, n.URL)
 
 				if result.Error != nil {
 					gologger.Warningf("Could not send request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
