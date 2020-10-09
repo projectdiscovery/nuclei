@@ -14,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -27,6 +28,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/ratelimit"
 	"golang.org/x/net/proxy"
 )
 
@@ -127,10 +129,58 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	return executer, nil
 }
 
-func (e *HTTPExecuter) ExecuteTurboHTTP(ctx context.Context, p progress.IProgress, reqURL string) (result Result) {
+func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
+	dynamicvalues := make(map[string]interface{})
 
+	// verify if the URL is already being processed
+	if e.bulkHTTPRequest.HasGenerator(reqURL) {
+		return
+	}
+
+	var rateLimit ratelimit.Limiter
+	if e.bulkHTTPRequest.RateLimit > 0 {
+		rateLimit = ratelimit.New(e.bulkHTTPRequest.RateLimit)
+	} else {
+		rateLimit = ratelimit.NewUnlimited()
+	}
+
+	remaining := e.bulkHTTPRequest.GetRequestCount()
+	e.bulkHTTPRequest.CreateGenerator(reqURL)
+
+	// Workers that keeps enqueuing new requests
+	maxWorkers := e.bulkHTTPRequest.Threads
+	swg := sizedwaitgroup.New(maxWorkers)
+	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(context.Background(), reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		if err != nil {
+			result.Error = err
+			p.Drop(remaining)
+		} else {
+			swg.Add()
+			go func(httpRequest *requests.HTTPRequest) {
+				defer swg.Done()
+
+				rateLimit.Take()
+
+				// If the request was built correctly then execute it
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+				if err != nil {
+					result.Error = errors.Wrap(err, "could not handle http request")
+					p.Drop(remaining)
+				}
+			}(request)
+		}
+		e.bulkHTTPRequest.Increment(reqURL)
+	}
+
+	swg.Wait()
+
+	return result
+}
+
+func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (result Result) {
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
@@ -165,7 +215,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(ctx context.Context, p progress.IProgres
 
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
-		request, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(context.Background(), reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
 			p.Drop(remaining)
@@ -198,7 +248,11 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(ctx context.Context, p progress.IProgres
 func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, reqURL string) (result Result) {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
-		return e.ExecuteTurboHTTP(ctx, p, reqURL)
+		return e.ExecuteTurboHTTP(p, reqURL)
+	}
+
+	if e.bulkHTTPRequest.Threads > 0 {
+		return e.ExecuteParallelHTTP(p, reqURL)
 	}
 
 	result.Matches = make(map[string]interface{})
@@ -334,11 +388,13 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition {
+				result.Lock()
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
 				result.GotResults = true
+				result.Unlock()
+				e.writeOutputHTTP(request, resp, body, matcher, nil)
 			}
 		}
 	}
@@ -360,16 +416,19 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
+		result.Lock()
 		result.Meta = request.Meta
 		result.Extractions[extractor.Name] = extractorResults
+		result.Unlock()
 	}
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
-
+		result.Lock()
 		result.GotResults = true
+		result.Unlock()
 	}
 
 	return nil
@@ -380,7 +439,21 @@ func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
 func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
+	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	disableKeepAlives := true
+	maxIdleConns := 0
+	maxConnsPerHost := 0
+	maxIdleConnsPerHost := -1
+
+	if options.BulkHTTPRequest.Threads > 0 {
+		// Single host
+		retryablehttpOptions = retryablehttp.DefaultOptionsSingle
+		disableKeepAlives = false
+		maxIdleConnsPerHost = 500
+		maxConnsPerHost = 500
+	}
+
 	retryablehttpOptions.RetryWaitMax = 10 * time.Second
 	retryablehttpOptions.RetryMax = options.Retries
 	followRedirects := options.BulkHTTPRequest.Redirects
@@ -391,12 +464,14 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		MaxIdleConnsPerHost: -1,
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		MaxConnsPerHost:     maxConnsPerHost,
 		TLSClientConfig: &tls.Config{
 			Renegotiation:      tls.RenegotiateOnceAsClient,
 			InsecureSkipVerify: true,
 		},
-		DisableKeepAlives: true,
+		DisableKeepAlives: disableKeepAlives,
 	}
 
 	// Attempts to overwrite the dial function with the socks proxied version
@@ -479,6 +554,7 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 }
 
 type Result struct {
+	sync.Mutex
 	GotResults  bool
 	Done        bool
 	Meta        map[string]interface{}
