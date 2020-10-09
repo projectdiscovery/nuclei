@@ -24,7 +24,6 @@ const (
 )
 
 var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
-var urlWithPathRgx = regexp.MustCompile(`{{BaseURL}}.*/`)
 
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
@@ -264,6 +263,13 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
+	// if the user specified a Connection header we don't alter it
+	if req.Header.Get("Connection") == "" {
+		// Otherwise we set it to "Connection: close" - The instruction is redundant, but it ensures that internally net/http don't miss the header/internal flag
+		setHeader(req, "Connection", "close")
+		req.Close = true
+	}
+
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 
 	// raw requests are left untouched
@@ -309,12 +315,6 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	if hasPort {
 		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
 		parsedURL.Host = hostname
-	}
-
-	// template path preference over input URL path
-	hasPath := len(urlWithPathRgx.FindStringSubmatch(data)) > 0
-	if hasPath {
-		parsedURL.Path = ""
 	}
 
 	return parsedURL.String()
