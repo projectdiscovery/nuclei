@@ -75,6 +75,9 @@ type BulkHTTPRequest struct {
 	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
+	Threads                  int  `yaml:"threads,omitempty"`
+	RateLimit                int  `yaml:"rate-limit,omitempty"`
+
 	// Internal Finite State Machine keeping track of scan process
 	gsfm *GeneratorFSM
 }
@@ -244,8 +247,12 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	setHeader(req, "Connection", "close")
-	req.Close = true
+	// In case of multiple threads the underlying connection should remain open to allow reuse
+	if r.Threads <= 0 {
+		setHeader(req, "Connection", "close")
+		req.Close = true
+	}
+
 	replacer := newReplacer(values)
 
 	// Check if the user requested a request body
