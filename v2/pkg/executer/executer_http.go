@@ -14,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,11 +22,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/net/proxy"
 )
 
@@ -129,8 +132,127 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	return executer, nil
 }
 
+func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) (result Result) {
+	result.Matches = make(map[string]interface{})
+	result.Extractions = make(map[string]interface{})
+	dynamicvalues := make(map[string]interface{})
+
+	// verify if the URL is already being processed
+	if e.bulkHTTPRequest.HasGenerator(reqURL) {
+		return
+	}
+
+	remaining := e.bulkHTTPRequest.GetRequestCount()
+	e.bulkHTTPRequest.CreateGenerator(reqURL)
+
+	// Workers that keeps enqueuing new requests
+	maxWorkers := e.bulkHTTPRequest.Threads
+	swg := sizedwaitgroup.New(maxWorkers)
+	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		if err != nil {
+			result.Error = err
+			p.Drop(remaining)
+		} else {
+			swg.Add()
+			go func(httpRequest *requests.HTTPRequest) {
+				defer swg.Done()
+
+				globalratelimiter.Take(reqURL)
+
+				// If the request was built correctly then execute it
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+				if err != nil {
+					result.Error = errors.Wrap(err, "could not handle http request")
+					p.Drop(remaining)
+				}
+			}(request)
+		}
+		e.bulkHTTPRequest.Increment(reqURL)
+	}
+
+	swg.Wait()
+
+	return result
+}
+
+func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (result Result) {
+	result.Matches = make(map[string]interface{})
+	result.Extractions = make(map[string]interface{})
+	dynamicvalues := make(map[string]interface{})
+
+	// verify if the URL is already being processed
+	if e.bulkHTTPRequest.HasGenerator(reqURL) {
+		return
+	}
+
+	remaining := e.bulkHTTPRequest.GetRequestCount()
+	e.bulkHTTPRequest.CreateGenerator(reqURL)
+
+	// need to extract the target from the url
+	URL, err := url.Parse(reqURL)
+	if err != nil {
+		return
+	}
+
+	pipeOptions := rawhttp.DefaultPipelineOptions
+	pipeOptions.Host = URL.Host
+	pipeOptions.MaxConnections = 1
+	if e.bulkHTTPRequest.PipelineMaxWorkers > 0 {
+		pipeOptions.MaxConnections = e.bulkHTTPRequest.PipelineMaxWorkers
+	}
+	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
+
+	// Workers that keeps enqueuing new requests
+	maxWorkers := 150
+	if e.bulkHTTPRequest.PipelineMaxWorkers > 0 {
+		maxWorkers = e.bulkHTTPRequest.PipelineMaxWorkers
+	}
+
+	swg := sizedwaitgroup.New(maxWorkers)
+	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		if err != nil {
+			result.Error = err
+			p.Drop(remaining)
+		} else {
+			swg.Add()
+			go func(httpRequest *requests.HTTPRequest) {
+				defer swg.Done()
+
+				// HTTP pipelining ignores rate limit
+
+				// If the request was built correctly then execute it
+				request.PipelineClient = pipeclient
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+				if err != nil {
+					result.Error = errors.Wrap(err, "could not handle http request")
+					p.Drop(remaining)
+				}
+				request.PipelineClient = nil
+
+			}(request)
+		}
+
+		e.bulkHTTPRequest.Increment(reqURL)
+	}
+
+	swg.Wait()
+
+	return result
+}
+
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, reqURL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result Result) {
+	// verify if pipeline was requested
+	if e.bulkHTTPRequest.Pipeline {
+		return e.ExecuteTurboHTTP(p, reqURL)
+	}
+
+	if e.bulkHTTPRequest.Threads > 0 {
+		return e.ExecuteParallelHTTP(p, reqURL)
+	}
+
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
@@ -144,11 +266,12 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
-		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(ctx, reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
 			p.Drop(remaining)
 		} else {
+			globalratelimiter.Take(reqURL)
 			// If the request was built correctly then execute it
 			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 			if err != nil {
@@ -193,13 +316,18 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	}
 
 	timeStart := time.Now()
-	if request.RawRequest != nil {
+	if request.Pipeline {
+		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
+		if err != nil {
+			return err
+		}
+	} else if request.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
 		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
 		options := e.rawHttpClient.Options
-		options.AutomaticContentLength = request.RawRequest.AutomaticContentLength
-		options.AutomaticHostHeader = request.RawRequest.AutomaticHostHeader
+		options.AutomaticContentLength = request.AutomaticContentLengthHeader
+		options.AutomaticHostHeader = request.AutomaticHostHeader
 		resp, err = e.rawHttpClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
 		if err != nil {
 			return err
@@ -265,11 +393,13 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition {
+				result.Lock()
 				result.Matches[matcher.Name] = nil
 				// probably redundant but ensures we snapshot current payload values when matchers are valid
 				result.Meta = request.Meta
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
 				result.GotResults = true
+				result.Unlock()
+				e.writeOutputHTTP(request, resp, body, matcher, nil)
 			}
 		}
 	}
@@ -291,16 +421,19 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			}
 		}
 		// probably redundant but ensures we snapshot current payload values when extractors are valid
+		result.Lock()
 		result.Meta = request.Meta
 		result.Extractions[extractor.Name] = extractorResults
+		result.Unlock()
 	}
 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
 		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
-
+		result.Lock()
 		result.GotResults = true
+		result.Unlock()
 	}
 
 	return nil
@@ -311,7 +444,21 @@ func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
 func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
+	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	disableKeepAlives := true
+	maxIdleConns := 0
+	maxConnsPerHost := 0
+	maxIdleConnsPerHost := -1
+
+	if options.BulkHTTPRequest.Threads > 0 {
+		// Single host
+		retryablehttpOptions = retryablehttp.DefaultOptionsSingle
+		disableKeepAlives = false
+		maxIdleConnsPerHost = 500
+		maxConnsPerHost = 500
+	}
+
 	retryablehttpOptions.RetryWaitMax = 10 * time.Second
 	retryablehttpOptions.RetryMax = options.Retries
 	followRedirects := options.BulkHTTPRequest.Redirects
@@ -322,12 +469,14 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		MaxIdleConnsPerHost: -1,
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		MaxConnsPerHost:     maxConnsPerHost,
 		TLSClientConfig: &tls.Config{
 			Renegotiation:      tls.RenegotiateOnceAsClient,
 			InsecureSkipVerify: true,
 		},
-		DisableKeepAlives: true,
+		DisableKeepAlives: disableKeepAlives,
 	}
 
 	// Attempts to overwrite the dial function with the socks proxied version
@@ -410,6 +559,7 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 }
 
 type Result struct {
+	sync.Mutex
 	GotResults  bool
 	Done        bool
 	Meta        map[string]interface{}
