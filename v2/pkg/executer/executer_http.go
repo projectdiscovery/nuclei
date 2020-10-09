@@ -175,11 +175,13 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(ctx context.Context, p progress.IProgres
 				defer swg.Done()
 
 				// If the request was built correctly then execute it
-				err = e.handleHTTPPipeline(pipeclient, reqURL, httpRequest, dynamicvalues, &result)
+				request.PipelineClient = pipeclient
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 				if err != nil {
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
 				}
+				request.PipelineClient = nil
 
 			}(request)
 		}
@@ -236,122 +238,6 @@ func (e *HTTPExecuter) ExecuteHTTP(ctx context.Context, p progress.IProgress, re
 	return result
 }
 
-func (e *HTTPExecuter) handleHTTPPipeline(pipeline *rawhttp.PipelineClient, reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
-	// TODO: for now just a copy+paste for testing purposes => Needs to be fully async
-	e.setCustomHeaders(request)
-
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	if e.debug {
-		dumpedRequest, err := requests.Dump(request, reqURL)
-		if err != nil {
-			return err
-		}
-
-		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
-		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
-	}
-
-	timeStart := time.Now()
-	resp, err = pipeline.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
-	if err != nil {
-		return err
-	}
-	duration := time.Since(timeStart)
-
-	if e.debug {
-		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
-		if dumpErr != nil {
-			return errors.Wrap(dumpErr, "could not dump http response")
-		}
-
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
-		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		_, copyErr := io.Copy(ioutil.Discard, resp.Body)
-		if copyErr != nil {
-			resp.Body.Close()
-			return copyErr
-		}
-
-		resp.Body.Close()
-
-		return errors.Wrap(err, "could not read http body")
-	}
-
-	resp.Body.Close()
-
-	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
-	// so in case we have to manually do it
-	data, err = requests.HandleDecompression(request, data)
-	if err != nil {
-		return errors.Wrap(err, "could not decompress http body")
-	}
-
-	// Convert response body from []byte to string with zero copy
-	body := unsafeToString(data)
-
-	headers := headersToString(resp.Header)
-	matcherCondition := e.bulkHTTPRequest.GetMatchersCondition()
-
-	for _, matcher := range e.bulkHTTPRequest.Matchers {
-		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers, duration) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				return nil
-			}
-		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition {
-				result.Matches[matcher.Name] = nil
-				// probably redundant but ensures we snapshot current payload values when matchers are valid
-				result.Meta = request.Meta
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
-				result.GotResults = true
-			}
-		}
-	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
-	var extractorResults, outputExtractorResults []string
-
-	for _, extractor := range e.bulkHTTPRequest.Extractors {
-		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
-				dynamicvalues[extractor.Name] = match
-			}
-
-			extractorResults = append(extractorResults, match)
-
-			if !extractor.Internal {
-				outputExtractorResults = append(outputExtractorResults, match)
-			}
-		}
-		// probably redundant but ensures we snapshot current payload values when extractors are valid
-		result.Meta = request.Meta
-		result.Extractions[extractor.Name] = extractorResults
-	}
-
-	// Write a final string of output if matcher type is
-	// AND or if we have extractors for the mechanism too.
-	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
-
-		result.GotResults = true
-	}
-
-	return nil
-}
-
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
 	e.setCustomHeaders(request)
 
@@ -371,13 +257,18 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	}
 
 	timeStart := time.Now()
-	if request.RawRequest != nil {
+	if request.Pipeline {
+		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
+		if err != nil {
+			return err
+		}
+	} else if request.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
 		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
 		options := e.rawHttpClient.Options
-		options.AutomaticContentLength = request.RawRequest.AutomaticContentLength
-		options.AutomaticHostHeader = request.RawRequest.AutomaticHostHeader
+		options.AutomaticContentLength = request.AutomaticContentLengthHeader
+		options.AutomaticHostHeader = request.AutomaticHostHeader
 		resp, err = e.rawHttpClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
 		if err != nil {
 			return err
