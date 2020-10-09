@@ -11,9 +11,8 @@ RUN cd ./v2/cmd/nuclei && go build -o nuclei .
 FROM alpine
 
 RUN mkdir /app
-RUN adduser -S -D -H -h /app appuser
+RUN adduser --home /app --shell /bin/sh --disabled-password appuser
 COPY --from=builder /app/v2/cmd/nuclei/nuclei /app
-RUN chown appuser -R /app
 USER appuser
 
 WORKDIR /app
