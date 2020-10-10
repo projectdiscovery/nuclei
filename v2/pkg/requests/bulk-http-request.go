@@ -245,29 +245,21 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw, baseURL string, values, genV
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.Threads <= 0 {
-		setHeader(req, "Connection", "close")
-		req.Close = true
-	}
-
 	replacer := newReplacer(values)
-
-	// Check if the user requested a request body
-	if r.Body != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-	}
-
 	// Set the header values requested
 	for header, value := range r.Headers {
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// if the user specified a Connection header we don't alter it
-	if req.Header.Get("Connection") == "" {
-		// Otherwise we set it to "Connection: close" - The instruction is redundant, but it ensures that internally net/http don't miss the header/internal flag
+	// In case of multiple threads the underlying connection should remain open to allow reuse
+	if r.Threads <= 0 && req.Header.Get("Connection") == "" {
 		setHeader(req, "Connection", "close")
 		req.Close = true
+	}
+
+	// Check if the user requested a request body
+	if r.Body != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
 	}
 
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
