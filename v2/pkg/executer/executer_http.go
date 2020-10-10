@@ -198,17 +198,20 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 	pipeOptions := rawhttp.DefaultPipelineOptions
 	pipeOptions.Host = URL.Host
 	pipeOptions.MaxConnections = 1
-	if e.bulkHTTPRequest.PipelineMaxWorkers > 0 {
-		pipeOptions.MaxConnections = e.bulkHTTPRequest.PipelineMaxWorkers
+	if e.bulkHTTPRequest.PipelineConcurrentConnections > 0 {
+		pipeOptions.MaxConnections = e.bulkHTTPRequest.PipelineConcurrentConnections
+	}
+	if e.bulkHTTPRequest.PipelineRequestsPerConnection > 0 {
+		pipeOptions.MaxPendingRequests = e.bulkHTTPRequest.PipelineRequestsPerConnection
 	}
 	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
 
-	// Workers that keeps enqueuing new requests
+	// 150 should be a sufficient value to keep queues always full
 	maxWorkers := 150
-	if e.bulkHTTPRequest.PipelineMaxWorkers > 0 {
-		maxWorkers = e.bulkHTTPRequest.PipelineMaxWorkers
+	// in case the queue is bigger increase the workers
+	if pipeOptions.MaxPendingRequests > maxWorkers {
+		maxWorkers = pipeOptions.MaxPendingRequests
 	}
-
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
@@ -221,8 +224,8 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 				defer swg.Done()
 
 				// HTTP pipelining ignores rate limit
-
 				// If the request was built correctly then execute it
+				request.Pipeline = true
 				request.PipelineClient = pipeclient
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
 				if err != nil {
