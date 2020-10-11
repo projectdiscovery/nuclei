@@ -131,14 +131,16 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	return executer, nil
 }
 
-func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) (result *Result) {
+func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
+	result := &Result{}
+
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
@@ -175,14 +177,17 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 	return result
 }
 
-func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (result *Result) {
-	result.Matches = make(map[string]interface{})
-	result.Extractions = make(map[string]interface{})
+func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
+	result := &Result{
+		Matches: make(map[string]interface{}),
+		Extractions: make(map[string]interface{}),
+	}
+
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
@@ -191,7 +196,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
 	if err != nil {
-		return
+		return result
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
@@ -241,7 +246,9 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result *Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result {
+	result := &Result{}
+
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(p, reqURL)
@@ -257,7 +264,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result 
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
