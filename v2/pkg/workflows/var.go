@@ -95,7 +95,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 
 				if result.GotResults {
 					gotResult.Or(result.GotResults)
-					n.addResults(&result)
+					n.addResults(result)
 				}
 			}
 		}
@@ -115,7 +115,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 
 				if result.GotResults {
 					gotResult.Or(result.GotResults)
-					n.addResults(&result)
+					n.addResults(result)
 				}
 			}
 		}

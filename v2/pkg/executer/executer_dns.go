@@ -77,7 +77,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result *Result) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(reqURL) {
