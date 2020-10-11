@@ -40,42 +40,41 @@ const (
 // HTTPExecuter is client for performing HTTP requests
 // for a template.
 type HTTPExecuter struct {
-	coloredOutput   bool
-	debug           bool
-	Results         bool
-	jsonOutput      bool
-	jsonRequest     bool
-	httpClient      *retryablehttp.Client
-	rawHttpClient   *rawhttp.Client
-	template        *templates.Template
-	bulkHTTPRequest *requests.BulkHTTPRequest
-	writer          *bufwriter.Writer
-	customHeaders   requests.CustomHeaders
-	CookieJar       *cookiejar.Jar
-
+	customHeaders    requests.CustomHeaders
 	colorizer        colorizer.NucleiColorizer
+	httpClient       *retryablehttp.Client
+	rawHTTPClient    *rawhttp.Client
+	template         *templates.Template
+	bulkHTTPRequest  *requests.BulkHTTPRequest
+	writer           *bufwriter.Writer
+	CookieJar        *cookiejar.Jar
 	decolorizer      *regexp.Regexp
+	coloredOutput    bool
+	debug            bool
+	Results          bool
+	jsonOutput       bool
+	jsonRequest      bool
 	stopAtFirstMatch bool
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
-	Debug            bool
-	JSON             bool
-	JSONRequests     bool
-	CookieReuse      bool
-	ColoredOutput    bool
+	CustomHeaders    requests.CustomHeaders
+	ProxyURL         string
+	ProxySocksURL    string
 	Template         *templates.Template
 	BulkHTTPRequest  *requests.BulkHTTPRequest
 	Writer           *bufwriter.Writer
 	Timeout          int
 	Retries          int
-	ProxyURL         string
-	ProxySocksURL    string
-	CustomHeaders    requests.CustomHeaders
 	CookieJar        *cookiejar.Jar
 	Colorizer        *colorizer.NucleiColorizer
 	Decolorizer      *regexp.Regexp
+	Debug            bool
+	JSON             bool
+	JSONRequests     bool
+	CookieReuse      bool
+	ColoredOutput    bool
 	StopAtFirstMatch bool
 }
 
