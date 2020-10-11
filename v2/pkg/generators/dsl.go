@@ -7,12 +7,17 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"html"
+	"math"
+	"math/rand"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/Knetic/govaluate"
 )
+
+var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+var numbers = "1234567890"
 
 // HelperFunctions contains the dsl functions
 func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
@@ -142,6 +147,107 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		}
 
 		return compiled.MatchString(args[1].(string)), nil
+	}
+
+	// random generators
+	functions["rand_char"] = func(args ...interface{}) (interface{}, error) {
+		chars := letters + numbers
+		bad := ""
+		if len(args) >= 1 {
+			chars = args[0].(string)
+		}
+		if len(args) >= 2 {
+			bad = args[1].(string)
+		}
+
+		chars = TrimAll(chars, bad)
+
+		return chars[rand.Intn(len(chars))], nil
+	}
+
+	functions["rand_base"] = func(args ...interface{}) (interface{}, error) {
+		l := 0
+		bad := ""
+		base := letters + numbers
+
+		if len(args) >= 1 {
+			l = args[0].(int)
+		}
+		if len(args) >= 2 {
+			bad = args[1].(string)
+		}
+		if len(args) >= 3 {
+			base = args[2].(string)
+		}
+
+		base = TrimAll(base, bad)
+
+		return RandSeq(base, l), nil
+	}
+
+	functions["rand_text_alphanumeric"] = func(args ...interface{}) (interface{}, error) {
+		l := 0
+		bad := ""
+		chars := letters + numbers
+
+		if len(args) >= 1 {
+			l = args[0].(int)
+		}
+		if len(args) >= 2 {
+			bad = args[1].(string)
+		}
+
+		chars = TrimAll(chars, bad)
+
+		return RandSeq(chars, l), nil
+	}
+
+	functions["rand_text_alpha"] = func(args ...interface{}) (interface{}, error) {
+		l := 0
+		bad := ""
+		chars := letters
+
+		if len(args) >= 1 {
+			l = args[0].(int)
+		}
+		if len(args) >= 2 {
+			bad = args[1].(string)
+		}
+
+		chars = TrimAll(chars, bad)
+
+		return RandSeq(chars, l), nil
+	}
+
+	functions["rand_text_numeric"] = func(args ...interface{}) (interface{}, error) {
+		l := 0
+		bad := ""
+		chars := numbers
+
+		if len(args) >= 1 {
+			l = args[0].(int)
+		}
+		if len(args) >= 2 {
+			bad = args[1].(string)
+		}
+
+		chars = TrimAll(chars, bad)
+
+		return RandSeq(chars, l), nil
+	}
+
+	functions["rand_int"] = func(args ...interface{}) (interface{}, error) {
+		min := 0
+		max := math.MaxInt32
+
+		if len(args) >= 1 {
+			min = args[0].(int)
+		}
+		if len(args) >= 2 {
+			max = args[1].(int)
+		}
+
+		return rand.Intn(max-min) + min, nil
 	}
 
 	return functions
