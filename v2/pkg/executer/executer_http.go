@@ -402,7 +402,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 				result.Meta = request.Meta
 				result.GotResults = true
 				result.Unlock()
-				e.writeOutputHTTP(request, resp, body, matcher, nil)
+				e.writeOutputHTTP(request, resp, body, matcher, nil, result.Meta)
 			}
 		}
 	}
@@ -433,7 +433,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults)
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, result.Meta)
 		result.Lock()
 		result.GotResults = true
 		result.Unlock()
