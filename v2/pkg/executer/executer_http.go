@@ -304,9 +304,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	)
 
 	if e.debug {
-		dumpedRequest, err := requests.Dump(request, reqURL)
-		if err != nil {
-			return err
+		dumpedRequest, dumpErr := requests.Dump(request, reqURL)
+		if dumpErr != nil {
+			return dumpErr
 		}
 
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
