@@ -303,10 +303,13 @@ func setHeader(req *http.Request, name, value string) {
 // the template port and path preference
 func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
+	// template has port
 	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
 	if hasPort {
-		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
-		parsedURL.Host = hostname
+		// check if also the input contains port, in this case extracts the url
+		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
+			parsedURL.Host = hostname
+		}
 	}
 
 	return parsedURL.String()
