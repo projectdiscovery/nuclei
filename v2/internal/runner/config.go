@@ -129,7 +129,7 @@ func (r *Runner) getIgnoreFilePath() string {
 
 	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
 	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
-			return defIgnoreFilePath
+		return defIgnoreFilePath
 	}
 
 	return cwdIgnoreFilePath
