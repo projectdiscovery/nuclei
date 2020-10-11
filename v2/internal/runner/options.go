@@ -13,32 +13,31 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
-	Debug             bool // Debug mode allows debugging request/responses for the engine
-	Silent            bool // Silent suppresses any extra text and only writes found URLs on screen.
-	Version           bool // Version specifies if we should just show version and exit
-	Verbose           bool // Verbose flag indicates whether to show verbose output or not
-	NoColor           bool // No-Color disables the colored output.
-	UpdateTemplates   bool // UpdateTemplates updates the templates installed at startup
-	JSON              bool // JSON writes json output to files
-	JSONRequests      bool // write requests/responses for matches in JSON output
-	EnableProgressBar bool // Enable progrss bar
-	TemplateList      bool // List available templates
-
-	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	Templates          multiStringFlag        // Signature specifies the template/templates to use
 	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
+	CustomHeaders      requests.CustomHeaders // Custom global headers
 	Severity           string                 // Filter templates based on their severity and only run the matching ones.
 	Target             string                 // Target is a single URL/Domain to scan usng a template
 	Targets            string                 // Targets specifies the targets to scan using templates.
-	Threads            int                    // Thread controls the number of concurrent requests to make.
-	Timeout            int                    // Timeout is the seconds to wait for a response from the server.
-	Retries            int                    // Retries is the number of times to retry the request
 	Output             string                 // Output is the file to write found subdomains to.
 	ProxyURL           string                 // ProxyURL is the URL for the proxy server
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
-	CustomHeaders      requests.CustomHeaders // Custom global headers
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	Threads            int                    // Thread controls the number of concurrent requests to make.
+	Timeout            int                    // Timeout is the seconds to wait for a response from the server.
+	Retries            int                    // Retries is the number of times to retry the request
 	RateLimit          int                    // Rate-Limit of requests per specified target
+	Debug              bool                   // Debug mode allows debugging request/responses for the engine
+	Silent             bool                   // Silent suppresses any extra text and only writes found URLs on screen.
+	Version            bool                   // Version specifies if we should just show version and exit
+	Verbose            bool                   // Verbose flag indicates whether to show verbose output or not
+	NoColor            bool                   // No-Color disables the colored output.
+	UpdateTemplates    bool                   // UpdateTemplates updates the templates installed at startup
+	JSON               bool                   // JSON writes json output to files
+	JSONRequests       bool                   // write requests/responses for matches in JSON output
+	EnableProgressBar  bool                   // Enable progrss bar
+	TemplateList       bool                   // List available templates
+	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
 }
 
