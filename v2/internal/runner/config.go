@@ -74,7 +74,7 @@ const nucleiIgnoreFile = ".nuclei-ignore"
 
 // readNucleiIgnoreFile reads the nuclei ignore file marking it in map
 func (r *Runner) readNucleiIgnoreFile() {
-	file, err := os.Open(path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile))
+	file, err := os.Open(r.getIgnoreFilePath())
 	if err != nil {
 		return
 	}
@@ -115,4 +115,22 @@ func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 	}
 
 	return false
+}
+
+func (r *Runner) getIgnoreFilePath() string {
+	defIgnoreFilePath := path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return defIgnoreFilePath
+	}
+
+	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
+
+	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
+	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
+			return defIgnoreFilePath
+	}
+
+	return cwdIgnoreFilePath
 }
