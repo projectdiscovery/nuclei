@@ -317,6 +317,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	if request.Pipeline {
 		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
 		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
 			return err
 		}
 	} else if request.Unsafe {
@@ -328,6 +331,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		options.AutomaticHostHeader = request.AutomaticHostHeader
 		resp, err = e.rawHTTPClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
 		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
 			return err
 		}
 	} else {
@@ -340,6 +346,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			return err
 		}
 	}
+
 	duration := time.Since(timeStart)
 
 	if e.debug {
