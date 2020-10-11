@@ -99,9 +99,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		builder.WriteString("] ")
 	}
 
-	// Escape the URL by replacing all % with %%
-	escapedURL := strings.ReplaceAll(URL, "%", "%%")
-	builder.WriteString(escapedURL)
+	builder.WriteString(URL)
 
 	// If any extractors, write the results
 	if len(extractorResults) > 0 {
