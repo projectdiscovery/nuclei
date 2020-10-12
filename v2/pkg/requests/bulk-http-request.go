@@ -64,9 +64,9 @@ type BulkHTTPRequest struct {
 	Raw []string `yaml:"raw,omitempty"`
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
-	Pipeline               bool `yaml:"pipeline,omitempty"`
-	PipelineMaxConnections int  `yaml:"pipeline-max-connections,omitempty"`
-	PipelineMaxWorkers     int  `yaml:"pipeline-max-workers,omitempty"`
+	Pipeline                      bool `yaml:"pipeline,omitempty"`
+	PipelineConcurrentConnections int  `yaml:"pipeline-concurrent-connections,omitempty"`
+	PipelineRequestsPerConnection int  `yaml:"pipeline-requests-per-connection,omitempty"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
 	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
@@ -74,7 +74,6 @@ type BulkHTTPRequest struct {
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
 	Threads                  int  `yaml:"threads,omitempty"`
-	RateLimit                int  `yaml:"rate-limit,omitempty"`
 
 	// Internal Finite State Machine keeping track of scan process
 	gsfm *GeneratorFSM
@@ -102,7 +101,7 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 
 // GetRequestCount returns the total number of requests the YAML rule will perform
 func (r *BulkHTTPRequest) GetRequestCount() int64 {
-	return int64(len(r.Raw) | len(r.Path))
+	return int64(r.gsfm.Total())
 }
 
 // MakeHTTPRequest makes the HTTP request
@@ -245,29 +244,21 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(raw, baseURL string, values, genV
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.Threads <= 0 {
-		setHeader(req, "Connection", "close")
-		req.Close = true
-	}
-
 	replacer := newReplacer(values)
-
-	// Check if the user requested a request body
-	if r.Body != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-	}
-
 	// Set the header values requested
 	for header, value := range r.Headers {
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// if the user specified a Connection header we don't alter it
-	if req.Header.Get("Connection") == "" {
-		// Otherwise we set it to "Connection: close" - The instruction is redundant, but it ensures that internally net/http don't miss the header/internal flag
+	// In case of multiple threads the underlying connection should remain open to allow reuse
+	if r.Threads <= 0 && req.Header.Get("Connection") == "" {
 		setHeader(req, "Connection", "close")
 		req.Close = true
+	}
+
+	// Check if the user requested a request body
+	if r.Body != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
 	}
 
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
@@ -311,10 +302,13 @@ func setHeader(req *http.Request, name, value string) {
 // the template port and path preference
 func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
+	// template has port
 	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
 	if hasPort {
-		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
-		parsedURL.Host = hostname
+		// check if also the input contains port, in this case extracts the url
+		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
+			parsedURL.Host = hostname
+		}
 	}
 
 	return parsedURL.String()
@@ -455,7 +449,7 @@ func (r *BulkHTTPRequest) Current(reqURL string) string {
 
 // Total is the total number of requests
 func (r *BulkHTTPRequest) Total() int {
-	return len(r.Path) + len(r.Raw)
+	return r.gsfm.Total()
 }
 
 // Increment increments the processed request
