@@ -176,10 +176,6 @@ func (gfsm *GeneratorFSM) Next(key string) bool {
 		return false
 	}
 
-	if gfsm.hasPayloads() && g.state == done {
-		return false
-	}
-
 	if g.positionPath+g.positionRaw >= len(gfsm.Paths)+len(gfsm.Raws) {
 		return false
 	}

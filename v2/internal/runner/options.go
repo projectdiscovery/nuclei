@@ -40,6 +40,7 @@ type Options struct {
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
 	RateLimit          int                    // Rate-Limit of requests per specified target
 	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
+	BulkSize           int                    // Number of targets analyzed in parallel for each template
 }
 
 type multiStringFlag []string
@@ -81,6 +82,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
 	flag.IntVar(&options.RateLimit, "rate-limit", -1, "Per Target Rate-Limit")
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
+	flag.IntVar(&options.BulkSize, "bulk-size", 150, "Number of hosts analyzed in parallel per template")
 
 	flag.Parse()
 
