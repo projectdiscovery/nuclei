@@ -41,6 +41,7 @@ func NewGeneratorFSM(typ generators.Type, payloads map[string]interface{}, paths
 	gsfm.payloads = payloads
 	gsfm.Paths = paths
 	gsfm.Raws = raws
+	gsfm.Type = typ
 
 	if len(gsfm.payloads) > 0 {
 		// load payloads if not already done
@@ -231,7 +232,30 @@ func (gfsm *GeneratorFSM) Current(key string) string {
 	return gfsm.Raws[g.positionRaw]
 }
 func (gfsm *GeneratorFSM) Total() int {
-	return len(gfsm.Paths) + len(gfsm.Raws)
+	estimatedRequestsWithPayload := 0
+	if len(gfsm.basePayloads) > 0 {
+		switch gfsm.Type {
+		case generators.Sniper:
+			for _, kv := range gfsm.basePayloads {
+				estimatedRequestsWithPayload += len(kv)
+			}
+		case generators.PitchFork:
+			// Positional so it's equal to the length of one list
+			for _, kv := range gfsm.basePayloads {
+				estimatedRequestsWithPayload += len(kv)
+				break
+			}
+		case generators.ClusterBomb:
+			// Total of combinations => rule of product
+			prod := 1
+			for _, kv := range gfsm.basePayloads {
+				prod = prod * len(kv)
+			}
+			estimatedRequestsWithPayload += prod
+		}
+	}
+
+	return len(gfsm.Paths) + len(gfsm.Raws) + estimatedRequestsWithPayload
 }
 
 func (gfsm *GeneratorFSM) Increment(key string) {
