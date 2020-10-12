@@ -74,7 +74,6 @@ type BulkHTTPRequest struct {
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
 	Threads                  int  `yaml:"threads,omitempty"`
-	RateLimit                int  `yaml:"rate-limit,omitempty"`
 
 	// Internal Finite State Machine keeping track of scan process
 	gsfm *GeneratorFSM
@@ -102,7 +101,7 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 
 // GetRequestCount returns the total number of requests the YAML rule will perform
 func (r *BulkHTTPRequest) GetRequestCount() int64 {
-	return int64(len(r.Raw) | len(r.Path))
+	return int64(r.gsfm.Total())
 }
 
 // MakeHTTPRequest makes the HTTP request
@@ -450,7 +449,7 @@ func (r *BulkHTTPRequest) Current(reqURL string) string {
 
 // Total is the total number of requests
 func (r *BulkHTTPRequest) Total() int {
-	return len(r.Path) + len(r.Raw)
+	return r.gsfm.Total()
 }
 
 // Increment increments the processed request
