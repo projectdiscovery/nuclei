@@ -259,6 +259,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result 
 	result.Matches = make(map[string]interface{})
 	result.Extractions = make(map[string]interface{})
 	dynamicvalues := make(map[string]interface{})
+	_ = dynamicvalues
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
