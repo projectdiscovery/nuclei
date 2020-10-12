@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -21,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // workflowTemplates contains the initialized workflow templates per template group
@@ -79,12 +79,12 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 
 	var globalresult atomicboolean.AtomBool
 
-	var wg sync.WaitGroup
+	wg := sizedwaitgroup.New(r.options.BulkSize)
 
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		URL := scanner.Text()
-		wg.Add(1)
+		wg.Add()
 		go func(URL string) {
 			defer wg.Done()
 
@@ -125,12 +125,12 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 
 	logicBytes := []byte(workflow.Logic)
 
-	var wg sync.WaitGroup
+	wg := sizedwaitgroup.New(r.options.BulkSize)
 
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		targetURL := scanner.Text()
-		wg.Add(1)
+		wg.Add()
 
 		go func(targetURL string) {
 			defer wg.Done()
