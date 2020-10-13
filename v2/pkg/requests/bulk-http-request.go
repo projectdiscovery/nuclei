@@ -28,56 +28,56 @@ var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
-	// Path contains the path/s for the request
-	Path []string `yaml:"path"`
-	// Matchers contains the detection mechanism for the request to identify
-	// whether the request was successful
-	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
-	// Extractors contains the extraction mechanism for the request to identify
-	// and extract parts of the response.
-	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
-	// Raw contains raw requests
-	Raw  []string `yaml:"raw,omitempty"`
-	Name string   `yaml:"Name,omitempty"`
-	// AttackType is the attack type
-	// Sniper, PitchFork and ClusterBomb. Default is Sniper
-	AttackType string `yaml:"attack,omitempty"`
-	// Method is the request method, whether GET, POST, PUT, etc
-	Method string `yaml:"method"`
-	// Body is an optional parameter which contains the request body for POST methods, etc
-	Body string `yaml:"body,omitempty"`
-	// MatchersCondition is the condition of the matchers
-	// whether to use AND or OR. Default is OR.
-	MatchersCondition string `yaml:"matchers-condition,omitempty"`
-	// MaxRedirects is the maximum number of redirects that should be followed.
-	MaxRedirects           int `yaml:"max-redirects,omitempty"`
-	PipelineMaxConnections int `yaml:"pipeline-max-connections,omitempty"`
-	PipelineMaxWorkers     int `yaml:"pipeline-max-workers,omitempty"`
-	Threads                int `yaml:"threads,omitempty"`
-	RateLimit              int `yaml:"rate-limit,omitempty"`
-	// Internal Finite State Machine keeping track of scan process
-	gsfm *GeneratorFSM
 	// CookieReuse is an optional setting that makes cookies shared within requests
 	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
 	// Redirects specifies whether redirects should be followed.
-	Redirects bool `yaml:"redirects,omitempty"`
+	Redirects bool   `yaml:"redirects,omitempty"`
+	Name      string `yaml:"Name,omitempty"`
+	// AttackType is the attack type
+	// Sniper, PitchFork and ClusterBomb. Default is Sniper
+	AttackType string `yaml:"attack,omitempty"`
+	// attackType is internal attack type
+	attackType generators.Type
+	// Path contains the path/s for the request variables
+	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
+	// Method is the request method, whether GET, POST, PUT, etc
+	Method string `yaml:"method"`
+	// Path contains the path/s for the request
+	Path []string `yaml:"path"`
+	// Headers contains headers to send with the request
+	Headers map[string]string `yaml:"headers,omitempty"`
+	// Body is an optional parameter which contains the request body for POST methods, etc
+	Body string `yaml:"body,omitempty"`
+	// Matchers contains the detection mechanism for the request to identify
+	// whether the request was successful
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// MatchersCondition is the condition of the matchers
+	// whether to use AND or OR. Default is OR.
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
+	// matchersCondition is internal condition for the matchers.
+	matchersCondition matchers.ConditionType
+	// Extractors contains the extraction mechanism for the request to identify
+	// and extract parts of the response.
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	// MaxRedirects is the maximum number of redirects that should be followed.
+	MaxRedirects int `yaml:"max-redirects,omitempty"`
+	// Raw contains raw requests
+	Raw []string `yaml:"raw,omitempty"`
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
-	Pipeline bool `yaml:"pipeline,omitempty"`
+	Pipeline                      bool `yaml:"pipeline,omitempty"`
+	PipelineConcurrentConnections int  `yaml:"pipeline-concurrent-connections,omitempty"`
+	PipelineRequestsPerConnection int  `yaml:"pipeline-requests-per-connection,omitempty"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
 	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
 	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
-	// attackType is internal attack type
-	attackType generators.Type
-	// Path contains the path/s for the request variables
-	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
-	// Headers contains headers to send with the request
-	Headers map[string]string `yaml:"headers,omitempty"`
-	// matchersCondition is internal condition for the matchers.
-	matchersCondition matchers.ConditionType
+	Threads                  int  `yaml:"threads,omitempty"`
+
+	// Internal Finite State Machine keeping track of scan process
+	gsfm *GeneratorFSM
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -102,7 +102,7 @@ func (r *BulkHTTPRequest) SetAttackType(attack generators.Type) {
 
 // GetRequestCount returns the total number of requests the YAML rule will perform
 func (r *BulkHTTPRequest) GetRequestCount() int64 {
-	return int64(len(r.Raw) | len(r.Path))
+	return int64(r.gsfm.Total())
 }
 
 // MakeHTTPRequest makes the HTTP request
@@ -247,29 +247,21 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 }
 
 func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.Threads <= 0 {
-		setHeader(req, "Connection", "close")
-		req.Close = true
-	}
-
 	replacer := newReplacer(values)
-
-	// Check if the user requested a request body
-	if r.Body != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
-	}
-
 	// Set the header values requested
 	for header, value := range r.Headers {
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
-	// if the user specified a Connection header we don't alter it
-	if req.Header.Get("Connection") == "" {
-		// Otherwise we set it to "Connection: close" - The instruction is redundant, but it ensures that internally net/http don't miss the header/internal flag
+	// In case of multiple threads the underlying connection should remain open to allow reuse
+	if r.Threads <= 0 && req.Header.Get("Connection") == "" {
 		setHeader(req, "Connection", "close")
 		req.Close = true
+	}
+
+	// Check if the user requested a request body
+	if r.Body != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
 	}
 
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
@@ -313,10 +305,13 @@ func setHeader(req *http.Request, name, value string) {
 // the template port and path preference
 func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
+	// template has port
 	hasPort := len(urlWithPortRgx.FindStringSubmatch(data)) > 0
 	if hasPort {
-		hostname, _, _ := net.SplitHostPort(parsedURL.Host)
-		parsedURL.Host = hostname
+		// check if also the input contains port, in this case extracts the url
+		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
+			parsedURL.Host = hostname
+		}
 	}
 
 	return parsedURL.String()
@@ -457,7 +452,7 @@ func (r *BulkHTTPRequest) Current(reqURL string) string {
 
 // Total is the total number of requests
 func (r *BulkHTTPRequest) Total() int {
-	return len(r.Path) + len(r.Raw)
+	return r.gsfm.Total()
 }
 
 // Increment increments the processed request

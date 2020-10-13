@@ -12,7 +12,7 @@ import (
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string, meta map[string]interface{}) {
 	var URL string
 	// rawhttp
 	if req.RawRequest != nil {
@@ -32,6 +32,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 			Severity:    e.template.Info.Severity,
 			Author:      e.template.Info.Author,
 			Description: e.template.Info.Description,
+			Meta:        meta,
 		}
 
 		if matcher != nil && len(matcher.Name) > 0 {
@@ -99,9 +100,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		builder.WriteString("] ")
 	}
 
-	// Escape the URL by replacing all % with %%
-	escapedURL := strings.ReplaceAll(URL, "%", "%%")
-	builder.WriteString(escapedURL)
+	builder.WriteString(URL)
 
 	// If any extractors, write the results
 	if len(extractorResults) > 0 {
