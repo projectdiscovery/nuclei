@@ -8,10 +8,17 @@ import (
 	"strings"
 )
 
+const (
+	MARKER_PARENTHESIS_OPEN  = "{{"
+	MARKER_PARENTHESIS_CLOSE = "}}"
+	MARKER_GENERAL           = "§"
+)
+
 func newReplacer(values map[string]interface{}) *strings.Replacer {
 	var replacerItems []string
 	for k, v := range values {
-		replacerItems = append(replacerItems, fmt.Sprintf("{{%s}}", k), fmt.Sprintf("%s", v), k, fmt.Sprintf("%s", v))
+		replacerItems = append(replacerItems, fmt.Sprintf("%s%s%s", MARKER_PARENTHESIS_OPEN, k, MARKER_PARENTHESIS_CLOSE), fmt.Sprintf("%s", v))
+		replacerItems = append(replacerItems, fmt.Sprintf("%s%s%s", MARKER_GENERAL, k, MARKER_GENERAL), fmt.Sprintf("%s", v))
 	}
 
 	return strings.NewReplacer(replacerItems...)
