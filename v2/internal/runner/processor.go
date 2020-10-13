@@ -88,7 +88,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 		go func(URL string) {
 			defer wg.Done()
 
-			var result executer.Result
+			var result *executer.Result
 
 			if httpExecuter != nil {
 				result = httpExecuter.ExecuteHTTP(p, URL)

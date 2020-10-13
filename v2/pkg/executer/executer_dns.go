@@ -77,7 +77,9 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Result) {
+func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) *Result {
+	result := &Result{}
+
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(reqURL) {
@@ -93,7 +95,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Re
 
 		p.Drop(1)
 
-		return
+		return result
 	}
 
 	if e.debug {
@@ -108,7 +110,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Re
 
 		p.Drop(1)
 
-		return
+		return result
 	}
 
 	p.Update()
@@ -127,7 +129,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) (result Re
 		if !matcher.MatchDNS(resp) {
 			// If the condition is AND we haven't matched, return.
 			if matcherCondition == matchers.ANDCondition {
-				return
+				return result
 			}
 		} else {
 			// If the matcher has matched, and its an OR
