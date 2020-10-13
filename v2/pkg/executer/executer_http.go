@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
@@ -133,7 +134,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 
 func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -180,7 +181,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 
 func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -261,7 +262,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 	}
 
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -482,11 +483,10 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 	followRedirects := options.BulkHTTPRequest.Redirects
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
+	dialer, _ := cache.NewDialer(cache.DefaultOptions)
+
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		DialContext:         dialer,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
