@@ -13,6 +13,7 @@ require (
 	github.com/miekg/dns v1.1.31
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.0.1
+	github.com/projectdiscovery/httpx v1.0.2
 	github.com/projectdiscovery/rawhttp v0.0.2-0.20201005200949-0a5c878e6ee1
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
