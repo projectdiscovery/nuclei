@@ -40,42 +40,41 @@ const (
 // HTTPExecuter is client for performing HTTP requests
 // for a template.
 type HTTPExecuter struct {
-	coloredOutput   bool
-	debug           bool
-	Results         bool
-	jsonOutput      bool
-	jsonRequest     bool
-	httpClient      *retryablehttp.Client
-	rawHttpClient   *rawhttp.Client
-	template        *templates.Template
-	bulkHTTPRequest *requests.BulkHTTPRequest
-	writer          *bufwriter.Writer
-	customHeaders   requests.CustomHeaders
-	CookieJar       *cookiejar.Jar
-
+	customHeaders    requests.CustomHeaders
 	colorizer        colorizer.NucleiColorizer
+	httpClient       *retryablehttp.Client
+	rawHTTPClient    *rawhttp.Client
+	template         *templates.Template
+	bulkHTTPRequest  *requests.BulkHTTPRequest
+	writer           *bufwriter.Writer
+	CookieJar        *cookiejar.Jar
 	decolorizer      *regexp.Regexp
+	coloredOutput    bool
+	debug            bool
+	Results          bool
+	jsonOutput       bool
+	jsonRequest      bool
 	stopAtFirstMatch bool
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
-	Debug            bool
-	JSON             bool
-	JSONRequests     bool
-	CookieReuse      bool
-	ColoredOutput    bool
+	CustomHeaders    requests.CustomHeaders
+	ProxyURL         string
+	ProxySocksURL    string
 	Template         *templates.Template
 	BulkHTTPRequest  *requests.BulkHTTPRequest
 	Writer           *bufwriter.Writer
 	Timeout          int
 	Retries          int
-	ProxyURL         string
-	ProxySocksURL    string
-	CustomHeaders    requests.CustomHeaders
 	CookieJar        *cookiejar.Jar
 	Colorizer        *colorizer.NucleiColorizer
 	Decolorizer      *regexp.Regexp
+	Debug            bool
+	JSON             bool
+	JSONRequests     bool
+	CookieReuse      bool
+	ColoredOutput    bool
 	StopAtFirstMatch bool
 }
 
@@ -117,7 +116,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		jsonOutput:       options.JSON,
 		jsonRequest:      options.JSONRequests,
 		httpClient:       client,
-		rawHttpClient:    rawClient,
+		rawHTTPClient:    rawClient,
 		template:         options.Template,
 		bulkHTTPRequest:  options.BulkHTTPRequest,
 		writer:           options.Writer,
@@ -132,14 +131,17 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	return executer, nil
 }
 
-func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) (result Result) {
-	result.Matches = make(map[string]interface{})
-	result.Extractions = make(map[string]interface{})
+func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
+	result := &Result{
+		Matches: make(map[string]interface{}),
+		Extractions: make(map[string]interface{}),
+	}
+
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
@@ -161,7 +163,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 				globalratelimiter.Take(reqURL)
 
 				// If the request was built correctly then execute it
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
 				if err != nil {
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
@@ -176,14 +178,17 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 	return result
 }
 
-func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (result Result) {
-	result.Matches = make(map[string]interface{})
-	result.Extractions = make(map[string]interface{})
+func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
+	result := &Result{
+		Matches: make(map[string]interface{}),
+		Extractions: make(map[string]interface{}),
+	}
+
 	dynamicvalues := make(map[string]interface{})
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
@@ -192,7 +197,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
 	if err != nil {
-		return
+		return result
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
@@ -227,13 +232,12 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 				// If the request was built correctly then execute it
 				request.Pipeline = true
 				request.PipelineClient = pipeclient
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
 				if err != nil {
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
 				}
 				request.PipelineClient = nil
-
 			}(request)
 		}
 
@@ -246,7 +250,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) (re
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result Result) {
+func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(p, reqURL)
@@ -256,14 +260,17 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result 
 		return e.ExecuteParallelHTTP(p, reqURL)
 	}
 
-	result.Matches = make(map[string]interface{})
-	result.Extractions = make(map[string]interface{})
+	result := &Result{
+		Matches: make(map[string]interface{}),
+		Extractions: make(map[string]interface{}),
+	}
+
 	dynamicvalues := make(map[string]interface{})
 	_ = dynamicvalues
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
-		return
+		return result
 	}
 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
@@ -277,7 +284,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) (result 
 		} else {
 			globalratelimiter.Take(reqURL)
 			// If the request was built correctly then execute it
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, &result)
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
@@ -310,9 +317,9 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	)
 
 	if e.debug {
-		dumpedRequest, err := requests.Dump(request, reqURL)
-		if err != nil {
-			return err
+		dumpedRequest, dumpErr := requests.Dump(request, reqURL)
+		if dumpErr != nil {
+			return dumpErr
 		}
 
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
@@ -323,17 +330,23 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	if request.Pipeline {
 		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
 		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
 			return err
 		}
 	} else if request.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
 		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
-		options := e.rawHttpClient.Options
+		options := e.rawHTTPClient.Options
 		options.AutomaticContentLength = request.AutomaticContentLengthHeader
 		options.AutomaticHostHeader = request.AutomaticHostHeader
-		resp, err = e.rawHttpClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
+		resp, err = e.rawHTTPClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
 		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
 			return err
 		}
 	} else {
@@ -346,6 +359,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			return err
 		}
 	}
+
 	duration := time.Since(timeStart)
 
 	if e.debug {
