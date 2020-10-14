@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-
+	
 	"github.com/Knetic/govaluate"
 )
 
@@ -39,7 +39,11 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["replace"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ReplaceAll(args[0].(string), args[1].(string), args[2].(string)), nil
+		compiled, err := regexp.Compile(args[1].(string))
+		if err != nil {
+			return nil, err
+		}
+		return compiled.ReplaceAllString(args[0].(string), args[2].(string)), nil
 	}
 
 	functions["trim"] = func(args ...interface{}) (interface{}, error) {
