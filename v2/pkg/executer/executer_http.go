@@ -95,7 +95,10 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	}
 
 	// Create the HTTP Client
-	client := makeHTTPClient(proxyURL, options)
+	client, err := makeHTTPClient(proxyURL, options)
+	if err != nil {
+		return nil, err
+	}
 	// nolint:bodyclose // false positive there is no body to close yet
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
@@ -462,7 +465,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
-func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
+func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Client, error) {
 	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
@@ -483,7 +486,10 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 	followRedirects := options.BulkHTTPRequest.Redirects
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
-	dialer, _ := cache.NewDialer(cache.DefaultOptions)
+	dialer, err := cache.NewDialer(cache.DefaultOptions)
+	if err != nil {
+		return err
+	}
 
 	transport := &http.Transport{
 		DialContext:         dialer,
