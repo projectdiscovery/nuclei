@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
@@ -94,7 +95,10 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	}
 
 	// Create the HTTP Client
-	client := makeHTTPClient(proxyURL, options)
+	client, err := makeHTTPClient(proxyURL, options)
+	if err != nil {
+		return nil, err
+	}
 	// nolint:bodyclose // false positive there is no body to close yet
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
@@ -133,7 +137,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 
 func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -180,7 +184,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 
 func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -261,7 +265,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 	}
 
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -461,7 +465,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
-func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
+func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Client, error) {
 	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
@@ -482,11 +486,13 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 	followRedirects := options.BulkHTTPRequest.Redirects
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
+	dialer, err := cache.NewDialer(cache.DefaultOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		DialContext:         dialer,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
@@ -527,7 +533,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions)
+	}, retryablehttpOptions), nil
 }
 
 type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error
