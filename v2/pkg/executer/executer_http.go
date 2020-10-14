@@ -488,7 +488,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 
 	dialer, err := cache.NewDialer(cache.DefaultOptions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	transport := &http.Transport{
@@ -533,7 +533,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions)
+	}, retryablehttpOptions), nil
 }
 
 type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error
