@@ -17,9 +17,10 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
+	github.com/stretchr/testify v1.5.1
 	github.com/vbauerster/mpb/v5 v5.3.0
+	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/yaml.v2 v2.3.0
 )
