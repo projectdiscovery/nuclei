@@ -133,7 +133,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 
 func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -180,7 +180,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 
 func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
@@ -261,7 +261,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 	}
 
 	result := &Result{
-		Matches: make(map[string]interface{}),
+		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
 	}
 
