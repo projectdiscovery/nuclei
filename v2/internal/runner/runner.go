@@ -12,6 +12,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
@@ -33,6 +34,8 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
+
+	hm *hybrid.HybridMap
 
 	// progress tracking
 	progress progress.IProgress
@@ -164,6 +167,15 @@ func New(options *Options) (*Runner, error) {
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
+	// create project file if requested
+	if options.ProjectFile {
+		var err error
+		runner.hm, err = hybrid.New(hybrid.DefaultDiskOptions)
+		if err != nil {
+			return runner, err
+		}
+	}
+
 	return runner, nil
 }
 
@@ -173,6 +185,9 @@ func (r *Runner) Close() {
 		r.output.Close()
 	}
 	os.Remove(r.tempFile)
+	if r.hm != nil {
+		r.hm.Close()
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
@@ -19,6 +20,7 @@ import (
 // DNSExecuter is a client for performing a DNS request
 // for a template.
 type DNSExecuter struct {
+	hm            *hybrid.HybridMap
 	coloredOutput bool
 	debug         bool
 	jsonOutput    bool
@@ -50,6 +52,7 @@ type DNSOptions struct {
 	Template      *templates.Template
 	DNSRequest    *requests.DNSRequest
 	Writer        *bufwriter.Writer
+	HM            *hybrid.HybridMap
 
 	Colorizer   colorizer.NucleiColorizer
 	Decolorizer *regexp.Regexp
@@ -71,6 +74,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		coloredOutput: options.ColoredOutput,
 		colorizer:     options.Colorizer,
 		decolorizer:   options.Decolorizer,
+		hm:            options.HM,
 	}
 
 	return executer

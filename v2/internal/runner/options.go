@@ -83,7 +83,7 @@ func ParseOptions() *Options {
 	flag.IntVar(&options.RateLimit, "rate-limit", -1, "Per Target Rate-Limit")
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
 	flag.IntVar(&options.BulkSize, "bulk-size", 150, "Number of hosts analyzed in parallel per template")
-	flag.BoolVar(&options.ProjectFile, "project-file", true, "Use a project file to avoid sending same request multiple times")
+	flag.BoolVar(&options.ProjectFile, "project-file", false, "Use a project file to avoid sending same request multiple times")
 
 	flag.Parse()
 
