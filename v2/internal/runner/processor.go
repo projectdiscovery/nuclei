@@ -48,6 +48,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 			ColoredOutput: !r.options.NoColor,
 			Colorizer:     r.colorizer,
 			Decolorizer:   r.decolorizer,
+			HM:            r.hm,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -67,6 +68,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 			Colorizer:        &r.colorizer,
 			Decolorizer:      r.decolorizer,
 			StopAtFirstMatch: r.options.StopAtFirstMatch,
+			HM:               r.hm,
 		})
 	}
 

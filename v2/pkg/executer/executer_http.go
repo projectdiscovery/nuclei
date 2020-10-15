@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
@@ -41,6 +43,7 @@ const (
 // HTTPExecuter is client for performing HTTP requests
 // for a template.
 type HTTPExecuter struct {
+	hm               *hybrid.HybridMap
 	customHeaders    requests.CustomHeaders
 	colorizer        colorizer.NucleiColorizer
 	httpClient       *retryablehttp.Client
@@ -77,6 +80,7 @@ type HTTPOptions struct {
 	CookieReuse      bool
 	ColoredOutput    bool
 	StopAtFirstMatch bool
+	HM               *hybrid.HybridMap
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -130,6 +134,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		colorizer:        *options.Colorizer,
 		decolorizer:      options.Decolorizer,
 		stopAtFirstMatch: options.StopAtFirstMatch,
+		hm:               options.HM,
 	}
 
 	return executer, nil
@@ -316,21 +321,26 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	e.setCustomHeaders(request)
 
 	var (
-		resp *http.Response
-		err  error
+		resp          *http.Response
+		err           error
+		dumpedRequest []byte
+		fromcache     bool
 	)
 
-	if e.debug {
-		dumpedRequest, dumpErr := requests.Dump(request, reqURL)
-		if dumpErr != nil {
-			return dumpErr
+	if e.debug || e.hm != nil {
+		dumpedRequest, err = requests.Dump(request, reqURL)
+		if err != nil {
+			return err
 		}
+	}
 
+	if e.debug {
 		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
 	timeStart := time.Now()
+
 	if request.Pipeline {
 		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
 		if err != nil {
@@ -354,13 +364,30 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			return err
 		}
 	} else {
-		// retryablehttp
-		resp, err = e.httpClient.Do(request.Request)
-		if err != nil {
-			if resp != nil {
-				resp.Body.Close()
+		// if nuclei-project is available check if the request was already sent previously
+		if e.hm != nil {
+			reqHash, err := hash(dumpedRequest)
+			log.Println(reqURL, reqHash)
+			// if the computation was successful check within the cache
+			if err == nil {
+				data, ok := e.hm.Get(reqHash)
+				// if found reuse the item
+				if ok {
+					unmarshal(data, resp)
+					fromcache = true
+				}
 			}
-			return err
+		}
+
+		// retryablehttp
+		if resp == nil {
+			resp, err = e.httpClient.Do(request.Request)
+			if err != nil {
+				if resp != nil {
+					resp.Body.Close()
+				}
+				return err
+			}
 		}
 	}
 
@@ -396,6 +423,20 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	data, err = requests.HandleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
+	}
+
+	// if nuclei-project is enabled store the response if not previously done
+	if e.hm != nil && !fromcache {
+		reqHash, err := hash(dumpedRequest)
+		// if the computation was successful store within the cache
+		if err == nil {
+			intResp := toInternalResponse(resp, data)
+			data, err := marshal(intResp)
+			// once marshaled without errors store in the cache
+			if err == nil {
+				e.hm.Set(reqHash, data)
+			}
+		}
 	}
 
 	// Convert response body from []byte to string with zero copy
