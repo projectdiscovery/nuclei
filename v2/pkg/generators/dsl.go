@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/reusee/mmh3"
 )
 
 var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -128,6 +129,16 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		h := sha1.New()
 		_, err := h.Write([]byte(args[0].(string)))
 
+		if err != nil {
+			return nil, err
+		}
+
+		return hex.EncodeToString(h.Sum(nil)), nil
+	}
+
+	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
+		h := mmh3.New128()
+		_, err := h.Write([]byte(args[0].(string)))
 		if err != nil {
 			return nil, err
 		}
