@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/reusee/mmh3"
+	"github.com/spaolacci/murmur3"
 )
 
 var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -78,6 +78,13 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		return sEnc, nil
 	}
 
+	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
+	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
+		sEnc := base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
+
+		return insertInto(sEnc, 76, '\n'), nil
+	}
+
 	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
 		return base64.StdEncoding.DecodeString(args[0].(string))
 	}
@@ -137,13 +144,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
-		h := mmh3.New128()
-		_, err := h.Write([]byte(args[0].(string)))
-		if err != nil {
-			return nil, err
-		}
-
-		return hex.EncodeToString(h.Sum(nil)), nil
+		return int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0)), nil
 	}
 
 	// search
