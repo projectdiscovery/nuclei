@@ -171,7 +171,7 @@ func SliceContins(s []string, k string) bool {
 	return false
 }
 
-func TrimAll(s string, cutset string) string {
+func TrimAll(s, cutset string) string {
 	for _, c := range cutset {
 		s = strings.ReplaceAll(s, string(c), "")
 	}

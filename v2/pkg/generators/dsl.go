@@ -18,6 +18,12 @@ import (
 	"github.com/spaolacci/murmur3"
 )
 
+const (
+	withCutSetArgsSize   = 2
+	withMaxRandArgsSize  = withCutSetArgsSize
+	withBaseRandArgsSize = 3
+)
+
 var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 var numbers = "1234567890"
 
@@ -169,7 +175,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			chars = args[0].(string)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -186,10 +192,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
-		if len(args) >= 3 {
+		if len(args) >= withBaseRandArgsSize {
 			base = args[2].(string)
 		}
 
@@ -206,7 +212,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -223,7 +229,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -240,7 +246,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -256,7 +262,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			min = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withMaxRandArgsSize {
 			max = args[1].(int)
 		}
 
