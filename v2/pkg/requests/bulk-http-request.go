@@ -224,7 +224,15 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	// rawhttp
 	if r.Unsafe {
-		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues, AutomaticHostHeader: !r.DisableAutoHostname, AutomaticContentLengthHeader: !r.DisableAutoContentLength, Unsafe: true}, nil
+		unsafeReq := &HTTPRequest{
+			RawRequest:                   rawRequest,
+			Meta:                         genValues,
+			AutomaticHostHeader:          !r.DisableAutoHostname,
+			AutomaticContentLengthHeader: !r.DisableAutoContentLength,
+			Unsafe:                       true,
+			FollowRedirects:              r.Redirects,
+		}
+		return unsafeReq, nil
 	}
 
 	// retryablehttp
@@ -289,6 +297,7 @@ type HTTPRequest struct {
 	AutomaticHostHeader          bool
 	AutomaticContentLengthHeader bool
 	AutomaticConnectionHeader    bool
+	FollowRedirects              bool
 	Rawclient                    *rawhttp.Client
 	Httpclient                   *retryablehttp.Client
 	PipelineClient               *rawhttp.PipelineClient
