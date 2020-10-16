@@ -391,7 +391,7 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 
 	// Handle case with the full http url in path. In that case,
 	// ignore any host header that we encounter and use the path as request URL
-	if strings.HasPrefix(parts[1], "http") {
+	if !r.Unsafe && strings.HasPrefix(parts[1], "http") {
 		parsed, parseErr := url.Parse(parts[1])
 		if parseErr != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
