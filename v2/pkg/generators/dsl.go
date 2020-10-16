@@ -145,7 +145,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
-		return fmt.Sprint("%d", int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0))), nil
+		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0))), nil
 	}
 
 	// search
