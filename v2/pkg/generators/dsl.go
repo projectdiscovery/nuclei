@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	
+
 	"github.com/Knetic/govaluate"
 	"github.com/spaolacci/murmur3"
 )
@@ -47,6 +47,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["replace"] = func(args ...interface{}) (interface{}, error) {
+		return strings.ReplaceAll(args[0].(string), args[1].(string), args[2].(string)), nil
+	}
+
+	functions["replace_regex"] = func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(args[1].(string))
 		if err != nil {
 			return nil, err
