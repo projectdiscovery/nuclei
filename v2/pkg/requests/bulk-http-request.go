@@ -224,7 +224,15 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	// rawhttp
 	if r.Unsafe {
-		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues, AutomaticHostHeader: !r.DisableAutoHostname, AutomaticContentLengthHeader: !r.DisableAutoContentLength, Unsafe: true}, nil
+		unsafeReq := &HTTPRequest{
+			RawRequest:                   rawRequest,
+			Meta:                         genValues,
+			AutomaticHostHeader:          !r.DisableAutoHostname,
+			AutomaticContentLengthHeader: !r.DisableAutoContentLength,
+			Unsafe:                       true,
+			FollowRedirects:              r.Redirects,
+		}
+		return unsafeReq, nil
 	}
 
 	// retryablehttp
@@ -289,6 +297,7 @@ type HTTPRequest struct {
 	AutomaticHostHeader          bool
 	AutomaticContentLengthHeader bool
 	AutomaticConnectionHeader    bool
+	FollowRedirects              bool
 	Rawclient                    *rawhttp.Client
 	Httpclient                   *retryablehttp.Client
 	PipelineClient               *rawhttp.PipelineClient
@@ -382,7 +391,7 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 
 	// Handle case with the full http url in path. In that case,
 	// ignore any host header that we encounter and use the path as request URL
-	if strings.HasPrefix(parts[1], "http") {
+	if !r.Unsafe && strings.HasPrefix(parts[1], "http") {
 		parsed, parseErr := url.Parse(parts[1])
 		if parseErr != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
