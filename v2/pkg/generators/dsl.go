@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html"
 	"math"
 	"math/rand"
@@ -144,7 +145,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
-		return int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0)), nil
+		return fmt.Sprint("%d", int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0))), nil
 	}
 
 	// search
