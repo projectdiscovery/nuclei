@@ -40,7 +40,9 @@ type Options struct {
 	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
 	BulkSize           int                    // Number of targets analyzed in parallel for each template
-	ProjectFile        bool                   // Nuclei uses a project-file to avoid sending same HTTP request multiple times
+	TemplateThreads 	int // Number of templates executed in parallel
+	Project            bool                   // Nuclei uses project folder to avoid sending same HTTP request multiple times
+	ProjectPath        string                 // Nuclei uses a user defined project folder
 }
 
 type multiStringFlag []string
@@ -82,8 +84,10 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
 	flag.IntVar(&options.RateLimit, "rate-limit", -1, "Per Target Rate-Limit")
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
-	flag.IntVar(&options.BulkSize, "bulk-size", 150, "Number of hosts analyzed in parallel per template")
-	flag.BoolVar(&options.ProjectFile, "project-file", false, "Use a project file to avoid sending same request multiple times")
+	flag.IntVar(&options.BulkSize, "bulk-size", 25, "Number of hosts analyzed in parallel per template")
+	flag.IntVar(&options.TemplateThreads, "c", 10, "Number of templates executed in parallel")
+	flag.BoolVar(&options.Project, "project", false, "Use a project folder to avoid sending same request multiple times")
+	flag.StringVar(&options.ProjectPath, "project-path", "", "Use a user defined project folder, temporary folder is used if not specified but enabled")
 
 	flag.Parse()
 

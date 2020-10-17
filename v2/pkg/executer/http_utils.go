@@ -90,6 +90,20 @@ func unmarshal(data []byte, obj interface{}) error {
 	return nil
 }
 
+type HTTPRecord struct {
+	Request  []byte
+	Response *InternalResponse
+}
+
+type InternalRequest struct {
+	Target    string
+	HTTPMajor int
+	HTTPMinor int
+	Method    string
+	Headers   map[string][]string
+	Body      []byte
+}
+
 type InternalResponse struct {
 	HTTPMajor    int
 	HTTPMinor    int
@@ -99,10 +113,32 @@ type InternalResponse struct {
 	Body         []byte
 }
 
+func newInternalRquest() *InternalRequest {
+	return &InternalRequest{
+		Headers: make(map[string][]string),
+	}
+}
+
 func newInternalResponse() *InternalResponse {
 	return &InternalResponse{
 		Headers: make(map[string][]string),
 	}
+}
+
+func toInternalRequest(req *http.Request, target string, body []byte) *InternalRequest {
+	intReq := newInternalRquest()
+
+	intReq.Target = target
+	intReq.HTTPMajor = req.ProtoMajor
+	intReq.HTTPMinor = req.ProtoMinor
+	for k, v := range req.Header {
+		intReq.Headers[k] = v
+	}
+	intReq.Headers = req.Header
+	intReq.Method = req.Method
+	intReq.Body = body
+
+	return intReq
 }
 
 func toInternalResponse(resp *http.Response, body []byte) *InternalResponse {
@@ -120,13 +156,27 @@ func toInternalResponse(resp *http.Response, body []byte) *InternalResponse {
 }
 
 func fromInternalResponse(intResp *InternalResponse) *http.Response {
+	var contentLength int64
+	if intResp.Body != nil {
+		contentLength = int64(len(intResp.Body))
+	}
 	return &http.Response{
 		ProtoMinor:    intResp.HTTPMinor,
 		ProtoMajor:    intResp.HTTPMajor,
 		Status:        intResp.StatusReason,
 		StatusCode:    intResp.StatusCode,
 		Header:        intResp.Headers,
-		ContentLength: int64(len(intResp.Body)),
+		ContentLength: contentLength,
 		Body:          ioutil.NopCloser(bytes.NewReader(intResp.Body)),
+	}
+}
+
+func fromInternalRequest(intReq *InternalRequest) *http.Request {
+	return &http.Request{
+		ProtoMinor:    intReq.HTTPMinor,
+		ProtoMajor:    intReq.HTTPMajor,
+		Header:        intReq.Headers,
+		ContentLength: int64(len(intReq.Body)),
+		Body:          ioutil.NopCloser(bytes.NewReader(intReq.Body)),
 	}
 }

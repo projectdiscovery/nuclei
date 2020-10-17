@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -367,13 +366,15 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		// if nuclei-project is available check if the request was already sent previously
 		if e.hm != nil {
 			reqHash, err := hash(dumpedRequest)
-			log.Println(reqURL, reqHash)
 			// if the computation was successful check within the cache
 			if err == nil {
 				data, ok := e.hm.Get(reqHash)
 				// if found reuse the item
 				if ok {
-					unmarshal(data, resp)
+					var httprecord HTTPRecord
+					httprecord.Response = newInternalResponse()
+					unmarshal(data, &httprecord)
+					resp = fromInternalResponse(httprecord.Response)
 					fromcache = true
 				}
 			}
@@ -430,8 +431,11 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		reqHash, err := hash(dumpedRequest)
 		// if the computation was successful store within the cache
 		if err == nil {
+			var httprecord HTTPRecord
 			intResp := toInternalResponse(resp, data)
-			data, err := marshal(intResp)
+			httprecord.Request = dumpedRequest
+			httprecord.Response = intResp
+			data, err := marshal(httprecord)
 			// once marshaled without errors store in the cache
 			if err == nil {
 				e.hm.Set(reqHash, data)

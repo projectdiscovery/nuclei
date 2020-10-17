@@ -8,9 +8,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/remeh/sizedwaitgroup"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
@@ -167,10 +167,12 @@ func New(options *Options) (*Runner, error) {
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
-	// create project file if requested
-	if options.ProjectFile {
+	// create project file if requested or load existing one
+	if options.Project {
+		hOptions := hybrid.DefaultDiskOptions
+		hOptions.Path = options.ProjectPath
 		var err error
-		runner.hm, err = hybrid.New(hybrid.DefaultDiskOptions)
+		runner.hm, err = hybrid.New(hOptions)
 		if err != nil {
 			return runner, err
 		}
@@ -244,10 +246,8 @@ func (r *Runner) RunEnumeration() {
 		} // nolint:wsl // comment
 	}
 
-	var (
-		wgtemplates sync.WaitGroup
-		results     atomicboolean.AtomBool
-	)
+	results := atomicboolean.New()
+	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
 
 	if r.inputCount == 0 {
 		gologger.Errorf("Could not find any valid input URLs.")
@@ -257,7 +257,7 @@ func (r *Runner) RunEnumeration() {
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
 
 		for _, t := range availableTemplates {
-			wgtemplates.Add(1)
+			wgtemplates.Add()
 			go func(template interface{}) {
 				defer wgtemplates.Done()
 				switch tt := template.(type) {
