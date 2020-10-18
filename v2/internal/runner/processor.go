@@ -48,7 +48,6 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 			ColoredOutput: !r.options.NoColor,
 			Colorizer:     r.colorizer,
 			Decolorizer:   r.decolorizer,
-			HM:            r.hm,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -68,7 +67,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 			Colorizer:        &r.colorizer,
 			Decolorizer:      r.decolorizer,
 			StopAtFirstMatch: r.options.StopAtFirstMatch,
-			HM:               r.hm,
+			PF:               r.pf,
 		})
 	}
 
@@ -228,6 +227,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 					ColoredOutput: !r.options.NoColor,
 					Colorizer:     &r.colorizer,
 					Decolorizer:   r.decolorizer,
+					PF:            r.pf,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{

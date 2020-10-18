@@ -52,7 +52,6 @@ type DNSOptions struct {
 	Template      *templates.Template
 	DNSRequest    *requests.DNSRequest
 	Writer        *bufwriter.Writer
-	HM            *hybrid.HybridMap
 
 	Colorizer   colorizer.NucleiColorizer
 	Decolorizer *regexp.Regexp
@@ -74,7 +73,6 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		coloredOutput: options.ColoredOutput,
 		colorizer:     options.Colorizer,
 		decolorizer:   options.Decolorizer,
-		hm:            options.HM,
 	}
 
 	return executer

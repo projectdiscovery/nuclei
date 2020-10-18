@@ -19,13 +19,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	projetctfile "github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/rawhttp"
@@ -42,7 +42,7 @@ const (
 // HTTPExecuter is client for performing HTTP requests
 // for a template.
 type HTTPExecuter struct {
-	hm               *hybrid.HybridMap
+	pf               *projetctfile.ProjectFile
 	customHeaders    requests.CustomHeaders
 	colorizer        colorizer.NucleiColorizer
 	httpClient       *retryablehttp.Client
@@ -79,7 +79,7 @@ type HTTPOptions struct {
 	CookieReuse      bool
 	ColoredOutput    bool
 	StopAtFirstMatch bool
-	HM               *hybrid.HybridMap
+	PF               *projetctfile.ProjectFile
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -133,7 +133,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		colorizer:        *options.Colorizer,
 		decolorizer:      options.Decolorizer,
 		stopAtFirstMatch: options.StopAtFirstMatch,
-		hm:               options.HM,
+		pf:               options.PF,
 	}
 
 	return executer, nil
@@ -326,7 +326,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		fromcache     bool
 	)
 
-	if e.debug || e.hm != nil {
+	if e.debug || e.pf != nil {
 		dumpedRequest, err = requests.Dump(request, reqURL)
 		if err != nil {
 			return err
@@ -364,19 +364,12 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		}
 	} else {
 		// if nuclei-project is available check if the request was already sent previously
-		if e.hm != nil {
-			reqHash, err := hash(dumpedRequest)
-			// if the computation was successful check within the cache
-			if err == nil {
-				data, ok := e.hm.Get(reqHash)
-				// if found reuse the item
-				if ok {
-					var httprecord HTTPRecord
-					httprecord.Response = newInternalResponse()
-					unmarshal(data, &httprecord)
-					resp = fromInternalResponse(httprecord.Response)
-					fromcache = true
-				}
+		if e.pf != nil {
+			// if unavailable fail silently
+			fromcache = true
+			resp, err = e.pf.Get(dumpedRequest)
+			if err != nil {
+				fromcache = false
 			}
 		}
 
@@ -427,20 +420,8 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
-	if e.hm != nil && !fromcache {
-		reqHash, err := hash(dumpedRequest)
-		// if the computation was successful store within the cache
-		if err == nil {
-			var httprecord HTTPRecord
-			intResp := toInternalResponse(resp, data)
-			httprecord.Request = dumpedRequest
-			httprecord.Response = intResp
-			data, err := marshal(httprecord)
-			// once marshaled without errors store in the cache
-			if err == nil {
-				e.hm.Set(reqHash, data)
-			}
-		}
+	if e.pf != nil && !fromcache {
+		e.pf.Set(dumpedRequest, resp, data)
 	}
 
 	// Convert response body from []byte to string with zero copy
