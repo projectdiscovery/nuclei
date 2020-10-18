@@ -163,10 +163,6 @@ func (gfsm *GeneratorFSM) Value(key string) map[string]interface{} {
 	return g.currentGeneratorValue
 }
 
-func (gfsm *GeneratorFSM) hasPayloads() bool {
-	return len(gfsm.basePayloads) > 0
-}
-
 func (gfsm *GeneratorFSM) Next(key string) bool {
 	gfsm.RLock()
 	defer gfsm.RUnlock()
@@ -245,7 +241,7 @@ func (gfsm *GeneratorFSM) Total() int {
 			// Total of combinations => rule of product
 			prod := 1
 			for _, kv := range gfsm.basePayloads {
-				prod = prod * len(kv)
+				prod *= len(kv)
 			}
 			estimatedRequestsWithPayload += prod
 		}

@@ -33,14 +33,14 @@ func Take(k string) {
 
 func take(k string) ratelimit.Limiter {
 	defaultrwmutex.RLock()
-	defer defaultrwmutex.RUnlock()
+	defer defaultrwmutex.RUnlock() //nolint
 
 	return defaultGlobalRateLimiter.ratesLimiters[k]
 }
 
 func Del(k string, rateLimit int) {
 	defaultrwmutex.Lock()
-	defer defaultrwmutex.Unlock()
+	defer defaultrwmutex.Unlock() //nolint
 
 	delete(defaultGlobalRateLimiter.ratesLimiters, k)
 }
@@ -64,7 +64,7 @@ func (grl *GlobalRateLimiter) Add(k string, rateLimit int) {
 
 func (grl *GlobalRateLimiter) take(k string) ratelimit.Limiter {
 	grl.RLock()
-	defer grl.RUnlock()
+	defer grl.RUnlock() //nolint
 
 	return grl.ratesLimiters[k]
 }

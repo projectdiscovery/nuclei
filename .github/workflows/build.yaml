@@ -16,9 +16,9 @@ jobs:
         uses: golangci/golangci-lint-action@v1
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.29
+          version: v1.31
           args: --timeout 5m
-          working-directory: v2/cmd/nuclei/
+          working-directory: v2/
 
           # Optional: working directory, useful for monorepos
           # working-directory: somedir

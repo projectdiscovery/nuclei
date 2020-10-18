@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html"
 	"math"
 	"math/rand"
@@ -14,6 +15,13 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/spaolacci/murmur3"
+)
+
+const (
+	withCutSetArgsSize   = 2
+	withMaxRandArgsSize  = withCutSetArgsSize
+	withBaseRandArgsSize = 3
 )
 
 var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -40,6 +48,14 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 
 	functions["replace"] = func(args ...interface{}) (interface{}, error) {
 		return strings.ReplaceAll(args[0].(string), args[1].(string), args[2].(string)), nil
+	}
+
+	functions["replace_regex"] = func(args ...interface{}) (interface{}, error) {
+		compiled, err := regexp.Compile(args[1].(string))
+		if err != nil {
+			return nil, err
+		}
+		return compiled.ReplaceAllString(args[0].(string), args[2].(string)), nil
 	}
 
 	functions["trim"] = func(args ...interface{}) (interface{}, error) {
@@ -75,6 +91,13 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		sEnc := base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
 
 		return sEnc, nil
+	}
+
+	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
+	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
+		sEnc := base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
+
+		return insertInto(sEnc, 76, '\n'), nil
 	}
 
 	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
@@ -135,6 +158,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}
 
+	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
+		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0))), nil
+	}
+
 	// search
 	functions["contains"] = func(args ...interface{}) (interface{}, error) {
 		return strings.Contains(args[0].(string), args[1].(string)), nil
@@ -156,7 +183,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			chars = args[0].(string)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -173,10 +200,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
-		if len(args) >= 3 {
+		if len(args) >= withBaseRandArgsSize {
 			base = args[2].(string)
 		}
 
@@ -193,7 +220,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -210,7 +237,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -227,7 +254,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			l = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withCutSetArgsSize {
 			bad = args[1].(string)
 		}
 
@@ -243,7 +270,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		if len(args) >= 1 {
 			min = args[0].(int)
 		}
-		if len(args) >= 2 {
+		if len(args) >= withMaxRandArgsSize {
 			max = args[1].(int)
 		}
 

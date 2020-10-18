@@ -28,56 +28,55 @@ var urlWithPortRgx = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 
 // BulkHTTPRequest contains a request to be made from a template
 type BulkHTTPRequest struct {
-	// CookieReuse is an optional setting that makes cookies shared within requests
-	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
-	// Redirects specifies whether redirects should be followed.
-	Redirects bool   `yaml:"redirects,omitempty"`
-	Name      string `yaml:"Name,omitempty"`
+	// Path contains the path/s for the request
+	Path []string `yaml:"path"`
+	// Matchers contains the detection mechanism for the request to identify
+	// whether the request was successful
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
+	// Extractors contains the extraction mechanism for the request to identify
+	// and extract parts of the response.
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	// Raw contains raw requests
+	Raw  []string `yaml:"raw,omitempty"`
+	Name string   `yaml:"Name,omitempty"`
 	// AttackType is the attack type
 	// Sniper, PitchFork and ClusterBomb. Default is Sniper
 	AttackType string `yaml:"attack,omitempty"`
+	// Method is the request method, whether GET, POST, PUT, etc
+	Method string `yaml:"method"`
+	// Body is an optional parameter which contains the request body for POST methods, etc
+	Body string `yaml:"body,omitempty"`
+	// MatchersCondition is the condition of the matchers
+	// whether to use AND or OR. Default is OR.
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
 	// attackType is internal attack type
 	attackType generators.Type
 	// Path contains the path/s for the request variables
 	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
-	// Method is the request method, whether GET, POST, PUT, etc
-	Method string `yaml:"method"`
-	// Path contains the path/s for the request
-	Path []string `yaml:"path"`
 	// Headers contains headers to send with the request
 	Headers map[string]string `yaml:"headers,omitempty"`
-	// Body is an optional parameter which contains the request body for POST methods, etc
-	Body string `yaml:"body,omitempty"`
-	// Matchers contains the detection mechanism for the request to identify
-	// whether the request was successful
-	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
-	// MatchersCondition is the condition of the matchers
-	// whether to use AND or OR. Default is OR.
-	MatchersCondition string `yaml:"matchers-condition,omitempty"`
 	// matchersCondition is internal condition for the matchers.
 	matchersCondition matchers.ConditionType
-	// Extractors contains the extraction mechanism for the request to identify
-	// and extract parts of the response.
-	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
 	// MaxRedirects is the maximum number of redirects that should be followed.
-	MaxRedirects int `yaml:"max-redirects,omitempty"`
-	// Raw contains raw requests
-	Raw []string `yaml:"raw,omitempty"`
+	MaxRedirects                  int `yaml:"max-redirects,omitempty"`
+	PipelineConcurrentConnections int `yaml:"pipeline-concurrent-connections,omitempty"`
+	PipelineRequestsPerConnection int `yaml:"pipeline-requests-per-connection,omitempty"`
+	Threads                       int `yaml:"threads,omitempty"`
+	// Internal Finite State Machine keeping track of scan process
+	gsfm *GeneratorFSM
+	// CookieReuse is an optional setting that makes cookies shared within requests
+	CookieReuse bool `yaml:"cookie-reuse,omitempty"`
+	// Redirects specifies whether redirects should be followed.
+	Redirects bool `yaml:"redirects,omitempty"`
 	// Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining (race conditions/billions requests)
 	// All requests must be indempotent (GET/POST)
-	Pipeline                      bool `yaml:"pipeline,omitempty"`
-	PipelineConcurrentConnections int  `yaml:"pipeline-concurrent-connections,omitempty"`
-	PipelineRequestsPerConnection int  `yaml:"pipeline-requests-per-connection,omitempty"`
+	Pipeline bool `yaml:"pipeline,omitempty"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe,omitempty"`
 	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
 	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
-	Threads                  int  `yaml:"threads,omitempty"`
-
-	// Internal Finite State Machine keeping track of scan process
-	gsfm *GeneratorFSM
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -224,7 +223,15 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	// rawhttp
 	if r.Unsafe {
-		return &HTTPRequest{RawRequest: rawRequest, Meta: genValues, AutomaticHostHeader: !r.DisableAutoHostname, AutomaticContentLengthHeader: !r.DisableAutoContentLength, Unsafe: true}, nil
+		unsafeReq := &HTTPRequest{
+			RawRequest:                   rawRequest,
+			Meta:                         genValues,
+			AutomaticHostHeader:          !r.DisableAutoHostname,
+			AutomaticContentLengthHeader: !r.DisableAutoContentLength,
+			Unsafe:                       true,
+			FollowRedirects:              r.Redirects,
+		}
+		return unsafeReq, nil
 	}
 
 	// retryablehttp
@@ -289,6 +296,7 @@ type HTTPRequest struct {
 	AutomaticHostHeader          bool
 	AutomaticContentLengthHeader bool
 	AutomaticConnectionHeader    bool
+	FollowRedirects              bool
 	Rawclient                    *rawhttp.Client
 	Httpclient                   *retryablehttp.Client
 	PipelineClient               *rawhttp.PipelineClient
@@ -382,7 +390,7 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 
 	// Handle case with the full http url in path. In that case,
 	// ignore any host header that we encounter and use the path as request URL
-	if strings.HasPrefix(parts[1], "http") {
+	if !r.Unsafe && strings.HasPrefix(parts[1], "http") {
 		parsed, parseErr := url.Parse(parts[1])
 		if parseErr != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
