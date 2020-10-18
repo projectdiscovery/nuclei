@@ -355,6 +355,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		options := e.rawHTTPClient.Options
 		options.AutomaticContentLength = request.AutomaticContentLengthHeader
 		options.AutomaticHostHeader = request.AutomaticHostHeader
+		options.FollowRedirects = request.FollowRedirects
 		resp, err = e.rawHTTPClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
 		if err != nil {
 			if resp != nil {
