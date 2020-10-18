@@ -10,16 +10,17 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/remeh/sizedwaitgroup"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	projetctfile "github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // Runner is a client for running the enumeration process.
@@ -35,7 +36,7 @@ type Runner struct {
 	// options contains configuration options for runner
 	options *Options
 
-	hm *hybrid.HybridMap
+	pf *projectfile.ProjectFile
 
 	// progress tracking
 	progress progress.IProgress
@@ -169,12 +170,10 @@ func New(options *Options) (*Runner, error) {
 
 	// create project file if requested or load existing one
 	if options.Project {
-		hOptions := hybrid.DefaultDiskOptions
-		hOptions.Path = options.ProjectPath
 		var err error
-		runner.hm, err = hybrid.New(hOptions)
+		runner.pf, err = projetctfile.New(&projetctfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
 		if err != nil {
-			return runner, err
+			return nil, err
 		}
 	}
 
@@ -187,8 +186,8 @@ func (r *Runner) Close() {
 		r.output.Close()
 	}
 	os.Remove(r.tempFile)
-	if r.hm != nil {
-		r.hm.Close()
+	if r.pf != nil {
+		r.pf.Close()
 	}
 }
 
