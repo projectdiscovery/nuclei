@@ -24,23 +24,21 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 	}
 
 	if e.jsonOutput {
-		output := jsonOutput{
-			Template:    e.template.ID,
-			Type:        "http",
-			Matched:     URL,
-			Name:        e.template.Info.Name,
-			Severity:    e.template.Info.Severity,
-			Author:      e.template.Info.Author,
-			Description: e.template.Info.Description,
-			Meta:        meta,
+		output := make(jsonOutput)
+		output["template"] = e.template.ID
+		output["type"] = "http"
+		output["matched"] = URL
+		if len(meta) > 0 {
+			output["meta"] = meta
 		}
-
+		for k, v := range e.template.Info {
+			output[k] = v
+		}
 		if matcher != nil && len(matcher.Name) > 0 {
-			output.MatcherName = matcher.Name
+			output["matcher_name"] = matcher.Name
 		}
-
 		if len(extractorResults) > 0 {
-			output.ExtractedResults = extractorResults
+			output["extracted_results"] = extractorResults
 		}
 
 		// TODO: URL should be an argument
@@ -49,24 +47,21 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 			if err != nil {
 				gologger.Warningf("could not dump request: %s\n", err)
 			} else {
-				output.Request = string(dumpedRequest)
+				output["request"] = string(dumpedRequest)
 			}
 
 			dumpedResponse, err := httputil.DumpResponse(resp, false)
-
 			if err != nil {
 				gologger.Warningf("could not dump response: %s\n", err)
 			} else {
-				output.Response = string(dumpedResponse) + body
+				output["response"] = string(dumpedResponse) + body
 			}
 		}
 
 		data, err := jsoniter.Marshal(output)
-
 		if err != nil {
 			gologger.Warningf("Could not marshal json output: %s\n", err)
 		}
-
 		gologger.Silentf("%s", string(data))
 
 		if e.writer != nil {
@@ -75,7 +70,6 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 				return
 			}
 		}
-
 		return
 	}
 
@@ -94,9 +88,9 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 	builder.WriteString(colorizer.Colorizer.BrightBlue("http").String())
 	builder.WriteString("] ")
 
-	if e.template.Info.Severity != "" {
+	if e.template.Info["severity"] != "" {
 		builder.WriteString("[")
-		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
 		builder.WriteString("] ")
 	}
 
