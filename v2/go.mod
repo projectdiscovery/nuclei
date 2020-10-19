@@ -20,6 +20,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/vbauerster/mpb/v5 v5.3.0
+	go.uber.org/atomic v1.7.0
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/net v0.0.0-20201016165138-7b1cca2348c0
 	gopkg.in/yaml.v2 v2.3.0
