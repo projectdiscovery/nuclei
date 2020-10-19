@@ -59,7 +59,6 @@ linters:
     - bodyclose
     - deadcode
     - dogsled
-    - dupl
     - errcheck
     - exhaustive
     - gochecknoinits
