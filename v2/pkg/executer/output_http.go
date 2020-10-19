@@ -28,7 +28,9 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		output["template"] = e.template.ID
 		output["type"] = "http"
 		output["matched"] = URL
-		output["meta"] = meta
+		if len(meta) > 0 {
+			output["meta"] = meta
+		}
 		for k, v := range e.template.Info {
 			output[k] = v
 		}
