@@ -22,6 +22,7 @@ type Options struct {
 	JSON               bool                   // JSON writes json output to files
 	JSONRequests       bool                   // write requests/responses for matches in JSON output
 	EnableProgressBar  bool                   // Enable progrss bar
+	TemplatesVersion   bool                   // Show the templates installed version
 	TemplateList       bool                   // List available templates
 	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
@@ -84,6 +85,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
 	flag.IntVar(&options.BulkSize, "bulk-size", 150, "Number of hosts analyzed in parallel per template")
 	flag.BoolVar(&options.NoMeta, "no-meta", false, "Don't display metadata for the matches")
+	flag.BoolVar(&options.TemplatesVersion, "templates-version", false, "Shows the installed nuclei-templates version")
 	flag.Parse()
 
 	// Check if stdin pipe was given
@@ -97,6 +99,14 @@ func ParseOptions() *Options {
 
 	if options.Version {
 		gologger.Infof("Current Version: %s\n", Version)
+		os.Exit(0)
+	}
+	if options.TemplatesVersion {
+		config, err := readConfiguration()
+		if err != nil {
+			gologger.Fatalf("Could not read template configuration: %s\n", err)
+		}
+		gologger.Infof("Current nuclei-templates version: %s (%s)\n", config.CurrentVersion, config.TemplatesDirectory)
 		os.Exit(0)
 	}
 
