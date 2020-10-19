@@ -27,7 +27,7 @@ const nucleiConfigFilename = ".nuclei-config.json"
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // readConfiguration reads the nuclei configuration file from disk.
-func (r *Runner) readConfiguration() (*nucleiConfig, error) {
+func readConfiguration() (*nucleiConfig, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
