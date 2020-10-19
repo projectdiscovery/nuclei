@@ -55,6 +55,7 @@ type HTTPExecuter struct {
 	Results          bool
 	jsonOutput       bool
 	jsonRequest      bool
+	noMeta           bool
 	stopAtFirstMatch bool
 }
 
@@ -74,6 +75,7 @@ type HTTPOptions struct {
 	Debug            bool
 	JSON             bool
 	JSONRequests     bool
+	NoMeta           bool
 	CookieReuse      bool
 	ColoredOutput    bool
 	StopAtFirstMatch bool
@@ -119,6 +121,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		debug:            options.Debug,
 		jsonOutput:       options.JSON,
 		jsonRequest:      options.JSONRequests,
+		noMeta:           options.NoMeta,
 		httpClient:       client,
 		rawHTTPClient:    rawClient,
 		template:         options.Template,

@@ -15,21 +15,24 @@ import (
 func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher *matchers.Matcher, extractorResults []string) {
 	if e.jsonOutput {
 		output := make(jsonOutput)
-		output["template"] = e.template.ID
-		output["type"] = "dns"
 		output["matched"] = domain
-		for k, v := range e.template.Info {
-			output[k] = v
-		}
-		if matcher != nil && len(matcher.Name) > 0 {
-			output["matcher_name"] = matcher.Name
-		}
-		if len(extractorResults) > 0 {
-			output["extracted_results"] = extractorResults
-		}
-		if e.jsonRequest {
-			output["request"] = req.String()
-			output["response"] = resp.String()
+
+		if !e.noMeta {
+			output["template"] = e.template.ID
+			output["type"] = "dns"
+			for k, v := range e.template.Info {
+				output[k] = v
+			}
+			if matcher != nil && len(matcher.Name) > 0 {
+				output["matcher_name"] = matcher.Name
+			}
+			if len(extractorResults) > 0 {
+				output["extracted_results"] = extractorResults
+			}
+			if e.jsonRequest {
+				output["request"] = req.String()
+				output["response"] = resp.String()
+			}
 		}
 
 		data, err := jsoniter.Marshal(output)
@@ -49,28 +52,29 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 	builder := &strings.Builder{}
 	colorizer := e.colorizer
 
-	builder.WriteRune('[')
-	builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
+	if !e.noMeta {
+		builder.WriteRune('[')
+		builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
 
-	if matcher != nil && len(matcher.Name) > 0 {
-		builder.WriteString(":")
-		builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
-	}
+		if matcher != nil && len(matcher.Name) > 0 {
+			builder.WriteString(":")
+			builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
+		}
 
-	builder.WriteString("] [")
-	builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
-	builder.WriteString("] ")
-
-	if e.template.Info["severity"] != "" {
-		builder.WriteString("[")
-		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
+		builder.WriteString("] [")
+		builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
 		builder.WriteString("] ")
-	}
 
+		if e.template.Info["severity"] != "" {
+			builder.WriteString("[")
+			builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
+			builder.WriteString("] ")
+		}
+	}
 	builder.WriteString(domain)
 
 	// If any extractors, write the results
-	if len(extractorResults) > 0 {
+	if len(extractorResults) > 0 && !e.noMeta {
 		builder.WriteString(" [")
 
 		for i, result := range extractorResults {
@@ -80,10 +84,8 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 				builder.WriteRune(',')
 			}
 		}
-
 		builder.WriteString("]")
 	}
-
 	builder.WriteRune('\n')
 
 	// Write output to screen as well as any output file
