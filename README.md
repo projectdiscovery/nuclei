@@ -36,6 +36,7 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
     -   [Running with multiple templates.](#running-with-multiple-templates)
     -   [Running with subfinder](#running-with-subfinder)
     -   [Running in Docker](#running-in-docker-container)
+-   [Template exclusion](#template-exclusion)
 -   [Thanks](#thanks)
 
 
@@ -76,8 +77,8 @@ This will display help for the tool. Here are all the switches it supports.
 |      -retries     | Number of times to retry a failed request (default 1) |                nuclei -retries 1                |
 |      -timeout     |       Seconds to wait before timeout (default 5)      |                nuclei -timeout 5                |
 |      -rl          |       Rate-Limit of requests per specified target     |                nuclei -rl 100                   |
-|      -severity    |Filter templates based on their severity and only run the matching ones|                nuclei -severity critical, low                |
-|      -exclude     |Template input dir/file/files to exclude               |                nuclei -exclude panels, tokens           |
+|      -severity    |Run templates based on severity                        |                nuclei -severity critical, low                |
+|      -exclude     |Template input dir/file/files to exclude               |                nuclei -exclude panels -exclude tokens           |
 |       -debug      |         Allow debugging of request/responses.         |                  nuclei -debug                  |
 | -update-templates |         Download and updates nuclei templates         |             nuclei -update-templates            |
 | -update-directory |    Directory for storing nuclei-templates(optional)   |        nuclei -update-directory templates       |
@@ -113,7 +114,7 @@ nuclei requires **go1.14+** to install successfully. Run the following command t
 ### From Github
 
 ```sh
-▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -h
+▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -version
 ```
 
 ## Nuclei templates
@@ -148,6 +149,13 @@ You can also pass the list of urls at standard input (STDIN). This allows for ea
 ▶ cat urls.txt | nuclei -t files/git-core.yaml -o results.txt
 ```
 
+💡 Nuclei accepts list of URLs as input, for example here is how `urls.txt` looks like:- 
+
+```
+https://test.some-site.com
+http://vuls-testing.com
+https://test.com
+```
 ### Running with multiple templates.
 
 This will run the tool against all the urls in `urls.txt` with all the templates in the `cves` and `files` directory and returns the matched results.
@@ -184,7 +192,52 @@ For example, this will run the tool against all the hosts in `urls.txt` and outp
 
 Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
 
+### Template Exclusion
+
+[Nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) includes multiple checks including many that are useful for attack surface mapping and not necessarily a security issue, in cases where you only looking to scan few specific templates or directory, here are few options / flags to filter or exclude them from running. 
+
+#### Running templates based on severity
+
+You can run the templates based on the specific severity of the template, single and multiple severity can be used for scan. 
+
+```sh
+nuclei -l urls.txt -t cves/ -severity critical, medium
+```
+
+The above example will run all the templates under `cves` directory with `critical` and `medium` severity. 
+
+```sh
+nuclei -l urls.txt -t panels/ -t technologies -severity info
+```
+
+The above example will run all the templates under `panels` and `technologies` directory with **severity** marked as `info`
+
+#### Running templates with exclusion
+
+We do not suggest running all the nuclei-templates directory at once, in case of doing so, one can make use of `exclude` flag to exclude specific directory or templates to ignore from scanning. 
+
+```sh
+nuclei -l urls.txt -t nuclei-templates -exclude panels/ -exclude technologies -exclude files/wp-xmlrpc.yaml
+```
+
+Note:- both directory and specific templates case be excluded from scan as shared in the above example.
+
+#### Using `.nuclei-ignore` file for template exclusion
+
+Since release of nuclei [v2.1.1](https://github.com/projectdiscovery/nuclei/releases/tag/v2.1.1), we have added support of `.nuclei-ignore` file that works along with `update-templates` flag of nuclei, in **.nuclei-ignore** file, you can define all the template directory or template path that you wanted to exclude from all the nuclei scans, to start using this feature, make sure you installed nuclei templates using `nuclei -update-templates` flag, now you can add/update/remove templates in the file that you wanted to exclude from running. 
+
+```
+nano ~/nuclei-templates/.nuclei-ignore
+```
+
+Default **nuclei-ignore** list can be accessed from [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/.nuclei-ignore), in case you don't want to exclude anything, simply remove the `.nuclei-ignore` file.
+
 * * *
+
+# 📋 Notes
+- Progress bar is experimental feature, might not work in few cases. 
+- Progress bar doesn't work with workflows, numbers are not accurate due to conditional execution.
+
 
 ## Thanks
 
