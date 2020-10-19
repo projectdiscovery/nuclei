@@ -14,36 +14,29 @@ import (
 // nolint:interfacer // dns.Msg is out of current scope
 func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher *matchers.Matcher, extractorResults []string) {
 	if e.jsonOutput {
-		output := jsonOutput{
-			Template:    e.template.ID,
-			Type:        "dns",
-			Matched:     domain,
-			Name:        e.template.Info.Name,
-			Severity:    e.template.Info.Severity,
-			Author:      e.template.Info.Author,
-			Description: e.template.Info.Description,
+		output := make(jsonOutput)
+		output["template"] = e.template.ID
+		output["type"] = "dns"
+		output["matched"] = domain
+		for k, v := range e.template.Info {
+			output[k] = v
 		}
-
 		if matcher != nil && len(matcher.Name) > 0 {
-			output.MatcherName = matcher.Name
+			output["matcher_name"] = matcher.Name
 		}
-
 		if len(extractorResults) > 0 {
-			output.ExtractedResults = extractorResults
+			output["extracted_results"] = extractorResults
 		}
-
 		if e.jsonRequest {
-			output.Request = req.String()
-			output.Response = resp.String()
+			output["request"] = req.String()
+			output["response"] = resp.String()
 		}
 
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
 			gologger.Warningf("Could not marshal json output: %s\n", err)
 		}
-
 		gologger.Silentf("%s", string(data))
-
 		if e.writer != nil {
 			if err := e.writer.Write(data); err != nil {
 				gologger.Errorf("Could not write output data: %s\n", err)
@@ -68,9 +61,9 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 	builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
 	builder.WriteString("] ")
 
-	if e.template.Info.Severity != "" {
+	if e.template.Info["severity"] != "" {
 		builder.WriteString("[")
-		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
 		builder.WriteString("] ")
 	}
 
