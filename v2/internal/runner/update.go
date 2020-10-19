@@ -39,12 +39,10 @@ func (r *Runner) updateTemplates() error {
 
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		config, readErr := r.readConfiguration()
-
-		if readErr != nil {
+		config, readErr := readConfiguration()
+		if err != nil {
 			return readErr
 		}
-
 		r.templatesConfig = config
 	}
 
