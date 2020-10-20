@@ -14,59 +14,55 @@ import (
 // writeOutputHTTP writes http output to streams
 func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string, meta map[string]interface{}) {
 	var URL string
-	// rawhttp
 	if req.RawRequest != nil {
 		URL = req.RawRequest.FullURL
 	}
-	// retryablehttp
 	if req.Request != nil {
 		URL = req.Request.URL.String()
 	}
 
 	if e.jsonOutput {
-		output := jsonOutput{
-			Template:    e.template.ID,
-			Type:        "http",
-			Matched:     URL,
-			Name:        e.template.Info.Name,
-			Severity:    e.template.Info.Severity,
-			Author:      e.template.Info.Author,
-			Description: e.template.Info.Description,
-			Meta:        meta,
-		}
+		output := make(jsonOutput)
 
-		if matcher != nil && len(matcher.Name) > 0 {
-			output.MatcherName = matcher.Name
-		}
-
-		if len(extractorResults) > 0 {
-			output.ExtractedResults = extractorResults
-		}
-
-		// TODO: URL should be an argument
-		if e.jsonRequest {
-			dumpedRequest, err := requests.Dump(req, URL)
-			if err != nil {
-				gologger.Warningf("could not dump request: %s\n", err)
-			} else {
-				output.Request = string(dumpedRequest)
+		output["matched"] = URL
+		if !e.noMeta {
+			output["template"] = e.template.ID
+			output["type"] = "http"
+			if len(meta) > 0 {
+				output["meta"] = meta
+			}
+			for k, v := range e.template.Info {
+				output[k] = v
+			}
+			if matcher != nil && len(matcher.Name) > 0 {
+				output["matcher_name"] = matcher.Name
+			}
+			if len(extractorResults) > 0 {
+				output["extracted_results"] = extractorResults
 			}
 
-			dumpedResponse, err := httputil.DumpResponse(resp, false)
+			// TODO: URL should be an argument
+			if e.jsonRequest {
+				dumpedRequest, err := requests.Dump(req, URL)
+				if err != nil {
+					gologger.Warningf("could not dump request: %s\n", err)
+				} else {
+					output["request"] = string(dumpedRequest)
+				}
 
-			if err != nil {
-				gologger.Warningf("could not dump response: %s\n", err)
-			} else {
-				output.Response = string(dumpedResponse) + body
+				dumpedResponse, err := httputil.DumpResponse(resp, false)
+				if err != nil {
+					gologger.Warningf("could not dump response: %s\n", err)
+				} else {
+					output["response"] = string(dumpedResponse) + body
+				}
 			}
 		}
 
 		data, err := jsoniter.Marshal(output)
-
 		if err != nil {
 			gologger.Warningf("Could not marshal json output: %s\n", err)
 		}
-
 		gologger.Silentf("%s", string(data))
 
 		if e.writer != nil {
@@ -75,35 +71,35 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 				return
 			}
 		}
-
 		return
 	}
 
 	builder := &strings.Builder{}
 	colorizer := e.colorizer
 
-	builder.WriteRune('[')
-	builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
+	if !e.noMeta {
+		builder.WriteRune('[')
+		builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
 
-	if matcher != nil && len(matcher.Name) > 0 {
-		builder.WriteString(":")
-		builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
-	}
+		if matcher != nil && len(matcher.Name) > 0 {
+			builder.WriteString(":")
+			builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
+		}
 
-	builder.WriteString("] [")
-	builder.WriteString(colorizer.Colorizer.BrightBlue("http").String())
-	builder.WriteString("] ")
-
-	if e.template.Info.Severity != "" {
-		builder.WriteString("[")
-		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString("] [")
+		builder.WriteString(colorizer.Colorizer.BrightBlue("http").String())
 		builder.WriteString("] ")
-	}
 
+		if e.template.Info["severity"] != "" {
+			builder.WriteString("[")
+			builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
+			builder.WriteString("] ")
+		}
+	}
 	builder.WriteString(URL)
 
 	// If any extractors, write the results
-	if len(extractorResults) > 0 {
+	if len(extractorResults) > 0 && !e.noMeta {
 		builder.WriteString(" [")
 
 		for i, result := range extractorResults {
@@ -118,7 +114,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 	}
 
 	// write meta if any
-	if len(req.Meta) > 0 {
+	if len(req.Meta) > 0 && !e.noMeta {
 		builder.WriteString(" [")
 
 		var metas []string

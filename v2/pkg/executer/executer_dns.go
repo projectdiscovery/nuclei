@@ -25,6 +25,7 @@ type DNSExecuter struct {
 	debug         bool
 	jsonOutput    bool
 	jsonRequest   bool
+	noMeta        bool
 	Results       bool
 	dnsClient     *retryabledns.Client
 	template      *templates.Template
@@ -49,6 +50,7 @@ type DNSOptions struct {
 	Debug         bool
 	JSON          bool
 	JSONRequests  bool
+	NoMeta        bool
 	Template      *templates.Template
 	DNSRequest    *requests.DNSRequest
 	Writer        *bufwriter.Writer
@@ -64,6 +66,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 
 	executer := &DNSExecuter{
 		debug:         options.Debug,
+		noMeta:        options.NoMeta,
 		jsonOutput:    options.JSON,
 		jsonRequest:   options.JSONRequests,
 		dnsClient:     dnsClient,
