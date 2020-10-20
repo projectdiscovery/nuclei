@@ -10,7 +10,7 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.16.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.33
+	github.com/miekg/dns v1.1.34
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/httpx v1.0.2

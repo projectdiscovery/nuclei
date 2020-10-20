@@ -9,7 +9,7 @@ type Template struct {
 	// ID is the unique id for the template
 	ID string `yaml:"id"`
 	// Info contains information about the template
-	Info Info `yaml:"info"`
+	Info map[string]string `yaml:"info"`
 	// BulkRequestsHTTP contains the http request to make in the template
 	BulkRequestsHTTP []*requests.BulkHTTPRequest `yaml:"requests,omitempty"`
 	// RequestsDNS contains the dns request to make in the template
@@ -20,18 +20,6 @@ type Template struct {
 // GetPath of the workflow
 func (t *Template) GetPath() string {
 	return t.path
-}
-
-// Info contains information about the request template
-type Info struct {
-	// Name is the name of the template
-	Name string `yaml:"name"`
-	// Author is the name of the author of the template
-	Author string `yaml:"author"`
-	// Severity optionally describes the severity of the template
-	Severity string `yaml:"severity,omitempty"`
-	// Description optionally describes the template.
-	Description string `yaml:"description,omitempty"`
 }
 
 func (t *Template) GetHTTPRequestCount() int64 {

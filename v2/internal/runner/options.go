@@ -13,20 +13,6 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
-	Templates          multiStringFlag        // Signature specifies the template/templates to use
-	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
-	CustomHeaders      requests.CustomHeaders // Custom global headers
-	Severity           string                 // Filter templates based on their severity and only run the matching ones.
-	Target             string                 // Target is a single URL/Domain to scan usng a template
-	Targets            string                 // Targets specifies the targets to scan using templates.
-	Output             string                 // Output is the file to write found subdomains to.
-	ProxyURL           string                 // ProxyURL is the URL for the proxy server
-	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
-	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
-	Threads            int                    // Thread controls the number of concurrent requests to make.
-	Timeout            int                    // Timeout is the seconds to wait for a response from the server.
-	Retries            int                    // Retries is the number of times to retry the request
-	RateLimit          int                    // Rate-Limit of requests per specified target
 	Debug              bool                   // Debug mode allows debugging request/responses for the engine
 	Silent             bool                   // Silent suppresses any extra text and only writes found URLs on screen.
 	Version            bool                   // Version specifies if we should just show version and exit
@@ -36,10 +22,26 @@ type Options struct {
 	JSON               bool                   // JSON writes json output to files
 	JSONRequests       bool                   // write requests/responses for matches in JSON output
 	EnableProgressBar  bool                   // Enable progrss bar
+	TemplatesVersion   bool                   // Show the templates installed version
 	TemplateList       bool                   // List available templates
 	Stdin              bool                   // Stdin specifies whether stdin input was given to the process
 	StopAtFirstMatch   bool                   // Stop processing template at first full match (this may break chained requests)
+	NoMeta             bool                   // Don't display metadata for the matches
 	BulkSize           int                    // Number of targets analyzed in parallel for each template
+	Threads            int                    // Thread controls the number of concurrent requests to make.
+	Timeout            int                    // Timeout is the seconds to wait for a response from the server.
+	Retries            int                    // Retries is the number of times to retry the request
+	RateLimit          int                    // Rate-Limit of requests per specified target
+	Severity           string                 // Filter templates based on their severity and only run the matching ones.
+	Target             string                 // Target is a single URL/Domain to scan usng a template
+	Targets            string                 // Targets specifies the targets to scan using templates.
+	Output             string                 // Output is the file to write found subdomains to.
+	ProxyURL           string                 // ProxyURL is the URL for the proxy server
+	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
+	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	Templates          multiStringFlag        // Signature specifies the template/templates to use
+	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
+	CustomHeaders      requests.CustomHeaders // Custom global headers
 }
 
 type multiStringFlag []string
@@ -82,7 +84,8 @@ func ParseOptions() *Options {
 	flag.IntVar(&options.RateLimit, "rate-limit", -1, "Per Target Rate-Limit")
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
 	flag.IntVar(&options.BulkSize, "bulk-size", 150, "Number of hosts analyzed in parallel per template")
-
+	flag.BoolVar(&options.NoMeta, "no-meta", false, "Don't display metadata for the matches")
+	flag.BoolVar(&options.TemplatesVersion, "templates-version", false, "Shows the installed nuclei-templates version")
 	flag.Parse()
 
 	// Check if stdin pipe was given
@@ -96,6 +99,14 @@ func ParseOptions() *Options {
 
 	if options.Version {
 		gologger.Infof("Current Version: %s\n", Version)
+		os.Exit(0)
+	}
+	if options.TemplatesVersion {
+		config, err := readConfiguration()
+		if err != nil {
+			gologger.Fatalf("Could not read template configuration: %s\n", err)
+		}
+		gologger.Infof("Current nuclei-templates version: %s (%s)\n", config.CurrentVersion, config.TemplatesDirectory)
 		os.Exit(0)
 	}
 
