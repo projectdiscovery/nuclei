@@ -14,36 +14,32 @@ import (
 // nolint:interfacer // dns.Msg is out of current scope
 func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher *matchers.Matcher, extractorResults []string) {
 	if e.jsonOutput {
-		output := jsonOutput{
-			Template:    e.template.ID,
-			Type:        "dns",
-			Matched:     domain,
-			Name:        e.template.Info.Name,
-			Severity:    e.template.Info.Severity,
-			Author:      e.template.Info.Author,
-			Description: e.template.Info.Description,
-		}
+		output := make(jsonOutput)
+		output["matched"] = domain
 
-		if matcher != nil && len(matcher.Name) > 0 {
-			output.MatcherName = matcher.Name
-		}
-
-		if len(extractorResults) > 0 {
-			output.ExtractedResults = extractorResults
-		}
-
-		if e.jsonRequest {
-			output.Request = req.String()
-			output.Response = resp.String()
+		if !e.noMeta {
+			output["template"] = e.template.ID
+			output["type"] = "dns"
+			for k, v := range e.template.Info {
+				output[k] = v
+			}
+			if matcher != nil && len(matcher.Name) > 0 {
+				output["matcher_name"] = matcher.Name
+			}
+			if len(extractorResults) > 0 {
+				output["extracted_results"] = extractorResults
+			}
+			if e.jsonRequest {
+				output["request"] = req.String()
+				output["response"] = resp.String()
+			}
 		}
 
 		data, err := jsoniter.Marshal(output)
 		if err != nil {
 			gologger.Warningf("Could not marshal json output: %s\n", err)
 		}
-
 		gologger.Silentf("%s", string(data))
-
 		if e.writer != nil {
 			if err := e.writer.Write(data); err != nil {
 				gologger.Errorf("Could not write output data: %s\n", err)
@@ -56,28 +52,29 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 	builder := &strings.Builder{}
 	colorizer := e.colorizer
 
-	builder.WriteRune('[')
-	builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
+	if !e.noMeta {
+		builder.WriteRune('[')
+		builder.WriteString(colorizer.Colorizer.BrightGreen(e.template.ID).String())
 
-	if matcher != nil && len(matcher.Name) > 0 {
-		builder.WriteString(":")
-		builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
-	}
+		if matcher != nil && len(matcher.Name) > 0 {
+			builder.WriteString(":")
+			builder.WriteString(colorizer.Colorizer.BrightGreen(matcher.Name).Bold().String())
+		}
 
-	builder.WriteString("] [")
-	builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
-	builder.WriteString("] ")
-
-	if e.template.Info.Severity != "" {
-		builder.WriteString("[")
-		builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info.Severity))
+		builder.WriteString("] [")
+		builder.WriteString(colorizer.Colorizer.BrightBlue("dns").String())
 		builder.WriteString("] ")
-	}
 
+		if e.template.Info["severity"] != "" {
+			builder.WriteString("[")
+			builder.WriteString(colorizer.GetColorizedSeverity(e.template.Info["severity"]))
+			builder.WriteString("] ")
+		}
+	}
 	builder.WriteString(domain)
 
 	// If any extractors, write the results
-	if len(extractorResults) > 0 {
+	if len(extractorResults) > 0 && !e.noMeta {
 		builder.WriteString(" [")
 
 		for i, result := range extractorResults {
@@ -87,10 +84,8 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 				builder.WriteRune(',')
 			}
 		}
-
 		builder.WriteString("]")
 	}
-
 	builder.WriteRune('\n')
 
 	// Write output to screen as well as any output file
