@@ -83,6 +83,8 @@ type BulkHTTPRequest struct {
 	// Race determines if all the request have to be attempted at the same time
 	// The minumum number fof requests is determined by threads
 	Race bool `yaml:"race,omitempty"`
+	// Number of same request to send in race condition attack
+	RaceNumberRequests int `yaml:"race_count,omitempty"`
 }
 
 // GetMatchersCondition returns the condition for the matcher
