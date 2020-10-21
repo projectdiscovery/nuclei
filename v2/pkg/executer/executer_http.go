@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -170,7 +172,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 				globalratelimiter.Take(reqURL)
 
 				// If the request was built correctly then execute it
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
 				if err != nil {
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
@@ -239,7 +241,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 				// If the request was built correctly then execute it
 				request.Pipeline = true
 				request.PipelineClient = pipeclient
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
 				if err != nil {
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
@@ -267,13 +269,15 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 		return e.ExecuteParallelHTTP(p, reqURL)
 	}
 
+	var requestNumber int
+
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
+		historyData: make(map[string]interface{}),
 	}
 
 	dynamicvalues := make(map[string]interface{})
-	_ = dynamicvalues
 
 	// verify if the URL is already being processed
 	if e.bulkHTTPRequest.HasGenerator(reqURL) {
@@ -284,6 +288,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
 	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+		requestNumber++
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
@@ -291,7 +296,8 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 		} else {
 			globalratelimiter.Take(reqURL)
 			// If the request was built correctly then execute it
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
+			format := "%s_" + strconv.Itoa(requestNumber)
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, format)
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
@@ -315,7 +321,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 	return result
 }
 
-func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result) error {
+func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, format string) error {
 	e.setCustomHeaders(request)
 
 	var (
@@ -406,11 +412,19 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	body := unsafeToString(data)
 
 	headers := headersToString(resp.Header)
-	matcherCondition := e.bulkHTTPRequest.GetMatchersCondition()
 
+	// store for internal purposes the DSL matcher data
+	// hardcode stopping storing data after 100 items (approximately 20 requests)
+	if len(result.historyData) < 150 {
+		result.Lock()
+		result.historyData = generators.MergeMaps(result.historyData, matchers.HttpToMap(resp, body, headers, duration, format))
+		result.Unlock()
+	}
+
+	matcherCondition := e.bulkHTTPRequest.GetMatchersCondition()
 	for _, matcher := range e.bulkHTTPRequest.Matchers {
 		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers, duration) {
+		if !matcher.Match(resp, body, headers, duration, result.historyData) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
 				return nil
@@ -593,5 +607,6 @@ type Result struct {
 	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
+	historyData map[string]interface{}
 	Error       error
 }
