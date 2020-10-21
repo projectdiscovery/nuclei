@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
 
 // Match matches a http response again a given matcher
-func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration) bool {
+func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration, data map[string]interface{}) bool {
 	switch m.matcherType {
 	case StatusMatcher:
 		return m.isNegative(m.matchStatusCode(resp.StatusCode))
@@ -45,7 +46,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string, duration time
 		}
 	case DSLMatcher:
 		// Match complex query
-		return m.isNegative(m.matchDSL(httpToMap(resp, body, headers, duration)))
+		return m.isNegative(m.matchDSL(generators.MergeMaps(HttpToMap(resp, body, headers, duration, ""), data)))
 	}
 
 	return false
@@ -68,7 +69,7 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 		return m.matchBinary(msg.String())
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(dnsToMap(msg))
+		return m.matchDSL(DnsToMap(msg, ""))
 	}
 
 	return false
