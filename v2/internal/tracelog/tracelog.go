@@ -12,7 +12,7 @@ type Log interface {
 	// Close closes the log interface flushing data
 	Close()
 	// Request writes a log the requests trace log
-	Request(templateID, url, Type string, err error)
+	Request(templateID, url, requestType string, err error)
 }
 
 // NoopLogger is a noop logger that simply does nothing
@@ -22,7 +22,7 @@ type NoopLogger struct{}
 func (n *NoopLogger) Close() {}
 
 // Request writes a log the requests trace log
-func (n *NoopLogger) Request(templateID, url, Type string, err error) {}
+func (n *NoopLogger) Request(templateID, url, requestType string, err error) {}
 
 // FileLogger is a trace logger that writes request logs to a file.
 type FileLogger struct {
@@ -57,11 +57,11 @@ type JSONRequest struct {
 }
 
 // Request writes a log the requests trace log
-func (f *FileLogger) Request(templateID, url, Type string, err error) {
+func (f *FileLogger) Request(templateID, url, requestType string, err error) {
 	request := &JSONRequest{
 		ID:   templateID,
 		URL:  url,
-		Type: Type,
+		Type: requestType,
 	}
 	if err != nil {
 		request.Error = err.Error()
@@ -71,5 +71,6 @@ func (f *FileLogger) Request(templateID, url, Type string, err error) {
 
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+	//nolint:errcheck // We don't need to do anything here
 	f.encoder.Encode(request)
 }
