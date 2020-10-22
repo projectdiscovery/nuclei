@@ -98,14 +98,14 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) *Result {
 	// Compile each request for the template based on the URL
 	compiledRequest, err := e.dnsRequest.MakeDNSRequest(domain)
 	if err != nil {
-		e.traceLog.Request(e.template.ID, domain, err)
+		e.traceLog.Request(e.template.ID, domain, "dns", err)
 		result.Error = errors.Wrap(err, "could not make dns request")
 
 		p.Drop(1)
 
 		return result
 	}
-	e.traceLog.Request(e.template.ID, domain, nil)
+	e.traceLog.Request(e.template.ID, domain, "dns", nil)
 
 	if e.debug {
 		gologger.Infof("Dumped DNS request for %s (%s)\n\n", reqURL, e.template.ID)

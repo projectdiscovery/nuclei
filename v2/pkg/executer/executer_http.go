@@ -176,11 +176,11 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 				// If the request was built correctly then execute it
 				err := e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
 				if err != nil {
-					e.traceLog.Request(e.template.ID, reqURL, err)
+					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
 				} else {
-					e.traceLog.Request(e.template.ID, reqURL, nil)
+					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 				}
 			}(request)
 		}
@@ -248,11 +248,11 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 				request.PipelineClient = pipeclient
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
 				if err != nil {
-					e.traceLog.Request(e.template.ID, reqURL, err)
+					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
 				} else {
-					e.traceLog.Request(e.template.ID, reqURL, nil)
+					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 				}
 				request.PipelineClient = nil
 			}(request)
@@ -305,9 +305,9 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
-				e.traceLog.Request(e.template.ID, reqURL, err)
+				e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			} else {
-				e.traceLog.Request(e.template.ID, reqURL, nil)
+				e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 			}
 		}
 
@@ -353,10 +353,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
-			e.traceLog.Request(e.template.ID, reqURL, err)
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
-		e.traceLog.Request(e.template.ID, reqURL, nil)
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	} else if request.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
@@ -370,10 +370,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
-			e.traceLog.Request(e.template.ID, reqURL, err)
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
-		e.traceLog.Request(e.template.ID, reqURL, nil)
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	} else {
 		// retryablehttp
 		resp, err = e.httpClient.Do(request.Request)
@@ -381,10 +381,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
-			e.traceLog.Request(e.template.ID, reqURL, err)
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
-		e.traceLog.Request(e.template.ID, reqURL, nil)
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	}
 
 	duration := time.Since(timeStart)
