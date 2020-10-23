@@ -39,6 +39,7 @@ type Options struct {
 	ProxyURL           string                 // ProxyURL is the URL for the proxy server
 	ProxySocksURL      string                 // ProxySocksURL is the URL for the proxy socks server
 	TemplatesDirectory string                 // TemplatesDirectory is the directory to use for storing templates
+	TraceLogFile       string                 // TraceLogFile specifies a file to write with the trace of all requests
 	Templates          multiStringFlag        // Signature specifies the template/templates to use
 	ExcludedTemplates  multiStringFlag        // Signature specifies the template/templates to exclude
 	CustomHeaders      requests.CustomHeaders // Custom global headers
@@ -76,6 +77,7 @@ func ParseOptions() *Options {
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
+	flag.StringVar(&options.TraceLogFile, "trace-log", "", "File to write sent requests trace log")
 	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
