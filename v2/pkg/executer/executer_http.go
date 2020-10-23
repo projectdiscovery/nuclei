@@ -37,8 +37,10 @@ import (
 )
 
 const (
-	two = 2
-	ten = 10
+	two                   = 2
+	ten                   = 10
+	defaultMaxWorkers     = 150
+	defaultMaxHistorydata = 150
 )
 
 // HTTPExecuter is client for performing HTTP requests
@@ -227,8 +229,8 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 	}
 	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
 
-	// 150 should be a sufficient value to keep queues always full
-	maxWorkers := 150
+	// defaultMaxWorkers should be a sufficient value to keep queues always full
+	maxWorkers := defaultMaxWorkers
 	// in case the queue is bigger increase the workers
 	if pipeOptions.MaxPendingRequests > maxWorkers {
 		maxWorkers = pipeOptions.MaxPendingRequests
@@ -433,8 +435,8 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	headers := headersToString(resp.Header)
 
 	// store for internal purposes the DSL matcher data
-	// hardcode stopping storing data after 100 items (approximately 20 requests)
-	if len(result.historyData) < 150 {
+	// hardcode stopping storing data after defaultMaxHistorydata items
+	if len(result.historyData) < defaultMaxHistorydata {
 		result.Lock()
 		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
 		result.Unlock()
