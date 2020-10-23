@@ -12,8 +12,8 @@ import (
 
 const defaultFormat = "%s"
 
-// HttpToMap Converts HTTP to Matcher Map
-func HttpToMap(resp *http.Response, body, headers string, duration time.Duration, format string) (m map[string]interface{}) {
+// HTTPToMap Converts HTTP to Matcher Map
+func HTTPToMap(resp *http.Response, body, headers string, duration time.Duration, format string) (m map[string]interface{}) {
 	m = make(map[string]interface{})
 
 	if format == "" {
@@ -41,8 +41,8 @@ func HttpToMap(resp *http.Response, body, headers string, duration time.Duration
 	return m
 }
 
-// DnsToMap Converts DNS to Matcher Map
-func DnsToMap(msg *dns.Msg, format string) (m map[string]interface{}) {
+// DNSToMap Converts DNS to Matcher Map
+func DNSToMap(msg *dns.Msg, format string) (m map[string]interface{}) {
 	m = make(map[string]interface{})
 
 	if format == "" {

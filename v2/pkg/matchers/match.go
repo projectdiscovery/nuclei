@@ -46,7 +46,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string, duration time
 		}
 	case DSLMatcher:
 		// Match complex query
-		return m.isNegative(m.matchDSL(generators.MergeMaps(HttpToMap(resp, body, headers, duration, ""), data)))
+		return m.isNegative(m.matchDSL(generators.MergeMaps(HTTPToMap(resp, body, headers, duration, ""), data)))
 	}
 
 	return false
@@ -69,7 +69,7 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 		return m.matchBinary(msg.String())
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(DnsToMap(msg, ""))
+		return m.matchDSL(DNSToMap(msg, ""))
 	}
 
 	return false
