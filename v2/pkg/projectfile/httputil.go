@@ -69,11 +69,12 @@ type InternalResponse struct {
 	Body         []byte
 }
 
-func newInternalRquest() *InternalRequest {
-	return &InternalRequest{
-		Headers: make(map[string][]string),
-	}
-}
+// Unused
+// func newInternalRequest() *InternalRequest {
+// 	return &InternalRequest{
+// 		Headers: make(map[string][]string),
+// 	}
+// }
 
 func newInternalResponse() *InternalResponse {
 	return &InternalResponse{
