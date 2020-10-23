@@ -436,7 +436,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// hardcode stopping storing data after 100 items (approximately 20 requests)
 	if len(result.historyData) < 150 {
 		result.Lock()
-		result.historyData = generators.MergeMaps(result.historyData, matchers.HttpToMap(resp, body, headers, duration, format))
+		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
 		result.Unlock()
 	}
 
