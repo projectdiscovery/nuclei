@@ -39,7 +39,7 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 
 	data, ok := pf.hm.Get(reqHash)
 	if !ok {
-		return nil, fmt.Errorf("Not found")
+		return nil, fmt.Errorf("not found")
 	}
 
 	var httprecord HTTPRecord

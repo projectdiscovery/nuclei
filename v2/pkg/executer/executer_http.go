@@ -441,6 +441,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		if e.pf != nil {
 			// if unavailable fail silently
 			fromcache = true
+			// nolint:bodyclose // false positive the response is generated at runtime
 			resp, err = e.pf.Get(dumpedRequest)
 			if err != nil {
 				fromcache = false
