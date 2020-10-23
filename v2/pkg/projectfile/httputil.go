@@ -18,7 +18,10 @@ func hash(v interface{}) (string, error) {
 
 	sh := sha256.New()
 
-	io.WriteString(sh, string(data))
+	_, err = io.WriteString(sh, string(data))
+	if err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(sh.Sum(nil)), nil
 }
 
