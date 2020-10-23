@@ -9,6 +9,10 @@ type AtomBool struct {
 	flag bool
 }
 
+func New() *AtomBool {
+	return &AtomBool{}
+}
+
 func (b *AtomBool) Or(value bool) {
 	b.Lock()
 	defer b.Unlock()

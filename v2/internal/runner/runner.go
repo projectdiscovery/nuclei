@@ -8,7 +8,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -20,8 +19,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // Runner is a client for running the enumeration process.
@@ -38,6 +39,8 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
+
+	pf *projectfile.ProjectFile
 
 	// progress tracking
 	progress progress.IProgress
@@ -177,6 +180,15 @@ func New(options *Options) (*Runner, error) {
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
+	// create project file if requested or load existing one
+	if options.Project {
+		var err error
+		runner.pf, err = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Enable Polling
 	if options.BurpCollaboratorBiid != "" {
 		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
@@ -191,6 +203,9 @@ func (r *Runner) Close() {
 		r.output.Close()
 	}
 	os.Remove(r.tempFile)
+	if r.pf != nil {
+		r.pf.Close()
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -247,13 +262,10 @@ func (r *Runner) RunEnumeration() {
 		} // nolint:wsl // comment
 	}
 
+	results := atomicboolean.New()
+	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
 	// Starts polling or ignore
 	collaborator.DefaultCollaborator.Poll()
-
-	var (
-		wgtemplates sync.WaitGroup
-		results     atomicboolean.AtomBool
-	)
 
 	if r.inputCount == 0 {
 		gologger.Errorf("Could not find any valid input URLs.")
@@ -263,7 +275,7 @@ func (r *Runner) RunEnumeration() {
 		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
 
 		for _, t := range availableTemplates {
-			wgtemplates.Add(1)
+			wgtemplates.Add()
 			go func(template interface{}) {
 				defer wgtemplates.Done()
 				switch tt := template.(type) {
