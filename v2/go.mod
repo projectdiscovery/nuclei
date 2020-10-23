@@ -3,7 +3,6 @@ module github.com/projectdiscovery/nuclei/v2
 go 1.14
 
 require (
-	github.com/projectdiscovery/collaborator v0.0.0
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/d5/tengo/v2 v2.6.2
@@ -13,6 +12,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/miekg/dns v1.1.34
 	github.com/pkg/errors v0.9.1
+	github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/httpx v1.0.2
 	github.com/projectdiscovery/rawhttp v0.0.4
