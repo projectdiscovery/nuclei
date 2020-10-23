@@ -8,14 +8,16 @@ import (
 )
 
 const (
+	PollSeconds           = 5
 	DefaultMaxBufferLimit = 150
-	DefaultPollInterval   = time.Second * time.Duration(5)
 )
+
+var DefaultPollInterval time.Duration = time.Second * time.Duration(PollSeconds)
 
 var DefaultCollaborator BurpCollaborator = BurpCollaborator{Collab: collaborator.NewBurpCollaborator()}
 
 type BurpCollaborator struct {
-	options *Options
+	options *Options // unused
 	Collab  *collaborator.BurpCollaborator
 }
 
@@ -25,11 +27,11 @@ type Options struct {
 	MaxBufferLimit int
 }
 
-func New(options Options) *BurpCollaborator {
+func New(options *Options) *BurpCollaborator {
 	collab := collaborator.NewBurpCollaborator()
 	collab.AddBIID(options.BIID)
 	collab.MaxBufferLimit = options.MaxBufferLimit
-	return &BurpCollaborator{Collab: collab}
+	return &BurpCollaborator{Collab: collab, options: options}
 }
 
 func (b *BurpCollaborator) Poll() {
@@ -41,13 +43,13 @@ func (b *BurpCollaborator) Poll() {
 
 func (b *BurpCollaborator) Has(s string) bool {
 	for _, r := range b.Collab.RespBuffer {
-		for _, rr := range r.Responses {
+		for i := 0; i < len(r.Responses); i++ {
 			// search in dns
-			if strings.Contains(rr.Data.RawRequestDecoded, s) {
+			if strings.Contains(r.Responses[i].Data.RawRequestDecoded, s) {
 				return true
 			}
 			// search in http
-			if strings.Contains(rr.Data.RequestDecoded, s) {
+			if strings.Contains(r.Responses[i].Data.RequestDecoded, s) {
 				return true
 			}
 		}
