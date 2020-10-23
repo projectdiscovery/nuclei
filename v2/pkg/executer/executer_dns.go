@@ -20,6 +20,7 @@ import (
 // DNSExecuter is a client for performing a DNS request
 // for a template.
 type DNSExecuter struct {
+	// hm            *hybrid.HybridMap // Unused
 	coloredOutput bool
 	debug         bool
 	jsonOutput    bool

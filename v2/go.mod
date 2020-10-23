@@ -17,6 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d
 	github.com/projectdiscovery/gologger v1.0.1
+	github.com/projectdiscovery/hmap v0.0.0-20201018163424-9cdfe6188601
 	github.com/projectdiscovery/httpx v1.0.2
 	github.com/projectdiscovery/rawhttp v0.0.4
 	github.com/projectdiscovery/retryabledns v1.0.4
