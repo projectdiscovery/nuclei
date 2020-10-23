@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
@@ -21,7 +20,7 @@ import (
 // DNSExecuter is a client for performing a DNS request
 // for a template.
 type DNSExecuter struct {
-	hm            *hybrid.HybridMap
+	// hm            *hybrid.HybridMap // Unused
 	coloredOutput bool
 	debug         bool
 	jsonOutput    bool

@@ -182,7 +182,7 @@ func New(options *Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var err error
-		runner.pf, err = projetctfile.New(&projetctfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.pf, err = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
 		if err != nil {
 			return nil, err
 		}
