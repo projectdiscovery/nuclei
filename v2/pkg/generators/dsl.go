@@ -13,8 +13,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -275,6 +277,19 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		}
 
 		return rand.Intn(max-min) + min, nil
+	}
+
+	// Time Functions
+	functions["waitfor"] = func(args ...interface{}) (interface{}, error) {
+		seconds := args[0].(float64)
+		time.Sleep(time.Duration(seconds) * time.Second)
+		return true, nil
+	}
+
+	// Collaborator
+	functions["collab"] = func(args ...interface{}) (interface{}, error) {
+		// check if collaborator contains a specific pattern
+		return collaborator.DefaultCollaborator.Has(args[0].(string)), nil
 	}
 
 	return functions
