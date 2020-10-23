@@ -12,6 +12,7 @@ import (
 
 // Options contains the configuration options for tuning
 // the template requesting process.
+// nolint // false positive, options are allocated once and are necessary as is
 type Options struct {
 	Debug              bool                   // Debug mode allows debugging request/responses for the engine
 	Silent             bool                   // Silent suppresses any extra text and only writes found URLs on screen.
