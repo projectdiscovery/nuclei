@@ -648,7 +648,7 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 	for _, customHeader := range e.customHeaders {
 		// This should be pre-computed somewhere and done only once
-		tokens := strings.SplitN(customHeader, ":", 2)
+		tokens := strings.SplitN(customHeader, ":", two)
 		// if it's an invalid header skip it
 		if len(tokens) < two {
 			continue
