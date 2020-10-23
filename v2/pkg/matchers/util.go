@@ -10,34 +10,46 @@ import (
 	"github.com/miekg/dns"
 )
 
-func httpToMap(resp *http.Response, body, headers string, duration time.Duration) (m map[string]interface{}) {
+const defaultFormat = "%s"
+
+// HTTPToMap Converts HTTP to Matcher Map
+func HTTPToMap(resp *http.Response, body, headers string, duration time.Duration, format string) (m map[string]interface{}) {
 	m = make(map[string]interface{})
 
-	m["content_length"] = resp.ContentLength
-	m["status_code"] = resp.StatusCode
+	if format == "" {
+		format = defaultFormat
+	}
+
+	m[fmt.Sprintf(format, "content_length")] = resp.ContentLength
+	m[fmt.Sprintf(format, "status_code")] = resp.StatusCode
 
 	for k, v := range resp.Header {
 		k = strings.ToLower(strings.TrimSpace(strings.ReplaceAll(k, "-", "_")))
-		m[k] = strings.Join(v, " ")
+		m[fmt.Sprintf(format, k)] = strings.Join(v, " ")
 	}
 
-	m["all_headers"] = headers
-	m["body"] = body
+	m[fmt.Sprintf(format, "all_headers")] = headers
+	m[fmt.Sprintf(format, "body")] = body
 
 	if r, err := httputil.DumpResponse(resp, true); err == nil {
-		m["raw"] = string(r)
+		m[fmt.Sprintf(format, "raw")] = string(r)
 	}
 
 	// Converts duration to seconds (floating point) for DSL syntax
-	m["duration"] = duration.Seconds()
+	m[fmt.Sprintf(format, "duration")] = duration.Seconds()
 
 	return m
 }
 
-func dnsToMap(msg *dns.Msg) (m map[string]interface{}) {
+// DNSToMap Converts DNS to Matcher Map
+func DNSToMap(msg *dns.Msg, format string) (m map[string]interface{}) {
 	m = make(map[string]interface{})
 
-	m["rcode"] = msg.Rcode
+	if format == "" {
+		format = defaultFormat
+	}
+
+	m[fmt.Sprintf(format, "rcode")] = msg.Rcode
 
 	var qs string
 
@@ -45,29 +57,29 @@ func dnsToMap(msg *dns.Msg) (m map[string]interface{}) {
 		qs += fmt.Sprintln(question.String())
 	}
 
-	m["question"] = qs
+	m[fmt.Sprintf(format, "question")] = qs
 
 	var exs string
 	for _, extra := range msg.Extra {
 		exs += fmt.Sprintln(extra.String())
 	}
 
-	m["extra"] = exs
+	m[fmt.Sprintf(format, "extra")] = exs
 
 	var ans string
 	for _, answer := range msg.Answer {
 		ans += fmt.Sprintln(answer.String())
 	}
 
-	m["answer"] = ans
+	m[fmt.Sprintf(format, "answer")] = ans
 
 	var nss string
 	for _, ns := range msg.Ns {
 		nss += fmt.Sprintln(ns.String())
 	}
 
-	m["ns"] = nss
-	m["raw"] = msg.String()
+	m[fmt.Sprintf(format, "ns")] = nss
+	m[fmt.Sprintf(format, "raw")] = msg.String()
 
 	return m
 }
