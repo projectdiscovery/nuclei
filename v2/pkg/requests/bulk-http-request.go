@@ -248,7 +248,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	if r.Race {
 		// More or less this ensures that all requests hit the endpoint at the same approximated time
 		// Todo: sync internally upon writing latest request byte
-		body = syncedreadcloser.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
+		body = syncedreadcloser.NewOpenGateWithTimeout(body, time.Duration(two)*time.Second)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, body)
