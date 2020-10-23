@@ -12,6 +12,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
@@ -48,6 +49,9 @@ type Runner struct {
 	// output coloring
 	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
+
+	// http dialer
+	dialer cache.DialerFunc
 }
 
 // New creates a new client for running enumeration process.
@@ -192,6 +196,12 @@ func New(options *Options) (*Runner, error) {
 	// Enable Polling
 	if options.BurpCollaboratorBiid != "" {
 		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
+	}
+
+	// Create Dialer
+	runner.dialer, err = cache.NewDialer(cache.DefaultOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	return runner, nil
