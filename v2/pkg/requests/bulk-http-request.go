@@ -81,7 +81,7 @@ type BulkHTTPRequest struct {
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
 	// Race determines if all the request have to be attempted at the same time
-	// The minumum number fof requests is determined by threads
+	// The minimum number fof requests is determined by threads
 	Race bool `yaml:"race,omitempty"`
 	// Number of same request to send in race condition attack
 	RaceNumberRequests int `yaml:"race_count,omitempty"`
