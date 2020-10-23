@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
@@ -51,6 +52,7 @@ type HTTPExecuter struct {
 	bulkHTTPRequest  *requests.BulkHTTPRequest
 	writer           *bufwriter.Writer
 	CookieJar        *cookiejar.Jar
+	traceLog         tracelog.Log
 	decolorizer      *regexp.Regexp
 	coloredOutput    bool
 	debug            bool
@@ -74,6 +76,7 @@ type HTTPOptions struct {
 	CookieJar        *cookiejar.Jar
 	Colorizer        *colorizer.NucleiColorizer
 	Decolorizer      *regexp.Regexp
+	TraceLog         tracelog.Log
 	Debug            bool
 	JSON             bool
 	JSONRequests     bool
@@ -126,6 +129,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		noMeta:           options.NoMeta,
 		httpClient:       client,
 		rawHTTPClient:    rawClient,
+		traceLog:         options.TraceLog,
 		template:         options.Template,
 		bulkHTTPRequest:  options.BulkHTTPRequest,
 		writer:           options.Writer,
@@ -174,8 +178,11 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 				// If the request was built correctly then execute it
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
 				if err != nil {
+					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
+				} else {
+					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 				}
 			}(request)
 		}
@@ -243,8 +250,11 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 				request.PipelineClient = pipeclient
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
 				if err != nil {
+					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
 					p.Drop(remaining)
+				} else {
+					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 				}
 				request.PipelineClient = nil
 			}(request)
@@ -301,6 +311,9 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
+				e.traceLog.Request(e.template.ID, reqURL, "http", err)
+			} else {
+				e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 			}
 		}
 
@@ -346,8 +359,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	} else if request.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
@@ -361,8 +376,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	} else {
 		// retryablehttp
 		resp, err = e.httpClient.Do(request.Request)
@@ -370,8 +387,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 			if resp != nil {
 				resp.Body.Close()
 			}
+			e.traceLog.Request(e.template.ID, reqURL, "http", err)
 			return err
 		}
+		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	}
 
 	duration := time.Since(timeStart)
