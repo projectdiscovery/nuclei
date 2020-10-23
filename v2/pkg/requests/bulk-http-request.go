@@ -4,17 +4,20 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/syncedreadcloser"
 	"github.com/projectdiscovery/rawhttp"
 	retryablehttp "github.com/projectdiscovery/retryablehttp-go"
 )
@@ -77,6 +80,11 @@ type BulkHTTPRequest struct {
 	DisableAutoHostname bool `yaml:"disable-automatic-host-header,omitempty"`
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header,omitempty"`
+	// Race determines if all the request have to be attempted at the same time
+	// The minimum number fof requests is determined by threads
+	Race bool `yaml:"race,omitempty"`
+	// Number of same request to send in race condition attack
+	RaceNumberRequests int `yaml:"race_count,omitempty"`
 }
 
 // GetMatchersCondition returns the condition for the matcher
@@ -235,7 +243,15 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 	}
 
 	// retryablehttp
-	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, strings.NewReader(rawRequest.Data))
+	var body io.ReadCloser
+	body = ioutil.NopCloser(strings.NewReader(rawRequest.Data))
+	if r.Race {
+		// More or less this ensures that all requests hit the endpoint at the same approximated time
+		// Todo: sync internally upon writing latest request byte
+		body = syncedreadcloser.NewOpenGateWithTimeout(body, time.Duration(two)*time.Second)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, body)
 	if err != nil {
 		return nil, err
 	}

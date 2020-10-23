@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
@@ -27,11 +29,13 @@ import (
 type Runner struct {
 	input      string
 	inputCount int64
+	tempFile   string
+
+	traceLog tracelog.Log
 
 	// output is the output file to write if any
 	output *bufwriter.Writer
 
-	tempFile        string
 	templatesConfig *nucleiConfig
 	// options contains configuration options for runner
 	options *Options
@@ -49,7 +53,15 @@ type Runner struct {
 // New creates a new client for running enumeration process.
 func New(options *Options) (*Runner, error) {
 	runner := &Runner{
-		options: options,
+		traceLog: &tracelog.NoopLogger{},
+		options:  options,
+	}
+	if options.TraceLogFile != "" {
+		fileLog, err := tracelog.NewFileLogger(options.TraceLogFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create file trace logger")
+		}
+		runner.traceLog = fileLog
 	}
 
 	if err := runner.updateTemplates(); err != nil {

@@ -39,6 +39,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 	switch value := request.(type) {
 	case *requests.DNSRequest:
 		dnsExecuter = executer.NewDNSExecuter(&executer.DNSOptions{
+			TraceLog:      r.traceLog,
 			Debug:         r.options.Debug,
 			Template:      template,
 			DNSRequest:    value,
@@ -52,6 +53,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
+			TraceLog:         r.traceLog,
 			Debug:            r.options.Debug,
 			Template:         template,
 			BulkHTTPRequest:  value,
@@ -215,6 +217,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 			template := &workflows.Template{Progress: p}
 			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
+					TraceLog:      r.traceLog,
 					Debug:         r.options.Debug,
 					Writer:        r.output,
 					Template:      t,
@@ -233,6 +236,7 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
+					TraceLog:      r.traceLog,
 					Debug:         r.options.Debug,
 					Template:      t,
 					Writer:        r.output,
