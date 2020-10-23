@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -188,6 +189,11 @@ func New(options *Options) (*Runner, error) {
 		}
 	}
 
+	// Enable Polling
+	if options.BurpCollaboratorBiid != "" {
+		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
+	}
+
 	return runner, nil
 }
 
@@ -258,6 +264,8 @@ func (r *Runner) RunEnumeration() {
 
 	results := atomicboolean.New()
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
+	// Starts polling or ignore
+	collaborator.DefaultCollaborator.Poll()
 
 	if r.inputCount == 0 {
 		gologger.Errorf("Could not find any valid input URLs.")
