@@ -161,18 +161,17 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
-	// base request
-	request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
-	if err != nil {
-		result.Error = err
-		return result
-	}
-
 	// Workers that keeps enqueuing new requests
 	maxWorkers := e.bulkHTTPRequest.RaceNumberRequests
 	swg := sizedwaitgroup.New(maxWorkers)
 	for i := 0; i < e.bulkHTTPRequest.RaceNumberRequests; i++ {
 		swg.Add()
+		// base request
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		if err != nil {
+			result.Error = err
+			return result
+		}
 		go func(httpRequest *requests.HTTPRequest) {
 			defer swg.Done()
 
