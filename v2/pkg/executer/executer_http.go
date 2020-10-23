@@ -146,6 +146,48 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	return executer, nil
 }
 
+func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
+	result := &Result{
+		Matches:     make(map[string]interface{}),
+		Extractions: make(map[string]interface{}),
+	}
+
+	dynamicvalues := make(map[string]interface{})
+
+	// verify if the URL is already being processed
+	if e.bulkHTTPRequest.HasGenerator(reqURL) {
+		return result
+	}
+
+	e.bulkHTTPRequest.CreateGenerator(reqURL)
+
+	// Workers that keeps enqueuing new requests
+	maxWorkers := e.bulkHTTPRequest.RaceNumberRequests
+	swg := sizedwaitgroup.New(maxWorkers)
+	for i := 0; i < e.bulkHTTPRequest.RaceNumberRequests; i++ {
+		swg.Add()
+		// base request
+		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
+		if err != nil {
+			result.Error = err
+			return result
+		}
+		go func(httpRequest *requests.HTTPRequest) {
+			defer swg.Done()
+
+			// If the request was built correctly then execute it
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
+			if err != nil {
+				result.Error = errors.Wrap(err, "could not handle http request")
+			}
+		}(request)
+	}
+
+	swg.Wait()
+
+	return result
+}
+
 func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
@@ -196,7 +238,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 	return result
 }
 
-func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Result {
+func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
@@ -209,7 +251,6 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 		return result
 	}
 
-	remaining := e.bulkHTTPRequest.GetRequestCount()
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
 	// need to extract the target from the url
@@ -240,7 +281,6 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
 			result.Error = err
-			p.Drop(remaining)
 		} else {
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
@@ -254,7 +294,6 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 				if err != nil {
 					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
-					p.Drop(remaining)
 				} else {
 					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 				}
@@ -274,9 +313,15 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(p progress.IProgress, reqURL string) *Re
 func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
-		return e.ExecuteTurboHTTP(p, reqURL)
+		return e.ExecuteTurboHTTP(reqURL)
 	}
 
+	// verify if a basic race condition was requested
+	if e.bulkHTTPRequest.Race && e.bulkHTTPRequest.RaceNumberRequests > 0 {
+		return e.ExecuteRaceRequest(reqURL)
+	}
+
+	// verify if parallel elaboration was requested
 	if e.bulkHTTPRequest.Threads > 0 {
 		return e.ExecuteParallelHTTP(p, reqURL)
 	}
@@ -602,7 +647,7 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 	for _, customHeader := range e.customHeaders {
 		// This should be pre-computed somewhere and done only once
-		tokens := strings.SplitN(customHeader, ":", 2)
+		tokens := strings.SplitN(customHeader, ":", two)
 		// if it's an invalid header skip it
 		if len(tokens) < two {
 			continue
