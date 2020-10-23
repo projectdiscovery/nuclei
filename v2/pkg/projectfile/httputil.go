@@ -81,21 +81,22 @@ func newInternalResponse() *InternalResponse {
 	}
 }
 
-func toInternalRequest(req *http.Request, target string, body []byte) *InternalRequest {
-	intReq := newInternalRquest()
+// Unused
+// func toInternalRequest(req *http.Request, target string, body []byte) *InternalRequest {
+// 	intReq := newInternalRquest()
 
-	intReq.Target = target
-	intReq.HTTPMajor = req.ProtoMajor
-	intReq.HTTPMinor = req.ProtoMinor
-	for k, v := range req.Header {
-		intReq.Headers[k] = v
-	}
-	intReq.Headers = req.Header
-	intReq.Method = req.Method
-	intReq.Body = body
+// 	intReq.Target = target
+// 	intReq.HTTPMajor = req.ProtoMajor
+// 	intReq.HTTPMinor = req.ProtoMinor
+// 	for k, v := range req.Header {
+// 		intReq.Headers[k] = v
+// 	}
+// 	intReq.Headers = req.Header
+// 	intReq.Method = req.Method
+// 	intReq.Body = body
 
-	return intReq
-}
+// 	return intReq
+// }
 
 func toInternalResponse(resp *http.Response, body []byte) *InternalResponse {
 	intResp := newInternalResponse()
@@ -127,12 +128,13 @@ func fromInternalResponse(intResp *InternalResponse) *http.Response {
 	}
 }
 
-func fromInternalRequest(intReq *InternalRequest) *http.Request {
-	return &http.Request{
-		ProtoMinor:    intReq.HTTPMinor,
-		ProtoMajor:    intReq.HTTPMajor,
-		Header:        intReq.Headers,
-		ContentLength: int64(len(intReq.Body)),
-		Body:          ioutil.NopCloser(bytes.NewReader(intReq.Body)),
-	}
-}
+// Unused
+// func fromInternalRequest(intReq *InternalRequest) *http.Request {
+// 	return &http.Request{
+// 		ProtoMinor:    intReq.HTTPMinor,
+// 		ProtoMajor:    intReq.HTTPMajor,
+// 		Header:        intReq.Headers,
+// 		ContentLength: int64(len(intReq.Body)),
+// 		Body:          ioutil.NopCloser(bytes.NewReader(intReq.Body)),
+// 	}
+// }

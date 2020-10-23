@@ -498,7 +498,10 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	// if nuclei-project is enabled store the response if not previously done
 	if e.pf != nil && !fromcache {
-		e.pf.Set(dumpedRequest, resp, data)
+		err := e.pf.Set(dumpedRequest, resp, data)
+		if err != nil {
+			return errors.Wrap(err, "could not store in project file")
+		}
 	}
 
 	// Convert response body from []byte to string with zero copy
