@@ -177,7 +177,7 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 			defer swg.Done()
 
 			// If the request was built correctly then execute it
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result)
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 			}
