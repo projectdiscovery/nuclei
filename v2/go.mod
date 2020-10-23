@@ -3,6 +3,7 @@ module github.com/projectdiscovery/nuclei/v2
 go 1.14
 
 require (
+	github.com/projectdiscovery/collaborator v0.0.0
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/d5/tengo/v2 v2.6.2

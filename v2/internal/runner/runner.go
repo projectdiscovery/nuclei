@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -164,6 +165,11 @@ func New(options *Options) (*Runner, error) {
 	// Creates the progress tracking object
 	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
 
+	// Enable Polling
+	if options.BurpCollaboratorBiid != "" {
+		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
+	}
+
 	return runner, nil
 }
 
@@ -228,6 +234,9 @@ func (r *Runner) RunEnumeration() {
 			// it can't be know in advance which requests will be called
 		} // nolint:wsl // comment
 	}
+
+	// Starts polling or ignore
+	collaborator.DefaultCollaborator.Poll()
 
 	var (
 		wgtemplates sync.WaitGroup
