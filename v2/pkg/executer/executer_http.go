@@ -457,12 +457,11 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 				if resp != nil {
 					resp.Body.Close()
 				}
+				e.traceLog.Request(e.template.ID, reqURL, "http", err)
 				return err
 			}
-			e.traceLog.Request(e.template.ID, reqURL, "http", err)
-			return err
+			e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 		}
-		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 	}
 
 	duration := time.Since(timeStart)
