@@ -7,11 +7,11 @@ const banner = `
      ____  __  _______/ /__  (_)
     / __ \/ / / / ___/ / _ \/ /
    / / / / /_/ / /__/ /  __/ /
-  /_/ /_/\__,_/\___/_/\___/_/   v2.1.1
+  /_/ /_/\__,_/\___/_/\___/_/   v2.2.0
 `
 
 // Version is the current version of nuclei
-const Version = `2.1.1`
+const Version = `2.2.0`
 
 // showBanner is used to show the banner to the user
 func showBanner() {
