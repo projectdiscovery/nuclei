@@ -133,16 +133,58 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[stri
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
 	}
 
-	return r.makeHTTPRequestFromModel(ctx, data, values)
+	return r.makeHTTPRequestFromModel(ctx, baseURL, data, values)
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*HTTPRequest, error) {
-	replacer := newReplacer(values)
-	URL := replacer.Replace(data)
+func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, baseURL string, data string, values map[string]interface{}) (*HTTPRequest, error) {
+
+	if len(r.Payloads) > 0 {
+		r.gsfm.InitOrSkip(baseURL)
+		r.ReadOne(baseURL)
+
+		return r.handleHTTPModelWithPayloads(ctx, data, baseURL, values, r.gsfm.Value(baseURL))
+	}
+
+	// otherwise continue with normal flow
+	return r.handleHTTPModelWithPayloads(ctx, data, baseURL, values, nil)
+}
+
+func (r *BulkHTTPRequest) handleHTTPModelWithPayloads(ctx context.Context, data string, baseURL string, values map[string]interface{}, genValues map[string]interface{}) (*HTTPRequest, error) {
+	baseValues := generators.CopyMap(values)
+	finValues := generators.MergeMaps(baseValues, genValues)
+	
+	replacer := newReplacer(finValues)
+
+	// Replace the dynamic variables in the URL if any
+	baseURL = replacer.Replace(baseURL)
+
+	dynamicValues := make(map[string]interface{})
+	// find all potentials tokens between {{}}
+	var re = regexp.MustCompile(`(?m)\{\{.+}}`)
+	for _, match := range re.FindAllString(baseURL, -1) {
+		// check if the match contains a dynamic variable
+		expr := generators.TrimDelimiters(match)
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := compiled.Evaluate(finValues)
+		if err != nil {
+			return nil, err
+		}
+
+		dynamicValues[expr] = result
+	}
+
+	// replace dynamic values
+	dynamicReplacer := newReplacer(dynamicValues)
+	baseURL = dynamicReplacer.Replace(baseURL)
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.Method, URL, nil)
+	req, err := http.NewRequestWithContext(ctx, r.Method, baseURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +194,7 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data str
 		return nil, err
 	}
 
-	return &HTTPRequest{Request: request}, nil
+	return &HTTPRequest{Request: request, Meta: genValues}, nil
 }
 
 // InitGenerator initializes the generator
