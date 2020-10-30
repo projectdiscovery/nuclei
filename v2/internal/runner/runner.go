@@ -174,9 +174,9 @@ func New(options *Options) (*Runner, error) {
 
 	// Create the output file if asked
 	if options.Output != "" {
-		output, err := bufwriter.New(options.Output)
-		if err != nil {
-			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, err)
+		output, errBufWriter := bufwriter.New(options.Output)
+		if errBufWriter != nil {
+			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, errBufWriter)
 		}
 		runner.output = output
 	}
@@ -186,10 +186,10 @@ func New(options *Options) (*Runner, error) {
 
 	// create project file if requested or load existing one
 	if options.Project {
-		var err error
-		runner.pf, err = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
-		if err != nil {
-			return nil, err
+		var projectFileErr error
+		runner.pf, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		if projectFileErr != nil {
+			return nil, projectFileErr
 		}
 	}
 
