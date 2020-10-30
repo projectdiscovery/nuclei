@@ -109,10 +109,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	}
 
 	// Create the HTTP Client
-	client, err := makeHTTPClient(proxyURL, options)
-	if err != nil {
-		return nil, err
-	}
+	client := makeHTTPClient(proxyURL, options)
 	// nolint:bodyclose // false positive there is no body to close yet
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
@@ -581,7 +578,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
-func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Client, error) {
+func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
 	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
@@ -644,7 +641,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions), nil
+	}, retryablehttpOptions)
 }
 
 type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error
