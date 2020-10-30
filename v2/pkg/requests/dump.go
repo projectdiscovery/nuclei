@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http/httputil"
 	"strings"
@@ -10,6 +11,9 @@ import (
 
 func Dump(req *HTTPRequest, reqURL string) ([]byte, error) {
 	if req.Request != nil {
+		// Create a copy on the fly of the request body - ignore errors
+		bodyBytes, _ := req.Request.BodyBytes()
+		req.Request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		return httputil.DumpRequest(req.Request.Request, true)
 	}
 
