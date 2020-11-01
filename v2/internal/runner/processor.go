@@ -72,7 +72,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			Decolorizer:      r.decolorizer,
 			StopAtFirstMatch: r.options.StopAtFirstMatch,
 			PF:               r.pf,
-			Dialer:           &r.dialer,
+			Dialer:           r.dialer,
 		})
 	}
 
