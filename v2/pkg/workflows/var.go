@@ -28,7 +28,7 @@ type NucleiVar struct {
 type Template struct {
 	HTTPOptions *executer.HTTPOptions
 	DNSOptions  *executer.DNSOptions
-	Progress    progress.IProgress
+	Progress    *progress.Progress
 }
 
 // TypeName of the variable

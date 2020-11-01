@@ -30,7 +30,7 @@ type workflowTemplates struct {
 }
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
-func (r *Runner) processTemplateWithList(p progress.IProgress, template *templates.Template, request interface{}) bool {
+func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
 	var httpExecuter *executer.HTTPExecuter
 	var dnsExecuter *executer.DNSExecuter
 	var err error
@@ -72,7 +72,7 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 			Decolorizer:      r.decolorizer,
 			StopAtFirstMatch: r.options.StopAtFirstMatch,
 			PF:               r.pf,
-			Dialer:           &r.dialer,
+			Dialer:           r.dialer,
 		})
 	}
 
@@ -119,13 +119,12 @@ func (r *Runner) processTemplateWithList(p progress.IProgress, template *templat
 }
 
 // ProcessWorkflowWithList coming from stdin or list of targets
-func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflows.Workflow) bool {
+func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflows.Workflow) bool {
 	result := false
 
 	workflowTemplatesList, err := r.preloadWorkflowTemplates(p, workflow)
 	if err != nil {
 		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
-
 		return result
 	}
 
@@ -152,7 +151,6 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 				err := script.Add(name, variable)
 				if err != nil {
 					gologger.Errorf("Could not initialize script for workflow '%s': %s\n", workflow.ID, err)
-
 					continue
 				}
 				variables[name] = variable
@@ -177,13 +175,12 @@ func (r *Runner) processWorkflowWithList(p progress.IProgress, workflow *workflo
 	return result
 }
 
-func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workflows.Workflow) (*[]workflowTemplates, error) {
+func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workflows.Workflow) (*[]workflowTemplates, error) {
 	var jar *cookiejar.Jar
 
 	if workflow.CookieReuse {
 		var err error
 		jar, err = cookiejar.New(nil)
-
 		if err != nil {
 			return nil, err
 		}
@@ -308,7 +305,6 @@ func (r *Runner) preloadWorkflowTemplates(p progress.IProgress, workflow *workfl
 				}
 			}
 		}
-
 		wflTemplatesList = append(wflTemplatesList, workflowTemplates{Name: name, Templates: wtlst})
 	}
 
