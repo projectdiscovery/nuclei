@@ -89,7 +89,7 @@ type HTTPOptions struct {
 	ColoredOutput    bool
 	StopAtFirstMatch bool
 	PF               *projetctfile.ProjectFile
-	Dialer           *cache.DialerFunc
+	Dialer           cache.DialerFunc
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -598,7 +598,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
 	transport := &http.Transport{
-		DialContext:         *options.Dialer,
+		DialContext:         options.Dialer,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
