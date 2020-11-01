@@ -194,7 +194,7 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 	return result
 }
 
-func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
+func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
@@ -238,7 +238,6 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 		}
 		e.bulkHTTPRequest.Increment(reqURL)
 	}
-
 	swg.Wait()
 
 	return result
@@ -309,14 +308,12 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 
 		e.bulkHTTPRequest.Increment(reqURL)
 	}
-
 	swg.Wait()
-
 	return result
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result {
+func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(reqURL)
@@ -369,6 +366,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 				e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 			}
 		}
+		p.Update()
 
 		// Check if has to stop processing at first valid result
 		if e.stopAtFirstMatch && result.GotResults {
@@ -378,12 +376,9 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 
 		// move always forward with requests
 		e.bulkHTTPRequest.Increment(reqURL)
-		p.Update()
 		remaining--
 	}
-
 	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
-
 	return result
 }
 
