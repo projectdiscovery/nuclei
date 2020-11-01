@@ -26,6 +26,8 @@ github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db h1:woRePGFeVFfLKN/pOkfl+p/TAqKOfFu+7KPlMVpok/w=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
+github.com/golang/snappy v0.0.2 h1:aeE13tS0IiQgFjYdoL8qN3K1N2bXXtI6Vi51/y7BpMw=
+github.com/golang/snappy v0.0.2/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/google/go-github/v32 v32.1.0 h1:GWkQOdXqviCPx7Q7Fj+KyPoGm4SwHRh8rheoPhd27II=
 github.com/google/go-github/v32 v32.1.0/go.mod h1:rIEpZD9CTDQwDK9GDrtMTycQNA4JU3qBsCizh3q2WCI=
 github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASuANWTrk=
@@ -47,6 +49,8 @@ github.com/microcosm-cc/bluemonday v1.0.2/go.mod h1:iVP4YcDBq+n/5fb23BhYFvIMq/le
 github.com/miekg/dns v1.1.29/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/dns v1.1.34 h1:SgTzfkN+oLoIHF1bgUP+C71mzuDl3AhLApHzCCIAMWM=
 github.com/miekg/dns v1.1.34/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
+github.com/miekg/dns v1.1.35 h1:oTfOaDH+mZkdcgdIjH6yBajRGtIwcwcaR+rt23ZSrJs=
+github.com/miekg/dns v1.1.35/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 h1:ZqeYNhU3OHLH3mGKHDcjJRFFRrJa6eAM5H+CtDdOsPc=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
@@ -66,15 +70,21 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d h1:iHb2v6VX1Fjl9IX8UaJFLKLej+KyJJ59W1pWIRCug4Q=
 github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d/go.mod h1:M7Csn+hQVDOLCEEFkj6dazmtgG1tIqJpbuPHlRlpYGQ=
+github.com/projectdiscovery/collaborator v0.0.0-20201023192422-4a25cca69447 h1:1+NNwnPD0Rm7r4NJaX6IQwi+DiTJUc3JC6k0Zuc0/Qc=
+github.com/projectdiscovery/collaborator v0.0.0-20201023192422-4a25cca69447/go.mod h1:M7Csn+hQVDOLCEEFkj6dazmtgG1tIqJpbuPHlRlpYGQ=
 github.com/projectdiscovery/gologger v1.0.0/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/gologger v1.0.1 h1:FzoYQZnxz9DCvSi/eg5A6+ET4CQ0CDUs27l6Exr8zMQ=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/hmap v0.0.0-20201018163424-9cdfe6188601 h1:08fefqfMG8xmhexCYWC2R9XGIkGoSgVEHhBBKkdY24k=
 github.com/projectdiscovery/hmap v0.0.0-20201018163424-9cdfe6188601/go.mod h1:VDEfgzkKQdq7iGTKz8Ooul0NuYHQ8qiDs6r8bPD1Sb0=
+github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb h1:y+O2ZCGICrGcSevxu2nydZtjMiwDHPf2cMgwi8PCFgQ=
+github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb/go.mod h1:VDEfgzkKQdq7iGTKz8Ooul0NuYHQ8qiDs6r8bPD1Sb0=
 github.com/projectdiscovery/httpx v1.0.2 h1:g7EeRAPckZgWcHkcAH2Qzv9MkRACVRLF+T2LJcM7SCk=
 github.com/projectdiscovery/httpx v1.0.2/go.mod h1:OwvMc5ogx69xukKXY6kIrDP6dgOYr4VtEWyr6o573Xs=
 github.com/projectdiscovery/rawhttp v0.0.4 h1:O5IreNGk83d4xTD9e6SpkKbX0sHTs8K1Q33Bz4eYl2E=
 github.com/projectdiscovery/rawhttp v0.0.4/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926 h1:aAh1EqrurioC8OeOJAzZG2gYN7MEmMNc2UWLJnQNV78=
+github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/retryabledns v1.0.4 h1:0Va7qHlWQsIXjRLISTjzfN3tnJmHYDudY05Nu3IJd60=
 github.com/projectdiscovery/retryabledns v1.0.4/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.1 h1:V7wUvsZNq1Rcz7+IlcyoyQlNwshuwptuBVYWw9lx8RE=
@@ -112,6 +122,8 @@ golang.org/x/net v0.0.0-20190923162816-aa69164e4478/go.mod h1:z5CRVTTTmAJ677TzLL
 golang.org/x/net v0.0.0-20200602114024-627f9648deb9/go.mod h1:qpuaurCH72eLCgpAm/N6yyVIVM9cpaDIP3A8BGJEC5A=
 golang.org/x/net v0.0.0-20201022231255-08b38378de70 h1:Z6x4N9mAi4oF0TbHweCsH618MO6OI6UFgV0FP5n0wBY=
 golang.org/x/net v0.0.0-20201022231255-08b38378de70/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
+golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d h1:dOiJ2n2cMwGLce/74I/QHMbnpk5GfY7InR8rczoMqRM=
+golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58 h1:8gQV6CLnAEikrhgkHFbMAEhagSSnXWGV915qUMm9mrU=
@@ -125,6 +137,8 @@ golang.org/x/sys v0.0.0-20200810151505-1b9f1253b3ed/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20201022201747-fb209a7c41cd h1:WgqgiQvkiZWz7XLhphjt2GI2GcGCTIZs9jqXMWmH+oc=
 golang.org/x/sys v0.0.0-20201022201747-fb209a7c41cd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20201029080932-201ba4db2418 h1:HlFl4V6pEMziuLXyRkm5BIYq1y1GAbb02pRlWvI54OM=
+golang.org/x/sys v0.0.0-20201029080932-201ba4db2418/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3 h1:cokOdA+Jmi5PJGXLlLllQSgYigAEfHXJAERHVMaCc2k=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
