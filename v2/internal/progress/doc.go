@@ -1,2 +1,3 @@
-// Tracks enumeration progress information and implements visible tracking with one or more progress bars.
+// Package progress implements progress display mechanism with very
+// simple command line statistics printing on runtime.
 package progress

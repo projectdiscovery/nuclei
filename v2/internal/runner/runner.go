@@ -44,7 +44,7 @@ type Runner struct {
 	pf *projectfile.ProjectFile
 
 	// progress tracking
-	progress progress.IProgress
+	progress *progress.Progress
 
 	// output coloring
 	colorizer   colorizer.NucleiColorizer
@@ -182,7 +182,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
+	runner.progress = progress.NewProgress(options.EnableProgressBar)
 
 	// create project file if requested or load existing one
 	if options.Project {
@@ -282,7 +282,7 @@ func (r *Runner) RunEnumeration() {
 	} else if totalRequests > 0 || hasWorkflows {
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p := r.progress
-		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+		p.Init(r.inputCount, templateCount, totalRequests)
 
 		for _, t := range availableTemplates {
 			wgtemplates.Add()
@@ -303,7 +303,7 @@ func (r *Runner) RunEnumeration() {
 		}
 
 		wgtemplates.Wait()
-		p.Wait()
+		p.Stop()
 	}
 
 	if !results.Get() {

@@ -2,231 +2,118 @@ package progress
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/gologger"
-	"github.com/vbauerster/mpb/v5"
-	"github.com/vbauerster/mpb/v5/decor"
 )
 
-const (
-	// global output refresh rate
-	refreshHz   = 8
-	settleMilis = 250
-	mili        = 1000.
-)
-
-// IProgress encapsulates progress tracking.
-type IProgress interface {
-	InitProgressbar(hostCount int64, templateCount int, requestCount int64)
-	AddToTotal(delta int64)
-	Update()
-	Drop(count int64)
-	Wait()
-}
-
+// Progress is a progress instance for showing program stats
 type Progress struct {
-	progress     *mpb.Progress
-	bar          *mpb.Bar
-	total        int64
-	initialTotal int64
-
-	totalMutex *sync.Mutex
-	colorizer  *aurora.Aurora
-
-	renderChan         chan time.Time
-	captureData        *captureData
-	stdCaptureMutex    *sync.Mutex
-	stdOut             *strings.Builder
-	stdErr             *strings.Builder
-	stdStopRenderEvent chan bool
-	stdRenderEvent     *time.Ticker
-	stdRenderWaitGroup *sync.WaitGroup
+	stats        clistats.StatisticsClient
+	tickDuration time.Duration
 }
 
 // NewProgress creates and returns a new progress tracking object.
-func NewProgress(colorizer aurora.Aurora, active bool) IProgress {
-	if !active {
-		return &NoOpProgress{}
+func NewProgress(active bool) *Progress {
+	var tickDuration time.Duration
+	if active {
+		tickDuration = 1 * time.Second
+	} else {
+		tickDuration = -1
 	}
 
-	refreshMillis := int64(1. / float64(refreshHz) * mili)
-
-	renderChan := make(chan time.Time)
-	p := &Progress{
-		progress: mpb.New(
-			mpb.WithOutput(os.Stderr),
-			mpb.PopCompletedMode(),
-			mpb.WithManualRefresh(renderChan),
-		),
-		totalMutex: &sync.Mutex{},
-		colorizer:  &colorizer,
-
-		renderChan:         renderChan,
-		stdCaptureMutex:    &sync.Mutex{},
-		stdOut:             &strings.Builder{},
-		stdErr:             &strings.Builder{},
-		stdStopRenderEvent: make(chan bool),
-		stdRenderEvent:     time.NewTicker(time.Millisecond * time.Duration(refreshMillis)),
-		stdRenderWaitGroup: &sync.WaitGroup{},
+	progress := &Progress{
+		tickDuration: tickDuration,
+		stats:        clistats.New(),
 	}
-
-	return p
+	return progress
 }
 
-// Creates and returns a progress bar that tracks all the progress.
-func (p *Progress) InitProgressbar(hostCount int64, rulesCount int, requestCount int64) {
-	if p.bar != nil {
-		panic("A global progressbar is already present.")
-	}
+// Init initializes the progress display mechanism by setting counters, etc.
+func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
+	p.stats.AddStatic("templates", rulesCount)
+	p.stats.AddStatic("hosts", hostCount)
+	p.stats.AddStatic("startedAt", time.Now())
+	p.stats.AddCounter("requests", uint64(0))
+	p.stats.AddCounter("errors", uint64(0))
+	p.stats.AddCounter("total", uint64(requestCount))
 
-	color := *p.colorizer
-
-	barName := color.Sprintf(
-		color.Cyan("%d %s, %d %s"),
-		color.Bold(color.Cyan(rulesCount)),
-		pluralize(int64(rulesCount), "rule", "rules"),
-		color.Bold(color.Cyan(hostCount)),
-		pluralize(hostCount, "host", "hosts"))
-
-	p.bar = p.setupProgressbar("["+barName+"]", requestCount, 0)
-
-	// creates r/w pipes and divert stdout/stderr writers to them and start capturing their output
-	p.captureData = startCapture(p.stdCaptureMutex, p.stdOut, p.stdErr)
-
-	// starts rendering both the progressbar and the captured stdout/stderr data
-	p.renderStdData()
+	p.stats.Start(makePrintCallback(), p.tickDuration)
 }
 
-// Update total progress request count
+// AddToTotal adds a value to the total request count
 func (p *Progress) AddToTotal(delta int64) {
-	p.totalMutex.Lock()
-	p.total += delta
-	p.bar.SetTotal(p.total, false)
-	p.totalMutex.Unlock()
+	p.stats.IncrementCounter("total", int(delta))
 }
 
 // Update progress tracking information and increments the request counter by one unit.
 func (p *Progress) Update() {
-	p.bar.Increment()
+	p.stats.IncrementCounter("requests", 1)
 }
 
-// Drops the specified number of requests from the progress bar total.
+// Drop drops the specified number of requests from the progress bar total.
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
 func (p *Progress) Drop(count int64) {
 	// mimic dropping by incrementing the completed requests
-	p.bar.IncrInt64(count)
+	p.stats.IncrementCounter("errors", int(count))
+	//p.stats.IncrementCounter("requests", int(count))
 }
 
-// Ensures that a progress bar's total count is up-to-date if during an enumeration there were uncompleted requests and
-// wait for all the progress bars to finish.
-func (p *Progress) Wait() {
-	p.totalMutex.Lock()
-	if p.total == 0 {
-		p.bar.Abort(true)
-	} else if p.initialTotal != p.total {
-		p.bar.SetTotal(p.total, true)
-	}
-	p.totalMutex.Unlock()
-	p.progress.Wait()
+func makePrintCallback() func(stats clistats.StatisticsClient) {
+	builder := &strings.Builder{}
+	builder.Grow(128)
 
-	// close the writers and wait for the EOF condition
-	stopCapture(p.captureData)
+	return func(stats clistats.StatisticsClient) {
+		builder.WriteRune('[')
+		startedAt, _ := stats.GetStatic("startedAt")
+		duration := time.Since(startedAt.(time.Time))
+		builder.WriteString(fmtDuration(duration))
+		builder.WriteRune(']')
 
-	// stop the renderer and wait for it
-	p.stdStopRenderEvent <- true
-	p.stdRenderWaitGroup.Wait()
+		templates, _ := stats.GetStatic("templates")
+		builder.WriteString(" templates: ")
+		builder.WriteString(clistats.String(templates))
+		hosts, _ := stats.GetStatic("hosts")
+		builder.WriteString(" hosts: ")
+		builder.WriteString(clistats.String(hosts))
 
-	// drain any stdout/stderr data
-	p.drainStringBuilderTo(p.stdOut, os.Stdout)
-	p.drainStringBuilderTo(p.stdErr, os.Stderr)
-}
+		requests, _ := stats.GetCounter("requests")
+		total, _ := stats.GetCounter("total")
+		builder.WriteString(" requests: ")
+		builder.WriteString(clistats.String(requests))
+		builder.WriteRune('/')
+		builder.WriteString(clistats.String(total))
+		builder.WriteRune(' ')
+		builder.WriteRune('(')
+		builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
+		builder.WriteRune('%')
+		builder.WriteRune(')')
+		builder.WriteRune(' ')
+		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+		builder.WriteString("rps")
+		errors, _ := stats.GetCounter("errors")
+		builder.WriteString(" errors: ")
+		builder.WriteString(clistats.String(errors))
 
-func (p *Progress) renderStdData() {
-	// trigger a render event
-	p.renderChan <- time.Now()
-
-	gologger.Infof("Waiting for your terminal to settle..")
-	time.Sleep(time.Millisecond * settleMilis)
-
-	p.stdRenderWaitGroup.Add(1)
-
-	go func(waitGroup *sync.WaitGroup) {
-		for {
-			select {
-			case <-p.stdStopRenderEvent:
-				waitGroup.Done()
-				return
-			case <-p.stdRenderEvent.C:
-				p.stdCaptureMutex.Lock()
-				{
-					hasStdout := p.stdOut.Len() > 0
-					hasStderr := p.stdErr.Len() > 0
-					hasOutput := hasStdout || hasStderr
-
-					if hasOutput {
-						stdout := p.captureData.backupStdout
-						stderr := p.captureData.backupStderr
-
-						// go back one line and clean it all
-						fmt.Fprint(stderr, "\u001b[1A\u001b[2K")
-						p.drainStringBuilderTo(p.stdOut, stdout)
-						p.drainStringBuilderTo(p.stdErr, stderr)
-
-						// make space for the progressbar to render itself
-						fmt.Fprintln(stderr, "")
-					}
-
-					// always trigger a render event to try ensure it's visible even with fast output
-					p.renderChan <- time.Now()
-				}
-				p.stdCaptureMutex.Unlock()
-			}
-		}
-	}(p.stdRenderWaitGroup)
-}
-
-// Creates and returns a progress bar.
-func (p *Progress) setupProgressbar(name string, total int64, priority int) *mpb.Bar {
-	color := *p.colorizer
-
-	p.total = total
-	p.initialTotal = total
-
-	return p.progress.AddBar(
-		total,
-		mpb.BarPriority(priority),
-		mpb.BarNoPop(),
-		mpb.BarRemoveOnComplete(),
-		mpb.PrependDecorators(
-			decor.Name(name, decor.WCSyncSpaceR),
-			decor.CountersNoUnit(color.BrightBlue(" %d/%d").String(), decor.WCSyncSpace),
-			decor.NewPercentage(color.Bold("%d").String(), decor.WCSyncSpace),
-		),
-		mpb.AppendDecorators(
-			decor.AverageSpeed(0, color.BrightYellow("%.2f").Bold().String()+color.BrightYellow("r/s").String(), decor.WCSyncSpace),
-			decor.Elapsed(decor.ET_STYLE_GO, decor.WCSyncSpace),
-			decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncSpace),
-		),
-	)
-}
-
-func pluralize(count int64, singular, plural string) string {
-	if count > 1 {
-		return plural
-	}
-
-	return singular
-}
-
-func (p *Progress) drainStringBuilderTo(builder *strings.Builder, writer io.Writer) {
-	if builder.Len() > 0 {
-		fmt.Fprint(writer, builder.String())
+		gologger.Printf("%s\n", builder.String())
 		builder.Reset()
 	}
+}
+
+// fmtDuration formats the duration for the time elapsed
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+	return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+}
+
+// Stop stops the progress bar execution
+func (p *Progress) Stop() {
+	p.stats.Stop()
 }
