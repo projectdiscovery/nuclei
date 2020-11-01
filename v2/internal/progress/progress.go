@@ -40,7 +40,7 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddCounter("errors", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 
-	p.stats.Start(makePrintCallback(), p.tickDuration)
+	_ = p.stats.Start(makePrintCallback(), p.tickDuration)
 }
 
 // AddToTotal adds a value to the total request count
@@ -58,12 +58,13 @@ func (p *Progress) Update() {
 func (p *Progress) Drop(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("errors", int(count))
-	//p.stats.IncrementCounter("requests", int(count))
 }
+
+const bufferSize = 128
 
 func makePrintCallback() func(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
-	builder.Grow(128)
+	builder.Grow(bufferSize)
 
 	return func(stats clistats.StatisticsClient) {
 		builder.WriteRune('[')
@@ -73,31 +74,37 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		builder.WriteRune(']')
 
 		templates, _ := stats.GetStatic("templates")
-		builder.WriteString(" templates: ")
+		builder.WriteString(" | Templates: ")
 		builder.WriteString(clistats.String(templates))
 		hosts, _ := stats.GetStatic("hosts")
-		builder.WriteString(" hosts: ")
+		builder.WriteString(" | Hosts: ")
 		builder.WriteString(clistats.String(hosts))
 
 		requests, _ := stats.GetCounter("requests")
 		total, _ := stats.GetCounter("total")
-		builder.WriteString(" requests: ")
+
+		builder.WriteString(" | ")
+		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+		builder.WriteRune(' ')
+		builder.WriteString("RPS")
+
+		errors, _ := stats.GetCounter("errors")
+		builder.WriteString(" | Errors: ")
+		builder.WriteString(clistats.String(errors))
+
+		builder.WriteString(" | Requests: ")
 		builder.WriteString(clistats.String(requests))
 		builder.WriteRune('/')
 		builder.WriteString(clistats.String(total))
 		builder.WriteRune(' ')
 		builder.WriteRune('(')
+		//nolint:gomnd // this is not a magic number
 		builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
 		builder.WriteRune('%')
 		builder.WriteRune(')')
-		builder.WriteRune(' ')
-		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
-		builder.WriteString("rps")
-		errors, _ := stats.GetCounter("errors")
-		builder.WriteString(" errors: ")
-		builder.WriteString(clistats.String(errors))
+		builder.WriteRune('\n')
 
-		gologger.Printf("%s\n", builder.String())
+		gologger.Printf("%s", builder.String())
 		builder.Reset()
 	}
 }
@@ -115,5 +122,5 @@ func fmtDuration(d time.Duration) string {
 
 // Stop stops the progress bar execution
 func (p *Progress) Stop() {
-	p.stats.Stop()
+	_ = p.stats.Stop()
 }
