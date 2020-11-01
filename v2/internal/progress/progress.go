@@ -83,10 +83,8 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		requests, _ := stats.GetCounter("requests")
 		total, _ := stats.GetCounter("total")
 
-		builder.WriteString(" | ")
+		builder.WriteString(" | RPS: ")
 		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
-		builder.WriteRune(' ')
-		builder.WriteString("RPS")
 
 		errors, _ := stats.GetCounter("errors")
 		builder.WriteString(" | Errors: ")
