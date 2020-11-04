@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"gopkg.in/yaml.v2"
@@ -29,12 +30,12 @@ func Parse(file string) (*Template, error) {
 	template.path = file
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.BulkRequestsHTTP)+len(template.RequestsDNS) <= 0 {
+	if len(template.RequestsHTTP)+len(template.RequestsDNS)+len(template.RequestsNetwork) <= 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the matchers and the extractors for http requests
-	for _, request := range template.BulkRequestsHTTP {
+	for _, request := range template.RequestsHTTP {
 		// Get the condition between the matchers
 		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
 		if !ok {
@@ -88,16 +89,13 @@ func Parse(file string) (*Template, error) {
 		}
 
 		for _, matcher := range request.Matchers {
-			matchErr := matcher.CompileMatchers()
-			if matchErr != nil {
-				return nil, matchErr
+			if matchErr := matcher.CompileMatchers(); matchErr != nil {
+				return nil, errors.Wrap(matchErr, "could not compile extractor")
 			}
 		}
 
 		for _, extractor := range request.Extractors {
-			extractErr := extractor.CompileExtractors()
-			if extractErr != nil {
-				return nil, extractErr
+			if extractErr := extractor.CompileExtractors(); extractErr != nil {
 			}
 		}
 
@@ -115,16 +113,38 @@ func Parse(file string) (*Template, error) {
 		}
 
 		for _, matcher := range request.Matchers {
-			err = matcher.CompileMatchers()
-			if err != nil {
-				return nil, err
+			if matchErr := matcher.CompileMatchers(); matchErr != nil {
+				return nil, errors.Wrap(matchErr, "could not compile matchers")
 			}
 		}
 
 		for _, extractor := range request.Extractors {
-			err := extractor.CompileExtractors()
-			if err != nil {
-				return nil, err
+			if extractErr := extractor.CompileExtractors(); extractErr != nil {
+				return nil, errors.Wrap(extractErr, "could not compile extractor")
+			}
+		}
+	}
+
+	// Compile the matchers and the extractors for dns requests
+	for _, request := range template.RequestsNetwork {
+		request.GeneratePort()
+		// Get the condition between the matchers
+		condition, ok := matchers.ConditionTypes[request.MatchersCondition]
+		if !ok {
+			request.SetMatchersCondition(matchers.ORCondition)
+		} else {
+			request.SetMatchersCondition(condition)
+		}
+
+		for _, matcher := range request.Matchers {
+			if matchErr := matcher.CompileMatchers(); matchErr != nil {
+				return nil, errors.Wrap(matchErr, "could not compile matchers")
+			}
+		}
+
+		for _, extractor := range request.Extractors {
+			if extractErr := extractor.CompileExtractors(); extractErr != nil {
+				return nil, errors.Wrap(extractErr, "could not compile extractor")
 			}
 		}
 	}

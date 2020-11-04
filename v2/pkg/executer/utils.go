@@ -4,10 +4,23 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"unsafe"
 )
 
 type jsonOutput map[string]interface{}
+
+// Result contains the result for a single found match.
+type Result struct {
+	sync.Mutex
+	GotResults  bool
+	Done        bool
+	Meta        map[string]interface{}
+	Matches     map[string]interface{}
+	Extractions map[string]interface{}
+	historyData map[string]interface{}
+	Error       error
+}
 
 // unsafeToString converts byte slice to string with zero allocations
 func unsafeToString(bs []byte) string {

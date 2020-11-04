@@ -27,14 +27,11 @@ func (e *Extractor) Extract(resp *http.Response, body, headers string) map[strin
 		}
 
 		matches := e.extractKVal(resp)
-
 		if len(matches) > 0 {
 			return matches
 		}
-
 		return e.extractCookieKVal(resp)
 	}
-
 	return nil
 }
 
@@ -44,9 +41,16 @@ func (e *Extractor) ExtractDNS(msg *dns.Msg) map[string]struct{} {
 	switch e.extractorType {
 	case RegexExtractor:
 		return e.extractRegex(msg.String())
-	case KValExtractor:
 	}
+	return nil
+}
 
+// ExtractNetwork extracts response from network message using a regex
+func (e *Extractor) ExtractNetwork(reply string) map[string]struct{} {
+	switch e.extractorType {
+	case RegexExtractor:
+		return e.extractRegex(reply)
+	}
 	return nil
 }
 
@@ -75,7 +79,6 @@ func (e *Extractor) extractKVal(r *http.Response) map[string]struct{} {
 			results[v] = struct{}{}
 		}
 	}
-
 	return results
 }
 
@@ -90,6 +93,5 @@ func (e *Extractor) extractCookieKVal(r *http.Response) map[string]struct{} {
 			}
 		}
 	}
-
 	return results
 }

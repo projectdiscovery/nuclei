@@ -33,6 +33,7 @@ type workflowTemplates struct {
 func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
 	var httpExecuter *executer.HTTPExecuter
 	var dnsExecuter *executer.DNSExecuter
+	var networkExecuter *executer.NetworkExecuter
 	var err error
 
 	// Create an executer based on the request type.
@@ -50,6 +51,20 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			ColoredOutput: !r.options.NoColor,
 			Colorizer:     r.colorizer,
 			Decolorizer:   r.decolorizer,
+		})
+	case *requests.NetworkRequest:
+		networkExecuter = executer.NewNetworkExecuter(&executer.NetworkOptions{
+			TraceLog:       r.traceLog,
+			Debug:          r.options.Debug,
+			Template:       template,
+			NetworkRequest: value,
+			Writer:         r.output,
+			JSON:           r.options.JSON,
+			JSONRequests:   r.options.JSONRequests,
+			NoMeta:         r.options.NoMeta,
+			ColoredOutput:  !r.options.NoColor,
+			Colorizer:      r.colorizer,
+			Decolorizer:    r.decolorizer,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -75,18 +90,14 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			Dialer:           r.dialer,
 		})
 	}
-
 	if err != nil {
 		p.Drop(request.(*requests.BulkHTTPRequest).GetRequestCount())
 		gologger.Warningf("Could not create http client: %s\n", err)
-
 		return false
 	}
 
 	var globalresult atomicboolean.AtomBool
-
 	wg := sizedwaitgroup.New(r.options.BulkSize)
-
 	scanner := bufio.NewScanner(strings.NewReader(r.input))
 	for scanner.Scan() {
 		URL := scanner.Text()
@@ -95,14 +106,16 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			defer wg.Done()
 
 			var result *executer.Result
-
 			if httpExecuter != nil {
 				result = httpExecuter.ExecuteHTTP(p, URL)
 				globalresult.Or(result.GotResults)
 			}
-
 			if dnsExecuter != nil {
 				result = dnsExecuter.ExecuteDNS(p, URL)
+				globalresult.Or(result.GotResults)
+			}
+			if networkExecuter != nil {
+				result = networkExecuter.ExecuteNetwork(p, URL)
 				globalresult.Or(result.GotResults)
 			}
 
@@ -213,7 +226,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 			}
 
 			template := &workflows.Template{Progress: p}
-			if len(t.BulkRequestsHTTP) > 0 {
+			if len(t.RequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
 					TraceLog:      r.traceLog,
 					Debug:         r.options.Debug,
@@ -244,9 +257,21 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 					Colorizer:     r.colorizer,
 					Decolorizer:   r.decolorizer,
 				}
+			} else if len(t.RequestsNetwork) > 0 {
+				template.DNSOptions = &executer.DNSOptions{
+					TraceLog:      r.traceLog,
+					Debug:         r.options.Debug,
+					Template:      t,
+					Writer:        r.output,
+					JSON:          r.options.JSON,
+					JSONRequests:  r.options.JSONRequests,
+					ColoredOutput: !r.options.NoColor,
+					Colorizer:     r.colorizer,
+					Decolorizer:   r.decolorizer,
+				}
 			}
 
-			if template.DNSOptions != nil || template.HTTPOptions != nil {
+			if template.DNSOptions != nil || template.HTTPOptions != nil || template.NetworkOptions != nil {
 				wtlst = append(wtlst, template)
 			}
 		} else {
@@ -281,7 +306,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 					return nil, err
 				}
 				template := &workflows.Template{Progress: p}
-				if len(t.BulkRequestsHTTP) > 0 {
+				if len(t.RequestsHTTP) > 0 {
 					template.HTTPOptions = &executer.HTTPOptions{
 						Debug:         r.options.Debug,
 						Writer:        r.output,
@@ -299,8 +324,14 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 						Template: t,
 						Writer:   r.output,
 					}
+				} else if len(t.RequestsNetwork) > 0 {
+					template.NetworkOptions = &executer.NetworkOptions{
+						Debug:    r.options.Debug,
+						Template: t,
+						Writer:   r.output,
+					}
 				}
-				if template.DNSOptions != nil || template.HTTPOptions != nil {
+				if template.DNSOptions != nil || template.HTTPOptions != nil || template.NetworkOptions != nil {
 					wtlst = append(wtlst, template)
 				}
 			}

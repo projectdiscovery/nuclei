@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -683,15 +682,4 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 			r.Request.Header[headerName] = []string{headerValue}
 		}
 	}
-}
-
-type Result struct {
-	sync.Mutex
-	GotResults  bool
-	Done        bool
-	Meta        map[string]interface{}
-	Matches     map[string]interface{}
-	Extractions map[string]interface{}
-	historyData map[string]interface{}
-	Error       error
 }

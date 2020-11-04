@@ -26,9 +26,10 @@ type NucleiVar struct {
 
 // Template contains HTTPOptions and DNSOptions for a single template
 type Template struct {
-	HTTPOptions *executer.HTTPOptions
-	DNSOptions  *executer.DNSOptions
-	Progress    *progress.Progress
+	HTTPOptions    *executer.HTTPOptions
+	DNSOptions     *executer.DNSOptions
+	NetworkOptions *executer.NetworkOptions
+	Progress       *progress.Progress
 }
 
 // TypeName of the variable
@@ -65,7 +66,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 		if template.HTTPOptions != nil {
 			p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
 
-			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
+			for _, request := range template.HTTPOptions.Template.RequestsHTTP {
 				// apply externally supplied payloads if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
 				// apply externally supplied payloads if any
@@ -107,12 +108,28 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 				template.DNSOptions.DNSRequest = request
 				dnsExecuter := executer.NewDNSExecuter(template.DNSOptions)
 				result := dnsExecuter.ExecuteDNS(p, n.URL)
-
 				if result.Error != nil {
 					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
 					continue
 				}
+				if result.GotResults {
+					gotResult.Or(result.GotResults)
+					n.addResults(result)
+				}
+			}
+		}
 
+		if template.NetworkOptions != nil {
+			p.AddToTotal(template.NetworkOptions.Template.GetDNSRequestCount())
+
+			for _, request := range template.NetworkOptions.Template.RequestsNetwork {
+				template.NetworkOptions.NetworkRequest = request
+				networkExecuter := executer.NewNetworkExecuter(template.NetworkOptions)
+				result := networkExecuter.ExecuteNetwork(p, n.URL)
+				if result.Error != nil {
+					gologger.Warningf("Could not compile request for template '%s': %s\n", template.HTTPOptions.Template.ID, result.Error)
+					continue
+				}
 				if result.GotResults {
 					gotResult.Or(result.GotResults)
 					n.addResults(result)
@@ -120,7 +137,6 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 			}
 		}
 	}
-
 	if gotResult.Get() {
 		return tengo.TrueValue, nil
 	}

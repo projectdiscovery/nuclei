@@ -265,7 +265,7 @@ func (r *Runner) RunEnumeration() {
 	for _, t := range availableTemplates {
 		switch av := t.(type) {
 		case *templates.Template:
-			totalRequests += (av.GetHTTPRequestCount() + av.GetDNSRequestCount()) * r.inputCount
+			totalRequests += (av.GetHTTPRequestCount() + av.GetDNSRequestCount() + av.GetNetworkRequestCount()) * r.inputCount
 		case *workflows.Workflow:
 			// workflows will dynamically adjust the totals while running, as
 			// it can't be know in advance which requests will be called
@@ -293,7 +293,10 @@ func (r *Runner) RunEnumeration() {
 					for _, request := range tt.RequestsDNS {
 						results.Or(r.processTemplateWithList(p, tt, request))
 					}
-					for _, request := range tt.BulkRequestsHTTP {
+					for _, request := range tt.RequestsNetwork {
+						results.Or(r.processTemplateWithList(p, tt, request))
+					}
+					for _, request := range tt.RequestsHTTP {
 						results.Or(r.processTemplateWithList(p, tt, request))
 					}
 				case *workflows.Workflow:

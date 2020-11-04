@@ -75,6 +75,29 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	return false
 }
 
+// MatcNetwork matches a network response against a given matcher
+func (m *Matcher) MatchNetwork(reply string) bool {
+	switch m.matcherType {
+	// [WIP] add dns status code matcher
+	case SizeMatcher:
+		return m.matchSizeCode(len(reply))
+	case WordsMatcher:
+		// Match for word check
+		return m.matchWords(reply)
+	case RegexMatcher:
+		// Match regex check
+		return m.matchRegex(reply)
+	case BinaryMatcher:
+		// Match binary characters check
+		return m.matchBinary(reply)
+	case DSLMatcher:
+		// Match complex query
+		return m.matchDSL(map[string]interface{}{"reply": reply})
+	}
+
+	return false
+}
+
 // matchStatusCode matches a status code check against an HTTP Response
 func (m *Matcher) matchStatusCode(statusCode int) bool {
 	// Iterate over all the status codes accepted as valid
