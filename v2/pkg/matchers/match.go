@@ -57,42 +57,42 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	switch m.matcherType {
 	// [WIP] add dns status code matcher
 	case SizeMatcher:
-		return m.matchSizeCode(msg.Len())
+		return m.isNegative(m.matchSizeCode(msg.Len()))
 	case WordsMatcher:
 		// Match for word check
-		return m.matchWords(msg.String())
+		return m.isNegative(m.matchWords(msg.String()))
 	case RegexMatcher:
 		// Match regex check
-		return m.matchRegex(msg.String())
+		return m.isNegative(m.matchRegex(msg.String()))
 	case BinaryMatcher:
 		// Match binary characters check
-		return m.matchBinary(msg.String())
+		return m.isNegative(m.matchBinary(msg.String()))
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(DNSToMap(msg, ""))
+		return m.isNegative(m.matchDSL(DNSToMap(msg, "")))
 	}
 
 	return false
 }
 
-// MatcNetwork matches a network response against a given matcher
+// MatchNetwork matches a network response against a given matcher
 func (m *Matcher) MatchNetwork(reply string) bool {
 	switch m.matcherType {
 	// [WIP] add dns status code matcher
 	case SizeMatcher:
-		return m.matchSizeCode(len(reply))
+		return m.isNegative(m.matchSizeCode(len(reply)))
 	case WordsMatcher:
 		// Match for word check
-		return m.matchWords(reply)
+		return m.isNegative(m.matchWords(reply))
 	case RegexMatcher:
 		// Match regex check
-		return m.matchRegex(reply)
+		return m.isNegative(m.matchRegex(reply))
 	case BinaryMatcher:
 		// Match binary characters check
-		return m.matchBinary(reply)
+		return m.isNegative(m.matchBinary(reply))
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(map[string]interface{}{"reply": reply})
+		return m.isNegative(m.matchDSL(map[string]interface{}{"reply": reply}))
 	}
 
 	return false
