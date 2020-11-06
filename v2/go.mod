@@ -2,10 +2,7 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.14
 
-replace github.com/projectdiscovery/fastdialer => /home/projectdiscovery/go/src/github.com/projectdiscovery/fastdialer
-
 require (
-	github.com/projectdiscovery/fastdialer v0.0.1
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/d5/tengo/v2 v2.6.2
@@ -19,10 +16,10 @@ require (
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.4
-	github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d
+	github.com/projectdiscovery/collaborator v0.0.0-20201106184551-efd6773a9479
+	github.com/projectdiscovery/fastdialer v0.0.0-20201106202608-63bccd73532b
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb
-	github.com/projectdiscovery/httpx v1.0.2
 	github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926
 	github.com/projectdiscovery/retryabledns v1.0.4
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
@@ -31,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d
-	golang.org/x/sys v0.0.0-20201029080932-201ba4db2418 // indirect
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
+	golang.org/x/sys v0.0.0-20201106081118-db71ae66460a // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
