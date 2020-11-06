@@ -2,7 +2,10 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.14
 
+replace github.com/projectdiscovery/fastdialer => /home/projectdiscovery/go/src/github.com/projectdiscovery/fastdialer
+
 require (
+	github.com/projectdiscovery/fastdialer v0.0.1
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/d5/tengo/v2 v2.6.2

@@ -11,8 +11,8 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
@@ -51,7 +51,7 @@ type Runner struct {
 	decolorizer *regexp.Regexp
 
 	// http dialer
-	dialer cache.DialerFunc
+	dialer *fastdialer.Dialer
 }
 
 // New creates a new client for running enumeration process.
@@ -199,7 +199,7 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Create Dialer
-	runner.dialer, err = cache.NewDialer(cache.DefaultOptions)
+	runner.dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
 	if err != nil {
 		return nil, err
 	}
