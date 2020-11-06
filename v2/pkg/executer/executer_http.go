@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
@@ -89,7 +89,7 @@ type HTTPOptions struct {
 	ColoredOutput    bool
 	StopAtFirstMatch bool
 	PF               *projetctfile.ProjectFile
-	Dialer           cache.DialerFunc
+	Dialer           *fastdialer.Dialer
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -595,7 +595,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Clie
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
 	transport := &http.Transport{
-		DialContext:         options.Dialer,
+		DialContext:         options.Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
