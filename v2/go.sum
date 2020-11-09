@@ -64,6 +64,8 @@ github.com/projectdiscovery/collaborator v0.0.0-20201106184551-efd6773a9479 h1:2
 github.com/projectdiscovery/collaborator v0.0.0-20201106184551-efd6773a9479/go.mod h1:pT+nfywyhy3cJacTU6PLUbE/uHqabzoN4xp4DcF9qoY=
 github.com/projectdiscovery/fastdialer v0.0.0-20201106202608-63bccd73532b h1:O4vf9HH4DPhAg3sUzXyNqejHJbXwdMyHFnwzVNLZqBY=
 github.com/projectdiscovery/fastdialer v0.0.0-20201106202608-63bccd73532b/go.mod h1:TIWLavgdJqcDF0K+y/wfW/0MXA8ieNPzLPgr3cFkxU8=
+github.com/projectdiscovery/fastdialer v0.0.0-20201109221154-72c33a5f6a74 h1:6y/HAJOSQ99URPRiB9xQ1/3xszxEyjDEy+m5zUq0S/U=
+github.com/projectdiscovery/fastdialer v0.0.0-20201109221154-72c33a5f6a74/go.mod h1:TIWLavgdJqcDF0K+y/wfW/0MXA8ieNPzLPgr3cFkxU8=
 github.com/projectdiscovery/gologger v1.0.1 h1:FzoYQZnxz9DCvSi/eg5A6+ET4CQ0CDUs27l6Exr8zMQ=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb h1:y+O2ZCGICrGcSevxu2nydZtjMiwDHPf2cMgwi8PCFgQ=
@@ -72,6 +74,8 @@ github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926 h1:aAh1
 github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/retryabledns v1.0.4 h1:0Va7qHlWQsIXjRLISTjzfN3tnJmHYDudY05Nu3IJd60=
 github.com/projectdiscovery/retryabledns v1.0.4/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
+github.com/projectdiscovery/retryabledns v1.0.5-0.20201109220805-cead885aba17 h1:70d4IzHGYEHFOh4qLCb0a9MbpWR7zXOMI1BGgz1SgyU=
+github.com/projectdiscovery/retryabledns v1.0.5-0.20201109220805-cead885aba17/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.1 h1:V7wUvsZNq1Rcz7+IlcyoyQlNwshuwptuBVYWw9lx8RE=
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
