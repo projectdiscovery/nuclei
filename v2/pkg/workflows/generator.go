@@ -17,7 +17,9 @@ func (w *Workflow) generateLogicFromWorkflows() error {
 
 	workflowBuilder := &strings.Builder{}
 	for _, template := range w.Workflows {
-		w.generateTemplateFunc(template, workflowBuilder)
+		if err := w.generateTemplateFunc(template, workflowBuilder); err != nil {
+			return err
+		}
 	}
 	w.Logic = workflowBuilder.String()
 	return nil
