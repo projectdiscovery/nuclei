@@ -26,7 +26,7 @@ func (w *Workflow) generateLogicFromWorkflows() error {
 }
 
 func (w *Workflow) generateTemplateFunc(template *WorkflowTemplate, workflowBuilder *strings.Builder) error {
-	ID := ksuid.New().String()
+	ID := "var_" + ksuid.New().String()
 	w.Variables[ID] = template.Template
 
 	if len(template.Subtemplates) > 0 && len(template.Matchers) > 0 {
@@ -69,7 +69,7 @@ func (w *Workflow) generateTemplateFunc(template *WorkflowTemplate, workflowBuil
 	}
 	if len(template.Matchers) == 0 && len(template.Subtemplates) == 0 {
 		workflowBuilder.WriteString(ID)
-		workflowBuilder.WriteString("()")
+		workflowBuilder.WriteString("();")
 	}
 	return nil
 }
