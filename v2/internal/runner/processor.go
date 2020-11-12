@@ -292,12 +292,14 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 						ProxySocksURL: r.options.ProxySocksURL,
 						CustomHeaders: r.options.CustomHeaders,
 						CookieJar:     jar,
+						TraceLog:      r.traceLog,
 					}
 				} else if len(t.RequestsDNS) > 0 {
 					template.DNSOptions = &executer.DNSOptions{
 						Debug:    r.options.Debug,
 						Template: t,
 						Writer:   r.output,
+						TraceLog: r.traceLog,
 					}
 				}
 				if template.DNSOptions != nil || template.HTTPOptions != nil {
