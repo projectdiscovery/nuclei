@@ -12,7 +12,22 @@ type Workflow struct {
 	Variables map[string]string `yaml:"variables"`
 	// Logic contains the workflow pseudo-code
 	Logic string `yaml:"logic"`
-	path  string
+	// Workflows is a yaml based workflow declaration code.
+	Workflows []*WorkflowTemplate `yaml:"workflows"`
+	path      string
+}
+
+// WorkflowTemplate is a template to be ran as part of a workflow
+type WorkflowTemplate struct {
+	Template     string              `yaml:"template"`
+	Matchers     []*Matcher          `yaml:"matchers"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
+}
+
+// Matcher performs conditional matching on the workflow template results.
+type Matcher struct {
+	Name         string              `yaml:"name"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
 }
 
 // GetPath of the workflow
