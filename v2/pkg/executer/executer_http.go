@@ -26,7 +26,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	projetctfile "github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -34,6 +33,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/ratelimit"
 	"golang.org/x/net/proxy"
 )
 
@@ -65,6 +65,7 @@ type HTTPExecuter struct {
 	jsonRequest      bool
 	noMeta           bool
 	stopAtFirstMatch bool
+	ratelimiter      ratelimit.Limiter
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -90,6 +91,7 @@ type HTTPOptions struct {
 	StopAtFirstMatch bool
 	PF               *projetctfile.ProjectFile
 	Dialer           cache.DialerFunc
+	RateLimiter      ratelimit.Limiter
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -144,6 +146,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		decolorizer:      options.Decolorizer,
 		stopAtFirstMatch: options.StopAtFirstMatch,
 		pf:               options.PF,
+		ratelimiter:      options.RateLimiter,
 	}
 
 	return executer, nil
@@ -220,7 +223,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 			go func(httpRequest *requests.HTTPRequest) {
 				defer swg.Done()
 
-				globalratelimiter.Take(reqURL)
+				e.ratelimiter.Take()
 
 				// If the request was built correctly then execute it
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
@@ -351,7 +354,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 			result.Error = err
 			p.Drop(remaining)
 		} else {
-			globalratelimiter.Take(reqURL)
+			e.ratelimiter.Take()
 			// If the request was built correctly then execute it
 			format := "%s_" + strconv.Itoa(requestNumber)
 			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, format)
