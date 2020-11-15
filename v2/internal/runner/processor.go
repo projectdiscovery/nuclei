@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net/http/cookiejar"
@@ -50,6 +49,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			ColoredOutput: !r.options.NoColor,
 			Colorizer:     r.colorizer,
 			Decolorizer:   r.decolorizer,
+			RateLimiter:   r.ratelimiter,
 		})
 	case *requests.BulkHTTPRequest:
 		httpExecuter, err = executer.NewHTTPExecuter(&executer.HTTPOptions{
@@ -73,6 +73,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			StopAtFirstMatch: r.options.StopAtFirstMatch,
 			PF:               r.pf,
 			Dialer:           r.dialer,
+			RateLimiter:      r.ratelimiter,
 		})
 	}
 
@@ -87,9 +88,8 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 
-	scanner := bufio.NewScanner(strings.NewReader(r.input))
-	for scanner.Scan() {
-		URL := scanner.Text()
+	r.hm.Scan(func(k, _ []byte) error {
+		URL := string(k)
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()
@@ -110,7 +110,9 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 				gologger.Warningf("[%s] Could not execute step: %s\n", r.colorizer.Colorizer.BrightBlue(template.ID), result.Error)
 			}
 		}(URL)
-	}
+
+		return nil
+	})
 
 	wg.Wait()
 
@@ -132,9 +134,8 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 
-	scanner := bufio.NewScanner(strings.NewReader(r.input))
-	for scanner.Scan() {
-		targetURL := scanner.Text()
+	r.hm.Scan(func(k, _ []byte) error {
+		targetURL := string(k)
 		wg.Add()
 
 		go func(targetURL string) {
@@ -168,7 +169,8 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 				}
 			}
 		}(targetURL)
-	}
+		return nil
+	})
 
 	wg.Wait()
 

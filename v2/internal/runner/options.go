@@ -88,7 +88,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.JSONRequests, "json-requests", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "pbar", false, "Enable the progress bar")
 	flag.BoolVar(&options.TemplateList, "tl", false, "List available templates")
-	flag.IntVar(&options.RateLimit, "rate-limit", 150, "Rate-Limit Per Target (maximum requests/second")
+	flag.IntVar(&options.RateLimit, "rate-limit", 150, "Rate-Limit (maximum requests/second")
 	flag.BoolVar(&options.StopAtFirstMatch, "stop-at-first-match", false, "Stop processing http requests at first match (this may break template/workflow logic)")
 	flag.IntVar(&options.BulkSize, "bulk-size", 25, "Maximum Number of hosts analyzed in parallel per template")
 	flag.IntVar(&options.TemplateThreads, "c", 10, "Maximum Number of templates executed in parallel")
