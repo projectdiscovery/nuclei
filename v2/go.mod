@@ -17,11 +17,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.4
 	github.com/projectdiscovery/collaborator v0.0.0-20201106184551-efd6773a9479
-	github.com/projectdiscovery/fastdialer v0.0.0-20201109221154-72c33a5f6a74
+	github.com/projectdiscovery/fastdialer v0.0.1
 	github.com/projectdiscovery/gologger v1.0.1
-	github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb
+	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/rawhttp v0.0.5-0.20201030111302-fd184be37926
-	github.com/projectdiscovery/retryabledns v1.0.5-0.20201109220805-cead885aba17
+	github.com/projectdiscovery/retryabledns v1.0.5
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/spaolacci/murmur3 v1.1.0
