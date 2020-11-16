@@ -20,7 +20,7 @@ type Progress struct {
 func NewProgress(active bool) *Progress {
 	var tickDuration time.Duration
 	if active {
-		tickDuration = 1 * time.Second
+		tickDuration = 5 * time.Second
 	} else {
 		tickDuration = -1
 	}

@@ -16,7 +16,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.5-0.20201115190457-4a189e365b54
+	github.com/projectdiscovery/clistats v0.0.5
 	github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/hmap v0.0.0-20201026185329-db41b5717bcb

@@ -72,6 +72,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/projectdiscovery/clistats v0.0.4/go.mod h1:+RpHbYUY4FJ6yQiDlL4Ux44jK3p4AwFKUsr6neu43RA=
 github.com/projectdiscovery/clistats v0.0.5-0.20201115190457-4a189e365b54 h1:7Yz219bGdbH5oxwFs4dTpqcm48HG5DhMxOqw2kIaiX4=
 github.com/projectdiscovery/clistats v0.0.5-0.20201115190457-4a189e365b54/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
+github.com/projectdiscovery/clistats v0.0.5 h1:vcvOR9PrFRawO/7FWD6pER9nYVSoSTD2F+/fkRs73a0=
+github.com/projectdiscovery/clistats v0.0.5/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
 github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d h1:iHb2v6VX1Fjl9IX8UaJFLKLej+KyJJ59W1pWIRCug4Q=
 github.com/projectdiscovery/collaborator v0.0.0-20201023080839-2aa1290ed09d/go.mod h1:M7Csn+hQVDOLCEEFkj6dazmtgG1tIqJpbuPHlRlpYGQ=
 github.com/projectdiscovery/collaborator v0.0.0-20201023192422-4a25cca69447 h1:1+NNwnPD0Rm7r4NJaX6IQwi+DiTJUc3JC6k0Zuc0/Qc=
