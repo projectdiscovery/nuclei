@@ -2,6 +2,7 @@ package progress
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -119,7 +120,7 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		builder.WriteRune(')')
 		builder.WriteRune('\n')
 
-		gologger.Printf("%s", builder.String())
+		fmt.Fprintf(os.Stderr, "%s", builder.String())
 		builder.Reset()
 	}
 }
