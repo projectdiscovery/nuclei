@@ -7,7 +7,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/coocood/freecache v1.1.1 // indirect
 	github.com/d5/tengo/v2 v2.6.2
-	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-github/v32 v32.1.0
 	github.com/json-iterator/go v1.1.10
