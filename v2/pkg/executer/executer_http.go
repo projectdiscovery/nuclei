@@ -1,6 +1,7 @@
 package executer
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -458,14 +459,14 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	duration := time.Since(timeStart)
 
+	// Dump response - Step 1 - Decompression not yet handled
+	var dumpedResponse []byte
 	if e.debug {
-		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
+		var dumpErr error
+		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
 			return errors.Wrap(dumpErr, "could not dump http response")
 		}
-
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
-		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -485,9 +486,17 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
 	// so in case we have to manually do it
+	dataOrig := data
 	data, err = requests.HandleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
+	}
+
+	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
+	if e.debug {
+		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
+		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
+		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
