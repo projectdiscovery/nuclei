@@ -12,7 +12,7 @@ import (
 )
 
 // writeOutputHTTP writes http output to streams
-func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string, meta map[string]interface{}) {
+func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Response, body string, matcher *matchers.Matcher, extractorResults []string, meta map[string]interface{}, reqURL string) {
 	var URL string
 	if req.RawRequest != nil {
 		URL = req.RawRequest.FullURL
@@ -28,6 +28,7 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		if !e.noMeta {
 			output["template"] = e.template.ID
 			output["type"] = "http"
+			output["host"] = reqURL
 			if len(meta) > 0 {
 				output["meta"] = meta
 			}
