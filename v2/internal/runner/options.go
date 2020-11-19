@@ -76,7 +76,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.Silent, "silent", false, "Show only results in output")
 	flag.BoolVar(&options.Version, "version", false, "Show version of nuclei")
 	flag.BoolVar(&options.Verbose, "v", false, "Show Verbose output")
-	flag.BoolVar(&options.NoColor, "nC", false, "Don't Use colors in output")
+	flag.BoolVar(&options.NoColor, "no-color", false, "Disable colors in output")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
