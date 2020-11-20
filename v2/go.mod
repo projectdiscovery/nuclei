@@ -23,6 +23,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/segmentio/ksuid v1.0.3
 	github.com/spaolacci/murmur3 v1.1.0
+	github.com/stretchr/testify v1.5.1
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	gopkg.in/yaml.v2 v2.3.0
