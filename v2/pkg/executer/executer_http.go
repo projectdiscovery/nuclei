@@ -1,6 +1,7 @@
 package executer
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -19,14 +20,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/httpx/common/cache"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	projetctfile "github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/ratelimit"
 	"golang.org/x/net/proxy"
 )
 
@@ -65,6 +66,7 @@ type HTTPExecuter struct {
 	jsonRequest      bool
 	noMeta           bool
 	stopAtFirstMatch bool
+	ratelimiter      ratelimit.Limiter
 }
 
 // HTTPOptions contains configuration options for the HTTP executer.
@@ -89,7 +91,8 @@ type HTTPOptions struct {
 	ColoredOutput    bool
 	StopAtFirstMatch bool
 	PF               *projetctfile.ProjectFile
-	Dialer           *cache.DialerFunc
+	RateLimiter      ratelimit.Limiter
+	Dialer           *fastdialer.Dialer
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -109,10 +112,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	}
 
 	// Create the HTTP Client
-	client, err := makeHTTPClient(proxyURL, options)
-	if err != nil {
-		return nil, err
-	}
+	client := makeHTTPClient(proxyURL, options)
 	// nolint:bodyclose // false positive there is no body to close yet
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
@@ -147,6 +147,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		decolorizer:      options.Decolorizer,
 		stopAtFirstMatch: options.StopAtFirstMatch,
 		pf:               options.PF,
+		ratelimiter:      options.RateLimiter,
 	}
 
 	return executer, nil
@@ -194,7 +195,7 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 	return result
 }
 
-func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) *Result {
+func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
@@ -223,7 +224,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 			go func(httpRequest *requests.HTTPRequest) {
 				defer swg.Done()
 
-				globalratelimiter.Take(reqURL)
+				e.ratelimiter.Take()
 
 				// If the request was built correctly then execute it
 				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
@@ -236,9 +237,9 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p progress.IProgress, reqURL string) 
 				}
 			}(request)
 		}
+		p.Update()
 		e.bulkHTTPRequest.Increment(reqURL)
 	}
-
 	swg.Wait()
 
 	return result
@@ -309,14 +310,12 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 
 		e.bulkHTTPRequest.Increment(reqURL)
 	}
-
 	swg.Wait()
-
 	return result
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result {
+func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result {
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(reqURL)
@@ -357,7 +356,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 			result.Error = err
 			p.Drop(remaining)
 		} else {
-			globalratelimiter.Take(reqURL)
+			e.ratelimiter.Take()
 			// If the request was built correctly then execute it
 			format := "%s_" + strconv.Itoa(requestNumber)
 			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, format)
@@ -369,6 +368,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 				e.traceLog.Request(e.template.ID, reqURL, "http", nil)
 			}
 		}
+		p.Update()
 
 		// Check if has to stop processing at first valid result
 		if e.stopAtFirstMatch && result.GotResults {
@@ -378,12 +378,9 @@ func (e *HTTPExecuter) ExecuteHTTP(p progress.IProgress, reqURL string) *Result 
 
 		// move always forward with requests
 		e.bulkHTTPRequest.Increment(reqURL)
-		p.Update()
 		remaining--
 	}
-
 	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
-
 	return result
 }
 
@@ -466,14 +463,14 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	duration := time.Since(timeStart)
 
+	// Dump response - Step 1 - Decompression not yet handled
+	var dumpedResponse []byte
 	if e.debug {
-		dumpedResponse, dumpErr := httputil.DumpResponse(resp, true)
+		var dumpErr error
+		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
 			return errors.Wrap(dumpErr, "could not dump http response")
 		}
-
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
-		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -493,9 +490,17 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
 	// so in case we have to manually do it
+	dataOrig := data
 	data, err = requests.HandleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
+	}
+
+	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
+	if e.debug {
+		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
+		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
+		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
@@ -537,7 +542,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 				result.Meta = request.Meta
 				result.GotResults = true
 				result.Unlock()
-				e.writeOutputHTTP(request, resp, body, matcher, nil, result.Meta)
+				e.writeOutputHTTP(request, resp, body, matcher, nil, result.Meta, reqURL)
 			}
 		}
 	}
@@ -568,7 +573,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, result.Meta)
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, result.Meta, reqURL)
 		result.Lock()
 		result.GotResults = true
 		result.Unlock()
@@ -581,7 +586,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 func (e *HTTPExecuter) Close() {}
 
 // makeHTTPClient creates a http client
-func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Client, error) {
+func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
 	// Multiple Host
 	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
@@ -603,7 +608,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 	maxRedirects := options.BulkHTTPRequest.MaxRedirects
 
 	transport := &http.Transport{
-		DialContext:         *options.Dialer,
+		DialContext:         options.Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
@@ -644,7 +649,7 @@ func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) (*retryablehttp.Cli
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions), nil
+	}, retryablehttpOptions)
 }
 
 type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error

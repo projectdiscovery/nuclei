@@ -278,7 +278,6 @@ func (r *BulkHTTPRequest) fillRequest(req *http.Request, values map[string]inter
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
 	if r.Threads <= 0 && req.Header.Get("Connection") == "" {
-		setHeader(req, "Connection", "close")
 		req.Close = true
 	}
 
