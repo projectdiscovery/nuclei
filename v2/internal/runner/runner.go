@@ -106,6 +106,7 @@ func New(options *Options) (*Runner, error) {
 	// Handle single target
 	if options.Target != "" {
 		runner.inputCount++
+		// nolint:errcheck // ignoring error
 		runner.hm.Set(options.Target, nil)
 	}
 
@@ -126,6 +127,7 @@ func New(options *Options) (*Runner, error) {
 			}
 
 			runner.inputCount++
+			// nolint:errcheck // ignoring error
 			runner.hm.Set(url, nil)
 		}
 	}
@@ -151,6 +153,7 @@ func New(options *Options) (*Runner, error) {
 			}
 
 			runner.inputCount++
+			// nolint:errcheck // ignoring error
 			runner.hm.Set(url, nil)
 		}
 		input.Close()
