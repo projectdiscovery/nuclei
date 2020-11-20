@@ -236,6 +236,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 				}
 			}(request)
 		}
+		p.Update()
 		e.bulkHTTPRequest.Increment(reqURL)
 	}
 	swg.Wait()
