@@ -217,22 +217,26 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 			template := &workflows.Template{Progress: p}
 			if len(t.BulkRequestsHTTP) > 0 {
 				template.HTTPOptions = &executer.HTTPOptions{
-					TraceLog:      r.traceLog,
-					Debug:         r.options.Debug,
-					Writer:        r.output,
-					Template:      t,
-					Timeout:       r.options.Timeout,
-					Retries:       r.options.Retries,
-					ProxyURL:      r.options.ProxyURL,
-					ProxySocksURL: r.options.ProxySocksURL,
-					CustomHeaders: r.options.CustomHeaders,
-					JSON:          r.options.JSON,
-					JSONRequests:  r.options.JSONRequests,
-					CookieJar:     jar,
-					ColoredOutput: !r.options.NoColor,
-					Colorizer:     &r.colorizer,
-					Decolorizer:   r.decolorizer,
-					PF:            r.pf,
+					TraceLog:         r.traceLog,
+					Debug:            r.options.Debug,
+					Writer:           r.output,
+					Template:         t,
+					Timeout:          r.options.Timeout,
+					Retries:          r.options.Retries,
+					ProxyURL:         r.options.ProxyURL,
+					ProxySocksURL:    r.options.ProxySocksURL,
+					CustomHeaders:    r.options.CustomHeaders,
+					JSON:             r.options.JSON,
+					JSONRequests:     r.options.JSONRequests,
+					CookieJar:        jar,
+					ColoredOutput:    !r.options.NoColor,
+					Colorizer:        &r.colorizer,
+					Decolorizer:      r.decolorizer,
+					PF:               r.pf,
+					RateLimiter:      r.ratelimiter,
+					NoMeta:           r.options.NoMeta,
+					StopAtFirstMatch: r.options.StopAtFirstMatch,
+					Dialer:           r.dialer,
 				}
 			} else if len(t.RequestsDNS) > 0 {
 				template.DNSOptions = &executer.DNSOptions{
@@ -245,6 +249,8 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 					ColoredOutput: !r.options.NoColor,
 					Colorizer:     r.colorizer,
 					Decolorizer:   r.decolorizer,
+					NoMeta:        r.options.NoMeta,
+					RateLimiter:   r.ratelimiter,
 				}
 			}
 
