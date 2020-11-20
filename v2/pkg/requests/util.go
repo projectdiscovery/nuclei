@@ -36,7 +36,7 @@ func HandleDecompression(r *HTTPRequest, bodyOrig []byte) (bodyDec []byte, err e
 	}
 
 	encodingHeader := strings.TrimSpace(strings.ToLower(r.Request.Header.Get("Accept-Encoding")))
-	if encodingHeader == "gzip" {
+	if encodingHeader == "gzip" || encodingHeader == "gzip, deflate" {
 		gzipreader, err := gzip.NewReader(bytes.NewReader(bodyOrig))
 		if err != nil {
 			return bodyDec, err
