@@ -20,6 +20,7 @@ func (e *DNSExecuter) writeOutputDNS(domain string, req, resp *dns.Msg, matcher 
 		if !e.noMeta {
 			output["template"] = e.template.ID
 			output["type"] = "dns"
+			output["host"] = domain
 			for k, v := range e.template.Info {
 				output[k] = v
 			}
