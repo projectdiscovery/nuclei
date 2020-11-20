@@ -2,35 +2,31 @@ package runner
 
 import (
 	"bufio"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/httpx/common/cache"
+	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
 	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/globalratelimiter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/ratelimit"
 )
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	input      string
 	inputCount int64
-	tempFile   string
 
 	traceLog tracelog.Log
 
@@ -44,14 +40,18 @@ type Runner struct {
 	pf *projectfile.ProjectFile
 
 	// progress tracking
-	progress progress.IProgress
+	progress *progress.Progress
 
 	// output coloring
 	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
 
-	// http dialer
-	dialer cache.DialerFunc
+	// rate limiter
+	ratelimiter ratelimit.Limiter
+
+	// input deduplication
+	hm     *hybrid.HybridMap
+	dialer *fastdialer.Dialer
 }
 
 // New creates a new client for running enumeration process.
@@ -94,79 +94,70 @@ func New(options *Options) (*Runner, error) {
 		runner.readNucleiIgnoreFile()
 	}
 
-	// If we have stdin, write it to a new file
-	if options.Stdin {
-		tempInput, err := ioutil.TempFile("", "stdin-input-*")
-
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := io.Copy(tempInput, os.Stdin); err != nil {
-			return nil, err
-		}
-
-		runner.tempFile = tempInput.Name()
-		tempInput.Close()
-	}
-	// If we have single target, write it to a new file
-	if options.Target != "" {
-		tempInput, err := ioutil.TempFile("", "stdin-input-*")
-		if err != nil {
-			return nil, err
-		}
-
-		fmt.Fprintf(tempInput, "%s\n", options.Target)
-		runner.tempFile = tempInput.Name()
-		tempInput.Close()
+	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
+		gologger.Fatalf("Could not create temporary input file: %s\n", err)
+	} else {
+		runner.hm = hm
 	}
 
-	// Setup input, handle a list of hosts as argument
-	var err error
-
-	var input *os.File
-
-	if options.Targets != "" {
-		input, err = os.Open(options.Targets)
-	} else if options.Stdin || options.Target != "" {
-		input, err = os.Open(runner.tempFile)
-	}
-
-	if err != nil {
-		gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
-	}
-
-	// Sanitize input and pre-compute total number of targets
-	var usedInput = make(map[string]struct{})
-
-	dupeCount := 0
-	sb := strings.Builder{}
-	scanner := bufio.NewScanner(input)
 	runner.inputCount = 0
+	dupeCount := 0
 
-	for scanner.Scan() {
-		url := scanner.Text()
-		// skip empty lines
-		if url == "" {
-			continue
-		}
-		// deduplication
-		if _, ok := usedInput[url]; !ok {
-			usedInput[url] = struct{}{}
+	// Handle single target
+	if options.Target != "" {
+		runner.inputCount++
+		// nolint:errcheck // ignoring error
+		runner.hm.Set(options.Target, nil)
+	}
+
+	// Handle stdin
+	if options.Stdin {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			url := strings.TrimSpace(scanner.Text())
+			// skip empty lines
+			if url == "" {
+				continue
+			}
+
+			// skip dupes
+			if _, ok := runner.hm.Get(url); ok {
+				dupeCount++
+				continue
+			}
+
 			runner.inputCount++
-
-			// allocate global rate limiters
-			globalratelimiter.Add(url, options.RateLimit)
-
-			sb.WriteString(url)
-			sb.WriteString("\n")
-		} else {
-			dupeCount++
+			// nolint:errcheck // ignoring error
+			runner.hm.Set(url, nil)
 		}
 	}
-	input.Close()
 
-	runner.input = sb.String()
+	// Handle taget file
+	if options.Targets != "" {
+		input, err := os.Open(options.Targets)
+		if err != nil {
+			gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
+		}
+		scanner := bufio.NewScanner(input)
+		for scanner.Scan() {
+			url := strings.TrimSpace(scanner.Text())
+			// skip empty lines
+			if url == "" {
+				continue
+			}
+
+			// skip dupes
+			if _, ok := runner.hm.Get(url); ok {
+				dupeCount++
+				continue
+			}
+
+			runner.inputCount++
+			// nolint:errcheck // ignoring error
+			runner.hm.Set(url, nil)
+		}
+		input.Close()
+	}
 
 	if dupeCount > 0 {
 		gologger.Labelf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
@@ -174,22 +165,22 @@ func New(options *Options) (*Runner, error) {
 
 	// Create the output file if asked
 	if options.Output != "" {
-		output, err := bufwriter.New(options.Output)
-		if err != nil {
-			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, err)
+		output, errBufWriter := bufwriter.New(options.Output)
+		if errBufWriter != nil {
+			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, errBufWriter)
 		}
 		runner.output = output
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(runner.colorizer.Colorizer, options.EnableProgressBar)
+	runner.progress = progress.NewProgress(options.EnableProgressBar)
 
 	// create project file if requested or load existing one
 	if options.Project {
-		var err error
-		runner.pf, err = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
-		if err != nil {
-			return nil, err
+		var projectFileErr error
+		runner.pf, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		if projectFileErr != nil {
+			return nil, projectFileErr
 		}
 	}
 
@@ -199,9 +190,16 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Create Dialer
-	runner.dialer, err = cache.NewDialer(cache.DefaultOptions)
+	var err error
+	runner.dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	if options.RateLimit > 0 {
+		runner.ratelimiter = ratelimit.New(options.RateLimit)
+	} else {
+		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
 
 	return runner, nil
@@ -212,7 +210,7 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
-	os.Remove(r.tempFile)
+	r.hm.Close()
 	if r.pf != nil {
 		r.pf.Close()
 	}
@@ -282,7 +280,7 @@ func (r *Runner) RunEnumeration() {
 	} else if totalRequests > 0 || hasWorkflows {
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p := r.progress
-		p.InitProgressbar(r.inputCount, templateCount, totalRequests)
+		p.Init(r.inputCount, templateCount, totalRequests)
 
 		for _, t := range availableTemplates {
 			wgtemplates.Add()
@@ -303,7 +301,7 @@ func (r *Runner) RunEnumeration() {
 		}
 
 		wgtemplates.Wait()
-		p.Wait()
+		p.Stop()
 	}
 
 	if !results.Get() {

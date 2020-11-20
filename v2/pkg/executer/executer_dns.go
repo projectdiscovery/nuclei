@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	retryabledns "github.com/projectdiscovery/retryabledns"
+	"go.uber.org/ratelimit"
 )
 
 // DNSExecuter is a client for performing a DNS request
@@ -32,6 +33,7 @@ type DNSExecuter struct {
 	template      *templates.Template
 	dnsRequest    *requests.DNSRequest
 	writer        *bufwriter.Writer
+	ratelimiter   ratelimit.Limiter
 
 	colorizer   colorizer.NucleiColorizer
 	decolorizer *regexp.Regexp
@@ -59,6 +61,7 @@ type DNSOptions struct {
 
 	Colorizer   colorizer.NucleiColorizer
 	Decolorizer *regexp.Regexp
+	RateLimiter ratelimit.Limiter
 }
 
 // NewDNSExecuter creates a new DNS executer from a template
@@ -79,13 +82,14 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		coloredOutput: options.ColoredOutput,
 		colorizer:     options.Colorizer,
 		decolorizer:   options.Decolorizer,
+		ratelimiter:   options.RateLimiter,
 	}
 
 	return executer
 }
 
 // ExecuteDNS executes the DNS request on a URL
-func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) *Result {
+func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, reqURL string) *Result {
 	result := &Result{}
 
 	// Parse the URL and return domain if URL.
@@ -101,9 +105,7 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) *Result {
 	if err != nil {
 		e.traceLog.Request(e.template.ID, domain, "dns", err)
 		result.Error = errors.Wrap(err, "could not make dns request")
-
 		p.Drop(1)
-
 		return result
 	}
 	e.traceLog.Request(e.template.ID, domain, "dns", nil)
@@ -117,12 +119,9 @@ func (e *DNSExecuter) ExecuteDNS(p progress.IProgress, reqURL string) *Result {
 	resp, err := e.dnsClient.Do(compiledRequest)
 	if err != nil {
 		result.Error = errors.Wrap(err, "could not send dns request")
-
 		p.Drop(1)
-
 		return result
 	}
-
 	p.Update()
 
 	gologger.Verbosef("Sent for [%s] to %s\n", "dns-request", e.template.ID, reqURL)

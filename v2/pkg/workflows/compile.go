@@ -1,9 +1,9 @@
 package workflows
 
 import (
-	"errors"
 	"os"
 
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,11 +22,14 @@ func Parse(file string) (*Workflow, error) {
 		return nil, err
 	}
 
+	if len(workflow.Workflows) > 0 {
+		if err := workflow.generateLogicFromWorkflows(); err != nil {
+			return nil, errors.Wrap(err, "could not generate workflow")
+		}
+	}
 	if workflow.Logic == "" {
 		return nil, errors.New("no logic provided")
 	}
-
 	workflow.path = file
-
 	return workflow, nil
 }
