@@ -76,7 +76,7 @@ This will display help for the tool. Here are all the switches it supports.
 |o            |File to save output result (optional)        |nuclei -o output.txt|
 |project        |Project flag to avoid sending same requests      |nuclei -project|
 |project-path       |Use a user defined project folder          |nuclei -project -project-path test|
-|stats          |Enable the progress bar (optional)         |nuclei -pbar|
+|stats          |Enable the progress bar (optional)         |nuclei -stats|
 |silent         |Show only found results in output          |nuclei -silent|
 |retries        |Number of times to retry a failed request      |nuclei -retries 1 |
 |timeout        |Seconds to wait before timeout (default 5)     |nuclei -timeout 5 |
