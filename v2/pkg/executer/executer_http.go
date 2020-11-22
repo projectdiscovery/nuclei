@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -59,6 +60,7 @@ type HTTPExecuter struct {
 	CookieJar        *cookiejar.Jar
 	traceLog         tracelog.Log
 	decolorizer      *regexp.Regexp
+	randomAgent      bool
 	coloredOutput    bool
 	debug            bool
 	Results          bool
@@ -72,6 +74,7 @@ type HTTPExecuter struct {
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
 	CustomHeaders    requests.CustomHeaders
+	RandomAgent      bool
 	ProxyURL         string
 	ProxySocksURL    string
 	Template         *templates.Template
@@ -677,6 +680,10 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 }
 
 func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
+	if e.randomAgent {
+		e.customHeaders = append([]string{"User-Agent: " + uarand.GetRandom()}, e.customHeaders...)
+	}
+
 	for _, customHeader := range e.customHeaders {
 		// This should be pre-computed somewhere and done only once
 		tokens := strings.SplitN(customHeader, ":", two)
