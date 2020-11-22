@@ -143,6 +143,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		template:         options.Template,
 		bulkHTTPRequest:  options.BulkHTTPRequest,
 		writer:           options.Writer,
+		randomAgent:      options.RandomAgent,
 		customHeaders:    options.CustomHeaders,
 		CookieJar:        options.CookieJar,
 		coloredOutput:    options.ColoredOutput,
@@ -388,6 +389,11 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 }
 
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, format string) error {
+	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
+	if e.randomAgent {
+		e.customHeaders.Set("User-Agent: " + uarand.GetRandom())
+	}
+
 	e.setCustomHeaders(request)
 
 	var (
@@ -680,10 +686,6 @@ func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirect
 }
 
 func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
-	if e.randomAgent {
-		e.customHeaders = append([]string{"User-Agent: " + uarand.GetRandom()}, e.customHeaders...)
-	}
-
 	for _, customHeader := range e.customHeaders {
 		// This should be pre-computed somewhere and done only once
 		tokens := strings.SplitN(customHeader, ":", two)
