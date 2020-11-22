@@ -391,6 +391,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, format string) error {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if e.randomAgent {
+		// nolint:errcheck // ignoring error
 		e.customHeaders.Set("User-Agent: " + uarand.GetRandom())
 	}
 
