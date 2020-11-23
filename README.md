@@ -94,6 +94,7 @@ This will display help for the tool. Here are all the switches it supports.
 |version        |Show version of nuclei               |nuclei -version|
 |proxy-url        |Proxy URL                      |nuclei -proxy-url hxxp://127.0.0.1:8080|
 |proxy-socks-url    |Socks proxyURL                   |nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
+|random-agent            |Use random User-Agents |nuclei -random-agent |
 |H            |Custom Header                    |nuclei -H "x-bug-bounty: hacker"           |
 
 ## Installation Instructions

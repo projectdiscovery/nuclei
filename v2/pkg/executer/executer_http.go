@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -59,6 +60,7 @@ type HTTPExecuter struct {
 	CookieJar        *cookiejar.Jar
 	traceLog         tracelog.Log
 	decolorizer      *regexp.Regexp
+	randomAgent      bool
 	coloredOutput    bool
 	debug            bool
 	Results          bool
@@ -72,6 +74,7 @@ type HTTPExecuter struct {
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
 	CustomHeaders    requests.CustomHeaders
+	RandomAgent      bool
 	ProxyURL         string
 	ProxySocksURL    string
 	Template         *templates.Template
@@ -140,6 +143,7 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		template:         options.Template,
 		bulkHTTPRequest:  options.BulkHTTPRequest,
 		writer:           options.Writer,
+		randomAgent:      options.RandomAgent,
 		customHeaders:    options.CustomHeaders,
 		CookieJar:        options.CookieJar,
 		coloredOutput:    options.ColoredOutput,
@@ -385,6 +389,12 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 }
 
 func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, format string) error {
+	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
+	if e.randomAgent {
+		// nolint:errcheck // ignoring error
+		e.customHeaders.Set("User-Agent: " + uarand.GetRandom())
+	}
+
 	e.setCustomHeaders(request)
 
 	var (
