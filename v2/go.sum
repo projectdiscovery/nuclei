@@ -57,6 +57,8 @@ github.com/projectdiscovery/clistats v0.0.5 h1:vcvOR9PrFRawO/7FWD6pER9nYVSoSTD2F
 github.com/projectdiscovery/clistats v0.0.5/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
 github.com/projectdiscovery/collaborator v0.0.1 h1:dbQ5BCL/a3c+BB9cGtrGgiLs23+EfSzoaTzX/pxqiTI=
 github.com/projectdiscovery/collaborator v0.0.1/go.mod h1:J1z0fC7Svutz3LJqoRyTHA3F0Suh4livmkYv8MnKw20=
+github.com/projectdiscovery/collaborator v0.0.2-0.20201122173402-7afbb52febed h1:0B4ccP68IL6MNHz99dAFeh0E3AY7fU5wVYwZJVX8ZG4=
+github.com/projectdiscovery/collaborator v0.0.2-0.20201122173402-7afbb52febed/go.mod h1:J1z0fC7Svutz3LJqoRyTHA3F0Suh4livmkYv8MnKw20=
 github.com/projectdiscovery/fastdialer v0.0.1 h1:MgBkJ/zkciFu/PcbAz0DYGiZn2aqv6b39NvfXxfN8qg=
 github.com/projectdiscovery/fastdialer v0.0.1/go.mod h1:d24GUzSb93wOY7lu4gJmXAzfomqAGEcRrInEVrM6zbc=
 github.com/projectdiscovery/gologger v1.0.1 h1:FzoYQZnxz9DCvSi/eg5A6+ET4CQ0CDUs27l6Exr8zMQ=

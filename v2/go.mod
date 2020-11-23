@@ -14,7 +14,7 @@ require (
 	github.com/miekg/dns v1.1.35
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.5
-	github.com/projectdiscovery/collaborator v0.0.1
+	github.com/projectdiscovery/collaborator v0.0.2-0.20201122173402-7afbb52febed
 	github.com/projectdiscovery/fastdialer v0.0.1
 	github.com/projectdiscovery/gologger v1.0.1
 	github.com/projectdiscovery/hmap v0.0.1
