@@ -45,6 +45,7 @@ type Options struct {
 	TraceLogFile         string                 // TraceLogFile specifies a file to write with the trace of all requests
 	Templates            multiStringFlag        // Signature specifies the template/templates to use
 	ExcludedTemplates    multiStringFlag        // Signature specifies the template/templates to exclude
+	RandomAgent          bool                   // Generate random User-Agent
 	CustomHeaders        requests.CustomHeaders // Custom global headers
 	Threads              int                    // Thread controls the number of concurrent requests to make.
 	BurpCollaboratorBiid string                 // Burp Collaborator BIID for polling
@@ -79,6 +80,7 @@ func ParseOptions() *Options {
 	flag.BoolVar(&options.NoColor, "no-color", false, "Disable colors in output")
 	flag.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
 	flag.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
+	flag.BoolVar(&options.RandomAgent, "random-agent", false, "Use randomly selected HTTP User-Agent header value")
 	flag.Var(&options.CustomHeaders, "H", "Custom Header.")
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
