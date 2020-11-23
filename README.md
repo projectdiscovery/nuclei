@@ -60,34 +60,41 @@ nuclei -h
 
 This will display help for the tool. Here are all the switches it supports.
 
-|        Flag       |                      Description                      |                     Example                     |
-| :---------------: | :---------------------------------------------------: | :---------------------------------------------: |
-|         -c        |       Number of concurrent requests (default 10)      |                  nuclei -c 100                  |
-|         -l        |             List of urls to run templates             |                nuclei -l urls.txt               |
-|      -target      |             Target to scan using templates            |        nuclei -target hxxps://example.com       |
-|         -t        |    Templates input file/files to check across hosts   |             nuclei -t git-core.yaml             |
-|         -t        |    Templates input file/files to check across hosts   |         nuclei -t nuclei-templates/cves/        |
-|        -nC        |               Don't Use colors in output              |                    nuclei -nC                   |
-|       -json       |         Prints and write output in json format        |                   nuclei -json                  |
-|   -json-requests  |  Write requests/responses for matches in JSON output  |           nuclei -json -json-requests           |
-|         -o        |         File to save output result (optional)         |               nuclei -o output.txt              |
-|       -pbar       |           Enable the progress bar (optional)          |                   nuclei -pbar                  |
-|      -silent      |           Show only found results in output           |                  nuclei -silent                 |
-|                   |             (except when using with pbar)             |                                                 |
-|      -retries     | Number of times to retry a failed request (default 1) |                nuclei -retries 1                |
-|      -timeout     |       Seconds to wait before timeout (default 5)      |                nuclei -timeout 5                |
-|      -rl          |       Rate-Limit of requests per specified target     |                nuclei -rl 100                   |
-|      -severity    |Run templates based on severity                        |                nuclei -severity critical, low                |
-|      -exclude     |Template input dir/file/files to exclude               |                nuclei -exclude panels -exclude tokens           |
-|       -debug      |         Allow debugging of request/responses.         |                  nuclei -debug                  |
-| -update-templates |         Download and updates nuclei templates         |             nuclei -update-templates            |
-| -update-directory |    Directory for storing nuclei-templates(optional)   |        nuclei -update-directory templates       |
-|        -tl        |                List available templates               |                    nuclei -tl                   |
-|         -v        |       Shows verbose output of all sent requests       |                    nuclei -v                    |
-|      -version     |                 Show version of nuclei                |                 nuclei -version                 |
-|     -proxy-url    |                       Proxy URL                       |     nuclei -proxy-url hxxp://127.0.0.1:8080     |
-|  -proxy-socks-url |                    Socks proxy  URL                   | nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
-|         -H        |                     Custom Header                     |         nuclei -H "x-bug-bounty: hacker"        |
+|Flag           |Description  |Example|
+|-----------------------|-------------------------------------------------------|-------------------------------|
+|bulk-size        |Max hosts analyzed in parallel per template    |nuclei -bulk-size 25|
+|burp-collaborator-biid |Burp Collaborator BIID               |nuclei -burp-collaborator-biid XXXX|
+|c            |Number of concurrent requests (default 10)     |nuclei -c 100|
+|l            |List of urls to run templates            |nuclei -l urls.txt|
+|target         |Target to scan using Templates           |nuclei -target hxxps://example.com |
+|t            |Templates input file/files to check across hosts |nuclei -t git-core.yaml |
+|t            |Templates input file/files to check across hosts |nuclei -t cves/|
+|no-color         |Don't Use colors in output             |nuclei -no-color  |
+|no-meta        |Don't display metadata for the matches       |nuclei -no-meta|
+|json           |Prints and write output in json format       |nuclei -json|
+|include-rr       |Inlcude req/resp of matched output in JSON output  |nuclei -json -include-rr|
+|o            |File to save output result (optional)        |nuclei -o output.txt|
+|project        |Project flag to avoid sending same requests      |nuclei -project|
+|project-path       |Use a user defined project folder          |nuclei -project -project-path test|
+|stats          |Enable the progress bar (optional)         |nuclei -stats|
+|silent         |Show only found results in output          |nuclei -silent|
+|retries        |Number of times to retry a failed request      |nuclei -retries 1 |
+|timeout        |Seconds to wait before timeout (default 5)     |nuclei -timeout 5 |
+|trace-log        |File to write sent requests trace log        |nuclei -trace-log logs |
+|rate-limit       |Maximum requests/second (default 150)        |nuclei -rate-limit 100 |
+|severity         |Run templates based on severity          |nuclei -severity critical,high|
+|stop-at-first-match    |Stop processing http requests at first match   |nuclei -stop-at-first-match|
+|exclude        |Template input dir/file/files to exclude       |nuclei -exclude panels -exclude tokens|
+|debug          |Allow debugging of request/responses.        |nuclei -debug|
+|update-templates     |Download and updates nuclei templates        |nuclei -update-templates|
+|update-directory     |Directory for storing nuclei-templates(optional) |nuclei -update-directory templates |
+|tl           |List available templates               |nuclei -tl         |
+|templates-version    |Shows the installed nuclei-templates version   |nuclei -templates-version        |
+|v            |Shows verbose output of all sent requests      |nuclei -v|
+|version        |Show version of nuclei               |nuclei -version|
+|proxy-url        |Proxy URL                      |nuclei -proxy-url hxxp://127.0.0.1:8080|
+|proxy-socks-url    |Socks proxyURL                   |nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
+|H            |Custom Header                    |nuclei -H "x-bug-bounty: hacker"           |
 
 ## Installation Instructions
 
