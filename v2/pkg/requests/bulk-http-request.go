@@ -482,3 +482,8 @@ func (r *BulkHTTPRequest) Total() int {
 func (r *BulkHTTPRequest) Increment(reqURL string) {
 	r.gsfm.Increment(reqURL)
 }
+
+// GetPayloadsValues for the specified URL
+func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) map[string]interface{} {
+	return r.gsfm.Value(reqURL)
+}
