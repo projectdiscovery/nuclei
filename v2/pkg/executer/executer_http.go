@@ -218,11 +218,13 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 	// Workers that keeps enqueuing new requests
 	maxWorkers := e.bulkHTTPRequest.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
-	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+	for e.bulkHTTPRequest.Next(reqURL) {
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
-			result.Error = err
-			p.Drop(remaining)
+			if err != requests.ErrNoPayload {
+				result.Error = err
+				p.Drop(remaining)
+			}
 		} else {
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
@@ -288,10 +290,13 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 		maxWorkers = pipeOptions.MaxPendingRequests
 	}
 	swg := sizedwaitgroup.New(maxWorkers)
-	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+	for e.bulkHTTPRequest.Next(reqURL) {
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
-			result.Error = err
+			// ignore the error due to the base request having null paylods
+			if err != requests.ErrNoPayload {
+				result.Error = err
+			}
 		} else {
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
@@ -353,12 +358,15 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 	remaining := e.bulkHTTPRequest.GetRequestCount()
 	e.bulkHTTPRequest.CreateGenerator(reqURL)
 
-	for e.bulkHTTPRequest.Next(reqURL) && !result.Done {
+	for e.bulkHTTPRequest.Next(reqURL) {
 		requestNumber++
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
 		if err != nil {
-			result.Error = err
-			p.Drop(remaining)
+			// ignore the error due to the base request having null paylods
+			if err != requests.ErrNoPayload {
+				result.Error = err
+				p.Drop(remaining)
+			}
 		} else {
 			e.ratelimiter.Take()
 			// If the request was built correctly then execute it
@@ -532,8 +540,8 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		result.Lock()
 		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
 		// retrieve current payloads
-		currentPayloads := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
-		if currentPayloads != nil {
+		currentPayloads, err := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		if err == nil {
 			// merge them to history data
 			result.historyData = generators.MergeMaps(result.historyData, currentPayloads)
 		}
@@ -718,7 +726,6 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 type Result struct {
 	sync.Mutex
 	GotResults  bool
-	Done        bool
 	Meta        map[string]interface{}
 	Matches     map[string]interface{}
 	Extractions map[string]interface{}
