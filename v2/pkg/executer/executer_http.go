@@ -531,6 +531,13 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	if len(result.historyData) < defaultMaxHistorydata {
 		result.Lock()
 		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
+		// retrieve current payloads
+		currentPayloads := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		if currentPayloads != nil {
+			// merge them to history data
+			result.historyData = generators.MergeMaps(result.historyData, currentPayloads)
+		}
+		result.historyData = generators.MergeMaps(result.historyData, dynamicvalues)
 		result.Unlock()
 	}
 
