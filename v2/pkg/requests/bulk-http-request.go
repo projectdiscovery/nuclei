@@ -400,7 +400,14 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 			value = p[1]
 		}
 
-		rawRequest.Headers[key] = value
+		// in case of unsafe requests multiple headers should be accepted
+		// therefore use the full line as key
+		_, found := rawRequest.Headers[key]
+		if r.Unsafe && found {
+			rawRequest.Headers[line] = ""
+		} else {
+			rawRequest.Headers[key] = value
+		}
 	}
 
 	// Handle case with the full http url in path. In that case,
