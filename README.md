@@ -194,7 +194,7 @@ After downloading or building the container, run the following:
 For example, this will run the tool against all the hosts in `urls.txt` and output the results to your host file system:
 
 ```sh
-▶ cat urls.txt | docker run -v /path/to/nuclei-templates:/app/nuclei-templates -v /path/to/nuclei/config:/app/.nuclei-config.json -i projectdiscovery/nuclei -t ./files/git-config.yaml > results.txt
+▶ cat urls.txt | docker run -v /path/to/nuclei-templates:/app/nuclei-templates -v /path/to/nuclei/config:/app/.nuclei-config.json -i projectdiscovery/nuclei -t /app/nuclei-templates/files/git-config.yaml > results.txt
 ```
 
 Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
