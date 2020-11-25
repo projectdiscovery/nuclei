@@ -202,7 +202,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	dynamicValues := make(map[string]interface{})
 	// find all potentials tokens between {{}}
-	var re = regexp.MustCompile(`(?m)\{\{.+}}`)
+	var re = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
 	for _, match := range re.FindAllString(raw, -1) {
 		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
