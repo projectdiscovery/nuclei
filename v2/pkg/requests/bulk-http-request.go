@@ -493,8 +493,14 @@ func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface
 	payloadProcessedValues := make(map[string]interface{})
 	payloadsFromTemplate := r.gsfm.Value(reqURL)
 	for k, v := range payloadsFromTemplate {
+		kexp := v.(string)
+		// if it doesn't containg markups, we just continue
+		if !hasMarker(kexp) {
+			payloadProcessedValues[k] = v
+			continue
+		}
 		// attempts to expand expressions
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(v.(string), generators.HelperFunctions())
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, generators.HelperFunctions())
 		if err != nil {
 			// it is a simple literal payload => proceed with literal value
 			payloadProcessedValues[k] = v
@@ -507,7 +513,7 @@ func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface
 			payloadProcessedValues[k] = v
 			continue
 		}
-		payloadProcessedValues[k] = expValue
+		payloadProcessedValues[k] = fmt.Sprint(expValue)
 	}
 	var err error
 	if len(payloadProcessedValues) == 0 {
