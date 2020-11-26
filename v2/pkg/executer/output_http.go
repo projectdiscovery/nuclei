@@ -1,6 +1,7 @@
 package executer
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -119,9 +120,8 @@ func (e *HTTPExecuter) writeOutputHTTP(req *requests.HTTPRequest, resp *http.Res
 		builder.WriteString(" [")
 
 		var metas []string
-
 		for name, value := range req.Meta {
-			metas = append(metas, colorizer.Colorizer.BrightYellow(name).Bold().String()+"="+colorizer.Colorizer.BrightYellow(value.(string)).String())
+			metas = append(metas, colorizer.Colorizer.BrightYellow(name).Bold().String()+"="+colorizer.Colorizer.BrightYellow(fmt.Sprint(value)).String())
 		}
 
 		builder.WriteString(strings.Join(metas, ","))
