@@ -184,7 +184,12 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(ctx context.Context, baseURL, d
 		r.gsfm.InitOrSkip(baseURL)
 		r.ReadOne(baseURL)
 
-		return r.handleRawWithPaylods(ctx, data, baseURL, values, r.gsfm.Value(baseURL))
+		payloads, err := r.GetPayloadsValues(baseURL)
+		if err != nil {
+			return nil, err
+		}
+
+		return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 	}
 
 	// otherwise continue with normal flow
@@ -489,3 +494,40 @@ func (r *BulkHTTPRequest) Total() int {
 func (r *BulkHTTPRequest) Increment(reqURL string) {
 	r.gsfm.Increment(reqURL)
 }
+
+// GetPayloadsValues for the specified URL
+func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface{}, error) {
+	payloadProcessedValues := make(map[string]interface{})
+	payloadsFromTemplate := r.gsfm.Value(reqURL)
+	for k, v := range payloadsFromTemplate {
+		kexp := v.(string)
+		// if it doesn't containg markups, we just continue
+		if !hasMarker(kexp) {
+			payloadProcessedValues[k] = v
+			continue
+		}
+		// attempts to expand expressions
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, generators.HelperFunctions())
+		if err != nil {
+			// it is a simple literal payload => proceed with literal value
+			payloadProcessedValues[k] = v
+			continue
+		}
+		// it is an expression - try to solve it
+		expValue, err := compiled.Evaluate(payloadsFromTemplate)
+		if err != nil {
+			// an error occurred => proceed with literal value
+			payloadProcessedValues[k] = v
+			continue
+		}
+		payloadProcessedValues[k] = fmt.Sprint(expValue)
+	}
+	var err error
+	if len(payloadProcessedValues) == 0 {
+		err = ErrNoPayload
+	}
+	return payloadProcessedValues, err
+}
+
+// ErrNoPayload error to avoid the additional base null request
+var ErrNoPayload = fmt.Errorf("No payload found")

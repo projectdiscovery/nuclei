@@ -199,7 +199,7 @@ func (m *Matcher) matchBinary(corpus string) bool {
 
 // matchDSL matches on a generic map result
 func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
-	// Iterate over all the regexes accepted as valid
+	// Iterate over all the expressions accepted as valid
 	for i, expression := range m.dslCompiled {
 		result, err := expression.Evaluate(mp)
 		if err != nil {
