@@ -66,7 +66,7 @@ func (n *NucleiVar) Call(args ...tengo.Object) (ret tengo.Object, err error) {
 			p.AddToTotal(template.HTTPOptions.Template.GetHTTPRequestCount())
 
 			for _, request := range template.HTTPOptions.Template.BulkRequestsHTTP {
-				// apply externally supplied payloads if any
+				// apply externally supplied headers if any
 				request.Headers = generators.MergeMapsWithStrings(request.Headers, headers)
 				// apply externally supplied payloads if any
 				request.Payloads = generators.MergeMaps(request.Payloads, externalVars)

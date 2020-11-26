@@ -35,112 +35,112 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 
 	// strings
 	functions["len"] = func(args ...interface{}) (interface{}, error) {
-		length := len(args[0].(string))
+		length := len(toString(args[0]))
 
 		return float64(length), nil
 	}
 
 	functions["toupper"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ToUpper(args[0].(string)), nil
+		return strings.ToUpper(toString(args[0])), nil
 	}
 
 	functions["tolower"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ToLower(args[0].(string)), nil
+		return strings.ToLower(toString(args[0])), nil
 	}
 
 	functions["replace"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ReplaceAll(args[0].(string), args[1].(string), args[2].(string)), nil
+		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}
 
 	functions["replace_regex"] = func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(args[1].(string))
+		compiled, err := regexp.Compile(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
-		return compiled.ReplaceAllString(args[0].(string), args[2].(string)), nil
+		return compiled.ReplaceAllString(toString(args[0]), toString(args[2])), nil
 	}
 
 	functions["trim"] = func(args ...interface{}) (interface{}, error) {
-		return strings.Trim(args[0].(string), args[2].(string)), nil
+		return strings.Trim(toString(args[0]), toString(args[2])), nil
 	}
 
 	functions["trimleft"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimLeft(args[0].(string), args[1].(string)), nil
+		return strings.TrimLeft(toString(args[0]), toString(args[1])), nil
 	}
 
 	functions["trimright"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimRight(args[0].(string), args[1].(string)), nil
+		return strings.TrimRight(toString(args[0]), toString(args[1])), nil
 	}
 
 	functions["trimspace"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimSpace(args[0].(string)), nil
+		return strings.TrimSpace(toString(args[0])), nil
 	}
 
 	functions["trimprefix"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimPrefix(args[0].(string), args[1].(string)), nil
+		return strings.TrimPrefix(toString(args[0]), toString(args[1])), nil
 	}
 
 	functions["trimsuffix"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimSuffix(args[0].(string), args[1].(string)), nil
+		return strings.TrimSuffix(toString(args[0]), toString(args[1])), nil
 	}
 
 	functions["reverse"] = func(args ...interface{}) (interface{}, error) {
-		return reverseString(args[0].(string)), nil
+		return reverseString(toString(args[0])), nil
 	}
 
 	// encoding
 	functions["base64"] = func(args ...interface{}) (interface{}, error) {
-		sEnc := base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
+		sEnc := base64.StdEncoding.EncodeToString([]byte(toString(args[0])))
 
 		return sEnc, nil
 	}
 
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
-		sEnc := base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
+		sEnc := base64.StdEncoding.EncodeToString([]byte(toString(args[0])))
 
 		return insertInto(sEnc, 76, '\n'), nil
 	}
 
 	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
-		return base64.StdEncoding.DecodeString(args[0].(string))
+		return base64.StdEncoding.DecodeString(toString(args[0]))
 	}
 
 	functions["url_encode"] = func(args ...interface{}) (interface{}, error) {
-		return url.PathEscape(args[0].(string)), nil
+		return url.PathEscape(toString(args[0])), nil
 	}
 
 	functions["url_decode"] = func(args ...interface{}) (interface{}, error) {
-		return url.PathUnescape(args[0].(string))
+		return url.PathUnescape(toString(args[0]))
 	}
 
 	functions["hex_encode"] = func(args ...interface{}) (interface{}, error) {
-		return hex.EncodeToString([]byte(args[0].(string))), nil
+		return hex.EncodeToString([]byte(toString(args[0]))), nil
 	}
 
 	functions["hex_decode"] = func(args ...interface{}) (interface{}, error) {
-		hx, _ := hex.DecodeString(args[0].(string))
+		hx, _ := hex.DecodeString(toString(args[0]))
 		return string(hx), nil
 	}
 
 	functions["html_escape"] = func(args ...interface{}) (interface{}, error) {
-		return html.EscapeString(args[0].(string)), nil
+		return html.EscapeString(toString(args[0])), nil
 	}
 
 	functions["html_unescape"] = func(args ...interface{}) (interface{}, error) {
-		return html.UnescapeString(args[0].(string)), nil
+		return html.UnescapeString(toString(args[0])), nil
 	}
 
 	// hashing
 	functions["md5"] = func(args ...interface{}) (interface{}, error) {
-		hash := md5.Sum([]byte(args[0].(string)))
+		hash := md5.Sum([]byte(toString(args[0])))
 
 		return hex.EncodeToString(hash[:]), nil
 	}
 
 	functions["sha256"] = func(args ...interface{}) (interface{}, error) {
 		h := sha256.New()
-		_, err := h.Write([]byte(args[0].(string)))
+		_, err := h.Write([]byte(toString(args[0])))
 
 		if err != nil {
 			return nil, err
@@ -151,7 +151,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 
 	functions["sha1"] = func(args ...interface{}) (interface{}, error) {
 		h := sha1.New()
-		_, err := h.Write([]byte(args[0].(string)))
+		_, err := h.Write([]byte(toString(args[0])))
 
 		if err != nil {
 			return nil, err
@@ -161,21 +161,21 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
-		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(args[0].(string)), 0))), nil
+		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(toString(args[0])), 0))), nil
 	}
 
 	// search
 	functions["contains"] = func(args ...interface{}) (interface{}, error) {
-		return strings.Contains(args[0].(string), args[1].(string)), nil
+		return strings.Contains(toString(args[0]), toString(args[1])), nil
 	}
 
 	functions["regex"] = func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(args[0].(string))
+		compiled, err := regexp.Compile(toString(args[0]))
 		if err != nil {
 			return nil, err
 		}
 
-		return compiled.MatchString(args[1].(string)), nil
+		return compiled.MatchString(toString(args[1])), nil
 	}
 
 	// random generators
@@ -183,10 +183,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 		chars := letters + numbers
 		bad := ""
 		if len(args) >= 1 {
-			chars = args[0].(string)
+			chars = toString(args[0])
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = args[1].(string)
+			bad = toString(args[1])
 		}
 
 		chars = TrimAll(chars, bad)
@@ -203,10 +203,10 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = args[1].(string)
+			bad = toString(args[1])
 		}
 		if len(args) >= withBaseRandArgsSize {
-			base = args[2].(string)
+			base = toString(args[2])
 		}
 
 		base = TrimAll(base, bad)
@@ -223,7 +223,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = args[1].(string)
+			bad = toString(args[1])
 		}
 
 		chars = TrimAll(chars, bad)
@@ -240,7 +240,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = args[1].(string)
+			bad = toString(args[1])
 		}
 
 		chars = TrimAll(chars, bad)
@@ -257,7 +257,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = args[1].(string)
+			bad = toString(args[1])
 		}
 
 		chars = TrimAll(chars, bad)
@@ -289,7 +289,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	// Collaborator
 	functions["collab"] = func(args ...interface{}) (interface{}, error) {
 		// check if collaborator contains a specific pattern
-		return collaborator.DefaultCollaborator.Has(args[0].(string)), nil
+		return collaborator.DefaultCollaborator.Has(toString(args[0])), nil
 	}
 
 	return functions
