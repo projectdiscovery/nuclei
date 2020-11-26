@@ -2,6 +2,7 @@ package collaborator
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/collaborator"
@@ -17,6 +18,7 @@ var DefaultPollInterval time.Duration = time.Second * time.Duration(PollSeconds)
 var DefaultCollaborator BurpCollaborator = BurpCollaborator{Collab: collaborator.NewBurpCollaborator()}
 
 type BurpCollaborator struct {
+	sync.RWMutex
 	options *Options // unused
 	Collab  *collaborator.BurpCollaborator
 }
@@ -41,19 +43,23 @@ func (b *BurpCollaborator) Poll() {
 	}
 }
 
-func (b *BurpCollaborator) Has(s string) bool {
+func (b *BurpCollaborator) Has(s string) (found bool) {
+	foundAt := 0
 	for _, r := range b.Collab.RespBuffer {
 		for i := 0; i < len(r.Responses); i++ {
-			// search in dns
-			if strings.Contains(r.Responses[i].Data.RawRequestDecoded, s) {
-				return true
+			// search in dns - http - smtp
+			b.RLock()
+			found = strings.Contains(r.Responses[i].Data.RawRequestDecoded, s) || strings.Contains(r.Responses[i].Data.RequestDecoded, s) || strings.Contains(r.Responses[i].Data.MessageDecoded, s)
+			b.RUnlock()
+			if found {
+				b.Lock()
+				r.Responses = removeMatch(r.Responses, foundAt)
+				b.Unlock()
+				break
 			}
-			// search in http
-			if strings.Contains(r.Responses[i].Data.RequestDecoded, s) {
-				return true
-			}
+
 		}
 	}
 
-	return false
+	return
 }

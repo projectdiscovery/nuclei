@@ -558,6 +558,11 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// hardcode stopping storing data after defaultMaxHistorydata items
 	if len(result.historyData) < defaultMaxHistorydata {
 		result.Lock()
+		// update history data with current reqURL and hostname
+		result.historyData["reqURL"] = reqURL
+		if parsed, err := url.Parse(reqURL); err == nil {
+			result.historyData["Hostname"] = parsed.Host
+		}
 		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
 		if payloads == nil {
 			// merge them to history data
