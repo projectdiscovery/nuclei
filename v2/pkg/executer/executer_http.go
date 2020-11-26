@@ -178,16 +178,21 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 	for i := 0; i < e.bulkHTTPRequest.RaceNumberRequests; i++ {
 		swg.Add()
 		// base request
+		result.Lock()
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
-		if err != nil {
+		payloads, _ := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		result.Unlock()
+		// ignore the error due to the base request having null paylods
+		if err == requests.ErrNoPayload {
+			// pass through
+		} else if err != nil {
 			result.Error = err
-			return result
 		}
 		go func(httpRequest *requests.HTTPRequest) {
 			defer swg.Done()
 
 			// If the request was built correctly then execute it
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 			}
@@ -219,12 +224,16 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 	maxWorkers := e.bulkHTTPRequest.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) {
+		result.Lock()
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
-		if err != nil {
-			if err != requests.ErrNoPayload {
-				result.Error = err
-				p.Drop(remaining)
-			}
+		payloads, _ := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		result.Unlock()
+		// ignore the error due to the base request having null paylods
+		if err == requests.ErrNoPayload {
+			// pass through
+		} else if err != nil {
+			result.Error = err
+			p.Drop(remaining)
 		} else {
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
@@ -233,7 +242,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 				e.ratelimiter.Take()
 
 				// If the request was built correctly then execute it
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
 				if err != nil {
 					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
@@ -291,12 +300,15 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 	}
 	swg := sizedwaitgroup.New(maxWorkers)
 	for e.bulkHTTPRequest.Next(reqURL) {
+		result.Lock()
 		request, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
-		if err != nil {
-			// ignore the error due to the base request having null paylods
-			if err != requests.ErrNoPayload {
-				result.Error = err
-			}
+		payloads, _ := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		result.Unlock()
+		// ignore the error due to the base request having null paylods
+		if err == requests.ErrNoPayload {
+			// pass through
+		} else if err != nil {
+			result.Error = err
 		} else {
 			swg.Add()
 			go func(httpRequest *requests.HTTPRequest) {
@@ -306,7 +318,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 				// If the request was built correctly then execute it
 				request.Pipeline = true
 				request.PipelineClient = pipeclient
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, "")
+				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
 				if err != nil {
 					e.traceLog.Request(e.template.ID, reqURL, "http", err)
 					result.Error = errors.Wrap(err, "could not handle http request")
@@ -360,18 +372,21 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 
 	for e.bulkHTTPRequest.Next(reqURL) {
 		requestNumber++
+		result.Lock()
 		httpRequest, err := e.bulkHTTPRequest.MakeHTTPRequest(reqURL, dynamicvalues, e.bulkHTTPRequest.Current(reqURL))
-		if err != nil {
-			// ignore the error due to the base request having null paylods
-			if err != requests.ErrNoPayload {
-				result.Error = err
-				p.Drop(remaining)
-			}
+		payloads, _ := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
+		result.Unlock()
+		// ignore the error due to the base request having null paylods
+		if err == requests.ErrNoPayload {
+			// pass through
+		} else if err != nil {
+			result.Error = err
+			p.Drop(remaining)
 		} else {
 			e.ratelimiter.Take()
 			// If the request was built correctly then execute it
 			format := "%s_" + strconv.Itoa(requestNumber)
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, format)
+			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, format)
 			if err != nil {
 				result.Error = errors.Wrap(err, "could not handle http request")
 				p.Drop(remaining)
@@ -396,7 +411,7 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 	return result
 }
 
-func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, format string) error {
+func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, payloads map[string]interface{}, format string) error {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if e.randomAgent {
 		// nolint:errcheck // ignoring error
@@ -534,25 +549,31 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	headers := headersToString(resp.Header)
 
+	var matchData map[string]interface{}
+	if payloads != nil {
+		matchData = generators.MergeMaps(result.historyData, payloads)
+	}
+
 	// store for internal purposes the DSL matcher data
 	// hardcode stopping storing data after defaultMaxHistorydata items
 	if len(result.historyData) < defaultMaxHistorydata {
 		result.Lock()
 		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
-		// retrieve current payloads
-		currentPayloads, err := e.bulkHTTPRequest.GetPayloadsValues(reqURL)
-		if err == nil {
+		if payloads == nil {
 			// merge them to history data
-			result.historyData = generators.MergeMaps(result.historyData, currentPayloads)
+			result.historyData = generators.MergeMaps(result.historyData, payloads)
 		}
 		result.historyData = generators.MergeMaps(result.historyData, dynamicvalues)
+
+		// complement match data with new one if necessary
+		matchData = generators.MergeMaps(matchData, result.historyData)
 		result.Unlock()
 	}
 
 	matcherCondition := e.bulkHTTPRequest.GetMatchersCondition()
 	for _, matcher := range e.bulkHTTPRequest.Matchers {
 		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers, duration, result.historyData) {
+		if !matcher.Match(resp, body, headers, duration, matchData) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
 				return nil
@@ -567,7 +588,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 				result.Meta = request.Meta
 				result.GotResults = true
 				result.Unlock()
-				e.writeOutputHTTP(request, resp, body, matcher, nil, result.Meta, reqURL)
+				e.writeOutputHTTP(request, resp, body, matcher, nil, request.Meta, reqURL)
 			}
 		}
 	}
@@ -598,7 +619,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, result.Meta, reqURL)
+		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, request.Meta, reqURL)
 		result.Lock()
 		result.GotResults = true
 		result.Unlock()
