@@ -2,7 +2,10 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.14
 
+replace github.com/Mzack9999/dsl => /home/marco/go/src/github.com/Mzack9999/dsl
+
 require (
+	github.com/Mzack9999/dsl v0.0.1
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/corpix/uarand v0.1.1

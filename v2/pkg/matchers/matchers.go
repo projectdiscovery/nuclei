@@ -1,8 +1,6 @@
 package matchers
 
 import (
-	"regexp"
-
 	"github.com/Knetic/govaluate"
 )
 
@@ -23,10 +21,10 @@ type Matcher struct {
 	Words []string `yaml:"words,omitempty"`
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex,omitempty"`
-	// regexCompiled is the compiled variant
-	regexCompiled []*regexp.Regexp
+
 	// Binary are the binary characters required to be present in the response
-	Binary []string `yaml:"binary,omitempty"`
+	Binary         []string `yaml:"binary,omitempty"`
+	binaryCompiled []string
 	// DSL are the dsl queries
 	DSL []string `yaml:"dsl,omitempty"`
 	// dslCompiled is the compiled variant
@@ -49,6 +47,7 @@ type Matcher struct {
 	// Negative specifies if the match should be reversed
 	// It will only match if the condition is not true.
 	Negative bool `yaml:"negative,omitempty"`
+	negative string
 }
 
 // MatcherType is the type of the matcher specified
@@ -117,14 +116,4 @@ var PartTypes = map[string]Part{
 // GetPart returns the part of the matcher
 func (m *Matcher) GetPart() Part {
 	return m.part
-}
-
-// isNegative reverts the results of the match if the matcher
-// is of type negative.
-func (m *Matcher) isNegative(data bool) bool {
-	if m.Negative {
-		return !data
-	}
-
-	return data
 }
