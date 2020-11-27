@@ -82,7 +82,7 @@ func (m *Matcher) matchStatusCode(statusCode int) bool {
 	data["statuses"] = m.Status
 	expr := m.negative + "equals_any(status_code, statuses)"
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
 
 // matchSize matches a size check against an HTTP Response
@@ -92,7 +92,7 @@ func (m *Matcher) matchSize(size int) bool {
 	data["sizes"] = m.Size
 	expr := m.negative + "equals_any(size, sizes)"
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
 
 // matchWords matches a word check against an HTTP Response/Headers.
@@ -105,20 +105,20 @@ func (m *Matcher) matchWords(corpus string) bool {
 		expr = m.negative + "contains_all(corpus, words)"
 	}
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
 
 // matchRegex matches a regex check against an HTTP Response/Headers.
 func (m *Matcher) matchRegex(corpus string) bool {
 	data := make(map[string]interface{})
 	data["corpus"] = corpus
-	data["regexes"] = m.Words
+	data["regexes"] = m.Regex
 	expr := m.negative + "regex_any(corpus, regexes)"
 	if m.condition == ANDCondition {
-		expr = m.negative + "regex_all(corpus, words)"
+		expr = m.negative + "regex_all(corpus, regexes)"
 	}
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
 
 // matchWords matches a word check against an HTTP Response/Headers.
@@ -131,7 +131,7 @@ func (m *Matcher) matchBinary(corpus string) bool {
 		expr = m.negative + "contains_all(corpus, binaries)"
 	}
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
 
 // matchDSL matches on a generic map result
@@ -142,5 +142,5 @@ func (m *Matcher) matchDSL(data map[string]interface{}) bool {
 	}
 	expr := m.negative + strings.Join(m.DSL, joinOperator)
 	v, err := dsl.EvalExpr(expr, data)
-	return v.(bool) && err == nil
+	return err == nil && v.(bool)
 }
