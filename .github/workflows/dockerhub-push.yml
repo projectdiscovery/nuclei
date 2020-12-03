@@ -5,13 +5,15 @@ on:
   release:
     types: [published]
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - name: Publish to Dockerhub Registry
+      pre: echo ::save-state name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
       uses: elgohr/Publish-Docker-Github-Action@master
       with:
         name: projectdiscovery/nuclei
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
+        tags: "latest,${{ env.STATE_RELEASE_VERSION }}"
