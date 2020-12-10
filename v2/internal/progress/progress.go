@@ -88,7 +88,7 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		builder.WriteRune('[')
 		startedAt, _ := stats.GetStatic("startedAt")
 		duration := time.Since(startedAt.(time.Time))
-		builder.WriteString(fmtDuration(duration))
+		builder.WriteString(clistats.FmtDuration(duration))
 		builder.WriteRune(']')
 
 		templates, _ := stats.GetStatic("templates")
@@ -123,17 +123,6 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 		builder.Reset()
 	}
-}
-
-// fmtDuration formats the duration for the time elapsed
-func fmtDuration(d time.Duration) string {
-	d = d.Round(time.Second)
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
-	return fmt.Sprintf("%d:%02d:%02d", h, m, s)
 }
 
 // Stop stops the progress bar execution

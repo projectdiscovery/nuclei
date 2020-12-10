@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Mzack9999/dsl"
 	"github.com/miekg/dns"
+	"github.com/projectdiscovery/dsl"
+	"github.com/projectdiscovery/mapsutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
 )
 
@@ -46,7 +47,7 @@ func (m *Matcher) Match(resp *http.Response, body, headers string, duration time
 		}
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(generators.MergeMaps(HTTPToMap(resp, body, headers, duration, ""), data))
+		return m.matchDSL(generators.MergeMaps(mapsutil.HTTPToMap(resp, body, headers, duration, ""), data))
 	}
 
 	return false
@@ -69,7 +70,7 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 		return m.matchBinary(msg.String())
 	case DSLMatcher:
 		// Match complex query
-		return m.matchDSL(DNSToMap(msg, ""))
+		return m.matchDSL(mapsutil.DNSToMap(msg, ""))
 	}
 
 	return false

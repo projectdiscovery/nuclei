@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapsutil"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
@@ -566,7 +567,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		if parsed, err := url.Parse(reqURL); err == nil {
 			result.historyData["Hostname"] = parsed.Host
 		}
-		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
+		result.historyData = generators.MergeMaps(result.historyData, mapsutil.HTTPToMap(resp, body, headers, duration, format))
 		if payloads == nil {
 			// merge them to history data
 			result.historyData = generators.MergeMaps(result.historyData, payloads)
