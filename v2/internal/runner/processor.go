@@ -28,6 +28,8 @@ type workflowTemplates struct {
 	Templates []*workflows.Template
 }
 
+var sandboxedModules = []string{"math", "text", "rand", "fmt", "json", "base64", "hex", "enum"}
+
 // processTemplateWithList processes a template and runs the enumeration on all the targets
 func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
 	var httpExecuter *executer.HTTPExecuter
@@ -128,7 +130,7 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 	workflowTemplatesList, err := r.preloadWorkflowTemplates(p, workflow)
 	if err != nil {
 		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
-		return result
+		return false
 	}
 
 	logicBytes := []byte(workflow.Logic)
@@ -143,17 +145,11 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 			defer wg.Done()
 
 			script := tengo.NewScript(logicBytes)
-			var moduleNames = []string{
-				"math",
-				"text",
-				"rand",
-				"fmt",
-				"json",
-				"base64",
-				"hex",
-				"enum",
+			if !r.options.Sandbox {
+				script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+			} else {
+				script.SetImports(stdlib.GetModuleMap(sandboxedModules...))
 			}
-			script.SetImports(stdlib.GetModuleMap(moduleNames...))
 
 			variables := make(map[string]*workflows.NucleiVar)
 			for _, workflowTemplate := range *workflowTemplatesList {
