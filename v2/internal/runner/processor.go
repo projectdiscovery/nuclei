@@ -143,10 +143,19 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 			defer wg.Done()
 
 			script := tengo.NewScript(logicBytes)
-			script.SetImports(stdlib.GetModuleMap(stdlib.AllModuleNames()...))
+			var moduleNames = []string{
+				"math",
+				"text",
+				"rand",
+				"fmt",
+				"json",
+				"base64",
+				"hex",
+				"enum",
+			}
+			script.SetImports(stdlib.GetModuleMap(moduleNames...))
 
 			variables := make(map[string]*workflows.NucleiVar)
-
 			for _, workflowTemplate := range *workflowTemplatesList {
 				name := workflowTemplate.Name
 				variable := &workflows.NucleiVar{Templates: workflowTemplate.Templates, URL: targetURL}
