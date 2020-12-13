@@ -14,7 +14,8 @@ import (
 // the template requesting process.
 // nolint // false positive, options are allocated once and are necessary as is
 type Options struct {
-	Sandbox bool // Sandbox mode allows users to run isolated workflows with system commands disabled
+	MaxWorkflowDuration  int                    // MaxWorkflowDuration is the maximum time a workflow can run for a URL
+	Sandbox              bool                   // Sandbox mode allows users to run isolated workflows with system commands disabled
 	Debug                bool                   // Debug mode allows debugging request/responses for the engine
 	Silent               bool                   // Silent suppresses any extra text and only writes found URLs on screen.
 	Version              bool                   // Version specifies if we should just show version and exit
@@ -68,6 +69,7 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flag.BoolVar(&options.Sandbox, "sandbox", false, "Run workflows in isolated sandbox mode")
+	flag.IntVar(&options.MaxWorkflowDuration, "workflow-duration", 10, "Max time for workflow run on single URL in minutes")
 	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
 	flag.Var(&options.Templates, "t", "Template input dir/file/files to run on host. Can be used multiple times. Supports globbing.")
 	flag.Var(&options.ExcludedTemplates, "exclude", "Template input dir/file/files to exclude. Can be used multiple times. Supports globbing.")

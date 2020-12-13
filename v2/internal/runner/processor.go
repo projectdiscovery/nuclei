@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	tengo "github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -132,11 +133,9 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 		gologger.Warningf("Could not preload templates for workflow %s: %s\n", workflow.ID, err)
 		return false
 	}
-
 	logicBytes := []byte(workflow.Logic)
 
 	wg := sizedwaitgroup.New(r.options.BulkSize)
-
 	r.hm.Scan(func(k, _ []byte) error {
 		targetURL := string(k)
 		wg.Add()
@@ -163,7 +162,10 @@ func (r *Runner) processWorkflowWithList(p *progress.Progress, workflow *workflo
 				variables[name] = variable
 			}
 
-			_, err := script.RunContext(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(r.options.MaxWorkflowDuration)*time.Minute)
+			defer cancel()
+
+			_, err := script.RunContext(ctx)
 			if err != nil {
 				gologger.Errorf("Could not execute workflow '%s': %s\n", workflow.ID, err)
 			}
