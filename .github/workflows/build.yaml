@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v1
+        uses: golangci/golangci-lint-action@v2
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.31
+          version: v1.33
           args: --timeout 5m
           working-directory: v2/
 
