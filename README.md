@@ -209,7 +209,7 @@ Remember to change `/path-to-nuclei-templates` to the real path on your host fil
 You can run the templates based on the specific severity of the template, single and multiple severity can be used for scan. 
 
 ```sh
-nuclei -l urls.txt -t cves/ -severity critical, medium
+nuclei -l urls.txt -t cves/ -severity critical,medium
 ```
 
 The above example will run all the templates under `cves` directory with `critical` and `medium` severity. 
