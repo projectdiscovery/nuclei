@@ -15,6 +15,8 @@ import (
 // nolint // false positive, options are allocated once and are necessary as is
 type Options struct {
 	MaxWorkflowDuration  int                    // MaxWorkflowDuration is the maximum time a workflow can run for a URL
+	Metrics              bool                   // Metrics enables display of metrics via an http endpoint
+	MetricsPort          int                    // MetricsPort is the port to show metrics on
 	Sandbox              bool                   // Sandbox mode allows users to run isolated workflows with system commands disabled
 	Debug                bool                   // Debug mode allows debugging request/responses for the engine
 	Silent               bool                   // Silent suppresses any extra text and only writes found URLs on screen.
@@ -69,6 +71,8 @@ func ParseOptions() *Options {
 	options := &Options{}
 
 	flag.BoolVar(&options.Sandbox, "sandbox", false, "Run workflows in isolated sandbox mode")
+	flag.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
+	flag.IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
 	flag.IntVar(&options.MaxWorkflowDuration, "workflow-duration", 10, "Max time for workflow run on single URL in minutes")
 	flag.StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
 	flag.Var(&options.Templates, "t", "Template input dir/file/files to run on host. Can be used multiple times. Supports globbing.")
