@@ -73,19 +73,7 @@ type HTTPExecuter struct {
 
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
-	CustomHeaders    requests.CustomHeaders
 	RandomAgent      bool
-	ProxyURL         string
-	ProxySocksURL    string
-	Template         *templates.Template
-	BulkHTTPRequest  *requests.BulkHTTPRequest
-	Writer           *bufwriter.Writer
-	Timeout          int
-	Retries          int
-	CookieJar        *cookiejar.Jar
-	Colorizer        *colorizer.NucleiColorizer
-	Decolorizer      *regexp.Regexp
-	TraceLog         tracelog.Log
 	Debug            bool
 	JSON             bool
 	JSONRequests     bool
@@ -93,6 +81,18 @@ type HTTPOptions struct {
 	CookieReuse      bool
 	ColoredOutput    bool
 	StopAtFirstMatch bool
+	Timeout          int
+	Retries          int
+	ProxyURL         string
+	ProxySocksURL    string
+	Template         *templates.Template
+	BulkHTTPRequest  *requests.BulkHTTPRequest
+	Writer           *bufwriter.Writer
+	CustomHeaders    requests.CustomHeaders
+	CookieJar        *cookiejar.Jar
+	Colorizer        *colorizer.NucleiColorizer
+	Decolorizer      *regexp.Regexp
+	TraceLog         tracelog.Log
 	PF               *projetctfile.ProjectFile
 	RateLimiter      ratelimit.Limiter
 	Dialer           *fastdialer.Dialer
