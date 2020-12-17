@@ -1,8 +1,13 @@
 package progress
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,12 +18,13 @@ import (
 // Progress is a progress instance for showing program stats
 type Progress struct {
 	active       bool
-	stats        clistats.StatisticsClient
 	tickDuration time.Duration
+	stats        clistats.StatisticsClient
+	server       *http.Server
 }
 
 // NewProgress creates and returns a new progress tracking object.
-func NewProgress(active bool) *Progress {
+func NewProgress(active, metrics bool, port int) (*Progress, error) {
 	var tickDuration time.Duration
 	if active {
 		tickDuration = 5 * time.Second
@@ -26,29 +32,44 @@ func NewProgress(active bool) *Progress {
 		tickDuration = -1
 	}
 
-	var progress Progress
-	if active {
-		stats, err := clistats.New()
-		if err != nil {
-			gologger.Warningf("Couldn't create progress engine: %s\n", err)
-		}
-		progress.active = active
-		progress.stats = stats
-		progress.tickDuration = tickDuration
-	}
+	progress := &Progress{}
 
-	return &progress
+	stats, err := clistats.New()
+	if err != nil {
+		return nil, err
+	}
+	progress.active = active
+	progress.stats = stats
+	progress.tickDuration = tickDuration
+
+	if metrics {
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+			metrics := progress.getMetrics()
+			_ = json.NewEncoder(w).Encode(metrics)
+		})
+		progress.server = &http.Server{
+			Addr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(port)),
+			Handler: http.DefaultServeMux,
+		}
+		go func() {
+			if err := progress.server.ListenAndServe(); err != nil {
+				gologger.Warningf("Could not serve metrics: %s\n", err)
+			}
+		}()
+	}
+	return progress, nil
 }
 
 // Init initializes the progress display mechanism by setting counters, etc.
 func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
+	p.stats.AddStatic("templates", rulesCount)
+	p.stats.AddStatic("hosts", hostCount)
+	p.stats.AddStatic("startedAt", time.Now())
+	p.stats.AddCounter("requests", uint64(0))
+	p.stats.AddCounter("errors", uint64(0))
+	p.stats.AddCounter("total", uint64(requestCount))
+
 	if p.active {
-		p.stats.AddStatic("templates", rulesCount)
-		p.stats.AddStatic("hosts", hostCount)
-		p.stats.AddStatic("startedAt", time.Now())
-		p.stats.AddCounter("requests", uint64(0))
-		p.stats.AddCounter("errors", uint64(0))
-		p.stats.AddCounter("total", uint64(requestCount))
 		if err := p.stats.Start(makePrintCallback(), p.tickDuration); err != nil {
 			gologger.Warningf("Couldn't start statistics: %s\n", err)
 		}
@@ -57,25 +78,19 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 
 // AddToTotal adds a value to the total request count
 func (p *Progress) AddToTotal(delta int64) {
-	if p.active {
-		p.stats.IncrementCounter("total", int(delta))
-	}
+	p.stats.IncrementCounter("total", int(delta))
 }
 
 // Update progress tracking information and increments the request counter by one unit.
 func (p *Progress) Update() {
-	if p.active {
-		p.stats.IncrementCounter("requests", 1)
-	}
+	p.stats.IncrementCounter("requests", 1)
 }
 
 // Drop drops the specified number of requests from the progress bar total.
 // This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
 func (p *Progress) Drop(count int64) {
-	if p.active {
-		// mimic dropping by incrementing the completed requests
-		p.stats.IncrementCounter("errors", int(count))
-	}
+	// mimic dropping by incrementing the completed requests
+	p.stats.IncrementCounter("errors", int(count))
 }
 
 const bufferSize = 128
@@ -125,6 +140,34 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 	}
 }
 
+// getMetrics returns a map of important metrics for client
+func (p *Progress) getMetrics() map[string]interface{} {
+	results := make(map[string]interface{})
+
+	startedAt, _ := p.stats.GetStatic("startedAt")
+	duration := time.Since(startedAt.(time.Time))
+
+	results["startedAt"] = startedAt.(time.Time)
+	results["duration"] = fmtDuration(duration)
+	templates, _ := p.stats.GetStatic("templates")
+	results["templates"] = clistats.String(templates)
+	hosts, _ := p.stats.GetStatic("hosts")
+	results["hosts"] = clistats.String(hosts)
+	requests, _ := p.stats.GetCounter("requests")
+	results["requests"] = clistats.String(requests)
+	total, _ := p.stats.GetCounter("total")
+	results["total"] = clistats.String(total)
+	results["rps"] = clistats.String(uint64(float64(requests) / duration.Seconds()))
+	errors, _ := p.stats.GetCounter("errors")
+	results["errors"] = clistats.String(errors)
+
+	//nolint:gomnd // this is not a magic number
+	percentData := (float64(requests) * float64(100)) / float64(total)
+	percent := clistats.String(uint64(percentData))
+	results["percent"] = percent
+	return results
+}
+
 // fmtDuration formats the duration for the time elapsed
 func fmtDuration(d time.Duration) string {
 	d = d.Round(time.Second)
@@ -143,4 +186,5 @@ func (p *Progress) Stop() {
 			gologger.Warningf("Couldn't stop statistics: %s\n", err)
 		}
 	}
+	p.server.Shutdown(context.Background())
 }
