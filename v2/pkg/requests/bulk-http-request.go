@@ -501,7 +501,7 @@ func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface
 	payloadsFromTemplate := r.gsfm.Value(reqURL)
 	for k, v := range payloadsFromTemplate {
 		kexp := v.(string)
-		// if it doesn't containg markups, we just continue
+		// if it doesn't containing markups, we just continue
 		if !hasMarker(kexp) {
 			payloadProcessedValues[k] = v
 			continue
@@ -530,4 +530,4 @@ func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface
 }
 
 // ErrNoPayload error to avoid the additional base null request
-var ErrNoPayload = fmt.Errorf("No payload found")
+var ErrNoPayload = fmt.Errorf("no payload found")
