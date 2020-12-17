@@ -173,7 +173,11 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	// Creates the progress tracking object
-	runner.progress = progress.NewProgress(options.EnableProgressBar)
+	var progressErr error
+	runner.progress, progressErr = progress.NewProgress(options.EnableProgressBar, options.Metrics, options.MetricsPort)
+	if progressErr != nil {
+		return nil, progressErr
+	}
 
 	// create project file if requested or load existing one
 	if options.Project {
