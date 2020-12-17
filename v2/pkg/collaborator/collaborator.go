@@ -57,7 +57,6 @@ func (b *BurpCollaborator) Has(s string) (found bool) {
 				b.Unlock()
 				break
 			}
-
 		}
 	}
 

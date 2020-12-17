@@ -12,11 +12,9 @@ import (
 
 // Options contains the configuration options for tuning
 // the template requesting process.
-// nolint // false positive, options are allocated once and are necessary as is
 type Options struct {
-	MaxWorkflowDuration  int                    // MaxWorkflowDuration is the maximum time a workflow can run for a URL
+	RandomAgent          bool                   // Generate random User-Agent
 	Metrics              bool                   // Metrics enables display of metrics via an http endpoint
-	MetricsPort          int                    // MetricsPort is the port to show metrics on
 	Sandbox              bool                   // Sandbox mode allows users to run isolated workflows with system commands disabled
 	Debug                bool                   // Debug mode allows debugging request/responses for the engine
 	Silent               bool                   // Silent suppresses any extra text and only writes found URLs on screen.
@@ -32,13 +30,17 @@ type Options struct {
 	Stdin                bool                   // Stdin specifies whether stdin input was given to the process
 	StopAtFirstMatch     bool                   // Stop processing template at first full match (this may break chained requests)
 	NoMeta               bool                   // Don't display metadata for the matches
+	Project              bool                   // Nuclei uses project folder to avoid sending same HTTP request multiple times
+	MetricsPort          int                    // MetricsPort is the port to show metrics on
+	MaxWorkflowDuration  int                    // MaxWorkflowDuration is the maximum time a workflow can run for a URL
 	BulkSize             int                    // Number of targets analyzed in parallel for each template
 	TemplateThreads      int                    // Number of templates executed in parallel
-	Project              bool                   // Nuclei uses project folder to avoid sending same HTTP request multiple times
-	ProjectPath          string                 // Nuclei uses a user defined project folder
 	Timeout              int                    // Timeout is the seconds to wait for a response from the server.
 	Retries              int                    // Retries is the number of times to retry the request
 	RateLimit            int                    // Rate-Limit of requests per specified target
+	Threads              int                    // Thread controls the number of concurrent requests to make.
+	BurpCollaboratorBiid string                 // Burp Collaborator BIID for polling
+	ProjectPath          string                 // Nuclei uses a user defined project folder
 	Severity             string                 // Filter templates based on their severity and only run the matching ones.
 	Target               string                 // Target is a single URL/Domain to scan usng a template
 	Targets              string                 // Targets specifies the targets to scan using templates.
@@ -49,10 +51,7 @@ type Options struct {
 	TraceLogFile         string                 // TraceLogFile specifies a file to write with the trace of all requests
 	Templates            multiStringFlag        // Signature specifies the template/templates to use
 	ExcludedTemplates    multiStringFlag        // Signature specifies the template/templates to exclude
-	RandomAgent          bool                   // Generate random User-Agent
 	CustomHeaders        requests.CustomHeaders // Custom global headers
-	Threads              int                    // Thread controls the number of concurrent requests to make.
-	BurpCollaboratorBiid string                 // Burp Collaborator BIID for polling
 }
 
 type multiStringFlag []string

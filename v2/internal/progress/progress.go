@@ -186,5 +186,5 @@ func (p *Progress) Stop() {
 			gologger.Warningf("Couldn't stop statistics: %s\n", err)
 		}
 	}
-	p.server.Shutdown(context.Background())
+	_ = p.server.Shutdown(context.Background())
 }
