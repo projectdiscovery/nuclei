@@ -1,4 +1,4 @@
-module projectdiscovery/nuclei/v2
+module github.com/projectdiscovery/nuclei/v2
 
 go 1.15
 
