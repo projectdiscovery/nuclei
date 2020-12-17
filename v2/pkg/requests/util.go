@@ -71,3 +71,7 @@ func ExpandMapValues(m map[string]string) (m1 map[string][]string) {
 	}
 	return
 }
+
+func hasMarker(s string) bool {
+	return strings.Contains(s, markerParenthesisOpen) || strings.Contains(s, markerParenthesisClose) || strings.Contains(s, markerGeneral)
+}

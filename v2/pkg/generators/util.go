@@ -199,3 +199,7 @@ func insertInto(s string, interval int, sep rune) string {
 	buffer.WriteRune(sep)
 	return buffer.String()
 }
+
+func toString(v interface{}) string {
+	return fmt.Sprint(v)
+}

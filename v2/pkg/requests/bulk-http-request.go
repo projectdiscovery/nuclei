@@ -184,7 +184,12 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromRaw(ctx context.Context, baseURL, d
 		r.gsfm.InitOrSkip(baseURL)
 		r.ReadOne(baseURL)
 
-		return r.handleRawWithPaylods(ctx, data, baseURL, values, r.gsfm.Value(baseURL))
+		payloads, err := r.GetPayloadsValues(baseURL)
+		if err != nil {
+			return nil, err
+		}
+
+		return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 	}
 
 	// otherwise continue with normal flow
@@ -202,7 +207,7 @@ func (r *BulkHTTPRequest) handleRawWithPaylods(ctx context.Context, raw, baseURL
 
 	dynamicValues := make(map[string]interface{})
 	// find all potentials tokens between {{}}
-	var re = regexp.MustCompile(`(?m)\{\{.+}}`)
+	var re = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
 	for _, match := range re.FindAllString(raw, -1) {
 		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
@@ -400,7 +405,14 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 			value = p[1]
 		}
 
-		rawRequest.Headers[key] = value
+		// in case of unsafe requests multiple headers should be accepted
+		// therefore use the full line as key
+		_, found := rawRequest.Headers[key]
+		if r.Unsafe && found {
+			rawRequest.Headers[line] = ""
+		} else {
+			rawRequest.Headers[key] = value
+		}
 	}
 
 	// Handle case with the full http url in path. In that case,
@@ -482,3 +494,40 @@ func (r *BulkHTTPRequest) Total() int {
 func (r *BulkHTTPRequest) Increment(reqURL string) {
 	r.gsfm.Increment(reqURL)
 }
+
+// GetPayloadsValues for the specified URL
+func (r *BulkHTTPRequest) GetPayloadsValues(reqURL string) (map[string]interface{}, error) {
+	payloadProcessedValues := make(map[string]interface{})
+	payloadsFromTemplate := r.gsfm.Value(reqURL)
+	for k, v := range payloadsFromTemplate {
+		kexp := v.(string)
+		// if it doesn't containing markups, we just continue
+		if !hasMarker(kexp) {
+			payloadProcessedValues[k] = v
+			continue
+		}
+		// attempts to expand expressions
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, generators.HelperFunctions())
+		if err != nil {
+			// it is a simple literal payload => proceed with literal value
+			payloadProcessedValues[k] = v
+			continue
+		}
+		// it is an expression - try to solve it
+		expValue, err := compiled.Evaluate(payloadsFromTemplate)
+		if err != nil {
+			// an error occurred => proceed with literal value
+			payloadProcessedValues[k] = v
+			continue
+		}
+		payloadProcessedValues[k] = fmt.Sprint(expValue)
+	}
+	var err error
+	if len(payloadProcessedValues) == 0 {
+		err = ErrNoPayload
+	}
+	return payloadProcessedValues, err
+}
+
+// ErrNoPayload error to avoid the additional base null request
+var ErrNoPayload = fmt.Errorf("no payload found")
