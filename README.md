@@ -205,9 +205,9 @@ Remember to change `/path-to-nuclei-templates` to the real path on your host fil
 Nuclei have multiple rate limit controls for multiple factors including a number of templates to execute in parallel, a number of hosts to be scanned in parallel for each template, and the global number of request / per second you wanted to make/limit using nuclei, as an example here is how all this can be controlled using flags.
 
 
-`-c` flag => Limits the number of templates processed in parallel.
-`-bulk-size` flag => Limits the number of hosts processed in parallel for each template.
-`-rate-limit` flag => Global rate limiter that ensures defined number of requests/second across all templates.
+- `-c` flag => Limits the number of templates processed in parallel.
+- `-bulk-size` flag => Limits the number of hosts processed in parallel for each template.
+- `-rate-limit` flag => Global rate limiter that ensures defined number of requests/second across all templates.
 
 If you wanted go fast or control the scans, feel free to play with these flags and numbers, `rate-limit` always ensure to control the outgoing requests regardless the other flag you are using.
 
