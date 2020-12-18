@@ -61,6 +61,7 @@ type HTTPExecuter struct {
 	traceLog         tracelog.Log
 	decolorizer      *regexp.Regexp
 	randomAgent      bool
+	vhost            bool
 	coloredOutput    bool
 	debug            bool
 	Results          bool
@@ -81,6 +82,7 @@ type HTTPOptions struct {
 	CookieReuse      bool
 	ColoredOutput    bool
 	StopAtFirstMatch bool
+	Vhost            bool
 	Timeout          int
 	Retries          int
 	ProxyURL         string
@@ -151,9 +153,9 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		decolorizer:      options.Decolorizer,
 		stopAtFirstMatch: options.StopAtFirstMatch,
 		pf:               options.PF,
+		vhost:            options.Vhost,
 		ratelimiter:      options.RateLimiter,
 	}
-
 	return executer, nil
 }
 
@@ -337,6 +339,13 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 
 // ExecuteHTTP executes the HTTP request on a URL
 func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result {
+	var customHost string
+	if e.vhost {
+		parts := strings.Split(reqURL, ",")
+		reqURL = parts[0]
+		customHost = parts[1]
+	}
+
 	// verify if pipeline was requested
 	if e.bulkHTTPRequest.Pipeline {
 		return e.ExecuteTurboHTTP(reqURL)
@@ -383,6 +392,15 @@ func (e *HTTPExecuter) ExecuteHTTP(p *progress.Progress, reqURL string) *Result 
 			result.Error = err
 			p.Drop(remaining)
 		} else {
+			if e.vhost {
+				if httpRequest.Request != nil {
+					httpRequest.Request.Host = customHost
+				}
+				if httpRequest.RawRequest != nil && httpRequest.RawRequest.Headers != nil {
+					httpRequest.RawRequest.Headers["Host"] = customHost
+				}
+			}
+
 			e.ratelimiter.Take()
 			// If the request was built correctly then execute it
 			format := "%s_" + strconv.Itoa(requestNumber)

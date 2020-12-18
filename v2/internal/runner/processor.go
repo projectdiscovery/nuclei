@@ -46,6 +46,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			Template:      template,
 			DNSRequest:    value,
 			Writer:        r.output,
+			VHost:         r.options.Vhost,
 			JSON:          r.options.JSON,
 			JSONRequests:  r.options.JSONRequests,
 			NoMeta:        r.options.NoMeta,
@@ -68,6 +69,7 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 			RandomAgent:      r.options.RandomAgent,
 			CustomHeaders:    r.options.CustomHeaders,
 			JSON:             r.options.JSON,
+			Vhost:            r.options.Vhost,
 			JSONRequests:     r.options.JSONRequests,
 			NoMeta:           r.options.NoMeta,
 			CookieReuse:      value.CookieReuse,
@@ -114,7 +116,6 @@ func (r *Runner) processTemplateWithList(p *progress.Progress, template *templat
 				gologger.Warningf("[%s] Could not execute step: %s\n", r.colorizer.Colorizer.BrightBlue(template.ID), result.Error)
 			}
 		}(URL)
-
 		return nil
 	})
 
@@ -235,6 +236,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 					ProxySocksURL:    r.options.ProxySocksURL,
 					RandomAgent:      r.options.RandomAgent,
 					CustomHeaders:    r.options.CustomHeaders,
+					Vhost:            r.options.Vhost,
 					JSON:             r.options.JSON,
 					JSONRequests:     r.options.JSONRequests,
 					CookieJar:        jar,
@@ -253,6 +255,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 					Debug:         r.options.Debug,
 					Template:      t,
 					Writer:        r.output,
+					VHost:         r.options.Vhost,
 					JSON:          r.options.JSON,
 					JSONRequests:  r.options.JSONRequests,
 					ColoredOutput: !r.options.NoColor,
@@ -309,6 +312,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 						ProxySocksURL: r.options.ProxySocksURL,
 						RandomAgent:   r.options.RandomAgent,
 						CustomHeaders: r.options.CustomHeaders,
+						Vhost:         r.options.Vhost,
 						CookieJar:     jar,
 						TraceLog:      r.traceLog,
 					}
@@ -317,6 +321,7 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 						Debug:    r.options.Debug,
 						Template: t,
 						Writer:   r.output,
+						VHost:    r.options.Vhost,
 						TraceLog: r.traceLog,
 					}
 				}

@@ -132,7 +132,6 @@ func (r *BulkHTTPRequest) MakeHTTPRequest(baseURL string, dynamicValues map[stri
 	if strings.Contains(data, "\n") {
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
 	}
-
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
 
@@ -151,7 +150,6 @@ func (r *BulkHTTPRequest) makeHTTPRequestFromModel(ctx context.Context, data str
 	if err != nil {
 		return nil, err
 	}
-
 	return &HTTPRequest{Request: request}, nil
 }
 

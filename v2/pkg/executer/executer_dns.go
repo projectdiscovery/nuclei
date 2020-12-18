@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -28,6 +29,7 @@ type DNSExecuter struct {
 	jsonRequest   bool
 	noMeta        bool
 	Results       bool
+	vhost         bool
 	traceLog      tracelog.Log
 	dnsClient     *retryabledns.Client
 	template      *templates.Template
@@ -54,6 +56,7 @@ type DNSOptions struct {
 	JSON          bool
 	JSONRequests  bool
 	NoMeta        bool
+	VHost         bool
 	TraceLog      tracelog.Log
 	Template      *templates.Template
 	DNSRequest    *requests.DNSRequest
@@ -76,6 +79,7 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		traceLog:      options.TraceLog,
 		jsonRequest:   options.JSONRequests,
 		dnsClient:     dnsClient,
+		vhost:         options.VHost,
 		template:      options.Template,
 		dnsRequest:    options.DNSRequest,
 		writer:        options.Writer,
@@ -84,13 +88,16 @@ func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
 		decolorizer:   options.Decolorizer,
 		ratelimiter:   options.RateLimiter,
 	}
-
 	return executer
 }
 
 // ExecuteDNS executes the DNS request on a URL
 func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, reqURL string) *Result {
 	result := &Result{}
+	if e.vhost {
+		parts := strings.Split(reqURL, ",")
+		reqURL = parts[0]
+	}
 
 	// Parse the URL and return domain if URL.
 	var domain string
