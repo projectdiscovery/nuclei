@@ -25,17 +25,18 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
 ## Resources
 
 -   [Features](#features)
--   [Usage](#usage)
 -   [Installation Instructions](#installation-instructions)
     -   [From Binary](#from-binary)
     -   [From Source](#from-source)
     -   [From Github](#from-github)
 -   [Nuclei templates](#nuclei-templates)
+-   [Usage](#usage)
 -   [Running nuclei](#running-nuclei)
     -   [Running with a single template.](#running-with-single-template)
     -   [Running with multiple templates.](#running-with-multiple-templates)
     -   [Running with subfinder](#running-with-subfinder)
     -   [Running in Docker](#running-in-docker-container)
+-   [Rate Limits](#rate-limits)
 -   [Template exclusion](#template-exclusion)
 -   [Thanks](#thanks)
 
@@ -60,42 +61,41 @@ nuclei -h
 
 This will display help for the tool. Here are all the switches it supports.
 
-|Flag           |Description  |Example|
-|-----------------------|-------------------------------------------------------|-------------------------------|
-|bulk-size        |Max hosts analyzed in parallel per template    |nuclei -bulk-size 25|
-|burp-collaborator-biid |Burp Collaborator BIID               |nuclei -burp-collaborator-biid XXXX|
-|c            |Number of concurrent requests (default 10)     |nuclei -c 100|
-|l            |List of urls to run templates            |nuclei -l urls.txt|
-|target         |Target to scan using Templates           |nuclei -target hxxps://example.com |
-|t            |Templates input file/files to check across hosts |nuclei -t git-core.yaml |
-|t            |Templates input file/files to check across hosts |nuclei -t cves/|
-|no-color         |Don't Use colors in output             |nuclei -no-color  |
-|no-meta        |Don't display metadata for the matches       |nuclei -no-meta|
-|json           |Prints and write output in json format       |nuclei -json|
-|include-rr       |Inlcude req/resp of matched output in JSON output  |nuclei -json -include-rr|
-|o            |File to save output result (optional)        |nuclei -o output.txt|
-|project        |Project flag to avoid sending same requests      |nuclei -project|
-|project-path       |Use a user defined project folder          |nuclei -project -project-path test|
-|stats          |Enable the progress bar (optional)         |nuclei -stats|
-|silent         |Show only found results in output          |nuclei -silent|
-|retries        |Number of times to retry a failed request      |nuclei -retries 1 |
-|timeout        |Seconds to wait before timeout (default 5)     |nuclei -timeout 5 |
-|trace-log        |File to write sent requests trace log        |nuclei -trace-log logs |
-|rate-limit       |Maximum requests/second (default 150)        |nuclei -rate-limit 100 |
-|severity         |Run templates based on severity          |nuclei -severity critical,high|
-|stop-at-first-match    |Stop processing http requests at first match   |nuclei -stop-at-first-match|
-|exclude        |Template input dir/file/files to exclude       |nuclei -exclude panels -exclude tokens|
-|debug          |Allow debugging of request/responses.        |nuclei -debug|
-|update-templates     |Download and updates nuclei templates        |nuclei -update-templates|
-|update-directory     |Directory for storing nuclei-templates(optional) |nuclei -update-directory templates |
-|tl           |List available templates               |nuclei -tl         |
-|templates-version    |Shows the installed nuclei-templates version   |nuclei -templates-version        |
-|v            |Shows verbose output of all sent requests      |nuclei -v|
-|version        |Show version of nuclei               |nuclei -version|
-|proxy-url        |Proxy URL                      |nuclei -proxy-url hxxp://127.0.0.1:8080|
-|proxy-socks-url    |Socks proxyURL                   |nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
-|random-agent            |Use random User-Agents |nuclei -random-agent |
-|H            |Custom Header                    |nuclei -H "x-bug-bounty: hacker"           |
+| Flag                   | Description                                               | Example                                         |
+| ---------------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| bulk-size              | Max hosts analyzed in parallel per template ( default 25) | nuclei -bulk-size 25                            |
+| burp-collaborator-biid | Burp Collaborator BIID                                    | nuclei -burp-collaborator-biid XXXX             |
+| c                      | Max templates processed in parallel (default 10)          | nuclei -c 10                                    |
+| l                      | List of urls to run templates                             | nuclei -l urls.txt                              |
+| target                 | Target to scan using Templates                            | nuclei -target hxxps://example.com              |
+| t                      | Templates input file/files to check across hosts          | nuclei -t git-core.yaml -t cves/                |
+| no-color               | Don't Use colors in output                                | nuclei -no-color                                |
+| no-meta                | Don't display metadata for the matches                    | nuclei -no-meta                                 |
+| json                   | Prints and write output in json format                    | nuclei -json                                    |
+| include-rr             | Inlcude req/resp of matched output in JSON output         | nuclei -json -include-rr                        |
+| o                      | File to save output result (optional)                     | nuclei -o output.txt                            |
+| project                | Project flag to avoid sending same requests               | nuclei -project                                 |
+| project-path           | Use a user defined project folder                         | nuclei -project -project-path test              |
+| stats                  | Enable the progress bar (optional)                        | nuclei -stats                                   |
+| silent                 | Show only found results in output                         | nuclei -silent                                  |
+| retries                | Number of times to retry a failed request                 | nuclei -retries 1                               |
+| timeout                | Seconds to wait before timeout (default 5)                | nuclei -timeout 5                               |
+| trace-log              | File to write sent requests trace log                     | nuclei -trace-log logs                          |
+| rate-limit             | Maximum requests/second (default 150)                     | nuclei -rate-limit 150                          |
+| severity               | Run templates based on severity                           | nuclei -severity critical,high                  |
+| stop-at-first-match    | Stop processing http requests at first match              | nuclei -stop-at-first-match                     |
+| exclude                | Template input dir/file/files to exclude                  | nuclei -exclude panels -exclude tokens          |
+| debug                  | Allow debugging of request/responses.                     | nuclei -debug                                   |
+| update-templates       | Download and updates nuclei templates                     | nuclei -update-templates                        |
+| update-directory       | Directory for storing nuclei-templates(optional)          | nuclei -update-directory templates              |
+| tl                     | List available templates                                  | nuclei -tl                                      |
+| templates-version      | Shows the installed nuclei-templates version              | nuclei -templates-version                       |
+| v                      | Shows verbose output of all sent requests                 | nuclei -v                                       |
+| version                | Show version of nuclei                                    | nuclei -version                                 |
+| proxy-url              | Proxy URL                                                 | nuclei -proxy-url hxxp://127.0.0.1:8080         |
+| proxy-socks-url        | Socks proxyURL                                            | nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
+| random-agent           | Use random User-Agents                                    | nuclei -random-agent                            |
+| H                      | Custom Header                                             | nuclei -H "x-bug-bounty: hacker"                |
 
 ## Installation Instructions
 
@@ -141,7 +141,7 @@ or download it from [nuclei templates](https://github.com/projectdiscovery/nucle
 
 **Please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
 
-## Running nuclei
+## Running Nuclei
 
 ### Running with single template.
 
@@ -200,9 +200,29 @@ For example, this will run the tool against all the hosts in `urls.txt` and outp
 
 Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
 
+### Rate Limits
+
+Nuclei have multiple rate limit controls for multiple factors including number of template to execute in parallel, number of hosts to be scanned in parallel for each template and the global number of request / per second you wanted to make / limit using nuclei, as example here is how all this can be controlled using flags. 
+
+`-c` flag => Limits the number of templates processed in parallel.
+`-bulk-size` flag => Limits the number of hosts processed in parallel for each template.
+`-rate-limit` flag => Global rate limiter that ensure defined number of request/second across all templates.
+
+If you wanted go fast or control the scans, feel free to play with these flags and numbers, `rate-limit` always ensure to control the outgoing requests regardless the other flag you are using.
+
 ### Template Exclusion
 
-[Nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) includes multiple checks including many that are useful for attack surface mapping and not necessarily a security issue, in cases where you only looking to scan few specific templates or directory, here are few options / flags to filter or exclude them from running. 
+[Nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) includes multiple checks including many that are useful for attack surface mapping and not necessarily a security issue, in cases where you only looking to scan few specific templates or directory, here are few options / flags to filter or exclude them from running.
+
+#### Running templates with exclusion
+
+We do not suggest running all the nuclei-templates directory at once, in case of doing so, one can make use of `exclude` flag to exclude specific directory or templates to ignore from scanning. 
+
+```sh
+nuclei -l urls.txt -t nuclei-templates -exclude panels/ -exclude technologies -exclude files/wp-xmlrpc.yaml
+```
+
+Note:- both directory and specific templates case be excluded from scan as shared in the above example.
 
 #### Running templates based on severity
 
@@ -220,16 +240,6 @@ nuclei -l urls.txt -t panels/ -t technologies -severity info
 
 The above example will run all the templates under `panels` and `technologies` directory with **severity** marked as `info`
 
-#### Running templates with exclusion
-
-We do not suggest running all the nuclei-templates directory at once, in case of doing so, one can make use of `exclude` flag to exclude specific directory or templates to ignore from scanning. 
-
-```sh
-nuclei -l urls.txt -t nuclei-templates -exclude panels/ -exclude technologies -exclude files/wp-xmlrpc.yaml
-```
-
-Note:- both directory and specific templates case be excluded from scan as shared in the above example.
-
 #### Using `.nuclei-ignore` file for template exclusion
 
 Since release of nuclei [v2.1.1](https://github.com/projectdiscovery/nuclei/releases/tag/v2.1.1), we have added support of `.nuclei-ignore` file that works along with `update-templates` flag of nuclei, in **.nuclei-ignore** file, you can define all the template directory or template path that you wanted to exclude from all the nuclei scans, to start using this feature, make sure you installed nuclei templates using `nuclei -update-templates` flag, now you can add/update/remove templates in the file that you wanted to exclude from running. 
@@ -243,6 +253,7 @@ Default **nuclei-ignore** list can be accessed from [here](https://github.com/pr
 * * *
 
 # 📋 Notes
+
 - Progress bar is experimental feature, might not work in few cases. 
 - Progress bar doesn't work with workflows, numbers are not accurate due to conditional execution.
 
