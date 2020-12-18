@@ -13,6 +13,7 @@ import (
 // Options contains the configuration options for tuning
 // the template requesting process.
 type Options struct {
+	Vhost                bool                   // Mark the input specified as VHOST input
 	RandomAgent          bool                   // Generate random User-Agent
 	Metrics              bool                   // Metrics enables display of metrics via an http endpoint
 	Sandbox              bool                   // Sandbox mode allows users to run isolated workflows with system commands disabled
@@ -69,6 +70,7 @@ func (m *multiStringFlag) Set(value string) error {
 func ParseOptions() *Options {
 	options := &Options{}
 
+	flag.BoolVar(&options.Vhost, "vhost", false, "Input supplied is a comma-separated vhost list")
 	flag.BoolVar(&options.Sandbox, "sandbox", false, "Run workflows in isolated sandbox mode")
 	flag.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
 	flag.IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
