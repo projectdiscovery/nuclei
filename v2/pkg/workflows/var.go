@@ -229,6 +229,5 @@ func iterableToMapString(t tengo.Object) map[string]string {
 			}
 		}
 	}
-
 	return m
 }

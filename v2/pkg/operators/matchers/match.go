@@ -105,7 +105,6 @@ func (m *Matcher) matchSizeCode(length int) bool {
 		// Return on the first match.
 		return true
 	}
-
 	return false
 }
 
@@ -134,7 +133,6 @@ func (m *Matcher) matchWords(corpus string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -163,7 +161,6 @@ func (m *Matcher) matchRegex(corpus string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -193,7 +190,6 @@ func (m *Matcher) matchBinary(corpus string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -230,6 +226,5 @@ func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
 			return true
 		}
 	}
-
 	return false
 }
