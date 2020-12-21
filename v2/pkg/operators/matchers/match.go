@@ -19,27 +19,27 @@ func (m *Matcher) Match(resp *http.Response, body, headers string, duration time
 		return m.isNegative(m.matchSizeCode(len(body)))
 	case WordsMatcher:
 		// Match the parts as required for word check
-		if m.part == BodyPart {
+		if m.Part == "body" {
 			return m.isNegative(m.matchWords(body))
-		} else if m.part == HeaderPart {
+		} else if m.Part == "header" {
 			return m.isNegative(m.matchWords(headers))
 		} else {
 			return m.isNegative(m.matchWords(headers) || m.matchWords(body))
 		}
 	case RegexMatcher:
 		// Match the parts as required for regex check
-		if m.part == BodyPart {
+		if m.Part == "body" {
 			return m.isNegative(m.matchRegex(body))
-		} else if m.part == HeaderPart {
+		} else if m.Part == "header" {
 			return m.isNegative(m.matchRegex(headers))
 		} else {
 			return m.isNegative(m.matchRegex(headers) || m.matchRegex(body))
 		}
 	case BinaryMatcher:
 		// Match the parts as required for binary characters check
-		if m.part == BodyPart {
+		if m.Part == "body" {
 			return m.isNegative(m.matchBinary(body))
-		} else if m.part == HeaderPart {
+		} else if m.Part == "header" {
 			return m.isNegative(m.matchBinary(headers))
 		} else {
 			return m.isNegative(m.matchBinary(headers) || m.matchBinary(body))
@@ -55,7 +55,8 @@ func (m *Matcher) Match(resp *http.Response, body, headers string, duration time
 // MatchDNS matches a dns response against a given matcher
 func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	switch m.matcherType {
-	// [WIP] add dns status code matcher
+	case StatusMatcher:
+		return m.isNegative(m.matchStatusCode(msg.Rcode))
 	case SizeMatcher:
 		return m.matchSizeCode(msg.Len())
 	case WordsMatcher:
@@ -71,7 +72,6 @@ func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 		// Match complex query
 		return m.matchDSL(DNSToMap(msg, ""))
 	}
-
 	return false
 }
 

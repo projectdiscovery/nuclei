@@ -47,16 +47,5 @@ func (m *Matcher) CompileMatchers() error {
 	} else {
 		m.condition = ORCondition
 	}
-
-	// Setup the part of the request to match, if any.
-	if m.Part != "" {
-		m.part, ok = PartTypes[m.Part]
-		if !ok {
-			return fmt.Errorf("unknown matcher part specified: %s", m.Part)
-		}
-	} else {
-		m.part = BodyPart
-	}
-
 	return nil
 }
