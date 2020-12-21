@@ -246,7 +246,6 @@ func (gfsm *GeneratorFSM) Total() int {
 			estimatedRequestsWithPayload += prod
 		}
 	}
-
 	return len(gfsm.Paths) + len(gfsm.Raws) + estimatedRequestsWithPayload
 }
 

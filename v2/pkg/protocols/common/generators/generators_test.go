@@ -16,7 +16,8 @@ func TestSniperGenerator(t *testing.T) {
 	count := 0
 	for iterator.Next() {
 		count++
-		require.Contains(t, usernames, iterator.Value()["username"], "Could not get correct sniper")
+		value := iterator.Value()
+		require.Contains(t, usernames, value["username"], "Could not get correct sniper")
 	}
 	require.Equal(t, len(usernames), count, "could not get correct sniper counts")
 }

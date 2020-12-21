@@ -1,4 +1,4 @@
-package syncedreadcloser
+package race
 
 import (
 	"fmt"
@@ -7,8 +7,9 @@ import (
 	"time"
 )
 
-// compatible with ReadSeeker
-type SyncedReadCloser struct {
+// syncedReadCloser is compatible with io.ReadSeeker and performs
+// gate-based synced writes to enable race condition testing.
+type syncedReadCloser struct {
 	data           []byte
 	p              int64
 	length         int64
@@ -16,9 +17,9 @@ type SyncedReadCloser struct {
 	enableBlocking bool
 }
 
-func New(r io.ReadCloser) *SyncedReadCloser {
+func newSyncedReadCloser(r io.ReadCloser) *syncedReadCloser {
 	var (
-		s   SyncedReadCloser
+		s   syncedReadCloser
 		err error
 	)
 	s.data, err = ioutil.ReadAll(r)
@@ -29,32 +30,30 @@ func New(r io.ReadCloser) *SyncedReadCloser {
 	s.length = int64(len(s.data))
 	s.opengate = make(chan struct{})
 	s.enableBlocking = true
-
 	return &s
 }
 
-func NewOpenGateWithTimeout(r io.ReadCloser, d time.Duration) *SyncedReadCloser {
-	s := New(r)
+func newOpenGateWithTimeout(r io.ReadCloser, d time.Duration) *syncedReadCloser {
+	s := newSyncedReadCloser(r)
 	s.OpenGateAfter(d)
-
 	return s
 }
 
-func (s *SyncedReadCloser) SetOpenGate(status bool) {
+func (s *syncedReadCloser) SetOpenGate(status bool) {
 	s.enableBlocking = status
 }
 
-func (s *SyncedReadCloser) OpenGate() {
+func (s *syncedReadCloser) OpenGate() {
 	s.opengate <- struct{}{}
 }
 
-func (s *SyncedReadCloser) OpenGateAfter(d time.Duration) {
+func (s *syncedReadCloser) OpenGateAfter(d time.Duration) {
 	time.AfterFunc(d, func() {
 		s.opengate <- struct{}{}
 	})
 }
 
-func (s *SyncedReadCloser) Seek(offset int64, whence int) (int64, error) {
+func (s *syncedReadCloser) Seek(offset int64, whence int) (int64, error) {
 	var err error
 	switch whence {
 	case io.SeekStart:
@@ -75,7 +74,7 @@ func (s *SyncedReadCloser) Seek(offset int64, whence int) (int64, error) {
 	return s.p, err
 }
 
-func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
+func (s *syncedReadCloser) Read(p []byte) (n int, err error) {
 	// If the data fits in the buffer blocks awaiting the sync instruction
 	if s.p+int64(len(p)) >= s.length && s.enableBlocking {
 		<-s.opengate
@@ -88,10 +87,10 @@ func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (s *SyncedReadCloser) Close() error {
+func (s *syncedReadCloser) Close() error {
 	return nil
 }
 
-func (s *SyncedReadCloser) Len() int {
+func (s *syncedReadCloser) Len() int {
 	return int(s.length)
 }
