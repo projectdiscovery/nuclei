@@ -183,7 +183,7 @@ type payloadIterator struct {
 
 // Next returns true if there are more values in payload iterator
 func (i *payloadIterator) Next() bool {
-	if i.index == len(i.values)-1 {
+	if i.index >= i.Total() {
 		return false
 	}
 	return true
