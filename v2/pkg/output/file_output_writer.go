@@ -26,9 +26,7 @@ func (w *fileWriter) Write(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if data[len(data)-1] != '\n' {
-		_, err = w.writer.WriteRune('\n')
-	}
+	_, err = w.writer.WriteRune('\n')
 	return err
 }
 
