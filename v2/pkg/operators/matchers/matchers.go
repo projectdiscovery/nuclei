@@ -6,12 +6,21 @@ import (
 	"github.com/Knetic/govaluate"
 )
 
-// Matcher is used to identify whether a template was successful.
+// Matcher is used to match a part in the output from a protocol.
 type Matcher struct {
 	// Type is the type of the matcher
 	Type string `yaml:"type"`
-	// matcherType is the internal type of the matcher
-	matcherType MatcherType
+	// Condition is the optional condition between two matcher variables
+	//
+	// By default, the condition is assumed to be OR.
+	Condition string `yaml:"condition,omitempty"`
+
+	// Part is the part of the data to match
+	Part string `yaml:"part,omitempty"`
+
+	// Negative specifies if the match should be reversed
+	// It will only match if the condition is not true.
+	Negative bool `yaml:"negative,omitempty"`
 
 	// Name is matcher Name
 	Name string `yaml:"name,omitempty"`
@@ -23,32 +32,16 @@ type Matcher struct {
 	Words []string `yaml:"words,omitempty"`
 	// Regex are the regex pattern required to be present in the response
 	Regex []string `yaml:"regex,omitempty"`
-	// regexCompiled is the compiled variant
-	regexCompiled []*regexp.Regexp
 	// Binary are the binary characters required to be present in the response
 	Binary []string `yaml:"binary,omitempty"`
 	// DSL are the dsl queries
 	DSL []string `yaml:"dsl,omitempty"`
-	// dslCompiled is the compiled variant
-	dslCompiled []*govaluate.EvaluableExpression
 
-	// Condition is the optional condition between two matcher variables
-	//
-	// By default, the condition is assumed to be OR.
-	Condition string `yaml:"condition,omitempty"`
-	// condition is the condition of the matcher
-	condition ConditionType
-
-	// Part is the part of the request to match
-	//
-	// By default, matching is performed in request body.
-	Part string `yaml:"part,omitempty"`
-	// part is the part of the request to match
-	part Part
-
-	// Negative specifies if the match should be reversed
-	// It will only match if the condition is not true.
-	Negative bool `yaml:"negative,omitempty"`
+	// cached data for the compiled matcher
+	condition     ConditionType
+	matcherType   MatcherType
+	regexCompiled []*regexp.Regexp
+	dslCompiled   []*govaluate.EvaluableExpression
 }
 
 // MatcherType is the type of the matcher specified
@@ -93,30 +86,6 @@ const (
 var ConditionTypes = map[string]ConditionType{
 	"and": ANDCondition,
 	"or":  ORCondition,
-}
-
-// Part is the part of the request to match
-type Part int
-
-const (
-	// BodyPart matches body of the response.
-	BodyPart Part = iota + 1
-	// HeaderPart matches headers of the response.
-	HeaderPart
-	// AllPart matches both response body and headers of the response.
-	AllPart
-)
-
-// PartTypes is an table for conversion of part type from string.
-var PartTypes = map[string]Part{
-	"body":   BodyPart,
-	"header": HeaderPart,
-	"all":    AllPart,
-}
-
-// GetPart returns the part of the matcher
-func (m *Matcher) GetPart() Part {
-	return m.part
 }
 
 // isNegative reverts the results of the match if the matcher
