@@ -53,6 +53,51 @@ We have also [open-sourced a template repository](https://github.com/projectdisc
 -   Handles edge cases doing retries, backoffs etc for handling WAFs.
 -   Smart matching functionality for zero false positive scanning.
 
+
+## Installation Instructions
+
+### From Binary
+
+The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
+
+```sh
+Download latest binary from https://github.com/projectdiscovery/nuclei/releases
+
+▶ tar -xzvf nuclei-linux-amd64.tar.gz
+▶ mv nuclei /usr/local/bin/
+▶ nuclei -version
+```
+
+### From Source
+
+nuclei requires **go1.14+** to install successfully. Run the following command to get the repo -
+
+```sh
+▶ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+```
+
+### From Github
+
+```sh
+▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -version
+```
+
+## Nuclei templates
+
+You can download or update the nuclei templates using `update-templates` flag.
+
+```sh
+▶ nuclei -update-templates
+```
+
+or download it from [nuclei templates](https://github.com/projectdiscovery/nuclei-templates) Github project.
+
+```sh
+▶ git clone https://github.com/projectdiscovery/nuclei-templates.git
+```
+
+**Please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
+
 ## Usage
 
 ```sh
@@ -96,50 +141,6 @@ This will display help for the tool. Here are all the switches it supports.
 | proxy-socks-url        | Socks proxyURL                                            | nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
 | random-agent           | Use random User-Agents                                    | nuclei -random-agent                            |
 | H                      | Custom Header                                             | nuclei -H "x-bug-bounty: hacker"                |
-
-## Installation Instructions
-
-### From Binary
-
-The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
-
-```sh
-Download latest binary from https://github.com/projectdiscovery/nuclei/releases
-
-▶ tar -xzvf nuclei-linux-amd64.tar.gz
-▶ mv nuclei /usr/local/bin/
-▶ nuclei -version
-```
-
-### From Source
-
-nuclei requires **go1.14+** to install successfully. Run the following command to get the repo -
-
-```sh
-▶ GO111MODULE=on go get -u -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
-```
-
-### From Github
-
-```sh
-▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -version
-```
-
-## Nuclei templates
-
-You can download or update the nuclei templates using `update-templates` flag.
-
-```sh
-▶ nuclei -update-templates
-```
-
-or download it from [nuclei templates](https://github.com/projectdiscovery/nuclei-templates) Github project.
-
-```sh
-▶ git clone https://github.com/projectdiscovery/nuclei-templates.git
-```
-
-**Please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
 
 ## Running Nuclei
 
