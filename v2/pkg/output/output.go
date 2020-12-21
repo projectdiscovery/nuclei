@@ -13,6 +13,8 @@ import (
 type Writer interface {
 	// Close closes the output writer interface
 	Close()
+	// Colorizer returns the colorizer instance for writer
+	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(Event) error
 	// Request writes a log the requests trace log
@@ -133,6 +135,11 @@ func (w *StandardWriter) Request(templateID, url, requestType string, err error)
 	//nolint:errcheck // We don't need to do anything here
 	_ = w.traceFile.Write(data)
 	w.traceMutex.Unlock()
+}
+
+// Colorizer returns the colorizer instance for writer
+func (w *StandardWriter) Colorizer() aurora.Aurora {
+	return w.aurora
 }
 
 // Close closes the output writing interface
