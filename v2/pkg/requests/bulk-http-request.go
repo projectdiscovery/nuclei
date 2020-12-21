@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -355,112 +354,6 @@ func (c *CustomHeaders) String() string {
 func (c *CustomHeaders) Set(value string) error {
 	*c = append(*c, value)
 	return nil
-}
-
-// RawRequest defines a basic HTTP raw request
-type RawRequest struct {
-	FullURL string
-	Method  string
-	Path    string
-	Data    string
-	Headers map[string]string
-}
-
-// parseRawRequest parses the raw request as supplied by the user
-func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest, error) {
-	reader := bufio.NewReader(strings.NewReader(request))
-
-	rawRequest := RawRequest{
-		Headers: make(map[string]string),
-	}
-
-	s, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("could not read request: %s", err)
-	}
-
-	parts := strings.Split(s, " ")
-
-	if len(parts) < three {
-		return nil, fmt.Errorf("malformed request supplied")
-	}
-	// Set the request Method
-	rawRequest.Method = parts[0]
-
-	// Accepts all malformed headers
-	var key, value string
-	for {
-		line, readErr := reader.ReadString('\n')
-		line = strings.TrimSpace(line)
-
-		if readErr != nil || line == "" {
-			break
-		}
-
-		p := strings.SplitN(line, ":", two)
-		key = p[0]
-		if len(p) > 1 {
-			value = p[1]
-		}
-
-		// in case of unsafe requests multiple headers should be accepted
-		// therefore use the full line as key
-		_, found := rawRequest.Headers[key]
-		if r.Unsafe && found {
-			rawRequest.Headers[line] = ""
-		} else {
-			rawRequest.Headers[key] = value
-		}
-	}
-
-	// Handle case with the full http url in path. In that case,
-	// ignore any host header that we encounter and use the path as request URL
-	if !r.Unsafe && strings.HasPrefix(parts[1], "http") {
-		parsed, parseErr := url.Parse(parts[1])
-		if parseErr != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
-		}
-
-		rawRequest.Path = parts[1]
-		rawRequest.Headers["Host"] = parsed.Host
-	} else {
-		rawRequest.Path = parts[1]
-	}
-
-	// If raw request doesn't have a Host header and/ path,
-	// this will be generated from the parsed baseURL
-	parsedURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %s", err)
-	}
-
-	var hostURL string
-	if rawRequest.Headers["Host"] == "" {
-		hostURL = parsedURL.Host
-	} else {
-		hostURL = rawRequest.Headers["Host"]
-	}
-
-	if rawRequest.Path == "" {
-		rawRequest.Path = parsedURL.Path
-	} else if strings.HasPrefix(rawRequest.Path, "?") {
-		// requests generated from http.ReadRequest have incorrect RequestURI, so they
-		// cannot be used to perform another request directly, we need to generate a new one
-		// with the new target url
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
-
-	// Set the request body
-	b, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %s", err)
-	}
-
-	rawRequest.Data = string(b)
-
-	return &rawRequest, nil
 }
 
 // Next returns the next generator by URL
