@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 )
 
 // CompileMatchers performs the initial setup operation on a matcher
@@ -24,17 +24,15 @@ func (m *Matcher) CompileMatchers() error {
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-
 		m.regexCompiled = append(m.regexCompiled, compiled)
 	}
 
 	// Compile the dsl expressions
-	for _, dsl := range m.DSL {
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dsl, generators.HelperFunctions())
+	for _, expr := range m.DSL {
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
-			return fmt.Errorf("could not compile dsl: %s", dsl)
+			return fmt.Errorf("could not compile dsl: %s", expr)
 		}
-
 		m.dslCompiled = append(m.dslCompiled, compiled)
 	}
 

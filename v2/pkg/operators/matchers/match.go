@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
 // Match matches a http response again a given matcher
-func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration, data map[string]interface{}) bool {
+func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration) bool {
 	switch m.matcherType {
 	case StatusMatcher:
 		return m.isNegative(m.matchStatusCode(resp.StatusCode))

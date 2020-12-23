@@ -41,6 +41,19 @@ const (
 // Event is a single output structure from nuclei.
 type Event map[string]interface{}
 
+// Error returns errors for the event if any
+func (e Event) Error() error {
+	if data, ok := e["err"]; ok {
+		return data.(error)
+	}
+	return nil
+}
+
+// SetError sets the error object for the event.
+func (e Event) SetError(err error) {
+	e["err"] = err
+}
+
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
 	colorizer := aurora.NewAurora(colors)
