@@ -17,12 +17,12 @@ func responseToDSLMap(resp *http.Response, body, headers string, duration time.D
 	data["content_length"] = resp.ContentLength
 	data["status_code"] = resp.StatusCode
 
+	data["body"] = body
 	for k, v := range resp.Header {
 		k = strings.ToLower(strings.TrimSpace(strings.ReplaceAll(k, "-", "_")))
 		data[k] = strings.Join(v, " ")
 	}
-	data["all_headers"] = headers
-	data["body"] = body
+	data["headers"] = headers
 
 	if r, err := httputil.DumpResponse(resp, true); err == nil {
 		data["raw"] = string(r)

@@ -3,6 +3,7 @@ package protocols
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"go.uber.org/ratelimit"
 )
 
 // Executer is an interface implemented any protocol based request generator.
@@ -21,6 +22,8 @@ type Executer interface {
 type ExecuterOptions struct {
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
-	// Options contains configuration options for the executer
+	// Options contains configuration options for the executer.
 	Options *types.Options
+	// RateLimiter is a rate-limiter for limiting sent number of requests.
+	RateLimiter ratelimit.Limiter
 }
