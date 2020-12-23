@@ -2,12 +2,9 @@ package executer
 
 import (
 	"bytes"
-	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
@@ -36,7 +33,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/ratelimit"
-	"golang.org/x/net/proxy"
 )
 
 const (
@@ -74,30 +70,12 @@ type HTTPExecuter struct {
 
 // HTTPOptions contains configuration options for the HTTP executer.
 type HTTPOptions struct {
-	RandomAgent      bool
-	Debug            bool
-	JSON             bool
-	JSONRequests     bool
-	NoMeta           bool
-	CookieReuse      bool
-	ColoredOutput    bool
-	StopAtFirstMatch bool
-	Vhost            bool
-	Timeout          int
-	Retries          int
-	ProxyURL         string
-	ProxySocksURL    string
-	Template         *templates.Template
-	BulkHTTPRequest  *requests.BulkHTTPRequest
-	Writer           *bufwriter.Writer
-	CustomHeaders    requests.CustomHeaders
-	CookieJar        *cookiejar.Jar
-	Colorizer        *colorizer.NucleiColorizer
-	Decolorizer      *regexp.Regexp
-	TraceLog         tracelog.Log
-	PF               *projetctfile.ProjectFile
-	RateLimiter      ratelimit.Limiter
-	Dialer           *fastdialer.Dialer
+	Template        *templates.Template
+	BulkHTTPRequest *requests.BulkHTTPRequest
+	CookieJar       *cookiejar.Jar
+	PF              *projetctfile.ProjectFile
+	RateLimiter     ratelimit.Limiter
+	Dialer          *fastdialer.Dialer
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -107,10 +85,6 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		proxyURL *url.URL
 		err      error
 	)
-
-	if options.ProxyURL != "" {
-		proxyURL, err = url.Parse(options.ProxyURL)
-	}
 
 	if err != nil {
 		return nil, err
@@ -653,97 +627,6 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 // Close closes the http executer for a template.
 func (e *HTTPExecuter) Close() {}
-
-// makeHTTPClient creates a http client
-func makeHTTPClient(proxyURL *url.URL, options *HTTPOptions) *retryablehttp.Client {
-	// Multiple Host
-	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
-	disableKeepAlives := true
-	maxIdleConns := 0
-	maxConnsPerHost := 0
-	maxIdleConnsPerHost := -1
-
-	if options.BulkHTTPRequest.Threads > 0 {
-		// Single host
-		retryablehttpOptions = retryablehttp.DefaultOptionsSingle
-		disableKeepAlives = false
-		maxIdleConnsPerHost = 500
-		maxConnsPerHost = 500
-	}
-
-	retryablehttpOptions.RetryWaitMax = 10 * time.Second
-	retryablehttpOptions.RetryMax = options.Retries
-	followRedirects := options.BulkHTTPRequest.Redirects
-	maxRedirects := options.BulkHTTPRequest.MaxRedirects
-
-	transport := &http.Transport{
-		DialContext:         options.Dialer.Dial,
-		MaxIdleConns:        maxIdleConns,
-		MaxIdleConnsPerHost: maxIdleConnsPerHost,
-		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
-		DisableKeepAlives: disableKeepAlives,
-	}
-
-	// Attempts to overwrite the dial function with the socks proxied version
-	if options.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
-
-		socksURL, err := url.Parse(options.ProxySocksURL)
-
-		if err == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
-		}
-
-		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
-
-		if err == nil {
-			transport.DialContext = dc.DialContext
-		}
-	}
-
-	if proxyURL != nil {
-		transport.Proxy = http.ProxyURL(proxyURL)
-	}
-
-	return retryablehttp.NewWithHTTPClient(&http.Client{
-		Transport:     transport,
-		Timeout:       time.Duration(options.Timeout) * time.Second,
-		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions)
-}
-
-type checkRedirectFunc func(_ *http.Request, requests []*http.Request) error
-
-func makeCheckRedirectFunc(followRedirects bool, maxRedirects int) checkRedirectFunc {
-	return func(_ *http.Request, requests []*http.Request) error {
-		if !followRedirects {
-			return http.ErrUseLastResponse
-		}
-
-		if maxRedirects == 0 {
-			if len(requests) > ten {
-				return http.ErrUseLastResponse
-			}
-
-			return nil
-		}
-
-		if len(requests) > maxRedirects {
-			return http.ErrUseLastResponse
-		}
-
-		return nil
-	}
-}
 
 func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 	for _, customHeader := range e.customHeaders {

@@ -22,23 +22,10 @@ import (
 // DNSExecuter is a client for performing a DNS request
 // for a template.
 type DNSExecuter struct {
-	// hm            *hybrid.HybridMap // Unused
-	coloredOutput bool
-	debug         bool
-	jsonOutput    bool
-	jsonRequest   bool
-	noMeta        bool
-	Results       bool
-	vhost         bool
-	traceLog      tracelog.Log
-	dnsClient     *retryabledns.Client
-	template      *templates.Template
-	dnsRequest    *requests.DNSRequest
-	writer        *bufwriter.Writer
-	ratelimiter   ratelimit.Limiter
-
-	colorizer   colorizer.NucleiColorizer
-	decolorizer *regexp.Regexp
+	dnsClient   *retryabledns.Client
+	template    *templates.Template
+	dnsRequest  *requests.DNSRequest
+	ratelimiter ratelimit.Limiter
 }
 
 // DefaultResolvers contains the list of resolvers known to be trusted.
