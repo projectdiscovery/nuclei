@@ -2,75 +2,34 @@ package matchers
 
 import (
 	"encoding/hex"
-	"net/http"
 	"strings"
-	"time"
-
-	"github.com/miekg/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
-// Match matches a http response again a given matcher
-func (m *Matcher) Match(resp *http.Response, body, headers string, duration time.Duration) bool {
-	switch m.matcherType {
-	case StatusMatcher:
-		return m.isNegative(m.matchStatusCode(resp.StatusCode))
-	case SizeMatcher:
-		return m.isNegative(m.matchSizeCode(len(body)))
-	case WordsMatcher:
-		// Match the parts as required for word check
-		if m.Part == "body" {
-			return m.isNegative(m.matchWords(body))
-		} else if m.Part == "header" {
-			return m.isNegative(m.matchWords(headers))
-		} else {
-			return m.isNegative(m.matchWords(headers) || m.matchWords(body))
-		}
-	case RegexMatcher:
-		// Match the parts as required for regex check
-		if m.Part == "body" {
-			return m.isNegative(m.matchRegex(body))
-		} else if m.Part == "header" {
-			return m.isNegative(m.matchRegex(headers))
-		} else {
-			return m.isNegative(m.matchRegex(headers) || m.matchRegex(body))
-		}
-	case BinaryMatcher:
-		// Match the parts as required for binary characters check
-		if m.Part == "body" {
-			return m.isNegative(m.matchBinary(body))
-		} else if m.Part == "header" {
-			return m.isNegative(m.matchBinary(headers))
-		} else {
-			return m.isNegative(m.matchBinary(headers) || m.matchBinary(body))
-		}
-	case DSLMatcher:
-		// Match complex query
-		return m.isNegative(m.matchDSL(generators.MergeMaps(HTTPToMap(resp, body, headers, duration, ""), data)))
+// Match matches a generic data response again a given matcher
+func (m *Matcher) Match(data map[string]interface{}) bool {
+	part, ok := data[m.Part]
+	if !ok {
+		return false
 	}
+	partString := part.(string)
 
-	return false
-}
-
-// MatchDNS matches a dns response against a given matcher
-func (m *Matcher) MatchDNS(msg *dns.Msg) bool {
 	switch m.matcherType {
 	case StatusMatcher:
-		return m.isNegative(m.matchStatusCode(msg.Rcode))
+		statusCode, ok := data["status_code"]
+		if !ok {
+			return false
+		}
+		return m.isNegative(m.matchStatusCode(statusCode.(int)))
 	case SizeMatcher:
-		return m.matchSizeCode(msg.Len())
+		return m.isNegative(m.matchSizeCode(len(partString)))
 	case WordsMatcher:
-		// Match for word check
-		return m.matchWords(msg.String())
+		return m.isNegative(m.matchWords(partString))
 	case RegexMatcher:
-		// Match regex check
-		return m.matchRegex(msg.String())
+		return m.isNegative(m.matchRegex(partString))
 	case BinaryMatcher:
-		// Match binary characters check
-		return m.matchBinary(msg.String())
+		return m.isNegative(m.matchBinary(partString))
 	case DSLMatcher:
-		// Match complex query
-		return m.matchDSL(DNSToMap(msg, ""))
+		return m.isNegative(m.matchDSL(data))
 	}
 	return false
 }
@@ -88,7 +47,6 @@ func (m *Matcher) matchStatusCode(statusCode int) bool {
 		// Return on the first match.
 		return true
 	}
-
 	return false
 }
 
