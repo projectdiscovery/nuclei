@@ -94,6 +94,5 @@ func (m *Matcher) isNegative(data bool) bool {
 	if m.Negative {
 		return !data
 	}
-
 	return data
 }

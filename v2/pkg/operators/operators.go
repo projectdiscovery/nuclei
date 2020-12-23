@@ -16,7 +16,6 @@ type Operators struct {
 	// MatchersCondition is the condition of the matchers
 	// whether to use AND or OR. Default is OR.
 	MatchersCondition string `yaml:"matchers-condition"`
-
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
 }
