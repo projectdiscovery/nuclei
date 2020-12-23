@@ -1,23 +1,26 @@
 package protocols
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/output"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+)
 
-// RequestGenerator is an interface implemented by request generator for a protocol.
-type RequestGenerator interface {
-	// Next returns the next request in queue for the generator interface.
-	// If no requests are remaining, next returns io.EOF error.
-	Next() (interface{}, error)
+// Executer is an interface implemented any protocol based request generator.
+type Executer interface {
 	// Compile compiles the request generators preparing any requests possible.
-	Compile() error
+	Compile(options ExecuterOptions) error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int64
+	// Execute executes the protocol requests and returns an output event channel.
+	Execute(input string) (bool, error)
+	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
+	ExecuteWithResults(input string) ([]output.Event, error)
 }
 
-// Executer executes requests from a generator and returns an output event.
-type Executer interface {
-	// Execute executes the generator requests and returns an output event channel.
-	Execute(generator RequestGenerator, callback OutputEventCallback) error
+// ExecuterOptions contains the configuration options for executer clients
+type ExecuterOptions struct {
+	// Output is a writer interface for writing output events from executer.
+	Output output.Writer
+	// Options contains configuration options for the executer
+	Options *types.Options
 }
-
-// OutputEventCallback is a callback for each recieved output from executor
-type OutputEventCallback func(event output.Event)

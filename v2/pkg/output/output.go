@@ -2,6 +2,7 @@ package output
 
 import (
 	"os"
+	"regexp"
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
@@ -38,21 +39,10 @@ const (
 	undefined string = "undefined"
 )
 
+var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
+
 // Event is a single output structure from nuclei.
 type Event map[string]interface{}
-
-// Error returns errors for the event if any
-func (e Event) Error() error {
-	if data, ok := e["err"]; ok {
-		return data.(error)
-	}
-	return nil
-}
-
-// SetError sets the error object for the event.
-func (e Event) SetError(err error) {
-	e["err"] = err
-}
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
@@ -109,6 +99,9 @@ func (w *StandardWriter) Write(event Event) error {
 	}
 	_, _ = os.Stdout.Write(data)
 	if w.outputFile != nil {
+		if !w.json {
+			data = decolorizerRegex.ReplaceAll(data, []byte(""))
+		}
 		if writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
