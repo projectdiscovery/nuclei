@@ -15,19 +15,34 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
 )
 
 var (
-	dialer     *fastdialer.Dialer
-	poolMutex  *sync.RWMutex
-	clientPool map[string]*retryablehttp.Client
+	dialer        *fastdialer.Dialer
+	rawhttpClient *rawhttp.Client
+	poolMutex     *sync.RWMutex
+	normalClient  *retryablehttp.Client
+	clientPool    map[string]*retryablehttp.Client
 )
 
-func init() {
+// Init initializes the clientpool implementation
+func Init(options *types.Options) error {
+	// Don't create clients if already created in past.
+	if normalClient != nil {
+		return nil
+	}
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryablehttp.Client)
+
+	if client, err := Get(options, &Configuration{}); err != nil {
+		return err
+	} else {
+		normalClient = client
+	}
+	return nil
 }
 
 // Configuration contains the custom configuration options for a client
@@ -43,6 +58,7 @@ type Configuration struct {
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
 	builder := &strings.Builder{}
+	builder.Grow(16)
 	builder.WriteString("t")
 	builder.WriteString(strconv.Itoa(c.Threads))
 	builder.WriteString("m")
@@ -53,8 +69,19 @@ func (c *Configuration) Hash() string {
 	return hash
 }
 
+// GetRawHTTP returns the rawhttp request client
+func GetRawHTTP() *rawhttp.Client {
+	if rawhttpClient == nil {
+		rawhttpClient = rawhttp.NewClient(rawhttp.DefaultOptions)
+	}
+	return rawhttpClient
+}
+
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
+	if !(configuration.Threads > 0 && configuration.MaxRedirects > 0 && configuration.FollowRedirects) {
+		return normalClient, nil
+	}
 	var proxyURL *url.URL
 	var err error
 
@@ -139,6 +166,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
 	}, retryablehttpOptions)
+	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	poolMutex.Lock()
 	clientPool[hash] = client
