@@ -10,8 +10,6 @@ import (
 func responseToDSLMap(msg *dns.Msg) map[string]interface{} {
 	data := make(map[string]interface{}, 6)
 
-	data["rcode"] = msg.Rcode
-
 	buffer := &bytes.Buffer{}
 	for _, question := range msg.Question {
 		buffer.WriteString(question.String())
@@ -38,5 +36,6 @@ func responseToDSLMap(msg *dns.Msg) map[string]interface{} {
 	buffer.Reset()
 
 	data["raw"] = msg.String()
+	data["status_code"] = msg.Rcode
 	return data
 }
