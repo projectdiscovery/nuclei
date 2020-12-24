@@ -4,7 +4,12 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/clientpool"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 // Request contains a DNS protocol request to be made from a template
@@ -22,15 +27,35 @@ type Request struct {
 	// Raw contains a raw request
 	Raw string `yaml:"raw,omitempty"`
 
+	// Operators for the current request go here.
+	*operators.Operators
+
 	// cache any variables that may be needed for operation.
-	class        uint16
-	questionType uint16
+	class     uint16
+	question  uint16
+	dnsClient *retryabledns.Client
+	options   *protocols.ExecuterOptions
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile() error {
+func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+	// Create a dns client for the class
+	client, err := clientpool.Get(options.Options, &clientpool.Configuration{
+		Retries: r.Retries,
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not get dns client")
+	}
+	r.dnsClient = client
+
+	if r.Operators != nil {
+		if err := r.Operators.Compile(); err != nil {
+			return errors.Wrap(err, "could not compile operators")
+		}
+	}
 	r.class = classToInt(r.Class)
-	r.questionType = questionTypeToInt(r.Type)
+	r.options = options
+	r.question = questionTypeToInt(r.Type)
 	return nil
 }
 
@@ -53,8 +78,8 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 	replacer := replacer.New(map[string]interface{}{"FQDN": domain})
 
 	q.Name = dns.Fqdn(replacer.Replace(r.Name))
-	q.Qclass = classToInt(r.Class)
-	q.Qtype = questionTypeToInt(r.Type)
+	q.Qclass = r.class
+	q.Qtype = r.question
 	req.Question = append(req.Question, q)
 	return req, nil
 }
