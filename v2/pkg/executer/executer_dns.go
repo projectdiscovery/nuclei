@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 )
@@ -93,45 +92,6 @@ func (e *DNSExecuter) ExecuteDNS(p *progress.Progress, reqURL string) *Result {
 	if e.debug {
 		gologger.Infof("Dumped DNS response for %s (%s)\n\n", reqURL, e.template.ID)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
-	}
-
-	matcherCondition := e.dnsRequest.GetMatchersCondition()
-
-	for _, matcher := range e.dnsRequest.Matchers {
-		// Check if the matcher matched
-		if !matcher.MatchDNS(resp) {
-			// If the condition is AND we haven't matched, return.
-			if matcherCondition == matchers.ANDCondition {
-				return result
-			}
-		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && len(e.dnsRequest.Extractors) == 0 {
-				e.writeOutputDNS(domain, compiledRequest, resp, matcher, nil)
-				result.GotResults = true
-			}
-		}
-	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
-	var extractorResults []string
-
-	for _, extractor := range e.dnsRequest.Extractors {
-		for match := range extractor.ExtractDNS(resp) {
-			if !extractor.Internal {
-				extractorResults = append(extractorResults, match)
-			}
-		}
-	}
-
-	// Write a final string of output if matcher type is
-	// AND or if we have extractors for the mechanism too.
-	if len(e.dnsRequest.Extractors) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputDNS(domain, compiledRequest, resp, nil, extractorResults)
-
-		result.GotResults = true
 	}
 
 	return result

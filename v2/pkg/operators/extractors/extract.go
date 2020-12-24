@@ -2,25 +2,8 @@ package extractors
 
 import "github.com/projectdiscovery/nuclei/v2/pkg/types"
 
-// Extract extracts data from an output structure based on user options
-func (e *Extractor) Extract(data map[string]interface{}) map[string]struct{} {
-	part, ok := data[e.Part]
-	if !ok {
-		return nil
-	}
-	partString := types.ToString(part)
-
-	switch e.extractorType {
-	case RegexExtractor:
-		return e.extractRegex(partString)
-	case KValExtractor:
-		return e.extractKVal(data)
-	}
-	return nil
-}
-
-// extractRegex extracts text from a corpus and returns it
-func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
+// ExtractRegex extracts text from a corpus and returns it
+func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	groupPlusOne := e.RegexGroup + 1
@@ -41,8 +24,8 @@ func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
 	return results
 }
 
-// extractKVal extracts key value pairs from a data map
-func (e *Extractor) extractKVal(data map[string]interface{}) map[string]struct{} {
+// ExtractKval extracts key value pairs from a data map
+func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	for _, k := range e.KVal {

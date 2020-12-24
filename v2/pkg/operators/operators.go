@@ -3,6 +3,7 @@ package operators
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -31,12 +32,20 @@ type Result struct {
 	Matches map[string]struct{}
 	// Extracts contains all the data extracted from inputs
 	Extracts map[string][]string
+	// OutputExtracts is the list of extracts to be displayed on screen.
+	OutputExtracts []string
 	// DynamicValues contains any dynamic values to be templated
 	DynamicValues map[string]string
 }
 
+// MatchFunc performs matching operation for a matcher on model and returns true or false.
+type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
+
+// ExtractFunc performs extracting operation for a extractor on model and returns true or false.
+type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
+
 // Execute executes the operators on data and returns a result structure
-func (r *Operators) Execute(data map[string]interface{}) (*Result, bool) {
+func (r *Operators) Execute(data output.Event, match MatchFunc, extract ExtractFunc) (*Result, bool) {
 	matcherCondition := r.GetMatchersCondition()
 
 	result := &Result{
@@ -46,7 +55,7 @@ func (r *Operators) Execute(data map[string]interface{}) (*Result, bool) {
 	}
 	for _, matcher := range r.Matchers {
 		// Check if the matcher matched
-		if !matcher.Match(data) {
+		if !match(data, matcher) {
 			// If the condition is AND we haven't matched, try next request.
 			if matcherCondition == matchers.ANDCondition {
 				return nil, false
@@ -62,9 +71,10 @@ func (r *Operators) Execute(data map[string]interface{}) (*Result, bool) {
 
 	// All matchers have successfully completed so now start with the
 	// next task which is extraction of input from matchers.
-	var extractorResults, outputExtractorResults []string
 	for _, extractor := range r.Extractors {
-		for match := range extractor.Extract(data) {
+		var extractorResults []string
+
+		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 
 			if extractor.Internal {
@@ -72,7 +82,7 @@ func (r *Operators) Execute(data map[string]interface{}) (*Result, bool) {
 					result.DynamicValues[extractor.Name] = match
 				}
 			} else {
-				outputExtractorResults = append(outputExtractorResults, match)
+				result.OutputExtracts = append(result.OutputExtracts, match)
 			}
 		}
 		result.Extracts[extractor.Name] = extractorResults
