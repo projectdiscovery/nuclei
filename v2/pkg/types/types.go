@@ -6,8 +6,6 @@ import (
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
-	// Vhost marks the input specified as VHOST input
-	Vhost bool
 	// RandomAgent generates random User-Agent
 	RandomAgent bool
 	// Metrics enables display of metrics via an http endpoint

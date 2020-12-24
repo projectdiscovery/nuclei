@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -19,6 +20,27 @@ type Operators struct {
 	MatchersCondition string `yaml:"matchers-condition"`
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
+}
+
+// Compile compiles the operators as well as their corresponding matchers and extractors
+func (r *Operators) Compile() error {
+	if r.MatchersCondition != "" {
+		r.matchersCondition = matchers.ConditionTypes[r.MatchersCondition]
+	} else {
+		r.matchersCondition = matchers.ANDCondition
+	}
+
+	for _, matcher := range r.Matchers {
+		if err := matcher.CompileMatchers(); err != nil {
+			return errors.Wrap(err, "could not compile matcher")
+		}
+	}
+	for _, extractor := range r.Extractors {
+		if err := extractor.CompileExtractors(); err != nil {
+			return errors.Wrap(err, "could not compile extractor")
+		}
+	}
+	return nil
 }
 
 // GetMatchersCondition returns the condition for the matchers

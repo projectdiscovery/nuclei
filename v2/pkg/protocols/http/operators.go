@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Match matches a generic data response again a given matcher
@@ -24,6 +25,13 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	case "all":
 		partString = "raw"
 	}
+
+	item, ok := data[partString]
+	if !ok {
+		return false
+	}
+	itemStr := types.ToString(item)
+
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
 		statusCode, ok := data["status_code"]
@@ -32,13 +40,13 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 		}
 		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(partString)))
+		return matcher.Result(matcher.MatchSize(len(itemStr)))
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(partString))
+		return matcher.Result(matcher.MatchWords(itemStr))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(partString))
+		return matcher.Result(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(partString))
+		return matcher.Result(matcher.MatchBinary(itemStr))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data))
 	}
@@ -59,9 +67,16 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 	case "all":
 		partString = "raw"
 	}
+
+	item, ok := data[partString]
+	if !ok {
+		return nil
+	}
+	itemStr := types.ToString(item)
+
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(partString)
+		return extractor.ExtractRegex(itemStr)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	}

@@ -18,7 +18,7 @@ type Executer interface {
 	Match(data map[string]interface{}, matcher *matchers.Matcher) bool
 	// Extract performs extracting operation for a extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
-	// Execute executes the protocol requests and returns an output event channel.
+	// Execute executes the protocol requests and returns true or false if results were found.
 	Execute(input string) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 	ExecuteWithResults(input string) ([]output.Event, error)
@@ -26,6 +26,10 @@ type Executer interface {
 
 // ExecuterOptions contains the configuration options for executer clients
 type ExecuterOptions struct {
+	// TemplateID is the ID of the template for the request
+	TemplateID string
+	// TemplateInfo contains information block of the template request
+	TemplateInfo map[string]string
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.
