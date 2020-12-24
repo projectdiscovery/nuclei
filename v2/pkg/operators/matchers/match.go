@@ -5,37 +5,8 @@ import (
 	"strings"
 )
 
-// Match matches a generic data response again a given matcher
-func (m *Matcher) Match(data map[string]interface{}) bool {
-	part, ok := data[m.Part]
-	if !ok {
-		return false
-	}
-	partString := part.(string)
-
-	switch m.matcherType {
-	case StatusMatcher:
-		statusCode, ok := data["status_code"]
-		if !ok {
-			return false
-		}
-		return m.isNegative(m.matchStatusCode(statusCode.(int)))
-	case SizeMatcher:
-		return m.isNegative(m.matchSizeCode(len(partString)))
-	case WordsMatcher:
-		return m.isNegative(m.matchWords(partString))
-	case RegexMatcher:
-		return m.isNegative(m.matchRegex(partString))
-	case BinaryMatcher:
-		return m.isNegative(m.matchBinary(partString))
-	case DSLMatcher:
-		return m.isNegative(m.matchDSL(data))
-	}
-	return false
-}
-
-// matchStatusCode matches a status code check against an HTTP Response
-func (m *Matcher) matchStatusCode(statusCode int) bool {
+// MatchStatusCode matches a status code check against a corpus
+func (m *Matcher) MatchStatusCode(statusCode int) bool {
 	// Iterate over all the status codes accepted as valid
 	//
 	// Status codes don't support AND conditions.
@@ -50,8 +21,8 @@ func (m *Matcher) matchStatusCode(statusCode int) bool {
 	return false
 }
 
-// matchStatusCode matches a size check against an HTTP Response
-func (m *Matcher) matchSizeCode(length int) bool {
+// MatchSize matches a size check against a corpus
+func (m *Matcher) MatchSize(length int) bool {
 	// Iterate over all the sizes accepted as valid
 	//
 	// Sizes codes don't support AND conditions.
@@ -66,8 +37,8 @@ func (m *Matcher) matchSizeCode(length int) bool {
 	return false
 }
 
-// matchWords matches a word check against an HTTP Response/Headers.
-func (m *Matcher) matchWords(corpus string) bool {
+// MatchWords matches a word check against a corpus.
+func (m *Matcher) MatchWords(corpus string) bool {
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
 		// Continue if the word doesn't match
@@ -94,8 +65,8 @@ func (m *Matcher) matchWords(corpus string) bool {
 	return false
 }
 
-// matchRegex matches a regex check against an HTTP Response/Headers.
-func (m *Matcher) matchRegex(corpus string) bool {
+// MatchRegex matches a regex check against a corpus
+func (m *Matcher) MatchRegex(corpus string) bool {
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range m.regexCompiled {
 		// Continue if the regex doesn't match
@@ -122,8 +93,8 @@ func (m *Matcher) matchRegex(corpus string) bool {
 	return false
 }
 
-// matchWords matches a word check against an HTTP Response/Headers.
-func (m *Matcher) matchBinary(corpus string) bool {
+// MatchBinary matches a binary check against a corpus
+func (m *Matcher) MatchBinary(corpus string) bool {
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
@@ -151,11 +122,11 @@ func (m *Matcher) matchBinary(corpus string) bool {
 	return false
 }
 
-// matchDSL matches on a generic map result
-func (m *Matcher) matchDSL(mp map[string]interface{}) bool {
+// MatchDSL matches on a generic map result
+func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
 	for i, expression := range m.dslCompiled {
-		result, err := expression.Evaluate(mp)
+		result, err := expression.Evaluate(data)
 		if err != nil {
 			continue
 		}

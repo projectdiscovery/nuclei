@@ -44,3 +44,8 @@ var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
 }
+
+// GetType returns the type of the matcher
+func (e *Extractor) GetType() ExtractorType {
+	return e.extractorType
+}

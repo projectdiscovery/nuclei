@@ -88,11 +88,15 @@ var ConditionTypes = map[string]ConditionType{
 	"or":  ORCondition,
 }
 
-// isNegative reverts the results of the match if the matcher
-// is of type negative.
-func (m *Matcher) isNegative(data bool) bool {
+// Result reverts the results of the match if the matcher is of type negative.
+func (m *Matcher) Result(data bool) bool {
 	if m.Negative {
 		return !data
 	}
 	return data
+}
+
+// GetType returns the type of the matcher
+func (m *Matcher) GetType() MatcherType {
+	return m.matcherType
 }
