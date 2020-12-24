@@ -110,7 +110,7 @@ func (i *Iterator) sniperValue() map[string]interface{} {
 		if !p.Next() {
 			p.ResetPosition()
 		}
-		values[p.Keyword()] = p.Value()
+		values[p.name] = p.Value()
 		p.IncrementPosition()
 	}
 	return values
@@ -124,7 +124,7 @@ func (i *Iterator) pitchforkValue() map[string]interface{} {
 		if !p.Next() {
 			p.ResetPosition()
 		}
-		values[p.Keyword()] = p.Value()
+		values[p.name] = p.Value()
 		p.IncrementPosition()
 	}
 	return values
@@ -154,7 +154,7 @@ func (i *Iterator) clusterbombValue() map[string]interface{} {
 			p.ResetPosition()
 			signalNext = true
 		}
-		values[p.Keyword()] = p.Value()
+		values[p.name] = p.Value()
 		if first {
 			p.IncrementPosition()
 			first = false
@@ -189,11 +189,6 @@ func (i *payloadIterator) Next() bool {
 	return true
 }
 
-// Position returns the position of reader in payload iterator
-func (i *payloadIterator) Position() int {
-	return i.index
-}
-
 func (i *payloadIterator) ResetPosition() {
 	i.index = 0
 }
@@ -209,8 +204,4 @@ func (i *payloadIterator) Value() string {
 
 func (i *payloadIterator) Total() int {
 	return len(i.values)
-}
-
-func (i *payloadIterator) Keyword() string {
-	return i.name
 }

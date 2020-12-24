@@ -549,61 +549,6 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 		result.Unlock()
 	}
 
-	matcherCondition := e.bulkHTTPRequest.GetMatchersCondition()
-	for _, matcher := range e.bulkHTTPRequest.Matchers {
-		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers, duration, matchData) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				return nil
-			}
-		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition {
-				result.Lock()
-				result.Matches[matcher.Name] = nil
-				// probably redundant but ensures we snapshot current payload values when matchers are valid
-				result.Meta = request.Meta
-				result.GotResults = true
-				result.Unlock()
-				e.writeOutputHTTP(request, resp, body, matcher, nil, request.Meta, reqURL)
-			}
-		}
-	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
-	var extractorResults, outputExtractorResults []string
-
-	for _, extractor := range e.bulkHTTPRequest.Extractors {
-		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
-				dynamicvalues[extractor.Name] = match
-			}
-
-			extractorResults = append(extractorResults, match)
-
-			if !extractor.Internal {
-				outputExtractorResults = append(outputExtractorResults, match)
-			}
-		}
-		// probably redundant but ensures we snapshot current payload values when extractors are valid
-		result.Lock()
-		result.Meta = request.Meta
-		result.Extractions[extractor.Name] = extractorResults
-		result.Unlock()
-	}
-
-	// Write a final string of output if matcher type is
-	// AND or if we have extractors for the mechanism too.
-	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, request.Meta, reqURL)
-		result.Lock()
-		result.GotResults = true
-		result.Unlock()
-	}
-
 	return nil
 }
 
