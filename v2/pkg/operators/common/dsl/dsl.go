@@ -18,8 +18,8 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
-	"github.com/spf13/cast"
 )
 
 const (
@@ -35,110 +35,110 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	functions := make(map[string]govaluate.ExpressionFunction)
 
 	functions["len"] = func(args ...interface{}) (interface{}, error) {
-		length := len(cast.ToString(args[0]))
+		length := len(types.ToString(args[0]))
 		return float64(length), nil
 	}
 
 	functions["toupper"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ToUpper(cast.ToString(args[0])), nil
+		return strings.ToUpper(types.ToString(args[0])), nil
 	}
 
 	functions["tolower"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ToLower(cast.ToString(args[0])), nil
+		return strings.ToLower(types.ToString(args[0])), nil
 	}
 
 	functions["replace"] = func(args ...interface{}) (interface{}, error) {
-		return strings.ReplaceAll(cast.ToString(args[0]), cast.ToString(args[1]), cast.ToString(args[2])), nil
+		return strings.ReplaceAll(types.ToString(args[0]), types.ToString(args[1]), types.ToString(args[2])), nil
 	}
 
 	functions["replace_regex"] = func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(cast.ToString(args[1]))
+		compiled, err := regexp.Compile(types.ToString(args[1]))
 		if err != nil {
 			return nil, err
 		}
-		return compiled.ReplaceAllString(cast.ToString(args[0]), cast.ToString(args[2])), nil
+		return compiled.ReplaceAllString(types.ToString(args[0]), types.ToString(args[2])), nil
 	}
 
 	functions["trim"] = func(args ...interface{}) (interface{}, error) {
-		return strings.Trim(cast.ToString(args[0]), cast.ToString(args[2])), nil
+		return strings.Trim(types.ToString(args[0]), types.ToString(args[2])), nil
 	}
 
 	functions["trimleft"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimLeft(cast.ToString(args[0]), cast.ToString(args[1])), nil
+		return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
 	}
 
 	functions["trimright"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimRight(cast.ToString(args[0]), cast.ToString(args[1])), nil
+		return strings.TrimRight(types.ToString(args[0]), types.ToString(args[1])), nil
 	}
 
 	functions["trimspace"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimSpace(cast.ToString(args[0])), nil
+		return strings.TrimSpace(types.ToString(args[0])), nil
 	}
 
 	functions["trimprefix"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimPrefix(cast.ToString(args[0]), cast.ToString(args[1])), nil
+		return strings.TrimPrefix(types.ToString(args[0]), types.ToString(args[1])), nil
 	}
 
 	functions["trimsuffix"] = func(args ...interface{}) (interface{}, error) {
-		return strings.TrimSuffix(cast.ToString(args[0]), cast.ToString(args[1])), nil
+		return strings.TrimSuffix(types.ToString(args[0]), types.ToString(args[1])), nil
 	}
 
 	functions["reverse"] = func(args ...interface{}) (interface{}, error) {
-		return reverseString(cast.ToString(args[0])), nil
+		return reverseString(types.ToString(args[0])), nil
 	}
 
 	// encoding
 	functions["base64"] = func(args ...interface{}) (interface{}, error) {
-		sEnc := base64.StdEncoding.EncodeToString([]byte(cast.ToString(args[0])))
+		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 
 		return sEnc, nil
 	}
 
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
-		sEnc := base64.StdEncoding.EncodeToString([]byte(cast.ToString(args[0])))
+		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 		return insertInto(sEnc, 76, '\n'), nil
 	}
 
 	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
-		return base64.StdEncoding.DecodeString(cast.ToString(args[0]))
+		return base64.StdEncoding.DecodeString(types.ToString(args[0]))
 	}
 
 	functions["url_encode"] = func(args ...interface{}) (interface{}, error) {
-		return url.PathEscape(cast.ToString(args[0])), nil
+		return url.PathEscape(types.ToString(args[0])), nil
 	}
 
 	functions["url_decode"] = func(args ...interface{}) (interface{}, error) {
-		return url.PathUnescape(cast.ToString(args[0]))
+		return url.PathUnescape(types.ToString(args[0]))
 	}
 
 	functions["hex_encode"] = func(args ...interface{}) (interface{}, error) {
-		return hex.EncodeToString([]byte(cast.ToString(args[0]))), nil
+		return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
 	}
 
 	functions["hex_decode"] = func(args ...interface{}) (interface{}, error) {
-		hx, _ := hex.DecodeString(cast.ToString(args[0]))
+		hx, _ := hex.DecodeString(types.ToString(args[0]))
 		return string(hx), nil
 	}
 
 	functions["html_escape"] = func(args ...interface{}) (interface{}, error) {
-		return html.EscapeString(cast.ToString(args[0])), nil
+		return html.EscapeString(types.ToString(args[0])), nil
 	}
 
 	functions["html_unescape"] = func(args ...interface{}) (interface{}, error) {
-		return html.UnescapeString(cast.ToString(args[0])), nil
+		return html.UnescapeString(types.ToString(args[0])), nil
 	}
 
 	// hashing
 	functions["md5"] = func(args ...interface{}) (interface{}, error) {
-		hash := md5.Sum([]byte(cast.ToString(args[0])))
+		hash := md5.Sum([]byte(types.ToString(args[0])))
 
 		return hex.EncodeToString(hash[:]), nil
 	}
 
 	functions["sha256"] = func(args ...interface{}) (interface{}, error) {
 		h := sha256.New()
-		_, err := h.Write([]byte(cast.ToString(args[0])))
+		_, err := h.Write([]byte(types.ToString(args[0])))
 
 		if err != nil {
 			return nil, err
@@ -148,7 +148,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 
 	functions["sha1"] = func(args ...interface{}) (interface{}, error) {
 		h := sha1.New()
-		_, err := h.Write([]byte(cast.ToString(args[0])))
+		_, err := h.Write([]byte(types.ToString(args[0])))
 
 		if err != nil {
 			return nil, err
@@ -157,20 +157,20 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	}
 
 	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
-		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(cast.ToString(args[0])), 0))), nil
+		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(types.ToString(args[0])), 0))), nil
 	}
 
 	// search
 	functions["contains"] = func(args ...interface{}) (interface{}, error) {
-		return strings.Contains(cast.ToString(args[0]), cast.ToString(args[1])), nil
+		return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 	}
 
 	functions["regex"] = func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(cast.ToString(args[0]))
+		compiled, err := regexp.Compile(types.ToString(args[0]))
 		if err != nil {
 			return nil, err
 		}
-		return compiled.MatchString(cast.ToString(args[1])), nil
+		return compiled.MatchString(types.ToString(args[1])), nil
 	}
 
 	// random generators
@@ -178,10 +178,10 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		chars := letters + numbers
 		bad := ""
 		if len(args) >= 1 {
-			chars = cast.ToString(args[0])
+			chars = types.ToString(args[0])
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = cast.ToString(args[1])
+			bad = types.ToString(args[1])
 		}
 		chars = trimAll(chars, bad)
 		return chars[rand.Intn(len(chars))], nil
@@ -196,10 +196,10 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = cast.ToString(args[1])
+			bad = types.ToString(args[1])
 		}
 		if len(args) >= withBaseRandArgsSize {
-			base = cast.ToString(args[2])
+			base = types.ToString(args[2])
 		}
 		base = trimAll(base, bad)
 		return randSeq(base, l), nil
@@ -214,7 +214,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = cast.ToString(args[1])
+			bad = types.ToString(args[1])
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
@@ -229,7 +229,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = cast.ToString(args[1])
+			bad = types.ToString(args[1])
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
@@ -244,7 +244,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			l = args[0].(int)
 		}
 		if len(args) >= withCutSetArgsSize {
-			bad = cast.ToString(args[1])
+			bad = types.ToString(args[1])
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
@@ -273,7 +273,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	// Collaborator
 	functions["collab"] = func(args ...interface{}) (interface{}, error) {
 		// check if collaborator contains a specific pattern
-		return collaborator.DefaultCollaborator.Has(cast.ToString(args[0])), nil
+		return collaborator.DefaultCollaborator.Has(types.ToString(args[0])), nil
 	}
 	return functions
 }

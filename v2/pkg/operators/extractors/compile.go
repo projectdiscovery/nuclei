@@ -25,14 +25,8 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	// Setup the part of the request to match, if any.
-	if e.Part != "" {
-		e.part, ok = PartTypes[e.Part]
-		if !ok {
-			return fmt.Errorf("unknown matcher part specified: %s", e.Part)
-		}
-	} else {
-		e.part = BodyPart
+	if e.Part == "" {
+		e.Part = "body"
 	}
-
 	return nil
 }

@@ -3,61 +3,31 @@ package executer
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	retryabledns "github.com/projectdiscovery/retryabledns"
-	"go.uber.org/ratelimit"
 )
 
 // DNSExecuter is a client for performing a DNS request
 // for a template.
 type DNSExecuter struct {
-	dnsClient   *retryabledns.Client
-	template    *templates.Template
-	dnsRequest  *requests.DNSRequest
-	ratelimiter ratelimit.Limiter
-}
-
-// DefaultResolvers contains the list of resolvers known to be trusted.
-var DefaultResolvers = []string{
-	"1.1.1.1:53", // Cloudflare
-	"1.0.0.1:53", // Cloudflare
-	"8.8.8.8:53", // Google
-	"8.8.4.4:53", // Google
+	template *templates.Template
 }
 
 // DNSOptions contains configuration options for the DNS executer.
 type DNSOptions struct {
-	ColoredOutput bool
-	Debug         bool
-	JSON          bool
-	JSONRequests  bool
-	NoMeta        bool
-	VHost         bool
-	TraceLog      tracelog.Log
-	Template      *templates.Template
-	DNSRequest    *requests.DNSRequest
-	Writer        *bufwriter.Writer
-
-	Colorizer   colorizer.NucleiColorizer
-	Decolorizer *regexp.Regexp
-	RateLimiter ratelimit.Limiter
+	Template   *templates.Template
+	DNSRequest *requests.DNSRequest
 }
 
 // NewDNSExecuter creates a new DNS executer from a template
 // and a DNS request query.
 func NewDNSExecuter(options *DNSOptions) *DNSExecuter {
-	dnsClient := retryabledns.New(DefaultResolvers, options.DNSRequest.Retries)
 
 	executer := &DNSExecuter{
 		debug:         options.Debug,

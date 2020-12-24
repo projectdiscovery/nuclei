@@ -18,7 +18,6 @@ import (
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
@@ -74,8 +73,6 @@ type HTTPOptions struct {
 	BulkHTTPRequest *requests.BulkHTTPRequest
 	CookieJar       *cookiejar.Jar
 	PF              *projetctfile.ProjectFile
-	RateLimiter     ratelimit.Limiter
-	Dialer          *fastdialer.Dialer
 }
 
 // NewHTTPExecuter creates a new HTTP executer from a template
@@ -93,7 +90,6 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 	// Create the HTTP Client
 	client := makeHTTPClient(proxyURL, options)
 	// nolint:bodyclose // false positive there is no body to close yet
-	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
 	if options.CookieJar != nil {
 		client.HTTPClient.Jar = options.CookieJar
@@ -104,9 +100,6 @@ func NewHTTPExecuter(options *HTTPOptions) (*HTTPExecuter, error) {
 		}
 		client.HTTPClient.Jar = jar
 	}
-
-	// initiate raw http client
-	rawClient := rawhttp.NewClient(rawhttp.DefaultOptions)
 
 	executer := &HTTPExecuter{
 		debug:            options.Debug,
@@ -256,17 +249,6 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 	if err != nil {
 		return result
 	}
-
-	pipeOptions := rawhttp.DefaultPipelineOptions
-	pipeOptions.Host = URL.Host
-	pipeOptions.MaxConnections = 1
-	if e.bulkHTTPRequest.PipelineConcurrentConnections > 0 {
-		pipeOptions.MaxConnections = e.bulkHTTPRequest.PipelineConcurrentConnections
-	}
-	if e.bulkHTTPRequest.PipelineRequestsPerConnection > 0 {
-		pipeOptions.MaxPendingRequests = e.bulkHTTPRequest.PipelineRequestsPerConnection
-	}
-	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
 	maxWorkers := defaultMaxWorkers

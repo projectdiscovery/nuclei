@@ -1,52 +1,21 @@
 package extractors
 
-import (
-	"net/http"
+import "github.com/projectdiscovery/nuclei/v2/pkg/types"
 
-	"github.com/miekg/dns"
-)
+// Extract extracts data from an output structure based on user options
+func (e *Extractor) Extract(data map[string]interface{}) map[string]struct{} {
+	part, ok := data[e.Part]
+	if !ok {
+		return nil
+	}
+	partString := types.ToString(part)
 
-// Extract extracts response from the parts of request using a regex
-func (e *Extractor) Extract(resp *http.Response, body, headers string) map[string]struct{} {
 	switch e.extractorType {
 	case RegexExtractor:
-		if e.part == BodyPart {
-			return e.extractRegex(body)
-		} else if e.part == HeaderPart {
-			return e.extractRegex(headers)
-		} else {
-			matches := e.extractRegex(headers)
-			if len(matches) > 0 {
-				return matches
-			}
-			return e.extractRegex(body)
-		}
+		return e.extractRegex(partString)
 	case KValExtractor:
-		if e.part == HeaderPart {
-			return e.extractKVal(resp)
-		}
-
-		matches := e.extractKVal(resp)
-
-		if len(matches) > 0 {
-			return matches
-		}
-
-		return e.extractCookieKVal(resp)
+		return e.extractKVal(data)
 	}
-
-	return nil
-}
-
-// ExtractDNS extracts response from dns message using a regex
-// nolint:interfacer // dns.Msg is out of current scope
-func (e *Extractor) ExtractDNS(msg *dns.Msg) map[string]struct{} {
-	switch e.extractorType {
-	case RegexExtractor:
-		return e.extractRegex(msg.String())
-	case KValExtractor:
-	}
-
 	return nil
 }
 
@@ -57,39 +26,34 @@ func (e *Extractor) extractRegex(corpus string) map[string]struct{} {
 	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
 		matches := regex.FindAllStringSubmatch(corpus, -1)
+
 		for _, match := range matches {
-			if len(match) >= groupPlusOne {
-				results[match[e.RegexGroup]] = struct{}{}
+			if len(match) < groupPlusOne {
+				continue
+			}
+			matchString := match[e.RegexGroup]
+
+			if _, ok := results[matchString]; !ok {
+				results[matchString] = struct{}{}
 			}
 		}
 	}
 	return results
 }
 
-// extractKVal extracts text from http response
-func (e *Extractor) extractKVal(r *http.Response) map[string]struct{} {
+// extractKVal extracts key value pairs from a data map
+func (e *Extractor) extractKVal(data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	for _, k := range e.KVal {
-		for _, v := range r.Header.Values(k) {
-			results[v] = struct{}{}
+		item, ok := data[k]
+		if !ok {
+			continue
+		}
+		itemString := types.ToString(item)
+		if _, ok := results[itemString]; !ok {
+			results[itemString] = struct{}{}
 		}
 	}
-
-	return results
-}
-
-// extractCookieKVal extracts text from cookies
-func (e *Extractor) extractCookieKVal(r *http.Response) map[string]struct{} {
-	results := make(map[string]struct{})
-
-	for _, k := range e.KVal {
-		for _, cookie := range r.Cookies() {
-			if cookie.Name == k {
-				results[cookie.Value] = struct{}{}
-			}
-		}
-	}
-
 	return results
 }

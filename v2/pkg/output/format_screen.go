@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/spf13/cast"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // formatScreen formats the output for showing on screen.
@@ -52,7 +52,7 @@ func (w *StandardWriter) formatScreen(output Event) ([]byte, error) {
 	if ok {
 		builder.WriteString(" [")
 
-		extractorResults := cast.ToStringSlice(extractedResults)
+		extractorResults := types.ToStringSlice(extractedResults)
 		for i, item := range extractorResults {
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
@@ -68,7 +68,7 @@ func (w *StandardWriter) formatScreen(output Event) ([]byte, error) {
 	if ok {
 		builder.WriteString(" [")
 
-		metaResults := cast.ToStringMap(metaResults)
+		metaResults := types.ToStringMap(metaResults)
 
 		var first = true
 		for name, value := range metaResults {
@@ -79,7 +79,7 @@ func (w *StandardWriter) formatScreen(output Event) ([]byte, error) {
 
 			builder.WriteString(w.aurora.BrightYellow(name).String())
 			builder.WriteRune('=')
-			builder.WriteString(w.aurora.BrightYellow(cast.ToString(value)).String())
+			builder.WriteString(w.aurora.BrightYellow(types.ToString(value)).String())
 		}
 		builder.WriteString("]")
 	}
