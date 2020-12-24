@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
 
 // Request contains a DNS protocol request to be made from a template
@@ -49,7 +50,7 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	replacer := newReplacer(map[string]interface{}{"FQDN": domain})
+	replacer := replacer.New(map[string]interface{}{"FQDN": domain})
 
 	q.Name = dns.Fqdn(replacer.Replace(r.Name))
 	q.Qclass = classToInt(r.Class)
