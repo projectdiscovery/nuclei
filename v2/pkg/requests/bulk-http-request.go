@@ -279,22 +279,7 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 			parsedURL.Host = hostname
 		}
 	}
-
 	return parsedURL.String()
-}
-
-// CustomHeaders valid for all requests
-type CustomHeaders []string
-
-// String returns just a label
-func (c *CustomHeaders) String() string {
-	return "Custom Global Headers"
-}
-
-// Set a new global header
-func (c *CustomHeaders) Set(value string) error {
-	*c = append(*c, value)
-	return nil
 }
 
 // Next returns the next generator by URL

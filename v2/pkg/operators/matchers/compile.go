@@ -17,9 +17,9 @@ func (m *Matcher) CompileMatchers() error {
 	if !ok {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
-	// By default, match on all if user hasn't provided any specific items
+	// By default, match on body if user hasn't provided any specific items
 	if m.Part == "" {
-		m.Part = "all"
+		m.Part = "body"
 	}
 
 	// Compile the regexes

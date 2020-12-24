@@ -35,7 +35,9 @@ func responseToDSLMap(msg *dns.Msg) map[string]interface{} {
 	data["ns"] = buffer.String()
 	buffer.Reset()
 
-	data["raw"] = msg.String()
+	rawData := msg.String()
+	data["raw"] = rawData
+	data["body"] = rawData // Use rawdata as body for dns responses matching
 	data["status_code"] = msg.Rcode
 	return data
 }
