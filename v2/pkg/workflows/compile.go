@@ -22,14 +22,10 @@ func Parse(file string) (*Workflow, error) {
 		return nil, err
 	}
 
-	if len(workflow.Workflows) > 0 {
-		if err := workflow.generateLogicFromWorkflows(); err != nil {
-			return nil, errors.Wrap(err, "could not generate workflow")
-		}
+	if len(workflow.Workflows) == 0 {
+		return nil, errors.New("no workflow defined")
 	}
-	if workflow.Logic == "" {
-		return nil, errors.New("no logic provided")
-	}
+	// Compile workflow here.
 	workflow.path = file
 	return workflow, nil
 }
