@@ -8,10 +8,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
 
+var _ protocols.Request = &Request{}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
