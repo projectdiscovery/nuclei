@@ -78,37 +78,71 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 	return nil
 }
 
-// responseToDSLMap converts a DNS response to a map for use in DSL matching
-func responseToDSLMap(msg *dns.Msg) output.InternalEvent {
-	data := make(output.InternalEvent, 6)
+// makeResultEvent creates a result event from internal wrapped event
+func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	results := make([]*output.ResultEvent, len(wrapped.OperatorsResult.Matches)+1)
 
-	data["rcode"] = msg.Rcode
+	data := output.ResultEvent{
+		TemplateID:       r.options.TemplateID,
+		Info:             r.options.TemplateInfo,
+		Type:             "dns",
+		Host:             wrapped.InternalEvent["host"].(string),
+		Matched:          wrapped.InternalEvent["matched"].(string),
+		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+	}
+	if r.options.Options.JSONRequests {
+		data.Request = wrapped.InternalEvent["request"].(string)
+		data.Response = wrapped.InternalEvent["raw"].(string)
+	}
+
+	// If we have multiple matchers with names, write each of them separately.
+	if len(wrapped.OperatorsResult.Matches) > 0 {
+		for k := range wrapped.OperatorsResult.Matches {
+			data.MatcherName = k
+			results = append(results, &data)
+		}
+	} else {
+		results = append(results, &data)
+	}
+	return results
+}
+
+// responseToDSLMap converts a DNS response to a map for use in DSL matching
+func responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
+	data := make(output.InternalEvent, 8)
+
+	// Some data regarding the request metadata
+	data["host"] = host
+	data["matched"] = matched
+	data["request"] = req.String()
+
+	data["rcode"] = resp.Rcode
 	buffer := &bytes.Buffer{}
-	for _, question := range msg.Question {
+	for _, question := range resp.Question {
 		buffer.WriteString(question.String())
 	}
 	data["question"] = buffer.String()
 	buffer.Reset()
 
-	for _, extra := range msg.Extra {
+	for _, extra := range resp.Extra {
 		buffer.WriteString(extra.String())
 	}
 	data["extra"] = buffer.String()
 	buffer.Reset()
 
-	for _, answer := range msg.Answer {
+	for _, answer := range resp.Answer {
 		buffer.WriteString(answer.String())
 	}
 	data["answer"] = buffer.String()
 	buffer.Reset()
 
-	for _, ns := range msg.Ns {
+	for _, ns := range resp.Ns {
 		buffer.WriteString(ns.String())
 	}
 	data["ns"] = buffer.String()
 	buffer.Reset()
 
-	rawData := msg.String()
+	rawData := resp.String()
 	data["raw"] = rawData
 	return data
 }

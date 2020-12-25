@@ -53,7 +53,7 @@ func NewProgress(active, metrics bool, port int) (*Progress, error) {
 		}
 		go func() {
 			if err := progress.server.ListenAndServe(); err != nil {
-				gologger.Warningf("Could not serve metrics: %s\n", err)
+				gologger.Warning().Msgf("Could not serve metrics: %s", err)
 			}
 		}()
 	}
@@ -71,7 +71,7 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 
 	if p.active {
 		if err := p.stats.Start(makePrintCallback(), p.tickDuration); err != nil {
-			gologger.Warningf("Couldn't start statistics: %s\n", err)
+			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
 	}
 }
@@ -81,15 +81,15 @@ func (p *Progress) AddToTotal(delta int64) {
 	p.stats.IncrementCounter("total", int(delta))
 }
 
-// Update progress tracking information and increments the request counter by one unit.
-func (p *Progress) Update() {
+// IncrementRequests increments the requests counter by 1.
+func (p *Progress) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
 }
 
-// Drop drops the specified number of requests from the progress bar total.
-// This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
-func (p *Progress) Drop(count int64) {
+// DecrementRequests decrements the number of requests from total.
+func (p *Progress) DecrementRequests(count int64) {
 	// mimic dropping by incrementing the completed requests
+	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
 }
 
@@ -183,7 +183,7 @@ func fmtDuration(d time.Duration) string {
 func (p *Progress) Stop() {
 	if p.active {
 		if err := p.stats.Stop(); err != nil {
-			gologger.Warningf("Couldn't stop statistics: %s\n", err)
+			gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 		}
 	}
 	if p.server != nil {

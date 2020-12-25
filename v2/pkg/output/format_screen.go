@@ -7,7 +7,7 @@ import (
 )
 
 // formatScreen formats the output for showing on screen.
-func (w *StandardWriter) formatScreen(output *WrappedEvent) ([]byte, error) {
+func (w *StandardWriter) formatScreen(output *ResultEvent) ([]byte, error) {
 	builder := &bytes.Buffer{}
 
 	if !w.noMetadata {
