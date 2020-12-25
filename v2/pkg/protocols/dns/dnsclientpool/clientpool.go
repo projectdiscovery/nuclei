@@ -1,4 +1,4 @@
-package clientpool
+package dnsclientpool
 
 import (
 	"strconv"

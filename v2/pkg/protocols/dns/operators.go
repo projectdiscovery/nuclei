@@ -79,8 +79,8 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func responseToDSLMap(msg *dns.Msg) output.Event {
-	data := make(output.Event, 6)
+func responseToDSLMap(msg *dns.Msg) output.InternalEvent {
+	data := make(output.InternalEvent, 6)
 
 	data["rcode"] = msg.Rcode
 	buffer := &bytes.Buffer{}

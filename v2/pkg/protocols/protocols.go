@@ -21,7 +21,7 @@ type Executer interface {
 	// Execute executes the protocol requests and returns true or false if results were found.
 	Execute(input string) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string) ([]output.Event, error)
+	ExecuteWithResults(input string) ([]output.InternalWrappedEvent, error)
 }
 
 // ExecuterOptions contains the configuration options for executer clients

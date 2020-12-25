@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -67,7 +66,7 @@ type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
 type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 
 // Execute executes the operators on data and returns a result structure
-func (r *Operators) Execute(data output.Event, match MatchFunc, extract ExtractFunc) (*Result, bool) {
+func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc) (*Result, bool) {
 	matcherCondition := r.GetMatchersCondition()
 
 	result := &Result{
