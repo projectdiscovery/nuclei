@@ -10,20 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 )
 
-// Execute executes the protocol requests and returns true or false if results were found.
-func (r *Request) Execute(input string) (bool, error) {
-	events, err := r.ExecuteWithResults(input)
-	if err != nil {
-		return false, err
-	}
-	// We've a match in the form of a event, so display.
-	for _, event := range events {
-		if event.Operators != nil {
-			r.options.Output.Write(event.Event)
-		}
-	}
-}
-
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
 	// Parse the URL and return domain if URL.
@@ -38,7 +24,7 @@ func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEve
 	compiledRequest, err := r.Make(domain)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		//	p.Drop(1)
+		r.options.Progress.DecrementRequests(1)
 		return nil, errors.Wrap(err, "could not build request")
 	}
 
@@ -51,10 +37,11 @@ func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEve
 	resp, err := r.dnsClient.Do(compiledRequest)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		//p.Drop(1)
+		r.options.Progress.DecrementRequests(1)
 		return nil, errors.Wrap(err, "could not send dns request")
 	}
-	//	p.Update()
+	r.options.Progress.IncrementRequests()
+
 	r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s", r.options.TemplateID, domain)
 
@@ -62,15 +49,15 @@ func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEve
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
 	}
-	ouputEvent := responseToDSLMap(resp)
+	ouputEvent := responseToDSLMap(compiledRequest, resp, input, input)
 
-	event := []*output.WrappedEvent{&output.WrappedEvent{Event: ouputEvent}}
+	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
 	if r.Operators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
 			return nil, nil
 		}
-		event[0].Operators = result
+		event[0].OperatorsResult = result
 	}
 	return event, nil
 }

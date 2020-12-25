@@ -18,7 +18,7 @@ type Writer interface {
 	// Colorizer returns the colorizer instance for writer
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
-	Write(*WrappedEvent) error
+	Write(*ResultEvent) error
 	// Request writes a log the requests trace log
 	Request(templateID, url, requestType string, err error)
 }
@@ -51,8 +51,8 @@ type InternalWrappedEvent struct {
 	OperatorsResult *operators.Result
 }
 
-// WrappedEvent is a wrapped result event for a single nuclei output.
-type WrappedEvent struct {
+// ResultEvent is a wrapped result event for a single nuclei output.
+type ResultEvent struct {
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"templateID"`
 	// Info contains information block of the template for the result.
@@ -116,7 +116,7 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 }
 
 // Write writes the event to file and/or screen.
-func (w *StandardWriter) Write(event *WrappedEvent) error {
+func (w *StandardWriter) Write(event *ResultEvent) error {
 	var data []byte
 	var err error
 
