@@ -1,4 +1,4 @@
-package clientpool
+package httpclientpool
 
 import (
 	"context"

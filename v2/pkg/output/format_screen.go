@@ -2,61 +2,41 @@ package output
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // formatScreen formats the output for showing on screen.
-func (w *StandardWriter) formatScreen(output Event) ([]byte, error) {
+func (w *StandardWriter) formatScreen(output *WrappedEvent) ([]byte, error) {
 	builder := &bytes.Buffer{}
 
 	if !w.noMetadata {
-		id, ok := output["id"]
-		if !ok {
-			return nil, errors.New("no template id found")
-		}
 		builder.WriteRune('[')
-		builder.WriteString(w.aurora.BrightGreen(id.(string)).String())
+		builder.WriteString(w.aurora.BrightGreen(output.TemplateID).String())
 
-		matcherName, ok := output["matcher_name"]
-		if ok && matcherName != "" {
+		if output.MatcherName != "" {
 			builder.WriteString(":")
-			builder.WriteString(w.aurora.BrightGreen(matcherName).Bold().String())
+			builder.WriteString(w.aurora.BrightGreen(output.MatcherName).Bold().String())
 		}
 
-		outputType, ok := output["type"]
-		if !ok {
-			return nil, errors.New("no output type found")
-		}
 		builder.WriteString("] [")
-		builder.WriteString(w.aurora.BrightBlue(outputType.(string)).String())
+		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
 		builder.WriteString("] ")
 
-		severity, ok := output["severity"]
-		if !ok {
-			return nil, errors.New("no output severity found")
-		}
 		builder.WriteString("[")
-		builder.WriteString(w.severityMap[severity.(string)])
+		builder.WriteString(w.severityMap[output.Info["severity"]])
 		builder.WriteString("] ")
 	}
-	matched, ok := output["matched"]
-	if !ok {
-		return nil, errors.New("no matched url found")
-	}
-	builder.WriteString(matched.(string))
+	builder.WriteString(output.Matched)
 
 	// If any extractors, write the results
-	extractedResults, ok := output["extracted_results"]
-	if ok {
+	if len(output.ExtractedResults) > 0 {
 		builder.WriteString(" [")
 
-		extractorResults := types.ToStringSlice(extractedResults)
-		for i, item := range extractorResults {
+		for i, item := range output.ExtractedResults {
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
-			if i != len(extractorResults)-1 {
+			if i != len(output.ExtractedResults)-1 {
 				builder.WriteRune(',')
 			}
 		}
@@ -64,15 +44,12 @@ func (w *StandardWriter) formatScreen(output Event) ([]byte, error) {
 	}
 
 	// Write meta if any
-	metaResults, ok := output["meta"]
-	if ok {
+	if len(output.Metadata) > 0 {
 		builder.WriteString(" [")
 
-		metaResults := types.ToStringMap(metaResults)
-
-		var first = true
-		for name, value := range metaResults {
-			if first {
+		var first bool = true
+		for name, value := range output.Metadata {
+			if !first {
 				builder.WriteRune(',')
 			}
 			first = false

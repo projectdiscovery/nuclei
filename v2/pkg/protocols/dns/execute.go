@@ -12,11 +12,20 @@ import (
 
 // Execute executes the protocol requests and returns true or false if results were found.
 func (r *Request) Execute(input string) (bool, error) {
-
+	events, err := r.ExecuteWithResults(input)
+	if err != nil {
+		return false, err
+	}
+	// We've a match in the form of a event, so display.
+	for _, event := range events {
+		if event.Operators != nil {
+			r.options.Output.Write(event.Event)
+		}
+	}
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string) ([]output.Event, error) {
+func (r *Request) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
@@ -55,14 +64,15 @@ func (r *Request) ExecuteWithResults(input string) ([]output.Event, error) {
 	}
 	ouputEvent := responseToDSLMap(resp)
 
+	event := []*output.WrappedEvent{&output.WrappedEvent{Event: ouputEvent}}
 	if r.Operators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
 			return nil, nil
 		}
-
+		event[0].Operators = result
 	}
-	return
+	return event, nil
 }
 
 // isURL tests a string to determine if it is a well-structured url or not.

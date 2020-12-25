@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/clientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
 )
 
@@ -40,7 +40,7 @@ type Request struct {
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	// Create a dns client for the class
-	client, err := clientpool.Get(options.Options, &clientpool.Configuration{
+	client, err := dnsclientpool.Get(options.Options, &dnsclientpool.Configuration{
 		Retries: r.Retries,
 	})
 	if err != nil {

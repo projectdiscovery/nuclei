@@ -8,6 +8,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -17,7 +18,7 @@ type Writer interface {
 	// Colorizer returns the colorizer instance for writer
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
-	Write(Event) error
+	Write(*WrappedEvent) error
 	// Request writes a log the requests trace log
 	Request(templateID, url, requestType string, err error)
 }
@@ -41,8 +42,38 @@ const (
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
-// Event is a single output structure from nuclei.
-type Event map[string]interface{}
+// InternalEvent is an internal output generation structure for nuclei.
+type InternalEvent map[string]interface{}
+
+// InternalWrappedEvent is a wrapped event with operators result added to it.
+type InternalWrappedEvent struct {
+	InternalEvent   InternalEvent
+	OperatorsResult *operators.Result
+}
+
+// WrappedEvent is a wrapped result event for a single nuclei output.
+type WrappedEvent struct {
+	// TemplateID is the ID of the template for the result.
+	TemplateID string `json:"templateID"`
+	// Info contains information block of the template for the result.
+	Info map[string]string `json:"info"`
+	// MatcherName is the name of the matcher matched if any.
+	MatcherName string `json:"matcher_name,omitempty"`
+	// Type is the type of the result event.
+	Type string `json:"type"`
+	// Host is the host input on which match was found.
+	Host string `json:"host,omitempty"`
+	// Matched contains the matched input in its transformed form.
+	Matched string `json:"matched,omitempty"`
+	// ExtractedResults contains the extraction result from the inputs.
+	ExtractedResults []string `json:"extracted_results,omitempty"`
+	// Request is the optional dumped request for the match.
+	Request string `json:"request,omitempty"`
+	// Response is the optional dumped response for the match.
+	Response string `json:"response,omitempty"`
+	// Metadata contains any optional metadata for the event
+	Metadata map[string]interface{} `json:"meta,omitempty"`
+}
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
@@ -85,7 +116,7 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 }
 
 // Write writes the event to file and/or screen.
-func (w *StandardWriter) Write(event Event) error {
+func (w *StandardWriter) Write(event *WrappedEvent) error {
 	var data []byte
 	var err error
 
