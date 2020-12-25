@@ -48,6 +48,7 @@ type InternalEvent map[string]interface{}
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
 	InternalEvent   InternalEvent
+	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 }
 

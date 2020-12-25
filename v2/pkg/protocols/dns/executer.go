@@ -21,7 +21,8 @@ func NewExecuter(requests []*Request, options *protocols.ExecuterOptions) *Execu
 // Compile compiles the execution generators preparing any requests possible.
 func (e *Executer) Compile() error {
 	for _, request := range e.requests {
-		if err := request.Compile(e.options); err != nil {
+		err := request.Compile(e.options)
+		if err != nil {
 			return err
 		}
 	}
@@ -46,6 +47,9 @@ func (e *Executer) Execute(input string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		if events == nil {
+			return false, nil
+		}
 
 		// If we have a result field, we should add a result to slice.
 		for _, event := range events {
@@ -63,20 +67,24 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string) ([]*output.ResultEvent, error) {
-	var results []*output.ResultEvent
+func (e *Executer) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
+	var results []*output.InternalWrappedEvent
 
 	for _, req := range e.requests {
 		events, err := req.ExecuteWithResults(input, nil)
 		if err != nil {
 			return nil, err
 		}
+		if events == nil {
+			return nil, nil
+		}
 		for _, event := range events {
 			if event.OperatorsResult == nil {
 				continue
 			}
-			results = append(results, req.makeResultEvent(event)...)
+			event.Results = req.makeResultEvent(event)
 		}
+		results = append(results, events...)
 	}
 	return results, nil
 }
