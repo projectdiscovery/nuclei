@@ -52,7 +52,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
 	}
-	ouputEvent := responseToDSLMap(compiledRequest, resp, input, input)
+	ouputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
 	if r.Operators != nil {
