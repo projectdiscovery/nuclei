@@ -12,7 +12,7 @@ import (
 // Executer is an interface implemented any protocol based request executer.
 type Executer interface {
 	// Compile compiles the execution generators preparing any requests possible.
-	Compile(options ExecuterOptions) error
+	Compile() error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int64
 	// Execute executes the protocol group and returns true or false if results were found.
@@ -40,7 +40,7 @@ type ExecuterOptions struct {
 // Request is an interface implemented any protocol based request generator.
 type Request interface {
 	// Compile compiles the request generators preparing any requests possible.
-	Compile(options ExecuterOptions) error
+	Compile(options *ExecuterOptions) error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int64
 	// Match performs matching operation for a matcher on model and returns true or false.
@@ -48,5 +48,5 @@ type Request interface {
 	// Extract performs extracting operation for a extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error)
+	ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error)
 }
