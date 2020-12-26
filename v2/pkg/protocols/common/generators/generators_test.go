@@ -14,9 +14,12 @@ func TestSniperGenerator(t *testing.T) {
 
 	iterator := generator.NewIterator()
 	count := 0
-	for iterator.Next() {
+	for {
+		value, ok := iterator.Value()
+		if !ok {
+			break
+		}
 		count++
-		value := iterator.Value()
 		require.Contains(t, usernames, value["username"], "Could not get correct sniper")
 	}
 	require.Equal(t, len(usernames), count, "could not get correct sniper counts")
@@ -31,9 +34,12 @@ func TestPitchforkGenerator(t *testing.T) {
 
 	iterator := generator.NewIterator()
 	count := 0
-	for iterator.Next() {
+	for {
+		value, ok := iterator.Value()
+		if !ok {
+			break
+		}
 		count++
-		value := iterator.Value()
 		require.Contains(t, usernames, value["username"], "Could not get correct pitchfork username")
 		require.Contains(t, passwords, value["password"], "Could not get correct pitchfork password")
 	}
@@ -49,9 +55,25 @@ func TestClusterbombGenerator(t *testing.T) {
 
 	iterator := generator.NewIterator()
 	count := 0
-	for iterator.Next() {
+	for {
+		value, ok := iterator.Value()
+		if !ok {
+			break
+		}
 		count++
-		value := iterator.Value()
+		require.Contains(t, usernames, value["username"], "Could not get correct clusterbomb username")
+		require.Contains(t, passwords, value["password"], "Could not get correct clusterbomb password")
+	}
+	require.Equal(t, 3, count, "could not get correct clusterbomb counts")
+
+	iterator.Reset()
+	count = 0
+	for {
+		value, ok := iterator.Value()
+		if !ok {
+			break
+		}
+		count++
 		require.Contains(t, usernames, value["username"], "Could not get correct clusterbomb username")
 		require.Contains(t, passwords, value["password"], "Could not get correct clusterbomb password")
 	}

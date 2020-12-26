@@ -2,6 +2,10 @@
 
 package generators
 
+import (
+	"errors"
+)
+
 // Generator is the generator struct for generating payloads
 type Generator struct {
 	Type     Type
@@ -33,6 +37,20 @@ func New(payloads map[string]interface{}, Type Type) (*Generator, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Validate the payload types
+	if Type == Sniper && len(compiled) > 1 {
+		return nil, errors.New("cannot use more than one payload set in sniper")
+	}
+	if Type == PitchFork {
+		var totalLength int
+		for v := range compiled {
+			if totalLength != 0 && totalLength != len(v) {
+				return nil, errors.New("pitchfork payloads must be of equal number")
+			}
+			totalLength = len(v)
+		}
+	}
 	return &Generator{Type: Type, payloads: compiled}, nil
 }
 
@@ -41,6 +59,7 @@ type Iterator struct {
 	Type        Type
 	position    int
 	msbIterator int
+	total       int
 	payloads    []*payloadIterator
 }
 
@@ -51,16 +70,22 @@ func (g *Generator) NewIterator() *Iterator {
 	for name, values := range g.payloads {
 		payloads = append(payloads, &payloadIterator{name: name, values: values})
 	}
-	return &Iterator{Type: g.Type, payloads: payloads}
+	iterator := &Iterator{
+		Type:     g.Type,
+		payloads: payloads,
+	}
+	iterator.total = iterator.Total()
+	return iterator
 }
 
-// Next returns true if there are more inputs in iterator
-func (i *Iterator) Next() bool {
-	if i.position >= i.Total() {
-		return false
+// Reset resets the iterator back to its initial value
+func (i *Iterator) Reset() {
+	i.position = 0
+	i.msbIterator = 0
+
+	for _, payload := range i.payloads {
+		payload.resetPosition()
 	}
-	i.position++
-	return true
 }
 
 //Total returns the amount of input combinations available
@@ -68,28 +93,22 @@ func (i *Iterator) Total() int {
 	count := 0
 	switch i.Type {
 	case Sniper:
-		for _, p := range i.payloads {
-			if p.Total() > count {
-				count = p.Total()
-			}
-		}
+		count = len(i.payloads[0].values)
 	case PitchFork:
 		for _, p := range i.payloads {
-			if p.Total() > count {
-				count = p.Total()
-			}
+			count = len(p.values)
 		}
 	case ClusterBomb:
 		count = 1
 		for _, p := range i.payloads {
-			count = count * p.Total()
+			count = count * len(p.values)
 		}
 	}
 	return count
 }
 
 // Value returns the next value for an iterator
-func (i *Iterator) Value() map[string]interface{} {
+func (i *Iterator) Value() (map[string]interface{}, bool) {
 	switch i.Type {
 	case Sniper:
 		return i.sniperValue()
@@ -103,35 +122,37 @@ func (i *Iterator) Value() map[string]interface{} {
 }
 
 // sniperValue returns a list of all payloads for the iterator
-func (i *Iterator) sniperValue() map[string]interface{} {
-	values := make(map[string]interface{}, len(i.payloads))
+func (i *Iterator) sniperValue() (map[string]interface{}, bool) {
+	values := make(map[string]interface{}, 1)
 
-	for _, p := range i.payloads {
-		if !p.Next() {
-			p.ResetPosition()
-		}
-		values[p.name] = p.Value()
-		p.IncrementPosition()
+	payload := i.payloads[0]
+	if !payload.next() {
+		return nil, false
 	}
-	return values
+	values[payload.name] = payload.value()
+	payload.incrementPosition()
+	return values, true
 }
 
 // pitchforkValue returns a map of keyword:value pairs in same index
-func (i *Iterator) pitchforkValue() map[string]interface{} {
+func (i *Iterator) pitchforkValue() (map[string]interface{}, bool) {
 	values := make(map[string]interface{}, len(i.payloads))
 
 	for _, p := range i.payloads {
-		if !p.Next() {
-			p.ResetPosition()
+		if !p.next() {
+			return nil, false
 		}
-		values[p.name] = p.Value()
-		p.IncrementPosition()
+		values[p.name] = p.value()
+		p.incrementPosition()
 	}
-	return values
+	return values, true
 }
 
 // clusterbombValue returns a combination of all input pairs in key:value format.
-func (i *Iterator) clusterbombValue() map[string]interface{} {
+func (i *Iterator) clusterbombValue() (map[string]interface{}, bool) {
+	if i.position >= i.total {
+		return nil, false
+	}
 	values := make(map[string]interface{}, len(i.payloads))
 
 	// Should we signal the next InputProvider in the slice to increment
@@ -139,10 +160,10 @@ func (i *Iterator) clusterbombValue() map[string]interface{} {
 	first := true
 	for index, p := range i.payloads {
 		if signalNext {
-			p.IncrementPosition()
+			p.incrementPosition()
 			signalNext = false
 		}
-		if !p.Next() {
+		if !p.next() {
 			// No more inputs in this inputprovider
 			if index == i.msbIterator {
 				// Reset all previous wordlists and increment the msb counter
@@ -151,25 +172,26 @@ func (i *Iterator) clusterbombValue() map[string]interface{} {
 				// Start again
 				return i.clusterbombValue()
 			}
-			p.ResetPosition()
+			p.resetPosition()
 			signalNext = true
 		}
-		values[p.name] = p.Value()
+		values[p.name] = p.value()
 		if first {
-			p.IncrementPosition()
+			p.incrementPosition()
 			first = false
 		}
 	}
-	return values
+	i.position++
+	return values, true
 }
 
 func (i *Iterator) clusterbombIteratorReset() {
 	for index, p := range i.payloads {
 		if index < i.msbIterator {
-			p.ResetPosition()
+			p.resetPosition()
 		}
 		if index == i.msbIterator {
-			p.IncrementPosition()
+			p.incrementPosition()
 		}
 	}
 }
@@ -181,27 +203,22 @@ type payloadIterator struct {
 	values []string
 }
 
-// Next returns true if there are more values in payload iterator
-func (i *payloadIterator) Next() bool {
-	if i.index >= i.Total() {
-		return false
-	}
-	return true
+// next returns true if there are more values in payload iterator
+func (i *payloadIterator) next() bool {
+	return i.index < len(i.values)
 }
 
-func (i *payloadIterator) ResetPosition() {
+// resetPosition resets the position of the payload iterator
+func (i *payloadIterator) resetPosition() {
 	i.index = 0
 }
 
-func (i *payloadIterator) IncrementPosition() {
+// incrementPosition increments the position of the payload iterator
+func (i *payloadIterator) incrementPosition() {
 	i.index++
 }
 
-func (i *payloadIterator) Value() string {
-	value := i.values[i.index]
-	return value
-}
-
-func (i *payloadIterator) Total() int {
-	return len(i.values)
+// value returns the value of the payload at an index
+func (i *payloadIterator) value() string {
+	return i.values[i.index]
 }
