@@ -8,8 +8,9 @@ import (
 	"strings"
 )
 
-// Request defines a HTTP raw request structure
+// Request defines a basic HTTP raw request
 type Request struct {
+	FullURL string
 	Method  string
 	Path    string
 	Data    string
@@ -17,10 +18,9 @@ type Request struct {
 }
 
 // Parse parses the raw request as supplied by the user
-func Parse(request string, unsafe bool) (*Request, error) {
+func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	reader := bufio.NewReader(strings.NewReader(request))
-
-	rawRequest := Request{
+	rawRequest := &Request{
 		Headers: make(map[string]string),
 	}
 
@@ -30,7 +30,6 @@ func Parse(request string, unsafe bool) (*Request, error) {
 	}
 
 	parts := strings.Split(s, " ")
-
 	//nolint:gomnd // this is not a magic number
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("malformed request supplied")
@@ -79,40 +78,36 @@ func Parse(request string, unsafe bool) (*Request, error) {
 		rawRequest.Path = parts[1]
 	}
 
+	// If raw request doesn't have a Host header and/ path,
+	// this will be generated from the parsed baseURL
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request URL: %s", err)
+	}
+
+	var hostURL string
+	if rawRequest.Headers["Host"] == "" {
+		hostURL = parsedURL.Host
+	} else {
+		hostURL = rawRequest.Headers["Host"]
+	}
+
+	if rawRequest.Path == "" {
+		rawRequest.Path = parsedURL.Path
+	} else if strings.HasPrefix(rawRequest.Path, "?") {
+		// requests generated from http.ReadRequest have incorrect RequestURI, so they
+		// cannot be used to perform another request directly, we need to generate a new one
+		// with the new target url
+		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	}
+
+	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %s", err)
 	}
 	rawRequest.Data = string(b)
-	return &rawRequest, nil
-}
-
-// URL returns the full URL for a raw request based on provided metadata
-func (r *Request) URL(BaseURL string) (string, error) {
-	parsed, err := url.Parse(BaseURL)
-	if err != nil {
-		return "", err
-	}
-
-	var hostURL string
-	if r.Headers["Host"] == "" {
-		hostURL = parsed.Host
-	} else {
-		hostURL = r.Headers["Host"]
-	}
-
-	if r.Path == "" {
-		r.Path = parsed.Path
-	} else if strings.HasPrefix(r.Path, "?") {
-		r.Path = fmt.Sprintf("%s%s", parsed.Path, r.Path)
-	}
-
-	builder := &strings.Builder{}
-	builder.WriteString(parsed.Scheme)
-	builder.WriteString("://")
-	builder.WriteString(strings.TrimSpace(hostURL))
-	builder.WriteString(r.Path)
-	URL := builder.String()
-	return URL, nil
+	return rawRequest, nil
 }
