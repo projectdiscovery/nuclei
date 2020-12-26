@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// syncedReadCloser is compatible with io.ReadSeeker and performs
+// SyncedReadCloser is compatible with io.ReadSeeker and performs
 // gate-based synced writes to enable race condition testing.
-type syncedReadCloser struct {
+type SyncedReadCloser struct {
 	data           []byte
 	p              int64
 	length         int64
@@ -17,9 +17,10 @@ type syncedReadCloser struct {
 	enableBlocking bool
 }
 
-func newSyncedReadCloser(r io.ReadCloser) *syncedReadCloser {
+// NewSyncedReadCloser creates a new SyncedReadCloser instance.
+func NewSyncedReadCloser(r io.ReadCloser) *SyncedReadCloser {
 	var (
-		s   syncedReadCloser
+		s   SyncedReadCloser
 		err error
 	)
 	s.data, err = ioutil.ReadAll(r)
@@ -33,27 +34,32 @@ func newSyncedReadCloser(r io.ReadCloser) *syncedReadCloser {
 	return &s
 }
 
-func newOpenGateWithTimeout(r io.ReadCloser, d time.Duration) *syncedReadCloser {
-	s := newSyncedReadCloser(r)
+// NewOpenGateWithTimeout creates a new open gate with a timeout
+func NewOpenGateWithTimeout(r io.ReadCloser, d time.Duration) *SyncedReadCloser {
+	s := NewSyncedReadCloser(r)
 	s.OpenGateAfter(d)
 	return s
 }
 
-func (s *syncedReadCloser) SetOpenGate(status bool) {
+// SetOpenGate sets the status of the blocking gate
+func (s *SyncedReadCloser) SetOpenGate(status bool) {
 	s.enableBlocking = status
 }
 
-func (s *syncedReadCloser) OpenGate() {
+// OpenGate opens the gate allowing all requests to be completed
+func (s *SyncedReadCloser) OpenGate() {
 	s.opengate <- struct{}{}
 }
 
-func (s *syncedReadCloser) OpenGateAfter(d time.Duration) {
+// OpenGateAfter schedules gate to be opened after a duration
+func (s *SyncedReadCloser) OpenGateAfter(d time.Duration) {
 	time.AfterFunc(d, func() {
 		s.opengate <- struct{}{}
 	})
 }
 
-func (s *syncedReadCloser) Seek(offset int64, whence int) (int64, error) {
+// Seek implements seek method for io.ReadSeeker
+func (s *SyncedReadCloser) Seek(offset int64, whence int) (int64, error) {
 	var err error
 	switch whence {
 	case io.SeekStart:
@@ -74,7 +80,8 @@ func (s *syncedReadCloser) Seek(offset int64, whence int) (int64, error) {
 	return s.p, err
 }
 
-func (s *syncedReadCloser) Read(p []byte) (n int, err error) {
+// Read implements read method for io.ReadSeeker
+func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
 	// If the data fits in the buffer blocks awaiting the sync instruction
 	if s.p+int64(len(p)) >= s.length && s.enableBlocking {
 		<-s.opengate
@@ -87,10 +94,12 @@ func (s *syncedReadCloser) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (s *syncedReadCloser) Close() error {
+// Close implements close method for io.ReadSeeker
+func (s *SyncedReadCloser) Close() error {
 	return nil
 }
 
-func (s *syncedReadCloser) Len() int {
+// Len returns the length of data in reader
+func (s *SyncedReadCloser) Len() int {
 	return int(s.length)
 }

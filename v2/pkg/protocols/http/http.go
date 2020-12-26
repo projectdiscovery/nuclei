@@ -1,6 +1,9 @@
 package http
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+)
 
 // Request contains a http request to be made from a template
 type Request struct {
@@ -49,4 +52,5 @@ type Request struct {
 	Race bool `yaml:"race"`
 
 	attackType generators.Type
+	options    *protocols.ExecuterOptions
 }
