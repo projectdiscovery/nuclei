@@ -18,6 +18,16 @@ func (w *Workflow) RunWorkflow(input string) (bool, error) {
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
 func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool) error {
+	var firstMatched bool
+	if len(template.Matchers) == 0 {
+		matched, err := template.executer.Execute(input)
+		if err != nil {
+			return err
+		}
+		firstMatched = matched
+		results.CAS(false, matched)
+	}
+
 	if len(template.Matchers) > 0 {
 		output, err := template.executer.ExecuteWithResults(input)
 		if err != nil {
@@ -46,28 +56,14 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				}
 			}
 		}
+		return nil
 	}
-	if len(template.Subtemplates) > 0 {
-		output, err := template.executer.ExecuteWithResults(input)
-		if err != nil {
-			return err
-		}
-		if len(output) == 0 {
-			return nil
-		}
-
+	if len(template.Subtemplates) > 0 && firstMatched {
 		for _, subtemplate := range template.Subtemplates {
 			if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
 				return err
 			}
 		}
-	}
-	if len(template.Matchers) == 0 && len(template.Subtemplates) == 0 {
-		matched, err := template.executer.Execute(input)
-		if err != nil {
-			return err
-		}
-		results.CAS(false, matched)
 	}
 	return nil
 }
