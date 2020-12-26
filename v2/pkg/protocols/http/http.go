@@ -52,5 +52,6 @@ type Request struct {
 	Race bool `yaml:"race"`
 
 	attackType generators.Type
+	generator  *generators.Generator // optional, only enabled when using payloads
 	options    *protocols.ExecuterOptions
 }

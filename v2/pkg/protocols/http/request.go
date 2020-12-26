@@ -1,28 +1,6 @@
 package http
 
-import (
-	"bytes"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/corpix/uarand"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/pkg/protcols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
-	"github.com/projectdiscovery/rawhttp"
-	"github.com/remeh/sizedwaitgroup"
-)
-
+/*
 func (e *Request) ExecuteRaceRequest(reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
@@ -498,3 +476,4 @@ func (e *Request) handleHTTP(reqURL string, request *requests.HTTPRequest, dynam
 
 	return nil
 }
+*/

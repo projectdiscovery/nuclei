@@ -1,29 +1,89 @@
 package http
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
 	"regexp"
-	"strings"
-	"time"
 
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/pkg/protcols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
 var urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 
-// MakeHTTPRequest makes the HTTP request
-func (r *Request) MakeHTTPRequest(baseURL string, dynamicValues map[string]interface{}, data string) (*HTTPRequest, error) {
+// requestGenerator generates requests sequentially based on various
+// configurations for a http request template.
+//
+// If payload values are present, an iterator is created for the payload
+// values. Paths and Raw requests are supported as base input, so
+// it will automatically select between them based on the template.
+type requestGenerator struct {
+	currentIndex    int
+	request         *Request
+	payloadIterator *generators.Iterator
+}
+
+// newGenerator creates a new request generator instance
+func (r *Request) newGenerator() *requestGenerator {
+	generator := &requestGenerator{request: r}
+
+	if len(r.Payloads) > 0 {
+		generator.payloadIterator = r.generator.NewIterator()
+	}
+	return generator
+}
+
+// nextValue returns the next path or the next raw request depending on user input
+// It returns false if all the inputs have been exhausted by the generator instance.
+func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
+	// If we have paths, return the next path.
+	if len(r.request.Path) > 0 && r.currentIndex < len(r.request.Path) {
+		if item := r.request.Path[r.currentIndex]; item != "" {
+			r.currentIndex++
+			return item, nil, true
+		}
+	}
+
+	// If we have raw requests, start with the request at current index.
+	// If we are not at the start, then check if the iterator for payloads
+	// has finished if there are any.
+	//
+	// If the iterator has finished for the current raw request
+	// then reset it and move on to the next value, otherwise use the last request.
+	if len(r.request.Raw) > 0 && r.currentIndex < len(r.request.Raw) {
+		if r.payloadIterator != nil {
+			payload, ok := r.payloadIterator.Value()
+			if !ok {
+				r.currentIndex++
+				r.payloadIterator.Reset()
+
+				// No more payloads request for us now.
+				if len(r.request.Raw) == r.currentIndex {
+					return "", nil, false
+				}
+				if item := r.request.Raw[r.currentIndex]; item != "" {
+					newPayload, ok := r.payloadIterator.Value()
+					return item, newPayload, ok
+				}
+				return "", nil, false
+			}
+			fmt.Printf("index-last: %v\n", r.currentIndex)
+			return r.request.Raw[r.currentIndex], payload, true
+		}
+		if item := r.request.Raw[r.currentIndex]; item != "" {
+			r.currentIndex++
+			return item, nil, true
+		}
+	}
+	return "", nil, false
+}
+
+/*
+// Make creates a http request for the provided input.
+// It returns io.EOF as error when all the requests have been exhausted.
+func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*HTTPRequest, error) {
+	data, ok := r.nextValue()
+	if !ok {
+		return nil, io.EOF
+	}
 	ctx := context.Background()
 
 	parsed, err := url.Parse(baseURL)
@@ -38,17 +98,34 @@ func (r *Request) MakeHTTPRequest(baseURL string, dynamicValues map[string]inter
 		"Hostname": hostname,
 	})
 
-	// if data contains \n it's a raw request
+	// If data contains \n it's a raw request, process it like that. Else
+	// continue with the template based request flow.
 	if strings.Contains(data, "\n") {
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
 
+// baseURLWithTemplatePrefs returns the url for BaseURL keeping
+// the template port and path preference
+func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
+	// template port preference over input URL port
+	// template has port
+	hasPort := len(urlWithPortRegex.FindStringSubmatch(data)) > 0
+	if hasPort {
+		// check if also the input contains port, in this case extracts the url
+		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
+			parsedURL.Host = hostname
+		}
+	}
+	return parsedURL.String()
+}
+
+/*
+
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *Request) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*HTTPRequest, error) {
-	replacer := newReplacer(values)
-	URL := replacer.Replace(data)
+	URL := replacer.New(values).Replace(data)
 
 	// Build a request on the specified URL
 	req, err := http.NewRequestWithContext(ctx, r.Method, URL, nil)
@@ -63,40 +140,20 @@ func (r *Request) makeHTTPRequestFromModel(ctx context.Context, data string, val
 	return &HTTPRequest{Request: request}, nil
 }
 
-// InitGenerator initializes the generator
-func (r *Request) InitGenerator() {
-	r.gsfm = NewGeneratorFSM(r.attackType, r.Payloads, r.Path, r.Raw)
-}
-
-// CreateGenerator creates the generator
-func (r *Request) CreateGenerator(reqURL string) {
-	r.gsfm.Add(reqURL)
-}
-
-// HasGenerator check if an URL has a generator
-func (r *Request) HasGenerator(reqURL string) bool {
-	return r.gsfm.Has(reqURL)
-}
-
-// ReadOne reads and return a generator by URL
-func (r *Request) ReadOne(reqURL string) {
-	r.gsfm.ReadOne(reqURL)
-}
-
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *Request) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values map[string]interface{}) (*HTTPRequest, error) {
 	// Add trailing line
 	data += "\n"
 
+	// If we have payloads, handle them by creating a generator
 	if len(r.Payloads) > 0 {
 		r.gsfm.InitOrSkip(baseURL)
 		r.ReadOne(baseURL)
 
-		payloads, err := r.GetPayloadsValues(baseURL)
+		payloads, err := r.getPayloadValues(baseURL)
 		if err != nil {
 			return nil, err
 		}
-
 		return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 	}
 
@@ -199,7 +256,7 @@ func (r *Request) fillRequest(req *http.Request, values map[string]interface{}) 
 	if len(r.Raw) > 0 {
 		return retryablehttp.FromRequest(req)
 	}
-	setHeader(req, "Accept", "*/*")
+	//setHeader(req, "Accept", "")
 	setHeader(req, "Accept-Language", "en")
 
 	return retryablehttp.FromRequest(req)
@@ -212,55 +269,12 @@ func setHeader(req *http.Request, name, value string) {
 	}
 }
 
-// baseURLWithTemplatePrefs returns the url for BaseURL keeping
-// the template port and path preference
-func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
-	// template port preference over input URL port
-	// template has port
-	hasPort := len(urlWithPortRegex.FindStringSubmatch(data)) > 0
-	if hasPort {
-		// check if also the input contains port, in this case extracts the url
-		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
-			parsedURL.Host = hostname
-		}
-	}
-	return parsedURL.String()
-}
 
-// Next returns the next generator by URL
-func (r *Request) Next(reqURL string) bool {
-	return r.gsfm.Next(reqURL)
-}
-
-// Position returns the current generator's position by URL
-func (r *Request) Position(reqURL string) int {
-	return r.gsfm.Position(reqURL)
-}
-
-// Reset resets the generator by URL
-func (r *Request) Reset(reqURL string) {
-	r.gsfm.Reset(reqURL)
-}
-
-// Current returns the current generator by URL
-func (r *Request) Current(reqURL string) string {
-	return r.gsfm.Current(reqURL)
-}
-
-// Total is the total number of requests
-func (r *Request) Total() int {
-	return r.gsfm.Total()
-}
-
-// Increment increments the processed request
-func (r *Request) Increment(reqURL string) {
-	r.gsfm.Increment(reqURL)
-}
-
-// GetPayloadsValues for the specified URL
-func (r *Request) GetPayloadsValues(reqURL string) (map[string]interface{}, error) {
+// getPayloadValues returns current payload values for a request
+func (r *Request) getPayloadValues(reqURL string) (map[string]interface{}, error) {
 	payloadProcessedValues := make(map[string]interface{})
 	payloadsFromTemplate := r.gsfm.Value(reqURL)
+
 	for k, v := range payloadsFromTemplate {
 		kexp := v.(string)
 		// if it doesn't containing markups, we just continue
@@ -293,3 +307,4 @@ func (r *Request) GetPayloadsValues(reqURL string) (map[string]interface{}, erro
 
 // ErrNoPayload error to avoid the additional base null request
 var ErrNoPayload = fmt.Errorf("no payload found")
+*/
