@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	markerParenthesisOpen  = "{{"
-	markerParenthesisClose = "}}"
-	markerGeneral          = "§"
-)
-
 func newReplacer(values map[string]interface{}) *strings.Replacer {
 	var replacerItems []string
 	for key, val := range values {
@@ -70,8 +64,4 @@ func ExpandMapValues(m map[string]string) (m1 map[string][]string) {
 		m1[k] = []string{v}
 	}
 	return
-}
-
-func hasMarker(s string) bool {
-	return strings.Contains(s, markerParenthesisOpen) || strings.Contains(s, markerParenthesisClose) || strings.Contains(s, markerGeneral)
 }
