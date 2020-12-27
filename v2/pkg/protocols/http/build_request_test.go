@@ -1,12 +1,27 @@
 package http
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRequestGeneratorPaths(t *testing.T) {
+	req := &Request{
+		Path: []string{"{{BaseURL}}/test", "{{BaseURL}}/test.php"},
+	}
+	generator := req.newGenerator()
+	var payloads []string
+	for {
+		raw, _, ok := generator.nextValue()
+		if !ok {
+			break
+		}
+		payloads = append(payloads, raw)
+	}
+	require.Equal(t, req.Path, payloads, "Could not get correct paths")
+}
 
 func TestRequestGeneratorClusterSingle(t *testing.T) {
 	var err error
@@ -22,12 +37,11 @@ func TestRequestGeneratorClusterSingle(t *testing.T) {
 	generator := req.newGenerator()
 	var payloads []map[string]interface{}
 	for {
-		raw, data, ok := generator.nextValue()
+		_, data, ok := generator.nextValue()
 		if !ok {
 			break
 		}
 		payloads = append(payloads, data)
-		fmt.Printf("%v %v\n", raw, data)
 	}
 	require.Equal(t, 9, len(payloads), "Could not get correct number of payloads")
 }
@@ -46,12 +60,11 @@ func TestRequestGeneratorClusterMultipleRaw(t *testing.T) {
 	generator := req.newGenerator()
 	var payloads []map[string]interface{}
 	for {
-		raw, data, ok := generator.nextValue()
+		_, data, ok := generator.nextValue()
 		if !ok {
 			break
 		}
 		payloads = append(payloads, data)
-		fmt.Printf("%v %v\n", raw, data)
 	}
 	require.Equal(t, 18, len(payloads), "Could not get correct number of payloads")
 }

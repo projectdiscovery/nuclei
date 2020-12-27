@@ -1,8 +1,13 @@
 package http
 
 import (
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Request contains a http request to be made from a template
@@ -51,7 +56,44 @@ type Request struct {
 	// The minimum number fof requests is determined by threads
 	Race bool `yaml:"race"`
 
-	attackType generators.Type
-	generator  *generators.Generator // optional, only enabled when using payloads
-	options    *protocols.ExecuterOptions
+	// Operators for the current request go here.
+	*operators.Operators
+
+	options       *protocols.ExecuterOptions
+	attackType    generators.Type
+	generator     *generators.Generator // optional, only enabled when using payloads
+	httpClient    *retryablehttp.Client
+	rawhttpClient *rawhttp.Client
+}
+
+// Compile compiles the protocol request for further execution.
+func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+	client, err := httpclientpool.Get(options.Options, &httpclientpool.Configuration{
+		Threads:         r.Threads,
+		MaxRedirects:    r.MaxRedirects,
+		FollowRedirects: r.Redirects,
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not get dns client")
+	}
+	r.httpClient = client
+
+	if len(r.Raw) > 0 {
+		r.rawhttpClient = httpclientpool.GetRawHTTP()
+	}
+	if r.Operators != nil {
+		if err := r.Operators.Compile(); err != nil {
+			return errors.Wrap(err, "could not compile operators")
+		}
+	}
+
+	if len(r.Payloads) > 0 {
+		r.attackType = generators.StringToType[r.AttackType]
+		r.generator, err = generators.New(r.Payloads, r.attackType)
+		if err != nil {
+			return errors.Wrap(err, "could not parse payloads")
+		}
+	}
+	r.options = options
+	return nil
 }

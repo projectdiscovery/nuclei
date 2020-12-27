@@ -5,10 +5,11 @@ import (
 	"strings"
 )
 
+// Payload marker constants
 const (
-	markerGeneral          = "§"
-	markerParenthesisOpen  = "{{"
-	markerParenthesisClose = "}}"
+	MarkerGeneral          = "§"
+	MarkerParenthesisOpen  = "{{"
+	MarkerParenthesisClose = "}}"
 )
 
 // New creates a new replacer structure for values replacement on the fly.
@@ -19,11 +20,11 @@ func New(values map[string]interface{}) *strings.Replacer {
 		valueStr := fmt.Sprintf("%s", val)
 
 		replacerItems = append(replacerItems,
-			fmt.Sprintf("%s%s%s", markerParenthesisOpen, key, markerParenthesisClose),
+			fmt.Sprintf("%s%s%s", MarkerParenthesisOpen, key, MarkerParenthesisClose),
 			valueStr,
 		)
 		replacerItems = append(replacerItems,
-			fmt.Sprintf("%s%s%s", markerGeneral, key, markerGeneral),
+			fmt.Sprintf("%s%s%s", MarkerGeneral, key, MarkerGeneral),
 			valueStr,
 		)
 	}

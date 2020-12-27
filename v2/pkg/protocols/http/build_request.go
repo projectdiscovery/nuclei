@@ -1,13 +1,30 @@
 package http
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
+	"time"
 
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-var urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+var (
+	urlWithPortRegex        = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+	templateExpressionRegex = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
+)
 
 // requestGenerator generates requests sequentially based on various
 // configurations for a http request template.
@@ -65,7 +82,6 @@ func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
 				}
 				return "", nil, false
 			}
-			fmt.Printf("index-last: %v\n", r.currentIndex)
 			return r.request.Raw[r.currentIndex], payload, true
 		}
 		if item := r.request.Raw[r.currentIndex]; item != "" {
@@ -76,11 +92,18 @@ func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
 	return "", nil, false
 }
 
-/*
+// generatedRequest is a single wrapped generated request for a template request
+type generatedRequest struct {
+	original   *Request
+	rawRequest *raw.Request
+	meta       map[string]interface{}
+	request    *retryablehttp.Request
+}
+
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*HTTPRequest, error) {
-	data, ok := r.nextValue()
+func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+	data, payloads, ok := r.nextValue()
 	if !ok {
 		return nil, io.EOF
 	}
@@ -92,7 +115,6 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 
 	hostname := parsed.Host
-
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
 		"BaseURL":  baseURLWithTemplatePrefs(data, parsed),
 		"Hostname": hostname,
@@ -101,7 +123,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	// If data contains \n it's a raw request, process it like that. Else
 	// continue with the template based request flow.
 	if strings.Contains(data, "\n") {
-		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values)
+		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values, payloads)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
@@ -121,14 +143,12 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	return parsedURL.String()
 }
 
-/*
-
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *Request) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*HTTPRequest, error) {
+func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*generatedRequest, error) {
 	URL := replacer.New(values).Replace(data)
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.Method, URL, nil)
+	req, err := http.NewRequestWithContext(ctx, r.request.Method, URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -137,31 +157,27 @@ func (r *Request) makeHTTPRequestFromModel(ctx context.Context, data string, val
 	if err != nil {
 		return nil, err
 	}
-	return &HTTPRequest{Request: request}, nil
+	return &generatedRequest{request: request}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *Request) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values map[string]interface{}) (*HTTPRequest, error) {
+func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
 	// Add trailing line
 	data += "\n"
 
-	// If we have payloads, handle them by creating a generator
-	if len(r.Payloads) > 0 {
-		r.gsfm.InitOrSkip(baseURL)
-		r.ReadOne(baseURL)
-
-		payloads, err := r.getPayloadValues(baseURL)
+	// If we have payloads, handle them by evaluating them at runtime.
+	if len(r.request.Payloads) > 0 {
+		finalPayloads, err := r.getPayloadValues(baseURL, payloads)
 		if err != nil {
 			return nil, err
 		}
-		return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
+		return r.handleRawWithPaylods(ctx, data, baseURL, values, finalPayloads)
 	}
-
-	// otherwise continue with normal flow
 	return r.handleRawWithPaylods(ctx, data, baseURL, values, nil)
 }
 
-func (r *Request) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, genValues map[string]interface{}) (*HTTPRequest, error) {
+// handleRawWithPaylods handles raw requests along with paylaods
+func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, genValues map[string]interface{}) (*generatedRequest, error) {
 	baseValues := generators.CopyMap(values)
 	finValues := generators.MergeMaps(baseValues, genValues)
 
@@ -169,12 +185,10 @@ func (r *Request) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL 
 	rawRequest = replacer.New(finValues).Replace(rawRequest)
 
 	dynamicValues := make(map[string]interface{})
-	// find all potentials tokens between {{}}
-	var re = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
-	for _, match := range re.FindAllString(rawRequest, -1) {
+	for _, match := range templateExpressionRegex.FindAllString(rawRequest, -1) {
 		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, generators.HelperFunctions())
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 
 		if err != nil {
 			return nil, err
@@ -189,40 +203,37 @@ func (r *Request) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL 
 
 	// Replacer dynamic values if any in raw request and parse it
 	rawRequest = replacer.New(dynamicValues).Replace(rawRequest)
-	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.Unsafe)
+	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
 		return nil, err
 	}
 
 	// rawhttp
-	if r.Unsafe {
-		unsafeReq := &HTTPRequest{
-			RawRequest:                   rawRequest,
-			Meta:                         genValues,
-			AutomaticHostHeader:          !r.DisableAutoHostname,
-			AutomaticContentLengthHeader: !r.DisableAutoContentLength,
-			Unsafe:                       true,
-			FollowRedirects:              r.Redirects,
+	if r.request.Unsafe {
+		unsafeReq := &generatedRequest{
+			rawRequest: rawRequestData,
+			meta:       genValues,
+			original:   r.request,
 		}
 		return unsafeReq, nil
 	}
 
 	// retryablehttp
 	var body io.ReadCloser
-	body = ioutil.NopCloser(strings.NewReader(rawRequest.Data))
-	if r.Race {
+	body = ioutil.NopCloser(strings.NewReader(rawRequestData.Data))
+	if r.request.Race {
 		// More or less this ensures that all requests hit the endpoint at the same approximated time
 		// Todo: sync internally upon writing latest request byte
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, rawRequest.Method, rawRequest.FullURL, body)
+	req, err := http.NewRequestWithContext(ctx, rawRequestData.Method, rawRequestData.FullURL, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// copy headers
-	for key, value := range rawRequest.Headers {
+	for key, value := range rawRequestData.Headers {
 		req.Header[key] = []string{value}
 	}
 
@@ -230,33 +241,33 @@ func (r *Request) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL 
 	if err != nil {
 		return nil, err
 	}
-
-	return &HTTPRequest{Request: request, Meta: genValues}, nil
+	return &generatedRequest{request: request, meta: genValues}, nil
 }
 
-func (r *Request) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
-	replacer := replacer.New(values)
+// fillRequest fills various headers in the request with values
+func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
-	for header, value := range r.Headers {
+	replacer := replacer.New(values)
+	for header, value := range r.request.Headers {
 		req.Header[header] = []string{replacer.Replace(value)}
 	}
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.Threads <= 0 && req.Header.Get("Connection") == "" {
+	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" {
 		req.Close = true
 	}
 
 	// Check if the user requested a request body
-	if r.Body != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(r.Body))
+	if r.request.Body != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(r.request.Body))
 	}
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 
 	// raw requests are left untouched
-	if len(r.Raw) > 0 {
+	if len(r.request.Raw) > 0 {
 		return retryablehttp.FromRequest(req)
 	}
-	//setHeader(req, "Accept", "")
+	setHeader(req, "Accept", "*/*")
 	setHeader(req, "Accept-Language", "en")
 
 	return retryablehttp.FromRequest(req)
@@ -269,28 +280,26 @@ func setHeader(req *http.Request, name, value string) {
 	}
 }
 
-
 // getPayloadValues returns current payload values for a request
-func (r *Request) getPayloadValues(reqURL string) (map[string]interface{}, error) {
+func (r *requestGenerator) getPayloadValues(reqURL string, templatePayloads map[string]interface{}) (map[string]interface{}, error) {
 	payloadProcessedValues := make(map[string]interface{})
-	payloadsFromTemplate := r.gsfm.Value(reqURL)
 
-	for k, v := range payloadsFromTemplate {
+	for k, v := range templatePayloads {
 		kexp := v.(string)
 		// if it doesn't containing markups, we just continue
-		if !hasMarker(kexp) {
+		if !strings.Contains(kexp, replacer.MarkerParenthesisOpen) || strings.Contains(kexp, replacer.MarkerParenthesisClose) || strings.Contains(kexp, replacer.MarkerGeneral) {
 			payloadProcessedValues[k] = v
 			continue
 		}
 		// attempts to expand expressions
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, generators.HelperFunctions())
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, dsl.HelperFunctions())
 		if err != nil {
 			// it is a simple literal payload => proceed with literal value
 			payloadProcessedValues[k] = v
 			continue
 		}
 		// it is an expression - try to solve it
-		expValue, err := compiled.Evaluate(payloadsFromTemplate)
+		expValue, err := compiled.Evaluate(templatePayloads)
 		if err != nil {
 			// an error occurred => proceed with literal value
 			payloadProcessedValues[k] = v
@@ -307,4 +316,3 @@ func (r *Request) getPayloadValues(reqURL string) (map[string]interface{}, error
 
 // ErrNoPayload error to avoid the additional base null request
 var ErrNoPayload = fmt.Errorf("no payload found")
-*/
