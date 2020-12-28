@@ -1,128 +1,112 @@
 package http
 
-/*
-func (e *Request) ExecuteRaceRequest(reqURL string) *Result {
-	result := &Result{
-		Matches:     make(map[string]interface{}),
-		Extractions: make(map[string]interface{}),
-	}
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"strings"
+	"sync"
+	"time"
 
-	dynamicvalues := make(map[string]interface{})
+	"github.com/corpix/uarand"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
+	"github.com/projectdiscovery/rawhttp"
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/multierr"
+)
 
-	// verify if the URL is already being processed
-	if e.HasGenerator(reqURL) {
-		return result
-	}
+const defaultMaxWorkers = 150
 
-	e.CreateGenerator(reqURL)
+// executeRaceRequest executes race condition request for a URL
+func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+	generator := e.newGenerator()
 
-	// Workers that keeps enqueuing new requests
 	maxWorkers := e.RaceNumberRequests
 	swg := sizedwaitgroup.New(maxWorkers)
-	for i := 0; i < e.RaceNumberRequests; i++ {
-		swg.Add()
-		// base request
-		result.Lock()
-		request, err := e.MakeHTTPRequest(reqURL, dynamicvalues, e.Current(reqURL))
-		payloads, _ := e.GetPayloadsValues(reqURL)
-		result.Unlock()
-		// ignore the error due to the base request having null paylods
-		if err == requests.ErrNoPayload {
-			// pass through
-		} else if err != nil {
-			result.Error = err
-		}
-		go func(httpRequest *requests.HTTPRequest) {
-			defer swg.Done()
 
-			// If the request was built correctly then execute it
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
+	var requestErr error
+	var mutex *sync.Mutex
+	var outputs []*output.InternalWrappedEvent
+	for i := 0; i < e.RaceNumberRequests; i++ {
+		request, err := generator.Make(reqURL, nil)
+		if err != nil {
+			break
+		}
+
+		swg.Add()
+		go func(httpRequest *generatedRequest) {
+			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			mutex.Lock()
 			if err != nil {
-				result.Error = errors.Wrap(err, "could not handle http request")
+				requestErr = multierr.Append(requestErr, err)
+			} else {
+				outputs = append(outputs, output...)
 			}
+			mutex.Unlock()
+			swg.Done()
 		}(request)
 	}
-
 	swg.Wait()
-
-	return result
+	return outputs, requestErr
 }
 
-func (e *Request) ExecuteParallelHTTP(p *progress.Progress, reqURL string) *Result {
-	result := &Result{
-		Matches:     make(map[string]interface{}),
-		Extractions: make(map[string]interface{}),
-	}
-
-	dynamicvalues := make(map[string]interface{})
-
-	// verify if the URL is already being processed
-	if e.HasGenerator(reqURL) {
-		return result
-	}
-
-	remaining := e.GetRequestCount()
-	e.CreateGenerator(reqURL)
+// executeRaceRequest executes race condition request for a URL
+func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+	generator := e.newGenerator()
 
 	// Workers that keeps enqueuing new requests
 	maxWorkers := e.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
-	for e.Next(reqURL) {
-		result.Lock()
-		request, err := e.MakeHTTPRequest(reqURL, dynamicvalues, e.Current(reqURL))
-		payloads, _ := e.GetPayloadsValues(reqURL)
-		result.Unlock()
-		// ignore the error due to the base request having null paylods
-		if err == requests.ErrNoPayload {
-			// pass through
-		} else if err != nil {
-			result.Error = err
-			p.Drop(remaining)
-		} else {
-			swg.Add()
-			go func(httpRequest *requests.HTTPRequest) {
-				defer swg.Done()
 
-				e.ratelimiter.Take()
-
-				// If the request was built correctly then execute it
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
-				if err != nil {
-					e.traceLog.Request(e.template.ID, reqURL, "http", err)
-					result.Error = errors.Wrap(err, "could not handle http request")
-					p.Drop(remaining)
-				} else {
-					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
-				}
-			}(request)
+	var requestErr error
+	var mutex *sync.Mutex
+	var outputs []*output.InternalWrappedEvent
+	for {
+		request, err := generator.Make(reqURL, dynamicValues)
+		if err == io.EOF {
+			break
 		}
-		p.Update()
-		e.Increment(reqURL)
+		if err != nil {
+			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			return nil, err
+		}
+		swg.Add()
+		go func(httpRequest *generatedRequest) {
+			defer swg.Done()
+
+			e.options.RateLimiter.Take()
+			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			mutex.Lock()
+			if err != nil {
+				requestErr = multierr.Append(requestErr, err)
+			} else {
+				outputs = append(outputs, output...)
+			}
+			mutex.Unlock()
+		}(request)
+		e.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-
-	return result
+	return outputs, requestErr
 }
 
-func (e *Request) ExecuteTurboHTTP(reqURL string) *Result {
-	result := &Result{
-		Matches:     make(map[string]interface{}),
-		Extractions: make(map[string]interface{}),
-	}
-
-	dynamicvalues := make(map[string]interface{})
-
-	// verify if the URL is already being processed
-	if e.HasGenerator(reqURL) {
-		return result
-	}
-
-	e.CreateGenerator(reqURL)
+// executeRaceRequest executes race condition request for a URL
+func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+	generator := e.newGenerator()
 
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
 	if err != nil {
-		return result
+		return nil, err
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
@@ -143,119 +127,90 @@ func (e *Request) ExecuteTurboHTTP(reqURL string) *Result {
 		maxWorkers = pipeOptions.MaxPendingRequests
 	}
 	swg := sizedwaitgroup.New(maxWorkers)
-	for e.Next(reqURL) {
-		result.Lock()
-		request, err := e.MakeHTTPRequest(reqURL, dynamicvalues, e.Current(reqURL))
-		payloads, _ := e.GetPayloadsValues(reqURL)
-		result.Unlock()
-		// ignore the error due to the base request having null paylods
-		if err == requests.ErrNoPayload {
-			// pass through
-		} else if err != nil {
-			result.Error = err
-		} else {
-			swg.Add()
-			go func(httpRequest *requests.HTTPRequest) {
-				defer swg.Done()
 
-				// HTTP pipelining ignores rate limit
-				// If the request was built correctly then execute it
-				request.Pipeline = true
-				request.PipelineClient = pipeclient
-				err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, "")
-				if err != nil {
-					e.traceLog.Request(e.template.ID, reqURL, "http", err)
-					result.Error = errors.Wrap(err, "could not handle http request")
-				} else {
-					e.traceLog.Request(e.template.ID, reqURL, "http", nil)
-				}
-				request.PipelineClient = nil
-			}(request)
+	var requestErr error
+	var mutex *sync.Mutex
+	var outputs []*output.InternalWrappedEvent
+	for {
+		request, err := generator.Make(reqURL, dynamicValues)
+		if err == io.EOF {
+			break
 		}
+		if err != nil {
+			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			return nil, err
+		}
+		request.pipelinedClient = pipeclient
 
-		e.Increment(reqURL)
+		swg.Add()
+		go func(httpRequest *generatedRequest) {
+			defer swg.Done()
+
+			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			mutex.Lock()
+			if err != nil {
+				requestErr = multierr.Append(requestErr, err)
+			} else {
+				outputs = append(outputs, output...)
+			}
+			mutex.Unlock()
+		}(request)
+		e.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-	return result
+	return outputs, requestErr
 }
 
 // ExecuteHTTP executes the HTTP request on a URL
-func (e *Request) ExecuteHTTP(p *progress.Progress, reqURL string) *Result {
+func (e *Request) ExecuteHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// verify if pipeline was requested
 	if e.Pipeline {
-		return e.ExecuteTurboHTTP(reqURL)
+		return e.executeTurboHTTP(reqURL, dynamicValues)
 	}
 
 	// verify if a basic race condition was requested
 	if e.Race && e.RaceNumberRequests > 0 {
-		return e.ExecuteRaceRequest(reqURL)
+		return e.executeRaceRequest(reqURL, dynamicValues)
 	}
 
 	// verify if parallel elaboration was requested
 	if e.Threads > 0 {
-		return e.ExecuteParallelHTTP(p, reqURL)
+		return e.executeParallelHTTP(reqURL, dynamicValues)
 	}
 
-	var requestNumber int
+	generator := e.newGenerator()
 
-	result := &Result{
-		Matches:     make(map[string]interface{}),
-		Extractions: make(map[string]interface{}),
-		historyData: make(map[string]interface{}),
-	}
-
-	dynamicvalues := make(map[string]interface{})
-
-	// verify if the URL is already being processed
-	if e.HasGenerator(reqURL) {
-		return result
-	}
-
-	remaining := e.GetRequestCount()
-	e.CreateGenerator(reqURL)
-
-	for e.Next(reqURL) {
-		requestNumber++
-		result.Lock()
-		httpRequest, err := e.MakeHTTPRequest(reqURL, dynamicvalues, e.Current(reqURL))
-		payloads, _ := e.GetPayloadsValues(reqURL)
-		result.Unlock()
-		// ignore the error due to the base request having null paylods
-		if err == requests.ErrNoPayload {
-			// pass through
-		} else if err != nil {
-			result.Error = err
-			p.Drop(remaining)
-		} else {
-			e.ratelimiter.Take()
-			// If the request was built correctly then execute it
-			format := "%s_" + strconv.Itoa(requestNumber)
-			err = e.handleHTTP(reqURL, httpRequest, dynamicvalues, result, payloads, format)
-			if err != nil {
-				result.Error = errors.Wrap(err, "could not handle http request")
-				p.Drop(remaining)
-				e.traceLog.Request(e.template.ID, reqURL, "http", err)
-			} else {
-				e.traceLog.Request(e.template.ID, reqURL, "http", nil)
-			}
-		}
-		p.Update()
-
-		// Check if has to stop processing at first valid result
-		if e.stopAtFirstMatch && result.GotResults {
-			p.Drop(remaining)
+	var requestErr error
+	var outputs []*output.InternalWrappedEvent
+	for {
+		request, err := generator.Make(reqURL, dynamicValues)
+		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			return nil, err
+		}
 
-		// move always forward with requests
-		e.Increment(reqURL)
-		remaining--
+		e.options.RateLimiter.Take()
+		output, err := e.executeRequest(reqURL, request, dynamicValues)
+		if err != nil {
+			requestErr = multierr.Append(requestErr, err)
+		} else {
+			outputs = append(outputs, output...)
+		}
+		e.options.Progress.IncrementRequests()
+
+		if request.original.options.Options.StopAtFirstMatch && len(output) > 0 {
+			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			break
+		}
 	}
-	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
-	return result
+	return outputs, requestErr
 }
 
-func (e *Request) handleHTTP(reqURL string, request *requests.HTTPRequest, dynamicvalues map[string]interface{}, result *Result, payloads map[string]interface{}, format string) error {
+// executeRequest executes the actual generated request and returns error if occured
+func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if e.options.Options.RandomAgent {
 		// nolint:errcheck // ignoring error
@@ -285,7 +240,7 @@ func (e *Request) handleHTTP(reqURL string, request *requests.HTTPRequest, dynam
 
 	timeStart := time.Now()
 
-	if request.Pipeline {
+	if request.original.Pipeline {
 		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
 		if err != nil {
 			if resp != nil {
@@ -295,10 +250,10 @@ func (e *Request) handleHTTP(reqURL string, request *requests.HTTPRequest, dynam
 			return err
 		}
 		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
-	} else if request.Unsafe {
+	} else if request.original.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
-		request.RawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
+		request.rawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
 		options := e.rawHTTPClient.Options
 		options.AutomaticContentLength = request.AutomaticContentLengthHeader
 		options.AutomaticHostHeader = request.AutomaticHostHeader
@@ -474,6 +429,6 @@ func (e *Request) handleHTTP(reqURL string, request *requests.HTTPRequest, dynam
 		result.Unlock()
 	}
 
+	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
 	return nil
 }
-*/

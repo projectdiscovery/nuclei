@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/corpix/uarand"
@@ -575,14 +574,4 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 			r.Request.Header[headerName] = []string{headerValue}
 		}
 	}
-}
-
-type Result struct {
-	sync.Mutex
-	GotResults  bool
-	Meta        map[string]interface{}
-	Matches     map[string]interface{}
-	Extractions map[string]interface{}
-	historyData map[string]interface{}
-	Error       error
 }

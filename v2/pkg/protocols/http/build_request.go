@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -94,10 +95,11 @@ func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
 
 // generatedRequest is a single wrapped generated request for a template request
 type generatedRequest struct {
-	original   *Request
-	rawRequest *raw.Request
-	meta       map[string]interface{}
-	request    *retryablehttp.Request
+	original        *Request
+	rawRequest      *raw.Request
+	meta            map[string]interface{}
+	pipelinedClient *rawhttp.PipelineClient
+	request         *retryablehttp.Request
 }
 
 // Make creates a http request for the provided input.
@@ -126,6 +128,15 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values, payloads)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values)
+}
+
+// Remaining returns the remaining number of requests for the generator
+func (r *requestGenerator) Remaining() int {
+	if r.payloadIterator != nil {
+		payloadRemaining := r.payloadIterator.Remaining()
+		return (len(r.request.Raw) - r.currentIndex + 1) * payloadRemaining
+	}
+	return len(r.request.Path) - r.currentIndex + 1
 }
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping

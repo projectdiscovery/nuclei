@@ -61,6 +61,7 @@ type Request struct {
 
 	options       *protocols.ExecuterOptions
 	attackType    generators.Type
+	totalRequests int
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
@@ -95,5 +96,15 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 	r.options = options
+	r.totalRequests = r.Requests()
 	return nil
+}
+
+// Requests returns the total number of requests the YAML rule will perform
+func (r *Request) Requests() int {
+	if len(r.Payloads) > 0 {
+		payloadRequests := r.generator.NewIterator().Total()
+		return len(r.Raw) * payloadRequests
+	}
+	return len(r.Path)
 }
