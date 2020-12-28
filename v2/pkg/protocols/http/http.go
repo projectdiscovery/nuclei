@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -62,6 +63,7 @@ type Request struct {
 	options       *protocols.ExecuterOptions
 	attackType    generators.Type
 	totalRequests int
+	customHeaders types.StringSlice
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client

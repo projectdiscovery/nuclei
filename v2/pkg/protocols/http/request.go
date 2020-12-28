@@ -15,10 +15,9 @@ import (
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/matchers"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
@@ -213,10 +212,12 @@ func (e *Request) ExecuteHTTP(reqURL string, dynamicValues map[string]interface{
 func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if e.options.Options.RandomAgent {
+		builder := &strings.Builder{}
+		builder.WriteString("User-Agent: ")
 		// nolint:errcheck // ignoring error
-		e.customHeaders.Set("User-Agent: " + uarand.GetRandom())
+		builder.WriteString(uarand.GetRandom())
+		e.customHeaders.Set(builder.String())
 	}
-
 	e.setCustomHeaders(request)
 
 	var (
@@ -225,210 +226,158 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		dumpedRequest []byte
 		fromcache     bool
 	)
-
-	if e.debug || e.pf != nil {
-		dumpedRequest, err = requests.Dump(request, reqURL)
+	if e.options.Options.Debug || e.options.ProjectFile != nil {
+		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-
-	if e.debug {
-		gologger.Infof("Dumped HTTP request for %s (%s)\n\n", reqURL, e.template.ID)
+	if e.options.Options.Debug {
+		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", e.options.TemplateID, reqURL)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
 	timeStart := time.Now()
-
 	if request.original.Pipeline {
-		resp, err = request.PipelineClient.DoRaw(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)))
-		if err != nil {
-			if resp != nil {
-				resp.Body.Close()
-			}
-			e.traceLog.Request(e.template.ID, reqURL, "http", err)
-			return err
-		}
-		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
+		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
 	} else if request.original.Unsafe {
 		// rawhttp
 		// burp uses "\r\n" as new line character
-		request.rawRequest.Data = strings.ReplaceAll(request.RawRequest.Data, "\n", "\r\n")
-		options := e.rawHTTPClient.Options
-		options.AutomaticContentLength = request.AutomaticContentLengthHeader
-		options.AutomaticHostHeader = request.AutomaticHostHeader
-		options.FollowRedirects = request.FollowRedirects
-		resp, err = e.rawHTTPClient.DoRawWithOptions(request.RawRequest.Method, reqURL, request.RawRequest.Path, requests.ExpandMapValues(request.RawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.RawRequest.Data)), options)
-		if err != nil {
-			if resp != nil {
-				resp.Body.Close()
-			}
-			e.traceLog.Request(e.template.ID, reqURL, "http", err)
-			return err
-		}
-		e.traceLog.Request(e.template.ID, reqURL, "http", nil)
+		request.rawRequest.Data = strings.ReplaceAll(request.rawRequest.Data, "\n", "\r\n")
+		options := request.original.rawhttpClient.Options
+		options.AutomaticContentLength = !e.DisableAutoContentLength
+		options.AutomaticHostHeader = !e.DisableAutoHostname
+		options.FollowRedirects = e.Redirects
+		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
 		// if nuclei-project is available check if the request was already sent previously
-		if e.pf != nil {
+		if e.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromcache = true
 			// nolint:bodyclose // false positive the response is generated at runtime
-			resp, err = e.pf.Get(dumpedRequest)
+			resp, err = e.options.ProjectFile.Get(dumpedRequest)
 			if err != nil {
 				fromcache = false
 			}
 		}
-
-		// retryablehttp
 		if resp == nil {
-			resp, err = e.httpClient.Do(request.Request)
-			if err != nil {
-				if resp != nil {
-					resp.Body.Close()
-				}
-				e.traceLog.Request(e.template.ID, reqURL, "http", err)
-				return err
-			}
-			e.traceLog.Request(e.template.ID, reqURL, "http", nil)
+			resp, err = e.httpClient.Do(request.request)
 		}
 	}
+	if err != nil {
+		if resp != nil {
+			_, _ = io.Copy(ioutil.Discard, resp.Body)
+			resp.Body.Close()
+		}
+		e.options.Output.Request(e.options.TemplateID, reqURL, "http", err)
+		e.options.Progress.DecrementRequests(1)
+		return nil, err
+	}
+	e.options.Output.Request(e.options.TemplateID, reqURL, "http", err)
 
 	duration := time.Since(timeStart)
-
 	// Dump response - Step 1 - Decompression not yet handled
 	var dumpedResponse []byte
-	if e.debug {
+	if e.options.Options.Debug {
 		var dumpErr error
 		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
-			return errors.Wrap(dumpErr, "could not dump http response")
+			return nil, errors.Wrap(dumpErr, "could not dump http response")
 		}
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		_, copyErr := io.Copy(ioutil.Discard, resp.Body)
-		if copyErr != nil {
-			resp.Body.Close()
-			return copyErr
-		}
-
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
 		resp.Body.Close()
-
-		return errors.Wrap(err, "could not read http body")
+		return nil, errors.Wrap(err, "could not read http body")
 	}
-
 	resp.Body.Close()
 
-	// net/http doesn't automatically decompress the response body if an encoding has been specified by the user in the request
-	// so in case we have to manually do it
+	// net/http doesn't automatically decompress the response body if an
+	// encoding has been specified by the user in the request so in case we have to
+	// manually do it.
 	dataOrig := data
-	data, err = requests.HandleDecompression(request, data)
+	data, err = handleDecompression(request, data)
 	if err != nil {
-		return errors.Wrap(err, "could not decompress http body")
+		return nil, errors.Wrap(err, "could not decompress http body")
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if e.debug {
+	if e.options.Options.Debug {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
-		gologger.Infof("Dumped HTTP response for %s (%s)\n\n", reqURL, e.template.ID)
+		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", e.options.TemplateID, reqURL)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
-	if e.pf != nil && !fromcache {
-		err := e.pf.Set(dumpedRequest, resp, data)
+	if e.options.ProjectFile != nil && !fromcache {
+		err := e.options.ProjectFile.Set(dumpedRequest, resp, data)
 		if err != nil {
-			return errors.Wrap(err, "could not store in project file")
+			return nil, errors.Wrap(err, "could not store in project file")
 		}
 	}
 
-	// Convert response body from []byte to string with zero copy
-	body := unsafeToString(data)
-
-	headers := headersToString(resp.Header)
-
-	var matchData map[string]interface{}
-	if payloads != nil {
-		matchData = generators.MergeMaps(result.historyData, payloads)
-	}
+	//	var matchData map[string]interface{}
+	//	if payloads != nil {
+	//		matchData = generators.MergeMaps(result.historyData, payloads)
+	//	}
 
 	// store for internal purposes the DSL matcher data
 	// hardcode stopping storing data after defaultMaxHistorydata items
-	if len(result.historyData) < defaultMaxHistorydata {
-		result.Lock()
-		// update history data with current reqURL and hostname
-		result.historyData["reqURL"] = reqURL
-		if parsed, err := url.Parse(reqURL); err == nil {
-			result.historyData["Hostname"] = parsed.Host
-		}
-		result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
-		if payloads == nil {
-			// merge them to history data
-			result.historyData = generators.MergeMaps(result.historyData, payloads)
-		}
-		result.historyData = generators.MergeMaps(result.historyData, dynamicvalues)
+	//if len(result.historyData) < defaultMaxHistorydata {
+	//	result.Lock()
+	//	// update history data with current reqURL and hostname
+	//	result.historyData["reqURL"] = reqURL
+	//	if parsed, err := url.Parse(reqURL); err == nil {
+	//		result.historyData["Hostname"] = parsed.Host
+	//	}
+	//	result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
+	//	if payloads == nil {
+	//		// merge them to history data
+	//		result.historyData = generators.MergeMaps(result.historyData, payloads)
+	//	}
+	//	result.historyData = generators.MergeMaps(result.historyData, dynamicvalues)
+	//
+	//	// complement match data with new one if necessary
+	//	matchData = generators.MergeMaps(matchData, result.historyData)
+	//	result.Unlock()
+	//}
+	ouputEvent := e.responseToDSLMap(resp, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
-		// complement match data with new one if necessary
-		matchData = generators.MergeMaps(matchData, result.historyData)
-		result.Unlock()
+	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
+	if e.Operators != nil {
+		result, ok := e.Operators.Execute(ouputEvent, e.Match, e.Extract)
+		if !ok {
+			return nil, nil
+		}
+		result.PayloadValues = request.meta
+		event[0].OperatorsResult = result
 	}
+	return event, nil
+}
 
-	matcherCondition := e.GetMatchersCondition()
-	for _, matcher := range e.Matchers {
-		// Check if the matcher matched
-		if !matcher.Match(resp, body, headers, duration, matchData) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				return nil
-			}
+const two = 2
+
+// setCustomHeaders sets the custom headers for generated request
+func (e *Request) setCustomHeaders(r *generatedRequest) {
+	for _, customHeader := range e.customHeaders {
+		if customHeader == "" {
+			continue
+		}
+
+		// This should be pre-computed somewhere and done only once
+		tokens := strings.SplitN(customHeader, ":", two)
+		// if it's an invalid header skip it
+		if len(tokens) < 2 {
+			continue
+		}
+
+		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
+		if r.rawRequest != nil {
+			r.rawRequest.Headers[headerName] = headerValue
 		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition {
-				result.Lock()
-				result.Matches[matcher.Name] = nil
-				// probably redundant but ensures we snapshot current payload values when matchers are valid
-				result.Meta = request.Meta
-				result.GotResults = true
-				result.Unlock()
-				e.writeOutputHTTP(request, resp, body, matcher, nil, request.Meta, reqURL)
-			}
+			r.request.Header.Set(strings.TrimSpace(headerName), strings.TrimSpace(headerValue))
 		}
 	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
-	var extractorResults, outputExtractorResults []string
-
-	for _, extractor := range e.Extractors {
-		for match := range extractor.Extract(resp, body, headers) {
-			if _, ok := dynamicvalues[extractor.Name]; !ok {
-				dynamicvalues[extractor.Name] = match
-			}
-
-			extractorResults = append(extractorResults, match)
-
-			if !extractor.Internal {
-				outputExtractorResults = append(outputExtractorResults, match)
-			}
-		}
-		// probably redundant but ensures we snapshot current payload values when extractors are valid
-		result.Lock()
-		result.Meta = request.Meta
-		result.Extractions[extractor.Name] = extractorResults
-		result.Unlock()
-	}
-
-	// Write a final string of output if matcher type is
-	// AND or if we have extractors for the mechanism too.
-	if len(outputExtractorResults) > 0 || matcherCondition == matchers.ANDCondition {
-		e.writeOutputHTTP(request, resp, body, nil, outputExtractorResults, request.Meta, reqURL)
-		result.Lock()
-		result.GotResults = true
-		result.Unlock()
-	}
-
-	gologger.Verbosef("Sent for [%s] to %s\n", "http-request", e.template.ID, reqURL)
-	return nil
 }
