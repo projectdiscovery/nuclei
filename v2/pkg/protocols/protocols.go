@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/ratelimit"
 )
@@ -35,6 +36,8 @@ type ExecuterOptions struct {
 	Progress *progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter ratelimit.Limiter
+	// ProjectFile is the project file for nuclei
+	ProjectFile *projectfile.ProjectFile
 }
 
 // Request is an interface implemented any protocol based request generator.

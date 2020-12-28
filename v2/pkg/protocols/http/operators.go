@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -84,10 +85,15 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a HTTP response to a map for use in DSL matching
-func responseToDSLMap(resp *http.Response, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
+func (r *Request) responseToDSLMap(resp *http.Response, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
 	data := make(map[string]interface{}, len(extra)+6+len(resp.Header)+len(resp.Cookies()))
 	for k, v := range extra {
 		data[k] = v
+	}
+
+	if r.options.Options.JSONRequests {
+		data["request"] = rawReq
+		data["response"] = rawResp
 	}
 
 	data["content_length"] = resp.ContentLength
@@ -109,4 +115,34 @@ func responseToDSLMap(resp *http.Response, body, headers string, duration time.D
 	}
 	data["duration"] = duration.Seconds()
 	return data
+}
+
+// makeResultEvent creates a result event from internal wrapped event
+func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	results := make([]*output.ResultEvent, len(wrapped.OperatorsResult.Matches)+1)
+
+	data := output.ResultEvent{
+		TemplateID:       r.options.TemplateID,
+		Info:             r.options.TemplateInfo,
+		Type:             "http",
+		Host:             wrapped.InternalEvent["host"].(string),
+		Matched:          wrapped.InternalEvent["matched"].(string),
+		Metadata:         wrapped.OperatorsResult.PayloadValues,
+		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+	}
+	if r.options.Options.JSONRequests {
+		data.Request = wrapped.InternalEvent["request"].(string)
+		data.Response = wrapped.InternalEvent["raw"].(string)
+	}
+
+	// If we have multiple matchers with names, write each of them separately.
+	if len(wrapped.OperatorsResult.Matches) > 0 {
+		for k := range wrapped.OperatorsResult.Matches {
+			data.MatcherName = k
+			results = append(results, &data)
+		}
+	} else {
+		results = append(results, &data)
+	}
+	return results
 }

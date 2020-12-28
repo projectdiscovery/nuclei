@@ -14,6 +14,15 @@ func MergeMaps(m1, m2 map[string]interface{}) map[string]interface{} {
 	return m
 }
 
+// ExpandMapValues converts values from flat string to strings slice
+func ExpandMapValues(m map[string]string) map[string][]string {
+	m1 := make(map[string][]string, len(m))
+	for k, v := range m {
+		m1[k] = []string{v}
+	}
+	return m1
+}
+
 // CopyMap creates a new copy of an existing map
 func CopyMap(originalMap map[string]interface{}) map[string]interface{} {
 	newMap := make(map[string]interface{})
