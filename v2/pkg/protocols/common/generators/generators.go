@@ -51,7 +51,8 @@ func New(payloads map[string]interface{}, Type Type) (*Generator, error) {
 			totalLength = len(v)
 		}
 	}
-	return &Generator{Type: Type, payloads: compiled}, nil
+	generator := &Generator{Type: Type, payloads: compiled}
+	return generator, nil
 }
 
 // Iterator is a single instance of an iterator for a generator structure
@@ -88,16 +89,17 @@ func (i *Iterator) Reset() {
 	}
 }
 
-//Total returns the amount of input combinations available
+// Remaining returns the amount of requests left for the generator.
+func (i *Iterator) Remaining() int {
+	return i.total - i.position
+}
+
+// Total returns the amount of input combinations available
 func (i *Iterator) Total() int {
 	count := 0
 	switch i.Type {
-	case Sniper:
+	case Sniper, PitchFork:
 		count = len(i.payloads[0].values)
-	case PitchFork:
-		for _, p := range i.payloads {
-			count = len(p.values)
-		}
 	case ClusterBomb:
 		count = 1
 		for _, p := range i.payloads {
@@ -131,6 +133,7 @@ func (i *Iterator) sniperValue() (map[string]interface{}, bool) {
 	}
 	values[payload.name] = payload.value()
 	payload.incrementPosition()
+	i.position++
 	return values, true
 }
 
@@ -145,6 +148,7 @@ func (i *Iterator) pitchforkValue() (map[string]interface{}, bool) {
 		values[p.name] = p.value()
 		p.incrementPosition()
 	}
+	i.position++
 	return values, true
 }
 
