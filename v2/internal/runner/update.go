@@ -47,10 +47,9 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	ctx := context.Background()
-
 	if r.templatesConfig == nil || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		if !r.options.UpdateTemplates {
-			gologger.Labelf("nuclei-templates are not installed, use update-templates flag.\n")
+			gologger.Warning().Msgf("nuclei-templates are not installed, use update-templates flag.\n")
 			return nil
 		}
 
@@ -58,7 +57,6 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" {
 			home = r.options.TemplatesDirectory
 		}
-
 		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -66,23 +64,19 @@ func (r *Runner) updateTemplates() error {
 		if getErr != nil {
 			return getErr
 		}
-
-		gologger.Verbosef("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
+		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
 
 		err = r.downloadReleaseAndUnzip(ctx, asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
-
 		r.templatesConfig.CurrentVersion = version.String()
 
 		err = r.writeConfiguration(r.templatesConfig)
 		if err != nil {
 			return err
 		}
-
-		gologger.Infof("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", version.String())
-
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", version.String())
 		return nil
 	}
 
@@ -95,17 +89,14 @@ func (r *Runner) updateTemplates() error {
 	// Get the configuration currently on disk.
 	verText := r.templatesConfig.CurrentVersion
 	indices := reVersion.FindStringIndex(verText)
-
 	if indices == nil {
 		return fmt.Errorf("invalid release found with tag %s", err)
 	}
-
 	if indices[0] > 0 {
 		verText = verText[indices[0]:]
 	}
 
 	oldVersion, err := semver.Make(verText)
-
 	if err != nil {
 		return err
 	}
@@ -116,13 +107,13 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Infof("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
+		gologger.Info().Msgf("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
 		return r.writeConfiguration(r.templatesConfig)
 	}
 
 	if version.GT(oldVersion) {
 		if !r.options.UpdateTemplates {
-			gologger.Labelf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
+			gologger.Warning().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
 			return r.writeConfiguration(r.templatesConfig)
 		}
 
@@ -130,11 +121,9 @@ func (r *Runner) updateTemplates() error {
 			home = r.options.TemplatesDirectory
 			r.templatesConfig.TemplatesDirectory = path.Join(home, "nuclei-templates")
 		}
-
 		r.templatesConfig.CurrentVersion = version.String()
 
-		gologger.Verbosef("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
-
+		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
 		err = r.downloadReleaseAndUnzip(ctx, asset.GetZipballURL())
 		if err != nil {
 			return err
@@ -144,10 +133,8 @@ func (r *Runner) updateTemplates() error {
 		if err != nil {
 			return err
 		}
-
-		gologger.Infof("Successfully updated nuclei-templates (v%s). Enjoy!\n", version.String())
+		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). Enjoy!\n", version.String())
 	}
-
 	return nil
 }
 
@@ -162,17 +149,13 @@ func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.Repositor
 
 	// Find the most recent version based on semantic versioning.
 	var latestRelease semver.Version
-
 	var latestPublish *github.RepositoryRelease
-
 	for _, release := range rels {
 		verText := release.GetTagName()
 		indices := reVersion.FindStringIndex(verText)
-
 		if indices == nil {
 			return semver.Version{}, nil, fmt.Errorf("invalid release found with tag %s", err)
 		}
-
 		if indices[0] > 0 {
 			verText = verText[indices[0]:]
 		}
@@ -187,11 +170,9 @@ func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.Repositor
 			latestPublish = release
 		}
 	}
-
 	if latestPublish == nil {
 		return semver.Version{}, nil, errors.New("no version found for the templates")
 	}
-
 	return latestRelease, latestPublish, nil
 }
 
@@ -207,7 +188,6 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		return fmt.Errorf("failed to download a release file from %s: %s", downloadURL, err)
 	}
 	defer res.Body.Close()
-
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download a release file from %s: Not successful status %d", downloadURL, res.StatusCode)
 	}
@@ -219,7 +199,6 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 
 	reader := bytes.NewReader(buf)
 	z, err := zip.NewReader(reader, reader.Size())
-
 	if err != nil {
 		return fmt.Errorf("failed to uncompress zip file: %s", err)
 	}
@@ -241,7 +220,6 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err = os.MkdirAll(templateDirectory, os.ModePerm)
-
 		if err != nil {
 			return fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
@@ -263,9 +241,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			f.Close()
 			return fmt.Errorf("could not write template file: %s", err)
 		}
-
 		f.Close()
 	}
-
 	return nil
 }

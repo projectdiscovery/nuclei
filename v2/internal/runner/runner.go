@@ -3,22 +3,19 @@ package runner
 import (
 	"bufio"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/internal/bufwriter"
+	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
+	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/internal/tracelog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
-	"github.com/projectdiscovery/nuclei/v2/pkg/collaborator"
-	"github.com/projectdiscovery/nuclei/v2/pkg/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/ratelimit"
@@ -26,60 +23,31 @@ import (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	inputCount int64
-
-	traceLog tracelog.Log
-
-	// output is the output file to write if any
-	output *bufwriter.Writer
-
+	hostMap         *hybrid.HybridMap
+	output          output.Writer
+	inputCount      int64
 	templatesConfig *nucleiConfig
-	// options contains configuration options for runner
-	options *Options
-
-	pf *projectfile.ProjectFile
-
-	// progress tracking
-	progress *progress.Progress
-
-	// output coloring
-	colorizer   colorizer.NucleiColorizer
-	decolorizer *regexp.Regexp
-
-	// rate limiter
-	ratelimiter ratelimit.Limiter
-
-	// input deduplication
-	hm     *hybrid.HybridMap
-	dialer *fastdialer.Dialer
+	options         *types.Options
+	projectFile     *projectfile.ProjectFile
+	progress        *progress.Progress
+	colorizer       aurora.Aurora
+	severityColors  *colorizer.Colorizer
+	ratelimiter     ratelimit.Limiter
 }
 
 // New creates a new client for running enumeration process.
-func New(options *Options) (*Runner, error) {
+func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
-		traceLog: &tracelog.NoopLogger{},
-		options:  options,
+		options: options,
 	}
-	if options.TraceLogFile != "" {
-		fileLog, err := tracelog.NewFileLogger(options.TraceLogFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create file trace logger")
-		}
-		runner.traceLog = fileLog
-	}
-
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Labelf("Could not update templates: %s\n", err)
+		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
 
 	// output coloring
 	useColor := !options.NoColor
-	runner.colorizer = *colorizer.NewNucleiColorizer(aurora.NewAurora(useColor))
-
-	if useColor {
-		// compile a decolorization regex to cleanup file output messages
-		runner.decolorizer = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
-	}
+	runner.colorizer = aurora.NewAurora(useColor)
+	runner.severityColors = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
@@ -95,9 +63,9 @@ func New(options *Options) (*Runner, error) {
 	}
 
 	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
-		gologger.Fatalf("Could not create temporary input file: %s\n", err)
+		gologger.Fatal().Msgf("Could not create temporary input file: %s\n", err)
 	} else {
-		runner.hm = hm
+		runner.hostMap = hm
 	}
 
 	runner.inputCount = 0
@@ -107,7 +75,7 @@ func New(options *Options) (*Runner, error) {
 	if options.Target != "" {
 		runner.inputCount++
 		// nolint:errcheck // ignoring error
-		runner.hm.Set(options.Target, nil)
+		runner.hostMap.Set(options.Target, nil)
 	}
 
 	// Handle stdin
@@ -115,20 +83,16 @@ func New(options *Options) (*Runner, error) {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			url := strings.TrimSpace(scanner.Text())
-			// skip empty lines
 			if url == "" {
 				continue
 			}
-
-			// skip dupes
-			if _, ok := runner.hm.Get(url); ok {
+			if _, ok := runner.hostMap.Get(url); ok {
 				dupeCount++
 				continue
 			}
-
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
-			runner.hm.Set(url, nil)
+			runner.hostMap.Set(url, nil)
 		}
 	}
 
@@ -136,38 +100,34 @@ func New(options *Options) (*Runner, error) {
 	if options.Targets != "" {
 		input, err := os.Open(options.Targets)
 		if err != nil {
-			gologger.Fatalf("Could not open targets file '%s': %s\n", options.Targets, err)
+			gologger.Fatal().Msgf("Could not open targets file '%s': %s\n", options.Targets, err)
 		}
 		scanner := bufio.NewScanner(input)
 		for scanner.Scan() {
 			url := strings.TrimSpace(scanner.Text())
-			// skip empty lines
 			if url == "" {
 				continue
 			}
-
-			// skip dupes
-			if _, ok := runner.hm.Get(url); ok {
+			if _, ok := runner.hostMap.Get(url); ok {
 				dupeCount++
 				continue
 			}
-
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
-			runner.hm.Set(url, nil)
+			runner.hostMap.Set(url, nil)
 		}
 		input.Close()
 	}
 
 	if dupeCount > 0 {
-		gologger.Labelf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
+		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
 	}
 
 	// Create the output file if asked
 	if options.Output != "" {
-		output, errBufWriter := bufwriter.New(options.Output)
-		if errBufWriter != nil {
-			gologger.Fatalf("Could not create output file '%s': %s\n", options.Output, errBufWriter)
+		output, errWriter := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
+		if errWriter != nil {
+			gologger.Fatal().Msgf("Could not create output file '%s': %s\n", options.Output, errWriter)
 		}
 		runner.output = output
 	}
@@ -182,7 +142,7 @@ func New(options *Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.pf, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
@@ -193,19 +153,11 @@ func New(options *Options) (*Runner, error) {
 		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
 	}
 
-	// Create Dialer
-	var err error
-	runner.dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
-	if err != nil {
-		return nil, err
-	}
-
 	if options.RateLimit > 0 {
 		runner.ratelimiter = ratelimit.New(options.RateLimit)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
-
 	return runner, nil
 }
 
@@ -214,9 +166,9 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
-	r.hm.Close()
-	if r.pf != nil {
-		r.pf.Close()
+	r.hostMap.Close()
+	if r.projectFile != nil {
+		r.projectFile.Close()
 	}
 }
 
@@ -241,7 +193,7 @@ func (r *Runner) RunEnumeration() {
 			if _, found := excludedMap[incl]; !found {
 				allTemplates = append(allTemplates, incl)
 			} else {
-				gologger.Warningf("Excluding '%s'", incl)
+				gologger.Warning().Msgf("Excluding '%s'", incl)
 			}
 		}
 	}
@@ -253,25 +205,24 @@ func (r *Runner) RunEnumeration() {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		gologger.Fatalf("Error, no templates were found.\n")
+		gologger.Fatal().Msgf("Error, no templates were found.\n")
 	}
 
-	gologger.Infof("Using %s rules (%s templates, %s workflows)",
-		r.colorizer.Colorizer.Bold(templateCount).String(),
-		r.colorizer.Colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Colorizer.Bold(workflowCount).String())
+	gologger.Info().Msgf("Using %s rules (%s templates, %s workflows)",
+		r.colorizer.Bold(templateCount).String(),
+		r.colorizer.Bold(templateCount-workflowCount).String(),
+		r.colorizer.Bold(workflowCount).String())
 
 	// precompute total request count
 	var totalRequests int64 = 0
 
 	for _, t := range availableTemplates {
-		switch av := t.(type) {
-		case *templates.Template:
-			totalRequests += (av.GetHTTPRequestCount() + av.GetDNSRequestCount()) * r.inputCount
-		case *workflows.Workflow:
-			// workflows will dynamically adjust the totals while running, as
-			// it can't be know in advance which requests will be called
-		} // nolint:wsl // comment
+		// workflows will dynamically adjust the totals while running, as
+		// it can't be know in advance which requests will be called
+		if t.Workflow != nil {
+			continue
+		}
+		totalRequests += int64(t.Requests()) * r.inputCount
 	}
 
 	results := atomicboolean.New()
@@ -280,7 +231,7 @@ func (r *Runner) RunEnumeration() {
 	collaborator.DefaultCollaborator.Poll()
 
 	if r.inputCount == 0 {
-		gologger.Errorf("Could not find any valid input URLs.")
+		gologger.Error().Msgf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
 		p := r.progress
@@ -313,7 +264,6 @@ func (r *Runner) RunEnumeration() {
 			r.output.Close()
 			os.Remove(r.options.Output)
 		}
-
-		gologger.Infof("No results found. Happy hacking!")
+		gologger.Info().Msgf("No results found. Happy hacking!")
 	}
 }

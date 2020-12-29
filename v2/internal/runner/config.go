@@ -105,7 +105,6 @@ func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 			if strings.Contains(item, paths) {
 				return true
 			}
-
 			continue
 		}
 		// Check for file based extension in ignores
@@ -113,10 +112,10 @@ func (r *Runner) checkIfInNucleiIgnore(item string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
+// getIgnoreFilePath returns the ignore file path for the runner
 func (r *Runner) getIgnoreFilePath() string {
 	defIgnoreFilePath := path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile)
 
@@ -124,13 +123,11 @@ func (r *Runner) getIgnoreFilePath() string {
 	if err != nil {
 		return defIgnoreFilePath
 	}
-
 	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
 
 	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
 	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
 		return defIgnoreFilePath
 	}
-
 	return cwdIgnoreFilePath
 }

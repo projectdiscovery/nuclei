@@ -25,7 +25,5 @@ func Parse(file string) (*Workflow, error) {
 	if len(workflow.Workflows) == 0 {
 		return nil, errors.New("no workflow defined")
 	}
-	// Compile workflow here.
-	workflow.path = file
 	return workflow, nil
 }
