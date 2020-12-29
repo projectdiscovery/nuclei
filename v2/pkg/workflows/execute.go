@@ -3,7 +3,7 @@ package workflows
 import "go.uber.org/atomic"
 
 // RunWorkflow runs a workflow on an input and returns true or false
-func (w *WorkflowTemplate) RunWorkflow(input string) (bool, error) {
+func (w *Workflow) RunWorkflow(input string) (bool, error) {
 	results := &atomic.Bool{}
 
 	for _, template := range w.Workflows {
@@ -20,7 +20,9 @@ func (w *WorkflowTemplate) RunWorkflow(input string) (bool, error) {
 func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool) error {
 	var firstMatched bool
 	if len(template.Matchers) == 0 {
-		matched, err := template.executer.Execute(input)
+		w.options.Progress.AddToTotal(int64(template.Executer.Requests()))
+
+		matched, err := template.Executer.Execute(input)
 		if err != nil {
 			return err
 		}
@@ -29,7 +31,9 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 	}
 
 	if len(template.Matchers) > 0 {
-		output, err := template.executer.ExecuteWithResults(input)
+		w.options.Progress.AddToTotal(int64(template.Executer.Requests()))
+
+		output, err := template.Executer.ExecuteWithResults(input)
 		if err != nil {
 			return err
 		}

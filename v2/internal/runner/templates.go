@@ -3,7 +3,6 @@ package runner
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/karrick/godirwalk"
@@ -11,105 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 )
-
-// getTemplatesFor parses the specified input template definitions and returns a list of unique, absolute template paths.
-func (r *Runner) getTemplatesFor(definitions []string) []string {
-	// keeps track of processed dirs and files
-	processed := make(map[string]bool)
-	allTemplates := []string{}
-
-	// parses user input, handle file/directory cases and produce a list of unique templates
-	for _, t := range definitions {
-		var absPath string
-		var err error
-
-		if strings.Contains(t, "*") {
-			dirs := strings.Split(t, "/")
-			priorDir := strings.Join(dirs[:len(dirs)-1], "/")
-			absPath, err = r.resolvePathIfRelative(priorDir)
-			absPath += "/" + dirs[len(dirs)-1]
-		} else {
-			// resolve and convert relative to absolute path
-			absPath, err = r.resolvePathIfRelative(t)
-		}
-		if err != nil {
-			gologger.Error().Msgf("Could not find template file '%s': %s\n", t, err)
-			continue
-		}
-
-		// Template input includes a wildcard
-		if strings.Contains(absPath, "*") {
-			var matches []string
-			matches, err = filepath.Glob(absPath)
-			if err != nil {
-				gologger.Error().Msgf("Wildcard found, but unable to glob '%s': %s\n", absPath, err)
-				continue
-			}
-
-			// couldn't find templates in directory
-			if len(matches) == 0 {
-				gologger.Error().Msgf("Error, no templates were found with '%s'.\n", absPath)
-				continue
-			} else {
-				gologger.Verbose().Msgf("Identified %d templates\n", len(matches))
-			}
-
-			for _, match := range matches {
-				if !r.checkIfInNucleiIgnore(match) {
-					processed[match] = true
-					allTemplates = append(allTemplates, match)
-				}
-			}
-		} else {
-			// determine file/directory
-			isFile, err := isFilePath(absPath)
-			if err != nil {
-				gologger.Error().Msgf("Could not stat '%s': %s\n", absPath, err)
-				continue
-			}
-			// test for uniqueness
-			if !isNewPath(absPath, processed) {
-				continue
-			}
-			// mark this absolute path as processed
-			// - if it's a file, we'll never process it again
-			// - if it's a dir, we'll never walk it again
-			processed[absPath] = true
-
-			if isFile {
-				allTemplates = append(allTemplates, absPath)
-			} else {
-				matches := []string{}
-
-				// Recursively walk down the Templates directory and run all the template file checks
-				err := directoryWalker(absPath,
-					func(path string, d *godirwalk.Dirent) error {
-						if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
-							if !r.checkIfInNucleiIgnore(path) && isNewPath(path, processed) {
-								matches = append(matches, path)
-								processed[path] = true
-							}
-						}
-						return nil
-					},
-				)
-				// directory couldn't be walked
-				if err != nil {
-					gologger.Error().Msgf("Could not find templates in directory '%s': %s\n", absPath, err)
-					continue
-				}
-
-				// couldn't find templates in directory
-				if len(matches) == 0 {
-					gologger.Error().Msgf("Error, no templates were found in '%s'.\n", absPath)
-					continue
-				}
-				allTemplates = append(allTemplates, matches...)
-			}
-		}
-	}
-	return allTemplates
-}
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
@@ -148,6 +48,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 		Output:      r.output,
 		Options:     r.options,
 		Progress:    r.progress,
+		Catalogue:   r.catalogue,
 		RateLimiter: r.ratelimiter,
 		ProjectFile: r.projectFile,
 	}
@@ -209,19 +110,6 @@ func (r *Runner) listAvailableTemplates() {
 	if err != nil {
 		gologger.Error().Msgf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
 	}
-}
-
-func (r *Runner) resolvePathIfRelative(filePath string) (string, error) {
-	if isRelative(filePath) {
-		newPath, err := r.resolvePath(filePath)
-
-		if err != nil {
-			return "", err
-		}
-		return newPath, nil
-	}
-
-	return filePath, nil
 }
 
 func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {

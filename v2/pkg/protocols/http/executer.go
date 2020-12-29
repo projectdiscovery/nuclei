@@ -33,7 +33,7 @@ func (e *Executer) Compile() error {
 func (e *Executer) Requests() int {
 	var count int
 	for _, request := range e.requests {
-		count += int64(request.Requests())
+		count += int(request.Requests())
 	}
 	return count
 }
