@@ -11,13 +11,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 )
 
@@ -29,6 +29,7 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	options         *types.Options
 	projectFile     *projectfile.ProjectFile
+	catalogue       *catalogue.Catalogue
 	progress        *progress.Progress
 	colorizer       aurora.Aurora
 	severityColors  *colorizer.Colorizer
@@ -61,6 +62,7 @@ func New(options *types.Options) (*Runner, error) {
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
 	}
+	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
 
 	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
 		gologger.Fatal().Msgf("Could not create temporary input file: %s\n", err)
@@ -176,8 +178,8 @@ func (r *Runner) Close() {
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	// resolves input templates definitions and any optional exclusion
-	includedTemplates := r.getTemplatesFor(r.options.Templates)
-	excludedTemplates := r.getTemplatesFor(r.options.ExcludedTemplates)
+	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
+	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates
 	allTemplates := includedTemplates
 
@@ -222,10 +224,10 @@ func (r *Runner) RunEnumeration() {
 		if t.Workflow != nil {
 			continue
 		}
-		totalRequests += int64(t.Requests()) * r.inputCount
+		totalRequests += int64(t.TotalRequests) * r.inputCount
 	}
 
-	results := atomicboolean.New()
+	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
 	// Starts polling or ignore
 	collaborator.DefaultCollaborator.Poll()
@@ -241,14 +243,9 @@ func (r *Runner) RunEnumeration() {
 			wgtemplates.Add()
 			go func(template *templates.Template) {
 				if template.Workflow != nil {
-					results.Or(r.processWorkflowWithList(p, template.(*workflows.Workflow)))
-
-				}
-				for _, request := range template.RequestsDNS {
-					results.Or(r.processTemplateWithList(p, tt, request))
-				}
-				for _, request := range template.RequestsHTTP {
-					results.Or(r.processTemplateWithList(p, tt, request))
+					results.CAS(false, r.processWorkflowWithList(template))
+				} else {
+					results.CAS(false, r.processTemplateWithList(template))
 				}
 			}(t)
 		}
@@ -256,7 +253,7 @@ func (r *Runner) RunEnumeration() {
 		p.Stop()
 	}
 
-	if !results.Get() {
+	if !results.Load() {
 		if r.output != nil {
 			r.output.Close()
 			os.Remove(r.options.Output)

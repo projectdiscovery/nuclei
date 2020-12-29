@@ -5,6 +5,7 @@ import (
 	"flag"
 	"net/url"
 	"os"
+	"path"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -15,6 +16,9 @@ import (
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions() *types.Options {
 	options := &types.Options{}
+
+	home, _ := os.UserHomeDir()
+	templatesDirectory := path.Join(home, "nuclei-templates")
 
 	flag.BoolVar(&options.Sandbox, "sandbox", false, "Run workflows in isolated sandbox mode")
 	flag.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
@@ -39,7 +43,7 @@ func ParseOptions() *types.Options {
 	flag.BoolVar(&options.Debug, "debug", false, "Allow debugging of request/responses")
 	flag.BoolVar(&options.UpdateTemplates, "update-templates", false, "Update Templates updates the installed templates (optional)")
 	flag.StringVar(&options.TraceLogFile, "trace-log", "", "File to write sent requests trace log")
-	flag.StringVar(&options.TemplatesDirectory, "update-directory", "", "Directory to use for storing nuclei-templates")
+	flag.StringVar(&options.TemplatesDirectory, "update-directory", templatesDirectory, "Directory to use for storing nuclei-templates")
 	flag.BoolVar(&options.JSON, "json", false, "Write json output to files")
 	flag.BoolVar(&options.JSONRequests, "include-rr", false, "Write requests/responses for matches in JSON output")
 	flag.BoolVar(&options.EnableProgressBar, "stats", false, "Display stats of the running scan")

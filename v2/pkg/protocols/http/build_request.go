@@ -130,13 +130,12 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
 
-// Remaining returns the remaining number of requests for the generator
-func (r *requestGenerator) Remaining() int {
+// Total returns the total number of requests for the generator
+func (r *requestGenerator) Total() int {
 	if r.payloadIterator != nil {
-		payloadRemaining := r.payloadIterator.Remaining()
-		return (len(r.request.Raw) - r.currentIndex + 1) * payloadRemaining
+		return len(r.request.Raw) * r.payloadIterator.Remaining()
 	}
-	return len(r.request.Path) - r.currentIndex + 1
+	return len(r.request.Path)
 }
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping

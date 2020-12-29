@@ -17,21 +17,10 @@ type Template struct {
 	RequestsHTTP []*http.Request `yaml:"requests,omitempty"`
 	// RequestsDNS contains the dns request to make in the template
 	RequestsDNS []*dns.Request `yaml:"dns,omitempty"`
-
 	// Workflows is a yaml based workflow declaration code.
 	*workflows.Workflow
-
-	path          string
-	totalRequests int
-	executer      protocols.Executer
-}
-
-// GetPath returns the path of the template.
-func (t *Template) GetPath() string {
-	return t.path
-}
-
-// Requests returns the number of requests for the template
-func (t *Template) Requests() int {
-	return t.totalRequests
+	// TotalRequests is the total number of requests for the template.
+	TotalRequests int
+	// Executer is the actual template executor for running template requests
+	Executer protocols.Executer
 }

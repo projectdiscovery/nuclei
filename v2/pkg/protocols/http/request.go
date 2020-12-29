@@ -75,7 +75,7 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			e.options.Progress.DecrementRequests(int64(generator.Total()))
 			return nil, err
 		}
 		swg.Add()
@@ -136,7 +136,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			e.options.Progress.DecrementRequests(int64(generator.Total()))
 			return nil, err
 		}
 		request.pipelinedClient = pipeclient
@@ -187,7 +187,7 @@ func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			e.options.Progress.DecrementRequests(int64(generator.Total()))
 			return nil, err
 		}
 
@@ -201,7 +201,7 @@ func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 		e.options.Progress.IncrementRequests()
 
 		if request.original.options.Options.StopAtFirstMatch && len(output) > 0 {
-			e.options.Progress.DecrementRequests(int64(generator.Remaining()))
+			e.options.Progress.DecrementRequests(int64(generator.Total()))
 			break
 		}
 	}
