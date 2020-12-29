@@ -25,9 +25,8 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 			match, err := template.Executer.Execute(URL)
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
-			} else {
-				results.CAS(false, match)
 			}
+			results.CAS(false, match)
 		}(URL)
 		return nil
 	})
@@ -49,9 +48,8 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 			match, err := template.RunWorkflow(URL)
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
-			} else {
-				results.CAS(false, match)
 			}
+			results.CAS(false, match)
 		}(URL)
 		return nil
 	})
