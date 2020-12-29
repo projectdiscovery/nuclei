@@ -80,6 +80,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		return errors.Wrap(err, "could not get dns client")
 	}
 	r.httpClient = client
+	r.options = options
 
 	if len(r.Raw) > 0 {
 		r.rawhttpClient = httpclientpool.GetRawHTTP()
