@@ -84,19 +84,13 @@ nuclei requires **go1.14+** to install successfully. Run the following command t
 
 ## Nuclei templates
 
-You can download or update the nuclei templates using `update-templates` flag.
+You can download and update the nuclei templates using `update-templates` flag, `update-templates` flag downloads the latest release from **nuclei-templates** [Github project](https://github.com/projectdiscovery/nuclei-templates), a community curated list of templates that are ready to use.
 
 ```sh
 ▶ nuclei -update-templates
 ```
 
-or download it from [nuclei templates](https://github.com/projectdiscovery/nuclei-templates) Github project.
-
-```sh
-▶ git clone https://github.com/projectdiscovery/nuclei-templates.git
-```
-
-**Please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to writing your own custom templates.**
+Additionally, you can write your own checks for your specific workflow and needs, please refer to **nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to write your own custom templates.**
 
 ## Usage
 
