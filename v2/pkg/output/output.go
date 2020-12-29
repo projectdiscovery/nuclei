@@ -130,6 +130,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		return errors.Wrap(err, "could not format output")
 	}
 	_, _ = os.Stdout.Write(data)
+	_, _ = os.Stdout.Write([]byte("\n"))
 	if w.outputFile != nil {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))
@@ -137,6 +138,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		if writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
+		_ = w.outputFile.Write([]byte("\n"))
 	}
 	return nil
 }

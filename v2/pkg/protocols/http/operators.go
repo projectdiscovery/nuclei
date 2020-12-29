@@ -14,12 +14,7 @@ import (
 
 // Match matches a generic data response again a given matcher
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
-	part, ok := data[matcher.Part]
-	if !ok {
-		return false
-	}
-	partString := part.(string)
-
+	partString := matcher.Part
 	switch partString {
 	case "header":
 		partString = "all_headers"
@@ -56,12 +51,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 // Extract performs extracting operation for a extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part, ok := data[extractor.Part]
-	if !ok {
-		return nil
-	}
-	partString := part.(string)
-
+	partString := extractor.Part
 	switch partString {
 	case "header":
 		partString = "all_headers"
@@ -85,12 +75,14 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a HTTP response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(resp *http.Response, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
-	data := make(map[string]interface{}, len(extra)+6+len(resp.Header)+len(resp.Cookies()))
+func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
+	data := make(map[string]interface{}, len(extra)+8+len(resp.Header)+len(resp.Cookies()))
 	for k, v := range extra {
 		data[k] = v
 	}
 
+	data["host"] = host
+	data["matched"] = matched
 	if r.options.Options.JSONRequests {
 		data["request"] = rawReq
 		data["response"] = rawResp
@@ -119,7 +111,7 @@ func (r *Request) responseToDSLMap(resp *http.Response, rawReq, rawResp, body, h
 
 // makeResultEvent creates a result event from internal wrapped event
 func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	results := make([]*output.ResultEvent, len(wrapped.OperatorsResult.Matches)+1)
+	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
 	data := output.ResultEvent{
 		TemplateID:       r.options.TemplateID,
