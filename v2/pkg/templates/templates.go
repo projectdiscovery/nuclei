@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
@@ -22,6 +23,7 @@ type Template struct {
 
 	path          string
 	totalRequests int
+	executer      protocols.Executer
 }
 
 // GetPath returns the path of the template.

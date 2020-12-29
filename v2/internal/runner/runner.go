@@ -239,22 +239,19 @@ func (r *Runner) RunEnumeration() {
 
 		for _, t := range availableTemplates {
 			wgtemplates.Add()
-			go func(template interface{}) {
-				defer wgtemplates.Done()
-				switch tt := template.(type) {
-				case *templates.Template:
-					for _, request := range tt.RequestsDNS {
-						results.Or(r.processTemplateWithList(p, tt, request))
-					}
-					for _, request := range tt.BulkRequestsHTTP {
-						results.Or(r.processTemplateWithList(p, tt, request))
-					}
-				case *workflows.Workflow:
+			go func(template *templates.Template) {
+				if template.Workflow != nil {
 					results.Or(r.processWorkflowWithList(p, template.(*workflows.Workflow)))
+
+				}
+				for _, request := range template.RequestsDNS {
+					results.Or(r.processTemplateWithList(p, tt, request))
+				}
+				for _, request := range template.RequestsHTTP {
+					results.Or(r.processTemplateWithList(p, tt, request))
 				}
 			}(t)
 		}
-
 		wgtemplates.Wait()
 		p.Stop()
 	}
