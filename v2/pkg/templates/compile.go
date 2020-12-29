@@ -46,6 +46,7 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 		if err := template.compileWorkflow(options); err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
+		template.Workflow.Compile(options)
 	}
 
 	// Compile the requests found
