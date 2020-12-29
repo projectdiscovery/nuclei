@@ -26,6 +26,8 @@ type Executer interface {
 type ExecuterOptions struct {
 	// TemplateID is the ID of the template for the request
 	TemplateID string
+	// TemplatePath is the path of the template for the request
+	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo map[string]string
 	// Output is a writer interface for writing output events from executer.
