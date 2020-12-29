@@ -14,6 +14,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -126,13 +128,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	if options.Output != "" {
-		output, errWriter := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
-		if errWriter != nil {
-			gologger.Fatal().Msgf("Could not create output file '%s': %s\n", options.Output, errWriter)
-		}
-		runner.output = output
+	output, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not create output file '%s': %s\n", options.Output, err)
 	}
+	runner.output = output
 
 	// Creates the progress tracking object
 	var progressErr error
@@ -177,6 +177,11 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
+	err := r.initializeProtocols()
+	if err != nil {
+		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
+	}
+
 	// resolves input templates definitions and any optional exclusion
 	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
@@ -260,4 +265,15 @@ func (r *Runner) RunEnumeration() {
 		}
 		gologger.Info().Msgf("No results found. Happy hacking!")
 	}
+}
+
+// initializeProtocols initializes all the protocols and their caches
+func (r *Runner) initializeProtocols() error {
+	if err := dnsclientpool.Init(r.options); err != nil {
+		return err
+	}
+	if err := httpclientpool.Init(r.options); err != nil {
+		return err
+	}
+	return nil
 }
