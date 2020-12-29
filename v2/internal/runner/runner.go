@@ -226,7 +226,7 @@ func (r *Runner) RunEnumeration() {
 	for _, t := range availableTemplates {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
-		if t.Workflow != nil {
+		if len(t.Workflows) > 0 {
 			continue
 		}
 		totalRequests += int64(t.TotalRequests) * r.inputCount
