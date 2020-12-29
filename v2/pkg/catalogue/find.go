@@ -29,7 +29,9 @@ func (c *Catalogue) GetTemplatesPath(definitions []string) []string {
 			}
 		}
 	}
-	gologger.Verbose().Msgf("Identified %d templates", len(allTemplates))
+	if len(allTemplates) > 0 {
+		gologger.Verbose().Msgf("Identified %d templates", len(allTemplates))
+	}
 	return allTemplates
 }
 
