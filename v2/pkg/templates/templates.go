@@ -18,7 +18,7 @@ type Template struct {
 	// RequestsDNS contains the dns request to make in the template
 	RequestsDNS []*dns.Request `yaml:"dns,omitempty"`
 	// Workflows is a yaml based workflow declaration code.
-	*workflows.Workflow
+	*workflows.Workflow `yaml:",omitempty,inline"`
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int
 	// Executer is the actual template executor for running template requests

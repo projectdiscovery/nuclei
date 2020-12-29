@@ -247,7 +247,9 @@ func (r *Runner) RunEnumeration() {
 		for _, t := range availableTemplates {
 			wgtemplates.Add()
 			go func(template *templates.Template) {
-				if template.Workflow != nil {
+				defer wgtemplates.Done()
+
+				if len(template.Workflows) > 0 {
 					results.CAS(false, r.processWorkflowWithList(template))
 				} else {
 					results.CAS(false, r.processTemplateWithList(template))

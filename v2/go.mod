@@ -6,6 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/corpix/uarand v0.1.1
+	github.com/goccy/go-yaml v1.8.4
 	github.com/google/go-github/v32 v32.1.0
 	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.16.1
