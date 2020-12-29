@@ -149,7 +149,7 @@ func (m *mockExecuter) Compile() error {
 }
 
 // Requests returns the total number of requests the rule will perform
-func (m *mockExecuter) Requests() int64 {
+func (m *mockExecuter) Requests() int {
 	return 1
 }
 

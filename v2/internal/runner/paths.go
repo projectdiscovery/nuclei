@@ -14,7 +14,6 @@ func isRelative(filePath string) bool {
 	if strings.HasPrefix(filePath, "/") || strings.Contains(filePath, ":\\") {
 		return false
 	}
-
 	return true
 }
 
@@ -30,19 +29,16 @@ func (r *Runner) resolvePath(templateName string) (string, error) {
 
 	templatePath := path.Join(curDirectory, templateName)
 	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		gologger.Debugf("Found template in current directory: %s\n", templatePath)
-
+		gologger.Debug().Msgf("Found template in current directory: %s\n", templatePath)
 		return templatePath, nil
 	}
 
 	if r.templatesConfig != nil {
 		templatePath := path.Join(r.templatesConfig.TemplatesDirectory, templateName)
 		if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-			gologger.Debugf("Found template in nuclei-templates directory: %s\n", templatePath)
-
+			gologger.Debug().Msgf("Found template in nuclei-templates directory: %s\n", templatePath)
 			return templatePath, nil
 		}
 	}
-
 	return "", fmt.Errorf("no such path found: %s", templateName)
 }

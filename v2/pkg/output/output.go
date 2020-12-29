@@ -8,6 +8,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
 
@@ -25,20 +26,15 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json        bool
-	noMetadata  bool
-	aurora      aurora.Aurora
-	outputFile  *fileWriter
-	outputMutex *sync.Mutex
-	traceFile   *fileWriter
-	traceMutex  *sync.Mutex
-	severityMap map[string]string
+	json           bool
+	noMetadata     bool
+	aurora         aurora.Aurora
+	outputFile     *fileWriter
+	outputMutex    *sync.Mutex
+	traceFile      *fileWriter
+	traceMutex     *sync.Mutex
+	severityColors *colorizer.Colorizer
 }
-
-const (
-	fgOrange  uint8  = 208
-	undefined string = "undefined"
-)
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
@@ -78,7 +74,7 @@ type ResultEvent struct {
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
-	colorizer := aurora.NewAurora(colors)
+	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile *fileWriter
 	if file != "" {
@@ -96,22 +92,15 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 		}
 		traceOutput = output
 	}
-	severityMap := map[string]string{
-		"info":     colorizer.Blue("info").String(),
-		"low":      colorizer.Green("low").String(),
-		"medium":   colorizer.Yellow("medium").String(),
-		"high":     colorizer.Index(fgOrange, "high").String(),
-		"critical": colorizer.Red("critical").String(),
-	}
 	writer := &StandardWriter{
-		json:        json,
-		noMetadata:  noMetadata,
-		severityMap: severityMap,
-		aurora:      colorizer,
-		outputFile:  outputFile,
-		outputMutex: &sync.Mutex{},
-		traceFile:   traceOutput,
-		traceMutex:  &sync.Mutex{},
+		json:           json,
+		noMetadata:     noMetadata,
+		aurora:         auroraColorizer,
+		outputFile:     outputFile,
+		outputMutex:    &sync.Mutex{},
+		traceFile:      traceOutput,
+		traceMutex:     &sync.Mutex{},
+		severityColors: colorizer.New(auroraColorizer),
 	}
 	return writer, nil
 }

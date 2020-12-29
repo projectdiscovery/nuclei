@@ -15,7 +15,7 @@ type Executer interface {
 	// Compile compiles the execution generators preparing any requests possible.
 	Compile() error
 	// Requests returns the total number of requests the rule will perform
-	Requests() int64
+	Requests() int
 	// Execute executes the protocol group and returns true or false if results were found.
 	Execute(input string) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -47,7 +47,7 @@ type Request interface {
 	// Compile compiles the request generators preparing any requests possible.
 	Compile(options *ExecuterOptions) error
 	// Requests returns the total number of requests the rule will perform
-	Requests() int64
+	Requests() int
 	// Match performs matching operation for a matcher on model and returns true or false.
 	Match(data map[string]interface{}, matcher *matchers.Matcher) bool
 	// Extract performs extracting operation for a extractor on model and returns true or false.

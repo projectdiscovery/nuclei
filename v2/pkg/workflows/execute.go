@@ -3,7 +3,7 @@ package workflows
 import "go.uber.org/atomic"
 
 // RunWorkflow runs a workflow on an input and returns true or false
-func (w *Workflow) RunWorkflow(input string) (bool, error) {
+func (w *WorkflowTemplate) RunWorkflow(input string) (bool, error) {
 	results := &atomic.Bool{}
 
 	for _, template := range w.Workflows {

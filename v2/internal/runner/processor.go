@@ -1,35 +1,19 @@
 package runner
 
 import (
-	"context"
 	"fmt"
-	"net/http/cookiejar"
 	"os"
 	"path"
-	"path/filepath"
-	"strings"
-	"time"
 
-	tengo "github.com/d5/tengo/v2"
-	"github.com/d5/tengo/v2/stdlib"
-	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/atomicboolean"
-	"github.com/projectdiscovery/nuclei/v2/pkg/executer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/requests"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	"github.com/remeh/sizedwaitgroup"
 )
 
+/*
 // workflowTemplates contains the initialized workflow templates per template group
 type workflowTemplates struct {
 	Name      string
 	Templates []*workflows.Template
 }
-
-var sandboxedModules = []string{"math", "text", "rand", "fmt", "json", "base64", "hex", "enum"}
 
 // processTemplateWithList processes a template and runs the enumeration on all the targets
 func (r *Runner) processTemplateWithList(p *progress.Progress, template *templates.Template, request interface{}) bool {
@@ -332,16 +316,15 @@ func (r *Runner) preloadWorkflowTemplates(p *progress.Progress, workflow *workfl
 		}
 		wflTemplatesList = append(wflTemplatesList, workflowTemplates{Name: name, Templates: wtlst})
 	}
-
 	return &wflTemplatesList, nil
-}
+}*/
 
+// resolvePathWithBaseFolder resolves a path with the base folder
 func resolvePathWithBaseFolder(baseFolder, templateName string) (string, error) {
 	templatePath := path.Join(baseFolder, templateName)
 	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		gologger.Debugf("Found template in current directory: %s\n", templatePath)
+		gologger.Debug().Msgf("Found template in current directory: %s\n", templatePath)
 		return templatePath, nil
 	}
-
 	return "", fmt.Errorf("no such path found: %s", templateName)
 }
