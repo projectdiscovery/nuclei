@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"gopkg.in/yaml.v2"
 )
 
@@ -30,23 +32,32 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	options.TemplateInfo = template.Info
 	options.TemplatePath = file
 
+	// We don't support both http and dns in a single template
+	if len(template.RequestsDNS) > 0 && len(template.RequestsHTTP) > 0 {
+		return nil, fmt.Errorf("both http and dns requests for %s", template.ID)
+	}
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsDNS)+len(template.Workflows) <= 0 {
+	if len(template.RequestsDNS)+len(template.RequestsDNS)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the requests found
 	for _, request := range template.RequestsDNS {
-		if err := request.Compile(options); err != nil {
-			return nil, errors.Wrap(err, "could not compile dns request")
-		}
 		template.totalRequests += request.Requests()
 	}
 	for _, request := range template.RequestsHTTP {
-		if err := request.Compile(options); err != nil {
-			return nil, errors.Wrap(err, "could not compile dns request")
-		}
 		template.totalRequests += request.Requests()
+	}
+	if len(template.RequestsDNS) > 0 {
+		template.executer = dns.NewExecuter(template.RequestsDNS, options)
+		err = template.executer.Compile()
+	}
+	if len(template.RequestsHTTP) > 0 {
+		template.executer = http.NewExecuter(template.RequestsHTTP, options)
+		err = template.executer.Compile()
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "could not compile request")
 	}
 	return template, nil
 }
