@@ -29,3 +29,8 @@ type Matcher struct {
 	// Subtemplates are ran if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
 }
+
+// Compile compiles the workflow template for execution
+func (w *Workflow) Compile(options *protocols.ExecuterOptions) {
+	w.options = options
+}
