@@ -31,7 +31,7 @@ func TestRequestGeneratorClusterSingle(t *testing.T) {
 		attackType: generators.ClusterBomb,
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
-	req.generator, err = generators.New(req.Payloads, req.attackType)
+	req.generator, err = generators.New(req.Payloads, req.attackType, "")
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()
@@ -54,7 +54,7 @@ func TestRequestGeneratorClusterMultipleRaw(t *testing.T) {
 		attackType: generators.ClusterBomb,
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
-	req.generator, err = generators.New(req.Payloads, req.attackType)
+	req.generator, err = generators.New(req.Payloads, req.attackType, "")
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()

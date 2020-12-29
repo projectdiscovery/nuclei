@@ -32,11 +32,18 @@ var StringToType = map[string]Type{
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, Type Type) (*Generator, error) {
+func New(payloads map[string]interface{}, Type Type, templatePath string) (*Generator, error) {
+	generator := &Generator{}
+	if err := generator.validate(payloads, templatePath); err != nil {
+		return nil, err
+	}
+
 	compiled, err := loadPayloads(payloads)
 	if err != nil {
 		return nil, err
 	}
+	generator.Type = Type
+	generator.payloads = compiled
 
 	// Validate the payload types
 	if Type == Sniper && len(compiled) > 1 {
@@ -51,7 +58,6 @@ func New(payloads map[string]interface{}, Type Type) (*Generator, error) {
 			totalLength = len(v)
 		}
 	}
-	generator := &Generator{Type: Type, payloads: compiled}
 	return generator, nil
 }
 

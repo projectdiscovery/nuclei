@@ -9,7 +9,7 @@ import (
 func TestSniperGenerator(t *testing.T) {
 	usernames := []string{"admin", "password", "login", "test"}
 
-	generator, err := New(map[string]interface{}{"username": usernames}, Sniper)
+	generator, err := New(map[string]interface{}{"username": usernames}, Sniper, "")
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -29,7 +29,7 @@ func TestPitchforkGenerator(t *testing.T) {
 	usernames := []string{"admin", "token"}
 	passwords := []string{"admin", "password"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchFork)
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchFork, "")
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -50,7 +50,7 @@ func TestClusterbombGenerator(t *testing.T) {
 	usernames := []string{"admin"}
 	passwords := []string{"admin", "password", "token"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBomb)
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBomb, "")
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()

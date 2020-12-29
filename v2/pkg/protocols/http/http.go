@@ -91,8 +91,13 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(r.Payloads) > 0 {
-		r.attackType = generators.StringToType[r.AttackType]
-		r.generator, err = generators.New(r.Payloads, r.attackType)
+		attackType := r.AttackType
+		if attackType == "" {
+			attackType = "sniper"
+		}
+		r.attackType = generators.StringToType[attackType]
+
+		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
