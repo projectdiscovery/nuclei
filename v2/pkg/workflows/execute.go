@@ -9,7 +9,7 @@ func (w *Workflow) RunWorkflow(input string) (bool, error) {
 	for _, template := range w.Workflows {
 		err := w.runWorkflowStep(template, input, results)
 		if err != nil {
-			return false, err
+			return results.Load(), err
 		}
 	}
 	return results.Load(), nil
@@ -26,8 +26,10 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 		if err != nil {
 			return err
 		}
-		firstMatched = matched
-		results.CAS(false, matched)
+		if matched {
+			firstMatched = matched
+			results.CAS(false, matched)
+		}
 	}
 
 	if len(template.Matchers) > 0 {
