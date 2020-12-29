@@ -37,7 +37,7 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 		return nil, fmt.Errorf("both http and dns requests for %s", template.ID)
 	}
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsDNS)+len(template.Workflow.Workflows) == 0 {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP) == 0 && template.Workflow == nil {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
