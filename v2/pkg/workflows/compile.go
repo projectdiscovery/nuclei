@@ -3,8 +3,8 @@ package workflows
 import (
 	"os"
 
+	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 // Parse a yaml workflow file

@@ -58,7 +58,7 @@ type Request struct {
 	Race bool `yaml:"race"`
 
 	// Operators for the current request go here.
-	*operators.Operators
+	*operators.Operators `yaml:",omitempty,inline"`
 
 	options       *protocols.ExecuterOptions
 	attackType    generators.Type

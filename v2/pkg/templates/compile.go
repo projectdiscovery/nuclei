@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	"gopkg.in/yaml.v2"
 )
 
 // Parse parses a yaml request template file
@@ -37,12 +37,12 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 		return nil, fmt.Errorf("both http and dns requests for %s", template.ID)
 	}
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP) == 0 && template.Workflow == nil {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the workflow request
-	if template.Workflow != nil {
+	if len(template.Workflows) > 0 {
 		if err := template.compileWorkflow(options); err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
@@ -65,6 +65,11 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "could not compile request")
+	}
+	if template.Executer != nil {
+		if err := template.Executer.Compile(); err != nil {
+			return nil, errors.Wrap(err, "could not compile template executer")
+		}
 	}
 	return template, nil
 }

@@ -21,6 +21,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()
+
 			match, err := template.Executer.Execute(URL)
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
@@ -31,6 +32,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		return nil
 	})
 	wg.Wait()
+
 	return results.Load()
 }
 

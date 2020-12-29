@@ -28,7 +28,7 @@ type Request struct {
 	Raw string `yaml:"raw,omitempty"`
 
 	// Operators for the current request go here.
-	*operators.Operators
+	*operators.Operators `yaml:",inline"`
 
 	// cache any variables that may be needed for operation.
 	class     uint16
