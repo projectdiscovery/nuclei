@@ -109,9 +109,12 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (r *Request) Requests() int {
-	if len(r.Payloads) > 0 {
+	if r.generator != nil {
 		payloadRequests := r.generator.NewIterator().Total()
 		return len(r.Raw) * payloadRequests
+	}
+	if len(r.Raw) > 0 {
+		return len(r.Raw)
 	}
 	return len(r.Path)
 }
