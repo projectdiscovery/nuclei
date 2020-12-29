@@ -32,11 +32,7 @@ func Init(options *types.Options) error {
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryabledns.Client)
 
-	if client, err := Get(options, &Configuration{}); err != nil {
-		return err
-	} else {
-		normalClient = client
-	}
+	normalClient = retryabledns.New(defaultResolvers, 1)
 	return nil
 }
 
@@ -58,7 +54,7 @@ func (c *Configuration) Hash() string {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
-	if !(configuration.Retries > 0) {
+	if !(configuration.Retries > 1) {
 		return normalClient, nil
 	}
 	hash := configuration.Hash()

@@ -37,11 +37,11 @@ func Init(options *types.Options) error {
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryablehttp.Client)
 
-	if client, err := Get(options, &Configuration{}); err != nil {
+	client, err := wrappedGet(options, &Configuration{})
+	if err != nil {
 		return err
-	} else {
-		normalClient = client
 	}
+	normalClient = client
 	return nil
 }
 
@@ -82,6 +82,11 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 	if !(configuration.Threads > 0 && configuration.MaxRedirects > 0 && configuration.FollowRedirects) {
 		return normalClient, nil
 	}
+	return wrappedGet(options, configuration)
+}
+
+// wrappedGet wraps a get operation without normal cliet check
+func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var proxyURL *url.URL
 	var err error
 

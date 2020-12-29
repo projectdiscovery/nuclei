@@ -12,14 +12,9 @@ import (
 
 // Match matches a generic data response again a given matcher
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
-	part, ok := data[matcher.Part]
-	if !ok {
-		return false
-	}
-	partString := part.(string)
-
+	partString := matcher.Part
 	switch partString {
-	case "body", "all":
+	case "body", "all", "":
 		partString = "raw"
 	}
 
@@ -123,7 +118,7 @@ func (r *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) out
 
 // makeResultEvent creates a result event from internal wrapped event
 func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	results := make([]*output.ResultEvent, len(wrapped.OperatorsResult.Matches)+1)
+	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
 	data := output.ResultEvent{
 		TemplateID:       r.options.TemplateID,

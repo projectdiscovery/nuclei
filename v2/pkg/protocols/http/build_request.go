@@ -168,7 +168,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request}, nil
+	return &generatedRequest{request: request, original: r.request}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -221,11 +221,7 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 
 	// rawhttp
 	if r.request.Unsafe {
-		unsafeReq := &generatedRequest{
-			rawRequest: rawRequestData,
-			meta:       genValues,
-			original:   r.request,
-		}
+		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: genValues, original: r.request}
 		return unsafeReq, nil
 	}
 
@@ -252,7 +248,7 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, meta: genValues}, nil
+	return &generatedRequest{request: request, meta: genValues, original: r.request}, nil
 }
 
 // fillRequest fills various headers in the request with values

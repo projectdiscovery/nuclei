@@ -43,7 +43,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 	var results bool
 
 	for _, req := range e.requests {
-		events, err := req.ExecuteHTTP(input, nil)
+		events, err := req.ExecuteWithResults(input, nil)
 		if err != nil {
 			return false, err
 		}
@@ -71,7 +71,7 @@ func (e *Executer) ExecuteWithResults(input string) ([]*output.InternalWrappedEv
 	var results []*output.InternalWrappedEvent
 
 	for _, req := range e.requests {
-		events, err := req.ExecuteHTTP(input, nil)
+		events, err := req.ExecuteWithResults(input, nil)
 		if err != nil {
 			return nil, err
 		}

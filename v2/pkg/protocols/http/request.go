@@ -160,8 +160,8 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 	return outputs, requestErr
 }
 
-// ExecuteHTTP executes the HTTP request on a URL
-func (e *Request) ExecuteHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+// ExecuteWithResults executes the final request on a URL
+func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// verify if pipeline was requested
 	if e.Pipeline {
 		return e.executeTurboHTTP(reqURL, dynamicValues)
@@ -343,7 +343,14 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	//	matchData = generators.MergeMaps(matchData, result.historyData)
 	//	result.Unlock()
 	//}
-	ouputEvent := e.responseToDSLMap(resp, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	var matchedURL string
+	if request.rawRequest != nil {
+		matchedURL = request.rawRequest.FullURL
+	}
+	if request.request != nil {
+		matchedURL = request.request.URL.String()
+	}
+	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
 	if e.Operators != nil {
