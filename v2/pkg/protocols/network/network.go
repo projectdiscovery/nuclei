@@ -20,7 +20,7 @@ type Request struct {
 	addressPort string
 
 	// Payload is the payload to send for the network request
-	Payload string `yaml:"payload"`
+	Inputs []*Input `yaml:"inputs"`
 	// ReadSize is the size of response to read (1024 if not provided by default)
 	ReadSize int `yaml:"read-size"`
 
@@ -31,6 +31,14 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
 	options *protocols.ExecuterOptions
+}
+
+// Input is the input to send on the network
+type Input struct {
+	// Data is the data to send as the input
+	Data string `yaml:"data"`
+	// Type is the type of input - hex, text.
+	Type string `yaml:"type"`
 }
 
 // Compile compiles the protocol request for further execution.
