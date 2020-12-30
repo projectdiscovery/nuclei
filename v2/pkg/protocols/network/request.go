@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
@@ -42,21 +43,45 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	defer conn.Close()
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 
-	_, err = conn.Write([]byte(r.Payload))
+	reqBuilder := &strings.Builder{}
+	for _, input := range r.Inputs {
+		var data []byte
+
+		switch input.Type {
+		case "hex":
+			data, err = hex.DecodeString(input.Data)
+		default:
+			data = []byte(input.Data)
+		}
+		if err != nil {
+			r.options.Output.Request(r.options.TemplateID, address, "network", err)
+			r.options.Progress.DecrementRequests(1)
+			return nil, errors.Wrap(err, "could not write request to server")
+		}
+		reqBuilder.Grow(len(input.Data))
+		reqBuilder.WriteString(input.Data)
+
+		_, err = conn.Write(data)
+		if err != nil {
+			r.options.Output.Request(r.options.TemplateID, address, "network", err)
+			r.options.Progress.DecrementRequests(1)
+			return nil, errors.Wrap(err, "could not write request to server")
+		}
+		r.options.Progress.IncrementRequests()
+	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
 		return nil, errors.Wrap(err, "could not write request to server")
 	}
-	r.options.Progress.IncrementRequests()
-
-	r.options.Output.Request(r.options.TemplateID, actualAddress, "network", err)
-	gologger.Verbose().Msgf("[%s] Sent Network request to %s", r.options.TemplateID, actualAddress)
 
 	if r.options.Options.Debug {
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
-		fmt.Fprintf(os.Stderr, "%s\n", r.Payload)
+		fmt.Fprintf(os.Stderr, "%s\n", reqBuilder.String())
 	}
+
+	r.options.Output.Request(r.options.TemplateID, actualAddress, "network", err)
+	gologger.Verbose().Msgf("[%s] Sent Network request to %s", r.options.TemplateID, actualAddress)
 
 	bufferSize := 1024
 	if r.ReadSize != 0 {
@@ -70,7 +95,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
 		fmt.Fprintf(os.Stderr, "%s\n", resp)
 	}
-	ouputEvent := r.responseToDSLMap(r.Payload, resp, input, actualAddress)
+	ouputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
 	if r.CompiledOperators != nil {
