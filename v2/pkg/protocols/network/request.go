@@ -41,7 +41,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 
 		output, err := r.executeAddress(actualAddress, address, input)
 		if err != nil {
-			gologger.Error().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			gologger.Verbose().Lable("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
 		outputs = append(outputs, output...)
