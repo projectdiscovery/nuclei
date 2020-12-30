@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -275,6 +276,9 @@ func (r *Runner) initializeProtocols() error {
 		return err
 	}
 	if err := httpclientpool.Init(r.options); err != nil {
+		return err
+	}
+	if err := networkclientpool.Init(r.options); err != nil {
 		return err
 	}
 	return nil
