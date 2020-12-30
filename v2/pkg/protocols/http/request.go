@@ -33,7 +33,7 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
-	var mutex *sync.Mutex
+	mutex := &sync.Mutex{}
 	var outputs []*output.InternalWrappedEvent
 	for i := 0; i < e.RaceNumberRequests; i++ {
 		request, err := generator.Make(reqURL, nil)
@@ -67,7 +67,7 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
-	var mutex *sync.Mutex
+	mutex := &sync.Mutex{}
 	var outputs []*output.InternalWrappedEvent
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
@@ -128,7 +128,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
-	var mutex *sync.Mutex
+	mutex := &sync.Mutex{}
 	var outputs []*output.InternalWrappedEvent
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
