@@ -28,7 +28,8 @@ type Request struct {
 	Raw string `yaml:"raw,omitempty"`
 
 	// Operators for the current request go here.
-	*operators.Operators `yaml:",inline"`
+	operators.Operators `yaml:",inline"`
+	CompiledOperators   *operators.Operators
 
 	// cache any variables that may be needed for operation.
 	class     uint16
@@ -48,10 +49,12 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	r.dnsClient = client
 
-	if r.Operators != nil {
-		if err := r.Operators.Compile(); err != nil {
+	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
+		compiled := &r.Operators
+		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		r.CompiledOperators = compiled
 	}
 	r.class = classToInt(r.Class)
 	r.options = options

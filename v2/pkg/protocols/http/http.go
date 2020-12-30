@@ -58,7 +58,8 @@ type Request struct {
 	Race bool `yaml:"race"`
 
 	// Operators for the current request go here.
-	*operators.Operators `yaml:",omitempty,inline"`
+	operators.Operators `yaml:",inline"`
+	CompiledOperators   *operators.Operators
 
 	options       *protocols.ExecuterOptions
 	attackType    generators.Type
@@ -85,10 +86,12 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if len(r.Raw) > 0 {
 		r.rawhttpClient = httpclientpool.GetRawHTTP()
 	}
-	if r.Operators != nil {
-		if err := r.Operators.Compile(); err != nil {
+	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
+		compiled := &r.Operators
+		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		r.CompiledOperators = compiled
 	}
 
 	if len(r.Payloads) > 0 {

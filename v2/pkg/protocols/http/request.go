@@ -353,7 +353,7 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
-	if e.Operators != nil {
+	if e.CompiledOperators != nil {
 		result, ok := e.Operators.Execute(ouputEvent, e.Match, e.Extract)
 		if !ok {
 			return nil, nil
