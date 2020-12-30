@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
@@ -32,12 +33,8 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	options.TemplateInfo = template.Info
 	options.TemplatePath = file
 
-	// We don't support both http and dns in a single template
-	if len(template.RequestsDNS) > 0 && len(template.RequestsHTTP) > 0 {
-		return nil, fmt.Errorf("both http and dns requests for %s", template.ID)
-	}
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.Workflows) == 0 {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsNetwork)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
@@ -58,12 +55,19 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	for _, request := range template.RequestsHTTP {
 		template.TotalRequests += request.Requests()
 	}
+	for _, request := range template.RequestsNetwork {
+		template.TotalRequests += request.Requests()
+	}
 	if len(template.RequestsDNS) > 0 {
 		template.Executer = dns.NewExecuter(template.RequestsDNS, options)
 		err = template.Executer.Compile()
 	}
 	if len(template.RequestsHTTP) > 0 {
 		template.Executer = http.NewExecuter(template.RequestsHTTP, options)
+		err = template.Executer.Compile()
+	}
+	if len(template.RequestsNetwork) > 0 {
+		template.Executer = network.NewExecuter(template.RequestsNetwork, options)
 		err = template.Executer.Compile()
 	}
 	if err != nil {
