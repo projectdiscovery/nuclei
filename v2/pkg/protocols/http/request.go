@@ -273,6 +273,7 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		e.options.Progress.DecrementRequests(1)
 		return nil, err
 	}
+	gologger.Verbose().Msgf("Sent request to %s", reqURL)
 	e.options.Output.Request(e.options.TemplateID, reqURL, "http", err)
 
 	duration := time.Since(timeStart)
@@ -317,11 +318,6 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 			return nil, errors.Wrap(err, "could not store in project file")
 		}
 	}
-
-	//	var matchData map[string]interface{}
-	//	if payloads != nil {
-	//		matchData = generators.MergeMaps(result.historyData, payloads)
-	//	}
 
 	// store for internal purposes the DSL matcher data
 	// hardcode stopping storing data after defaultMaxHistorydata items
