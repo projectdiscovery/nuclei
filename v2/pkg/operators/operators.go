@@ -26,7 +26,7 @@ func (r *Operators) Compile() error {
 	if r.MatchersCondition != "" {
 		r.matchersCondition = matchers.ConditionTypes[r.MatchersCondition]
 	} else {
-		r.matchersCondition = matchers.ANDCondition
+		r.matchersCondition = matchers.ORCondition
 	}
 
 	for _, matcher := range r.Matchers {
@@ -71,6 +71,7 @@ type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor
 func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc) (*Result, bool) {
 	matcherCondition := r.GetMatchersCondition()
 
+	var matches bool
 	result := &Result{
 		Matches:       make(map[string]struct{}),
 		Extracts:      make(map[string][]string),
@@ -86,9 +87,10 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		} else {
 			// If the matcher has matched, and its an OR
 			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition {
+			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
 				result.Matches[matcher.Name] = struct{}{}
 			}
+			matches = true
 		}
 	}
 
@@ -108,12 +110,18 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 				result.OutputExtracts = append(result.OutputExtracts, match)
 			}
 		}
-		result.Extracts[extractor.Name] = extractorResults
+		if len(extractorResults) > 0 {
+			result.Extracts[extractor.Name] = extractorResults
+		}
 	}
 
+	// Don't print if we have matchers and they have not matched, irregardless of extractor
+	if len(r.Matchers) > 0 && !matches {
+		return nil, false
+	}
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(result.Extracts) > 0 || len(result.Matches) > 0 || matcherCondition == matchers.ANDCondition {
+	if len(result.Extracts) > 0 || matches {
 		return result, true
 	}
 	return nil, false

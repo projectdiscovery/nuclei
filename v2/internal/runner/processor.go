@@ -45,7 +45,7 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()
-			match, err := template.RunWorkflow(URL)
+			match, err := template.CompiledWorkflow.RunWorkflow(URL)
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
 			}

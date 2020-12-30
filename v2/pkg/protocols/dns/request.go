@@ -55,7 +55,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	ouputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
-	if r.Operators != nil {
+	if r.CompiledOperators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
 			return nil, nil

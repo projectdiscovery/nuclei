@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"gopkg.in/yaml.v2"
 )
 
 // Parse parses a yaml request template file
@@ -43,10 +43,12 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 
 	// Compile the workflow request
 	if len(template.Workflows) > 0 {
-		if err := template.compileWorkflow(options); err != nil {
+		compiled := &template.Workflow
+		if err := template.compileWorkflow(options, compiled); err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
 		template.Workflow.Compile(options)
+		template.CompiledWorkflow = compiled
 	}
 
 	// Compile the requests found
@@ -76,8 +78,8 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 }
 
 // compileWorkflow compiles the workflow for execution
-func (t *Template) compileWorkflow(options *protocols.ExecuterOptions) error {
-	for _, workflow := range t.Workflows {
+func (t *Template) compileWorkflow(options *protocols.ExecuterOptions, workflows *workflows.Workflow) error {
+	for _, workflow := range workflows.Workflows {
 		if err := t.parseWorkflow(workflow, options); err != nil {
 			return err
 		}
