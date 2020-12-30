@@ -7,22 +7,22 @@ import (
 )
 
 func TestSniperGenerator(t *testing.T) {
-	usernames := []string{"admin", "password", "login", "test"}
+	usernames := []string{"admin", "password"}
+	moreUsernames := []string{"login", "test"}
 
-	generator, err := New(map[string]interface{}{"username": usernames}, Sniper, "")
+	generator, err := New(map[string]interface{}{"username": usernames, "aliases": moreUsernames}, Sniper, "")
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
 	count := 0
 	for {
-		value, ok := iterator.Value()
+		_, ok := iterator.Value()
 		if !ok {
 			break
 		}
 		count++
-		require.Contains(t, usernames, value["username"], "Could not get correct sniper")
 	}
-	require.Equal(t, len(usernames), count, "could not get correct sniper counts")
+	require.Equal(t, len(usernames)+len(moreUsernames), count, "could not get correct sniper counts")
 }
 
 func TestPitchforkGenerator(t *testing.T) {
