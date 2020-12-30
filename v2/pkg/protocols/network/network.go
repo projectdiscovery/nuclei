@@ -8,16 +8,14 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 )
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
 	// Address is the address to send requests to (host:port combos generally)
-	Address     string `yaml:"address"`
-	addressHost string
-	addressPort string
+	Address   []string `yaml:"host"`
+	addresses []keyValue
 
 	// Payload is the payload to send for the network request
 	Inputs []*Input `yaml:"inputs"`
@@ -33,6 +31,12 @@ type Request struct {
 	options *protocols.ExecuterOptions
 }
 
+// keyValue is a key value pair
+type keyValue struct {
+	key   string
+	value string
+}
+
 // Input is the input to send on the network
 type Input struct {
 	// Data is the data to send as the input
@@ -44,13 +48,16 @@ type Input struct {
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	var err error
-	if strings.Contains(r.Address, ":") {
-		r.addressHost, r.addressPort, err = net.SplitHostPort(r.Address)
-		if err != nil {
-			return errors.Wrap(err, "could not parse address")
+	for _, address := range r.Address {
+		if strings.Contains(address, ":") {
+			addressHost, addressPort, err := net.SplitHostPort(address)
+			if err != nil {
+				return errors.Wrap(err, "could not parse address")
+			}
+			r.addresses = append(r.addresses, keyValue{key: addressHost, value: addressPort})
+		} else {
+			r.addresses = append(r.addresses, keyValue{key: address})
 		}
-	} else {
-		r.addressHost = r.Address
 	}
 
 	// Create a client for the class
@@ -73,15 +80,5 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (r *Request) Requests() int {
-	return 1
-}
-
-// Make returns the request to be sent for the protocol
-func (r *Request) Make(data string) (string, error) {
-	replacer := replacer.New(map[string]interface{}{"Address": data})
-	address := replacer.Replace(r.addressHost)
-	if !strings.Contains(address, ":") {
-		address = net.JoinHostPort(address, r.addressPort)
-	}
-	return address, nil
+	return len(r.addresses)
 }

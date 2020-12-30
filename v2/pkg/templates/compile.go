@@ -49,15 +49,6 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	}
 
 	// Compile the requests found
-	for _, request := range template.RequestsDNS {
-		template.TotalRequests += request.Requests()
-	}
-	for _, request := range template.RequestsHTTP {
-		template.TotalRequests += request.Requests()
-	}
-	for _, request := range template.RequestsNetwork {
-		template.TotalRequests += request.Requests()
-	}
 	if len(template.RequestsDNS) > 0 {
 		template.Executer = dns.NewExecuter(template.RequestsDNS, options)
 		err = template.Executer.Compile()
@@ -70,13 +61,10 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 		template.Executer = network.NewExecuter(template.RequestsNetwork, options)
 		err = template.Executer.Compile()
 	}
+	template.TotalRequests += template.Executer.Requests()
+
 	if err != nil {
 		return nil, errors.Wrap(err, "could not compile request")
-	}
-	if template.Executer != nil {
-		if err := template.Executer.Compile(); err != nil {
-			return nil, errors.Wrap(err, "could not compile template executer")
-		}
 	}
 	return template, nil
 }

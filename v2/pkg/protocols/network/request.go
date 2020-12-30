@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
 
 var _ protocols.Request = &Request{}
@@ -26,12 +28,34 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		return nil, errors.Wrap(err, "could not get address from url")
 	}
 
-	// Compile each request for the template based on the URL
-	actualAddress, err := r.Make(address)
-	if err != nil {
+	var outputs []*output.InternalWrappedEvent
+	for _, kv := range r.addresses {
+		replacer := replacer.New(map[string]interface{}{"Hostname": address})
+		actualAddress := replacer.Replace(kv.key)
+		if kv.value != "" {
+			if strings.Contains(address, ":") {
+				actualAddress, _, _ = net.SplitHostPort(actualAddress)
+			}
+			actualAddress = net.JoinHostPort(actualAddress, kv.value)
+		}
+
+		output, err := r.executeAddress(actualAddress, address, input)
+		if err != nil {
+			gologger.Error().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			continue
+		}
+		outputs = append(outputs, output...)
+	}
+	return outputs, nil
+}
+
+// executeAddress executes the request for an address
+func (r *Request) executeAddress(actualAddress, address, input string) ([]*output.InternalWrappedEvent, error) {
+	if !strings.Contains(actualAddress, ":") {
+		err := errors.New("no port provided in network protocol request")
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not build request")
+		return nil, err
 	}
 
 	conn, err := r.dialer.Dial(context.Background(), "tcp", actualAddress)
@@ -77,6 +101,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 
 	if r.options.Options.Debug {
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
+
 		fmt.Fprintf(os.Stderr, "%s\n", reqBuilder.String())
 	}
 

@@ -161,23 +161,23 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// verify if pipeline was requested
-	if e.Pipeline {
-		return e.executeTurboHTTP(reqURL, dynamicValues)
+	if r.Pipeline {
+		return r.executeTurboHTTP(reqURL, dynamicValues)
 	}
 
 	// verify if a basic race condition was requested
-	if e.Race && e.RaceNumberRequests > 0 {
-		return e.executeRaceRequest(reqURL, dynamicValues)
+	if r.Race && r.RaceNumberRequests > 0 {
+		return r.executeRaceRequest(reqURL, dynamicValues)
 	}
 
 	// verify if parallel elaboration was requested
-	if e.Threads > 0 {
-		return e.executeParallelHTTP(reqURL, dynamicValues)
+	if r.Threads > 0 {
+		return r.executeParallelHTTP(reqURL, dynamicValues)
 	}
 
-	generator := e.newGenerator()
+	generator := r.newGenerator()
 
 	var requestErr error
 	var outputs []*output.InternalWrappedEvent
@@ -187,21 +187,21 @@ func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.DecrementRequests(int64(generator.Total()))
 			return nil, err
 		}
 
-		e.options.RateLimiter.Take()
-		output, err := e.executeRequest(reqURL, request, dynamicValues)
+		r.options.RateLimiter.Take()
+		output, err := r.executeRequest(reqURL, request, dynamicValues)
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
 		} else {
 			outputs = append(outputs, output...)
 		}
-		e.options.Progress.IncrementRequests()
+		r.options.Progress.IncrementRequests()
 
 		if request.original.options.Options.StopAtFirstMatch && len(output) > 0 {
-			e.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.DecrementRequests(int64(generator.Total()))
 			break
 		}
 	}
@@ -209,16 +209,15 @@ func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 }
 
 // executeRequest executes the actual generated request and returns error if occured
-func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
-	if e.options.Options.RandomAgent {
+	if r.options.Options.RandomAgent {
 		builder := &strings.Builder{}
 		builder.WriteString("User-Agent: ")
-		// nolint:errcheck // ignoring error
 		builder.WriteString(uarand.GetRandom())
-		e.customHeaders.Set(builder.String())
+		r.customHeaders.Set(builder.String())
 	}
-	e.setCustomHeaders(request)
+	r.setCustomHeaders(request)
 
 	var (
 		resp          *http.Response
@@ -226,14 +225,14 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		dumpedRequest []byte
 		fromcache     bool
 	)
-	if e.options.Options.Debug || e.options.ProjectFile != nil {
+	if r.options.Options.Debug || r.options.ProjectFile != nil {
 		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if e.options.Options.Debug {
-		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", e.options.TemplateID, reqURL)
+	if r.options.Options.Debug {
+		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
@@ -245,23 +244,23 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		// burp uses "\r\n" as new line character
 		request.rawRequest.Data = strings.ReplaceAll(request.rawRequest.Data, "\n", "\r\n")
 		options := request.original.rawhttpClient.Options
-		options.AutomaticContentLength = !e.DisableAutoContentLength
-		options.AutomaticHostHeader = !e.DisableAutoHostname
-		options.FollowRedirects = e.Redirects
+		options.AutomaticContentLength = !r.DisableAutoContentLength
+		options.AutomaticHostHeader = !r.DisableAutoHostname
+		options.FollowRedirects = r.Redirects
 		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
 		// if nuclei-project is available check if the request was already sent previously
-		if e.options.ProjectFile != nil {
+		if r.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromcache = true
 			// nolint:bodyclose // false positive the response is generated at runtime
-			resp, err = e.options.ProjectFile.Get(dumpedRequest)
+			resp, err = r.options.ProjectFile.Get(dumpedRequest)
 			if err != nil {
 				fromcache = false
 			}
 		}
 		if resp == nil {
-			resp, err = e.httpClient.Do(request.request)
+			resp, err = r.httpClient.Do(request.request)
 		}
 	}
 	if err != nil {
@@ -269,17 +268,17 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 			_, _ = io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
 		}
-		e.options.Output.Request(e.options.TemplateID, reqURL, "http", err)
-		e.options.Progress.DecrementRequests(1)
+		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
+		r.options.Progress.DecrementRequests(1)
 		return nil, err
 	}
 	gologger.Verbose().Msgf("Sent request to %s", reqURL)
-	e.options.Output.Request(e.options.TemplateID, reqURL, "http", err)
+	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 
 	duration := time.Since(timeStart)
 	// Dump response - Step 1 - Decompression not yet handled
 	var dumpedResponse []byte
-	if e.options.Options.Debug {
+	if r.options.Options.Debug {
 		var dumpErr error
 		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
@@ -305,15 +304,15 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if e.options.Options.Debug {
+	if r.options.Options.Debug {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", e.options.TemplateID, reqURL)
+		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, reqURL)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
-	if e.options.ProjectFile != nil && !fromcache {
-		err := e.options.ProjectFile.Set(dumpedRequest, resp, data)
+	if r.options.ProjectFile != nil && !fromcache {
+		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not store in project file")
 		}
@@ -346,11 +345,11 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if request.request != nil {
 		matchedURL = request.request.URL.String()
 	}
-	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	ouputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
-	if e.CompiledOperators != nil {
-		result, ok := e.Operators.Execute(ouputEvent, e.Match, e.Extract)
+	if r.CompiledOperators != nil {
+		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
 			return nil, nil
 		}
