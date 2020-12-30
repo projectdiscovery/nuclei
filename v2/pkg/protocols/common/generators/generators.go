@@ -46,9 +46,6 @@ func New(payloads map[string]interface{}, Type Type, templatePath string) (*Gene
 	generator.payloads = compiled
 
 	// Validate the payload types
-	if Type == Sniper && len(compiled) > 1 {
-		return nil, errors.New("cannot use more than one payload set in sniper")
-	}
 	if Type == PitchFork {
 		var totalLength int
 		for v := range compiled {
@@ -104,7 +101,11 @@ func (i *Iterator) Remaining() int {
 func (i *Iterator) Total() int {
 	count := 0
 	switch i.Type {
-	case Sniper, PitchFork:
+	case Sniper:
+		for _, p := range i.payloads {
+			count += len(p.values)
+		}
+	case PitchFork:
 		count = len(i.payloads[0].values)
 	case ClusterBomb:
 		count = 1
@@ -133,9 +134,14 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 func (i *Iterator) sniperValue() (map[string]interface{}, bool) {
 	values := make(map[string]interface{}, 1)
 
-	payload := i.payloads[0]
+	currentIndex := i.msbIterator
+	payload := i.payloads[currentIndex]
 	if !payload.next() {
-		return nil, false
+		i.msbIterator++
+		if i.msbIterator == len(i.payloads) {
+			return nil, false
+		}
+		return i.sniperValue()
 	}
 	values[payload.name] = payload.value()
 	payload.incrementPosition()
