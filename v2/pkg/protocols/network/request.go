@@ -127,6 +127,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 			return nil
 		}
 		event.OperatorsResult = result
+		event.Results = r.makeResultEvent(event)
 	}
 	callback(event)
 	return nil

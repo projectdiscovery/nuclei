@@ -55,6 +55,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 				return
 			}
 			event.OperatorsResult = result
+			event.Results = r.makeResultEvent(event)
 			callback(event)
 		}
 	})

@@ -61,6 +61,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 			return nil
 		}
 		event.OperatorsResult = result
+		event.Results = r.makeResultEvent(event)
 	}
 	callback(event)
 	return nil

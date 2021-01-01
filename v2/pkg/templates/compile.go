@@ -6,10 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
@@ -50,17 +47,30 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	}
 
 	// Compile the requests found
+	requests := []protocols.Request{}
 	if len(template.RequestsDNS) > 0 {
-		template.Executer = dns.NewExecuter(template.RequestsDNS, options)
+		for _, req := range template.RequestsDNS {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, options)
 	}
 	if len(template.RequestsHTTP) > 0 {
-		template.Executer = http.NewExecuter(template.RequestsHTTP, options)
+		for _, req := range template.RequestsHTTP {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, options)
 	}
 	if len(template.RequestsFile) > 0 {
-		template.Executer = file.NewExecuter(template.RequestsFile, options)
+		for _, req := range template.RequestsFile {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, options)
 	}
 	if len(template.RequestsNetwork) > 0 {
-		template.Executer = network.NewExecuter(template.RequestsNetwork, options)
+		for _, req := range template.RequestsNetwork {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, options)
 	}
 	template.TotalRequests += template.Executer.Requests()
 
