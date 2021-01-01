@@ -7,16 +7,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
 
 // Parse parses a yaml request template file
-func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
+func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 
-	f, err := os.Open(file)
+	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -30,14 +31,10 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	// Setting up variables regarding template metadata
 	options.TemplateID = template.ID
 	options.TemplateInfo = template.Info
-	options.TemplatePath = file
+	options.TemplatePath = filePath
 
-	// We don't support both http and dns in a single template
-	if len(template.RequestsDNS) > 0 && len(template.RequestsHTTP) > 0 {
-		return nil, fmt.Errorf("both http and dns requests for %s", template.ID)
-	}
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.Workflows) == 0 {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
@@ -58,13 +55,17 @@ func Parse(file string, options *protocols.ExecuterOptions) (*Template, error) {
 	for _, request := range template.RequestsHTTP {
 		template.TotalRequests += request.Requests()
 	}
+	for _, request := range template.RequestsFile {
+		template.TotalRequests += request.Requests()
+	}
 	if len(template.RequestsDNS) > 0 {
 		template.Executer = dns.NewExecuter(template.RequestsDNS, options)
-		err = template.Executer.Compile()
 	}
 	if len(template.RequestsHTTP) > 0 {
 		template.Executer = http.NewExecuter(template.RequestsHTTP, options)
-		err = template.Executer.Compile()
+	}
+	if len(template.RequestsFile) > 0 {
+		template.Executer = file.NewExecuter(template.RequestsFile, options)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "could not compile request")
