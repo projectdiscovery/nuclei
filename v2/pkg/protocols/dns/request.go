@@ -14,7 +14,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
@@ -28,7 +28,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not build request")
+		return errors.Wrap(err, "could not build request")
 	}
 
 	if r.options.Options.Debug {
@@ -41,7 +41,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not send dns request")
+		return errors.Wrap(err, "could not send dns request")
 	}
 	r.options.Progress.IncrementRequests()
 
@@ -54,15 +54,16 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	}
 	ouputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
 
-	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
+	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 	if r.CompiledOperators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
-			return nil, nil
+			return nil
 		}
-		event[0].OperatorsResult = result
+		event.OperatorsResult = result
 	}
-	return event, nil
+	callback(event)
+	return nil
 }
 
 // isURL tests a string to determine if it is a well-structured url or not.

@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/rawhttp"
@@ -27,7 +28,7 @@ import (
 const defaultMaxWorkers = 150
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	maxWorkers := e.RaceNumberRequests
@@ -35,7 +36,6 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 
 	var requestErr error
 	mutex := &sync.Mutex{}
-	var outputs []*output.InternalWrappedEvent
 	for i := 0; i < e.RaceNumberRequests; i++ {
 		request, err := generator.Make(reqURL, nil)
 		if err != nil {
@@ -44,23 +44,21 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
-			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-			} else {
-				outputs = append(outputs, output...)
 			}
 			mutex.Unlock()
 			swg.Done()
 		}(request)
 	}
 	swg.Wait()
-	return outputs, requestErr
+	return requestErr
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	// Workers that keeps enqueuing new requests
@@ -69,7 +67,6 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 
 	var requestErr error
 	mutex := &sync.Mutex{}
-	var outputs []*output.InternalWrappedEvent
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
@@ -77,36 +74,34 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 		}
 		if err != nil {
 			e.options.Progress.DecrementRequests(int64(generator.Total()))
-			return nil, err
+			return err
 		}
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
 			e.options.RateLimiter.Take()
-			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-			} else {
-				outputs = append(outputs, output...)
 			}
 			mutex.Unlock()
 		}(request)
 		e.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-	return outputs, requestErr
+	return requestErr
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
@@ -130,7 +125,6 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 
 	var requestErr error
 	mutex := &sync.Mutex{}
-	var outputs []*output.InternalWrappedEvent
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
@@ -138,7 +132,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 		}
 		if err != nil {
 			e.options.Progress.DecrementRequests(int64(generator.Total()))
-			return nil, err
+			return err
 		}
 		request.pipelinedClient = pipeclient
 
@@ -146,42 +140,39 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			output, err := e.executeRequest(reqURL, httpRequest, dynamicValues)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-			} else {
-				outputs = append(outputs, output...)
 			}
 			mutex.Unlock()
 		}(request)
 		e.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-	return outputs, requestErr
+	return requestErr
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (r *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
 	if r.Pipeline {
-		return r.executeTurboHTTP(reqURL, dynamicValues)
+		return r.executeTurboHTTP(reqURL, dynamicValues, callback)
 	}
 
 	// verify if a basic race condition was requested
 	if r.Race && r.RaceNumberRequests > 0 {
-		return r.executeRaceRequest(reqURL, dynamicValues)
+		return r.executeRaceRequest(reqURL, dynamicValues, callback)
 	}
 
 	// verify if parallel elaboration was requested
 	if r.Threads > 0 {
-		return r.executeParallelHTTP(reqURL, dynamicValues)
+		return r.executeParallelHTTP(reqURL, dynamicValues, callback)
 	}
 
 	generator := r.newGenerator()
 
 	var requestErr error
-	var outputs []*output.InternalWrappedEvent
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
@@ -189,34 +180,34 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 		}
 		if err != nil {
 			r.options.Progress.DecrementRequests(int64(generator.Total()))
-			return nil, err
+			return err
 		}
 
+		var gotOutput bool
 		r.options.RateLimiter.Take()
-		output, err := r.executeRequest(reqURL, request, dynamicValues)
+		err = r.executeRequest(reqURL, request, dynamicValues, func(event *output.InternalWrappedEvent) {
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotOutput = true
+				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
+			}
+			callback(event)
+		})
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
-		} else {
-			// Add the extracts to the dynamic values if any.
-			for _, o := range output {
-				if o.OperatorsResult != nil {
-					dynamicValues = generators.MergeMaps(dynamicValues, o.OperatorsResult.DynamicValues)
-				}
-			}
-			outputs = append(outputs, output...)
 		}
 		r.options.Progress.IncrementRequests()
 
-		if request.original.options.Options.StopAtFirstMatch && len(output) > 0 {
+		if request.original.options.Options.StopAtFirstMatch && gotOutput {
 			r.options.Progress.DecrementRequests(int64(generator.Total()))
 			break
 		}
 	}
-	return outputs, requestErr
+	return requestErr
 }
 
 // executeRequest executes the actual generated request and returns error if occured
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if r.options.Options.RandomAgent {
 		builder := &strings.Builder{}
@@ -235,7 +226,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if r.options.Options.Debug || r.options.ProjectFile != nil {
 		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if r.options.Options.Debug {
@@ -277,7 +268,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, err
+		return err
 	}
 	gologger.Verbose().Msgf("Sent request to %s", reqURL)
 	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
@@ -289,7 +280,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		var dumpErr error
 		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
-			return nil, errors.Wrap(dumpErr, "could not dump http response")
+			return errors.Wrap(dumpErr, "could not dump http response")
 		}
 	}
 
@@ -297,7 +288,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if err != nil {
 		_, _ = io.Copy(ioutil.Discard, resp.Body)
 		resp.Body.Close()
-		return nil, errors.Wrap(err, "could not read http body")
+		return errors.Wrap(err, "could not read http body")
 	}
 	resp.Body.Close()
 
@@ -307,7 +298,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	dataOrig := data
 	data, err = handleDecompression(request, data)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not decompress http body")
+		return errors.Wrap(err, "could not decompress http body")
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
@@ -321,7 +312,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if r.options.ProjectFile != nil && !fromcache {
 		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not store in project file")
+			return errors.Wrap(err, "could not store in project file")
 		}
 	}
 
@@ -352,18 +343,19 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if request.request != nil {
 		matchedURL = request.request.URL.String()
 	}
-	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	ouputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
-	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
+	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 	if r.CompiledOperators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
-			return nil, nil
+			return nil
 		}
 		result.PayloadValues = request.meta
-		event[0].OperatorsResult = result
+		event.OperatorsResult = result
+		callback(event)
 	}
-	return event, nil
+	return nil
 }
 
 const two = 2

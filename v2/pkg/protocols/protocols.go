@@ -20,7 +20,7 @@ type Executer interface {
 	// Execute executes the protocol group and returns true or false if results were found.
 	Execute(input string) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error)
+	ExecuteWithResults(input string, callback OutputEventCallback) error
 }
 
 // ExecuterOptions contains the configuration options for executer clients
@@ -56,5 +56,8 @@ type Request interface {
 	// Extract performs extracting operation for a extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error)
+	ExecuteWithResults(input string, metadata output.InternalEvent, callback OutputEventCallback) error
 }
+
+// OutputEventCallback is a callback event for any results found during scanning.
+type OutputEventCallback func(result *output.InternalWrappedEvent)

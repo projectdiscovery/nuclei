@@ -20,15 +20,14 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
 	address, err := getAddress(input)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "network", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not get address from url")
+		return errors.Wrap(err, "could not get address from url")
 	}
 
-	var outputs []*output.InternalWrappedEvent
 	for _, kv := range r.addresses {
 		replacer := replacer.New(map[string]interface{}{"Hostname": address})
 		actualAddress := replacer.Replace(kv.key)
@@ -39,30 +38,29 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 			actualAddress = net.JoinHostPort(actualAddress, kv.value)
 		}
 
-		output, err := r.executeAddress(actualAddress, address, input)
+		err = r.executeAddress(actualAddress, address, input, callback)
 		if err != nil {
 			gologger.Verbose().Lable("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
-		outputs = append(outputs, output...)
 	}
-	return outputs, nil
+	return nil
 }
 
 // executeAddress executes the request for an address
-func (r *Request) executeAddress(actualAddress, address, input string) ([]*output.InternalWrappedEvent, error) {
+func (r *Request) executeAddress(actualAddress, address, input string, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, err
+		return err
 	}
 
 	conn, err := r.dialer.Dial(context.Background(), "tcp", actualAddress)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not connect to server request")
+		return errors.Wrap(err, "could not connect to server request")
 	}
 	defer conn.Close()
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -80,7 +78,7 @@ func (r *Request) executeAddress(actualAddress, address, input string) ([]*outpu
 		if err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.DecrementRequests(1)
-			return nil, errors.Wrap(err, "could not write request to server")
+			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
 		reqBuilder.WriteString(input.Data)
@@ -89,14 +87,14 @@ func (r *Request) executeAddress(actualAddress, address, input string) ([]*outpu
 		if err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.DecrementRequests(1)
-			return nil, errors.Wrap(err, "could not write request to server")
+			return errors.Wrap(err, "could not write request to server")
 		}
 		r.options.Progress.IncrementRequests()
 	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not write request to server")
+		return errors.Wrap(err, "could not write request to server")
 	}
 
 	if r.options.Options.Debug {
@@ -122,15 +120,16 @@ func (r *Request) executeAddress(actualAddress, address, input string) ([]*outpu
 	}
 	ouputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
 
-	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
+	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 	if r.CompiledOperators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 		if !ok {
-			return nil, nil
+			return nil
 		}
-		event[0].OperatorsResult = result
+		event.OperatorsResult = result
 	}
-	return event, nil
+	callback(event)
+	return nil
 }
 
 // getAddress returns the address of the host to make request to
