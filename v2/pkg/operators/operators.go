@@ -56,7 +56,7 @@ type Result struct {
 	// OutputExtracts is the list of extracts to be displayed on screen.
 	OutputExtracts []string
 	// DynamicValues contains any dynamic values to be templated
-	DynamicValues map[string]string
+	DynamicValues map[string]interface{}
 	// PayloadValues contains payload values provided by user. (Optional)
 	PayloadValues map[string]interface{}
 }
@@ -75,7 +75,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	result := &Result{
 		Matches:       make(map[string]struct{}),
 		Extracts:      make(map[string][]string),
-		DynamicValues: make(map[string]string),
+		DynamicValues: make(map[string]interface{}),
 	}
 	for _, matcher := range r.Matchers {
 		// Check if the matcher matched

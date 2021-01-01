@@ -197,6 +197,12 @@ func (e *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]int
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
 		} else {
+			// Add the extracts to the dynamic values if any.
+			for _, o := range output {
+				if o.OperatorsResult != nil {
+					dynamicValues = generators.MergeMaps(dynamicValues, o.OperatorsResult.DynamicValues)
+				}
+			}
 			outputs = append(outputs, output...)
 		}
 		e.options.Progress.IncrementRequests()
