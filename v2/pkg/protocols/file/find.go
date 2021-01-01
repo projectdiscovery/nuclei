@@ -103,7 +103,7 @@ func (r *Request) findDirectoryMatches(absPath string, processed map[string]stru
 // validatePath validates a file path for blacklist and whitelist options
 func (r *Request) validatePath(item string) bool {
 	extension := path.Ext(item)
-	if len(r.extensions) > 0 {
+	if len(r.extensions) > 0 && !r.allExtensions {
 		if _, ok := r.extensions[extension]; ok {
 			return true
 		}

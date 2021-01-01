@@ -28,6 +28,7 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	options           *protocols.ExecuterOptions
 	extensions        map[string]struct{}
+	allExtensions     bool
 	extensionDenylist map[string]struct{}
 }
 
@@ -53,7 +54,11 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	r.extensionDenylist = make(map[string]struct{})
 
 	for _, extension := range r.Extensions {
-		r.extensions[extension] = struct{}{}
+		if extension == "*" {
+			r.allExtensions = true
+		} else {
+			r.extensions[extension] = struct{}{}
+		}
 	}
 	for _, extension := range defaultDenylist {
 		r.extensionDenylist[extension] = struct{}{}
