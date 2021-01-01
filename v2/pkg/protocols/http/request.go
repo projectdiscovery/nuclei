@@ -154,7 +154,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (r *Request) ExecuteWithResults(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(reqURL string, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
 	if r.Pipeline {
 		return r.executeTurboHTTP(reqURL, dynamicValues, callback)
@@ -316,26 +316,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 	}
 
-	// store for internal purposes the DSL matcher data
-	// hardcode stopping storing data after defaultMaxHistorydata items
-	//if len(result.historyData) < defaultMaxHistorydata {
-	//	result.Lock()
-	//	// update history data with current reqURL and hostname
-	//	result.historyData["reqURL"] = reqURL
-	//	if parsed, err := url.Parse(reqURL); err == nil {
-	//		result.historyData["Hostname"] = parsed.Host
-	//	}
-	//	result.historyData = generators.MergeMaps(result.historyData, matchers.HTTPToMap(resp, body, headers, duration, format))
-	//	if payloads == nil {
-	//		// merge them to history data
-	//		result.historyData = generators.MergeMaps(result.historyData, payloads)
-	//	}
-	//	result.historyData = generators.MergeMaps(result.historyData, dynamicvalues)
-	//
-	//	// complement match data with new one if necessary
-	//	matchData = generators.MergeMaps(matchData, result.historyData)
-	//	result.Unlock()
-	//}
 	var matchedURL string
 	if request.rawRequest != nil {
 		matchedURL = request.rawRequest.FullURL
@@ -351,8 +331,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		if !ok {
 			return nil
 		}
-		result.PayloadValues = request.meta
 		event.OperatorsResult = result
+		result.PayloadValues = request.meta
+		event.Results = r.makeResultEvent(event)
 		callback(event)
 	}
 	return nil
