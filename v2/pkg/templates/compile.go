@@ -64,8 +64,11 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	}
 	template.TotalRequests += template.Executer.Requests()
 
-	if err != nil {
-		return nil, errors.Wrap(err, "could not compile request")
+	if template.Executer != nil {
+		err := template.Executer.Compile()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not compile request")
+		}
 	}
 	return template, nil
 }

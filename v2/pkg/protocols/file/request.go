@@ -15,9 +15,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
-	var events []*output.InternalWrappedEvent
-
+func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
 	err := r.getInputPaths(input, func(data string) {
 		file, err := os.Open(data)
 		if err != nil {
@@ -50,21 +48,21 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		gologger.Verbose().Msgf("[%s] Sent file request to %s", r.options.TemplateID, data)
 		ouputEvent := r.responseToDSLMap(dataStr, input, data)
 
-		event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
+		event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 		if r.CompiledOperators != nil {
 			result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
 			if !ok {
 				return
 			}
-			event[0].OperatorsResult = result
+			event.OperatorsResult = result
+			callback(event)
 		}
-		events = append(events, event...)
 	})
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "file", err)
 		r.options.Progress.DecrementRequests(1)
-		return nil, errors.Wrap(err, "could not send file request")
+		return errors.Wrap(err, "could not send file request")
 	}
 	r.options.Progress.IncrementRequests()
-	return events, nil
+	return nil
 }

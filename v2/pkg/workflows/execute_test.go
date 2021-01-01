@@ -5,6 +5,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/stretchr/testify/require"
 )
 
@@ -162,9 +163,12 @@ func (m *mockExecuter) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
+func (m *mockExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
 		m.executeHook(input)
 	}
-	return m.outputs, nil
+	for _, output := range m.outputs {
+		callback(output)
+	}
+	return nil
 }

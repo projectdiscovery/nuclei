@@ -1,6 +1,9 @@
 package workflows
 
-import "go.uber.org/atomic"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"go.uber.org/atomic"
+)
 
 // RunWorkflow runs a workflow on an input and returns true or false
 func (w *Workflow) RunWorkflow(input string) (bool, error) {
@@ -35,32 +38,32 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 	if len(template.Matchers) > 0 {
 		w.options.Progress.AddToTotal(int64(template.Executer.Requests()))
 
-		output, err := template.Executer.ExecuteWithResults(input)
-		if err != nil {
-			return err
-		}
-		if len(output) == 0 {
-			return nil
-		}
+		var executionErr error
+		err := template.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult == nil {
+				return
+			}
 
-		for _, matcher := range template.Matchers {
-			for _, item := range output {
-				if item.OperatorsResult == nil {
-					continue
-				}
-
-				_, matchOK := item.OperatorsResult.Matches[matcher.Name]
-				_, extractOK := item.OperatorsResult.Extracts[matcher.Name]
+			for _, matcher := range template.Matchers {
+				_, matchOK := event.OperatorsResult.Matches[matcher.Name]
+				_, extractOK := event.OperatorsResult.Extracts[matcher.Name]
 				if !matchOK && !extractOK {
 					continue
 				}
 
 				for _, subtemplate := range matcher.Subtemplates {
 					if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
-						return err
+						executionErr = err
+						break
 					}
 				}
 			}
+		})
+		if err != nil {
+			return err
+		}
+		if executionErr != nil {
+			return executionErr
 		}
 		return nil
 	}

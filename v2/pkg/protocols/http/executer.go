@@ -42,49 +42,35 @@ func (e *Executer) Requests() int {
 func (e *Executer) Execute(input string) (bool, error) {
 	var results bool
 
+	dynamicValues := make(map[string]interface{})
 	for _, req := range e.requests {
-		events, err := req.ExecuteWithResults(input, nil)
-		if err != nil {
-			return false, err
-		}
-		if events == nil {
-			return false, nil
-		}
-
-		// If we have a result field, we should add a result to slice.
-		for _, event := range events {
+		err := req.ExecuteWithResults(input, dynamicValues, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult == nil {
-				continue
+				return
 			}
-
 			for _, result := range req.makeResultEvent(event) {
 				results = true
 				e.options.Output.Write(result)
 			}
+		})
+		if err != nil {
+			continue
 		}
 	}
 	return results, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string) ([]*output.InternalWrappedEvent, error) {
-	var results []*output.InternalWrappedEvent
-
+func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+	dynamicValues := make(map[string]interface{})
 	for _, req := range e.requests {
-		events, err := req.ExecuteWithResults(input, nil)
-		if err != nil {
-			return nil, err
-		}
-		if events == nil {
-			return nil, nil
-		}
-		for _, event := range events {
+		_ = req.ExecuteWithResults(input, dynamicValues, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult == nil {
-				continue
+				return
 			}
 			event.Results = req.makeResultEvent(event)
-		}
-		results = append(results, events...)
+			callback(event)
+		})
 	}
-	return results, nil
+	return nil
 }
