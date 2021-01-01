@@ -18,6 +18,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
+
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()

@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
@@ -34,7 +35,7 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	options.TemplatePath = filePath
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.Workflows) == 0 {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
@@ -49,15 +50,6 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	}
 
 	// Compile the requests found
-	for _, request := range template.RequestsDNS {
-		template.TotalRequests += request.Requests()
-	}
-	for _, request := range template.RequestsHTTP {
-		template.TotalRequests += request.Requests()
-	}
-	for _, request := range template.RequestsFile {
-		template.TotalRequests += request.Requests()
-	}
 	if len(template.RequestsDNS) > 0 {
 		template.Executer = dns.NewExecuter(template.RequestsDNS, options)
 	}
@@ -67,13 +59,13 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	if len(template.RequestsFile) > 0 {
 		template.Executer = file.NewExecuter(template.RequestsFile, options)
 	}
+	if len(template.RequestsNetwork) > 0 {
+		template.Executer = network.NewExecuter(template.RequestsNetwork, options)
+	}
+	template.TotalRequests += template.Executer.Requests()
+
 	if err != nil {
 		return nil, errors.Wrap(err, "could not compile request")
-	}
-	if template.Executer != nil {
-		if err := template.Executer.Compile(); err != nil {
-			return nil, errors.Wrap(err, "could not compile template executer")
-		}
 	}
 	return template, nil
 }

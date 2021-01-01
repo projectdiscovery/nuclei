@@ -10,7 +10,7 @@ import (
 
 func TestWorkflowsSimple(t *testing.T) {
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: true}},
+		{Executer: &mockExecuter{result: true}},
 	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
@@ -21,10 +21,10 @@ func TestWorkflowsSimple(t *testing.T) {
 func TestWorkflowsSimpleMultiple(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}}},
-		{executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			secondInput = input
 		}}},
 	}}
@@ -40,11 +40,11 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 func TestWorkflowsSubtemplates(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}},
 			Subtemplates: []*WorkflowTemplate{
-				{executer: &mockExecuter{result: true, executeHook: func(input string) {
+				{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 					secondInput = input
 				}}},
 			}},
@@ -61,11 +61,11 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: false, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: false, executeHook: func(input string) {
 			firstInput = input
 		}},
 			Subtemplates: []*WorkflowTemplate{
-				{executer: &mockExecuter{result: true, executeHook: func(input string) {
+				{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 					secondInput = input
 				}}},
 			}},
@@ -82,7 +82,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}, outputs: []*output.InternalWrappedEvent{
 			{OperatorsResult: &operators.Result{
@@ -92,7 +92,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 		}},
 			Matchers: []*Matcher{
 				{Name: "tomcat", Subtemplates: []*WorkflowTemplate{
-					{executer: &mockExecuter{result: true, executeHook: func(input string) {
+					{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 						secondInput = input
 					}}},
 				}},
@@ -111,7 +111,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}, outputs: []*output.InternalWrappedEvent{
 			{OperatorsResult: &operators.Result{
@@ -121,7 +121,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 		}},
 			Matchers: []*Matcher{
 				{Name: "apache", Subtemplates: []*WorkflowTemplate{
-					{executer: &mockExecuter{result: true, executeHook: func(input string) {
+					{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 						secondInput = input
 					}}},
 				}},

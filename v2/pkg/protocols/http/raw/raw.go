@@ -47,7 +47,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 			break
 		}
 
-		//nolint:gomnd // this is not a magic number
 		p := strings.SplitN(line, ":", 2)
 		key = p[0]
 		if len(p) > 1 {

@@ -1,11 +1,6 @@
-package http
+package network
 
 import (
-	"net/http"
-	"net/http/httputil"
-	"strings"
-	"time"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -16,32 +11,17 @@ import (
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partString := matcher.Part
 	switch partString {
-	case "header":
-		partString = "all_headers"
+	case "body", "all", "":
+		partString = "data"
 	}
 
-	var itemStr string
-	if partString == "all" {
-		builder := &strings.Builder{}
-		builder.WriteString(data["body"].(string))
-		builder.WriteString("\n\n")
-		builder.WriteString(data["all_headers"].(string))
-		itemStr = builder.String()
-	} else {
-		item, ok := data[partString]
-		if !ok {
-			return false
-		}
-		itemStr = types.ToString(item)
+	item, ok := data[partString]
+	if !ok {
+		return false
 	}
+	itemStr := types.ToString(item)
 
 	switch matcher.GetType() {
-	case matchers.StatusMatcher:
-		statusCode, ok := data["status_code"]
-		if !ok {
-			return false
-		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr)))
 	case matchers.WordsMatcher:
@@ -58,26 +38,23 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 // Extract performs extracting operation for a extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	partString := extractor.Part
+	part, ok := data[extractor.Part]
+	if !ok {
+		return nil
+	}
+	partString := part.(string)
+
 	switch partString {
-	case "header":
-		partString = "all_headers"
+	case "body", "all":
+		partString = "data"
 	}
 
-	var itemStr string
-	if partString == "all" {
-		builder := &strings.Builder{}
-		builder.WriteString(data["body"].(string))
-		builder.WriteString("\n\n")
-		builder.WriteString(data["all_headers"].(string))
-		itemStr = builder.String()
-	} else {
-		item, ok := data[partString]
-		if !ok {
-			return nil
-		}
-		itemStr = types.ToString(item)
+	item, ok := data[partString]
+	if !ok {
+		return nil
 	}
+	itemStr := types.ToString(item)
+
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
 		return extractor.ExtractRegex(itemStr)
@@ -87,38 +64,17 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 	return nil
 }
 
-// responseToDSLMap converts a HTTP response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
-	data := make(map[string]interface{}, len(extra)+8+len(resp.Header)+len(resp.Cookies()))
-	for k, v := range extra {
-		data[k] = v
-	}
+// responseToDSLMap converts a DNS response to a map for use in DSL matching
+func (r *Request) responseToDSLMap(req, resp string, host, matched string) output.InternalEvent {
+	data := make(output.InternalEvent, 4)
 
+	// Some data regarding the request metadata
 	data["host"] = host
 	data["matched"] = matched
 	if r.options.Options.JSONRequests {
-		data["request"] = rawReq
-		data["response"] = rawResp
+		data["request"] = req
 	}
-
-	data["content_length"] = resp.ContentLength
-	data["status_code"] = resp.StatusCode
-
-	data["body"] = body
-	for _, cookie := range resp.Cookies() {
-		data[cookie.Name] = cookie.Value
-	}
-	for k, v := range resp.Header {
-		k = strings.ToLower(strings.TrimSpace(strings.ReplaceAll(k, "-", "_")))
-		data[k] = strings.Join(v, " ")
-	}
-	data["all_headers"] = headers
-
-	if r, err := httputil.DumpResponse(resp, true); err == nil {
-		rawString := string(r)
-		data["raw"] = rawString
-	}
-	data["duration"] = duration.Seconds()
+	data["data"] = resp
 	return data
 }
 
@@ -129,15 +85,14 @@ func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 	data := output.ResultEvent{
 		TemplateID:       r.options.TemplateID,
 		Info:             r.options.TemplateInfo,
-		Type:             "http",
+		Type:             "network",
 		Host:             wrapped.InternalEvent["host"].(string),
 		Matched:          wrapped.InternalEvent["matched"].(string),
-		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 	}
 	if r.options.Options.JSONRequests {
 		data.Request = wrapped.InternalEvent["request"].(string)
-		data.Response = wrapped.InternalEvent["raw"].(string)
+		data.Response = wrapped.InternalEvent["data"].(string)
 	}
 
 	// If we have multiple matchers with names, write each of them separately.
