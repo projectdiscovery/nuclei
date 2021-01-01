@@ -161,7 +161,6 @@ func (w *StandardWriter) Request(templateID, url, requestType string, err error)
 		return
 	}
 	w.traceMutex.Lock()
-	//nolint:errcheck // We don't need to do anything here
 	_ = w.traceFile.Write(data)
 	w.traceMutex.Unlock()
 }
