@@ -110,7 +110,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 				result.OutputExtracts = append(result.OutputExtracts, match)
 			}
 		}
-		if len(extractorResults) > 0 {
+		if len(extractorResults) > 0 && !extractor.Internal {
 			result.Extracts[extractor.Name] = extractorResults
 		}
 	}
