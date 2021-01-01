@@ -7,16 +7,10 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
-	"unsafe"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/rawhttp"
 )
-
-// unsafeToString converts byte slice to string with zero allocations
-func unsafeToString(bs []byte) string {
-	return *(*string)(unsafe.Pointer(&bs))
-}
 
 // headersToString converts http headers to string
 func headersToString(headers http.Header) string {

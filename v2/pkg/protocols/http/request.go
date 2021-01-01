@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
@@ -346,7 +347,7 @@ func (e *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if request.request != nil {
 		matchedURL = request.request.URL.String()
 	}
-	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, unsafeToString(dumpedRequest), unsafeToString(dumpedResponse), unsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	ouputEvent := e.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 
 	event := []*output.InternalWrappedEvent{{InternalEvent: ouputEvent}}
 	if e.CompiledOperators != nil {
