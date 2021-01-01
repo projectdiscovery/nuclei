@@ -18,15 +18,22 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	switch partString {
 	case "header":
 		partString = "all_headers"
-	case "all":
-		partString = "raw"
 	}
 
-	item, ok := data[partString]
-	if !ok {
-		return false
+	var itemStr string
+	if partString == "all" {
+		builder := &strings.Builder{}
+		builder.WriteString(data["body"].(string))
+		builder.WriteString("\n\n")
+		builder.WriteString(data["all_headers"].(string))
+		itemStr = builder.String()
+	} else {
+		item, ok := data[partString]
+		if !ok {
+			return false
+		}
+		itemStr = types.ToString(item)
 	}
-	itemStr := types.ToString(item)
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
@@ -55,16 +62,22 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 	switch partString {
 	case "header":
 		partString = "all_headers"
-	case "all":
-		partString = "raw"
 	}
 
-	item, ok := data[partString]
-	if !ok {
-		return nil
+	var itemStr string
+	if partString == "all" {
+		builder := &strings.Builder{}
+		builder.WriteString(data["body"].(string))
+		builder.WriteString("\n\n")
+		builder.WriteString(data["all_headers"].(string))
+		itemStr = builder.String()
+	} else {
+		item, ok := data[partString]
+		if !ok {
+			return nil
+		}
+		itemStr = types.ToString(item)
 	}
-	itemStr := types.ToString(item)
-
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
 		return extractor.ExtractRegex(itemStr)
