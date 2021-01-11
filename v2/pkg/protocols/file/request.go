@@ -45,7 +45,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 			gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, data)
 			fmt.Fprintf(os.Stderr, "%s\n", dataStr)
 		}
-		gologger.Verbose().Msgf("[%s] Sent file request to %s", r.options.TemplateID, data)
+		gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, data)
 		ouputEvent := r.responseToDSLMap(dataStr, input, data)
 
 		event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}

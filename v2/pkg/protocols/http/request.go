@@ -234,12 +234,13 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
 
+	var formedURL string
 	timeStart := time.Now()
 	if request.original.Pipeline {
+		formedURL = request.rawRequest.FullURL
 		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
 	} else if request.original.Unsafe {
-		// rawhttp
-		// burp uses "\r\n" as new line character
+		formedURL = request.rawRequest.FullURL
 		request.rawRequest.Data = strings.ReplaceAll(request.rawRequest.Data, "\n", "\r\n")
 		options := request.original.rawhttpClient.Options
 		options.AutomaticContentLength = !r.DisableAutoContentLength
@@ -247,6 +248,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		options.FollowRedirects = r.Redirects
 		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
+		formedURL = request.request.URL.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if r.options.ProjectFile != nil {
 			// if unavailable fail silently
@@ -270,7 +272,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		r.options.Progress.DecrementRequests(1)
 		return err
 	}
-	gologger.Verbose().Msgf("Sent request to %s", reqURL)
+	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
 	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 
 	duration := time.Since(timeStart)
@@ -304,7 +306,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	if r.options.Options.Debug {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, reqURL)
+		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
 	}
 
