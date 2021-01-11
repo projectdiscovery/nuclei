@@ -14,9 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -178,7 +176,7 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
-	err := r.initializeProtocols()
+	err := protocolinit.Init(r.options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
@@ -268,18 +266,4 @@ func (r *Runner) RunEnumeration() {
 		}
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
-}
-
-// initializeProtocols initializes all the protocols and their caches
-func (r *Runner) initializeProtocols() error {
-	if err := dnsclientpool.Init(r.options); err != nil {
-		return err
-	}
-	if err := httpclientpool.Init(r.options); err != nil {
-		return err
-	}
-	if err := networkclientpool.Init(r.options); err != nil {
-		return err
-	}
-	return nil
 }

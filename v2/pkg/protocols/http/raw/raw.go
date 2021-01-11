@@ -96,7 +96,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	} else if strings.HasPrefix(rawRequest.Path, "?") {
 		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
-	if strings.HasSuffix(baseURL, "/") {
+	if strings.HasSuffix(hostURL, "/") {
 		rawRequest.Path = strings.TrimPrefix(rawRequest.Path, "/")
 	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
