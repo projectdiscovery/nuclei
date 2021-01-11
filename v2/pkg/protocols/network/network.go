@@ -80,5 +80,5 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (r *Request) Requests() int {
-	return len(r.addresses)
+	return len(r.Address)
 }
