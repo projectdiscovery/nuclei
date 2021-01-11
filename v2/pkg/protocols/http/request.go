@@ -36,12 +36,12 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 
 	var requestErr error
 	mutex := &sync.Mutex{}
-	for i := 0; i < e.RaceNumberRequests; i++ {
-		request, err := generator.Make(reqURL, nil)
-		if err != nil {
-			break
-		}
 
+	request, err := generator.Make(reqURL, nil)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < e.RaceNumberRequests; i++ {
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
