@@ -111,6 +111,9 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 	ctx := context.Background()
 
+	if strings.HasSuffix(baseURL, "/") {
+		baseURL = strings.TrimSuffix(baseURL, "/")
+	}
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
