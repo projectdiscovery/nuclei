@@ -264,8 +264,8 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 	}
 	if err != nil {
-		if resp != nil {
-			_, _ = io.Copy(ioutil.Discard, resp.Body)
+		if resp != nil && resp.Body != nil {
+			//			_, _ = io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
 		}
 		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
