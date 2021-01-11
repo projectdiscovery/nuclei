@@ -2,8 +2,11 @@ package runner
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -54,7 +57,7 @@ func (r *Runner) updateTemplates() error {
 		}
 
 		// Use custom location if user has given a template directory
-		if r.options.TemplatesDirectory != "" {
+		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
 			home = r.options.TemplatesDirectory
 		}
 		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
@@ -64,7 +67,7 @@ func (r *Runner) updateTemplates() error {
 		if getErr != nil {
 			return getErr
 		}
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
+		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 		err = r.downloadReleaseAndUnzip(ctx, asset.GetZipballURL())
 		if err != nil {
@@ -209,6 +212,15 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		return fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
+	// We use file-checksums that are md5 hashes to store the list of files->hashes
+	// that have been downloaded previously.
+	// If the path isn't found in new update after being read from the previous checksum,
+	// it is removed. This allows us fine-grained control over the download process
+	// as well as solves a long problem with nuclei-template updates.
+	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	previousChecksum := readPreviousTemplatesChecksum(checksumFile)
+
+	checksums := make(map[string]string)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
 		if name == "" {
@@ -224,7 +236,8 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			return fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
-		f, err := os.OpenFile(path.Join(templateDirectory, name), os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
+		templatePath := path.Join(templateDirectory, name)
+		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			f.Close()
 			return fmt.Errorf("could not create uncompressed file: %s", err)
@@ -235,13 +248,84 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			f.Close()
 			return fmt.Errorf("could not open archive to extract file: %s", err)
 		}
+		hasher := md5.New()
 
-		_, err = io.Copy(f, reader)
+		// Save file and also read into hasher for md5
+		_, err = io.Copy(f, io.TeeReader(reader, hasher))
 		if err != nil {
 			f.Close()
 			return fmt.Errorf("could not write template file: %s", err)
 		}
 		f.Close()
+		checksums[templatePath] = hex.EncodeToString(hasher.Sum(nil))
+	}
+
+	// If we don't find a previous file in new download and it hasn't been
+	// changed on the disk, delete it.
+	if previousChecksum != nil {
+		for k, v := range previousChecksum {
+			_, ok := checksums[k]
+			if !ok && v[0] == v[1] {
+				os.Remove(k)
+			}
+		}
+	}
+	return writeTemplatesChecksum(checksumFile, checksums)
+}
+
+// readPreviousTemplatesChecksum reads the previous checksum file from the disk.
+//
+// It reads two checksums, the first checksum is what we expect and the second is
+// the actual checksum of the file on disk currently.
+func readPreviousTemplatesChecksum(file string) map[string][2]string {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+
+	checksum := make(map[string][2]string)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		parts := strings.Split(text, ",")
+		if len(parts) < 2 {
+			continue
+		}
+		values := [2]string{parts[1]}
+
+		f, err := os.Open(parts[0])
+		if err != nil {
+			continue
+		}
+		defer f.Close()
+
+		hasher := md5.New()
+		if _, err := io.Copy(hasher, f); err != nil {
+			continue
+		}
+		values[1] = hex.EncodeToString(hasher.Sum(nil))
+		checksum[parts[0]] = values
+	}
+	return checksum
+}
+
+// writeTemplatesChecksum writes the nuclei-templates checksum data to disk.
+func writeTemplatesChecksum(file string, checksum map[string]string) error {
+	f, err := os.Create(file)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	for k, v := range checksum {
+		f.WriteString(k)
+		f.WriteString(",")
+		f.WriteString(v)
+		f.WriteString("\n")
 	}
 	return nil
 }
