@@ -56,6 +56,8 @@ type ResultEvent struct {
 	Info map[string]string `json:"info"`
 	// MatcherName is the name of the matcher matched if any.
 	MatcherName string `json:"matcher_name,omitempty"`
+	// ExtractorName is the name of the extractor matched if any.
+	ExtractorName string `json:"extractor_name,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
