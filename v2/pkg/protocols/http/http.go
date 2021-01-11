@@ -1,6 +1,8 @@
 package http
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -100,6 +102,22 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			attackType = "sniper"
 		}
 		r.attackType = generators.StringToType[attackType]
+
+		// Resolve payload paths if they are files.
+		for name, payload := range r.Payloads {
+			switch pt := payload.(type) {
+			case string:
+				elements := strings.Split(pt, "\n")
+				//golint:gomnd // this is not a magic number
+				if len(elements) < 2 {
+					final, err := options.Catalogue.ResolvePath(elements[0], options.TemplatePath)
+					if err != nil {
+						return errors.Wrap(err, "could not read payload file")
+					}
+					r.Payloads[name] = []interface{}{final}
+				}
+			}
+		}
 
 		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
 		if err != nil {
