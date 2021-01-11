@@ -116,7 +116,29 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
-	data := output.ResultEvent{
+	// If we have multiple matchers with names, write each of them separately.
+	if len(wrapped.OperatorsResult.Matches) > 0 {
+		for k := range wrapped.OperatorsResult.Matches {
+			data := r.makeResultEventItem(wrapped)
+			data.MatcherName = k
+			results = append(results, data)
+		}
+	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
+		for k, v := range wrapped.OperatorsResult.Extracts {
+			data := r.makeResultEventItem(wrapped)
+			data.ExtractedResults = v
+			data.ExtractorName = k
+			results = append(results, data)
+		}
+	} else {
+		data := r.makeResultEventItem(wrapped)
+		results = append(results, data)
+	}
+	return results
+}
+
+func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	data := &output.ResultEvent{
 		TemplateID:       r.options.TemplateID,
 		Info:             r.options.TemplateInfo,
 		Type:             "http",
@@ -129,15 +151,5 @@ func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 		data.Request = wrapped.InternalEvent["request"].(string)
 		data.Response = wrapped.InternalEvent["raw"].(string)
 	}
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data.MatcherName = k
-			results = append(results, &data)
-		}
-	} else {
-		results = append(results, &data)
-	}
-	return results
+	return data
 }
