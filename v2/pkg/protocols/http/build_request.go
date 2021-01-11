@@ -111,9 +111,6 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 	ctx := context.Background()
 
-	if strings.HasSuffix(baseURL, "/") {
-		baseURL = strings.TrimSuffix(baseURL, "/")
-	}
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -158,6 +155,9 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*generatedRequest, error) {
+	if strings.HasSuffix(values["BaseURL"].(string), "/") {
+		data = strings.TrimPrefix(data, "/")
+	}
 	URL := replacer.New(values).Replace(data)
 
 	// Build a request on the specified URL
@@ -190,24 +190,22 @@ func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, 
 }
 
 // handleRawWithPaylods handles raw requests along with paylaods
-func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, genValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
 	baseValues := generators.CopyMap(values)
-	finValues := generators.MergeMaps(baseValues, genValues)
+	finalValues := generators.MergeMaps(baseValues, generatorValues)
 
 	// Replace the dynamic variables in the URL if any
-	rawRequest = replacer.New(finValues).Replace(rawRequest)
+	rawRequest = replacer.New(finalValues).Replace(rawRequest)
 
 	dynamicValues := make(map[string]interface{})
 	for _, match := range templateExpressionRegex.FindAllString(rawRequest, -1) {
 		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
-
 		if err != nil {
 			return nil, err
 		}
-
-		result, err := compiled.Evaluate(finValues)
+		result, err := compiled.Evaluate(finalValues)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +221,7 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 
 	// rawhttp
 	if r.request.Unsafe {
-		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: genValues, original: r.request}
+		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request}
 		return unsafeReq, nil
 	}
 
@@ -250,7 +248,7 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, meta: genValues, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
 }
 
 // fillRequest fills various headers in the request with values

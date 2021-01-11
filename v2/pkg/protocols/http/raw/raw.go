@@ -94,12 +94,11 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if rawRequest.Path == "" {
 		rawRequest.Path = parsedURL.Path
 	} else if strings.HasPrefix(rawRequest.Path, "?") {
-		// requests generated from http.ReadRequest have incorrect RequestURI, so they
-		// cannot be used to perform another request directly, we need to generate a new one
-		// with the new target url
 		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
-
+	if strings.HasSuffix(baseURL, "/") {
+		rawRequest.Path = strings.TrimPrefix(rawRequest.Path, "/")
+	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
 	// Set the request body
