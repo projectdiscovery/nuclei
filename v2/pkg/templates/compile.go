@@ -72,7 +72,6 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 		}
 		template.Executer = executer.NewExecuter(requests, options)
 	}
-
 	if template.Executer != nil {
 		err := template.Executer.Compile()
 		if err != nil {
