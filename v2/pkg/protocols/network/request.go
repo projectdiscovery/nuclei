@@ -104,7 +104,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 	}
 
 	r.options.Output.Request(r.options.TemplateID, actualAddress, "network", err)
-	gologger.Verbose().Msgf("[%s] Sent Network request to %s", r.options.TemplateID, actualAddress)
+	gologger.Verbose().Msgf("Sent TCP request to %s", actualAddress)
 
 	bufferSize := 1024
 	if r.ReadSize != 0 {
