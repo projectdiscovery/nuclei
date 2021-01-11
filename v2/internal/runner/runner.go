@@ -266,7 +266,7 @@ func (r *Runner) RunEnumeration() {
 			r.output.Close()
 			os.Remove(r.options.Output)
 		}
-		gologger.Info().Msgf("No results found. Happy hacking!")
+		gologger.Info().Msgf("No results found. Maybe try again...!")
 	}
 }
 
