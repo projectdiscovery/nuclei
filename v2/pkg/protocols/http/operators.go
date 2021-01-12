@@ -96,7 +96,7 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 
 	data["body"] = body
 	for _, cookie := range resp.Cookies() {
-		data[cookie.Name] = cookie.Value
+		data[strings.ToLower(cookie.Name)] = cookie.Value
 	}
 	for k, v := range resp.Header {
 		k = strings.ToLower(strings.TrimSpace(strings.ReplaceAll(k, "-", "_")))
