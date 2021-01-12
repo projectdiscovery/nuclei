@@ -3,6 +3,7 @@ package extractors
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // CompileExtractors performs the initial setup operation on a extractor
@@ -22,6 +23,10 @@ func (e *Extractor) CompileExtractors() error {
 		}
 
 		e.regexCompiled = append(e.regexCompiled, compiled)
+	}
+
+	for i, kval := range e.KVal {
+		e.KVal[i] = strings.ToLower(kval)
 	}
 
 	// Setup the part of the request to match, if any.

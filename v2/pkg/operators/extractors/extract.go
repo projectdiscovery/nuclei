@@ -1,6 +1,8 @@
 package extractors
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/types"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+)
 
 // ExtractRegex extracts text from a corpus and returns it
 func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
