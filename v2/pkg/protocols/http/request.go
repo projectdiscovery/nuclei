@@ -213,7 +213,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		builder := &strings.Builder{}
 		builder.WriteString("User-Agent: ")
 		builder.WriteString(uarand.GetRandom())
-		r.customHeaders.Set(builder.String())
+		r.customHeaders = append(r.customHeaders, builder.String())
 	}
 	r.setCustomHeaders(request)
 

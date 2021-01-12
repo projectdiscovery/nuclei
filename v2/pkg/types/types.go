@@ -1,17 +1,11 @@
 package types
 
-import (
-	"strings"
-)
-
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
 	// RandomAgent generates random User-Agent
 	RandomAgent bool
 	// Metrics enables display of metrics via an http endpoint
 	Metrics bool
-	// Sandbox mode allows users to run isolated workflows with system commands disabled
-	Sandbox bool
 	// Debug mode allows debugging request/responses for the engine
 	Debug bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
@@ -44,8 +38,6 @@ type Options struct {
 	Project bool
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
-	// MaxWorkflowDuration is the maximum time a workflow can run for a URL
-	MaxWorkflowDuration int
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -56,14 +48,12 @@ type Options struct {
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target
 	RateLimit int
-	// Thread controls the number of concurrent requests to make.
-	Threads int
 	// BurpCollaboratorBiid is the Burp Collaborator BIID for polling interactions.
 	BurpCollaboratorBiid string
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// Severity filters templates based on their severity and only run the matching ones.
-	Severity string
+	Severity []string
 	// Target is a single URL/Domain to scan using a template
 	Target string
 	// Targets specifies the targets to scan using templates.
@@ -79,23 +69,9 @@ type Options struct {
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
 	// Templates specifies the template/templates to use
-	Templates StringSlice
+	Templates []string
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates StringSlice
+	ExcludedTemplates []string
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders StringSlice
-}
-
-// StringSlice is a slice of strings as input
-type StringSlice []string
-
-// String returns the stringified version of string slice
-func (s *StringSlice) String() string {
-	return strings.Join(*s, ",")
-}
-
-// Set appends a value to the string slice
-func (s *StringSlice) Set(value string) error {
-	*s = append(*s, value)
-	return nil
+	CustomHeaders []string
 }
