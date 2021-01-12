@@ -8,6 +8,10 @@ type Options struct {
 	Metrics bool
 	// Debug mode allows debugging request/responses for the engine
 	Debug bool
+	// DebugRequests mode allows debugging request for the engine
+	DebugRequests bool
+	// DebugResponse mode allows debugging response for the engine
+	DebugResponse bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit

@@ -31,7 +31,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		return errors.Wrap(err, "could not build request")
 	}
 
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", r.options.TemplateID, domain)
 		fmt.Fprintf(os.Stderr, "%s\n", compiledRequest.String())
 	}
@@ -48,7 +48,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 	r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s", r.options.TemplateID, domain)
 
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
 	}

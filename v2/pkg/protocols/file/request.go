@@ -41,7 +41,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		}
 		dataStr := tostring.UnsafeToString(buffer)
 
-		if r.options.Options.Debug {
+		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, data)
 			fmt.Fprintf(os.Stderr, "%s\n", dataStr)
 		}
