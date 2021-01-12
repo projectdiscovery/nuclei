@@ -97,7 +97,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 		return errors.Wrap(err, "could not write request to server")
 	}
 
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
 
 		fmt.Fprintf(os.Stderr, "%s\n", reqBuilder.String())
@@ -114,7 +114,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 	n, _ := conn.Read(buffer)
 	resp := string(buffer[:n])
 
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
 		fmt.Fprintf(os.Stderr, "%s\n", resp)
 	}

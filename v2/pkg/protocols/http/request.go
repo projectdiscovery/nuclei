@@ -223,13 +223,13 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		dumpedRequest []byte
 		fromcache     bool
 	)
-	if r.options.Options.Debug || r.options.ProjectFile != nil {
+	if r.options.Options.Debug || r.options.ProjectFile != nil || r.options.Options.DebugRequests {
 		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
 			return err
 		}
 	}
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
 	}
@@ -279,7 +279,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	duration := time.Since(timeStart)
 	// Dump response - Step 1 - Decompression not yet handled
 	var dumpedResponse []byte
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		var dumpErr error
 		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
@@ -305,7 +305,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if r.options.Options.Debug {
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
 		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
