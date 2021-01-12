@@ -114,7 +114,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 					if err != nil {
 						return errors.Wrap(err, "could not read payload file")
 					}
-					r.Payloads[name] = []interface{}{final}
+					r.Payloads[name] = final
 				}
 			}
 		}

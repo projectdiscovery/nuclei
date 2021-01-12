@@ -2,6 +2,7 @@ package generators
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -29,6 +30,7 @@ func loadPayloads(payloads map[string]interface{}) (map[string][]string, error) 
 				loadedPayloads[name] = payloads
 			}
 		case interface{}:
+			fmt.Printf("%v elements\n", pt)
 			loadedPayloads[name] = cast.ToStringSlice(pt)
 		}
 	}
