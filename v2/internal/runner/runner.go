@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
@@ -14,10 +15,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/rs/xid"
 	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 )
@@ -204,9 +208,34 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
+	executerOpts := &protocols.ExecuterOptions{
+		Output:      r.output,
+		Options:     r.options,
+		Progress:    r.progress,
+		Catalogue:   r.catalogue,
+		RateLimiter: r.ratelimiter,
+		ProjectFile: r.projectFile,
+	}
 	// pre-parse all the templates, apply filters
+	finalTemplates := []*templates.Template{}
 	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
-	templateCount := len(availableTemplates)
+	clusters := clusterer.Cluster(availableTemplates)
+	for _, cluster := range clusters {
+		if len(cluster) > 1 {
+			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
+
+			gologger.Verbose().Msgf("Clustered %d requests together: %s", len(cluster), clusterID)
+			finalTemplates = append(finalTemplates, &templates.Template{
+				ID:            clusterID,
+				RequestsHTTP:  cluster[0].RequestsHTTP,
+				Executer:      clusterer.NewExecuter(cluster, executerOpts),
+				TotalRequests: 1,
+			})
+		} else {
+			finalTemplates = append(finalTemplates, cluster[0])
+		}
+	}
+	templateCount := len(finalTemplates)
 	hasWorkflows := workflowCount > 0
 
 	// 0 matches means no templates were found in directory
@@ -222,7 +251,7 @@ func (r *Runner) RunEnumeration() {
 	// precompute total request count
 	var totalRequests int64 = 0
 
-	for _, t := range availableTemplates {
+	for _, t := range finalTemplates {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
 		if len(t.Workflows) > 0 {
@@ -243,7 +272,7 @@ func (r *Runner) RunEnumeration() {
 		p := r.progress
 		p.Init(r.inputCount, templateCount, totalRequests)
 
-		for _, t := range availableTemplates {
+		for _, t := range finalTemplates {
 			wgtemplates.Add()
 			go func(template *templates.Template) {
 				defer wgtemplates.Done()
