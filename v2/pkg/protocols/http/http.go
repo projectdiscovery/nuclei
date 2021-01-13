@@ -132,21 +132,14 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 func (r *Request) Requests() int {
 	if r.generator != nil {
 		payloadRequests := r.generator.NewIterator().Total() * len(r.Raw)
-		if r.Threads != 0 {
-			payloadRequests = payloadRequests * r.Threads
-		}
 		return payloadRequests
 	}
 	if len(r.Raw) > 0 {
 		requests := len(r.Raw)
-		if r.Threads != 0 {
-			requests = requests * r.Threads
+		if requests == 1 && r.RaceNumberRequests != 0 {
+			requests = requests * r.RaceNumberRequests
 		}
 		return requests
 	}
-	requests := len(r.Path)
-	if r.Threads != 0 {
-		requests = requests * r.Threads
-	}
-	return requests
+	return len(r.Path)
 }
