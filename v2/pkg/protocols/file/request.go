@@ -51,13 +51,12 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 		if r.CompiledOperators != nil {
 			result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
-			if !ok {
-				return
+			if ok && result != nil {
+				event.OperatorsResult = result
+				event.Results = r.MakeResultEvent(event)
 			}
-			event.OperatorsResult = result
-			event.Results = r.makeResultEvent(event)
-			callback(event)
 		}
+		callback(event)
 	})
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "file", err)
