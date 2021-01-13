@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/spf13/cast"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // validate validates the payloads if any.
@@ -40,7 +40,7 @@ func (g *Generator) validate(payloads map[string]interface{}, templatePath strin
 				return fmt.Errorf("the %s file for payload %s does not exist or does not contain enough elements", pt, name)
 			}
 		case interface{}:
-			loadedPayloads := cast.ToStringSlice(pt)
+			loadedPayloads := types.ToStringSlice(pt)
 			if len(loadedPayloads) == 0 {
 				return fmt.Errorf("the payload %s does not contain enough elements", name)
 			}

@@ -18,11 +18,6 @@ func NewExecuter(requests []protocols.Request, options *protocols.ExecuterOption
 	return &Executer{requests: requests, options: options}
 }
 
-// GetRequests returns the requests the rule will perform
-func (e *Executer) GetRequests() []protocols.Request {
-	return e.requests
-}
-
 // Compile compiles the execution generators preparing any requests possible.
 func (e *Executer) Compile() error {
 	for _, request := range e.requests {

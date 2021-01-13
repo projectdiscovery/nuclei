@@ -109,11 +109,13 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 		data["raw"] = rawString
 	}
 	data["duration"] = duration.Seconds()
+	data["template-id"] = r.options.TemplateID
+	data["template-info"] = r.options.TemplateInfo
 	return data
 }
 
-// makeResultEvent creates a result event from internal wrapped event
-func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+// MakeResultEvent creates a result event from internal wrapped event
+func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
 	// If we have multiple matchers with names, write each of them separately.
@@ -139,8 +141,8 @@ func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       r.options.TemplateID,
-		Info:             r.options.TemplateInfo,
+		TemplateID:       wrapped.InternalEvent["template-id"].(string),
+		Info:             wrapped.InternalEvent["template-info"].(map[string]string),
 		Type:             "http",
 		Host:             wrapped.InternalEvent["host"].(string),
 		Matched:          wrapped.InternalEvent["matched"].(string),

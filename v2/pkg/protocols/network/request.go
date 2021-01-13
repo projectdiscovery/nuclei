@@ -123,11 +123,10 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 	if r.CompiledOperators != nil {
 		result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
-		if !ok {
-			return nil
+		if ok && result != nil {
+			event.OperatorsResult = result
+			event.Results = r.MakeResultEvent(event)
 		}
-		event.OperatorsResult = result
-		event.Results = r.makeResultEvent(event)
 	}
 	callback(event)
 	return nil
