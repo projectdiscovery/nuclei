@@ -2,6 +2,7 @@ package clusterer
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/logrusorgru/aurora"
@@ -37,7 +38,7 @@ func TestHTTPRequestsCluster(t *testing.T) {
 		if _, ok := list[t.ID]; !ok {
 			list[t.ID] = t
 		} else {
-			//	log.Fatalf("Duplicate template found: %v\n", t)
+			log.Printf("Duplicate template found: %v\n", t)
 		}
 	}
 

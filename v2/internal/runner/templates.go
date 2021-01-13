@@ -13,12 +13,13 @@ import (
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
-func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []string) (parsedTemplates []*templates.Template, workflowCount int) {
-	workflowCount = 0
+func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []string) (map[string]*templates.Template, int) {
+	workflowCount := 0
 	filterBySeverity := len(severities) > 0
 
 	gologger.Info().Msgf("Loading templates...")
 
+	parsedTemplates := make(map[string]*templates.Template)
 	for _, match := range templatePaths {
 		t, err := r.parseTemplateFile(match)
 		if err != nil {
@@ -30,7 +31,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 		}
 		sev := strings.ToLower(t.Info["severity"])
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
-			parsedTemplates = append(parsedTemplates, t)
+			parsedTemplates[t.ID] = t
 			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
 		} else {
 			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
