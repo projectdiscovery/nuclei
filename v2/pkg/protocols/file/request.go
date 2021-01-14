@@ -10,54 +10,64 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
+	wg := sizedwaitgroup.New(r.options.Options.RateLimit)
+
 	err := r.getInputPaths(input, func(data string) {
-		file, err := os.Open(data)
-		if err != nil {
-			gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
-			return
-		}
-		defer file.Close()
+		wg.Add()
 
-		stat, err := file.Stat()
-		if err != nil {
-			gologger.Error().Msgf("Could not stat file path %s: %s\n", data, err)
-			return
-		}
-		if stat.Size() >= int64(r.MaxSize) {
-			gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", data)
-			return
-		}
+		go func(data string) {
+			defer wg.Done()
 
-		buffer, err := ioutil.ReadAll(file)
-		if err != nil {
-			gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
-			return
-		}
-		dataStr := tostring.UnsafeToString(buffer)
-
-		if r.options.Options.Debug || r.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, data)
-			fmt.Fprintf(os.Stderr, "%s\n", dataStr)
-		}
-		gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, data)
-		ouputEvent := r.responseToDSLMap(dataStr, input, data)
-
-		event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
-		if r.CompiledOperators != nil {
-			result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
-			if ok && result != nil {
-				event.OperatorsResult = result
-				event.Results = r.MakeResultEvent(event)
+			file, err := os.Open(data)
+			if err != nil {
+				gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
+				return
 			}
-		}
-		callback(event)
+			defer file.Close()
+
+			stat, err := file.Stat()
+			if err != nil {
+				gologger.Error().Msgf("Could not stat file path %s: %s\n", data, err)
+				return
+			}
+			if stat.Size() >= int64(r.MaxSize) {
+				gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", data)
+				return
+			}
+
+			buffer, err := ioutil.ReadAll(file)
+			if err != nil {
+				gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
+				return
+			}
+			dataStr := tostring.UnsafeToString(buffer)
+
+			if r.options.Options.Debug || r.options.Options.DebugRequests {
+				gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, data)
+				fmt.Fprintf(os.Stderr, "%s\n", dataStr)
+			}
+			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, data)
+			ouputEvent := r.responseToDSLMap(dataStr, input, data)
+
+			event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
+			if r.CompiledOperators != nil {
+				result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
+				if ok && result != nil {
+					event.OperatorsResult = result
+					event.Results = r.MakeResultEvent(event)
+				}
+			}
+			callback(event)
+		}(data)
 	})
+	wg.Wait()
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "file", err)
 		r.options.Progress.DecrementRequests(1)
