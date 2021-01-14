@@ -105,6 +105,8 @@ type generatedRequest struct {
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
 	data, payloads, ok := r.nextValue()
 	if !ok {
 		return nil, io.EOF
@@ -155,9 +157,6 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*generatedRequest, error) {
-	if strings.HasSuffix(values["BaseURL"].(string), "/") {
-		data = strings.TrimPrefix(data, "/")
-	}
 	URL := replacer.New(values).Replace(data)
 
 	// Build a request on the specified URL

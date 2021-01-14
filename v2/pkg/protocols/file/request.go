@@ -50,7 +50,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 
 		event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
 		if r.CompiledOperators != nil {
-			result, ok := r.Operators.Execute(ouputEvent, r.Match, r.Extract)
+			result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
 			if ok && result != nil {
 				event.OperatorsResult = result
 				event.Results = r.MakeResultEvent(event)
