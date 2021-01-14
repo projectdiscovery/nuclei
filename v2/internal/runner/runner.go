@@ -48,6 +48,11 @@ func New(options *types.Options) (*Runner, error) {
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
+	// Read nucleiignore file if given a templateconfig
+	if runner.templatesConfig != nil {
+		runner.readNucleiIgnoreFile()
+	}
+	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
 
 	// output coloring
 	useColor := !options.NoColor
@@ -62,12 +67,6 @@ func New(options *types.Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	// Read nucleiignore file if given a templateconfig
-	if runner.templatesConfig != nil {
-		runner.readNucleiIgnoreFile()
-	}
-	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
-
 	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
 		gologger.Fatal().Msgf("Could not create temporary input file: %s\n", err)
 	} else {
