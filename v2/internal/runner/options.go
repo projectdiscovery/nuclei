@@ -8,11 +8,17 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
+	err := protocolinit.Init(options)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
+	}
+
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
 
@@ -37,8 +43,7 @@ func ParseOptions(options *types.Options) {
 
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
-	err := validateOptions(options)
-	if err != nil {
+	if err = validateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/projectdiscovery/gologger"
 )
 
 const nucleiIgnoreFile = ".nuclei-ignore"
@@ -38,6 +40,7 @@ func (c *Catalogue) checkIfInNucleiIgnore(item string) bool {
 
 	for _, paths := range c.ignoreFiles {
 		if strings.HasSuffix(item, paths) {
+			gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
 			return true
 		}
 	}
@@ -58,6 +61,8 @@ func (c *Catalogue) ignoreFilesWithExcludes(results, excluded []string) []string
 		}
 		if !matched {
 			templates = append(templates, result)
+		} else {
+			gologger.Error().Msgf("Excluding %s due to excludes filter", result)
 		}
 	}
 	return templates

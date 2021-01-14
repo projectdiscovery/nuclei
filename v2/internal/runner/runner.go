@@ -17,7 +17,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -180,11 +179,6 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
-	err := protocolinit.Init(r.options)
-	if err != nil {
-		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
-	}
-
 	// resolves input templates definitions and any optional exclusion
 	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
@@ -229,7 +223,7 @@ func (r *Runner) RunEnumeration() {
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				Executer:      clusterer.NewExecuter(cluster, executerOpts),
-				TotalRequests: 1,
+				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
 		} else {
 			finalTemplates = append(finalTemplates, cluster[0])
