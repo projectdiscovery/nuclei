@@ -73,8 +73,9 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	t, err := r.parseTemplateFile(tplPath)
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
+	} else {
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
 	}
-	gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
 }
 
 // ListAvailableTemplates prints available templates to stdout

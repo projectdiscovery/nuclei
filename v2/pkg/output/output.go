@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
@@ -72,6 +73,8 @@ type ResultEvent struct {
 	Response string `json:"response,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
+	// Timestamp is the time the result was found at.
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
