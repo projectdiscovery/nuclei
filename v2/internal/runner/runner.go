@@ -212,12 +212,23 @@ func (r *Runner) RunEnumeration() {
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
+
+	var unclusteredRequests int64 = 0
+	for _, template := range availableTemplates {
+		// workflows will dynamically adjust the totals while running, as
+		// it can't be know in advance which requests will be called
+		if len(template.Workflows) > 0 {
+			continue
+		}
+		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
+	}
+
+	originalTemplatesCount := len(availableTemplates)
 	clusters := clusterer.Cluster(availableTemplates)
 	for _, cluster := range clusters {
 		if len(cluster) > 1 {
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 
-			gologger.Verbose().Msgf("Clustered %d requests together: %s", len(cluster), clusterID)
 			finalTemplates = append(finalTemplates, &templates.Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
@@ -228,7 +239,18 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster[0])
 		}
 	}
-	templateCount := len(finalTemplates)
+
+	var totalRequests int64 = 0
+	for _, t := range finalTemplates {
+		if len(t.Workflows) > 0 {
+			continue
+		}
+		totalRequests += int64(t.TotalRequests) * r.inputCount
+	}
+	if totalRequests < unclusteredRequests {
+		gologger.Info().Msgf("Reduced %d requests to %d via clustering", unclusteredRequests, totalRequests)
+	}
+	templateCount := originalTemplatesCount
 	hasWorkflows := workflowCount > 0
 
 	// 0 matches means no templates were found in directory
@@ -240,18 +262,6 @@ func (r *Runner) RunEnumeration() {
 		r.colorizer.Bold(templateCount).String(),
 		r.colorizer.Bold(templateCount-workflowCount).String(),
 		r.colorizer.Bold(workflowCount).String())
-
-	// precompute total request count
-	var totalRequests int64 = 0
-
-	for _, t := range finalTemplates {
-		// workflows will dynamically adjust the totals while running, as
-		// it can't be know in advance which requests will be called
-		if len(t.Workflows) > 0 {
-			continue
-		}
-		totalRequests += int64(t.TotalRequests) * r.inputCount
-	}
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)

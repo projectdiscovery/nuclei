@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/net/proxy"
+	"golang.org/x/net/publicsuffix"
 )
 
 var (
@@ -47,6 +49,8 @@ func Init(options *types.Options) error {
 
 // Configuration contains the custom configuration options for a client
 type Configuration struct {
+	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
+	CookieReuse bool
 	// Threads contains the threads for the client
 	Threads int
 	// MaxRedirects is the maximum number of redirects to follow
@@ -65,6 +69,8 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.Itoa(c.MaxRedirects))
 	builder.WriteString("f")
 	builder.WriteString(strconv.FormatBool(c.FollowRedirects))
+	builder.WriteString("r")
+	builder.WriteString(strconv.FormatBool(c.CookieReuse))
 	hash := builder.String()
 	return hash
 }
@@ -79,7 +85,7 @@ func GetRawHTTP() *rawhttp.Client {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	if !(configuration.Threads > 0 && configuration.MaxRedirects > 0 && configuration.FollowRedirects) {
+	if configuration.Threads == 0 && configuration.MaxRedirects == 0 && !configuration.FollowRedirects && !configuration.CookieReuse {
 		return normalClient, nil
 	}
 	return wrappedGet(options, configuration)
@@ -166,16 +172,29 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
 
+	var jar *cookiejar.Jar
+	if configuration.CookieReuse {
+		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
+			return nil, errors.Wrap(err, "could not create cookiejar")
+		}
+	}
+
 	client := retryablehttp.NewWithHTTPClient(&http.Client{
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
 	}, retryablehttpOptions)
+	if jar != nil {
+		client.HTTPClient.Jar = jar
+	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	poolMutex.Lock()
-	clientPool[hash] = client
-	poolMutex.Unlock()
+	// Only add to client pool if we don't have a cookie jar in place.
+	if jar == nil {
+		poolMutex.Lock()
+		clientPool[hash] = client
+		poolMutex.Unlock()
+	}
 	return client, nil
 }
 
