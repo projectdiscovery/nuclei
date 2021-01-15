@@ -77,6 +77,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		Threads:         r.Threads,
 		MaxRedirects:    r.MaxRedirects,
 		FollowRedirects: r.Redirects,
+		CookieReuse:     r.CookieReuse,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
