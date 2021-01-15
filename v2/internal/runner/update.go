@@ -15,11 +15,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/google/go-github/v32/github"
+	"github.com/olekukonko/tablewriter"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -57,10 +59,10 @@ func (r *Runner) updateTemplates() error {
 		}
 
 		// Use custom location if user has given a template directory
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
-			home = r.options.TemplatesDirectory
-		}
 		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
+		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
+			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
+		}
 
 		// Download the repository and also write the revision to a HEAD file.
 		version, asset, getErr := r.getLatestReleaseFromGithub()
@@ -69,7 +71,7 @@ func (r *Runner) updateTemplates() error {
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
-		err = r.downloadReleaseAndUnzip(ctx, asset.GetZipballURL())
+		err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
@@ -121,13 +123,12 @@ func (r *Runner) updateTemplates() error {
 		}
 
 		if r.options.TemplatesDirectory != "" {
-			home = r.options.TemplatesDirectory
-			r.templatesConfig.TemplatesDirectory = path.Join(home, "nuclei-templates")
+			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
 		r.templatesConfig.CurrentVersion = version.String()
 
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", "update-templates", version.String(), r.templatesConfig.TemplatesDirectory)
-		err = r.downloadReleaseAndUnzip(ctx, asset.GetZipballURL())
+		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
+		err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
@@ -180,7 +181,7 @@ func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.Repositor
 }
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
-func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string) error {
+func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadURL string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request to %s: %s", downloadURL, err)
@@ -212,6 +213,8 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		return fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
+	totalCount := 0
+	additions, deletions, modifications := []string{}, []string{}, []string{}
 	// We use file-checksums that are md5 hashes to store the list of files->hashes
 	// that have been downloaded previously.
 	// If the path isn't found in new update after being read from the previous checksum,
@@ -219,18 +222,19 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 	// as well as solves a long problem with nuclei-template updates.
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	previousChecksum := readPreviousTemplatesChecksum(checksumFile)
-
-	addedTemplates, deletedTemplates := 0, 0
 	checksums := make(map[string]string)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
 		if name == "" {
 			continue
 		}
-
 		paths := strings.Split(directory, "/")
 		finalPath := strings.Join(paths[1:], "/")
 
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
+			continue
+		}
+		totalCount++
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err = os.MkdirAll(templateDirectory, os.ModePerm)
 		if err != nil {
@@ -238,6 +242,11 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		}
 
 		templatePath := path.Join(templateDirectory, name)
+
+		isAddition := false
+		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+			isAddition = true
+		}
 		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			f.Close()
@@ -259,8 +268,11 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		}
 		f.Close()
 
-		addedTemplates++
-		gologger.Info().Msgf("Download new template: %s\n", templatePath)
+		if isAddition {
+			additions = append(additions, path.Join(finalPath, name))
+		} else {
+			modifications = append(modifications, path.Join(finalPath, name))
+		}
 		checksums[templatePath] = hex.EncodeToString(hasher.Sum(nil))
 	}
 
@@ -270,13 +282,12 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		for k, v := range previousChecksum {
 			_, ok := checksums[k]
 			if !ok && v[0] == v[1] {
-				deletedTemplates++
 				os.Remove(k)
-				gologger.Error().Lable("INF").Msgf("Removing stale template: %s\n", k)
+				deletions = append(deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
 			}
 		}
 	}
-	gologger.Info().Msgf("Added %d templates, removed %d templates", addedTemplates, deletedTemplates)
+	r.printUpdateChangelog(additions, modifications, deletions, version, totalCount)
 	return writeTemplatesChecksum(checksumFile, checksums)
 }
 
@@ -308,12 +319,14 @@ func readPreviousTemplatesChecksum(file string) map[string][2]string {
 		if err != nil {
 			continue
 		}
-		defer f.Close()
 
 		hasher := md5.New()
 		if _, err := io.Copy(hasher, f); err != nil {
+			f.Close()
 			continue
 		}
+		f.Close()
+
 		values[1] = hex.EncodeToString(hasher.Sum(nil))
 		checksum[parts[0]] = values
 	}
@@ -324,7 +337,7 @@ func readPreviousTemplatesChecksum(file string) map[string][2]string {
 func writeTemplatesChecksum(file string, checksum map[string]string) error {
 	f, err := os.Create(file)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer f.Close()
 
@@ -335,4 +348,39 @@ func writeTemplatesChecksum(file string, checksum map[string]string) error {
 		f.WriteString("\n")
 	}
 	return nil
+}
+
+func (r *Runner) printUpdateChangelog(additions, modifications, deletions []string, version string, totalCount int) {
+	if len(additions) > 0 {
+		gologger.Print().Msgf("\nNew additions: \n\n")
+
+		for _, addition := range additions {
+			gologger.Print().Msgf("%s", addition)
+		}
+	}
+	if len(modifications) > 0 {
+		gologger.Print().Msgf("\nModifications: \n\n")
+
+		for _, modification := range modifications {
+			gologger.Print().Msgf("%s", modification)
+		}
+	}
+	if len(deletions) > 0 {
+		gologger.Print().Msgf("\nDeletions: \n\n")
+
+		for _, deletion := range deletions {
+			gologger.Print().Msgf("%s", deletion)
+		}
+	}
+
+	gologger.Print().Msgf("\nNuclei Templates v%s Changelog\n", version)
+	data := [][]string{
+		{strconv.Itoa(totalCount), strconv.Itoa(len(additions)), strconv.Itoa(len(modifications)), strconv.Itoa(len(deletions))},
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Total", "New", "Modifications", "Deletions"})
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
 }
