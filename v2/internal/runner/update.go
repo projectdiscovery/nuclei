@@ -257,6 +257,8 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			return fmt.Errorf("could not write template file: %s", err)
 		}
 		f.Close()
+
+		gologger.Info().Msgf("Download new template: %s\n", templatePath)
 		checksums[templatePath] = hex.EncodeToString(hasher.Sum(nil))
 	}
 
@@ -267,6 +269,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 			_, ok := checksums[k]
 			if !ok && v[0] == v[1] {
 				os.Remove(k)
+				gologger.Info().Msgf("Removing stale template: %s\n", k)
 			}
 		}
 	}
