@@ -84,6 +84,9 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	r.httpClient = client
 	r.options = options
+	for _, option := range r.options.Options.CustomHeaders {
+		r.customHeaders = append(r.customHeaders, option)
+	}
 
 	if len(r.Raw) > 0 {
 		r.rawhttpClient = httpclientpool.GetRawHTTP()
