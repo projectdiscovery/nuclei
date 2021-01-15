@@ -39,7 +39,13 @@ func (c *Catalogue) checkIfInNucleiIgnore(item string) bool {
 	}
 
 	for _, paths := range c.ignoreFiles {
-		if strings.HasSuffix(item, paths) {
+		dir := path.Dir(item)
+
+		if strings.EqualFold(dir, paths) {
+			gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
+			return true
+		}
+		if strings.HasSuffix(paths, ".yaml") && strings.HasSuffix(item, paths) {
 			gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
 			return true
 		}
@@ -54,7 +60,13 @@ func (c *Catalogue) ignoreFilesWithExcludes(results, excluded []string) []string
 	for _, result := range results {
 		matched := false
 		for _, paths := range excluded {
-			if strings.HasSuffix(result, paths) {
+			dir := path.Dir(result)
+
+			if strings.EqualFold(dir, paths) {
+				matched = true
+				break
+			}
+			if strings.HasSuffix(paths, ".yaml") && strings.HasSuffix(result, paths) {
 				matched = true
 				break
 			}
