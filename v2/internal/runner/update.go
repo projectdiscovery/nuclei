@@ -220,6 +220,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	previousChecksum := readPreviousTemplatesChecksum(checksumFile)
 
+	addedTemplates, deletedTemplates := 0, 0
 	checksums := make(map[string]string)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
@@ -258,6 +259,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		}
 		f.Close()
 
+		addedTemplates++
 		gologger.Info().Msgf("Download new template: %s\n", templatePath)
 		checksums[templatePath] = hex.EncodeToString(hasher.Sum(nil))
 	}
@@ -268,11 +270,13 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, downloadURL string
 		for k, v := range previousChecksum {
 			_, ok := checksums[k]
 			if !ok && v[0] == v[1] {
+				deletedTemplates++
 				os.Remove(k)
-				gologger.Info().Msgf("Removing stale template: %s\n", k)
+				gologger.Error().Lable("INF").Msgf("Removing stale template: %s\n", k)
 			}
 		}
 	}
+	gologger.Info().Msgf("Added %d templates, removed %d templates", addedTemplates, deletedTemplates)
 	return writeTemplatesChecksum(checksumFile, checksums)
 }
 
