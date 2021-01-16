@@ -14,7 +14,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
@@ -52,11 +52,14 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
 		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
 	}
-	ouputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
+	outputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
+	for k, v := range previous {
+		outputEvent[k] = v
+	}
 
-	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
+		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
 			event.Results = r.MakeResultEvent(event)

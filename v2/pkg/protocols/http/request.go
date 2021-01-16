@@ -29,7 +29,7 @@ import (
 const defaultMaxWorkers = 150
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (e *Request) executeRaceRequest(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	maxWorkers := e.RaceNumberRequests
@@ -45,7 +45,7 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 	for i := 0; i < e.RaceNumberRequests; i++ {
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -59,7 +59,7 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues map[string]int
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (e *Request) executeParallelHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	// Workers that keeps enqueuing new requests
@@ -82,7 +82,7 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 			defer swg.Done()
 
 			e.options.RateLimiter.Take()
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -96,7 +96,7 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues map[string]in
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := e.newGenerator()
 
 	// need to extract the target from the url
@@ -141,7 +141,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, callback)
+			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -155,20 +155,20 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues map[string]inter
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (r *Request) ExecuteWithResults(reqURL string, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
 	if r.Pipeline {
-		return r.executeTurboHTTP(reqURL, dynamicValues, callback)
+		return r.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
 	}
 
 	// verify if a basic race condition was requested
 	if r.Race && r.RaceNumberRequests > 0 {
-		return r.executeRaceRequest(reqURL, dynamicValues, callback)
+		return r.executeRaceRequest(reqURL, dynamicValues, previous, callback)
 	}
 
 	// verify if parallel elaboration was requested
 	if r.Threads > 0 {
-		return r.executeParallelHTTP(reqURL, dynamicValues, callback)
+		return r.executeParallelHTTP(reqURL, dynamicValues, previous, callback)
 	}
 
 	generator := r.newGenerator()
@@ -186,7 +186,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues output.Interna
 
 		var gotOutput bool
 		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, dynamicValues, func(event *output.InternalWrappedEvent) {
+		err = r.executeRequest(reqURL, request, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotOutput = true
@@ -208,7 +208,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues output.Interna
 }
 
 // executeRequest executes the actual generated request and returns error if occured
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if r.options.Options.RandomAgent {
 		builder := &strings.Builder{}
@@ -337,6 +337,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+	for k, v := range previous {
+		outputEvent[k] = v
+	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {

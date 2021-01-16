@@ -14,6 +14,8 @@ import (
 
 // Request contains a http request to be made from a template
 type Request struct {
+	ID string `yaml:"id"`
+
 	// Name is the name of the request
 	Name string `yaml:"Name"`
 	// AttackType is the attack type
@@ -69,6 +71,11 @@ type Request struct {
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
+}
+
+// GetID returns the unique ID of the request if any.
+func (r *Request) GetID() string {
+	return r.ID
 }
 
 // Compile compiles the protocol request for further execution.

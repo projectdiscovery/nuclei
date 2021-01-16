@@ -14,6 +14,8 @@ import (
 
 // Request contains a DNS protocol request to be made from a template
 type Request struct {
+	ID string `yaml:"id"`
+
 	// Recursion specifies whether to recurse all the answers.
 	Recursion bool `yaml:"recursion"`
 	// Path contains the path/s for the request
@@ -36,6 +38,11 @@ type Request struct {
 	question  uint16
 	dnsClient *retryabledns.Client
 	options   *protocols.ExecuterOptions
+}
+
+// GetID returns the unique ID of the request if any.
+func (r *Request) GetID() string {
+	return r.ID
 }
 
 // Compile compiles the protocol request for further execution.
