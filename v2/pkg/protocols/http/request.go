@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
@@ -235,12 +236,19 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 
 	var formedURL string
+	var hostname string
 	timeStart := time.Now()
 	if request.original.Pipeline {
 		formedURL = request.rawRequest.FullURL
+		if parsed, err := url.Parse(formedURL); err == nil {
+			hostname = parsed.Hostname()
+		}
 		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
 	} else if request.original.Unsafe {
 		formedURL = request.rawRequest.FullURL
+		if parsed, err := url.Parse(formedURL); err == nil {
+			hostname = parsed.Hostname()
+		}
 		request.rawRequest.Data = strings.ReplaceAll(request.rawRequest.Data, "\n", "\r\n")
 		options := request.original.rawhttpClient.Options
 		options.AutomaticContentLength = !r.DisableAutoContentLength
@@ -248,6 +256,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		options.FollowRedirects = r.Redirects
 		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
+		hostname = request.request.URL.Hostname()
 		formedURL = request.request.URL.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if r.options.ProjectFile != nil {
@@ -326,11 +335,12 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if request.request != nil {
 		matchedURL = request.request.URL.String()
 	}
-	ouputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 
-	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
+		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
 			result.PayloadValues = request.meta

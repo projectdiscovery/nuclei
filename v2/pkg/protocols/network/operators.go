@@ -113,6 +113,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Host:             wrapped.InternalEvent["host"].(string),
 		Matched:          wrapped.InternalEvent["matched"].(string),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		IP:               wrapped.InternalEvent["ip"].(string),
 	}
 	if r.options.Options.JSONRequests {
 		data.Request = wrapped.InternalEvent["request"].(string)

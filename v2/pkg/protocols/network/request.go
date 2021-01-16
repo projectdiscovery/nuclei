@@ -56,6 +56,11 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 		return err
 	}
 
+	var hostname string
+	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
+		hostname = host
+	}
+
 	conn, err := r.dialer.Dial(context.Background(), "tcp", actualAddress)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
@@ -118,11 +123,12 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
 		fmt.Fprintf(os.Stderr, "%s\n", resp)
 	}
-	ouputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
+	outputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
+	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 
-	event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
+		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
 			event.Results = r.MakeResultEvent(event)
