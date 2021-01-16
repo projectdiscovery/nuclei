@@ -20,7 +20,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	address, err := getAddress(input)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "network", err)
@@ -38,7 +38,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 			actualAddress = net.JoinHostPort(actualAddress, kv.value)
 		}
 
-		err = r.executeAddress(actualAddress, address, input, callback)
+		err = r.executeAddress(actualAddress, address, input, previous, callback)
 		if err != nil {
 			gologger.Verbose().Lable("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
@@ -48,7 +48,7 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 }
 
 // executeAddress executes the request for an address
-func (r *Request) executeAddress(actualAddress, address, input string, callback protocols.OutputEventCallback) error {
+func (r *Request) executeAddress(actualAddress, address, input string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
@@ -125,6 +125,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, callback 
 	}
 	outputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
+	for k, v := range previous {
+		outputEvent[k] = v
+	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {

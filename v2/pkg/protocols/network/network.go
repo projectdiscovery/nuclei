@@ -13,6 +13,8 @@ import (
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
+	ID string `yaml:"id"`
+
 	// Address is the address to send requests to (host:port combos generally)
 	Address   []string `yaml:"host"`
 	addresses []keyValue
@@ -43,6 +45,11 @@ type Input struct {
 	Data string `yaml:"data"`
 	// Type is the type of input - hex, text.
 	Type string `yaml:"type"`
+}
+
+// GetID returns the unique ID of the request if any.
+func (r *Request) GetID() string {
+	return r.ID
 }
 
 // Compile compiles the protocol request for further execution.
