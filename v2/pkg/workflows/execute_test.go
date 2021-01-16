@@ -3,6 +3,7 @@ package workflows
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -10,9 +11,14 @@ import (
 )
 
 func TestWorkflowsSimple(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: true}},
-	}}
+	},
+		options: &protocols.ExecuterOptions{
+			Progress: progress,
+		}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -20,6 +26,8 @@ func TestWorkflowsSimple(t *testing.T) {
 }
 
 func TestWorkflowsSimpleMultiple(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
@@ -28,7 +36,8 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
 			secondInput = input
 		}}},
-	}}
+	},
+		options: &protocols.ExecuterOptions{Progress: progress}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -39,6 +48,8 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplates(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
@@ -49,7 +60,8 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 					secondInput = input
 				}}},
 			}},
-	}}
+	},
+		options: &protocols.ExecuterOptions{Progress: progress}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -60,6 +72,8 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: false, executeHook: func(input string) {
@@ -70,7 +84,8 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 					secondInput = input
 				}}},
 			}},
-	}}
+	},
+		options: &protocols.ExecuterOptions{Progress: progress}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -81,6 +96,8 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
@@ -99,7 +116,8 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 				}},
 			},
 		},
-	}}
+	},
+		options: &protocols.ExecuterOptions{Progress: progress}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -110,6 +128,8 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
+	progress, _ := progress.NewProgress(false, false, 0)
+
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
 		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
@@ -128,7 +148,8 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 				}},
 			},
 		},
-	}}
+	},
+		options: &protocols.ExecuterOptions{Progress: progress}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")

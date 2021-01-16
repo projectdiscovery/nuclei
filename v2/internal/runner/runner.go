@@ -224,6 +224,7 @@ func (r *Runner) RunEnumeration() {
 	}
 
 	originalTemplatesCount := len(availableTemplates)
+	clusterCount := 0
 	clusters := clusterer.Cluster(availableTemplates)
 	for _, cluster := range clusters {
 		if len(cluster) > 1 {
@@ -235,6 +236,7 @@ func (r *Runner) RunEnumeration() {
 				Executer:      clusterer.NewExecuter(cluster, executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
+			clusterCount++
 		} else {
 			finalTemplates = append(finalTemplates, cluster[0])
 		}
@@ -248,7 +250,7 @@ func (r *Runner) RunEnumeration() {
 		totalRequests += int64(t.TotalRequests) * r.inputCount
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Reduced %d requests to %d via clustering", unclusteredRequests, totalRequests)
+		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
 	}
 	templateCount := originalTemplatesCount
 	hasWorkflows := workflowCount > 0
@@ -272,8 +274,7 @@ func (r *Runner) RunEnumeration() {
 		gologger.Error().Msgf("Could not find any valid input URLs.")
 	} else if totalRequests > 0 || hasWorkflows {
 		// tracks global progress and captures stdout/stderr until p.Wait finishes
-		p := r.progress
-		p.Init(r.inputCount, templateCount, totalRequests)
+		r.progress.Init(r.inputCount, templateCount, totalRequests)
 
 		for _, t := range finalTemplates {
 			wgtemplates.Add()
@@ -288,7 +289,7 @@ func (r *Runner) RunEnumeration() {
 			}(t)
 		}
 		wgtemplates.Wait()
-		p.Stop()
+		r.progress.Stop()
 	}
 
 	if !results.Load() {

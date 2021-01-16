@@ -51,6 +51,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 			for _, result := range event.Results {
 				results = true
 				e.options.Output.Write(result)
+				e.options.Progress.IncrementMatched()
 			}
 		})
 		if err != nil {
