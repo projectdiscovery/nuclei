@@ -19,6 +19,7 @@ Connection: close`, "https://test.com", true)
 
 	request, err = Parse(`POST /login HTTP/1.1
 Host: {{Hostname}}
+Content-Type: application/x-www-form-urlencoded
 Connection: close
 
 username=admin&password=login`, "https://test.com", true)

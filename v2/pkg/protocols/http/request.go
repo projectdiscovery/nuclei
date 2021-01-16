@@ -2,13 +2,11 @@ package http
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -232,7 +230,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
+		gologger.Print().Msgf("%s", string(dumpedRequest))
 	}
 
 	var formedURL string
@@ -317,7 +315,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
-		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
+		gologger.Print().Msgf("%s", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done

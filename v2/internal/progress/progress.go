@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -146,7 +145,7 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		builder.WriteRune(')')
 		builder.WriteRune('\n')
 
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
+		gologger.Print().Msgf("%s", builder.String())
 		builder.Reset()
 	}
 }
