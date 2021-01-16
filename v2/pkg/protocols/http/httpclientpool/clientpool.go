@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	dialer        *fastdialer.Dialer
+	Dialer        *fastdialer.Dialer
 	rawhttpClient *rawhttp.Client
 	poolMutex     *sync.RWMutex
 	normalClient  *retryablehttp.Client
@@ -96,8 +96,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	var proxyURL *url.URL
 	var err error
 
-	if dialer == nil {
-		dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
+	if Dialer == nil {
+		Dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dialer")
@@ -139,7 +139,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	maxRedirects := configuration.MaxRedirects
 
 	transport := &http.Transport{
-		DialContext:         dialer.Dial,
+		DialContext:         Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,

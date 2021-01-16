@@ -73,6 +73,8 @@ type ResultEvent struct {
 	Response string `json:"response,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
+	// IP is the IP address for the found result event.
+	IP string `json:"ip,omitempty"`
 	// Timestamp is the time the result was found at.
 	Timestamp time.Time `json:"timestamp"`
 }
