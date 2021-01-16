@@ -67,6 +67,7 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddStatic("startedAt", time.Now())
 	p.stats.AddCounter("requests", uint64(0))
 	p.stats.AddCounter("errors", uint64(0))
+	p.stats.AddCounter("matched", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 
 	if p.active {
@@ -84,6 +85,11 @@ func (p *Progress) AddToTotal(delta int64) {
 // IncrementRequests increments the requests counter by 1.
 func (p *Progress) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
+}
+
+// IncrementMatched increments the matched counter by 1.
+func (p *Progress) IncrementMatched() {
+	p.stats.IncrementCounter("matched", 1)
 }
 
 // DecrementRequests decrements the number of requests from total.
@@ -119,6 +125,11 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		builder.WriteString(" | RPS: ")
 		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
 
+		matched, _ := stats.GetCounter("matched")
+
+		builder.WriteString(" | Matched: ")
+		builder.WriteString(clistats.String(matched))
+
 		errors, _ := stats.GetCounter("errors")
 		builder.WriteString(" | Errors: ")
 		builder.WriteString(clistats.String(errors))
@@ -153,6 +164,8 @@ func (p *Progress) getMetrics() map[string]interface{} {
 	results["templates"] = clistats.String(templates)
 	hosts, _ := p.stats.GetStatic("hosts")
 	results["hosts"] = clistats.String(hosts)
+	matched, _ := p.stats.GetStatic("matched")
+	results["matched"] = clistats.String(matched)
 	requests, _ := p.stats.GetCounter("requests")
 	results["requests"] = clistats.String(requests)
 	total, _ := p.stats.GetCounter("total")
