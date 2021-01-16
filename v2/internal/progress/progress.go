@@ -53,7 +53,7 @@ func NewProgress(active, metrics bool, port int) (*Progress, error) {
 		}
 		go func() {
 			if err := progress.server.ListenAndServe(); err != nil {
-				gologger.Warningf("Could not serve metrics: %s\n", err)
+				gologger.Warning().Msgf("Could not serve metrics: %s", err)
 			}
 		}()
 	}
@@ -67,11 +67,12 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddStatic("startedAt", time.Now())
 	p.stats.AddCounter("requests", uint64(0))
 	p.stats.AddCounter("errors", uint64(0))
+	p.stats.AddCounter("matched", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 
 	if p.active {
 		if err := p.stats.Start(makePrintCallback(), p.tickDuration); err != nil {
-			gologger.Warningf("Couldn't start statistics: %s\n", err)
+			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
 	}
 }
@@ -81,15 +82,20 @@ func (p *Progress) AddToTotal(delta int64) {
 	p.stats.IncrementCounter("total", int(delta))
 }
 
-// Update progress tracking information and increments the request counter by one unit.
-func (p *Progress) Update() {
+// IncrementRequests increments the requests counter by 1.
+func (p *Progress) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
 }
 
-// Drop drops the specified number of requests from the progress bar total.
-// This may be the case when uncompleted requests are encountered and shouldn't be part of the total count.
-func (p *Progress) Drop(count int64) {
+// IncrementMatched increments the matched counter by 1.
+func (p *Progress) IncrementMatched() {
+	p.stats.IncrementCounter("matched", 1)
+}
+
+// DecrementRequests decrements the number of requests from total.
+func (p *Progress) DecrementRequests(count int64) {
 	// mimic dropping by incrementing the completed requests
+	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
 }
 
@@ -118,6 +124,11 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 
 		builder.WriteString(" | RPS: ")
 		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+
+		matched, _ := stats.GetCounter("matched")
+
+		builder.WriteString(" | Matched: ")
+		builder.WriteString(clistats.String(matched))
 
 		errors, _ := stats.GetCounter("errors")
 		builder.WriteString(" | Errors: ")
@@ -153,6 +164,8 @@ func (p *Progress) getMetrics() map[string]interface{} {
 	results["templates"] = clistats.String(templates)
 	hosts, _ := p.stats.GetStatic("hosts")
 	results["hosts"] = clistats.String(hosts)
+	matched, _ := p.stats.GetStatic("matched")
+	results["matched"] = clistats.String(matched)
 	requests, _ := p.stats.GetCounter("requests")
 	results["requests"] = clistats.String(requests)
 	total, _ := p.stats.GetCounter("total")
@@ -183,7 +196,7 @@ func fmtDuration(d time.Duration) string {
 func (p *Progress) Stop() {
 	if p.active {
 		if err := p.stats.Stop(); err != nil {
-			gologger.Warningf("Couldn't stop statistics: %s\n", err)
+			gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 		}
 	}
 	if p.server != nil {
