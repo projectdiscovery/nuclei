@@ -16,7 +16,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(r.options.Options.RateLimit)
 
 	err := r.getInputPaths(input, func(data string) {
@@ -54,11 +54,14 @@ func (r *Request) ExecuteWithResults(input string, metadata output.InternalEvent
 				fmt.Fprintf(os.Stderr, "%s\n", dataStr)
 			}
 			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, data)
-			ouputEvent := r.responseToDSLMap(dataStr, input, data)
+			outputEvent := r.responseToDSLMap(dataStr, input, data)
+			for k, v := range previous {
+				outputEvent[k] = v
+			}
 
-			event := &output.InternalWrappedEvent{InternalEvent: ouputEvent}
+			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 			if r.CompiledOperators != nil {
-				result, ok := r.CompiledOperators.Execute(ouputEvent, r.Match, r.Extract)
+				result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 				if ok && result != nil {
 					event.OperatorsResult = result
 					event.Results = r.MakeResultEvent(event)
