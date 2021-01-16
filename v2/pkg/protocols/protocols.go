@@ -51,12 +51,16 @@ type Request interface {
 	Compile(options *ExecuterOptions) error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
+	// GetID returns the ID for the request if any. IDs are used for multi-request
+	// condition matching. So, two requests can be sent and their match can
+	// be evaluated from the third request by using the IDs for both requests.
+	GetID() string
 	// Match performs matching operation for a matcher on model and returns true or false.
 	Match(data map[string]interface{}, matcher *matchers.Matcher) bool
 	// Extract performs extracting operation for a extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, metadata output.InternalEvent, callback OutputEventCallback) error
+	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
 }
 
 // OutputEventCallback is a callback event for any results found during scanning.

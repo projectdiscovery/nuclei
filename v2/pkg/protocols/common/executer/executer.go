@@ -1,6 +1,8 @@
 package executer
 
 import (
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -43,8 +45,20 @@ func (e *Executer) Execute(input string) (bool, error) {
 	var results bool
 
 	dynamicValues := make(map[string]interface{})
+	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		err := req.ExecuteWithResults(input, dynamicValues, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			ID := req.GetID()
+			if ID != "" {
+				builder := &strings.Builder{}
+				for k, v := range event.InternalEvent {
+					builder.WriteString(ID)
+					builder.WriteString("_")
+					builder.WriteString(k)
+					previous[builder.String()] = v
+					builder.Reset()
+				}
+			}
 			if event.OperatorsResult == nil {
 				return
 			}
@@ -64,8 +78,21 @@ func (e *Executer) Execute(input string) (bool, error) {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
+	previous := make(map[string]interface{})
+
 	for _, req := range e.requests {
-		_ = req.ExecuteWithResults(input, dynamicValues, func(event *output.InternalWrappedEvent) {
+		_ = req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			ID := req.GetID()
+			if ID != "" {
+				builder := &strings.Builder{}
+				for k, v := range event.InternalEvent {
+					builder.WriteString(ID)
+					builder.WriteString("_")
+					builder.WriteString(k)
+					previous[builder.String()] = v
+					builder.Reset()
+				}
+			}
 			if event.OperatorsResult == nil {
 				return
 			}
