@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -51,7 +50,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 
 			if r.options.Options.Debug || r.options.Options.DebugRequests {
 				gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, data)
-				fmt.Fprintf(os.Stderr, "%s\n", dataStr)
+				gologger.Print().Msgf("%s", dataStr)
 			}
 			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, data)
 			outputEvent := r.responseToDSLMap(dataStr, input, data)

@@ -1,9 +1,7 @@
 package dns
 
 import (
-	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -33,7 +31,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", r.options.TemplateID, domain)
-		fmt.Fprintf(os.Stderr, "%s\n", compiledRequest.String())
+		gologger.Print().Msgf("%s", compiledRequest.String())
 	}
 
 	// Send the request to the target servers
@@ -50,7 +48,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
-		fmt.Fprintf(os.Stderr, "%s\n", resp.String())
+		gologger.Print().Msgf("%s", resp.String())
 	}
 	outputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
 	for k, v := range previous {
