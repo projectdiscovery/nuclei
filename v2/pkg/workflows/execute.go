@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"go.uber.org/atomic"
 )
@@ -22,50 +23,72 @@ func (w *Workflow) RunWorkflow(input string) (bool, error) {
 // in a recursive manner running all subtemplates and matchers.
 func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool) error {
 	var firstMatched bool
-	if len(template.Matchers) == 0 {
-		w.options.Progress.AddToTotal(int64(template.Executer.Requests()))
 
-		matched, err := template.Executer.Execute(input)
-		if err != nil {
-			return err
-		}
-		if matched {
-			firstMatched = matched
-			results.CAS(false, matched)
+	var mainErr error
+	if len(template.Matchers) == 0 {
+		for _, executer := range template.Executers {
+			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
+
+			matched, err := executer.Executer.Execute(input)
+			if err != nil {
+				if len(template.Executers) == 1 {
+					mainErr = err
+				} else {
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", err)
+				}
+				continue
+			}
+			if matched {
+				firstMatched = matched
+				results.CAS(false, matched)
+			}
 		}
 	}
 
 	if len(template.Matchers) > 0 {
-		w.options.Progress.AddToTotal(int64(template.Executer.Requests()))
-
 		var executionErr error
-		err := template.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
-			if event.OperatorsResult == nil {
-				return
-			}
+		var mainErr error
 
-			for _, matcher := range template.Matchers {
-				_, matchOK := event.OperatorsResult.Matches[matcher.Name]
-				_, extractOK := event.OperatorsResult.Extracts[matcher.Name]
-				if !matchOK && !extractOK {
-					continue
+		for _, executer := range template.Executers {
+			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
+
+			err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
+				if event.OperatorsResult == nil {
+					return
 				}
 
-				for _, subtemplate := range matcher.Subtemplates {
-					if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
-						executionErr = err
-						break
+				for _, matcher := range template.Matchers {
+					_, matchOK := event.OperatorsResult.Matches[matcher.Name]
+					_, extractOK := event.OperatorsResult.Extracts[matcher.Name]
+					if !matchOK && !extractOK {
+						continue
+					}
+
+					for _, subtemplate := range matcher.Subtemplates {
+						if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
+							executionErr = err
+							break
+						}
 					}
 				}
+			})
+			if err != nil {
+				if len(template.Executers) == 1 {
+					mainErr = err
+				} else {
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", err)
+				}
+				continue
 			}
-		})
-		if err != nil {
-			return err
+			if executionErr != nil {
+				if len(template.Executers) == 1 {
+					mainErr = executionErr
+				} else {
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", executionErr)
+				}
+			}
 		}
-		if executionErr != nil {
-			return executionErr
-		}
-		return nil
+		return mainErr
 	}
 	if len(template.Subtemplates) > 0 && firstMatched {
 		for _, subtemplate := range template.Subtemplates {
@@ -74,5 +97,5 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 			}
 		}
 	}
-	return nil
+	return mainErr
 }
