@@ -121,7 +121,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	}
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(result.Extracts) > 0 || len(result.OutputExtracts) > 0 || matches {
+	if len(result.Extracts) > 0 || len(result.DynamicValues) > 0 || len(result.OutputExtracts) > 0 || matches {
 		return result, true
 	}
 	return nil, false

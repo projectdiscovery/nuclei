@@ -341,10 +341,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			result.PayloadValues = request.meta
+		var ok bool
+		event.OperatorsResult, ok = r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
+		if ok && event.OperatorsResult != nil {
+			event.OperatorsResult.PayloadValues = request.meta
 			event.Results = r.MakeResultEvent(event)
 		}
 	}
