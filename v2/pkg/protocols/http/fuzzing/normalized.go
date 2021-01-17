@@ -71,7 +71,6 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 			return nil, errors.Wrap(err, "could not parse body")
 		}
 	}
-	normalized.Headers.Del("Content-Type")
 
 	cookies := req.Header.Values("Cookie")
 	if len(cookies) == 0 {
@@ -107,6 +106,7 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 		for {
 			p, err := mr.NextPart()
 			if err == io.EOF {
+				n.Headers.Del("Content-Type")
 				return nil
 			}
 			if err != nil {
@@ -131,12 +131,14 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 		for k, v := range req.Form {
 			n.FormData[k] = v
 		}
+		n.Headers.Del("Content-Type")
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "application/json") {
 		if err := jsoniter.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
 			return errors.Wrap(err, "could not decode json body")
 		}
+		n.Headers.Del("Content-Type")
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "text/xml") {
@@ -145,6 +147,7 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 			return errors.Wrap(err, "could not decode xml body")
 		}
 		n.XMLData = mv
+		n.Headers.Del("Content-Type")
 		return nil
 	}
 	body, err := ioutil.ReadAll(req.Body)
