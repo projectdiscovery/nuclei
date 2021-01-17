@@ -65,8 +65,9 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 		QueryValues: req.URL.Query(),
 		Headers:     req.Header,
 	}
+	mediaType, params, _ := mime.ParseMediaType(req.Header.Get("Content-Type"))
 	if req.Body != nil {
-		if err := normalized.parseBody(req); err != nil {
+		if err := normalized.parseBody(req, mediaType, params); err != nil {
 			return nil, errors.Wrap(err, "could not parse body")
 		}
 	}
@@ -98,12 +99,7 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 //
 // Currently handled bodies include Multipart, Form URL Encoded, JSON, XML
 // and raw body.
-func (n *NormalizedRequest) parseBody(req *http.Request) error {
-	mediaType, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
-	if err != nil {
-		return errors.Wrap(err, "could not parse media type")
-	}
-
+func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, params map[string]string) error {
 	if strings.HasPrefix(mediaType, "multipart/") {
 		n.MultipartBody = make(map[string]NormalizedMultipartField)
 
@@ -138,7 +134,7 @@ func (n *NormalizedRequest) parseBody(req *http.Request) error {
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "application/json") {
-		if jsoniter.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
+		if err := jsoniter.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
 			return errors.Wrap(err, "could not decode json body")
 		}
 		return nil

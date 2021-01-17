@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +28,7 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 		Headers:     map[string][]string{},
 	}, normalized, "could not get correct normalized GET request")
 
-	req, err = http.NewRequest("POST", "http://example.com/?a=b", strings.NewReader("{'a':'test-body'}"))
+	req, err = http.NewRequest("POST", "http://example.com/?a=b", nil)
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Authorization", "test-value")
 	req.Header.Set("Cookie", "name=value")
@@ -41,7 +40,7 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 		Scheme:      "http",
 		Path:        "/",
 		Method:      "POST",
-		Body:        "{'a':'test-body'}",
+		Body:        "",
 		QueryValues: map[string][]string{"a": []string{"b"}},
 		Headers:     map[string][]string{"Authorization": []string{"test-value"}},
 		Cookies:     map[string]string{"name": "value"},
@@ -49,7 +48,7 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 }
 
 func TestNormalizeNetHTTPMultipartRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com/test?a=b", nil)
+	req, err := http.NewRequest("POST", "http://example.com", nil)
 	require.Nil(t, err, "could not create http request")
 
 	buffer := new(bytes.Buffer)
@@ -70,20 +69,24 @@ func TestNormalizeNetHTTPMultipartRequest(t *testing.T) {
 
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")
-	spew.Dump(normalized)
-	//require.Equal(t, &NormalizedRequest{
-	//	Host:        "example.com",
-	//	Scheme:      "http",
-	//	Path:        "/test",
-	//	Method:      "GET",
-	//	QueryValues: map[string][]string{"a": []string{"b"}},
-	//	Headers:     map[string][]string{},
-	//}, normalized, "could not get correct normalized GET request")
 
+	require.Equal(t, &NormalizedRequest{
+		Host:   "example.com",
+		Scheme: "http",
+		Path:   "",
+		Method: "POST",
+		MultipartBody: map[string]NormalizedMultipartField{
+			"test": {Value: "value"},
+			"form": {Value: "data"},
+			"file": {Value: "hello world", Filename: "file.txt"},
+		},
+		QueryValues: map[string][]string{},
+		Headers:     map[string][]string{},
+	}, normalized, "could not get correct normalized GET request")
 }
 
 func TestNormalizeNetHTTPFormRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com/", nil)
+	req, err := http.NewRequest("POST", "http://example.com", nil)
 	require.Nil(t, err, "could not create http request")
 
 	form := make(url.Values)
@@ -94,65 +97,65 @@ func TestNormalizeNetHTTPFormRequest(t *testing.T) {
 
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")
-	spew.Dump(normalized)
-	//require.Equal(t, &NormalizedRequest{
-	//	Host:        "example.com",
-	//	Scheme:      "http",
-	//	Path:        "/test",
-	//	Method:      "GET",
-	//	QueryValues: map[string][]string{"a": []string{"b"}},
-	//	Headers:     map[string][]string{},
-	//}, normalized, "could not get correct normalized GET request")
 
+	require.Equal(t, &NormalizedRequest{
+		Host:        "example.com",
+		Scheme:      "http",
+		Path:        "",
+		Method:      "POST",
+		FormData:    map[string][]string{"name": []string{"hacker"}, "password": []string{"pass"}},
+		QueryValues: map[string][]string{},
+		Headers:     map[string][]string{},
+	}, normalized, "could not get correct normalized GET request")
 }
 
 func TestNormalizeNetHTTPJSONRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com/", strings.NewReader(`
+	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(`
 	{
 		"name": {"first": "Tom", "last": "Anderson"},
-		"children": ["Sara","Alex","Jack"],
-		"friends": [
-			{"first": "Dale", "last": "Murphy", "age": 44, "nets": ["ig", "fb", "tw"]},
-		]
+		"children": ["Sara","Alex","Jack"]
 	}`))
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "application/json")
 
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")
-	spew.Dump(normalized)
-	//require.Equal(t, &NormalizedRequest{
-	//	Host:        "example.com",
-	//	Scheme:      "http",
-	//	Path:        "/test",
-	//	Method:      "GET",
-	//	QueryValues: map[string][]string{"a": []string{"b"}},
-	//	Headers:     map[string][]string{},
-	//}, normalized, "could not get correct normalized GET request")
 
+	require.Equal(t, &NormalizedRequest{
+		Host:   "example.com",
+		Scheme: "http",
+		Path:   "",
+		Method: "POST",
+		JSONData: map[string]interface{}{
+			"name":     map[string]interface{}{"first": "Tom", "last": "Anderson"},
+			"children": []interface{}{"Sara", "Alex", "Jack"},
+		},
+		QueryValues: map[string][]string{},
+		Headers:     map[string][]string{},
+	}, normalized, "could not get correct normalized GET request")
 }
 
 func TestNormalizeNetHTTPXMLRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com/", strings.NewReader(`
+	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(`
 <note>
 <to>Tove</to>
 <from>Jani</from>
-<heading>Reminder</heading>
-<body>Don't forget me this weekend!</body>
 </note>`))
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "text/xml")
 
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")
-	spew.Dump(normalized)
-	//require.Equal(t, &NormalizedRequest{
-	//	Host:        "example.com",
-	//	Scheme:      "http",
-	//	Path:        "/test",
-	//	Method:      "GET",
-	//	QueryValues: map[string][]string{"a": []string{"b"}},
-	//	Headers:     map[string][]string{},
-	//}, normalized, "could not get correct normalized GET request")
 
+	require.Equal(t, &NormalizedRequest{
+		Host:   "example.com",
+		Scheme: "http",
+		Path:   "",
+		Method: "POST",
+		XMLData: map[string]interface{}{
+			"note": map[string]interface{}{"to": "Tove", "from": "Jani"},
+		},
+		QueryValues: map[string][]string{},
+		Headers:     map[string][]string{},
+	}, normalized, "could not get correct normalized GET request")
 }
