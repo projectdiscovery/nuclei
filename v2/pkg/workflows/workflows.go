@@ -6,8 +6,6 @@ import "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 type Workflow struct {
 	// Workflows is a yaml based workflow declaration code.
 	Workflows []*WorkflowTemplate `yaml:"workflows"`
-
-	options *protocols.ExecuterOptions
 }
 
 // WorkflowTemplate is a template to be ran as part of a workflow
@@ -18,8 +16,14 @@ type WorkflowTemplate struct {
 	Matchers []*Matcher `yaml:"matchers"`
 	// Subtemplates are ran if the template matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
-	// Executer performs the actual execution for the workflow template
+	// Executers perform the actual execution for the workflow template
+	Executers []*ProtocolExecuterPair
+}
+
+// ProtocolExecuterPair is a pair of protocol executer and its options
+type ProtocolExecuterPair struct {
 	Executer protocols.Executer
+	Options  *protocols.ExecuterOptions
 }
 
 // Matcher performs conditional matching on the workflow template results.
@@ -28,9 +32,4 @@ type Matcher struct {
 	Name string `yaml:"name"`
 	// Subtemplates are ran if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
-}
-
-// Compile compiles the workflow template for execution
-func (w *Workflow) Compile(options *protocols.ExecuterOptions) {
-	w.options = options
 }

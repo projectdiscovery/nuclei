@@ -231,7 +231,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		paths := strings.Split(directory, "/")
 		finalPath := strings.Join(paths[1:], "/")
 
-		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
+		if (!strings.EqualFold(name, ".nuclei-ignore") && strings.HasPrefix(name, ".")) || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
 		}
 		totalCount++

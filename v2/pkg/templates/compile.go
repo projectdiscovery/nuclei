@@ -42,7 +42,6 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 		if err := template.compileWorkflow(options, compiled); err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
-		template.Workflow.Compile(options)
 		template.CompiledWorkflow = compiled
 	}
 
@@ -114,26 +113,30 @@ func (t *Template) parseWorkflow(workflow *workflows.WorkflowTemplate, options *
 
 // parseWorkflowTemplate parses a workflow template creating an executer
 func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions) error {
-	opts := protocols.ExecuterOptions{
-		Output:      options.Output,
-		Options:     options.Options,
-		Progress:    options.Progress,
-		Catalogue:   options.Catalogue,
-		RateLimiter: options.RateLimiter,
-		ProjectFile: options.ProjectFile,
-	}
 	paths, err := options.Catalogue.GetTemplatePath(workflow.Template)
 	if err != nil {
 		return errors.Wrap(err, "could not get workflow template")
 	}
-	if len(paths) != 1 {
-		return errors.Wrap(err, "invalid number of templates matched")
+	for _, path := range paths {
+		opts := &protocols.ExecuterOptions{
+			Output:      options.Output,
+			Options:     options.Options,
+			Progress:    options.Progress,
+			Catalogue:   options.Catalogue,
+			RateLimiter: options.RateLimiter,
+			ProjectFile: options.ProjectFile,
+		}
+		template, err := Parse(path, opts)
+		if err != nil {
+			return errors.Wrap(err, "could not parse workflow template")
+		}
+		if template.Executer == nil {
+			return errors.New("no executer found for template")
+		}
+		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
+			Executer: template.Executer,
+			Options:  options,
+		})
 	}
-
-	template, err := Parse(paths[0], &opts)
-	if err != nil {
-		return errors.Wrap(err, "could not parse workflow template")
-	}
-	workflow.Executer = template.Executer
 	return nil
 }
