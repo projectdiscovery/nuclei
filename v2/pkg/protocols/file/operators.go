@@ -79,6 +79,9 @@ func (r *Request) responseToDSLMap(raw string, host, matched string) output.Inte
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
+		return nil
+	}
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
 	// If we have multiple matchers with names, write each of them separately.
