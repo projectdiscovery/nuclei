@@ -1,6 +1,9 @@
 package fuzzing
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 // AnalyzerPartsConfig contains the configuration for a part analyzer.
 type AnalyzerPartsConfig struct {
@@ -61,4 +64,51 @@ func (a *AnalyzerOptions) Compile() error {
 		}
 	}
 	return nil
+}
+
+// Match performs a match on a part config and returns true if the key-value pair
+// provided is valid.
+func (a *AnalyzerPartsConfig) Match(key string, value string) bool {
+	if a.Valid != nil {
+		if a.Valid.Match(key, value) {
+			return true
+		}
+		return false
+	}
+	if a.Invalid != nil {
+		if a.Invalid.Match(key, value) {
+			return false
+		}
+		return true
+	}
+	return true
+}
+
+// Match returns true if a config matcher is valid for key value pair.
+func (a *AnalyerPartsConfigMatcher) Match(key string, value string) bool {
+	for _, regex := range a.KeysCompiled {
+		if regex.MatchString(key) {
+			return true
+		}
+	}
+	for _, v := range a.Keys {
+		if a.Exact && strings.EqualFold(key, v) {
+			return true
+		} else if !a.Exact && strings.Contains(key, v) {
+			return true
+		}
+	}
+	for _, regex := range a.ValuesCompiled {
+		if regex.MatchString(value) {
+			return true
+		}
+	}
+	for _, v := range a.Values {
+		if a.Exact && strings.EqualFold(value, v) {
+			return true
+		} else if !a.Exact && strings.Contains(key, v) {
+			return true
+		}
+	}
+	return false
 }

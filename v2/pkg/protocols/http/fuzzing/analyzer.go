@@ -1,9 +1,6 @@
 package fuzzing
 
-// InjectionPoint is a single point in the request which can be injected
-// with payloads for scanning the request.
-type InjectionPoint struct {
-}
+import "net/http"
 
 // AnalyzerOptions contains configuration options for the injection
 // point analyzer.
@@ -50,7 +47,7 @@ type AnalyzerOptions struct {
 // First validation is performed by the parts-config value of configuration to
 // choose whether this field can be fuzzed or not. If the part can be fuzzed, testing
 // is finally performed for the request.
-func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback func(*InjectionPoint)) error {
+func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback func(*http.Request)) error {
 	parts := make(map[string]struct{})
 
 	if len(options.Parts) == 0 {
@@ -73,6 +70,10 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 		parts["query-values"] = struct{}{}
 		parts["headers"] = struct{}{}
 		delete(parts, "all")
+	}
+
+	if len(options.PartsConfig) == 0 {
+		options.PartsConfig = defaultPartsConfig
 	}
 	return nil
 }
