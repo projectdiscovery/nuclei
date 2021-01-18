@@ -1,5 +1,9 @@
 package fuzzing
 
+var defaultPartsConfig = map[string]*AnalyzerPartsConfig{
+	"headers": &AnalyzerPartsConfig{},
+}
+
 // defaultIgnoredHeaders contains a default list of headers that should
 // not be fuzzed by the engine.
 var defaultIgnoredHeaders = map[string]struct{}{
