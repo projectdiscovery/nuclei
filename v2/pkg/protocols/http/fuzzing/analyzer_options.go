@@ -68,6 +68,21 @@ func (a *AnalyzerOptions) Compile() error {
 
 // Match performs a match on a part config and returns true if the key-value pair
 // provided is valid.
+func (a *AnalyzerOptions) Match(part string, key string, value string) bool {
+	config, ok := a.PartsConfig[part]
+	if !ok || len(config) == 0 {
+		return true
+	}
+	for _, c := range config {
+		if c.Match(key, value) {
+			return true
+		}
+	}
+	return false
+}
+
+// Match performs a match on a part config and returns true if the key-value pair
+// provided is valid.
 func (a *AnalyzerPartsConfig) Match(key string, value string) bool {
 	if a.Valid != nil {
 		if a.Valid.Match(key, value) {

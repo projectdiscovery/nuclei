@@ -32,9 +32,9 @@ type NormalizedRequest struct {
 	// FormData is the urlencoded post body for the request
 	FormData map[string][]string
 	// JSONData contains the unmarshalled JSON data for the request
-	JSONData map[string]interface{}
+	JSONData interface{}
 	// XMLData contains the unmarshalled XML data for the request
-	XMLData map[string]interface{}
+	XMLData mxj.Map
 	// Body contains the body for the request if any.
 	Body string
 	// QueryValues contains the query parameter values for the request if any.
@@ -135,7 +135,7 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "application/json") {
-		if err := jsoniter.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
+		if err := jsoniter.ConfigCompatibleWithStandardLibrary.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
 			return errors.Wrap(err, "could not decode json body")
 		}
 		n.Headers.Del("Content-Type")
