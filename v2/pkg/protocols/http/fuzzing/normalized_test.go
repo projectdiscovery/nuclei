@@ -43,7 +43,7 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 		Body:        "",
 		QueryValues: map[string][]string{"a": []string{"b"}},
 		Headers:     map[string][]string{"Authorization": []string{"test-value"}},
-		Cookies:     map[string]string{"name": "value"},
+		Cookies:     map[string][]string{"name": []string{"value"}},
 	}, normalized, "could not get correct normalized POST request")
 }
 

@@ -27,6 +27,9 @@ type AnalyzerOptions struct {
 	// Replace is most commonly used to replace old data with completely new data.
 	Replace []string `yaml:"replace"`
 
+	// MaxDepth is the maximum number of document nesting to fuzz for.
+	MaxDepth int `yaml:"max-depth"`
+
 	// Parts is the list of parts to fuzz for the request.
 	//
 	// Valid value mappings are -
@@ -154,11 +157,13 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 
 	builder.Reset()
 	for k, v := range req.Cookies {
-		builder.WriteString(k)
-		builder.WriteString("=")
-		builder.WriteString(v)
-		builder.WriteString(";")
-		builder.WriteString(" ")
+		for _, value := range v {
+			builder.WriteString(k)
+			builder.WriteString("=")
+			builder.WriteString(value)
+			builder.WriteString(";")
+			builder.WriteString(" ")
+		}
 	}
 	cookieString := strings.TrimSpace(builder.String())
 	if cookieString != "" {

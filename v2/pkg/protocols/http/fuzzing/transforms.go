@@ -1,7 +1,11 @@
 package fuzzing
 
 import (
+	"io"
+	"strconv"
 	"strings"
+
+	"github.com/morikuni/accessor"
 )
 
 // Transform contains the ways described to transform  a document a single
@@ -12,18 +16,6 @@ type Transform struct {
 	Key   string
 	Value string
 }
-
-/*
-Path string
-MultipartBody map[string]NormalizedMultipartField
-FormData map[string][]string
-JSONData map[string]interface{}
-XMLData map[string]interface{}
-Body string
-QueryValues map[string][]string
-Headers http.Header
-Cookies map[string]string
-*/
 
 // CreateTransform creates a transform structure describing how to
 // change the request one by one to meet all of user's fuzzing conditions.
@@ -87,100 +79,166 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 			})
 		}
 	}
-
 	if _, ok := parts["query-values"]; ok {
-		for k, v := range req.QueryValues {
-			if len(v) == 0 {
-				continue
-			}
-			if !options.Match("query-values", k, v[0]) {
-				continue
-			}
-
-			for _, value := range options.Append {
-				builder.Reset()
-				builder.WriteString(v[0])
-				builder.WriteString(value)
-
-				transforms = append(transforms, &Transform{
-					Part:  "query-values",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
-			for _, value := range options.Replace {
-				builder.Reset()
-				builder.WriteString(value)
-
-				transforms = append(transforms, &Transform{
-					Part:  "query-values",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
-		}
+		transforms = options.transformMapStringSlice("query-values", req.QueryValues, transforms)
 	}
-
 	if _, ok := parts["headers"]; ok {
-		for k, v := range req.Headers {
-			if len(v) == 0 {
-				continue
+		transforms = options.transformMapStringSlice("headers", req.QueryValues, transforms)
+	}
+	if _, ok := parts["cookies"]; ok {
+		transforms = options.transformMapStringSlice("cookies", req.Cookies, transforms)
+	}
+	if _, ok := parts["body"]; ok {
+		if len(req.FormData) > 0 {
+			transforms = options.transformMapStringSlice("body", req.FormData, transforms)
+		}
+		if len(req.MultipartBody) > 0 {
+			multipartData := make(map[string][]string)
+			for k, v := range req.MultipartBody {
+				multipartData[k] = []string{v.Value}
 			}
-			if !options.Match("headers", k, v[0]) {
-				continue
-			}
-
-			for _, value := range options.Append {
-				builder.Reset()
-				builder.WriteString(v[0])
-				builder.WriteString(value)
-
-				transforms = append(transforms, &Transform{
-					Part:  "headers",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
-			for _, value := range options.Replace {
-				builder.Reset()
-				builder.WriteString(value)
-
-				transforms = append(transforms, &Transform{
-					Part:  "headers",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
+			transforms = options.transformMapStringSlice("body", multipartData, transforms)
+		}
+		if req.JSONData != nil {
+			transforms = options.transformInterface("body", req.JSONData, transforms)
+		}
+		if req.XMLData != nil {
+			transforms = options.transformInterface("body", req.XMLData, transforms)
 		}
 	}
+	return transforms
+}
 
-	if _, ok := parts["cookies"]; ok {
-		for k, v := range req.Cookies {
-			if !options.Match("cookies", k, v) {
-				continue
-			}
+// transformInterface reduces a interface to a set of transformations
+func (o *AnalyzerOptions) transformInterface(part string, data interface{}, transforms []*Transform) []*Transform {
+	builder := &strings.Builder{}
 
-			for _, value := range options.Append {
-				builder.Reset()
-				builder.WriteString(v)
-				builder.WriteString(value)
+	if values, ok := data.([]interface{}); ok {
+		var data string
+		if len(values) > 0 {
+			data = values[0].(string)
+		}
+		if !o.Match(part, "", data) {
+			return nil
+		}
 
-				transforms = append(transforms, &Transform{
-					Part:  "cookies",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
-			for _, value := range options.Replace {
-				builder.Reset()
-				builder.WriteString(value)
+		for _, value := range o.Append {
+			builder.Reset()
+			builder.WriteString(data)
+			builder.WriteString(value)
 
-				transforms = append(transforms, &Transform{
-					Part:  "cookies",
-					Key:   k,
-					Value: builder.String(),
-				})
-			}
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Value: builder.String(),
+			})
+		}
+		for _, value := range o.Replace {
+			builder.Reset()
+			builder.WriteString(value)
+
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Value: builder.String(),
+			})
+		}
+		return transforms
+	}
+
+	acc, err := accessor.NewAccessor(data)
+	if err != nil {
+		return transforms
+	}
+	sameNames := make(map[string]struct{})
+	_ = acc.Foreach(func(path accessor.Path, data interface{}) error {
+		if _, ok := data.(string); !ok {
+			return nil
+		}
+
+		pathString := path.String()
+		if strings.Count(pathString, "/") == o.MaxDepth {
+			return io.EOF
+		}
+		final := pathString[:strings.LastIndex(pathString, "/")]
+		preFinal := pathString[strings.LastIndex(pathString, "/")+1:]
+
+		var keyName string
+		if _, err := strconv.Atoi(final); err == nil {
+			keyName = preFinal
+		} else {
+			keyName = pathString
+		}
+
+		if _, ok := sameNames[keyName]; ok {
+			return nil
+		}
+
+		if !o.Match(part, pathString, data.(string)) {
+			return nil
+		}
+
+		for _, value := range o.Append {
+			builder.Reset()
+			builder.WriteString(data.(string))
+			builder.WriteString(value)
+
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Key:   pathString,
+				Value: builder.String(),
+			})
+		}
+		for _, value := range o.Replace {
+			builder.Reset()
+			builder.WriteString(value)
+
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Key:   pathString,
+				Value: builder.String(),
+			})
+		}
+		sameNames[keyName] = struct{}{}
+		return nil
+	})
+	return transforms
+}
+
+// transformMapStringSlice reduces a map[string][]string to a set of transformations
+func (o *AnalyzerOptions) transformMapStringSlice(part string, data map[string][]string, transforms []*Transform) []*Transform {
+	builder := &strings.Builder{}
+
+	for k, v := range data {
+		var actual string
+		if len(v) == 0 {
+			actual = ""
+		} else {
+			actual = v[0]
+		}
+
+		if !o.Match(part, k, actual) {
+			continue
+		}
+
+		for _, value := range o.Append {
+			builder.Reset()
+			builder.WriteString(actual)
+			builder.WriteString(value)
+
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Key:   k,
+				Value: builder.String(),
+			})
+		}
+		for _, value := range o.Replace {
+			builder.Reset()
+			builder.WriteString(value)
+
+			transforms = append(transforms, &Transform{
+				Part:  part,
+				Key:   k,
+				Value: builder.String(),
+			})
 		}
 	}
 	return transforms

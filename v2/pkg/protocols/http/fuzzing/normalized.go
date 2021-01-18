@@ -42,7 +42,7 @@ type NormalizedRequest struct {
 	// Headers contains the map of headers for the request.
 	Headers http.Header
 	// Cookies contains all the cookies for the request.
-	Cookies map[string]string
+	Cookies map[string][]string
 }
 
 // NormalizedMultipartField is the normalized multipart field
@@ -77,7 +77,7 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 		return normalized, nil
 	}
 
-	normalized.Cookies = make(map[string]string)
+	normalized.Cookies = make(map[string][]string)
 	for _, cookie := range cookies {
 		parts := strings.Split(cookie, " ")
 		for _, part := range parts {
@@ -85,7 +85,12 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 			if len(kv) != 2 {
 				continue
 			}
-			normalized.Cookies[kv[0]] = strings.TrimSuffix(kv[1], ";")
+			value := strings.TrimSuffix(kv[1], ";")
+			if parts, ok := normalized.Cookies[kv[0]]; !ok {
+				normalized.Cookies[kv[0]] = []string{value}
+			} else {
+				parts = append(parts, value)
+			}
 		}
 	}
 	normalized.Headers.Del("Cookie")
