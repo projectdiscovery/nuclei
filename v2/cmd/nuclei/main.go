@@ -7,7 +7,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -49,7 +48,7 @@ func mergeViperConfiguration(cmd *cobra.Command) {
 			switch p := viper.Get(f.Name).(type) {
 			case []interface{}:
 				for _, item := range p {
-					cmd.PersistentFlags().Set(f.Name, cast.ToString(item))
+					cmd.PersistentFlags().Set(f.Name, types.ToString(item))
 				}
 			default:
 				cmd.PersistentFlags().Set(f.Name, viper.GetString(f.Name))
@@ -70,7 +69,7 @@ func init() {
 			}
 		}
 	})
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Nuclei config file (default is $HOME/.nuclei.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Nuclei configuration file")
 	rootCmd.PersistentFlags().BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
 	rootCmd.PersistentFlags().IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
 	rootCmd.PersistentFlags().StringVar(&options.Target, "target", "", "Target is a single target to scan using template")

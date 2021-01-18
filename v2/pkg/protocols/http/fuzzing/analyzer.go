@@ -1,6 +1,10 @@
 package fuzzing
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+	"strings"
+)
 
 // AnalyzerOptions contains configuration options for the injection
 // point analyzer.
@@ -74,6 +78,29 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 
 	if len(options.PartsConfig) == 0 {
 		options.PartsConfig = defaultPartsConfig
+	}
+
+	builder := &strings.Builder{}
+	builder.WriteString(req.Scheme)
+	builder.WriteString("://")
+	builder.WriteString(req.Host)
+	builder.WriteString(req.Path)
+	newRequest, err := http.NewRequest(req.Method, builder.String(), nil)
+	if err != nil {
+		return err
+	}
+	query := &url.Values{}
+	for k, v := range req.QueryValues {
+		for _, value := range v {
+			query.Add(k, value)
+		}
+	}
+	newRequest.URL.RawQuery = query.Encode()
+
+	for k, v := range req.Headers {
+		for _, value := range v {
+			newRequest.Header.Add(k, value)
+		}
 	}
 	return nil
 }
