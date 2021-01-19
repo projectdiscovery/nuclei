@@ -29,37 +29,56 @@ type AnalyerPartsConfigMatcher struct {
 	Values []string `yam:"values"`
 }
 
+var allFields = []string{
+	"path",
+	"cookies",
+	"body",
+	"query-values",
+	"headers",
+}
+
 // Compile compiles regex, etc for an analyzer configuration
 func (a *AnalyzerOptions) Compile() error {
+	configs, ok := a.PartsConfig["all"]
+	if ok {
+		for _, field := range allFields {
+			a.PartsConfig[field] = configs
+		}
+	}
+
 	for _, part := range a.PartsConfig {
 		for _, v := range part {
-			for _, regex := range v.Valid.KeysRegex {
-				regexp, err := regexp.Compile(regex)
-				if err != nil {
-					return err
+			if v.Valid != nil {
+				for _, regex := range v.Valid.KeysRegex {
+					regexp, err := regexp.Compile(regex)
+					if err != nil {
+						return err
+					}
+					v.Valid.KeysCompiled = append(v.Valid.KeysCompiled, regexp)
 				}
-				v.Valid.KeysCompiled = append(v.Valid.KeysCompiled, regexp)
+				for _, regex := range v.Valid.ValuesRegex {
+					regexp, err := regexp.Compile(regex)
+					if err != nil {
+						return err
+					}
+					v.Valid.ValuesCompiled = append(v.Valid.ValuesCompiled, regexp)
+				}
 			}
-			for _, regex := range v.Valid.ValuesRegex {
-				regexp, err := regexp.Compile(regex)
-				if err != nil {
-					return err
+			if v.Invalid != nil {
+				for _, regex := range v.Invalid.KeysRegex {
+					regexp, err := regexp.Compile(regex)
+					if err != nil {
+						return err
+					}
+					v.Invalid.KeysCompiled = append(v.Invalid.KeysCompiled, regexp)
 				}
-				v.Valid.KeysCompiled = append(v.Valid.KeysCompiled, regexp)
-			}
-			for _, regex := range v.Invalid.KeysRegex {
-				regexp, err := regexp.Compile(regex)
-				if err != nil {
-					return err
+				for _, regex := range v.Invalid.ValuesRegex {
+					regexp, err := regexp.Compile(regex)
+					if err != nil {
+						return err
+					}
+					v.Invalid.ValuesCompiled = append(v.Invalid.ValuesCompiled, regexp)
 				}
-				v.Invalid.KeysCompiled = append(v.Invalid.KeysCompiled, regexp)
-			}
-			for _, regex := range v.Invalid.ValuesRegex {
-				regexp, err := regexp.Compile(regex)
-				if err != nil {
-					return err
-				}
-				v.Invalid.KeysCompiled = append(v.Invalid.KeysCompiled, regexp)
 			}
 		}
 	}

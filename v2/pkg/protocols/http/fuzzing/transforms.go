@@ -61,7 +61,7 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 		transforms = options.transformMapStringSlice("query-values", req.QueryValues, transforms)
 	}
 	if _, ok := parts["headers"]; ok {
-		transforms = options.transformMapStringSlice("headers", req.QueryValues, transforms)
+		transforms = options.transformMapStringSlice("headers", req.Headers, transforms)
 	}
 	if _, ok := parts["cookies"]; ok {
 		transforms = options.transformMapStringSlice("cookies", req.Cookies, transforms)

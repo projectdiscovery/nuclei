@@ -70,7 +70,6 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 	var err error
 
 	transforms := CreateTransform(req, options)
-
 	for _, transform := range transforms {
 		// If we have multipart body, add it to the request.
 		if len(req.MultipartBody) > 0 {
@@ -102,7 +101,12 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 		builder.WriteString(req.Scheme)
 		builder.WriteString("://")
 		builder.WriteString(req.Host)
-		builder.WriteString(req.Path)
+
+		if strings.EqualFold(transform.Part, "path") {
+			builder.WriteString(transform.Value)
+		} else {
+			builder.WriteString(req.Path)
+		}
 		newRequest, err := http.NewRequest(req.Method, builder.String(), reqBody)
 		if err != nil {
 			return err
@@ -112,12 +116,18 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 			for _, value := range v {
 				query.Add(k, value)
 			}
+			if strings.EqualFold(transform.Part, "query-values") && strings.EqualFold(k, transform.Key) {
+				query.Set(k, transform.Value)
+			}
 		}
 		newRequest.URL.RawQuery = query.Encode()
 
 		for k, v := range req.Headers {
 			for _, value := range v {
 				newRequest.Header.Add(k, value)
+			}
+			if strings.EqualFold(transform.Part, "headers") && strings.EqualFold(k, transform.Key) {
+				newRequest.Header.Set(k, transform.Value)
 			}
 		}
 		if req.Headers.Get("Content-Length") != "" && contentLength != 0 {
@@ -132,7 +142,11 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 			for _, value := range v {
 				builder.WriteString(k)
 				builder.WriteString("=")
-				builder.WriteString(value)
+				if strings.EqualFold(transform.Part, "cookies") && strings.EqualFold(k, transform.Key) {
+					builder.WriteString(transform.Value)
+				} else {
+					builder.WriteString(value)
+				}
 				builder.WriteString(";")
 				builder.WriteString(" ")
 			}
@@ -153,7 +167,7 @@ func (o *AnalyzerOptions) analyzeMultipartBody(req *NormalizedRequest, transform
 
 	for k, v := range req.MultipartBody {
 		var value string
-		if transform.Part == "body" {
+		if strings.EqualFold(transform.Part, "body") {
 			if strings.EqualFold(transform.Key, k) {
 				value = transform.Value
 			} else {
@@ -186,7 +200,7 @@ func (o *AnalyzerOptions) analyzeFormBody(req *NormalizedRequest, transform *Tra
 		for _, value := range v {
 			data.Add(k, value)
 		}
-		if transform.Part == "body" && strings.EqualFold(transform.Key, k) {
+		if strings.EqualFold(transform.Part, "body") && strings.EqualFold(transform.Key, k) {
 			data.Set(k, transform.Value)
 		}
 	}
@@ -201,7 +215,7 @@ func (o *AnalyzerOptions) analyzeJSONBody(req *NormalizedRequest, transform *Tra
 		return nil, 0, "", errors.Wrap(err, "could not access json data")
 	}
 
-	if transform.Part == "body" {
+	if strings.EqualFold(transform.Part, "body") {
 		path, err := accessor.ParsePath(transform.Key)
 		if err != nil {
 			return nil, 0, "", errors.Wrap(err, "could not parse fuzzing path")
@@ -226,7 +240,7 @@ func (o *AnalyzerOptions) analyzeXMLBody(req *NormalizedRequest, transform *Tran
 		return nil, 0, "", errors.Wrap(err, "could not access XML data")
 	}
 
-	if transform.Part == "body" {
+	if strings.EqualFold(transform.Part, "body") {
 		path, err := accessor.ParsePath(transform.Key)
 		if err != nil {
 			return nil, 0, "", errors.Wrap(err, "could not parse fuzzing path")

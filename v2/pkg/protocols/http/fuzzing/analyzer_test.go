@@ -1,45 +1,35 @@
 package fuzzing
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"mime/multipart"
 	"net/http"
 	"net/http/httputil"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestFuzzingAnalyzeRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com", nil)
+	req, err := http.NewRequest("GET", "http://example.com/command.php?url=http://google.com&b=test", nil)
 	require.Nil(t, err, "could not create http request")
-
-	buffer := new(bytes.Buffer)
-	writer := multipart.NewWriter(buffer)
-	part, err := writer.CreateFormFile("file", "file.txt")
-	if err != nil {
-		require.Nil(t, err, "could not create form")
-	}
-	_, err = io.Copy(part, strings.NewReader("hello world"))
-
-	params := map[string]string{"test": "value", "form": "data"}
-	for key, val := range params {
-		_ = writer.WriteField(key, val)
-	}
-	writer.Close()
-	req.Body = ioutil.NopCloser(buffer)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Content-Length", strconv.Itoa(buffer.Len()))
-
+	req.Header.Set("User-Agent", "Test")
+	req.Header.Set("X-WWW-URL", "http://www.google.com")
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")
 
-	err = AnalyzeRequest(normalized, &AnalyzerOptions{}, func(req *http.Request) {
+	options := &AnalyzerOptions{
+		Replace: []string{"http://collaborator.pd.io/B215ADE3-D31E-40C4-95F1-AD32AAF3E832"},
+		Parts:   []string{"default"},
+		PartsConfig: map[string][]*AnalyzerPartsConfig{
+			"all": []*AnalyzerPartsConfig{{Valid: &AnalyerPartsConfigMatcher{
+				ValuesRegex: []string{"http.*"},
+			}}},
+		},
+	}
+	err = options.Compile()
+	require.Nil(t, err, "could not compile regex request")
+
+	err = AnalyzeRequest(normalized, options, func(req *http.Request) {
 		if data, err := httputil.DumpRequestOut(req, true); err == nil {
 			fmt.Printf("%v\n", string(data))
 		}
