@@ -20,8 +20,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzzing"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 )
@@ -154,8 +156,44 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	return requestErr
 }
 
+// executeFuzzing executes fuzzing request for an input
+func (r *Request) executeFuzzing(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil
+	}
+	retryable, _ := retryablehttp.FromRequest(req)
+	normalized, err := fuzzing.NormalizeRequest(retryable)
+	if err != nil {
+		gologger.Warning().Msgf("Could not normalized request for fuzzing: %s\n", err)
+		return nil
+	}
+	err = fuzzing.AnalyzeRequest(normalized, r.CompiledAnalyzer, func(req *http.Request) {
+		retryable, err := retryablehttp.FromRequest(req)
+		if err != nil {
+			gologger.Warning().Msgf("Could not convert request to retryable for fuzzing: %s\n", err)
+			return
+		}
+		err = r.executeRequest(reqURL, &generatedRequest{request: retryable, original: r}, dynamicValues, previous, callback)
+		if err != nil {
+			gologger.Warning().Msgf("Could not execute request for fuzzing: %s\n", err)
+			return
+		}
+	})
+	if err != nil {
+		gologger.Warning().Msgf("Could not analyze request for fuzzing: %s\n", err)
+		return nil
+	}
+	return nil
+}
+
 // ExecuteWithResults executes the final request on a URL
 func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// verify if fuzzing was asked by the user
+	if len(r.Append) > 0 || len(r.Replace) > 0 {
+		return r.executeFuzzing(reqURL, dynamicValues, previous, callback)
+	}
+
 	// verify if pipeline was requested
 	if r.Pipeline {
 		return r.executeTurboHTTP(reqURL, dynamicValues, previous, callback)

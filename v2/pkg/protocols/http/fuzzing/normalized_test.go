@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,10 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com/test?a=b", nil)
 	require.Nil(t, err, "could not create http request")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 	require.Equal(t, &NormalizedRequest{
 		Host:        "example.com",
@@ -33,7 +37,10 @@ func TestNormalizeNetHTTPRequest(t *testing.T) {
 	req.Header.Set("Authorization", "test-value")
 	req.Header.Set("Cookie", "name=value")
 
-	normalized, err = NormalizeRequest(req)
+	newReq, err = retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err = NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized post request")
 	require.Equal(t, &NormalizedRequest{
 		Host:        "example.com",
@@ -67,7 +74,10 @@ func TestNormalizeNetHTTPMultipartRequest(t *testing.T) {
 	req.Body = ioutil.NopCloser(buffer)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	require.Equal(t, &NormalizedRequest{
@@ -95,7 +105,10 @@ func TestNormalizeNetHTTPFormRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Body = ioutil.NopCloser(strings.NewReader(form.Encode()))
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	require.Equal(t, &NormalizedRequest{
@@ -118,7 +131,10 @@ func TestNormalizeNetHTTPJSONRequest(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "application/json")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	require.Equal(t, &NormalizedRequest{
@@ -144,7 +160,10 @@ func TestNormalizeNetHTTPXMLRequest(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "text/xml")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	require.Equal(t, &NormalizedRequest{

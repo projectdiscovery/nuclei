@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +17,10 @@ func TestTransformsPath(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com/test-1", nil)
 	require.Nil(t, err, "could not create http request")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -36,7 +40,10 @@ func TestTransformsQueryValues(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com/test-1?test=a", nil)
 	require.Nil(t, err, "could not create http request")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -56,7 +63,10 @@ func TestTransformsQueryValuesMultiple(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com/test-1?test=a&ques=b", nil)
 	require.Nil(t, err, "could not create http request")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -71,7 +81,10 @@ func TestTransformsHeaders(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("X-Real-IP", "127.0.0.1")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -92,7 +105,10 @@ func TestTransformsHeadersDefaultIgnore(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Access-Control-Request-Headers", "127.0.0.1")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -107,7 +123,10 @@ func TestTransformsCookies(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Cookie", "x-user=admin;")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -132,7 +151,10 @@ func TestTransformsBodyFormData(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Body = ioutil.NopCloser(strings.NewReader(form.Encode()))
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -162,7 +184,10 @@ func TestTransformsBodyMultipartFormData(t *testing.T) {
 	req.Body = ioutil.NopCloser(buffer)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -188,7 +213,10 @@ func TestTransformsBodyJSONData(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Length", "1")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -207,7 +235,10 @@ func TestTransformsBodyJSONDataArray(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "application/json")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{
@@ -227,7 +258,10 @@ func TestTransformsBodyXMLData(t *testing.T) {
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "text/xml")
 
-	normalized, err := NormalizeRequest(req)
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	values := CreateTransform(normalized, &AnalyzerOptions{

@@ -253,7 +253,6 @@ func (r *Runner) RunEnumeration() {
 		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
 	}
 	templateCount := originalTemplatesCount
-	hasWorkflows := workflowCount > 0
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
@@ -270,27 +269,23 @@ func (r *Runner) RunEnumeration() {
 	// Starts polling or ignore
 	collaborator.DefaultCollaborator.Poll()
 
-	if r.inputCount == 0 {
-		gologger.Error().Msgf("Could not find any valid input URLs.")
-	} else if totalRequests > 0 || hasWorkflows {
-		// tracks global progress and captures stdout/stderr until p.Wait finishes
-		r.progress.Init(r.inputCount, templateCount, totalRequests)
+	// tracks global progress and captures stdout/stderr until p.Wait finishes
+	r.progress.Init(r.inputCount, templateCount, totalRequests)
 
-		for _, t := range finalTemplates {
-			wgtemplates.Add()
-			go func(template *templates.Template) {
-				defer wgtemplates.Done()
+	for _, t := range finalTemplates {
+		wgtemplates.Add()
+		go func(template *templates.Template) {
+			defer wgtemplates.Done()
 
-				if len(template.Workflows) > 0 {
-					results.CAS(false, r.processWorkflowWithList(template))
-				} else {
-					results.CAS(false, r.processTemplateWithList(template))
-				}
-			}(t)
-		}
-		wgtemplates.Wait()
-		r.progress.Stop()
+			if len(template.Workflows) > 0 {
+				results.CAS(false, r.processWorkflowWithList(template))
+			} else {
+				results.CAS(false, r.processTemplateWithList(template))
+			}
+		}(t)
 	}
+	wgtemplates.Wait()
+	r.progress.Stop()
 
 	if !results.Load() {
 		if r.output != nil {

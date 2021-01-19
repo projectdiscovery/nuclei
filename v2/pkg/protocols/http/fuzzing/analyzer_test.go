@@ -4,27 +4,33 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFuzzingAnalyzeRequest(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com/command.php?url=http://google.com&b=test", nil)
+	req, err := http.NewRequest("POST", "http://example.com/test-1?fuzz=abc", strings.NewReader(`
+	{
+		"name": {"first": "Tom", "last": "Anderson"},
+		"children": ["Sara"]
+	}`))
 	require.Nil(t, err, "could not create http request")
-	req.Header.Set("User-Agent", "Test")
-	req.Header.Set("X-WWW-URL", "http://www.google.com")
-	normalized, err := NormalizeRequest(req)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Length", "1")
+
+	newReq, err := retryablehttp.FromRequest(req)
+	require.Nil(t, err, "could not create http request")
+
+	normalized, err := NormalizeRequest(newReq)
 	require.Nil(t, err, "could not create normalized request")
 
 	options := &AnalyzerOptions{
-		Replace: []string{"http://collaborator.pd.io/B215ADE3-D31E-40C4-95F1-AD32AAF3E832"},
-		Parts:   []string{"default"},
-		PartsConfig: map[string][]*AnalyzerPartsConfig{
-			"all": []*AnalyzerPartsConfig{{Valid: &AnalyerPartsConfigMatcher{
-				ValuesRegex: []string{"http.*"},
-			}}},
-		},
+		Append:      []string{"'-sleep(10)-'"},
+		Parts:       []string{"headers"},
+		PartsConfig: map[string][]*AnalyzerPartsConfig{},
 	}
 	err = options.Compile()
 	require.Nil(t, err, "could not compile regex request")

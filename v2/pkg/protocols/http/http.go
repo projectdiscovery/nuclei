@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzzing"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -60,6 +61,10 @@ type Request struct {
 	// The minimum number fof requests is determined by threads
 	Race bool `yaml:"race"`
 
+	// Fuzzing options for current client
+	fuzzing.AnalyzerOptions `yaml:",inline"`
+	CompiledAnalyzer        *fuzzing.AnalyzerOptions
+
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 	CompiledOperators   *operators.Operators
@@ -93,6 +98,13 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	r.options = options
 	for _, option := range r.options.Options.CustomHeaders {
 		r.customHeaders = append(r.customHeaders, option)
+	}
+
+	if len(r.AnalyzerOptions.Append) > 0 || len(r.AnalyzerOptions.Replace) > 0 {
+		if err = r.AnalyzerOptions.Compile(); err != nil {
+			return errors.Wrap(err, "could not compile fuzzing analyzer")
+		}
+		r.CompiledAnalyzer = &r.AnalyzerOptions
 	}
 
 	if len(r.Raw) > 0 {

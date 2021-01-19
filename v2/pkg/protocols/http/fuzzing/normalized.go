@@ -1,16 +1,19 @@
 package fuzzing
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/clbanning/mxj/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // NormalizedRequest is a structure created from a given request input.
@@ -56,7 +59,7 @@ type MultipartFieldType int
 
 // NormalizeRequest normalizes a net/http request into an intermediate
 // representation which can be iterated upon by the nuclei fuzzing engine.
-func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
+func NormalizeRequest(req *retryablehttp.Request) (*NormalizedRequest, error) {
 	normalized := &NormalizedRequest{
 		Host:        req.URL.Host,
 		Scheme:      req.URL.Scheme,
@@ -66,9 +69,13 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 		Headers:     req.Header,
 	}
 	mediaType, params, _ := mime.ParseMediaType(req.Header.Get("Content-Type"))
+
 	if req.Body != nil {
-		if err := normalized.parseBody(req, mediaType, params); err != nil {
-			return nil, errors.Wrap(err, "could not parse body")
+		body, err := req.BodyBytes()
+		if err == nil {
+			if err := normalized.parseBody(ioutil.NopCloser(bytes.NewReader(body)), req, mediaType, params); err != nil {
+				return nil, errors.Wrap(err, "could not parse body")
+			}
 		}
 	}
 
@@ -103,11 +110,11 @@ func NormalizeRequest(req *http.Request) (*NormalizedRequest, error) {
 //
 // Currently handled bodies include Multipart, Form URL Encoded, JSON, XML
 // and raw body.
-func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, params map[string]string) error {
+func (n *NormalizedRequest) parseBody(body io.ReadCloser, req *retryablehttp.Request, mediaType string, params map[string]string) error {
 	if strings.HasPrefix(mediaType, "multipart/") {
 		n.MultipartBody = make(map[string]NormalizedMultipartField)
 
-		mr := multipart.NewReader(req.Body, params["boundary"])
+		mr := multipart.NewReader(body, params["boundary"])
 		for {
 			p, err := mr.NextPart()
 			if err == io.EOF {
@@ -129,25 +136,30 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 		}
 	}
 	if strings.HasPrefix(mediaType, "application/x-www-form-urlencoded") {
-		if err := req.ParseForm(); err != nil {
-			return errors.Wrap(err, "could not parse form data")
+		data, err := ioutil.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		values, err := url.ParseQuery(string(data))
+		if err != nil {
+			return err
 		}
 		n.FormData = make(map[string][]string)
-		for k, v := range req.Form {
+		for k, v := range values {
 			n.FormData[k] = v
 		}
 		n.Headers.Del("Content-Type")
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "application/json") {
-		if err := jsoniter.ConfigCompatibleWithStandardLibrary.NewDecoder(req.Body).Decode(&n.JSONData); err != nil {
+		if err := jsoniter.ConfigCompatibleWithStandardLibrary.NewDecoder(body).Decode(&n.JSONData); err != nil {
 			return errors.Wrap(err, "could not decode json body")
 		}
 		n.Headers.Del("Content-Type")
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "text/xml") {
-		mv, err := mxj.NewMapXmlReader(req.Body)
+		mv, err := mxj.NewMapXmlReader(body)
 		if err != nil {
 			return errors.Wrap(err, "could not decode xml body")
 		}
@@ -155,10 +167,10 @@ func (n *NormalizedRequest) parseBody(req *http.Request, mediaType string, param
 		n.Headers.Del("Content-Type")
 		return nil
 	}
-	body, err := ioutil.ReadAll(req.Body)
+	data, err := ioutil.ReadAll(body)
 	if err != nil {
 		return err
 	}
-	n.Body = string(body)
+	n.Body = string(data)
 	return nil
 }

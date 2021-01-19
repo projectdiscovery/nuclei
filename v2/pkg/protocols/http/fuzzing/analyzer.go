@@ -71,6 +71,9 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 
 	transforms := CreateTransform(req, options)
 	for _, transform := range transforms {
+		gologger.Debug().Msgf("Transformed input with [%s] %s => %s\n", transform.Part, transform.Key, transform.Value)
+	}
+	for _, transform := range transforms {
 		// If we have multipart body, add it to the request.
 		if len(req.MultipartBody) > 0 {
 			reqBody, contentLength, contentType, err = options.analyzeMultipartBody(req, transform)
