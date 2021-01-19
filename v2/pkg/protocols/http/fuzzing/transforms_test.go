@@ -186,6 +186,7 @@ func TestTransformsBodyJSONData(t *testing.T) {
 	}`))
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Length", "1")
 
 	normalized, err := NormalizeRequest(req)
 	require.Nil(t, err, "could not create normalized request")

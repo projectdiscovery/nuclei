@@ -55,29 +55,7 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 
 	matched := options.Match("path", req.Path, "")
 	if _, ok := parts["path"]; ok && matched {
-		for _, v := range options.Append {
-			builder.Reset()
-			builder.WriteString(req.Path)
-			if !strings.HasSuffix(req.Path, "/") {
-				builder.WriteString("/")
-			}
-			builder.WriteString(v)
-
-			transforms = append(transforms, &Transform{
-				Part:  "path",
-				Value: builder.String(),
-			})
-		}
-		for _, v := range options.Replace {
-			builder.Reset()
-			builder.WriteString(req.Path[:strings.LastIndex(req.Path, "/")+1])
-			builder.WriteString(v)
-
-			transforms = append(transforms, &Transform{
-				Part:  "path",
-				Value: builder.String(),
-			})
-		}
+		transforms = options.transformPath(req.Path, transforms)
 	}
 	if _, ok := parts["query-values"]; ok {
 		transforms = options.transformMapStringSlice("query-values", req.QueryValues, transforms)
@@ -105,6 +83,36 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 		if req.XMLData != nil {
 			transforms = options.transformInterface("body", req.XMLData, transforms)
 		}
+	}
+	return transforms
+}
+
+// transformPath returns the transforms for a path variable
+func (o *AnalyzerOptions) transformPath(data string, transforms []*Transform) []*Transform {
+	builder := &strings.Builder{}
+
+	for _, v := range o.Append {
+		builder.Reset()
+		builder.WriteString(data)
+		if !strings.HasSuffix(data, "/") {
+			builder.WriteString("/")
+		}
+		builder.WriteString(v)
+
+		transforms = append(transforms, &Transform{
+			Part:  "path",
+			Value: builder.String(),
+		})
+	}
+	for _, v := range o.Replace {
+		builder.Reset()
+		builder.WriteString(data[:strings.LastIndex(data, "/")+1])
+		builder.WriteString(v)
+
+		transforms = append(transforms, &Transform{
+			Part:  "path",
+			Value: builder.String(),
+		})
 	}
 	return transforms
 }

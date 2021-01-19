@@ -10,7 +10,9 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/morikuni/accessor"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 )
 
 // AnalyzerOptions contains configuration options for the injection
@@ -52,20 +54,6 @@ type AnalyzerOptions struct {
 	PartsConfig map[string][]*AnalyzerPartsConfig `yaml:"parts-config"`
 }
 
-// generatePermutations generates permutations for the analyzer
-func (o *AnalyzerOptions) generatePermutations(value interface{}) []interface{} {
-	//	switch t := value.(type) {
-	//	case string:
-	//		for _, v := range o.Append {
-	//
-	//		}
-	//	case []interface{}:
-	//
-	//	case map[string]interface{}:
-	//	}
-	return nil
-}
-
 // AnalyzeRequest analyzes a normalized request with an analyzer
 // configuration and returns all the points where input can be tampered
 // or supplied to detect web vulnerabilities.
@@ -79,117 +67,107 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 	var reqBody io.ReadCloser
 	var contentType string
 	var contentLength int
-	// If we have multipart body, add it to the request.
-	if len(req.MultipartBody) > 0 {
+	var err error
 
-	}
+	transforms := CreateTransform(req, options)
 
-	// If we have form data body, add it to the request.
-	if len(req.FormData) > 0 {
-		data := url.Values{}
+	for _, transform := range transforms {
+		// If we have multipart body, add it to the request.
+		if len(req.MultipartBody) > 0 {
+			reqBody, contentLength, contentType, err = options.analyzeMultipartBody(req, transform)
+		}
+		// If we have form data body, add it to the request.
+		if len(req.FormData) > 0 {
+			reqBody, contentLength, contentType, err = options.analyzeFormBody(req, transform)
+		}
+		// If we have JSON data body, add it to the request.
+		if req.JSONData != nil {
+			reqBody, contentLength, contentType, err = options.analyzeJSONBody(req, transform)
+		}
+		// If we have XML data body, add it to the request.
+		if len(req.XMLData) > 0 {
+			reqBody, contentLength, contentType, err = options.analyzeXMLBody(req, transform)
+		}
+		if req.Body != "" {
+			reqBody = ioutil.NopCloser(strings.NewReader(req.Body))
+			contentLength = len(req.Body)
+			contentType = req.Headers.Get("Content-Type")
+		}
+		if err != nil {
+			gologger.Warning().Msgf("Could not create request for fuzzing: %s\n", err)
+			continue
+		}
 
-		for k, v := range req.FormData {
+		builder := &strings.Builder{}
+		builder.WriteString(req.Scheme)
+		builder.WriteString("://")
+		builder.WriteString(req.Host)
+		builder.WriteString(req.Path)
+		newRequest, err := http.NewRequest(req.Method, builder.String(), reqBody)
+		if err != nil {
+			return err
+		}
+		query := &url.Values{}
+		for k, v := range req.QueryValues {
 			for _, value := range v {
-				data.Add(k, value)
+				query.Add(k, value)
 			}
 		}
-		encoded := data.Encode()
-		contentLength = len(encoded)
-		reqBody = ioutil.NopCloser(strings.NewReader(data.Encode()))
-		contentType = "application/x-www-form-urlencoded"
-	}
+		newRequest.URL.RawQuery = query.Encode()
 
-	// If we have JSON data body, add it to the request.
-	if req.JSONData != nil {
-		buffer := &bytes.Buffer{}
-		if err := jsoniter.NewEncoder(buffer).Encode(req.JSONData); err != nil {
-			return errors.Wrap(err, "could not write json data")
+		for k, v := range req.Headers {
+			for _, value := range v {
+				newRequest.Header.Add(k, value)
+			}
 		}
-		contentLength = buffer.Len()
-		reqBody = ioutil.NopCloser(buffer)
-		contentType = "application/json"
-	}
+		if req.Headers.Get("Content-Length") != "" && contentLength != 0 {
+			newRequest.ContentLength = int64(contentLength)
+		}
+		if contentType != "" {
+			newRequest.Header.Set("Content-Type", contentType)
+		}
 
-	// If we have XML data body, add it to the request.
-	if len(req.XMLData) > 0 {
-		buffer := &bytes.Buffer{}
-		if err := req.XMLData.XmlWriter(buffer); err != nil {
-			return errors.Wrap(err, "could not write xml data")
+		builder.Reset()
+		for k, v := range req.Cookies {
+			for _, value := range v {
+				builder.WriteString(k)
+				builder.WriteString("=")
+				builder.WriteString(value)
+				builder.WriteString(";")
+				builder.WriteString(" ")
+			}
 		}
-		contentLength = buffer.Len()
-		reqBody = ioutil.NopCloser(buffer)
-		contentType = "text/xml"
-	}
-	if req.Body != "" {
-		reqBody = ioutil.NopCloser(strings.NewReader(req.Body))
-		contentLength = len(req.Body)
-		contentType = req.Headers.Get("Content-Type")
-	}
-
-	builder := &strings.Builder{}
-	builder.WriteString(req.Scheme)
-	builder.WriteString("://")
-	builder.WriteString(req.Host)
-	builder.WriteString(req.Path)
-	newRequest, err := http.NewRequest(req.Method, builder.String(), reqBody)
-	if err != nil {
-		return err
-	}
-	query := &url.Values{}
-	for k, v := range req.QueryValues {
-		for _, value := range v {
-			query.Add(k, value)
+		cookieString := strings.TrimSpace(builder.String())
+		if cookieString != "" {
+			newRequest.Header.Set("Cookie", cookieString)
 		}
+		callback(newRequest)
 	}
-	newRequest.URL.RawQuery = query.Encode()
-
-	for k, v := range req.Headers {
-		for _, value := range v {
-			newRequest.Header.Add(k, value)
-		}
-	}
-	if req.Headers.Get("Content-Length") != "" && contentLength != 0 {
-		newRequest.ContentLength = int64(contentLength)
-	}
-	if contentType != "" {
-		newRequest.Header.Set("Content-Type", contentType)
-	}
-
-	builder.Reset()
-	for k, v := range req.Cookies {
-		for _, value := range v {
-			builder.WriteString(k)
-			builder.WriteString("=")
-			builder.WriteString(value)
-			builder.WriteString(";")
-			builder.WriteString(" ")
-		}
-	}
-	cookieString := strings.TrimSpace(builder.String())
-	if cookieString != "" {
-		newRequest.Header.Set("Cookie", cookieString)
-	}
-	callback(newRequest)
 	return nil
 }
 
 // analyzeMultipartBody analyzes multipart body and also fuzzes if asked.
-func analyzeMultipartBody(req *NormalizedRequest, options *AnalyzerOptions) (io.ReadCloser, int, string, error) {
+func (o *AnalyzerOptions) analyzeMultipartBody(req *NormalizedRequest, transform *Transform) (io.ReadCloser, int, string, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
 	for k, v := range req.MultipartBody {
+		var value string
+		if transform.Part == "body" {
+			if strings.EqualFold(transform.Key, k) {
+				value = transform.Value
+			} else {
+				value = v.Value
+			}
+		}
 		if v.Filename != "" {
-			//	if options.Match("body", k, v.Value) {
-			//
-			//	}
 			fileWriter, err := writer.CreateFormFile(k, v.Filename)
 			if err != nil {
 				return nil, 0, "", errors.Wrap(err, "could not write file")
 			}
-			fileWriter.Write([]byte(v.Value))
+			fileWriter.Write([]byte(value))
 		} else {
-			if err := writer.WriteField(k, v.Value); err != nil {
+			if err := writer.WriteField(k, value); err != nil {
 				return nil, 0, "", errors.Wrap(err, "could not write field")
 			}
 		}
@@ -198,4 +176,69 @@ func analyzeMultipartBody(req *NormalizedRequest, options *AnalyzerOptions) (io.
 		return nil, 0, "", errors.Wrap(err, "could not close multipart writer")
 	}
 	return ioutil.NopCloser(body), body.Len(), writer.FormDataContentType(), nil
+}
+
+// analyzeFormBody analyzes form body and also fuzzes if asked.
+func (o *AnalyzerOptions) analyzeFormBody(req *NormalizedRequest, transform *Transform) (io.ReadCloser, int, string, error) {
+	data := url.Values{}
+
+	for k, v := range req.FormData {
+		for _, value := range v {
+			data.Add(k, value)
+		}
+		if transform.Part == "body" && strings.EqualFold(transform.Key, k) {
+			data.Set(k, transform.Value)
+		}
+	}
+	encoded := data.Encode()
+	return ioutil.NopCloser(strings.NewReader(data.Encode())), len(encoded), "application/x-www-form-urlencoded", nil
+}
+
+// analyzeJSONBody analyzes json body and also fuzzes if asked.
+func (o *AnalyzerOptions) analyzeJSONBody(req *NormalizedRequest, transform *Transform) (io.ReadCloser, int, string, error) {
+	acc, err := accessor.NewAccessor(req.JSONData)
+	if err != nil {
+		return nil, 0, "", errors.Wrap(err, "could not access json data")
+	}
+
+	if transform.Part == "body" {
+		path, err := accessor.ParsePath(transform.Key)
+		if err != nil {
+			return nil, 0, "", errors.Wrap(err, "could not parse fuzzing path")
+		}
+		if err = acc.Set(path, transform.Value); err != nil {
+			return nil, 0, "", errors.Wrap(err, "could not set fuzzing path")
+		}
+	}
+	buffer := &bytes.Buffer{}
+	enc := jsoniter.NewEncoder(buffer)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(acc.Unwrap()); err != nil {
+		return nil, 0, "", errors.Wrap(err, "could not write json data")
+	}
+	return ioutil.NopCloser(buffer), buffer.Len(), "application/json", nil
+}
+
+// analyzeXMLBody analyzes xml body and also fuzzes if asked.
+func (o *AnalyzerOptions) analyzeXMLBody(req *NormalizedRequest, transform *Transform) (io.ReadCloser, int, string, error) {
+	acc, err := accessor.NewAccessor(req.XMLData)
+	if err != nil {
+		return nil, 0, "", errors.Wrap(err, "could not access XML data")
+	}
+
+	if transform.Part == "body" {
+		path, err := accessor.ParsePath(transform.Key)
+		if err != nil {
+			return nil, 0, "", errors.Wrap(err, "could not parse fuzzing path")
+		}
+		if err = acc.Set(path, transform.Value); err != nil {
+			return nil, 0, "", errors.Wrap(err, "could not set fuzzing path")
+		}
+	}
+
+	buffer := &bytes.Buffer{}
+	if err := req.XMLData.XmlWriter(buffer); err != nil {
+		return nil, 0, "", errors.Wrap(err, "could not write xml data")
+	}
+	return ioutil.NopCloser(buffer), buffer.Len(), "text/xml", nil
 }
