@@ -40,7 +40,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		// Create a copy on the fly of the request body - ignore errors
 		bodyBytes, _ := req.request.BodyBytes()
 		req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
-		return httputil.DumpRequest(req.request.Request, true)
+		return httputil.DumpRequestOut(req.request.Request, true)
 	}
 	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)))
 }

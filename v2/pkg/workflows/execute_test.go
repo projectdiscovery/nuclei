@@ -14,7 +14,7 @@ func TestWorkflowsSimple(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: true}},
+		{Executers: []protocols.Executer{&mockExecuter{result: true}}},
 	},
 		options: &protocols.ExecuterOptions{
 			Progress: progress,
@@ -30,12 +30,12 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
-		}}},
-		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+		}}}},
+		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 			secondInput = input
-		}}},
+		}}}},
 	},
 		options: &protocols.ExecuterOptions{Progress: progress}}
 
@@ -52,14 +52,14 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
-		}},
+		}}},
 			Subtemplates: []*WorkflowTemplate{
-				{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 					secondInput = input
 				}}},
-			}},
+				}}},
 	},
 		options: &protocols.ExecuterOptions{Progress: progress}}
 
@@ -76,14 +76,14 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: false, executeHook: func(input string) {
+		{Executers: []protocols.Executer{&mockExecuter{result: false, executeHook: func(input string) {
 			firstInput = input
-		}},
+		}}},
 			Subtemplates: []*WorkflowTemplate{
-				{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 					secondInput = input
 				}}},
-			}},
+				}}},
 	},
 		options: &protocols.ExecuterOptions{Progress: progress}}
 
@@ -100,20 +100,20 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}, outputs: []*output.InternalWrappedEvent{
 			{OperatorsResult: &operators.Result{
 				Matches:  map[string]struct{}{"tomcat": {}},
 				Extracts: map[string][]string{},
 			}},
-		}},
+		}}},
 			Matchers: []*Matcher{
 				{Name: "tomcat", Subtemplates: []*WorkflowTemplate{
-					{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+					{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 						secondInput = input
 					}}},
-				}},
+					}}},
 			},
 		},
 	},
@@ -132,19 +132,19 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 			firstInput = input
 		}, outputs: []*output.InternalWrappedEvent{
 			{OperatorsResult: &operators.Result{
 				Matches:  map[string]struct{}{"tomcat": {}},
 				Extracts: map[string][]string{},
 			}},
-		}},
+		}}},
 			Matchers: []*Matcher{
 				{Name: "apache", Subtemplates: []*WorkflowTemplate{
-					{Executer: &mockExecuter{result: true, executeHook: func(input string) {
+					{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
 						secondInput = input
-					}}},
+					}}}},
 				}},
 			},
 		},

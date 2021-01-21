@@ -3,10 +3,8 @@ package network
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -104,8 +102,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
-
-		fmt.Fprintf(os.Stderr, "%s\n", reqBuilder.String())
+		gologger.Print().Msgf("%s", reqBuilder.String())
 	}
 
 	r.options.Output.Request(r.options.TemplateID, actualAddress, "network", err)
@@ -121,7 +118,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
-		fmt.Fprintf(os.Stderr, "%s\n", resp)
+		gologger.Print().Msgf("%s", resp)
 	}
 	outputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)

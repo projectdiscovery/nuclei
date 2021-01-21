@@ -2,13 +2,11 @@ package http
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -281,7 +279,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-		fmt.Fprintf(os.Stderr, "%s", string(dumpedRequest))
+		gologger.Print().Msgf("%s", string(dumpedRequest))
 	}
 
 	var formedURL string
@@ -366,7 +364,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
-		fmt.Fprintf(os.Stderr, "%s\n", string(dumpedResponse))
+		gologger.Print().Msgf("%s", string(dumpedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
@@ -392,10 +390,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			result.PayloadValues = request.meta
+		var ok bool
+		event.OperatorsResult, ok = r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
+		if ok && event.OperatorsResult != nil {
+			event.OperatorsResult.PayloadValues = request.meta
 			event.Results = r.MakeResultEvent(event)
 		}
 	}
