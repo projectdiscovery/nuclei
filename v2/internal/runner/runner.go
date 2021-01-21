@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/internal/transform"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -272,11 +273,26 @@ func (r *Runner) RunEnumeration() {
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.inputCount, templateCount, totalRequests)
 
+	var normalized string
+	var err error
+	if len(r.options.Normalized) > 0 {
+		if normalized, err = transform.Transform(r.options.Normalized); err != nil {
+			gologger.Error().Msgf("Could not read normalize requests: %s\n", err)
+		}
+	}
 	for _, t := range finalTemplates {
 		wgtemplates.Add()
 		go func(template *templates.Template) {
 			defer wgtemplates.Done()
 
+			if len(template.RequestsHTTP) > 0 {
+				for _, request := range template.RequestsHTTP {
+					if request.CompiledAnalyzer != nil {
+						results.CAS(false, r.processTemplateWithListAndNormalized(template, normalized))
+					}
+				}
+				return
+			}
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
 			} else {
@@ -287,6 +303,11 @@ func (r *Runner) RunEnumeration() {
 	wgtemplates.Wait()
 	r.progress.Stop()
 
+	if normalized != "" && r.options.NormalizedOutput != "" {
+		if err := os.Rename(normalized, r.options.NormalizedOutput); err != nil {
+			gologger.Error().Msgf("Could not create normalized output: %s\n", err)
+		}
+	}
 	if !results.Load() {
 		if r.output != nil {
 			r.output.Close()

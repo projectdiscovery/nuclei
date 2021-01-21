@@ -25,11 +25,6 @@ type Callback func(*fuzzing.NormalizedRequest)
 // Transform transforms the provided file based on extension into a normalized
 // request file.
 func Transform(representation string) (string, error) {
-	stat, err := os.Stat(representation)
-	if err != nil {
-		return "", errors.Wrap(err, "could not stat input")
-	}
-
 	file, err := ioutil.TempFile("", "transformed-*")
 	if err != nil {
 		return "", errors.Wrap(err, "could not create temp file")
@@ -43,6 +38,10 @@ func Transform(representation string) (string, error) {
 	encoder := jsoniter.NewEncoder(writer)
 	callback := func(req *fuzzing.NormalizedRequest) {
 		encoder.Encode(req)
+	}
+	stat, err := os.Stat(representation)
+	if err != nil {
+		return "", err
 	}
 
 	if stat.IsDir() {
@@ -69,20 +68,19 @@ func parseDirectory(directory string, callback Callback) error {
 
 // parseFile parses a file returning all normalized requests.
 func parseFile(file string, callback Callback) error {
-	var err error
 	if strings.HasSuffix(file, ".curl") {
-		err = parseCurlRequest(file, callback)
+		return parseCurlRequest(file, callback)
 	}
 	if strings.HasSuffix(file, ".raw") || strings.HasSuffix(file, ".txt") {
-		err = parseRawRequest(file, callback)
+		return parseRawRequest(file, callback)
 	}
 	if strings.HasSuffix(file, ".xml") || strings.HasSuffix(file, ".burp") {
-		err = parseRawRequest(file, callback)
+		return parseBurpRequests(file, callback)
 	}
 	if strings.HasSuffix(file, ".json") {
-
+		return parseNormalizedRequests(file, callback)
 	}
-	return err
+	return nil
 }
 
 // parseCurlRequest parses a curl request.
@@ -96,7 +94,7 @@ func parseCurlRequest(path string, callback func(req *fuzzing.NormalizedRequest)
 	if err != nil {
 		return err
 	}
-	if normalized == nil {
+	if normalized != nil {
 		callback(normalized)
 	}
 	return nil
@@ -113,7 +111,7 @@ func parseRawRequest(path string, callback func(req *fuzzing.NormalizedRequest))
 	if err != nil {
 		return err
 	}
-	if normalized == nil {
+	if normalized != nil {
 		callback(normalized)
 	}
 	return nil

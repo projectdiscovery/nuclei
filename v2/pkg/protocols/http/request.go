@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/corpix/uarand"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -157,24 +158,34 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 }
 
 // executeFuzzing executes fuzzing request for an input
-func (r *Request) executeFuzzing(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return nil
+func (r *Request) executeFuzzing(data string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	req := &fuzzing.NormalizedRequest{}
+
+	if strings.HasPrefix(data, "{\"") {
+		if err := jsoniter.NewDecoder(strings.NewReader(data)).Decode(req); err != nil {
+			gologger.Warning().Msgf("Could not parse normalized request: %s\n", err)
+			return err
+		}
+	} else {
+		req.Method = "GET"
+		parsed, err := url.Parse(data)
+		if err != nil {
+			gologger.Warning().Msgf("Could not parse url for fuzzing: %s\n", err)
+			return err
+		}
+		req.Host = parsed.Host
+		req.Path = parsed.Path
+		req.Scheme = parsed.Scheme
+		req.QueryValues = parsed.Query()
 	}
-	retryable, _ := retryablehttp.FromRequest(req)
-	normalized, err := fuzzing.NormalizeRequest(retryable)
-	if err != nil {
-		gologger.Warning().Msgf("Could not normalized request for fuzzing: %s\n", err)
-		return nil
-	}
-	err = fuzzing.AnalyzeRequest(normalized, r.CompiledAnalyzer, func(req *http.Request) {
+
+	err := fuzzing.AnalyzeRequest(req, r.CompiledAnalyzer, func(req *http.Request) {
 		retryable, err := retryablehttp.FromRequest(req)
 		if err != nil {
 			gologger.Warning().Msgf("Could not convert request to retryable for fuzzing: %s\n", err)
 			return
 		}
-		err = r.executeRequest(reqURL, &generatedRequest{request: retryable, original: r}, dynamicValues, previous, callback)
+		err = r.executeRequest(retryable.URL.String(), &generatedRequest{request: retryable, original: r}, dynamicValues, previous, callback)
 		if err != nil {
 			gologger.Warning().Msgf("Could not execute request for fuzzing: %s\n", err)
 			return

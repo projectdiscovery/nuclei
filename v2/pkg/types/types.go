@@ -78,4 +78,8 @@ type Options struct {
 	ExcludedTemplates []string
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders []string
+	// Normalized contains the list of normalized input formats for nuclei
+	Normalized string
+	// NormalizedOutput writes the internal normalized format representation to a file.
+	NormalizedOutput string
 }

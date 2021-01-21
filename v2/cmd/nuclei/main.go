@@ -75,6 +75,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&options.Target, "target", "", "Target is a single target to scan using template")
 	rootCmd.PersistentFlags().StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Template input dir/file/files to run on host. Can be used multiple times. Supports globbing.")
 	rootCmd.PersistentFlags().StringSliceVar(&options.ExcludedTemplates, "exclude", []string{}, "Template input dir/file/files to exclude. Can be used multiple times. Supports globbing.")
+	rootCmd.PersistentFlags().StringVarP(&options.Normalized, "normalized", "n", "", "Normalized requests input dir/file/files.")
+	rootCmd.PersistentFlags().StringVar(&options.NormalizedOutput, "normalized-output", "", "Optional File to write internal normalized format representation to")
 	rootCmd.PersistentFlags().StringSliceVar(&options.Severity, "severity", []string{}, "Filter templates based on their severity and only run the matching ones. Comma-separated values can be used to specify multiple severities.")
 	rootCmd.PersistentFlags().StringVarP(&options.Targets, "list", "l", "", "List of URLs to run templates on")
 	rootCmd.PersistentFlags().StringVarP(&options.Output, "output", "o", "", "File to write output to (optional)")

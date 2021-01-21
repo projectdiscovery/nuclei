@@ -23,29 +23,29 @@ import (
 // request structure.
 type NormalizedRequest struct {
 	// Host contains the host along with port if any.
-	Host string
+	Host string `json:"host,omitempty"`
 	// Scheme contains the scheme of the request.
-	Scheme string
+	Scheme string `json:"scheme,omitempty"`
 	// Path is the path to send the request to
-	Path string
+	Path string `json:"path,omitempty"`
 	// Method is the HTTP method with which to send the request
-	Method string
+	Method string `json:"method,omitempty"`
 	// MultipartBody is a multipart body for the request.
-	MultipartBody map[string]NormalizedMultipartField
+	MultipartBody map[string]NormalizedMultipartField `json:"multipart-body,omitempty"`
 	// FormData is the urlencoded post body for the request
-	FormData map[string][]string
+	FormData map[string][]string `json:"form-body,omitempty"`
 	// JSONData contains the unmarshalled JSON data for the request
-	JSONData interface{}
+	JSONData interface{} `json:"json-body,omitempty"`
 	// XMLData contains the unmarshalled XML data for the request
-	XMLData mxj.Map
+	XMLData mxj.Map `json:"xml-body,omitempty"`
 	// Body contains the body for the request if any.
-	Body string
+	Body string `json:"body,omitempty"`
 	// QueryValues contains the query parameter values for the request if any.
-	QueryValues map[string][]string
+	QueryValues map[string][]string `json:"query-values,omitempty"`
 	// Headers contains the map of headers for the request.
-	Headers http.Header
+	Headers http.Header `json:"headers,omitempty"`
 	// Cookies contains all the cookies for the request.
-	Cookies map[string][]string
+	Cookies map[string][]string `json:"cookies,omitempty"`
 }
 
 // NormalizedMultipartField is the normalized multipart field
