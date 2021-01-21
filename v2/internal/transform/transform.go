@@ -4,6 +4,7 @@ package transform
 
 import (
 	"bufio"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +13,9 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/transform/burpxml"
 	"github.com/projectdiscovery/nuclei/v2/internal/transform/curl2go"
+	"github.com/projectdiscovery/nuclei/v2/internal/transform/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzzing"
 )
 
@@ -20,7 +23,7 @@ import (
 type Callback func(*fuzzing.NormalizedRequest)
 
 // Transform transforms the provided file based on extension into a normalized
-// request.
+// request file.
 func Transform(representation string) (string, error) {
 	stat, err := os.Stat(representation)
 	if err != nil {
@@ -71,7 +74,13 @@ func parseFile(file string, callback Callback) error {
 		err = parseCurlRequest(file, callback)
 	}
 	if strings.HasSuffix(file, ".raw") || strings.HasSuffix(file, ".txt") {
-		err = parseCurlRequest(file, callback)
+		err = parseRawRequest(file, callback)
+	}
+	if strings.HasSuffix(file, ".xml") || strings.HasSuffix(file, ".burp") {
+		err = parseRawRequest(file, callback)
+	}
+	if strings.HasSuffix(file, ".json") {
+
 	}
 	return err
 }
@@ -88,6 +97,52 @@ func parseCurlRequest(path string, callback func(req *fuzzing.NormalizedRequest)
 		return err
 	}
 	if normalized == nil {
+		callback(normalized)
+	}
+	return nil
+}
+
+// parseRawRequest parses a raw request.
+func parseRawRequest(path string, callback func(req *fuzzing.NormalizedRequest)) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	normalized, err := raw.Parse(string(data), "http://test.com")
+	if err != nil {
+		return err
+	}
+	if normalized == nil {
+		callback(normalized)
+	}
+	return nil
+}
+
+// parseBurpRequests parses burp suite xml request export.
+func parseBurpRequests(path string, callback func(req *fuzzing.NormalizedRequest)) error {
+	err := burpxml.Parse(path, callback)
+	return err
+}
+
+// parseNormalizedRequests parses normalized nuclei request export.
+func parseNormalizedRequests(path string, callback func(req *fuzzing.NormalizedRequest)) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return errors.Wrap(err, "could not open file")
+	}
+	defer file.Close()
+
+	normalized := &fuzzing.NormalizedRequest{}
+	decoder := jsoniter.NewDecoder(file)
+	for {
+		err := decoder.Decode(normalized)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
 		callback(normalized)
 	}
 	return nil
