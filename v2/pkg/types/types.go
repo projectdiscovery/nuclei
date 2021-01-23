@@ -1,5 +1,7 @@
 package types
 
+import "github.com/projectdiscovery/goflags"
+
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
 	// RandomAgent generates random User-Agent
@@ -57,7 +59,7 @@ type Options struct {
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// Severity filters templates based on their severity and only run the matching ones.
-	Severity []string
+	Severity goflags.StringSlice
 	// Target is a single URL/Domain to scan using a template
 	Target string
 	// Targets specifies the targets to scan using templates.
@@ -73,11 +75,11 @@ type Options struct {
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
 	// Templates specifies the template/templates to use
-	Templates []string
+	Templates goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates []string
+	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders []string
+	CustomHeaders goflags.StringSlice
 	// Normalized contains the list of normalized input formats for nuclei
 	Normalized string
 	// NormalizedOutput writes the internal normalized format representation to a file.
