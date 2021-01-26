@@ -48,6 +48,17 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 
 	if len(options.PartsConfig) == 0 {
 		options.PartsConfig = defaultPartsConfig
+	} else {
+		found, ok := options.PartsConfig["headers"]
+		if ok && len(found) >= 1 {
+			if found[0].Invalid != nil {
+				for _, v := range defaultIgnoredHeaderKeys {
+					found[0].Invalid.Keys = append(found[0].Invalid.Keys, v)
+				}
+			} else {
+				found[0].Invalid = &AnalyerPartsConfigMatcher{Keys: defaultIgnoredHeaderKeys}
+			}
+		}
 	}
 
 	builder := &strings.Builder{}

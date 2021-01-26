@@ -175,6 +175,10 @@ func (r *Request) executeFuzzing(data string, dynamicValues, previous output.Int
 		req.Path = parsed.Path
 		req.Scheme = parsed.Scheme
 		req.QueryValues = parsed.Query()
+		req.Headers = make(http.Header, 3)
+		req.Headers.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+		req.Headers.Set("Accept", "*/*")
+		req.Headers.Set("Accept-Language", "en")
 	}
 
 	err := fuzzing.AnalyzeRequest(req, r.CompiledAnalyzer, func(req *http.Request) {

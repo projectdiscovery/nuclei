@@ -289,9 +289,9 @@ func (r *Runner) RunEnumeration() {
 				for _, request := range template.RequestsHTTP {
 					if request.CompiledAnalyzer != nil {
 						results.CAS(false, r.processTemplateWithListAndNormalized(template, normalized))
+						return
 					}
 				}
-				return
 			}
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
