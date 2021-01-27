@@ -88,8 +88,8 @@ Please also check out similar awesome projects that may fit in your workflow:
 
 - [Automate Security Regression Testing With Nuclei](https://handsonappsec.medium.com/automate-security-regression-testing-featuring-nuclei-204b6970be7a) by [@toufik-airane](https://github.com/toufik-airane)
 - [Build A Cloud-Native Application Security Operations Center](https://handsonappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79) by [@toufik-airane](https://github.com/toufik-airane)
-- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwi.siswanto98/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@toufik-airane](https://github.com/dwisiswant0)
-- [How to Scan Continuously with Nuclei?](https://medium.com/@dwi.siswanto98/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@toufik-airane](https://github.com/dwisiswant0)
+- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwi.siswanto98/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
+- [How to Scan Continuously with Nuclei?](https://medium.com/@dwi.siswanto98/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
 
 📄 License
 ----
