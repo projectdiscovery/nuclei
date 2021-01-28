@@ -155,6 +155,9 @@ func extractRelevantPieces(cmd someResult) *someRelevant {
 	if v, ok := cmd.getMapSlice("data"); ok {
 		loadData(v)
 	}
+	if v, ok := cmd.getMapSlice("data-raw"); ok {
+		loadData(v)
+	}
 	if v, ok := cmd.getMapSlice("data-binary"); ok {
 		loadData(v)
 	}

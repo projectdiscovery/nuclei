@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/clbanning/mxj/v2"
@@ -37,7 +38,8 @@ type NormalizedRequest struct {
 	// JSONData contains the unmarshalled JSON data for the request
 	JSONData interface{} `json:"json-body,omitempty"`
 	// XMLData contains the unmarshalled XML data for the request
-	XMLData mxj.Map `json:"xml-body,omitempty"`
+	XMLData   mxj.Map `json:"xml-body,omitempty"`
+	XMLPrefix string  `json:"xml-prefix,omitempty"`
 	// Body contains the body for the request if any.
 	Body string `json:"body,omitempty"`
 	// QueryValues contains the query parameter values for the request if any.
@@ -104,6 +106,8 @@ func NormalizeRequest(req *retryablehttp.Request) (*NormalizedRequest, error) {
 	return normalized, nil
 }
 
+var elementRegex = regexp.MustCompile(`<[A-Za-z]`)
+
 // parseBody parses various types of http reqeust bodies and fills
 // up the normalized structure depending on the content type and value
 // of the body.
@@ -148,23 +152,28 @@ func (n *NormalizedRequest) parseBody(body io.ReadCloser, req *retryablehttp.Req
 		for k, v := range values {
 			n.FormData[k] = v
 		}
-		n.Headers.Del("Content-Type")
 		return nil
 	}
 	if strings.HasPrefix(mediaType, "application/json") {
 		if err := jsoniter.ConfigCompatibleWithStandardLibrary.NewDecoder(body).Decode(&n.JSONData); err != nil {
 			return errors.Wrap(err, "could not decode json body")
 		}
-		n.Headers.Del("Content-Type")
 		return nil
 	}
-	if strings.HasPrefix(mediaType, "text/xml") {
-		mv, err := mxj.NewMapXmlReader(body)
+	if strings.HasPrefix(mediaType, "text/xml") || strings.HasPrefix(mediaType, "application/xml") {
+		data, err := ioutil.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		loc := elementRegex.FindIndex(data)
+		if len(loc) > 0 {
+			n.XMLPrefix = string(data[:loc[0]])
+		}
+		mv, err := mxj.NewMapXmlReader(bytes.NewReader(data))
 		if err != nil {
 			return errors.Wrap(err, "could not decode xml body")
 		}
 		n.XMLData = mv
-		n.Headers.Del("Content-Type")
 		return nil
 	}
 	data, err := ioutil.ReadAll(body)

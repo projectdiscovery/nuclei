@@ -154,8 +154,8 @@ func TestNormalizeNetHTTPJSONRequest(t *testing.T) {
 func TestNormalizeNetHTTPXMLRequest(t *testing.T) {
 	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(`
 <note>
-<to>Tove</to>
-<from>Jani</from>
+  <to>Tove</to>
+  <from>Jani</from>
 </note>`))
 	require.Nil(t, err, "could not create http request")
 	req.Header.Set("Content-Type", "text/xml")

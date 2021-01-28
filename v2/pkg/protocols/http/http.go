@@ -100,7 +100,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		r.customHeaders = append(r.customHeaders, option)
 	}
 
-	if len(r.AnalyzerOptions.Append) > 0 || len(r.AnalyzerOptions.Replace) > 0 {
+	if len(r.AnalyzerOptions.Append) > 0 || len(r.AnalyzerOptions.Replace) > 0 || len(r.AnalyzerOptions.BodyTemplate) > 0 {
 		if err = r.AnalyzerOptions.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile fuzzing analyzer")
 		}

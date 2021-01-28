@@ -78,7 +78,7 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 		transforms = options.transformMapStringSlice("cookies", req.Cookies, transforms)
 	}
 	if _, ok := parts["body"]; ok {
-		if len(req.FormData) > 0 {
+		if len(req.FormData) > 0 && (len(options.BodyType) == 0 || strings.EqualFold(options.BodyType, "form")) {
 			transforms = options.transformMapStringSlice("body", req.FormData, transforms)
 		}
 		if len(req.MultipartBody) > 0 {
@@ -88,10 +88,10 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 			}
 			transforms = options.transformMapStringSlice("body", multipartData, transforms)
 		}
-		if req.JSONData != nil {
+		if req.JSONData != nil && (len(options.BodyType) == 0 || strings.EqualFold(options.BodyType, "json")) {
 			transforms = options.transformInterface("body", req.JSONData, transforms)
 		}
-		if req.XMLData != nil {
+		if req.XMLData != nil && (len(options.BodyType) == 0 || strings.EqualFold(options.BodyType, "xml")) {
 			transforms = options.transformInterface("body", req.XMLData, transforms)
 		}
 	}

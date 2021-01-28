@@ -280,6 +280,8 @@ func (r *Runner) RunEnumeration() {
 			gologger.Error().Msgf("Could not read normalize requests: %s\n", err)
 		}
 	}
+	defer os.Remove(normalized)
+
 	for _, t := range finalTemplates {
 		wgtemplates.Add()
 		go func(template *templates.Template) {

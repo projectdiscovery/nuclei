@@ -203,7 +203,7 @@ func (r *Request) executeFuzzing(data string, dynamicValues, previous output.Int
 // ExecuteWithResults executes the final request on a URL
 func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if fuzzing was asked by the user
-	if len(r.Append) > 0 || len(r.Replace) > 0 {
+	if len(r.Append) > 0 || len(r.Replace) > 0 || len(r.BodyTemplate) > 0 {
 		return r.executeFuzzing(reqURL, dynamicValues, previous, callback)
 	}
 

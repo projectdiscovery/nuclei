@@ -9,10 +9,12 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/clbanning/mxj/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/morikuni/accessor"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/valyala/fasttemplate"
 )
 
 // AnalyzerOptions contains configuration options for the injection
@@ -28,6 +30,16 @@ type AnalyzerOptions struct {
 	//
 	// Replace is most commonly used to replace old data with completely new data.
 	Replace []string `yaml:"replace"`
+
+	// BodyTemplate is an optional field describing a template body
+	// that will be sent for a specific body-type.
+	BodyTemplate string `yaml:"body-template"`
+
+	// BodyType is the type of body to format with body template.
+	//   1. xml
+	//   2. json
+	//   3. form
+	BodyType string `yaml:"body-type"`
 
 	// MaxDepth is the maximum number of document nesting to fuzz for.
 	MaxDepth int `yaml:"max-depth"`
@@ -98,6 +110,9 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 		if err != nil {
 			gologger.Warning().Msgf("Could not create request for fuzzing: %s\n", err)
 			continue
+		}
+		if contentType == "" {
+			contentType = req.Headers.Get("Content-Type")
 		}
 
 		builder := &strings.Builder{}
@@ -208,7 +223,10 @@ func (o *AnalyzerOptions) analyzeFormBody(req *NormalizedRequest, transform *Tra
 		}
 	}
 	encoded := data.Encode()
-	return ioutil.NopCloser(strings.NewReader(data.Encode())), len(encoded), "application/x-www-form-urlencoded", nil
+	if strings.EqualFold(o.BodyType, "form") {
+		encoded = fasttemplate.ExecuteStringStd(o.BodyTemplate, "{{", "}}", map[string]interface{}{"body": encoded})
+	}
+	return ioutil.NopCloser(strings.NewReader(encoded)), len(encoded), "", nil
 }
 
 // analyzeJSONBody analyzes json body and also fuzzes if asked.
@@ -233,7 +251,13 @@ func (o *AnalyzerOptions) analyzeJSONBody(req *NormalizedRequest, transform *Tra
 	if err := enc.Encode(acc.Unwrap()); err != nil {
 		return nil, 0, "", errors.Wrap(err, "could not write json data")
 	}
-	return ioutil.NopCloser(buffer), buffer.Len(), "application/json", nil
+	var data io.Reader
+	if strings.EqualFold(o.BodyType, "json") {
+		data = strings.NewReader(fasttemplate.ExecuteStringStd(o.BodyTemplate, "{{", "}}", map[string]interface{}{"body": buffer.String()}))
+	} else {
+		data = buffer
+	}
+	return ioutil.NopCloser(data), buffer.Len(), "", nil
 }
 
 // analyzeXMLBody analyzes xml body and also fuzzes if asked.
@@ -252,10 +276,22 @@ func (o *AnalyzerOptions) analyzeXMLBody(req *NormalizedRequest, transform *Tran
 			return nil, 0, "", errors.Wrap(err, "could not set fuzzing path")
 		}
 	}
-
 	buffer := &bytes.Buffer{}
-	if err := req.XMLData.XmlWriter(buffer); err != nil {
+	if err := mxj.Map(acc.Unwrap().(map[string]interface{})).XmlWriter(buffer); err != nil {
 		return nil, 0, "", errors.Wrap(err, "could not write xml data")
 	}
-	return ioutil.NopCloser(buffer), buffer.Len(), "text/xml", nil
+	var data io.Reader
+	if strings.EqualFold(o.BodyType, "xml") {
+		template := o.BodyTemplate
+		if req.XMLPrefix != "" {
+			builder := &strings.Builder{}
+			builder.WriteString("{{prefix}}")
+			builder.WriteString(o.BodyTemplate)
+			template = builder.String()
+		}
+		data = strings.NewReader(fasttemplate.ExecuteStringStd(template, "{{", "}}", map[string]interface{}{"body": buffer.String(), "prefix": req.XMLPrefix}))
+	} else {
+		data = buffer
+	}
+	return ioutil.NopCloser(data), buffer.Len(), "", nil
 }
