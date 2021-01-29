@@ -460,7 +460,7 @@ func (r *BulkHTTPRequest) parseRawRequest(request, baseURL string) (*RawRequest,
 		return nil, fmt.Errorf("could not read request body: %s", err)
 	}
 
-	rawRequest.Data = string(b)
+	rawRequest.Data = strings.ReplaceAll(string(b), "\n","\r\n")
 
 	return &rawRequest, nil
 }
