@@ -1,258 +1,167 @@
 <h1 align="center">
-  <img src="static/nuclei-logo.png" alt="nuclei" width="200px"></a>
   <br>
+  <a href="https://nuclei.projectdiscovery.io"><img src="static/nuclei-logo.png" width="200px" alt="Nuclei"></a>
 </h1>
 
-[![License](https://img.shields.io/badge/license-MIT-_red.svg)](https://opensource.org/licenses/MIT)
-[![Go Report Card](https://goreportcard.com/badge/github.com/projectdiscovery/nuclei)](https://goreportcard.com/report/github.com/projectdiscovery/nuclei)
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/projectdiscovery/nuclei/issues)
-[![GitHub Release](https://img.shields.io/github/release/projectdiscovery/nuclei)](https://github.com/projectdiscovery/nuclei/releases)
-[![Follow on Twitter](https://img.shields.io/twitter/follow/pdnuclei.svg?logo=twitter)](https://twitter.com/pdnuclei)
-[![Docker Images](https://img.shields.io/docker/pulls/projectdiscovery/nuclei.svg)](https://hub.docker.com/r/projectdiscovery/nuclei)
-[![Chat on Discord](https://img.shields.io/discord/695645237418131507.svg?logo=discord)](https://discord.gg/KECAGdH)
+<h4 align="center">Fast and customisable vulnerability scanner based on simple YAML based DSL.</h4>
+
 
 <p align="center">
-<a href="https://nuclei.projectdiscovery.io/templating-guide/" target="_blank"><img src="static/read-the-docs-button.png" height="42px"/></center></a>  <a href="https://github.com/projectdiscovery/nuclei-templates" target="_blank"><img src="static/download-templates-button.png" height="42px"/></a>
+<a href="https://goreportcard.com/report/github.com/projectdiscovery/nuclei"><img src="https://goreportcard.com/badge/github.com/projectdiscovery/nuclei"></a>
+<a href="https://github.com/projectdiscovery/nuclei/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat"></a>
+<a href="https://github.com/projectdiscovery/nuclei/releases"><img src="https://img.shields.io/github/release/projectdiscovery/nuclei"></a>
+<a href="https://twitter.com/pdnuclei"><img src="https://img.shields.io/twitter/follow/pdnuclei.svg?logo=twitter"></a>
+<a href="https://discord.gg/KECAGdH"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
+</p>
+      
+<p align="center">
+  <a href="#how-it-works">How</a> •
+  <a href="#install-nuclei">Install</a> •
+  <a href="#for-security-engineers">For Security Engineers</a> •
+  <a href="#for-developers-and-organisations">For Developers</a> •
+  <a href="https://nuclei.projectdiscovery.io">Wiki</a> •
+  <a href="#credits">Credits</a> •
+  <a href="#license">License</a> •
+  <a href="https://discord.gg/KECAGdH">Join Discord</a>
 </p>
 
+---
 
-Nuclei is a fast tool for configurable targeted scanning based on templates offering massive extensibility and ease of use.
+Nuclei is used to send requests across targets based on a template leading to zero false positives and providing fast scanning on large number of hosts. Nuclei offers scanning for a variety of protocols including TCP, DNS, HTTP, File, etc. With powerful and flexible templating, all kinds of security checks can be modelled with Nuclei.
 
-Nuclei is used to send requests across targets based on a template leading to zero false positives and providing effective scanning for known paths. Main use cases for nuclei are during initial reconnaissance phase to quickly check for low hanging fruits or CVEs across targets that are known and easily detectable. It uses [retryablehttp-go library](https://github.com/projectdiscovery/retryablehttp-go) designed to handle various errors and retries in case of blocking by WAFs, this is also one of our core modules from custom-queries.
-
-We have also [open-sourced a template repository](https://github.com/projectdiscovery/nuclei-templates) to maintain various type of templates, we hope that you will contribute there too. Templates are provided in hopes that these will be useful and will allow everyone to build their own templates for the scanner. Checkout the templating guide at [**nuclei.projectdiscovery.io**](https://nuclei.projectdiscovery.io/templating-guide/) for a primer on nuclei templates.
-
-## Resources
-
--   [Features](#features)
--   [Installation Instructions](#installation-instructions)
--   [Nuclei templates](#nuclei-templates)
--   [Usage](#usage)
--   [Running nuclei](#running-nuclei)
--   [Rate Limits](#rate-limits)
--   [Template exclusion](#template-exclusion)
--   [Acknowledgments](#acknowledgments)
+We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 100** security researchers and engineers. It is preloaded with ready to use templates using `-update-templates` flag.
 
 
-## Features
 
-<h1 align="left">
-  <img src="static/nuclei-run.png" alt="nuclei" width="700px"></a>
-  <br>
-</h1>
-
--   Simple and modular code base making it easy to contribute.
--   Fast And fully configurable using a template based engine.
--   Handles edge cases doing retries, backoffs etc for handling WAFs.
--   Smart matching functionality for zero false positive scanning.
+## How it works
 
 
-## Installation Instructions
+<h3 align="center">
+  <img src="static/nuclei-flow.jpg" alt="nuclei-flow" width="700px"></a>
+</h3>
 
-### From Binary
 
-The installation is easy. You can download the pre-built binaries for your platform from the [Releases](https://github.com/projectdiscovery/nuclei/releases/) page. Extract them using tar, move it to your `$PATH`and you're ready to go.
-
-```sh
-Download latest binary from https://github.com/projectdiscovery/nuclei/releases
-
-▶ tar -xzvf nuclei-linux-amd64.tar.gz
-▶ mv nuclei /usr/local/bin/
-▶ nuclei -version
-```
-
-### From Source
-
-nuclei requires **go1.14+** to install successfully. Run the following command to get the repo -
+# Install Nuclei
 
 ```sh
 ▶ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
+**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
-### From Github
+<table>
+<tr>
+<td>  
 
-```sh
-▶ git clone https://github.com/projectdiscovery/nuclei.git; cd nuclei/v2/cmd/nuclei/; go build; mv nuclei /usr/local/bin/; nuclei -version
-```
+### Download Templates
 
-## Nuclei templates
+You can download and update the nuclei templates using <ins>*update-templates*</ins> flag of nuclei that downloads all the available **nuclei-templates** from [Github project](https://github.com/projectdiscovery/nuclei-templates), a community curated list of templates that are ready to use.
 
-You can download and update the nuclei templates using `update-templates` flag, `update-templates` flag downloads the latest release from **nuclei-templates** [Github project](https://github.com/projectdiscovery/nuclei-templates), a community curated list of templates that are ready to use.
+`▶ nuclei -update-templates`
 
-```sh
-▶ nuclei -update-templates
-```
+Nuclei is designed to used with custom templates according to the target and workflow, you can write your own checks for your specific workflow and needs, please refer to nuclei **[templating guide](https://nuclei.projectdiscovery.io/templating-guide/)** to write your own custom templates.
 
-Additionally, you can write your own checks for your specific workflow and needs, please refer to **nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to write your own custom templates.**
+</td>
+</tr>
+</table>
 
-## Usage
+### Running Nuclei
 
-```sh
-nuclei -h
-```
-
-This will display help for the tool. Here are all the switches it supports.
-
-| Flag                   | Description                                               | Example                                         |
-| ---------------------- | --------------------------------------------------------- | ----------------------------------------------- |
-| bulk-size              | Max hosts analyzed in parallel per template ( default 25) | nuclei -bulk-size 25                            |
-| burp-collaborator-biid | Burp Collaborator BIID                                    | nuclei -burp-collaborator-biid XXXX             |
-| c                      | Max templates processed in parallel (default 10)          | nuclei -c 10                                    |
-| l                      | List of urls to run templates                             | nuclei -l urls.txt                              |
-| target                 | Target to scan using Templates                            | nuclei -target hxxps://example.com              |
-| t                      | Templates input file/files to check across hosts          | nuclei -t git-core.yaml -t cves/                |
-| no-color               | Don't Use colors in output                                | nuclei -no-color                                |
-| no-meta                | Don't display metadata for the matches                    | nuclei -no-meta                                 |
-| json                   | Prints and write output in json format                    | nuclei -json                                    |
-| include-rr             | Inlcude req/resp of matched output in JSON output         | nuclei -json -include-rr                        |
-| o                      | File to save output result (optional)                     | nuclei -o output.txt                            |
-| project                | Project flag to avoid sending same requests               | nuclei -project                                 |
-| project-path           | Use a user defined project folder                         | nuclei -project -project-path test              |
-| stats                  | Enable the progress bar (optional)                        | nuclei -stats                                   |
-| silent                 | Show only found results in output                         | nuclei -silent                                  |
-| retries                | Number of times to retry a failed request                 | nuclei -retries 1                               |
-| timeout                | Seconds to wait before timeout (default 5)                | nuclei -timeout 5                               |
-| trace-log              | File to write sent requests trace log                     | nuclei -trace-log logs                          |
-| rate-limit             | Maximum requests/second (default 150)                     | nuclei -rate-limit 150                          |
-| severity               | Run templates based on severity                           | nuclei -severity critical,high                  |
-| stop-at-first-match    | Stop processing http requests at first match              | nuclei -stop-at-first-match                     |
-| exclude                | Template input dir/file/files to exclude                  | nuclei -exclude panels -exclude tokens          |
-| debug                  | Allow debugging of request/responses.                     | nuclei -debug                                   |
-| update-templates       | Download and updates nuclei templates                     | nuclei -update-templates                        |
-| update-directory       | Directory for storing nuclei-templates(optional)          | nuclei -update-directory templates              |
-| tl                     | List available templates                                  | nuclei -tl                                      |
-| templates-version      | Shows the installed nuclei-templates version              | nuclei -templates-version                       |
-| v                      | Shows verbose output of all sent requests                 | nuclei -v                                       |
-| version                | Show version of nuclei                                    | nuclei -version                                 |
-| proxy-url              | Proxy URL                                                 | nuclei -proxy-url hxxp://127.0.0.1:8080         |
-| proxy-socks-url        | Socks proxyURL                                            | nuclei -proxy-socks-url socks5://127.0.0.1:8080 |
-| random-agent           | Use random User-Agents                                    | nuclei -random-agent                            |
-| H                      | Custom Header                                             | nuclei -H "x-bug-bounty: hacker"                |
-
-## Running Nuclei
-
-### Running with single template.
-
-This will run `git-core.yaml` template against all the hosts in `urls.txt` and returns the matched results.
+Scanning for CVEs on given list of URLs.
 
 ```sh
-▶ nuclei -l urls.txt -t files/git-core.yaml -o results.txt
+▶ nuclei -l target_urls.txt -t cves/
 ```
 
-You can also pass the list of urls at standard input (STDIN). This allows for easy integration in automation pipelines.
+**More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#using-nuclei).**
 
-```sh
-▶ cat urls.txt | nuclei -t files/git-core.yaml -o results.txt
-```
+# For Security Engineers
 
-💡 Nuclei accepts list of URLs as input, for example here is how `urls.txt` looks like:- 
+Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organisation. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
 
-```
-https://test.some-site.com
-http://vuls-testing.com
-https://test.com
-```
-### Running with multiple templates.
+- Varieties of protocols supported: TCP, DNS, HTTP, File, etc
+- Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/post/nuclei-unleashed/)
+- [Easy to integrate into CI/CD](https://handsonappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79), designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
 
-This will run the tool against all the urls in `urls.txt` with all the templates in the `cves` and `files` directory and returns the matched results.
+<h1 align="left">
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
+</h1>
 
-```sh
-▶ nuclei -l urls.txt -t cves/ -t files/ -o results.txt
-```
+<table>
+<tr>
+<td>  
 
-### Running with subfinder.
+**For bugbounty hunters:**
 
-```sh
-▶ subfinder -d hackerone.com -silent | httpx -silent | nuclei -t cves/ -o results.txt
-```
+Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moroever, Nuclei can be easily integrated into any continuous scanning workflow.
 
-### Running in Docker container
+- Designed to be easily integrated into other tool workflow.
+- Can process thousands of hosts in few minutes.
+- Easily automate your custom testing approach with our simple YAML DSL.
 
-You can use the [nuclei dockerhub image](https://hub.docker.com/r/projectdiscovery/nuclei). Simply run -
+Please check our other open-source projects that might fit into your bug bounty workflow: [github.com/projectdiscovery](http://github.com/projectdiscovery), we also host daily refresh of the DNS data at: [chaos.projectdiscovery.io](http://chaos.projectdiscovery.io) 
 
-```sh
-▶ docker pull projectdiscovery/nuclei
-```
+</td>
+</tr>
+</table>
 
-After downloading or building the container, run the following:
+<table>
+<tr>
+<td>
+  
+**For pentesters:**
 
-```sh
-▶ docker run -it projectdiscovery/nuclei
-```
+Nuclei immensely improve how you approach security assessment by augmenting the manual repetitve processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
 
-For example, this will run the tool against all the hosts in `urls.txt` and output the results to your host file system:
+Pen-testers get the full power of our public templates and customization capabilities to speed-up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
-```sh
-▶ cat urls.txt | docker run -v /path/to/nuclei-templates:/app/nuclei-templates -v /path/to/nuclei/config:/app/.nuclei-config.json -i projectdiscovery/nuclei -t /app/nuclei-templates/files/git-config.yaml > results.txt
-```
+- Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
+- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
+- Easy to re-test vulnerability-fix by just re-running the template.
 
-Remember to change `/path-to-nuclei-templates` to the real path on your host file system.
-
-### Rate Limits
-
-Nuclei have multiple rate limit controls for multiple factors including a number of templates to execute in parallel, a number of hosts to be scanned in parallel for each template, and the global number of request / per second you wanted to make/limit using nuclei, as an example here is how all this can be controlled using flags.
+</td>
+</tr>
+</table>
 
 
-- `-c` flag => Limits the number of templates processed in parallel.
-- `-bulk-size` flag => Limits the number of hosts processed in parallel for each template.
-- `-rate-limit` flag => Global rate limiter that ensures defined number of requests/second across all templates.
+# For Developers and Organisations
 
-If you wanted go fast or control the scans, feel free to play with these flags and numbers, `rate-limit` always ensure to control the outgoing requests regardless the other flag you are using.
+Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and  eliminate vulnerabilities from occuring in future.
 
-### Template Exclusion
+- **CI/CD:** Engineers are already [utilising Nuclei within their CI/CD pipeline](https://handsonappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79), it allows them to constantly monitor their staging and production environments with customised templates.
+- **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
 
-[Nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) includes multiple checks including many that are useful for attack surface mapping and not necessarily a security issue, in cases where you only looking to scan few specific templates or directory, here are few options / flags to filter or exclude them from running.
+We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organisation, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
 
-#### Running templates with exclusion
+<h3 align="center">
+  <img src="static/regression-with-nuclei.jpg" alt="regression-cycle-with-nuclei" width="1100px"></a>
+</h3>
 
-We do not suggest running all the nuclei-templates directory at once, in case of doing so, one can make use of `exclude` flag to exclude specific directory or templates to ignore from scanning. 
+<h1 align="left">
+  <a href="https://github.com/projectdiscovery/nuclei-action"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
+</h1>
 
-```sh
-nuclei -l urls.txt -t nuclei-templates -exclude panels/ -exclude technologies -exclude files/wp-xmlrpc.yaml
-```
-
-Note:- both directory and specific templates case be excluded from scan as shared in the above example.
-
-#### Running templates based on severity
-
-You can run the templates based on the specific severity of the template, single and multiple severity can be used for scan. 
-
-```sh
-nuclei -l urls.txt -t cves/ -severity critical,medium
-```
-
-The above example will run all the templates under `cves` directory with `critical` and `medium` severity. 
-
-```sh
-nuclei -l urls.txt -t panels/ -t technologies -severity info
-```
-
-The above example will run all the templates under `panels` and `technologies` directory with **severity** marked as `info`
-
-#### Using `.nuclei-ignore` file for template exclusion
-
-Since release of nuclei [v2.1.1](https://github.com/projectdiscovery/nuclei/releases/tag/v2.1.1), we have added support of `.nuclei-ignore` file that works along with `update-templates` flag of nuclei, in **.nuclei-ignore** file, you can define all the template directory or template path that you wanted to exclude from all the nuclei scans, to start using this feature, make sure you installed nuclei templates using `nuclei -update-templates` flag, now you can add/update/remove templates in the file that you wanted to exclude from running. 
-
-```
-nano ~/nuclei-templates/.nuclei-ignore
-```
-
-Default **nuclei-ignore** list can be accessed from [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/.nuclei-ignore), in case you don't want to exclude anything, simply remove the `.nuclei-ignore` file.
-
-* * *
-
-### 📋 Notes
-
-- Progress bar is experimental feature, might not work in few cases. 
-- Progress bar doesn't work with workflows, numbers are not accurate due to conditional execution.
+### Resources
 
 
-## Acknowledgments
+- [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/post/nuclei-introduction/)
+- [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/post/nuclei-unleashed/)
+- [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/post/nuclei-fuzz-all-the-things/)
+- [Automate Security Regression Testing With Nuclei](https://handsonappsec.medium.com/automate-security-regression-testing-featuring-nuclei-204b6970be7a) by [@toufik-airane](https://github.com/toufik-airane)
+- [Build A Cloud-Native Application Security Operations Center](https://handsonappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79) by [@toufik-airane](https://github.com/toufik-airane)
+- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwi.siswanto98/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
+- [How to Scan Continuously with Nuclei?](https://medium.com/@dwi.siswanto98/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
 
-Do also check out these similar awesome projects that may fit in your workflow:
 
-[Burp Suite](https://portswigger.net/burp), [FFuF](https://github.com/ffuf/ffuf), [Jaeles](https://github.com/jaeles-project/jaeles), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [ChopChop](https://github.com/michelin/ChopChop)
+### Credits
 
---------
+Thanks to all the amazing community [contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors). Do also check out the below similar open-source projects that may fit in your workflow:
 
-nuclei is made with 🖤 by the [projectdiscovery](https://projectdiscovery.io) team. Community contributions have made the project what it is. See the **[Thanks.md](https://github.com/projectdiscovery/nuclei/blob/master/THANKS.md)** file for more details.
+[FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
+
+### License
+
+Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+
+<h1 align="left">
+  <a href="https://discord.gg/KECAGdH"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>
+</h1>
