@@ -98,7 +98,7 @@ Nuclei allows you to customise your testing approach with your own suite of chec
 - Can process thousands of hosts in few minutes.
 - Easily automate your custom testing approach with our simple YAML DSL.
 
-Please check our other open-source projects that might fit into your bug bounty workflow: [github.com/projectdiscovery](http://github.com/projectdiscovery), we also host daily refresh of the DNS data at: [chaos.projectdiscovery.io](http://chaos.projectdiscovery.io) 
+Please check our other open-source projects that might fit into your bug bounty workflow: [github.com/projectdiscovery](http://github.com/projectdiscovery), we also host daily [refresh of DNS data at Chaos](http://chaos.projectdiscovery.io).
 
 </td>
 </tr>
