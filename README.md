@@ -143,9 +143,9 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 ### Resources
 
 
-- [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/post/nuclei-introduction/)
-- [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/post/nuclei-unleashed/)
-- [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/post/nuclei-fuzz-all-the-things/)
+- [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
+- [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
+- [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
 - [Automate Security Regression Testing With Nuclei](https://handsonappsec.medium.com/automate-security-regression-testing-featuring-nuclei-204b6970be7a) by [@toufik-airane](https://github.com/toufik-airane)
 - [Build A Cloud-Native Application Security Operations Center](https://handsonappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79) by [@toufik-airane](https://github.com/toufik-airane)
 - [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwi.siswanto98/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
