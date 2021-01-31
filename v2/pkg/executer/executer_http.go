@@ -549,7 +549,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	headers := headersToString(resp.Header)
 
-	var matchData map[string]interface{}
+	var matchData: make(map[string]interface{})
 	if payloads != nil {
 		matchData = generators.MergeMaps(result.historyData, payloads)
 	}
@@ -752,9 +752,9 @@ func (e *HTTPExecuter) setCustomHeaders(r *requests.HTTPRequest) {
 type Result struct {
 	sync.Mutex
 	GotResults  bool
-	Meta        map[string]interface{}
-	Matches     map[string]interface{}
-	Extractions map[string]interface{}
-	historyData map[string]interface{}
+	Meta:        make(map[string]interface{})
+	Matches:     make(map[string]interface{})
+	Extractions: make(map[string]interface{})
+	historyData: make(map[string]interface{})
 	Error       error
 }
