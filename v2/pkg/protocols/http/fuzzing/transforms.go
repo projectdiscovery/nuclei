@@ -64,6 +64,10 @@ func CreateTransform(req *NormalizedRequest, options *AnalyzerOptions) []*Transf
 	builder := &strings.Builder{}
 	builder.Grow(len(req.Path))
 
+	// If we have a body template with no append/replace, only do a blank replacement.
+	if options.BodyTemplate != "" && len(options.Append) == 0 && len(options.Replace) == 0 {
+		transforms = append(transforms, &Transform{})
+	}
 	matched := options.Match("path", req.Path, "")
 	if _, ok := parts["path"]; ok && matched {
 		transforms = options.transformPath(req.Path, transforms)

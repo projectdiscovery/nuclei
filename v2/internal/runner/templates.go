@@ -43,12 +43,13 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 // parseTemplateFile returns the parsed template file
 func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	executerOpts := &protocols.ExecuterOptions{
-		Output:      r.output,
-		Options:     r.options,
-		Progress:    r.progress,
-		Catalogue:   r.catalogue,
-		RateLimiter: r.ratelimiter,
-		ProjectFile: r.projectFile,
+		Output:           r.output,
+		Options:          r.options,
+		Progress:         r.progress,
+		Catalogue:        r.catalogue,
+		RateLimiter:      r.ratelimiter,
+		InteractshClient: r.interactsh,
+		ProjectFile:      r.projectFile,
 	}
 	template, err := templates.Parse(file, executerOpts)
 	if err != nil {

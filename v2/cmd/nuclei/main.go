@@ -76,6 +76,13 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.NoMeta, "no-meta", false, "Don't display metadata for the matches")
 	set.BoolVar(&options.TemplatesVersion, "templates-version", false, "Shows the installed nuclei-templates version")
 	set.StringVar(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "", "Burp Collaborator BIID")
+	set.BoolVar(&options.Interactsh, "interactsh", false, "Use interactsh server for blind interaction polling")
+	set.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "Interactsh Server URL")
+	set.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "Number of requests to keep in interactions cache")
+	set.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "Number of seconds to wait before evicting requests from cache")
+	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")
+	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
+
 	set.Parse()
 
 	if cfgFile != "" {

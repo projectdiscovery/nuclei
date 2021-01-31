@@ -75,7 +75,7 @@ type AnalyzerOptions struct {
 // First validation is performed by the parts-config value of configuration to
 // choose whether this field can be fuzzed or not. If the part can be fuzzed, testing
 // is finally performed for the request.
-func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback func(*http.Request)) error {
+func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback func(*http.Request) bool) error {
 	var reqBody io.ReadCloser
 	var contentType string
 	var contentLength int
@@ -173,7 +173,13 @@ func AnalyzeRequest(req *NormalizedRequest, options *AnalyzerOptions, callback f
 		if cookieString != "" {
 			newRequest.Header.Set("Cookie", cookieString)
 		}
-		callback(newRequest)
+		newRequest.Header.Del("Connection")
+		newRequest.Close = false
+
+		// if user asks for no more requests, break
+		if !callback(newRequest) {
+			break
+		}
 	}
 	return nil
 }
@@ -248,6 +254,8 @@ func (o *AnalyzerOptions) analyzeJSONBody(req *NormalizedRequest, transform *Tra
 	buffer := &bytes.Buffer{}
 	enc := jsoniter.NewEncoder(buffer)
 	enc.SetEscapeHTML(false)
+	// note: using accessor package requires unwrapping the actual object
+	// to be able to see the made modifications.
 	if err := enc.Encode(acc.Unwrap()); err != nil {
 		return nil, 0, "", errors.Wrap(err, "could not write json data")
 	}

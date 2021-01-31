@@ -1,6 +1,8 @@
 package types
 
-import "github.com/projectdiscovery/goflags"
+import (
+	"github.com/projectdiscovery/goflags"
+)
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
@@ -84,4 +86,18 @@ type Options struct {
 	Normalized string
 	// NormalizedOutput writes the internal normalized format representation to a file.
 	NormalizedOutput string
+	// Interactsh enables use of interactsh server for interaction polling
+	Interactsh bool
+	// InteractshURL is the URL for the interactsh server.
+	InteractshURL string
+	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
+	InteractionsCacheSize int
+	// InteractionsPollDuration is the number of seconds to wait before each interaction poll
+	InteractionsPollDuration int
+	// Eviction is the number of seconds after which to automatically discard
+	// interaction requests.
+	InteractionsEviction int
+	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// of the poller.
+	InteractionsColldownPeriod int
 }

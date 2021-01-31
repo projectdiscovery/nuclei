@@ -118,7 +118,7 @@ func TestNormalizeNetHTTPFormRequest(t *testing.T) {
 		Method:      "POST",
 		FormData:    map[string][]string{"name": []string{"hacker"}, "password": []string{"pass"}},
 		QueryValues: map[string][]string{},
-		Headers:     map[string][]string{},
+		Headers:     map[string][]string{"Content-Type": []string{"application/x-www-form-urlencoded"}},
 	}, normalized, "could not get correct normalized GET request")
 }
 
@@ -147,13 +147,12 @@ func TestNormalizeNetHTTPJSONRequest(t *testing.T) {
 			"children": []interface{}{"Sara", "Alex", "Jack"},
 		},
 		QueryValues: map[string][]string{},
-		Headers:     map[string][]string{},
+		Headers:     map[string][]string{"Content-Type": []string{"application/json"}},
 	}, normalized, "could not get correct normalized GET request")
 }
 
 func TestNormalizeNetHTTPXMLRequest(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(`
-<note>
+	req, err := http.NewRequest("POST", "http://example.com", strings.NewReader(`<note>
   <to>Tove</to>
   <from>Jani</from>
 </note>`))
@@ -175,6 +174,6 @@ func TestNormalizeNetHTTPXMLRequest(t *testing.T) {
 			"note": map[string]interface{}{"to": "Tove", "from": "Jani"},
 		},
 		QueryValues: map[string][]string{},
-		Headers:     map[string][]string{},
+		Headers:     map[string][]string{"Content-Type": []string{"text/xml"}},
 	}, normalized, "could not get correct normalized GET request")
 }

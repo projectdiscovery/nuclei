@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/ratelimit"
 )
@@ -31,6 +32,8 @@ type ExecuterOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo map[string]string
+	// InteractshClient is a client for interactsh server.
+	InteractshClient *interactsh.Client
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.

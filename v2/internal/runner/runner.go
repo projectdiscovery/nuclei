@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -33,6 +35,7 @@ type Runner struct {
 	inputCount      int64
 	templatesConfig *nucleiConfig
 	options         *types.Options
+	interactsh      *interactsh.Client
 	projectFile     *projectfile.ProjectFile
 	catalogue       *catalogue.Catalogue
 	progress        *progress.Progress
@@ -152,6 +155,22 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	if options.Interactsh {
+		interactsh, err := interactsh.New(&interactsh.Options{
+			ServerURL:      options.InteractshURL,
+			CacheSize:      int64(options.InteractionsCacheSize),
+			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
+			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
+			PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
+			Output:         runner.output,
+			Progress:       runner.progress,
+		})
+		if err != nil {
+			return nil, err
+		}
+		runner.interactsh = interactsh
+	}
+
 	// Enable Polling
 	if options.BurpCollaboratorBiid != "" {
 		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
@@ -203,12 +222,13 @@ func (r *Runner) RunEnumeration() {
 	}
 
 	executerOpts := &protocols.ExecuterOptions{
-		Output:      r.output,
-		Options:     r.options,
-		Progress:    r.progress,
-		Catalogue:   r.catalogue,
-		RateLimiter: r.ratelimiter,
-		ProjectFile: r.projectFile,
+		Output:           r.output,
+		Options:          r.options,
+		Progress:         r.progress,
+		Catalogue:        r.catalogue,
+		RateLimiter:      r.ratelimiter,
+		InteractshClient: r.interactsh,
+		ProjectFile:      r.projectFile,
 	}
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
@@ -310,7 +330,10 @@ func (r *Runner) RunEnumeration() {
 			gologger.Error().Msgf("Could not create normalized output: %s\n", err)
 		}
 	}
-	if !results.Load() {
+	if r.interactsh != nil {
+		r.interactsh.Close()
+	}
+	if !results.Load() && r.progress.GetMatched() == 0 {
 		if r.output != nil {
 			r.output.Close()
 			os.Remove(r.options.Output)
