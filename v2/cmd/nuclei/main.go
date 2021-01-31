@@ -74,7 +74,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.NoMeta, "no-meta", false, "Don't display metadata for the matches")
 	set.BoolVar(&options.TemplatesVersion, "templates-version", false, "Shows the installed nuclei-templates version")
 	set.StringVar(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "", "Burp Collaborator BIID")
-	set.Parse()
+	_ = set.Parse()
 
 	if cfgFile != "" {
 		if err := set.MergeConfigFile(cfgFile); err != nil {
