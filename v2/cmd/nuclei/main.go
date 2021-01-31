@@ -71,17 +71,10 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVarP(&options.TemplateThreads, "concurrency", "c", 10, "Maximum Number of templates executed in parallel")
 	set.BoolVar(&options.Project, "project", false, "Use a project folder to avoid sending same request multiple times")
 	set.StringVar(&options.ProjectPath, "project-path", "", "Use a user defined project folder, temporary folder is used if not specified but enabled")
-<<<<<<< HEAD
-	set.BoolVar(&options.NoMeta, "no-meta", false, "Don't display metadata for the matches")
-	set.BoolVar(&options.TemplatesVersion, "templates-version", false, "Shows the installed nuclei-templates version")
-	set.StringVar(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "", "Burp Collaborator BIID")
-	_ = set.Parse()
-=======
 	set.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "Don't display metadata for the matches")
 	set.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "Shows the installed nuclei-templates version")
 	set.StringVarP(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "biid", "", "Burp Collaborator BIID")
-	set.Parse()
->>>>>>> 978383a01b0ce5b20af9e5f4c8c88f13f2dbb369
+	_ = set.Parse()
 
 	if cfgFile != "" {
 		if err := set.MergeConfigFile(cfgFile); err != nil {
