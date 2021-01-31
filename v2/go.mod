@@ -31,7 +31,10 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.5
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
+<<<<<<< HEAD
 	github.com/rivo/uniseg v0.2.0 // indirect
+=======
+>>>>>>> 978383a01b0ce5b20af9e5f4c8c88f13f2dbb369
 	github.com/rs/xid v1.2.1
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.3.1
