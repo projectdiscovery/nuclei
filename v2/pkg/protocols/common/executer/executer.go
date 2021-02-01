@@ -3,6 +3,7 @@ package executer
 import (
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -69,7 +70,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 		})
 		if err != nil {
-			continue
+			gologger.Warning().Msgf("Could not execute request for %s: %s\n", e.options.TemplateID, err)
 		}
 	}
 	return results, nil
@@ -81,7 +82,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 	previous := make(map[string]interface{})
 
 	for _, req := range e.requests {
-		_ = req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -98,6 +99,9 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			}
 			callback(event)
 		})
+		if err != nil {
+			gologger.Warning().Msgf("Could not execute request for %s: %s\n", e.options.TemplateID, err)
+		}
 	}
 	return nil
 }

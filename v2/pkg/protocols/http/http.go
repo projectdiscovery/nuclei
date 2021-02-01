@@ -72,7 +72,7 @@ type Request struct {
 	options       *protocols.ExecuterOptions
 	attackType    generators.Type
 	totalRequests int
-	customHeaders []string
+	customHeaders map[string]string
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
@@ -94,10 +94,15 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
+	r.customHeaders = make(map[string]string)
 	r.httpClient = client
 	r.options = options
 	for _, option := range r.options.Options.CustomHeaders {
-		r.customHeaders = append(r.customHeaders, option)
+		parts := strings.SplitN(option, ":", 1)
+		if len(parts) != 2 {
+			continue
+		}
+		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
 	if len(r.AnalyzerOptions.Append) > 0 || len(r.AnalyzerOptions.Replace) > 0 || len(r.AnalyzerOptions.BodyTemplate) > 0 {

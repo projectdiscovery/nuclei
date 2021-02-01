@@ -292,10 +292,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) (bool, error) {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if r.options.Options.RandomAgent {
-		builder := &strings.Builder{}
-		builder.WriteString("User-Agent: ")
-		builder.WriteString(uarand.GetRandom())
-		r.customHeaders = append(r.customHeaders, builder.String())
+		r.customHeaders["User-Agent"] = uarand.GetRandom()
 	}
 	r.setCustomHeaders(request)
 
@@ -441,23 +438,11 @@ const two = 2
 
 // setCustomHeaders sets the custom headers for generated request
 func (e *Request) setCustomHeaders(r *generatedRequest) {
-	for _, customHeader := range e.customHeaders {
-		if customHeader == "" {
-			continue
-		}
-
-		// This should be pre-computed somewhere and done only once
-		tokens := strings.SplitN(customHeader, ":", two)
-		// if it's an invalid header skip it
-		if len(tokens) < 2 {
-			continue
-		}
-
-		headerName, headerValue := tokens[0], strings.Join(tokens[1:], "")
+	for k, v := range e.customHeaders {
 		if r.rawRequest != nil {
-			r.rawRequest.Headers[headerName] = headerValue
+			r.rawRequest.Headers[k] = v
 		} else {
-			r.request.Header.Set(strings.TrimSpace(headerName), strings.TrimSpace(headerValue))
+			r.request.Header.Set(strings.TrimSpace(k), strings.TrimSpace(v))
 		}
 	}
 }
