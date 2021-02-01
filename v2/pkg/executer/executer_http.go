@@ -161,6 +161,7 @@ func (e *HTTPExecuter) ExecuteRaceRequest(reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
+		historyData: make(map[string]interface{}),
 	}
 
 	dynamicvalues := make(map[string]interface{})
