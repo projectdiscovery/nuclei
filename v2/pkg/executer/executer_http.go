@@ -209,6 +209,7 @@ func (e *HTTPExecuter) ExecuteParallelHTTP(p *progress.Progress, reqURL string) 
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
+		historyData: make(map[string]interface{}),
 	}
 
 	dynamicvalues := make(map[string]interface{})
@@ -265,6 +266,7 @@ func (e *HTTPExecuter) ExecuteTurboHTTP(reqURL string) *Result {
 	result := &Result{
 		Matches:     make(map[string]interface{}),
 		Extractions: make(map[string]interface{}),
+		historyData: make(map[string]interface{}),
 	}
 
 	dynamicvalues := make(map[string]interface{})
