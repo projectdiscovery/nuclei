@@ -59,7 +59,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		if unsafe && found {
 			rawRequest.Headers[line] = ""
 		} else {
-			rawRequest.Headers[key] = value
+			rawRequest.Headers[strings.TrimSpace(key)] = strings.TrimSpace(value)
 		}
 	}
 

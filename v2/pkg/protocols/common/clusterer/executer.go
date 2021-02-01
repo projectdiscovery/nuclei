@@ -76,16 +76,13 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 		}
 	})
-	if err != nil {
-		return results, err
-	}
-	return results, nil
+	return results, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
-	_ = e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
+	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract)
 			if matched && result != nil {
@@ -97,5 +94,5 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			}
 		}
 	})
-	return nil
+	return err
 }
