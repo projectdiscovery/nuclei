@@ -4,11 +4,13 @@ go 1.15
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/andygrunwald/go-jira v1.13.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/corpix/uarand v0.1.1
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
 	github.com/gorilla/mux v1.8.0
 	github.com/json-iterator/go v1.1.10
@@ -36,11 +38,14 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.7.0
+	github.com/syndtr/goleveldb v1.0.0
+	github.com/xanzy/go-gitlab v0.42.0
 	go.uber.org/atomic v1.7.0
 	go.uber.org/multierr v1.6.0
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

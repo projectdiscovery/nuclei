@@ -1,6 +1,8 @@
 package file
 
 import (
+	"time"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -113,6 +115,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Host:             wrapped.InternalEvent["host"].(string),
 		Matched:          wrapped.InternalEvent["matched"].(string),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		Timestamp:        time.Now(),
 	}
 	if r.options.Options.JSONRequests {
 		data.Response = wrapped.InternalEvent["raw"].(string)
