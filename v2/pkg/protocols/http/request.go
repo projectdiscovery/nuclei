@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -219,7 +218,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		dumpedRequest []byte
 		fromcache     bool
 	)
-	if r.options.Options.Debug || r.options.ProjectFile != nil || r.options.Options.DebugRequests {
+	if r.options.Options.Debug || r.options.ProjectFile != nil || r.options.Options.DebugRequests || r.options.Options.JSONRequests {
 		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
 			return err
@@ -283,7 +282,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	duration := time.Since(timeStart)
 	// Dump response - Step 1 - Decompression not yet handled
 	var dumpedResponse []byte
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
+	if r.options.Options.Debug || r.options.Options.DebugResponse || r.options.Options.JSONRequests {
 		var dumpErr error
 		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
 		if dumpErr != nil {
@@ -302,7 +301,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
-	dataOrig := data
 	data, err = handleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")
@@ -310,7 +308,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
+		dumpedResponse = data
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
 		gologger.Print().Msgf("%s", string(dumpedResponse))
 	}
