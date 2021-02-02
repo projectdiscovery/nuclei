@@ -80,7 +80,7 @@ Nuclei offers great number of features that are helpful for security engineers t
 
 - Varieties of protocols supported: TCP, DNS, HTTP, File, etc
 - Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/post/nuclei-unleashed/)
-- [Easy to integrate into CI/CD](https://seriousappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79), designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
+- Easy to integrate into CI/CD, designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
 
 <h1 align="left">
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
@@ -127,7 +127,7 @@ Pen-testers get the full power of our public templates and customization capabil
 
 Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and  eliminate vulnerabilities from occuring in future.
 
-- **CI/CD:** Engineers are already [utilising Nuclei within their CI/CD pipeline](https://seriousappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79), it allows them to constantly monitor their staging and production environments with customised templates.
+- **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
 - **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
 
 We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organisation, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
@@ -146,8 +146,6 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 - [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
 - [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
 - [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
-- [Automate Security Regression Testing With Nuclei](https://seriousappsec.medium.com/automate-security-regression-testing-featuring-nuclei-204b6970be7a) by [@toufik-airane](https://github.com/toufik-airane)
-- [Build A Cloud-Native Application Security Operations Center](https://seriousappsec.medium.com/build-a-cloud-native-application-security-operations-center-3b4100ea1a79) by [@toufik-airane](https://github.com/toufik-airane)
 - [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwi.siswanto98/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
 - [How to Scan Continuously with Nuclei?](https://medium.com/@dwi.siswanto98/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
 
