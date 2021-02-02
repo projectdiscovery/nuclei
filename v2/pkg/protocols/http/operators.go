@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"net/http/httputil"
 	"strings"
 	"time"
 
@@ -86,10 +85,9 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 
 	data["host"] = host
 	data["matched"] = matched
-	if r.options.Options.JSONRequests {
-		data["request"] = rawReq
-		data["response"] = rawResp
-	}
+	data["request"] = rawReq
+	data["raw"] = rawResp
+	data["response"] = rawResp
 
 	data["content_length"] = resp.ContentLength
 	data["status_code"] = resp.StatusCode
@@ -103,11 +101,6 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 		data[k] = strings.Join(v, " ")
 	}
 	data["all_headers"] = headers
-
-	if r, err := httputil.DumpResponse(resp, true); err == nil {
-		rawString := string(r)
-		data["raw"] = rawString
-	}
 	data["duration"] = duration.Seconds()
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
@@ -152,6 +145,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		IP:               wrapped.InternalEvent["ip"].(string),
+		Timestamp:        time.Now(),
 	}
 	if r.options.Options.JSONRequests {
 		data.Request = wrapped.InternalEvent["request"].(string)

@@ -64,6 +64,11 @@ func (e *Executer) Execute(input string) (bool, error) {
 				return
 			}
 			for _, result := range event.Results {
+				if e.options.IssuesClient != nil {
+					if err := e.options.IssuesClient.CreateIssue(result); err != nil {
+						gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+					}
+				}
 				results = true
 				e.options.Output.Write(result)
 				e.options.Progress.IncrementMatched()

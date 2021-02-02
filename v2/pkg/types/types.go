@@ -80,4 +80,9 @@ type Options struct {
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
+	// ReportingConfig is the config file for nuclei reporting module
+	ReportingConfig string
+	// ReportingDirectory is the directory to store nuclei issue deduplication data
+	// for reporting in.
+	ReportingDirectory string
 }
