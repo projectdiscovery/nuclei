@@ -21,7 +21,7 @@ type Writer interface {
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
-	// Request writes a log the requests trace log
+	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
 }
 

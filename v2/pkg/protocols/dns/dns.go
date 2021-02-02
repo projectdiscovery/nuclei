@@ -26,8 +26,6 @@ type Request struct {
 	Class string `yaml:"class"`
 	// Retries is the number of retries for the DNS request
 	Retries int `yaml:"retries"`
-	// Raw contains a raw request
-	Raw string `yaml:"raw,omitempty"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
