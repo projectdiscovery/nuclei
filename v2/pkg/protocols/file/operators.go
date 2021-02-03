@@ -103,7 +103,7 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       wrapped.InternalEvent["template-id"].(string),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]string),
+		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "file",
 		Host:             wrapped.InternalEvent["host"].(string),
 		Matched:          wrapped.InternalEvent["matched"].(string),

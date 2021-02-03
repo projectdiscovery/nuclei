@@ -96,7 +96,7 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 // TemplateInfo contains info for a mock executed template.
 type TemplateInfo struct {
 	ID   string
-	Info map[string]string
+	Info map[string]interface{}
 	Path string
 }
 

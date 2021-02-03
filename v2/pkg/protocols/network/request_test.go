@@ -38,7 +38,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
@@ -90,8 +90,4 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
 	require.Equal(t, "<h1>400 - Bad Request</h1>", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
-	finalEvent = nil
-
-	request.Inputs[0].Type = ""
-	request.Inputs[0].Data = "GET / HTTP/1.1\r\n\r\n"
 }

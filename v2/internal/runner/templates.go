@@ -29,10 +29,10 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 		if len(t.Workflows) > 0 {
 			workflowCount++
 		}
-		sev := strings.ToLower(t.Info["severity"])
+		sev := strings.ToLower(t.Info["severity"].(string))
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
 			parsedTemplates[t.ID] = t
-			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
+			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"].(string), t.Info["author"].(string), t.Info["severity"].(string)))
 		} else {
 			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
 		}
@@ -74,7 +74,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"].(string), t.Info["author"].(string), t.Info["severity"].(string)))
 	}
 }
 

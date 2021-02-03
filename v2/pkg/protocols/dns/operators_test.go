@@ -29,7 +29,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -61,7 +61,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -144,7 +144,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -214,7 +214,7 @@ func TestDNSMakeResult(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
