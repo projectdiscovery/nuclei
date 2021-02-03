@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -41,6 +40,7 @@ type generatedRequest struct {
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
+	// We get the next payload for the request.
 	data, payloads, ok := r.nextValue()
 	if !ok {
 		return nil, io.EOF
@@ -58,7 +58,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		"Hostname": hostname,
 	})
 
-	// If data contains \n it's a raw request, process it like that. Else
+	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if strings.Contains(data, "\n") {
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values, payloads)
@@ -75,7 +75,7 @@ func (r *requestGenerator) Total() int {
 }
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping
-// the template port and path preference
+// the template port and path preference over the user provided one.
 func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
 	// template has port
@@ -91,10 +91,10 @@ func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}) (*generatedRequest, error) {
-	URL := replacer.New(values).Replace(data)
+	final := replacer.Replace(data, values)
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.request.Method, URL, nil)
+	req, err := http.NewRequestWithContext(ctx, r.request.Method, final, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -108,32 +108,35 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	// Add trailing line
-	data += "\n"
-
-	// If we have payloads, handle them by evaluating them at runtime.
-	if len(r.request.Payloads) > 0 {
-		finalPayloads, err := r.getPayloadValues(baseURL, payloads)
-		if err != nil {
-			return nil, err
+	// Add trailing line to request body based on content type
+	// handling multipart bodies differently.
+	if !strings.HasSuffix(data, "\r\n") && !strings.HasSuffix(data, "\n") {
+		if !strings.Contains(r.request.Headers["Content-Type"], "multipart") {
+			data += "\n"
+		} else {
+			data += "\r\n"
 		}
-		return r.handleRawWithPaylods(ctx, data, baseURL, values, finalPayloads)
 	}
-	return r.handleRawWithPaylods(ctx, data, baseURL, values, nil)
+	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 }
 
 // handleRawWithPaylods handles raw requests along with paylaods
 func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
-	baseValues := generators.CopyMap(values)
-	finalValues := generators.MergeMaps(baseValues, generatorValues)
+	// Combine the template payloads along with base
+	// request values.
+	finalValues := generators.MergeMaps(generatorValues, values)
+	rawRequest = replacer.Replace(rawRequest, finalValues)
 
-	// Replace the dynamic variables in the URL if any
-	rawRequest = replacer.New(finalValues).Replace(rawRequest)
-
+	// Check if the match contains a dynamic variable, for each
+	// found one we will check if it's an expression and can
+	// be compiled, it will be evaluated and the results will be returned.
+	//
+	// The provided keys from finalValues will be used as variable names
+	// for substitution inside the expression.
 	dynamicValues := make(map[string]interface{})
 	for _, match := range templateExpressionRegex.FindAllString(rawRequest, -1) {
-		// check if the match contains a dynamic variable
 		expr := generators.TrimDelimiters(match)
+
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
 			return nil, err
@@ -142,17 +145,17 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 		if err != nil {
 			return nil, err
 		}
-		dynamicValues[expr] = result
+		dynamicValues[expr] = result // convert base64(<payload_name>) => <base64-representation>
 	}
 
 	// Replacer dynamic values if any in raw request and parse it
-	rawRequest = replacer.New(dynamicValues).Replace(rawRequest)
+	rawRequest = replacer.Replace(rawRequest, dynamicValues)
 	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
 		return nil, err
 	}
 
-	// rawhttp
+	// Unsafe option uses rawhttp library
 	if r.request.Unsafe {
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request}
 		return unsafeReq, nil
@@ -171,12 +174,9 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 	if err != nil {
 		return nil, err
 	}
-
-	// copy headers
 	for key, value := range rawRequestData.Headers {
 		req.Header[key] = []string{value}
 	}
-
 	request, err := r.fillRequest(req, values)
 	if err != nil {
 		return nil, err
@@ -187,14 +187,14 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 // fillRequest fills various headers in the request with values
 func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
-	replacer := replacer.New(values)
 	for header, value := range r.request.Headers {
-		req.Header[header] = []string{replacer.Replace(value)}
+		req.Header[header] = []string{replacer.Replace(value, values)}
 	}
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
 	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" {
 		req.Close = true
+		delete(req.Header, "Connection")
 	}
 
 	// Check if the user requested a request body
@@ -203,13 +203,11 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	}
 	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
 
-	// raw requests are left untouched
-	if len(r.request.Raw) > 0 {
-		return retryablehttp.FromRequest(req)
+	// Only set these headers on non raw requests
+	if len(r.request.Raw) == 0 {
+		setHeader(req, "Accept", "*/*")
+		setHeader(req, "Accept-Language", "en")
 	}
-	setHeader(req, "Accept", "*/*")
-	setHeader(req, "Accept-Language", "en")
-
 	return retryablehttp.FromRequest(req)
 }
 
@@ -219,40 +217,3 @@ func setHeader(req *http.Request, name, value string) {
 		req.Header.Set(name, value)
 	}
 }
-
-// getPayloadValues returns current payload values for a request
-func (r *requestGenerator) getPayloadValues(reqURL string, templatePayloads map[string]interface{}) (map[string]interface{}, error) {
-	payloadProcessedValues := make(map[string]interface{})
-
-	for k, v := range templatePayloads {
-		kexp := v.(string)
-		// if it doesn't containing markups, we just continue
-		if !strings.Contains(kexp, replacer.MarkerParenthesisOpen) || strings.Contains(kexp, replacer.MarkerParenthesisClose) || strings.Contains(kexp, replacer.MarkerGeneral) {
-			payloadProcessedValues[k] = v
-			continue
-		}
-		// attempts to expand expressions
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(kexp, dsl.HelperFunctions())
-		if err != nil {
-			// it is a simple literal payload => proceed with literal value
-			payloadProcessedValues[k] = v
-			continue
-		}
-		// it is an expression - try to solve it
-		expValue, err := compiled.Evaluate(templatePayloads)
-		if err != nil {
-			// an error occurred => proceed with literal value
-			payloadProcessedValues[k] = v
-			continue
-		}
-		payloadProcessedValues[k] = fmt.Sprint(expValue)
-	}
-	var err error
-	if len(payloadProcessedValues) == 0 {
-		err = ErrNoPayload
-	}
-	return payloadProcessedValues, err
-}
-
-// ErrNoPayload error to avoid the additional base null request
-var ErrNoPayload = fmt.Errorf("no payload found")

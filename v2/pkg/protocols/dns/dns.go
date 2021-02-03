@@ -83,9 +83,9 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	replacer := replacer.New(map[string]interface{}{"FQDN": domain})
+	final := replacer.Replace(r.Name, map[string]interface{}{"FQDN": domain})
 
-	q.Name = dns.Fqdn(replacer.Replace(r.Name))
+	q.Name = dns.Fqdn(final)
 	q.Qclass = r.class
 	q.Qtype = r.question
 	req.Question = append(req.Question, q)
