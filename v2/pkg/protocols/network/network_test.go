@@ -16,7 +16,7 @@ func TestNetworkCompileMake(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}", "{{Hostname}}:8082"},
 		ReadSize: 1024,
-		Inputs:   []*Input{&Input{Data: "test-data"}},
+		Inputs:   []*Input{{Data: "test-data"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDNSExecuteWithResults(t *testing.T) {
+func TestNetworkExecuteWithResults(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
@@ -21,23 +21,19 @@ func TestDNSExecuteWithResults(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}:80"},
 		ReadSize: 2048,
-		Inputs:   []*Input{&Input{Data: "GET / HTTP/1.1\r\n\r\n"}},
+		Inputs:   []*Input{{Data: "GET / HTTP/1.1\r\n\r\n"}},
 		Operators: operators.Operators{
-			Matchers: []*matchers.Matcher{
-				&matchers.Matcher{
-					Name:  "test",
-					Part:  "raw",
-					Type:  "word",
-					Words: []string{"400 - Bad Request"},
-				},
-			},
-			Extractors: []*extractors.Extractor{
-				&extractors.Extractor{
-					Part:  "raw",
-					Type:  "regex",
-					Regex: []string{"<h1>.*</h1>"},
-				},
-			},
+			Matchers: []*matchers.Matcher{{
+				Name:  "test",
+				Part:  "raw",
+				Type:  "word",
+				Words: []string{"400 - Bad Request"},
+			}},
+			Extractors: []*extractors.Extractor{{
+				Part:  "raw",
+				Type:  "regex",
+				Regex: []string{"<h1>.*</h1>"},
+			}},
 		},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{

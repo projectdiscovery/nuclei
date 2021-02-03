@@ -20,7 +20,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}"},
 		ReadSize: 1024,
-		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
+		Inputs:   []*Input{{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -45,7 +45,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}"},
 		ReadSize: 1024,
-		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
+		Inputs:   []*Input{{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -108,7 +108,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}"},
 		ReadSize: 1024,
-		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
+		Inputs:   []*Input{{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -158,23 +158,19 @@ func TestNetworkMakeResult(t *testing.T) {
 		ID:       templateID,
 		Address:  []string{"{{Hostname}}"},
 		ReadSize: 1024,
-		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
+		Inputs:   []*Input{{Data: "test-data\r\n"}},
 		Operators: operators.Operators{
-			Matchers: []*matchers.Matcher{
-				&matchers.Matcher{
-					Name:  "test",
-					Part:  "raw",
-					Type:  "word",
-					Words: []string{"STAT "},
-				},
-			},
-			Extractors: []*extractors.Extractor{
-				&extractors.Extractor{
-					Part:  "raw",
-					Type:  "regex",
-					Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
-				},
-			},
+			Matchers: []*matchers.Matcher{{
+				Name:  "test",
+				Part:  "raw",
+				Type:  "word",
+				Words: []string{"STAT "},
+			}},
+			Extractors: []*extractors.Extractor{{
+				Part:  "raw",
+				Type:  "regex",
+				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
+			}},
 		},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
