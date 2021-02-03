@@ -24,21 +24,17 @@ func TestDNSExecuteWithResults(t *testing.T) {
 		Recursion: false,
 		Name:      "{{FQDN}}",
 		Operators: operators.Operators{
-			Matchers: []*matchers.Matcher{
-				&matchers.Matcher{
-					Name:  "test",
-					Part:  "raw",
-					Type:  "word",
-					Words: []string{"93.184.216.34"},
-				},
-			},
-			Extractors: []*extractors.Extractor{
-				&extractors.Extractor{
-					Part:  "raw",
-					Type:  "regex",
-					Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
-				},
-			},
+			Matchers: []*matchers.Matcher{{
+				Name:  "test",
+				Part:  "raw",
+				Type:  "word",
+				Words: []string{"93.184.216.34"},
+			}},
+			Extractors: []*extractors.Extractor{{
+				Part:  "raw",
+				Type:  "regex",
+				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
+			}},
 		},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{

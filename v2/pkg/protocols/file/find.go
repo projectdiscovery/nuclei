@@ -87,6 +87,9 @@ func (r *Request) findDirectoryMatches(absPath string, processed map[string]stru
 			return godirwalk.SkipNode
 		},
 		Callback: func(path string, d *godirwalk.Dirent) error {
+			if d.IsDir() {
+				return nil
+			}
 			if !r.validatePath(path) {
 				return nil
 			}

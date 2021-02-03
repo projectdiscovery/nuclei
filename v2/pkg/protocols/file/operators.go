@@ -11,7 +11,7 @@ import (
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partString := matcher.Part
 	switch partString {
-	case "body", "all", "":
+	case "body", "all", "data", "":
 		partString = "raw"
 	}
 
@@ -38,14 +38,9 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 // Extract performs extracting operation for a extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part, ok := data[extractor.Part]
-	if !ok {
-		return nil
-	}
-	partString := part.(string)
-
+	partString := extractor.Part
 	switch partString {
-	case "body", "all", "":
+	case "body", "all", "data", "":
 		partString = "raw"
 	}
 
@@ -66,7 +61,7 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
 func (r *Request) responseToDSLMap(raw string, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 3)
+	data := make(output.InternalEvent, 5)
 
 	// Some data regarding the request metadata
 	data["host"] = host
