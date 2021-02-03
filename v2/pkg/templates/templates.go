@@ -14,7 +14,7 @@ type Template struct {
 	// ID is the unique id for the template
 	ID string `yaml:"id"`
 	// Info contains information about the template
-	Info map[string]string `yaml:"info"`
+	Info map[string]interface{} `yaml:"info"`
 	// RequestsHTTP contains the http request to make in the template
 	RequestsHTTP []*http.Request `yaml:"requests,omitempty"`
 	// RequestsDNS contains the dns request to make in the template
@@ -23,7 +23,7 @@ type Template struct {
 	RequestsFile []*file.Request `yaml:"file,omitempty"`
 	// RequestsNetwork contains the network request to make in the template
 	RequestsNetwork []*network.Request `yaml:"network,omitempty"`
-  
+
 	// Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline"`
 	CompiledWorkflow   *workflows.Workflow

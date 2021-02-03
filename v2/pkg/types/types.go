@@ -80,4 +80,8 @@ type Options struct {
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
+	// Tags contains a list of tags to execute templates for. Multiple paths
+	// can be specified with -l flag and -tags can be used in combination with
+	// the -l flag.
+	Tags goflags.StringSlice
 }

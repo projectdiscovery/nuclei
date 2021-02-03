@@ -27,7 +27,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) ([]byte, error) {
 		builder.WriteString("] ")
 
 		builder.WriteString("[")
-		builder.WriteString(w.severityColors.Data[output.Info["severity"]])
+		builder.WriteString(w.severityColors.Data[output.Info["severity"].(string)])
 		builder.WriteString("] ")
 	}
 	builder.WriteString(output.Matched)

@@ -22,7 +22,7 @@ func TestDNSCompileMake(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]string{"severity": "low", "name": "test"},
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
