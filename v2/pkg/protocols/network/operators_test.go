@@ -1,11 +1,8 @@
-package dns
+package network
 
 import (
-	"net"
-	"strconv"
 	"testing"
 
-	"github.com/miekg/dns"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -18,87 +15,60 @@ func TestResponseToDSLMap(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-dns"
+	templateID := "testing-network"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		ID:       templateID,
+		Address:  []string{"{{Hostname}}"},
+		ReadSize: 1024,
+		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: map[string]string{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
-	require.Nil(t, err, "could not compile dns request")
+	require.Nil(t, err, "could not compile network request")
 
-	req := new(dns.Msg)
-	req.Question = append(req.Question, dns.Question{Name: "one.one.one.one.", Qtype: dns.TypeA, Qclass: dns.ClassINET})
-
-	resp := new(dns.Msg)
-	resp.Rcode = dns.RcodeSuccess
-	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
-
+	req := "test-data\r\n"
+	resp := "resp-data\r\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 11, "could not get correct number of items in dsl map")
-	require.Equal(t, dns.RcodeSuccess, event["rcode"], "could not get correct rcode")
+	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	require.Equal(t, resp, event["data"], "could not get correct resp")
 }
 
-func TestDNSOperatorMatch(t *testing.T) {
+func TestNetworkOperatorMatch(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-dns"
+	templateID := "testing-network"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		ID:       templateID,
+		Address:  []string{"{{Hostname}}"},
+		ReadSize: 1024,
+		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: map[string]string{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
-	require.Nil(t, err, "could not compile dns request")
+	require.Nil(t, err, "could not compile network request")
 
-	req := new(dns.Msg)
-	req.Question = append(req.Question, dns.Question{Name: "one.one.one.one.", Qtype: dns.TypeA, Qclass: dns.ClassINET})
-
-	resp := new(dns.Msg)
-	resp.Rcode = dns.RcodeSuccess
-	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
-
+	req := "test-data\r\n"
+	resp := "resp-data\r\nSTAT \r\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
-			Part:  "raw",
+			Part:  "body",
 			Type:  "word",
-			Words: []string{"1.1.1.1"},
+			Words: []string{"STAT "},
 		}
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
 		matched := request.Match(event, matcher)
 		require.True(t, matched, "could not match valid response")
-	})
-
-	t.Run("rcode", func(t *testing.T) {
-		matcher := &matchers.Matcher{
-			Part:   "rcode",
-			Type:   "status",
-			Status: []int{dns.RcodeSuccess},
-		}
-		err = matcher.CompileMatchers()
-		require.Nil(t, err, "could not compile rcode matcher")
-
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid rcode response")
 	})
 
 	t.Run("negative", func(t *testing.T) {
@@ -129,33 +99,26 @@ func TestDNSOperatorMatch(t *testing.T) {
 	})
 }
 
-func TestDNSOperatorExtract(t *testing.T) {
+func TestNetworkOperatorExtract(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-dns"
+	templateID := "testing-network"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		ID:       templateID,
+		Address:  []string{"{{Hostname}}"},
+		ReadSize: 1024,
+		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: map[string]string{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
-	require.Nil(t, err, "could not compile dns request")
+	require.Nil(t, err, "could not compile network request")
 
-	req := new(dns.Msg)
-	req.Question = append(req.Question, dns.Question{Name: "one.one.one.one.", Qtype: dns.TypeA, Qclass: dns.ClassINET})
-
-	resp := new(dns.Msg)
-	resp.Rcode = dns.RcodeSuccess
-	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
-
+	req := "test-data\r\n"
+	resp := "resp-data\r\nSTAT \r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
 
 	t.Run("extract", func(t *testing.T) {
@@ -175,36 +138,34 @@ func TestDNSOperatorExtract(t *testing.T) {
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Type: "kval",
-			KVal: []string{"rcode"},
+			KVal: []string{"request"},
 		}
 		err = extractor.CompileExtractors()
 		require.Nil(t, err, "could not compile kval extractor")
 
 		data := request.Extract(event, extractor)
 		require.Greater(t, len(data), 0, "could not extractor kval valid response")
-		require.Equal(t, map[string]struct{}{strconv.Itoa(dns.RcodeSuccess): {}}, data, "could not extract correct kval data")
+		require.Equal(t, map[string]struct{}{req: {}}, data, "could not extract correct kval data")
 	})
 }
 
-func TestDNSMakeResult(t *testing.T) {
+func TestNetworkMakeResult(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-dns"
+	templateID := "testing-network"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		ID:       templateID,
+		Address:  []string{"{{Hostname}}"},
+		ReadSize: 1024,
+		Inputs:   []*Input{&Input{Data: "test-data\r\n"}},
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{
 				&matchers.Matcher{
 					Name:  "test",
 					Part:  "raw",
 					Type:  "word",
-					Words: []string{"1.1.1.1"},
+					Words: []string{"STAT "},
 				},
 			},
 			Extractors: []*extractors.Extractor{
@@ -221,17 +182,13 @@ func TestDNSMakeResult(t *testing.T) {
 		Info: map[string]string{"severity": "low", "name": "test"},
 	})
 	err := request.Compile(executerOpts)
-	require.Nil(t, err, "could not compile dns request")
+	require.Nil(t, err, "could not compile network request")
 
-	req := new(dns.Msg)
-	req.Question = append(req.Question, dns.Question{Name: "one.one.one.one.", Qtype: dns.TypeA, Qclass: dns.ClassINET})
-
-	resp := new(dns.Msg)
-	resp.Rcode = dns.RcodeSuccess
-	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
-
+	req := "test-data\r\n"
+	resp := "resp-data\rSTAT \r\n1.1.1.1\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
+	event["ip"] = "192.168.1.1"
 	if request.CompiledOperators != nil {
 		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
 		if ok && result != nil {
