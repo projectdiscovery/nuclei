@@ -549,7 +549,7 @@ func (e *HTTPExecuter) handleHTTP(reqURL string, request *requests.HTTPRequest, 
 
 	headers := headersToString(resp.Header)
 
-	var matchData map[string]interface{}
+	matchData := make(map[string]interface{})
 	if payloads != nil {
 		matchData = generators.MergeMaps(result.historyData, payloads)
 	}
