@@ -22,23 +22,18 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	if !ok {
 		return false
 	}
-	itemStr := types.ToString(item)
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
-		statusCode, ok := data["rcode"]
-		if !ok {
-			return false
-		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
+		return matcher.Result(matcher.MatchStatusCode(item.(int)))
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(itemStr)))
+		return matcher.Result(matcher.MatchSize(len(types.ToString(item))))
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(itemStr))
+		return matcher.Result(matcher.MatchWords(types.ToString(item)))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(itemStr))
+		return matcher.Result(matcher.MatchRegex(types.ToString(item)))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(itemStr))
+		return matcher.Result(matcher.MatchBinary(types.ToString(item)))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data))
 	}
@@ -47,18 +42,13 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 // Extract performs extracting operation for a extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part, ok := data[extractor.Part]
-	if !ok {
-		return nil
-	}
-	partString := part.(string)
-
-	switch partString {
+	part := extractor.Part
+	switch part {
 	case "body", "all":
-		partString = "raw"
+		part = "raw"
 	}
 
-	item, ok := data[partString]
+	item, ok := data[part]
 	if !ok {
 		return nil
 	}
@@ -75,15 +65,12 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
 func (r *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 8)
+	data := make(output.InternalEvent, 11)
 
 	// Some data regarding the request metadata
 	data["host"] = host
 	data["matched"] = matched
-
-	if r.options.Options.JSONRequests {
-		data["request"] = req.String()
-	}
+	data["request"] = req.String()
 
 	data["rcode"] = resp.Rcode
 	buffer := &bytes.Buffer{}
@@ -148,16 +135,16 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       wrapped.InternalEvent["template-id"].(string),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]string),
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "dns",
-		Host:             wrapped.InternalEvent["host"].(string),
-		Matched:          wrapped.InternalEvent["matched"].(string),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 	}
 	if r.options.Options.JSONRequests {
-		data.Request = wrapped.InternalEvent["request"].(string)
-		data.Response = wrapped.InternalEvent["raw"].(string)
+		data.Request = types.ToString(wrapped.InternalEvent["request"])
+		data.Response = types.ToString(wrapped.InternalEvent["raw"])
 	}
 	return data
 }

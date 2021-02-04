@@ -74,6 +74,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "Don't display metadata for the matches")
 	set.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "Shows the installed nuclei-templates version")
 	set.StringVarP(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "biid", "", "Burp Collaborator BIID")
+	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	_ = set.Parse()
 
 	if cfgFile != "" {
