@@ -31,8 +31,6 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 			workflowCount++
 		}
 		sev := strings.ToLower(types.ToString(t.Info["severity"]))
-
-		fmt.Printf("info: %+v\n", t.Info)
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
 			parsedTemplates[t.ID] = t
 			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
