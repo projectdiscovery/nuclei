@@ -246,7 +246,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		if parsed, err := url.Parse(formedURL); err == nil {
 			hostname = parsed.Hostname()
 		}
-		request.rawRequest.Data = strings.ReplaceAll(request.rawRequest.Data, "\n", "\r\n")
 		options := request.original.rawhttpClient.Options
 		options.AutomaticContentLength = !r.DisableAutoContentLength
 		options.AutomaticHostHeader = !r.DisableAutoHostname
