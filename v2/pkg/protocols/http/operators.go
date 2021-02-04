@@ -89,7 +89,6 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 	data["response"] = rawResp
 	data["content_length"] = resp.ContentLength
 	data["status_code"] = resp.StatusCode
-
 	data["body"] = body
 	for _, cookie := range resp.Cookies() {
 		data[strings.ToLower(cookie.Name)] = cookie.Value

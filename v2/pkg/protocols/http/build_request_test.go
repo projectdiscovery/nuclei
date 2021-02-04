@@ -47,6 +47,35 @@ func TestMakeRequestFromModal(t *testing.T) {
 	require.Equal(t, "username=test&password=pass", string(bodyBytes), "could not get correct request body")
 }
 
+func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{"{{BaseURL}}?query=example"},
+		Method: "GET",
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: map[string]interface{}{"severity": "low", "name": "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator()
+	req, err := generator.Make("https://example.com/test.php", map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
+
+	generator = request.newGenerator()
+	req, err = generator.Make("https://example.com/test/", map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	require.Equal(t, "https://example.com/test/?query=example", req.request.URL.String(), "could not get correct request path")
+}
+
 func TestMakeRequestFromRawWithPayloads(t *testing.T) {
 	options := testutils.DefaultOptions
 

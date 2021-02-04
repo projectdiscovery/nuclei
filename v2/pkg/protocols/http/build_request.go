@@ -38,8 +38,6 @@ type generatedRequest struct {
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	baseURL = strings.TrimSuffix(baseURL, "/")
-
 	// We get the next payload for the request.
 	data, payloads, ok := r.nextValue()
 	if !ok {
@@ -51,6 +49,10 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	if err != nil {
 		return nil, err
 	}
+	isRawRequest := strings.Contains(data, "\n")
+	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+	}
 
 	hostname := parsed.Host
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
@@ -60,7 +62,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
-	if strings.Contains(data, "\n") {
+	if isRawRequest {
 		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values, payloads)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values)
