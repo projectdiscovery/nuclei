@@ -24,7 +24,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 	for _, match := range templatePaths {
 		t, err := r.parseTemplateFile(match)
 		if err != nil {
-			gologger.Error().Msgf("Could not parse file '%s': %s\n", match, err)
+			gologger.Warning().Msgf("Could not parse file '%s': %s\n", match, err)
 			continue
 		}
 		if len(t.Workflows) > 0 {
