@@ -102,6 +102,9 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
+	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
+		r.Body = strings.ReplaceAll(r.Body, "\n", "\r\n")
+	}
 	if len(r.Raw) > 0 {
 		for i, raw := range r.Raw {
 			if !strings.Contains(raw, "\r\n") {
