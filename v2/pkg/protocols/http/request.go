@@ -205,6 +205,8 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 	return requestErr
 }
 
+const drainReqSize = int64(8 * 1024)
+
 // executeRequest executes the actual generated request and returns error if occured
 func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
@@ -291,9 +293,15 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	var bodyReader io.Reader
+	if r.MaxSize != 0 {
+		bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
+	} else {
+		bodyReader = resp.Body
+	}
+	data, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 		resp.Body.Close()
 		return errors.Wrap(err, "could not read http body")
 	}
