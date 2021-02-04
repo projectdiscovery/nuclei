@@ -108,15 +108,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	// Add trailing line to request body based on content type
-	// handling multipart bodies differently.
-	if !strings.HasSuffix(data, "\r\n") && !strings.HasSuffix(data, "\n") {
-		if !strings.Contains(r.request.Headers["Content-Type"], "multipart") {
-			data += "\n"
-		} else {
-			data += "\r\n"
-		}
-	}
+	data += "\r\n"
 	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 }
 

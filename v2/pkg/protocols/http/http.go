@@ -103,6 +103,11 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(r.Raw) > 0 {
+		for i, raw := range r.Raw {
+			if !strings.Contains(raw, "\r\n") {
+				r.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
+			}
+		}
 		r.rawhttpClient = httpclientpool.GetRawHTTP()
 	}
 	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
