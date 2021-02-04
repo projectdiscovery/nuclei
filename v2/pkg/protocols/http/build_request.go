@@ -186,7 +186,6 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	// In case of multiple threads the underlying connection should remain open to allow reuse
 	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" {
 		req.Close = true
-		delete(req.Header, "Connection")
 	}
 
 	// Check if the user requested a request body
