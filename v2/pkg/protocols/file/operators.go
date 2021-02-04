@@ -102,15 +102,15 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       wrapped.InternalEvent["template-id"].(string),
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "file",
-		Host:             wrapped.InternalEvent["host"].(string),
-		Matched:          wrapped.InternalEvent["matched"].(string),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 	}
 	if r.options.Options.JSONRequests {
-		data.Response = wrapped.InternalEvent["raw"].(string)
+		data.Response = types.ToString(wrapped.InternalEvent["raw"])
 	}
 	return data
 }

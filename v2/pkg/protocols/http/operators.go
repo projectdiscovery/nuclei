@@ -63,8 +63,8 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 
 	if part == "all" {
 		builder := &strings.Builder{}
-		builder.WriteString(data["body"].(string))
-		builder.WriteString(data["all_headers"].(string))
+		builder.WriteString(types.ToString(data["body"]))
+		builder.WriteString(types.ToString(data["all_headers"]))
 		itemStr = builder.String()
 	} else {
 		item, ok := data[part]
@@ -134,18 +134,18 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       wrapped.InternalEvent["template-id"].(string),
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "http",
-		Host:             wrapped.InternalEvent["host"].(string),
-		Matched:          wrapped.InternalEvent["matched"].(string),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
-		IP:               wrapped.InternalEvent["ip"].(string),
+		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	if r.options.Options.JSONRequests {
-		data.Request = wrapped.InternalEvent["request"].(string)
-		data.Response = wrapped.InternalEvent["raw"].(string)
+		data.Request = types.ToString(wrapped.InternalEvent["request"])
+		data.Response = types.ToString(wrapped.InternalEvent["raw"])
 	}
 	return data
 }
