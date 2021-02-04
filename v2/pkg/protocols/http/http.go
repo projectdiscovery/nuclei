@@ -57,8 +57,10 @@ type Request struct {
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header"`
 	// Race determines if all the request have to be attempted at the same time
-	// The minimum number fof requests is determined by threads
+	// The minimum number of requests is determined by threads
 	Race bool `yaml:"race"`
+	// MaxSize is the maximum size of http response body to read in bytes.
+	MaxSize int `yaml:"max-size"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
