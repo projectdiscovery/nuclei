@@ -38,7 +38,7 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 		return nil, errors.New("no template severity field provided")
 	}
 	if templateTags, ok := template.Info["tags"]; ok && len(options.Options.Tags) > 0 {
-		if err := matchTemplateWithTags(templateTags.([]interface{}), options.Options); err != nil {
+		if err := matchTemplateWithTags(templateTags.(string), options.Options); err != nil {
 			return nil, err
 		}
 	}
@@ -159,14 +159,17 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 }
 
 // matchTemplateWithTags matches if the template matches a tag
-func matchTemplateWithTags(tags []interface{}, options *types.Options) error {
+func matchTemplateWithTags(tags string, options *types.Options) error {
+	actualTags := strings.Split(tags, ",")
+
 	matched := false
 mainLoop:
 	for _, tag := range options.Tags {
 		key, value := getKeyValue(tag)
 
-		for _, templTag := range tags {
-			tKey, tValue := getKeyValue(templTag.(string))
+		for _, templTag := range actualTags {
+			templTag = strings.TrimSpace(templTag)
+			tKey, tValue := getKeyValue(templTag)
 			if strings.EqualFold(key, tKey) && strings.EqualFold(value, tValue) {
 				matched = true
 				break mainLoop
@@ -181,11 +184,11 @@ mainLoop:
 
 // getKeyValue returns key value pair for a data string
 func getKeyValue(data string) (string, string) {
-
 	var key, value string
+
 	if strings.Contains(data, ":") {
-		parts := strings.SplitN(data, ":", 1)
-		if len(parts) > 2 {
+		parts := strings.SplitN(data, ":", 2)
+		if len(parts) == 2 {
 			key, value = parts[0], parts[1]
 		}
 	}

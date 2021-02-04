@@ -93,7 +93,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	r.httpClient = client
 	r.options = options
 	for _, option := range r.options.Options.CustomHeaders {
-		parts := strings.SplitN(option, ":", 1)
+		parts := strings.SplitN(option, ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
@@ -122,15 +122,11 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		for name, payload := range r.Payloads {
 			switch pt := payload.(type) {
 			case string:
-				elements := strings.Split(pt, "\n")
-				//golint:gomnd // this is not a magic number
-				if len(elements) < 2 {
-					final, err := options.Catalogue.ResolvePath(elements[0], options.TemplatePath)
-					if err != nil {
-						return errors.Wrap(err, "could not read payload file")
-					}
-					r.Payloads[name] = final
+				final, err := options.Catalogue.ResolvePath(pt, options.TemplatePath)
+				if err != nil {
+					return errors.Wrap(err, "could not read payload file")
 				}
+				r.Payloads[name] = final
 			}
 		}
 

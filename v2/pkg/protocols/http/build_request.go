@@ -79,11 +79,9 @@ func (r *requestGenerator) Total() int {
 func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
 	// template port preference over input URL port
 	// template has port
-	hasPort := len(urlWithPortRegex.FindStringSubmatch(data)) > 0
-	if hasPort {
-		// check if also the input contains port, in this case extracts the url
-		if hostname, _, err := net.SplitHostPort(parsedURL.Host); err == nil {
-			parsedURL.Host = hostname
+	if strings.Contains(data, ":") {
+		if _, port, err := net.SplitHostPort(data); err == nil {
+			parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), port)
 		}
 	}
 	return parsedURL.String()
