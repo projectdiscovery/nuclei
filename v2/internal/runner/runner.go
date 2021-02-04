@@ -179,6 +179,9 @@ func (r *Runner) Close() {
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	// resolves input templates definitions and any optional exclusion
+	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
+		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
+	}
 	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates

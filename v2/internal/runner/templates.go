@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
@@ -29,10 +30,12 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 		if len(t.Workflows) > 0 {
 			workflowCount++
 		}
-		sev := strings.ToLower(t.Info["severity"].(string))
+		sev := strings.ToLower(types.ToString(t.Info["severity"]))
+
+		fmt.Printf("info: %+v\n", t.Info)
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
 			parsedTemplates[t.ID] = t
-			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"].(string), t.Info["author"].(string), t.Info["severity"].(string)))
+			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
 		} else {
 			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
 		}
@@ -74,7 +77,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"].(string), t.Info["author"].(string), t.Info["severity"].(string)))
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
 	}
 }
 

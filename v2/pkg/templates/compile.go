@@ -37,8 +37,12 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	if _, ok := template.Info["severity"]; !ok {
 		return nil, errors.New("no template severity field provided")
 	}
-	if templateTags, ok := template.Info["tags"]; ok && len(options.Options.Tags) > 0 {
-		if err := matchTemplateWithTags(templateTags.(string), options.Options); err != nil {
+	if len(options.Options.Tags) > 0 {
+		templateTags, ok := template.Info["tags"]
+		if !ok {
+			return nil, errors.New("no tags found for template")
+		}
+		if err := matchTemplateWithTags(types.ToString(templateTags), options.Options); err != nil {
 			return nil, err
 		}
 	}
