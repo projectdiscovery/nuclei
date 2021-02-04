@@ -3,10 +3,12 @@ package templates
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
@@ -25,6 +27,25 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 		return nil, err
 	}
 	defer f.Close()
+
+	if _, ok := template.Info["name"]; !ok {
+		return nil, errors.New("no template name field provided")
+	}
+	if _, ok := template.Info["author"]; !ok {
+		return nil, errors.New("no template author field provided")
+	}
+	if _, ok := template.Info["severity"]; !ok {
+		return nil, errors.New("no template severity field provided")
+	}
+	if len(options.Options.Tags) > 0 {
+		templateTags, ok := template.Info["tags"]
+		if !ok {
+			return nil, errors.New("no tags found for template")
+		}
+		if err := matchTemplateWithTags(types.ToString(templateTags), options.Options); err != nil {
+			return nil, err
+		}
+	}
 
 	// Setting up variables regarding template metadata
 	options.TemplateID = template.ID
@@ -139,4 +160,44 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 		})
 	}
 	return nil
+}
+
+// matchTemplateWithTags matches if the template matches a tag
+func matchTemplateWithTags(tags string, options *types.Options) error {
+	actualTags := strings.Split(tags, ",")
+
+	matched := false
+mainLoop:
+	for _, tag := range options.Tags {
+		key, value := getKeyValue(tag)
+
+		for _, templTag := range actualTags {
+			templTag = strings.TrimSpace(templTag)
+			tKey, tValue := getKeyValue(templTag)
+			if strings.EqualFold(key, tKey) && strings.EqualFold(value, tValue) {
+				matched = true
+				break mainLoop
+			}
+		}
+	}
+	if !matched {
+		return errors.New("could not match template tags with input")
+	}
+	return nil
+}
+
+// getKeyValue returns key value pair for a data string
+func getKeyValue(data string) (string, string) {
+	var key, value string
+
+	if strings.Contains(data, ":") {
+		parts := strings.SplitN(data, ":", 2)
+		if len(parts) == 2 {
+			key, value = parts[0], parts[1]
+		}
+	}
+	if value == "" {
+		value = data
+	}
+	return key, value
 }

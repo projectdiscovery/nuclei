@@ -34,7 +34,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {
-					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", err)
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
 				}
 				continue
 			}
@@ -76,7 +76,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {
-					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", err)
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
 				}
 				continue
 			}
@@ -84,7 +84,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				if len(template.Executers) == 1 {
 					mainErr = executionErr
 				} else {
-					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", executionErr)
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, executionErr)
 				}
 			}
 		}

@@ -27,8 +27,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	}
 
 	for _, kv := range r.addresses {
-		replacer := replacer.New(map[string]interface{}{"Hostname": address})
-		actualAddress := replacer.Replace(kv.key)
+		actualAddress := replacer.Replace(kv.key, map[string]interface{}{"Hostname": address})
 		if kv.value != "" {
 			if strings.Contains(address, ":") {
 				actualAddress, _, _ = net.SplitHostPort(actualAddress)

@@ -27,10 +27,10 @@ import (
 const defaultMaxWorkers = 150
 
 // executeRaceRequest executes race condition request for a URL
-func (e *Request) executeRaceRequest(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := e.newGenerator()
+func (r *Request) executeRaceRequest(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	generator := r.newGenerator()
 
-	maxWorkers := e.RaceNumberRequests
+	maxWorkers := r.RaceNumberRequests
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
@@ -40,10 +40,10 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues, previous outp
 	if err != nil {
 		return err
 	}
-	for i := 0; i < e.RaceNumberRequests; i++ {
+	for i := 0; i < r.RaceNumberRequests; i++ {
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -56,12 +56,12 @@ func (e *Request) executeRaceRequest(reqURL string, dynamicValues, previous outp
 	return requestErr
 }
 
-// executeRaceRequest executes race condition request for a URL
-func (e *Request) executeParallelHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := e.newGenerator()
+// executeRaceRequest executes parallel requests for a template
+func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	generator := r.newGenerator()
 
 	// Workers that keeps enqueuing new requests
-	maxWorkers := e.Threads
+	maxWorkers := r.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
@@ -72,30 +72,30 @@ func (e *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.DecrementRequests(int64(generator.Total()))
 			return err
 		}
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			e.options.RateLimiter.Take()
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			r.options.RateLimiter.Take()
+			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
 		}(request)
-		e.options.Progress.IncrementRequests()
+		r.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
 	return requestErr
 }
 
-// executeRaceRequest executes race condition request for a URL
-func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := e.newGenerator()
+// executeRaceRequest executes turbo http request for a URL
+func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	generator := r.newGenerator()
 
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
@@ -106,11 +106,11 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	pipeOptions := rawhttp.DefaultPipelineOptions
 	pipeOptions.Host = URL.Host
 	pipeOptions.MaxConnections = 1
-	if e.PipelineConcurrentConnections > 0 {
-		pipeOptions.MaxConnections = e.PipelineConcurrentConnections
+	if r.PipelineConcurrentConnections > 0 {
+		pipeOptions.MaxConnections = r.PipelineConcurrentConnections
 	}
-	if e.PipelineRequestsPerConnection > 0 {
-		pipeOptions.MaxPendingRequests = e.PipelineRequestsPerConnection
+	if r.PipelineRequestsPerConnection > 0 {
+		pipeOptions.MaxPendingRequests = r.PipelineRequestsPerConnection
 	}
 	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
 
@@ -130,7 +130,7 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 			break
 		}
 		if err != nil {
-			e.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.DecrementRequests(int64(generator.Total()))
 			return err
 		}
 		request.pipelinedClient = pipeclient
@@ -139,14 +139,14 @@ func (e *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := e.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
 		}(request)
-		e.options.Progress.IncrementRequests()
+		r.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
 	return requestErr
@@ -352,12 +352,12 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 const two = 2
 
 // setCustomHeaders sets the custom headers for generated request
-func (e *Request) setCustomHeaders(r *generatedRequest) {
-	for k, v := range e.customHeaders {
-		if r.rawRequest != nil {
-			r.rawRequest.Headers[k] = v
+func (r *Request) setCustomHeaders(req *generatedRequest) {
+	for k, v := range r.customHeaders {
+		if req.rawRequest != nil {
+			req.rawRequest.Headers[k] = v
 		} else {
-			r.request.Header.Set(strings.TrimSpace(k), strings.TrimSpace(v))
+			req.request.Header.Set(strings.TrimSpace(k), strings.TrimSpace(v))
 		}
 	}
 }
