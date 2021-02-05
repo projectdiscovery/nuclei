@@ -49,21 +49,23 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	if err != nil {
 		return nil, err
 	}
+
+	data, parsed = baseURLWithTemplatePrefs(data, parsed)
+	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
+		"Hostname": parsed.Host,
+	})
+
 	isRawRequest := strings.Contains(data, "\n")
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
-
-	hostname := parsed.Host
-	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"BaseURL":  baseURLWithTemplatePrefs(data, parsed),
-		"Hostname": hostname,
-	})
+	parsedString := parsed.String()
+	values["BaseURL"] = parsedString
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
-		return r.makeHTTPRequestFromRaw(ctx, baseURL, data, values, payloads)
+		return r.makeHTTPRequestFromRaw(ctx, parsedString, data, values, payloads)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values)
 }
@@ -78,15 +80,19 @@ func (r *requestGenerator) Total() int {
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping
 // the template port and path preference over the user provided one.
-func baseURLWithTemplatePrefs(data string, parsedURL *url.URL) string {
-	// template port preference over input URL port
-	// template has port
-	if urlWithPortRegex.MatchString(data) {
-		if _, port, err := net.SplitHostPort(data); err == nil {
-			parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), port)
-		}
+func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
+	// template port preference over input URL port if template has a port
+	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
+	if len(matches) == 0 {
+		return data, parsed
 	}
-	return parsedURL.String()
+	port := matches[0][1]
+	parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
+	data = strings.ReplaceAll(data, ":"+port, "")
+	if parsed.Path == "" {
+		parsed.Path = "/"
+	}
+	return data, parsed
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template

@@ -9,10 +9,13 @@ import (
 )
 
 func TestBaseURLWithTemplatePrefs(t *testing.T) {
-	parsed, _ := url.Parse("http://localhost:53")
+	baseURL := "http://localhost:53/test"
+	parsed, _ := url.Parse(baseURL)
 
-	new := baseURLWithTemplatePrefs("{{BaseURL}}:8000", parsed)
-	require.Equal(t, "http://localhost:8000", new, "could not get correct value")
+	data := "{{BaseURL}}:8000/newpath"
+	data, new := baseURLWithTemplatePrefs(data, parsed)
+	require.Equal(t, "http://localhost:8000/test", new, "could not get correct value")
+	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
 }
 
 func TestMakeRequestFromModal(t *testing.T) {

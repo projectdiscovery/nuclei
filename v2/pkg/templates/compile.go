@@ -34,9 +34,6 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	if _, ok := template.Info["author"]; !ok {
 		return nil, errors.New("no template author field provided")
 	}
-	if _, ok := template.Info["severity"]; !ok {
-		return nil, errors.New("no template severity field provided")
-	}
 	if len(options.Options.Tags) > 0 {
 		templateTags, ok := template.Info["tags"]
 		if !ok {
