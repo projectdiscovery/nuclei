@@ -168,6 +168,7 @@ mainLoop:
 	for _, t := range options.Tags {
 		commaTags := strings.Split(t, ",")
 		for _, tag := range commaTags {
+			tag = strings.TrimSpace(tag)
 			key, value := getKeyValue(tag)
 
 			for _, templTag := range actualTags {
