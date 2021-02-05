@@ -52,7 +52,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	data, parsed = baseURLWithTemplatePrefs(data, parsed)
 	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"Hostname": parsed.Host,
+		"Hostname": parsed.Hostname(),
 	})
 
 	isRawRequest := strings.Contains(data, "\n")

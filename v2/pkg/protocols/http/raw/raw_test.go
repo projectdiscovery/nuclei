@@ -6,6 +6,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseRawRequestWithPort(t *testing.T) {
+	request, err := Parse(`GET /gg/phpinfo.php HTTP/1.1
+	Host: {{Hostname}}:123
+	Origin: {{BaseURL}}
+	Connection: close
+	User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+	Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+	Accept-Language: en-US,en;q=0.9`, "https://example.com:8080", false)
+	require.Nil(t, err, "could not parse GET request")
+	require.Equal(t, "https://{{Hostname}}:123/gg/phpinfo.php", request.FullURL, "Could not parse request url correctly")
+	require.Equal(t, "/gg/phpinfo.php", request.Path, "Could not parse request path correctly")
+}
+
 func TestParseRawRequest(t *testing.T) {
 	request, err := Parse(`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
