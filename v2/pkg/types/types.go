@@ -84,4 +84,8 @@ type Options struct {
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
 	Tags goflags.StringSlice
+	// OfflineHTTP is a flag that specific offline processing of http response
+	// using same matchers/extractors from http protocol without the need
+	// to send a new request, reading responses from a file.
+	OfflineHTTP bool
 }

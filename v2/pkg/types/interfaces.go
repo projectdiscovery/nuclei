@@ -12,7 +12,7 @@ import (
 func ToString(data interface{}) string {
 	switch s := data.(type) {
 	case nil:
-		return "<nil>"
+		return ""
 	case string:
 		return s
 	case bool:

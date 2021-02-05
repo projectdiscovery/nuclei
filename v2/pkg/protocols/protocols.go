@@ -3,6 +3,7 @@ package protocols
 import (
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -43,6 +44,8 @@ type ExecuterOptions struct {
 	Catalogue *catalogue.Catalogue
 	// ProjectFile is the project file for nuclei
 	ProjectFile *projectfile.ProjectFile
+
+	Operators []*operators.Operators // only used by offlinehttp module
 }
 
 // Request is an interface implemented any protocol based request generator.
