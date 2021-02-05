@@ -292,8 +292,8 @@ func (r *Runner) RunEnumeration() {
 			}(t)
 		}
 		wgtemplates.Wait()
-		r.progress.Stop()
 	}
+	r.progress.Stop()
 
 	if !results.Load() {
 		if r.output != nil {

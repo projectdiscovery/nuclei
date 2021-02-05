@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"strings"
 )
@@ -89,6 +90,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		hostURL = parsedURL.Host
 	} else {
 		hostURL = rawRequest.Headers["Host"]
+	}
+	if strings.Contains(hostURL, ":") && strings.Contains(parsedURL.Host, ":") {
+		parsedURL.Host, _, _ = net.SplitHostPort(parsedURL.Host)
 	}
 
 	if rawRequest.Path == "" {
