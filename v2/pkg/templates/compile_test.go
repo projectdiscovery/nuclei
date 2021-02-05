@@ -24,4 +24,9 @@ func TestMatchTemplateWithTags(t *testing.T) {
 		err = matchTemplateWithTags("lang:php, os:linux, cms:symfony", &types.Options{Tags: []string{"cms:symfony"}})
 		require.Nil(t, err, "could get key value tag from input key value with space")
 	})
+
+	t.Run("comma-tags", func(t *testing.T) {
+		err = matchTemplateWithTags("lang:php,os:linux,cms:symfony", &types.Options{Tags: []string{"test,cms:symfony"}})
+		require.Nil(t, err, "could get key value tag from input key value with comma")
+	})
 }
