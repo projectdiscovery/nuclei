@@ -216,17 +216,14 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	r.setCustomHeaders(request)
 
 	var (
-		resp          *http.Response
-		err           error
-		dumpedRequest []byte
-		fromcache     bool
+		resp      *http.Response
+		fromcache bool
 	)
-	if r.options.Options.Debug || r.options.ProjectFile != nil || r.options.Options.DebugRequests {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
-		}
+	dumpedRequest, err := dump(request, reqURL)
+	if err != nil {
+		return err
 	}
+
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 		gologger.Print().Msgf("%s", string(dumpedRequest))
@@ -278,18 +275,25 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		r.options.Progress.DecrementRequests(1)
 		return err
 	}
+
+	//	redirectChain := &strings.Builder{}
+	//	redirectReq := resp.Request.Response
+	//	for redirectResp != nil {
+	//		dumpedRequest, err = dump(redirectResp, reqURL)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		redirectReq = redirectReq.Response.Request
+	//	}
+
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
 	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 
 	duration := time.Since(timeStart)
-	// Dump response - Step 1 - Decompression not yet handled
-	var dumpedResponse []byte
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		var dumpErr error
-		dumpedResponse, dumpErr = httputil.DumpResponse(resp, true)
-		if dumpErr != nil {
-			return errors.Wrap(dumpErr, "could not dump http response")
-		}
+
+	dumpedResponse, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		return errors.Wrap(err, "could not dump http response")
 	}
 
 	var bodyReader io.Reader

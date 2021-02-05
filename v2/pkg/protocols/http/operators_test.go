@@ -133,14 +133,14 @@ func TestHTTPOperatorExtract(t *testing.T) {
 
 	resp := &http.Response{}
 	resp.Header = make(http.Header)
-	resp.Header.Set("Test", "Test-Response")
+	resp.Header.Set("Test-Header", "Test-Response")
 	host := "http://example.com/test/"
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
 	require.Len(t, event, 12, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
-	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
+	require.Equal(t, "Test-Response", event["test-header"], "could not get correct resp for header")
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
@@ -159,7 +159,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Type: "kval",
-			KVal: []string{"test"},
+			KVal: []string{"test-header"},
 		}
 		err = extractor.CompileExtractors()
 		require.Nil(t, err, "could not compile kval extractor")
