@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
 
 // Parse parses a yaml request template file
-func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, error) {
+func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 
 	f, err := os.Open(filePath)
@@ -57,7 +59,7 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 	// Compile the workflow request
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
-		if err := template.compileWorkflow(options, compiled); err != nil {
+		if err := template.compileWorkflow(&options, compiled); err != nil {
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
 		template.CompiledWorkflow = compiled
@@ -69,25 +71,35 @@ func Parse(filePath string, options *protocols.ExecuterOptions) (*Template, erro
 		for _, req := range template.RequestsDNS {
 			requests = append(requests, req)
 		}
-		template.Executer = executer.NewExecuter(requests, options)
+		template.Executer = executer.NewExecuter(requests, &options)
 	}
 	if len(template.RequestsHTTP) > 0 {
-		for _, req := range template.RequestsHTTP {
-			requests = append(requests, req)
+		if options.Options.OfflineHTTP {
+			operators := []*operators.Operators{}
+
+			for _, req := range template.RequestsHTTP {
+				operators = append(operators, &req.Operators)
+			}
+			options.Operators = operators
+			template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		} else {
+			for _, req := range template.RequestsHTTP {
+				requests = append(requests, req)
+			}
+			template.Executer = executer.NewExecuter(requests, &options)
 		}
-		template.Executer = executer.NewExecuter(requests, options)
 	}
 	if len(template.RequestsFile) > 0 {
 		for _, req := range template.RequestsFile {
 			requests = append(requests, req)
 		}
-		template.Executer = executer.NewExecuter(requests, options)
+		template.Executer = executer.NewExecuter(requests, &options)
 	}
 	if len(template.RequestsNetwork) > 0 {
 		for _, req := range template.RequestsNetwork {
 			requests = append(requests, req)
 		}
-		template.Executer = executer.NewExecuter(requests, options)
+		template.Executer = executer.NewExecuter(requests, &options)
 	}
 	if template.Executer != nil {
 		err := template.Executer.Compile()
@@ -136,7 +148,7 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 		return errors.Wrap(err, "could not get workflow template")
 	}
 	for _, path := range paths {
-		opts := &protocols.ExecuterOptions{
+		opts := protocols.ExecuterOptions{
 			Output:      options.Output,
 			Options:     options.Options,
 			Progress:    options.Progress,
