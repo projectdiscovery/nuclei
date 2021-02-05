@@ -1,6 +1,8 @@
 package workflows
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"go.uber.org/atomic"
@@ -81,6 +83,8 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				continue
 			}
 			if executionErr != nil {
+
+				fmt.Printf("%+v\n", executionErr)
 				if len(template.Executers) == 1 {
 					mainErr = executionErr
 				} else {

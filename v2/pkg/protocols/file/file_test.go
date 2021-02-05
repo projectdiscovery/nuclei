@@ -13,12 +13,11 @@ func TestFileCompile(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                 templateID,
-		MaxSize:            1024,
-		NoRecursive:        false,
-		Extensions:         []string{"*"},
-		ExtensionAllowlist: []string{".lock"},
-		ExtensionDenylist:  []string{".go"},
+		ID:                templateID,
+		MaxSize:           1024,
+		NoRecursive:       false,
+		Extensions:        []string{"*", ".lock"},
+		ExtensionDenylist: []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,

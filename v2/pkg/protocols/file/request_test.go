@@ -20,12 +20,11 @@ func TestFileExecuteWithResults(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                 templateID,
-		MaxSize:            1024,
-		NoRecursive:        false,
-		Extensions:         []string{"*"},
-		ExtensionAllowlist: []string{".lock"},
-		ExtensionDenylist:  []string{".go"},
+		ID:                templateID,
+		MaxSize:           1024,
+		NoRecursive:       false,
+		Extensions:        []string{"*"},
+		ExtensionDenylist: []string{".go"},
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",

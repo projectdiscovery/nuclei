@@ -125,6 +125,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if err != nil {
 		return errors.Wrap(err, "could not format output")
 	}
+	if len(data) == 0 {
+		return nil
+	}
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
 	if w.outputFile != nil {
@@ -134,7 +137,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		if writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
-		_ = w.outputFile.Write([]byte("\n"))
 	}
 	return nil
 }
