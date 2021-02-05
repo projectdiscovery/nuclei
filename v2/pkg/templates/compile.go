@@ -165,15 +165,19 @@ func matchTemplateWithTags(tags string, options *types.Options) error {
 
 	matched := false
 mainLoop:
-	for _, tag := range options.Tags {
-		key, value := getKeyValue(tag)
+	for _, t := range options.Tags {
+		commaTags := strings.Split(t, ",")
+		for _, tag := range commaTags {
+			key, value := getKeyValue(tag)
 
-		for _, templTag := range actualTags {
-			templTag = strings.TrimSpace(templTag)
-			tKey, tValue := getKeyValue(templTag)
-			if strings.EqualFold(key, tKey) && strings.EqualFold(value, tValue) {
-				matched = true
-				break mainLoop
+			for _, templTag := range actualTags {
+				templTag = strings.TrimSpace(templTag)
+				tKey, tValue := getKeyValue(templTag)
+
+				if strings.EqualFold(key, tKey) && strings.EqualFold(value, tValue) {
+					matched = true
+					break mainLoop
+				}
 			}
 		}
 	}
