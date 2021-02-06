@@ -79,7 +79,7 @@ Scanning for CVEs on given list of URLs.
 Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organisation. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
 
 - Varieties of protocols supported: TCP, DNS, HTTP, File, etc
-- Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/post/nuclei-unleashed/)
+- Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
 - Easy to integrate into CI/CD, designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
 
 <h1 align="left">
