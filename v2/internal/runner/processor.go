@@ -16,8 +16,10 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 
+	executed := atomic.NewBool(false)
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
+		executed.CAS(false, true)
 
 		wg.Add()
 		go func(URL string) {
@@ -31,6 +33,14 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		}(URL)
 		return nil
 	})
+	// Run template once if we have http requests with no input
+	if len(template.RequestsHTTP) > 0 && r.hostMap.Size() == 0 && !executed.Load() {
+		match, err := template.Executer.Execute("http://test.test")
+		if err != nil {
+			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
+		}
+		results.CAS(false, match)
+	}
 	wg.Wait()
 
 	return results.Load()
