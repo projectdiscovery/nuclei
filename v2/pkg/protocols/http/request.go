@@ -268,23 +268,13 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if err != nil {
 		// rawhttp doesn't supports draining response bodies.
 		if resp != nil && resp.Body != nil && request.rawRequest == nil {
-			_, _ = io.Copy(ioutil.Discard, resp.Body)
+			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
 		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 		r.options.Progress.DecrementRequests(1)
 		return err
 	}
-
-	//	redirectChain := &strings.Builder{}
-	//	redirectReq := resp.Request.Response
-	//	for redirectResp != nil {
-	//		dumpedRequest, err = dump(redirectResp, reqURL)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		redirectReq = redirectReq.Response.Request
-	//	}
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
 	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
@@ -293,6 +283,8 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	dumpedResponse, err := httputil.DumpResponse(resp, true)
 	if err != nil {
+		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		resp.Body.Close()
 		return errors.Wrap(err, "could not dump http response")
 	}
 
@@ -310,6 +302,11 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	resp.Body.Close()
 
+	redirectedResponse, err := dumpResponseWithRedirectChain(resp, data)
+	if err != nil {
+		return errors.Wrap(err, "could not read http response with redirect chain")
+	}
+
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
@@ -322,8 +319,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
+		redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
+
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", string(dumpedResponse))
+		gologger.Print().Msgf("%s", string(redirectedResponse))
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
@@ -343,6 +342,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}

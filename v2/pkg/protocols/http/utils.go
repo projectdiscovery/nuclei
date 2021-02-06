@@ -9,8 +9,53 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/rawhttp"
 )
+
+// dumpResponseWithRedirectChain dumps a http response with the
+// complete http redirect chain.
+//
+// It preserves the order in which responses were given to requests
+// and returns the data to the user for matching and viewing in that order.
+func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, error) {
+	redirectChain := &bytes.Buffer{}
+	redirectResp := resp.Request.Response
+
+	redirects := []string{}
+	respData, err := httputil.DumpResponse(resp, false)
+	if err != nil {
+		return nil, err
+	}
+	redirectChain.WriteString(tostring.UnsafeToString(respData))
+	redirectChain.Write(body)
+	redirects = append(redirects, redirectChain.String())
+	redirectChain.Reset()
+
+	for redirectResp != nil {
+		var body []byte
+
+		respData, err := httputil.DumpResponse(redirectResp, false)
+		if err != nil {
+			break
+		}
+		if redirectResp.Body != nil {
+			body, _ = ioutil.ReadAll(redirectResp.Body)
+		}
+		redirectChain.WriteString(tostring.UnsafeToString(respData))
+		if len(body) > 0 {
+			redirectChain.WriteString(tostring.UnsafeToString(body))
+		}
+		redirects = append(redirects, redirectChain.String())
+		redirectResp = redirectResp.Request.Response
+		redirectChain.Reset()
+	}
+
+	for i := len(redirects) - 1; i >= 0; i-- {
+		redirectChain.WriteString(redirects[i])
+	}
+	return redirectChain.Bytes(), nil
+}
 
 // headersToString converts http headers to string
 func headersToString(headers http.Header) string {
