@@ -18,6 +18,8 @@ import (
 //
 // It preserves the order in which responses were given to requests
 // and returns the data to the user for matching and viewing in that order.
+//
+// Inspired from - https://github.com/ffuf/ffuf/issues/324#issuecomment-719858923
 func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, error) {
 	redirectChain := &bytes.Buffer{}
 	redirectResp := resp.Request.Response
