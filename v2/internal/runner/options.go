@@ -73,10 +73,6 @@ func validateOptions(options *types.Options) error {
 		if len(options.Templates) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
 			return errors.New("no template/templates provided")
 		}
-
-		if options.Targets == "" && !options.Stdin && options.Target == "" && !options.UpdateTemplates {
-			return errors.New("no target input provided")
-		}
 	}
 
 	// Validate proxy options if provided
