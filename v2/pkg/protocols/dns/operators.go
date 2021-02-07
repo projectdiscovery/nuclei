@@ -2,6 +2,7 @@ package dns
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -141,6 +142,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		Timestamp:        time.Now(),
 	}
 	if r.options.Options.JSONRequests {
 		data.Request = types.ToString(wrapped.InternalEvent["request"])
