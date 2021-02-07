@@ -188,6 +188,9 @@ func (r *Runner) Close() {
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	// resolves input templates definitions and any optional exclusion
+	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
+		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
+	}
 	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates
@@ -210,15 +213,6 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
-	executerOpts := &protocols.ExecuterOptions{
-		Output:       r.output,
-		Options:      r.options,
-		Progress:     r.progress,
-		Catalogue:    r.catalogue,
-		IssuesClient: r.issuesClient,
-		RateLimiter:  r.ratelimiter,
-		ProjectFile:  r.projectFile,
-	}
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
@@ -237,18 +231,28 @@ func (r *Runner) RunEnumeration() {
 	clusterCount := 0
 	clusters := clusterer.Cluster(availableTemplates)
 	for _, cluster := range clusters {
-		if len(cluster) > 1 {
+		if len(cluster) > 1 && !r.options.OfflineHTTP {
+			executerOpts := protocols.ExecuterOptions{
+				Output:      r.output,
+				Options:     r.options,
+				Progress:    r.progress,
+				Catalogue:   r.catalogue,
+				RateLimiter: r.ratelimiter,
+				ProjectFile: r.projectFile,
+			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 
 			finalTemplates = append(finalTemplates, &templates.Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, executerOpts),
+				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
 			clusterCount++
 		} else {
-			finalTemplates = append(finalTemplates, cluster[0])
+			for _, item := range cluster {
+				finalTemplates = append(finalTemplates, item)
+			}
 		}
 	}
 
@@ -263,7 +267,6 @@ func (r *Runner) RunEnumeration() {
 		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
 	}
 	templateCount := originalTemplatesCount
-	hasWorkflows := workflowCount > 0
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
@@ -280,27 +283,23 @@ func (r *Runner) RunEnumeration() {
 	// Starts polling or ignore
 	collaborator.DefaultCollaborator.Poll()
 
-	if r.inputCount == 0 {
-		gologger.Error().Msgf("Could not find any valid input URLs.")
-	} else if totalRequests > 0 || hasWorkflows {
-		// tracks global progress and captures stdout/stderr until p.Wait finishes
-		r.progress.Init(r.inputCount, templateCount, totalRequests)
+	// tracks global progress and captures stdout/stderr until p.Wait finishes
+	r.progress.Init(r.inputCount, templateCount, totalRequests)
 
-		for _, t := range finalTemplates {
-			wgtemplates.Add()
-			go func(template *templates.Template) {
-				defer wgtemplates.Done()
+	for _, t := range finalTemplates {
+		wgtemplates.Add()
+		go func(template *templates.Template) {
+			defer wgtemplates.Done()
 
-				if len(template.Workflows) > 0 {
-					results.CAS(false, r.processWorkflowWithList(template))
-				} else {
-					results.CAS(false, r.processTemplateWithList(template))
-				}
-			}(t)
-		}
-		wgtemplates.Wait()
-		r.progress.Stop()
+			if len(template.Workflows) > 0 {
+				results.CAS(false, r.processWorkflowWithList(template))
+			} else {
+				results.CAS(false, r.processTemplateWithList(template))
+			}
+		}(t)
 	}
+	wgtemplates.Wait()
+	r.progress.Stop()
 
 	if r.issuesClient != nil {
 		r.issuesClient.Close()

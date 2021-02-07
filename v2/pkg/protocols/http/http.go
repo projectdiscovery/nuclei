@@ -57,8 +57,10 @@ type Request struct {
 	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
 	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header"`
 	// Race determines if all the request have to be attempted at the same time
-	// The minimum number fof requests is determined by threads
+	// The minimum number of requests is determined by threads
 	Race bool `yaml:"race"`
+	// MaxSize is the maximum size of http response body to read in bytes.
+	MaxSize int `yaml:"max-size"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
@@ -93,14 +95,22 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	r.httpClient = client
 	r.options = options
 	for _, option := range r.options.Options.CustomHeaders {
-		parts := strings.SplitN(option, ":", 1)
+		parts := strings.SplitN(option, ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
+	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
+		r.Body = strings.ReplaceAll(r.Body, "\n", "\r\n")
+	}
 	if len(r.Raw) > 0 {
+		for i, raw := range r.Raw {
+			if !strings.Contains(raw, "\r\n") {
+				r.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
+			}
+		}
 		r.rawhttpClient = httpclientpool.GetRawHTTP()
 	}
 	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
@@ -122,15 +132,11 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		for name, payload := range r.Payloads {
 			switch pt := payload.(type) {
 			case string:
-				elements := strings.Split(pt, "\n")
-				//golint:gomnd // this is not a magic number
-				if len(elements) < 2 {
-					final, err := options.Catalogue.ResolvePath(elements[0], options.TemplatePath)
-					if err != nil {
-						return errors.Wrap(err, "could not read payload file")
-					}
-					r.Payloads[name] = final
+				final, err := options.Catalogue.ResolvePath(pt, options.TemplatePath)
+				if err != nil {
+					return errors.Wrap(err, "could not read payload file")
 				}
+				r.Payloads[name] = final
 			}
 		}
 

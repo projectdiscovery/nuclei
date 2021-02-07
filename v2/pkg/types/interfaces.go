@@ -11,6 +11,8 @@ import (
 // ToString converts an interface to string in a quick way
 func ToString(data interface{}) string {
 	switch s := data.(type) {
+	case nil:
+		return ""
 	case string:
 		return s
 	case bool:

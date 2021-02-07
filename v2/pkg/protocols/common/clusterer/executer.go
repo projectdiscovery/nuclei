@@ -22,7 +22,7 @@ type Executer struct {
 
 type clusteredOperator struct {
 	templateID   string
-	templateInfo map[string]string
+	templateInfo map[string]interface{}
 	operator     *operators.Operators
 }
 

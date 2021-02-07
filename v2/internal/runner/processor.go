@@ -15,7 +15,6 @@ import (
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
-
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
 
@@ -32,7 +31,6 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		return nil
 	})
 	wg.Wait()
-
 	return results.Load()
 }
 

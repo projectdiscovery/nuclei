@@ -18,8 +18,6 @@ type Request struct {
 	NoRecursive bool `yaml:"no-recursive"`
 	// Extensions is the list of extensions to perform matching on.
 	Extensions []string `yaml:"extensions"`
-	// ExtensionAllowlist is the list of file extensions to enforce allowing.
-	ExtensionAllowlist []string `yaml:"allowlist"`
 	// ExtensionDenylist is the list of file extensions to deny during matching.
 	ExtensionDenylist []string `yaml:"denylist"`
 
@@ -72,9 +70,6 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	for _, extension := range r.ExtensionDenylist {
 		r.extensionDenylist[extension] = struct{}{}
-	}
-	for _, extension := range r.ExtensionAllowlist {
-		delete(r.extensionDenylist, extension)
 	}
 	return nil
 }

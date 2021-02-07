@@ -3,6 +3,7 @@ package protocols
 import (
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -31,7 +32,7 @@ type ExecuterOptions struct {
 	// TemplatePath is the path of the template for the request
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
-	TemplateInfo map[string]string
+	TemplateInfo map[string]interface{}
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.
@@ -46,6 +47,8 @@ type ExecuterOptions struct {
 	Catalogue *catalogue.Catalogue
 	// ProjectFile is the project file for nuclei
 	ProjectFile *projectfile.ProjectFile
+
+	Operators []*operators.Operators // only used by offlinehttp module
 }
 
 // Request is an interface implemented any protocol based request generator.

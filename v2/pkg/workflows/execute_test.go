@@ -14,11 +14,10 @@ func TestWorkflowsSimple(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: true}}},
-	},
-		options: &protocols.ExecuterOptions{
-			Progress: progress,
-		}}
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -30,14 +29,17 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-			firstInput = input
-		}}}},
-		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-			secondInput = input
-		}}}},
-	},
-		options: &protocols.ExecuterOptions{Progress: progress}}
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				firstInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}},
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				secondInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -52,16 +54,16 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-			firstInput = input
-		}}},
-			Subtemplates: []*WorkflowTemplate{
-				{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-					secondInput = input
-				}}},
-				}}},
-	},
-		options: &protocols.ExecuterOptions{Progress: progress}}
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				firstInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}, Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				secondInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}}}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -76,16 +78,16 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: false, executeHook: func(input string) {
-			firstInput = input
-		}}},
-			Subtemplates: []*WorkflowTemplate{
-				{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-					secondInput = input
-				}}},
-				}}},
-	},
-		options: &protocols.ExecuterOptions{Progress: progress}}
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: false, executeHook: func(input string) {
+				firstInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}, Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				secondInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}}}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -100,24 +102,21 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-			firstInput = input
-		}, outputs: []*output.InternalWrappedEvent{
-			{OperatorsResult: &operators.Result{
-				Matches:  map[string]struct{}{"tomcat": {}},
-				Extracts: map[string][]string{},
-			}},
-		}}},
-			Matchers: []*Matcher{
-				{Name: "tomcat", Subtemplates: []*WorkflowTemplate{
-					{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-						secondInput = input
-					}}},
-					}}},
-			},
-		},
-	},
-		options: &protocols.ExecuterOptions{Progress: progress}}
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				firstInput = input
+			}, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{
+					Matches:  map[string]struct{}{"tomcat": {}},
+					Extracts: map[string][]string{},
+				}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}, Matchers: []*Matcher{{Name: "tomcat", Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				secondInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}}}}}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
@@ -132,24 +131,21 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Workflows: []*WorkflowTemplate{
-		{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-			firstInput = input
-		}, outputs: []*output.InternalWrappedEvent{
-			{OperatorsResult: &operators.Result{
-				Matches:  map[string]struct{}{"tomcat": {}},
-				Extracts: map[string][]string{},
-			}},
-		}}},
-			Matchers: []*Matcher{
-				{Name: "apache", Subtemplates: []*WorkflowTemplate{
-					{Executers: []protocols.Executer{&mockExecuter{result: true, executeHook: func(input string) {
-						secondInput = input
-					}}}},
+		{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				firstInput = input
+			}, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{
+					Matches:  map[string]struct{}{"tomcat": {}},
+					Extracts: map[string][]string{},
 				}},
-			},
-		},
-	},
-		options: &protocols.ExecuterOptions{Progress: progress}}
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}, Matchers: []*Matcher{{Name: "apache", Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+				secondInput = input
+			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+		}}}}}},
+	}}
 
 	matched, err := workflow.RunWorkflow("https://test.com")
 	require.Nil(t, err, "could not run workflow")
