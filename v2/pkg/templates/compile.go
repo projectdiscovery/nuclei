@@ -67,7 +67,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 
 	// Compile the requests found
 	requests := []protocols.Request{}
-	if len(template.RequestsDNS) > 0 {
+	if len(template.RequestsDNS) > 0 && !options.Options.OfflineHTTP {
 		for _, req := range template.RequestsDNS {
 			requests = append(requests, req)
 		}
@@ -89,13 +89,13 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 			template.Executer = executer.NewExecuter(requests, &options)
 		}
 	}
-	if len(template.RequestsFile) > 0 {
+	if len(template.RequestsFile) > 0 && !options.Options.OfflineHTTP {
 		for _, req := range template.RequestsFile {
 			requests = append(requests, req)
 		}
 		template.Executer = executer.NewExecuter(requests, &options)
 	}
-	if len(template.RequestsNetwork) > 0 {
+	if len(template.RequestsNetwork) > 0 && !options.Options.OfflineHTTP {
 		for _, req := range template.RequestsNetwork {
 			requests = append(requests, req)
 		}
@@ -107,6 +107,9 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 			return nil, errors.Wrap(err, "could not compile request")
 		}
 		template.TotalRequests += template.Executer.Requests()
+	}
+	if template.Executer == nil {
+		return nil, errors.New("cannot create template executer")
 	}
 	return template, nil
 }

@@ -204,14 +204,6 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
-	executerOpts := &protocols.ExecuterOptions{
-		Output:      r.output,
-		Options:     r.options,
-		Progress:    r.progress,
-		Catalogue:   r.catalogue,
-		RateLimiter: r.ratelimiter,
-		ProjectFile: r.projectFile,
-	}
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
@@ -230,18 +222,28 @@ func (r *Runner) RunEnumeration() {
 	clusterCount := 0
 	clusters := clusterer.Cluster(availableTemplates)
 	for _, cluster := range clusters {
-		if len(cluster) > 1 {
+		if len(cluster) > 1 && !r.options.OfflineHTTP {
+			executerOpts := protocols.ExecuterOptions{
+				Output:      r.output,
+				Options:     r.options,
+				Progress:    r.progress,
+				Catalogue:   r.catalogue,
+				RateLimiter: r.ratelimiter,
+				ProjectFile: r.projectFile,
+			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 
 			finalTemplates = append(finalTemplates, &templates.Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, executerOpts),
+				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
 			clusterCount++
 		} else {
-			finalTemplates = append(finalTemplates, cluster[0])
+			for _, item := range cluster {
+				finalTemplates = append(finalTemplates, item)
+			}
 		}
 	}
 
