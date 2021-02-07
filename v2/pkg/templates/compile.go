@@ -152,12 +152,13 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 	}
 	for _, path := range paths {
 		opts := protocols.ExecuterOptions{
-			Output:      options.Output,
-			Options:     options.Options,
-			Progress:    options.Progress,
-			Catalogue:   options.Catalogue,
-			RateLimiter: options.RateLimiter,
-			ProjectFile: options.ProjectFile,
+			Output:       options.Output,
+			Options:      options.Options,
+			Progress:     options.Progress,
+			Catalogue:    options.Catalogue,
+			RateLimiter:  options.RateLimiter,
+			IssuesClient: options.IssuesClient,
+			ProjectFile:  options.ProjectFile,
 		}
 		template, err := Parse(path, opts)
 		if err != nil {
