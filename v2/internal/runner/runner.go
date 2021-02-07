@@ -57,7 +57,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
 
 	if options.ReportingConfig != "" {
-		if client, err := issues.New(options.ReportingConfig, options.ReportingDirectory); err != nil {
+		if client, err := issues.New(options.ReportingConfig, options.ReportingDB); err != nil {
 			gologger.Fatal().Msgf("Could not create issue reporting client: %s\n", err)
 		} else {
 			runner.issuesClient = client

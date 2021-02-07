@@ -6,7 +6,8 @@ package dedupe
 
 import (
 	"crypto/sha1"
-	"path"
+	"io/ioutil"
+	"os"
 	"unsafe"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -17,33 +18,46 @@ import (
 
 // Storage is a duplicate detecting storage for nuclei scan events.
 type Storage struct {
-	storage *leveldb.DB
+	temporary string
+	storage   *leveldb.DB
 }
 
 const storageFilename = "nuclei-events.db"
 
 // New creates a new duplicate detecting storage for nuclei scan events.
-func New(folder string) (*Storage, error) {
-	path := path.Join(folder, storageFilename)
+func New(dbPath string) (*Storage, error) {
+	storage := &Storage{}
 
-	db, err := leveldb.OpenFile(path, nil)
+	var err error
+	if dbPath == "" {
+		dbPath, err = ioutil.TempDir("", "nuclei-report-*")
+		storage.temporary = dbPath
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	storage.storage, err = leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		if !errors.IsCorrupted(err) {
 			return nil, err
 		}
 
 		// If the metadata is corrupted, try to recover
-		db, err = leveldb.RecoverFile(path, nil)
+		storage.storage, err = leveldb.RecoverFile(dbPath, nil)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &Storage{storage: db}, nil
+	return storage, nil
 }
 
 // Close closes the storage for further operations
 func (s *Storage) Close() {
 	s.storage.Close()
+	if s.temporary != "" {
+		os.RemoveAll(s.temporary)
+	}
 }
 
 // Index indexes an item in storage and returns true if the item
@@ -74,9 +88,6 @@ func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 	for k, v := range result.Metadata {
 		hasher.Write(unsafeToBytes(k))
 		hasher.Write(unsafeToBytes(types.ToString(v)))
-	}
-	if result.Request != "" {
-		hasher.Write(unsafeToBytes(result.Request)) // Very dumb, change later.
 	}
 	hash := hasher.Sum(nil)
 

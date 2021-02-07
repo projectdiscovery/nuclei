@@ -75,7 +75,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "Shows the installed nuclei-templates version")
 	set.StringVarP(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "biid", "", "Burp Collaborator BIID")
 	set.StringVarP(&options.ReportingConfig, "reporting-config", "rc", "", "Nuclei Reporting Module configuration file")
-	set.StringVarP(&options.ReportingDirectory, "reporting-directory", "rd", "", "Nuclei Reporting Module cache directory for issue deduplication")
+	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database")
 	_ = set.Parse()
 
 	if cfgFile != "" {
