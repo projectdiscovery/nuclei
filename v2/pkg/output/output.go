@@ -21,7 +21,7 @@ type Writer interface {
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
-	// Request writes a log the requests trace log
+	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
 }
 
@@ -54,7 +54,7 @@ type ResultEvent struct {
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"templateID"`
 	// Info contains information block of the template for the result.
-	Info map[string]string `json:"info,inline"`
+	Info map[string]interface{} `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
 	MatcherName string `json:"matcher_name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
@@ -125,6 +125,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if err != nil {
 		return errors.Wrap(err, "could not format output")
 	}
+	if len(data) == 0 {
+		return nil
+	}
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
 	if w.outputFile != nil {
@@ -134,7 +137,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		if writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
-		_ = w.outputFile.Write([]byte("\n"))
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-package file
+package offlinehttp
 
 import (
 	"os"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 )
 
 // getInputPaths parses the specified input paths and returns a compiled
@@ -51,8 +50,8 @@ func (r *Request) findGlobPathMatches(absPath string, processed map[string]struc
 		return errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	for _, match := range matches {
-		if !r.validatePath(match) {
-			continue
+		if path.Ext(match) != ".txt" {
+			continue // only process .txt files
 		}
 		if _, ok := processed[match]; !ok {
 			processed[match] = struct{}{}
@@ -72,6 +71,9 @@ func (r *Request) findFileMatches(absPath string, processed map[string]struct{},
 	if !info.Mode().IsRegular() {
 		return false, nil
 	}
+	if path.Ext(absPath) != ".txt" {
+		return false, nil // only process .txt files
+	}
 	if _, ok := processed[absPath]; !ok {
 		processed[absPath] = struct{}{}
 		callback(absPath)
@@ -86,35 +88,19 @@ func (r *Request) findDirectoryMatches(absPath string, processed map[string]stru
 		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
 			return godirwalk.SkipNode
 		},
-		Callback: func(path string, d *godirwalk.Dirent) error {
+		Callback: func(p string, d *godirwalk.Dirent) error {
 			if d.IsDir() {
 				return nil
 			}
-			if !r.validatePath(path) {
-				return nil
+			if path.Ext(p) != ".txt" {
+				return nil // only process .txt files
 			}
-			if _, ok := processed[path]; !ok {
-				callback(path)
-				processed[path] = struct{}{}
+			if _, ok := processed[p]; !ok {
+				callback(p)
+				processed[p] = struct{}{}
 			}
 			return nil
 		},
 	})
 	return err
-}
-
-// validatePath validates a file path for blacklist and whitelist options
-func (r *Request) validatePath(item string) bool {
-	extension := path.Ext(item)
-
-	if len(r.extensions) > 0 {
-		if _, ok := r.extensions[extension]; ok {
-			return true
-		}
-	}
-	if _, ok := r.extensionDenylist[extension]; ok {
-		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, extension)
-		return false
-	}
-	return true
 }
