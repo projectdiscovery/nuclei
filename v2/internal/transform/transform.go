@@ -94,6 +94,7 @@ func parseCurlRequest(path string, callback func(req *fuzzing.NormalizedRequest)
 	if err != nil {
 		return err
 	}
+
 	if normalized != nil {
 		callback(normalized)
 	}
@@ -132,7 +133,7 @@ func parseNormalizedRequests(path string, callback func(req *fuzzing.NormalizedR
 	defer file.Close()
 
 	normalized := &fuzzing.NormalizedRequest{}
-	decoder := jsoniter.NewDecoder(file)
+	decoder := jsoniter.ConfigCompatibleWithStandardLibrary.NewDecoder(file)
 	for {
 		err := decoder.Decode(normalized)
 		if err == io.EOF {

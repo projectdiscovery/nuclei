@@ -109,6 +109,10 @@ func extractRelevantPieces(cmd someResult) *someRelevant {
 	if v, ok := cmd.getMapSlice("header"); ok {
 		someHeaders = append(someHeaders, v...)
 	}
+	if v, ok := cmd.getMapSlice("b"); ok {
+		cookie := []string{"Cookie: " + strings.Join(v, " ")}
+		someHeaders = append(someHeaders, cookie...)
+	}
 	relevant.headers = parseHeaders(someHeaders)
 
 	// set method to HEAD?

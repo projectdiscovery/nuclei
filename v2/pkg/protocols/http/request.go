@@ -364,7 +364,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	duration := time.Since(timeStart)
 
-	dumpedResponse, err := httputil.DumpResponse(resp, true)
+	dumpedResponseHeaders, err := httputil.DumpResponse(resp, false)
 	if err != nil {
 		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 		resp.Body.Close()
@@ -394,16 +394,19 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 	dataOrig := data
-	data, err = handleDecompression(request, data)
+	data, err = handleDecompression(resp, data)
 	if err != nil {
 		return false, errors.Wrap(err, "could not decompress http body")
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
-		redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
+	dumpedResponseBuilder := &bytes.Buffer{}
+	dumpedResponseBuilder.Write(dumpedResponseHeaders)
+	dumpedResponseBuilder.Write(data)
+	dumpedResponse := dumpedResponseBuilder.Bytes()
+	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
 		gologger.Print().Msgf("%s", string(redirectedResponse))
 	}
