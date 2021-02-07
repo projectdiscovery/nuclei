@@ -206,7 +206,6 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 }
 
 const drainReqSize = int64(8 * 1024)
-const testInputMarker = "http://test.test"
 
 // executeRequest executes the actual generated request and returns error if occured
 func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -225,13 +224,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		return err
 	}
 
-	if reqURL == testInputMarker {
-		if request.request != nil {
-			reqURL = request.request.URL.String()
-		} else if request.rawRequest != nil {
-			reqURL = request.rawRequest.FullURL
-		}
-	}
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 		gologger.Print().Msgf("%s", string(dumpedRequest))
