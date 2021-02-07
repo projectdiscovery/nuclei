@@ -1,6 +1,7 @@
 package clusterer
 
 import (
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -70,6 +71,11 @@ func (e *Executer) Execute(input string) (bool, error) {
 				event.Results = e.requests.MakeResultEvent(event)
 				results = true
 				for _, r := range event.Results {
+					if e.options.IssuesClient != nil {
+						if err := e.options.IssuesClient.CreateIssue(r); err != nil {
+							gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+						}
+					}
 					e.options.Output.Write(r)
 					e.options.Progress.IncrementMatched()
 				}

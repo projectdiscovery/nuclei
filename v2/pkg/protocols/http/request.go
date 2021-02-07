@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -281,6 +280,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	duration := time.Since(timeStart)
 
+
 	dumpedResponse, err := httputil.DumpResponse(resp, true)
 	if err != nil {
 		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
@@ -310,7 +310,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
-	dataOrig := data
 	data, err = handleDecompression(request, data)
 	if err != nil {
 		return errors.Wrap(err, "could not decompress http body")

@@ -80,6 +80,10 @@ type Options struct {
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
+	// ReportingDB is the db for report storage as well as deduplication
+	ReportingDB string
+	// ReportingConfig is the config file for nuclei reporting module
+	ReportingConfig string
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.

@@ -141,6 +141,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		Timestamp:        time.Now(),
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	if r.options.Options.JSONRequests {

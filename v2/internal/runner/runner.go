@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -36,6 +37,7 @@ type Runner struct {
 	catalogue       *catalogue.Catalogue
 	progress        *progress.Progress
 	colorizer       aurora.Aurora
+	issuesClient    *issues.Client
 	severityColors  *colorizer.Colorizer
 	ratelimiter     ratelimit.Limiter
 }
@@ -54,6 +56,13 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
 
+	if options.ReportingConfig != "" {
+		if client, err := issues.New(options.ReportingConfig, options.ReportingDB); err != nil {
+			gologger.Fatal().Msgf("Could not create issue reporting client: %s\n", err)
+		} else {
+			runner.issuesClient = client
+		}
+	}
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
@@ -292,6 +301,9 @@ func (r *Runner) RunEnumeration() {
 	wgtemplates.Wait()
 	r.progress.Stop()
 
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
 	if !results.Load() {
 		if r.output != nil {
 			r.output.Close()
