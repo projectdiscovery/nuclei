@@ -48,7 +48,7 @@ func MarkdownDescription(output *output.ResultEvent) string {
 	}
 	builder.WriteString("\n**Request**\n\n```\n")
 	builder.WriteString(output.Request)
-	builder.WriteString("\n```\n\n**Response**\n\n```\n")
+	builder.WriteString("\n```\n\n<details><summary>**Response**</summary>\n\n```\n")
 	builder.WriteString(output.Response)
 	builder.WriteString("\n```\n\n")
 

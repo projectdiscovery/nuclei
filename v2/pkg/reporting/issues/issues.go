@@ -35,7 +35,7 @@ type Client struct {
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(config, directory string) (*Client, error) {
+func New(config, db string) (*Client, error) {
 	file, err := os.Open(config)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not open reporting config file")
@@ -62,7 +62,7 @@ func New(config, directory string) (*Client, error) {
 	if tracker == nil {
 		return nil, errors.New("no issue tracker configuration found")
 	}
-	storage, err := dedupe.New(directory)
+	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
 	}
