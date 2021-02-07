@@ -111,6 +111,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Options:      options,
 		Progress:     progress,
 		ProjectFile:  nil,
+		IssuesClient: nil,
 		Catalogue:    catalogue.New(options.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(options.RateLimit),
 	}

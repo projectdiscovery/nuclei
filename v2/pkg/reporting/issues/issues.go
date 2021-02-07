@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/jira"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"gopkg.in/yaml.v2"
 )
 
@@ -50,7 +51,7 @@ func (f *Filter) Compile() {
 
 // GetMatch returns true if a filter matches result event
 func (f *Filter) GetMatch(event *output.ResultEvent) bool {
-	severity := event.Info["severity"]
+	severity := types.ToString(event.Info["severity"])
 	if len(f.severity) > 0 {
 		if stringSliceContains(f.severity, severity) {
 			return true
@@ -59,7 +60,7 @@ func (f *Filter) GetMatch(event *output.ResultEvent) bool {
 	}
 
 	tags := event.Info["tags"]
-	tagParts := strings.Split(tags, ",")
+	tagParts := strings.Split(types.ToString(tags), ",")
 	for i, tag := range tagParts {
 		tagParts[i] = strings.TrimSpace(tag)
 	}

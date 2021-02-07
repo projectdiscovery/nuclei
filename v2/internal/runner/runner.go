@@ -233,12 +233,13 @@ func (r *Runner) RunEnumeration() {
 	for _, cluster := range clusters {
 		if len(cluster) > 1 && !r.options.OfflineHTTP {
 			executerOpts := protocols.ExecuterOptions{
-				Output:      r.output,
-				Options:     r.options,
-				Progress:    r.progress,
-				Catalogue:   r.catalogue,
-				RateLimiter: r.ratelimiter,
-				ProjectFile: r.projectFile,
+				Output:       r.output,
+				Options:      r.options,
+				Progress:     r.progress,
+				Catalogue:    r.catalogue,
+				RateLimiter:  r.ratelimiter,
+				IssuesClient: r.issuesClient,
+				ProjectFile:  r.projectFile,
 			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 

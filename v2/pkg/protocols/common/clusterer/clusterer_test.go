@@ -24,12 +24,13 @@ func TestHTTPRequestsCluster(t *testing.T) {
 	list := make(map[string]*templates.Template)
 	for _, template := range templatesList {
 		executerOpts := protocols.ExecuterOptions{
-			Output:      &mockOutput{},
-			Options:     &types.Options{},
-			Progress:    nil,
-			Catalogue:   catalogue,
-			RateLimiter: nil,
-			ProjectFile: nil,
+			Output:       &mockOutput{},
+			Options:      &types.Options{},
+			Progress:     nil,
+			Catalogue:    catalogue,
+			RateLimiter:  nil,
+			IssuesClient: nil,
+			ProjectFile:  nil,
 		}
 		t, err := templates.Parse(template, executerOpts)
 		if err != nil {
