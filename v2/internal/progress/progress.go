@@ -86,6 +86,12 @@ func (p *Progress) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
 }
 
+// GetMatched returns the value of the matched counter.
+func (p *Progress) GetMatched() uint64 {
+	data, _ := p.stats.GetCounter("matched")
+	return data
+}
+
 // IncrementMatched increments the matched counter by 1.
 func (p *Progress) IncrementMatched() {
 	p.stats.IncrementCounter("matched", 1)

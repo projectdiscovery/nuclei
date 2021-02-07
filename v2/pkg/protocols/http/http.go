@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzzing"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -62,6 +63,10 @@ type Request struct {
 	// MaxSize is the maximum size of http response body to read in bytes.
 	MaxSize int `yaml:"max-size"`
 
+	// Fuzzing options for current client
+	fuzzing.AnalyzerOptions `yaml:",inline"`
+	CompiledAnalyzer        *fuzzing.AnalyzerOptions
+
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 	CompiledOperators   *operators.Operators
@@ -100,6 +105,13 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			continue
 		}
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
+	}
+
+	if len(r.AnalyzerOptions.Append) > 0 || len(r.AnalyzerOptions.Replace) > 0 || len(r.AnalyzerOptions.BodyTemplate) > 0 {
+		if err = r.AnalyzerOptions.Compile(); err != nil {
+			return errors.Wrap(err, "could not compile fuzzing analyzer")
+		}
+		r.CompiledAnalyzer = &r.AnalyzerOptions
 	}
 
 	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {

@@ -145,7 +145,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	}
 	if r.options.Options.JSONRequests {
 		data.Request = types.ToString(wrapped.InternalEvent["request"])
-		data.Response = types.ToString(wrapped.InternalEvent["raw"])
+		data.Response = types.ToString(wrapped.InternalEvent["response"])
 	}
 	return data
 }

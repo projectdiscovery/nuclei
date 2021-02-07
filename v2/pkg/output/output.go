@@ -9,6 +9,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
@@ -77,6 +78,8 @@ type ResultEvent struct {
 	IP string `json:"ip,omitempty"`
 	// Timestamp is the time the result was found at.
 	Timestamp time.Time `json:"timestamp"`
+	// Interaction is the full details of interactsh interaction.
+	Interaction *server.Interaction `json:"interaction,omitempty"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations

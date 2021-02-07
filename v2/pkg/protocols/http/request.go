@@ -12,15 +12,19 @@ import (
 	"time"
 
 	"github.com/corpix/uarand"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzzing"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/valyala/fasttemplate"
 	"go.uber.org/multierr"
 )
 
@@ -43,7 +47,7 @@ func (r *Request) executeRaceRequest(reqURL string, dynamicValues, previous outp
 	for i := 0; i < r.RaceNumberRequests; i++ {
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			_, err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -80,7 +84,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			defer swg.Done()
 
 			r.options.RateLimiter.Take()
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			_, err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -139,7 +143,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			_, err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -152,8 +156,87 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	return requestErr
 }
 
+var interactshURLMarker = "{{interactsh-url}}"
+
+// executeFuzzing executes fuzzing request for an input
+func (r *Request) executeFuzzing(data string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	req := &fuzzing.NormalizedRequest{}
+
+	if strings.HasPrefix(data, "{\"") {
+		if err := jsoniter.NewDecoder(strings.NewReader(data)).Decode(req); err != nil {
+			gologger.Warning().Msgf("Could not parse normalized request: %s\n", err)
+			return err
+		}
+	} else {
+		req.Method = "GET"
+		parsed, err := url.Parse(data)
+		if err != nil {
+			gologger.Warning().Msgf("Could not parse url for fuzzing: %s\n", err)
+			return err
+		}
+		req.Host = parsed.Host
+		req.Path = parsed.Path
+		req.Scheme = parsed.Scheme
+		req.QueryValues = parsed.Query()
+		req.Headers = make(http.Header, 3)
+		req.Headers.Set("User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+		req.Headers.Set("Accept", "*/*")
+		req.Headers.Set("Accept-Language", "en")
+	}
+
+	interactshURL := ""
+	if r.options.InteractshClient != nil {
+		interactshURL = r.options.InteractshClient.URL()
+	}
+	analyzer := &fuzzing.AnalyzerOptions{
+		BodyType:    r.CompiledAnalyzer.BodyType,
+		MaxDepth:    r.CompiledAnalyzer.MaxDepth,
+		Parts:       r.CompiledAnalyzer.Parts,
+		PartsConfig: r.CompiledAnalyzer.PartsConfig,
+	}
+	for _, item := range r.CompiledAnalyzer.Append {
+		analyzer.Append = append(analyzer.Append, fasttemplate.ExecuteStringStd(item, "{{", "}}", map[string]interface{}{"interactsh-url": interactshURL}))
+	}
+	for _, item := range r.CompiledAnalyzer.Replace {
+		analyzer.Replace = append(analyzer.Replace, fasttemplate.ExecuteStringStd(item, "{{", "}}", map[string]interface{}{"interactsh-url": interactshURL}))
+	}
+	analyzer.BodyTemplate = fasttemplate.ExecuteStringStd(r.CompiledAnalyzer.BodyTemplate, "{{", "}}", map[string]interface{}{"interactsh-url": interactshURL})
+
+	err := fuzzing.AnalyzeRequest(req, analyzer, func(req *http.Request) bool {
+		retryable, err := retryablehttp.FromRequest(req)
+		if err != nil {
+			gologger.Warning().Msgf("Could not convert request to retryable for fuzzing: %s\n", err)
+			return true
+		}
+		results, err := r.executeRequest(retryable.URL.String(), &generatedRequest{request: retryable, original: r}, dynamicValues, previous, func(result *output.InternalWrappedEvent) {
+			if r.options.InteractshClient != nil {
+				r.options.InteractshClient.RequestEvent(interactshURL, result, r.MakeResultEvent)
+			}
+			callback(result)
+		})
+		if err != nil {
+			gologger.Warning().Msgf("Could not execute request for fuzzing: %s\n", err)
+			return true
+		}
+		if results && r.options.Options.StopAtFirstMatch { // exit if we matched and user wants us to
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		gologger.Warning().Msgf("Could not analyze request for fuzzing: %s\n", err)
+		return nil
+	}
+	return nil
+}
+
 // ExecuteWithResults executes the final request on a URL
 func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// verify if fuzzing was asked by the user
+	if len(r.Append) > 0 || len(r.Replace) > 0 || len(r.BodyTemplate) > 0 {
+		return r.executeFuzzing(reqURL, dynamicValues, previous, callback)
+	}
+
 	// verify if pipeline was requested
 	if r.Pipeline {
 		return r.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
@@ -184,7 +267,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 		var gotOutput bool
 		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		_, err = r.executeRequest(reqURL, request, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotOutput = true
@@ -208,7 +291,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occured
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) (bool, error) {
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
 	if r.options.Options.RandomAgent {
 		r.customHeaders["User-Agent"] = uarand.GetRandom()
@@ -221,7 +304,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	)
 	dumpedRequest, err := dump(request, reqURL)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
@@ -273,7 +356,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
 		r.options.Progress.DecrementRequests(1)
-		return err
+		return false, err
 	}
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
@@ -281,11 +364,11 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	duration := time.Since(timeStart)
 
-	dumpedResponse, err := httputil.DumpResponse(resp, true)
+	dumpedResponseHeaders, err := httputil.DumpResponse(resp, false)
 	if err != nil {
 		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 		resp.Body.Close()
-		return errors.Wrap(err, "could not dump http response")
+		return false, errors.Wrap(err, "could not dump http response")
 	}
 
 	var bodyReader io.Reader
@@ -298,29 +381,32 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if err != nil {
 		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 		resp.Body.Close()
-		return errors.Wrap(err, "could not read http body")
+		return false, errors.Wrap(err, "could not read http body")
 	}
 	resp.Body.Close()
 
 	redirectedResponse, err := dumpResponseWithRedirectChain(resp, data)
 	if err != nil {
-		return errors.Wrap(err, "could not read http response with redirect chain")
+		return false, errors.Wrap(err, "could not read http response with redirect chain")
 	}
 
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 	dataOrig := data
-	data, err = handleDecompression(request, data)
+	data, err = handleDecompression(resp, data)
 	if err != nil {
-		return errors.Wrap(err, "could not decompress http body")
+		return false, errors.Wrap(err, "could not decompress http body")
 	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		dumpedResponse = bytes.ReplaceAll(dumpedResponse, dataOrig, data)
-		redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
+	dumpedResponseBuilder := &bytes.Buffer{}
+	dumpedResponseBuilder.Write(dumpedResponseHeaders)
+	dumpedResponseBuilder.Write(data)
+	dumpedResponse := dumpedResponseBuilder.Bytes()
+	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
 		gologger.Print().Msgf("%s", string(redirectedResponse))
 	}
@@ -329,7 +415,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	if r.options.ProjectFile != nil && !fromcache {
 		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
 		if err != nil {
-			return errors.Wrap(err, "could not store in project file")
+			return false, errors.Wrap(err, "could not store in project file")
 		}
 	}
 
@@ -347,17 +433,19 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		outputEvent[k] = v
 	}
 
+	var gotResult bool
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
 		var ok bool
 		event.OperatorsResult, ok = r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 		if ok && event.OperatorsResult != nil {
+			gotResult = true
 			event.OperatorsResult.PayloadValues = request.meta
 			event.Results = r.MakeResultEvent(event)
 		}
 	}
 	callback(event)
-	return nil
+	return gotResult, nil
 }
 
 const two = 2

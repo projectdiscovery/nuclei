@@ -41,9 +41,6 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, er
 		if err != nil {
 			break
 		}
-		if redirectResp.Body != nil {
-			body, _ = ioutil.ReadAll(redirectResp.Body)
-		}
 		redirectChain.WriteString(tostring.UnsafeToString(respData))
 		if len(body) > 0 {
 			redirectChain.WriteString(tostring.UnsafeToString(body))
@@ -93,22 +90,22 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 }
 
 // handleDecompression if the user specified a custom encoding (as golang transport doesn't do this automatically)
-func handleDecompression(r *generatedRequest, bodyOrig []byte) (bodyDec []byte, err error) {
-	if r.request == nil {
+func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, err error) {
+	if resp == nil {
 		return bodyOrig, nil
 	}
 
-	encodingHeader := strings.TrimSpace(strings.ToLower(r.request.Header.Get("Accept-Encoding")))
-	if encodingHeader == "gzip" || encodingHeader == "gzip, deflate" {
+	encodingHeader := strings.TrimSpace(strings.ToLower(resp.Header.Get("Content-Encoding")))
+	if strings.Contains(encodingHeader, "gzip") {
 		gzipreader, err := gzip.NewReader(bytes.NewReader(bodyOrig))
 		if err != nil {
-			return bodyDec, err
+			return bodyOrig, err
 		}
 		defer gzipreader.Close()
 
 		bodyDec, err = ioutil.ReadAll(gzipreader)
 		if err != nil {
-			return bodyDec, err
+			return bodyOrig, err
 		}
 		return bodyDec, nil
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -12,11 +13,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
+	"github.com/projectdiscovery/nuclei/v2/internal/transform"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -32,6 +35,7 @@ type Runner struct {
 	inputCount      int64
 	templatesConfig *nucleiConfig
 	options         *types.Options
+	interactsh      *interactsh.Client
 	projectFile     *projectfile.ProjectFile
 	catalogue       *catalogue.Catalogue
 	progress        *progress.Progress
@@ -149,6 +153,22 @@ func New(options *types.Options) (*Runner, error) {
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
+	}
+
+	if options.Interactsh {
+		interactsh, err := interactsh.New(&interactsh.Options{
+			ServerURL:      options.InteractshURL,
+			CacheSize:      int64(options.InteractionsCacheSize),
+			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
+			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
+			PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
+			Output:         runner.output,
+			Progress:       runner.progress,
+		})
+		if err != nil {
+			return nil, err
+		}
+		runner.interactsh = interactsh
 	}
 
 	// Enable Polling
@@ -277,11 +297,28 @@ func (r *Runner) RunEnumeration() {
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.inputCount, templateCount, totalRequests)
 
+	var normalized string
+	var err error
+	if len(r.options.Normalized) > 0 {
+		if normalized, err = transform.Transform(r.options.Normalized); err != nil {
+			gologger.Error().Msgf("Could not read normalize requests: %s\n", err)
+		}
+	}
+	defer os.Remove(normalized)
+
 	for _, t := range finalTemplates {
 		wgtemplates.Add()
 		go func(template *templates.Template) {
 			defer wgtemplates.Done()
 
+			if len(template.RequestsHTTP) > 0 {
+				for _, request := range template.RequestsHTTP {
+					if request.CompiledAnalyzer != nil {
+						results.CAS(false, r.processTemplateWithListAndNormalized(template, normalized))
+						return
+					}
+				}
+			}
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
 			} else {
@@ -292,7 +329,15 @@ func (r *Runner) RunEnumeration() {
 	wgtemplates.Wait()
 	r.progress.Stop()
 
-	if !results.Load() {
+	if normalized != "" && r.options.NormalizedOutput != "" {
+		if err := os.Rename(normalized, r.options.NormalizedOutput); err != nil {
+			gologger.Error().Msgf("Could not create normalized output: %s\n", err)
+		}
+	}
+	if r.interactsh != nil {
+		r.interactsh.Close()
+	}
+	if !results.Load() && r.progress.GetMatched() == 0 {
 		if r.output != nil {
 			r.output.Close()
 			os.Remove(r.options.Output)
