@@ -21,19 +21,22 @@ import (
 //
 // Inspired from - https://github.com/ffuf/ffuf/issues/324#issuecomment-719858923
 func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, error) {
-	redirectChain := &bytes.Buffer{}
-	redirectResp := resp.Request.Response
-
 	redirects := []string{}
 	respData, err := httputil.DumpResponse(resp, false)
 	if err != nil {
 		return nil, err
 	}
+	redirectChain := &bytes.Buffer{}
+
 	redirectChain.WriteString(tostring.UnsafeToString(respData))
 	redirectChain.Write(body)
 	redirects = append(redirects, redirectChain.String())
 	redirectChain.Reset()
 
+	var redirectResp *http.Response
+	if resp != nil || resp.Request != nil {
+		redirectResp = resp.Request.Response
+	}
 	for redirectResp != nil {
 		var body []byte
 
@@ -52,7 +55,6 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, er
 		redirectResp = redirectResp.Request.Response
 		redirectChain.Reset()
 	}
-
 	for i := len(redirects) - 1; i >= 0; i-- {
 		redirectChain.WriteString(redirects[i])
 	}
