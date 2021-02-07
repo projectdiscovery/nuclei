@@ -11,7 +11,7 @@ import (
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partString := matcher.Part
 	switch partString {
-	case "body", "all", "":
+	case "body", "raw", "all", "":
 		partString = "data"
 	}
 
@@ -38,14 +38,9 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 // Extract performs extracting operation for a extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part, ok := data[extractor.Part]
-	if !ok {
-		return nil
-	}
-	partString := part.(string)
-
+	partString := extractor.Part
 	switch partString {
-	case "body", "all":
+	case "body", "raw", "all", "":
 		partString = "data"
 	}
 
@@ -66,14 +61,12 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
 func (r *Request) responseToDSLMap(req, resp string, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 4)
+	data := make(output.InternalEvent, 6)
 
 	// Some data regarding the request metadata
 	data["host"] = host
 	data["matched"] = matched
-	if r.options.Options.JSONRequests {
-		data["request"] = req
-	}
+	data["request"] = req
 	data["data"] = resp
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
@@ -110,17 +103,17 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       wrapped.InternalEvent["template-id"].(string),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]string),
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "network",
-		Host:             wrapped.InternalEvent["host"].(string),
-		Matched:          wrapped.InternalEvent["matched"].(string),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
-		IP:               wrapped.InternalEvent["ip"].(string),
+		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	if r.options.Options.JSONRequests {
-		data.Request = wrapped.InternalEvent["request"].(string)
-		data.Response = wrapped.InternalEvent["data"].(string)
+		data.Request = types.ToString(wrapped.InternalEvent["request"])
+		data.Response = types.ToString(wrapped.InternalEvent["data"])
 	}
 	return data
 }

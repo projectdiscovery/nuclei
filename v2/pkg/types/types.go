@@ -100,4 +100,12 @@ type Options struct {
 	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
 	InteractionsColldownPeriod int
+	// Tags contains a list of tags to execute templates for. Multiple paths
+	// can be specified with -l flag and -tags can be used in combination with
+	// the -l flag.
+	Tags goflags.StringSlice
+	// OfflineHTTP is a flag that specific offline processing of http response
+	// using same matchers/extractors from http protocol without the need
+	// to send a new request, reading responses from a file.
+	OfflineHTTP bool
 }

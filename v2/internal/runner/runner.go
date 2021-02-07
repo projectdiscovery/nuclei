@@ -199,6 +199,9 @@ func (r *Runner) Close() {
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	// resolves input templates definitions and any optional exclusion
+	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
+		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
+	}
 	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates
@@ -221,15 +224,6 @@ func (r *Runner) RunEnumeration() {
 		}
 	}
 
-	executerOpts := &protocols.ExecuterOptions{
-		Output:           r.output,
-		Options:          r.options,
-		Progress:         r.progress,
-		Catalogue:        r.catalogue,
-		RateLimiter:      r.ratelimiter,
-		InteractshClient: r.interactsh,
-		ProjectFile:      r.projectFile,
-	}
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
@@ -248,13 +242,23 @@ func (r *Runner) RunEnumeration() {
 	clusterCount := 0
 	clusters := clusterer.Cluster(availableTemplates)
 	for _, cluster := range clusters {
+		executerOpts := protocols.ExecuterOptions{
+			Output:           r.output,
+			Options:          r.options,
+			Progress:         r.progress,
+			Catalogue:        r.catalogue,
+			RateLimiter:      r.ratelimiter,
+			InteractshClient: r.interactsh,
+			ProjectFile:      r.projectFile,
+		}
+
 		if len(cluster) > 1 {
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 
 			finalTemplates = append(finalTemplates, &templates.Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, executerOpts),
+				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
 			clusterCount++

@@ -23,7 +23,7 @@ func TestHTTPRequestsCluster(t *testing.T) {
 	protocolinit.Init(&types.Options{})
 	list := make(map[string]*templates.Template)
 	for _, template := range templatesList {
-		executerOpts := &protocols.ExecuterOptions{
+		executerOpts := protocols.ExecuterOptions{
 			Output:      &mockOutput{},
 			Options:     &types.Options{},
 			Progress:    nil,

@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
@@ -23,16 +24,16 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 	for _, match := range templatePaths {
 		t, err := r.parseTemplateFile(match)
 		if err != nil {
-			gologger.Error().Msgf("Could not parse file '%s': %s\n", match, err)
+			gologger.Warning().Msgf("Could not parse file '%s': %s\n", match, err)
 			continue
 		}
 		if len(t.Workflows) > 0 {
 			workflowCount++
 		}
-		sev := strings.ToLower(t.Info["severity"])
+		sev := strings.ToLower(types.ToString(t.Info["severity"]))
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
 			parsedTemplates[t.ID] = t
-			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
+			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
 		} else {
 			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
 		}
@@ -42,7 +43,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 
 // parseTemplateFile returns the parsed template file
 func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
-	executerOpts := &protocols.ExecuterOptions{
+	executerOpts := protocols.ExecuterOptions{
 		Output:           r.output,
 		Options:          r.options,
 		Progress:         r.progress,
@@ -75,7 +76,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, t.Info["name"], t.Info["author"], t.Info["severity"]))
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
 	}
 }
 
