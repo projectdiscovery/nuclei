@@ -38,6 +38,7 @@ require (
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/valyala/fasttemplate v1.2.1
 	github.com/xanzy/go-gitlab v0.42.0
 	go.uber.org/atomic v1.7.0
 	go.uber.org/multierr v1.6.0
