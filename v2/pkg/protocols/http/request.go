@@ -213,17 +213,14 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	r.setCustomHeaders(request)
 
 	var (
-		resp          *http.Response
-		err           error
-		dumpedRequest []byte
-		fromcache     bool
+		resp      *http.Response
+		fromcache bool
 	)
-	if r.options.Options.Debug || r.options.ProjectFile != nil || r.options.Options.DebugRequests || r.options.Options.JSONRequests {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
-		}
+	dumpedRequest, err := dump(request, reqURL)
+	if err != nil {
+		return err
 	}
+
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 		gologger.Print().Msgf("%s", string(dumpedRequest))
