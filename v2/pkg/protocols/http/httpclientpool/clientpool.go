@@ -97,7 +97,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	var err error
 
 	if Dialer == nil {
-		Dialer, err = fastdialer.NewDialer(fastdialer.DefaultOptions)
+		opts := fastdialer.DefaultOptions
+		if options.ResolversFile != "" {
+			opts.BaseResolvers = options.InternalResolversList
+		}
+		Dialer, err = fastdialer.NewDialer(opts)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dialer")

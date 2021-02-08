@@ -16,7 +16,11 @@ func Init(options *types.Options) error {
 	if normalClient != nil {
 		return nil
 	}
-	dialer, err := fastdialer.NewDialer(fastdialer.DefaultOptions)
+	opts := fastdialer.DefaultOptions
+	if options.ResolversFile != "" {
+		opts.BaseResolvers = options.InternalResolversList
+	}
+	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
 	}
