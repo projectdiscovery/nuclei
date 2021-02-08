@@ -2,6 +2,7 @@ package offlinehttp
 
 import (
 	"bufio"
+	"errors"
 	"net/http"
 	"strings"
 )
@@ -12,7 +13,11 @@ func readResponseFromString(data string) (*http.Response, error) {
 	if strings.HasPrefix(data, "HTTP/") {
 		final = data
 	} else {
-		final = data[strings.LastIndex(data, "HTTP/"):] // choose last http/ in case of it being later.
+		lastIndex := strings.LastIndex(data, "HTTP/")
+		if lastIndex == -1 {
+			return nil, errors.New("malformed raw http response")
+		}
+		final = data[:] // choose last http/ in case of it being later.
 	}
 	return http.ReadResponse(bufio.NewReader(strings.NewReader(final)), nil)
 }
