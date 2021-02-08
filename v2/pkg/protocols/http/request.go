@@ -314,10 +314,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 	dataOrig := data
-	data, err = handleDecompression(resp, data)
-	if err != nil {
-		return errors.Wrap(err, "could not decompress http body")
-	}
+	data, _ = handleDecompression(resp, data)
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	dumpedResponseBuilder := &bytes.Buffer{}
