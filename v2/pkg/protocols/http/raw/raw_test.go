@@ -35,6 +35,11 @@ Host: {{Hostname}}:123`, "https://example.com:8080/test", false)
 Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
 		require.Nil(t, err, "could not parse GET request")
 		require.Equal(t, "https://example.com:123/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+
+		request, err = Parse(`GET /?username=test&password=test HTTP/1.1
+		Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
+		require.Nil(t, err, "could not parse GET request")
+		require.Equal(t, "https://example.com:123/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
 	})
 }
 
