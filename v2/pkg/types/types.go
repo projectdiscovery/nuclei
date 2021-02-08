@@ -92,4 +92,8 @@ type Options struct {
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
 	OfflineHTTP bool
+	// ResolversFile is a file containing resolvers for nuclei.
+	ResolversFile string
+
+	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }

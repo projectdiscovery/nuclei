@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"bufio"
 	"errors"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -46,6 +48,9 @@ func ParseOptions(options *types.Options) {
 	if err = validateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
+
+	// Load the resolvers if user asked for them
+	loadResolvers(options)
 }
 
 // hasStdin returns true if we have stdin input
@@ -115,5 +120,31 @@ func configureOutput(options *types.Options) {
 	}
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
+	}
+}
+
+// loadResolvers loads resolvers from both user provided flag and file
+func loadResolvers(options *types.Options) {
+	if options.ResolversFile == "" {
+		return
+	}
+
+	file, err := os.Open(options.ResolversFile)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		part := scanner.Text()
+		if part == "" {
+			continue
+		}
+		if strings.Contains(part, ":") {
+			options.InternalResolversList = append(options.InternalResolversList, part)
+		} else {
+			options.InternalResolversList = append(options.InternalResolversList, part+":53")
+		}
 	}
 }

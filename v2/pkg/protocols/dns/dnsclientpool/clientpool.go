@@ -32,7 +32,11 @@ func Init(options *types.Options) error {
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryabledns.Client)
 
-	normalClient = retryabledns.New(defaultResolvers, 1)
+	resolvers := defaultResolvers
+	if options.ResolversFile != "" {
+		resolvers = options.InternalResolversList
+	}
+	normalClient = retryabledns.New(resolvers, 1)
 	return nil
 }
 

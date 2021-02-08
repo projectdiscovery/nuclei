@@ -78,6 +78,8 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVarP(&options.ReportingConfig, "reporting-config", "rc", "", "Nuclei Reporting Module configuration file")
 	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
+	set.StringVar(&options.ResolversFile, "r", "", "File containing resolvers for nuclei")
+
 	_ = set.Parse()
 
 	if cfgFile != "" {
