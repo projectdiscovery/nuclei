@@ -3,6 +3,7 @@ package raw
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -45,7 +46,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		line = strings.TrimSpace(line)
 
 		if readErr != nil || line == "" {
-			break
+			if readErr != io.EOF {
+				break
+			}
 		}
 
 		p := strings.SplitN(line, ":", 2)
@@ -61,6 +64,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 			rawRequest.Headers[line] = ""
 		} else {
 			rawRequest.Headers[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+		if readErr == io.EOF {
+			break
 		}
 	}
 
@@ -85,20 +91,19 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		return nil, fmt.Errorf("could not parse request URL: %s", err)
 	}
 
-	var hostURL string
-	if rawRequest.Headers["Host"] == "" {
-		hostURL = parsedURL.Host
-	} else {
-		hostURL = rawRequest.Headers["Host"]
-	}
-	if strings.Contains(hostURL, ":") && strings.Contains(parsedURL.Host, ":") {
-		parsedURL.Host, _, _ = net.SplitHostPort(parsedURL.Host)
-	}
+	templateHost := rawRequest.Headers["Host"]
+	hostURL := parsedURL.Host
 
-	if rawRequest.Path == "" {
-		rawRequest.Path = parsedURL.Path
-	} else if strings.HasPrefix(rawRequest.Path, "?") {
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	if strings.Contains(templateHost, ":") {
+		_, templatePort, _ := net.SplitHostPort(templateHost)
+		hostURL = net.JoinHostPort(parsedURL.Hostname(), templatePort)
+	}
+	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
+		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
+	}
+	rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	if strings.HasSuffix(rawRequest.Path, "//") {
+		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
