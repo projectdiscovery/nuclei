@@ -238,7 +238,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 			hostname = parsed.Hostname()
 		}
 		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
-	} else if request.original.Unsafe {
+	} else if request.original.Unsafe && request.rawRequest != nil {
 		formedURL = request.rawRequest.FullURL
 		if parsed, err := url.Parse(formedURL); err == nil {
 			hostname = parsed.Hostname()
@@ -264,6 +264,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		if resp == nil {
 			resp, err = r.httpClient.Do(request.request)
 		}
+	}
+	if resp == nil {
+		err = errors.New("no response got for request")
 	}
 	if err != nil {
 		// rawhttp doesn't supports draining response bodies.

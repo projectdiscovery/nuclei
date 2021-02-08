@@ -34,7 +34,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, er
 	redirectChain.Reset()
 
 	var redirectResp *http.Response
-	if resp != nil || resp.Request != nil {
+	if resp != nil && resp.Request != nil {
 		redirectResp = resp.Request.Response
 	}
 	for redirectResp != nil {
