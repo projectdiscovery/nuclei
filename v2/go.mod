@@ -7,6 +7,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/clbanning/mxj/v2 v2.5.2
 	github.com/corpix/uarand v0.1.1
+	github.com/elazarl/goproxy v0.0.0-20201021153353-00ad82a08272
 	github.com/google/go-github/v32 v32.1.0
 	github.com/gorilla/mux v1.8.0
 	github.com/json-iterator/go v1.1.10
@@ -27,6 +28,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.0-20210131064038-27d33a7c7b3a
+	github.com/projectdiscovery/proxify v0.0.3
 	github.com/projectdiscovery/rawhttp v0.0.4
 	github.com/projectdiscovery/retryabledns v1.0.6
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
