@@ -109,7 +109,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 	}
-	if r.options.Options.JSONRequests {
+	if r.options.Options.JSONRequests || r.options.Options.JSONOnlyRequests {
 		data.Response = types.ToString(wrapped.InternalEvent["raw"])
 	}
 	return data

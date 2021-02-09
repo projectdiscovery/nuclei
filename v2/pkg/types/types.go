@@ -30,6 +30,8 @@ type Options struct {
 	JSON bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// JSONOnlyRequests writes only requests when JSON json output.
+	JSONOnlyRequests bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version

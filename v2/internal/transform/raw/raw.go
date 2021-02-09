@@ -24,8 +24,11 @@ func Parse(data string, baseURL string) (*fuzzing.NormalizedRequest, error) {
 	for k, v := range request.Headers {
 		req.Header.Set(k, v)
 	}
+	_, contentOK := request.Headers["Content-Length"]
 	if request.Data != "" {
-		req.ContentLength = int64(len(request.Data))
+		if contentOK {
+			req.ContentLength = int64(len(request.Data))
+		}
 		req.Body = ioutil.NopCloser(strings.NewReader(request.Data))
 	}
 
