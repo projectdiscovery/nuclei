@@ -16,11 +16,6 @@ import (
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
-	err := protocolinit.Init(options)
-	if err != nil {
-		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
-	}
-
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
 
@@ -45,12 +40,17 @@ func ParseOptions(options *types.Options) {
 
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
-	if err = validateOptions(options); err != nil {
+	if err := validateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
+
+	err := protocolinit.Init(options)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
+	}
 }
 
 // hasStdin returns true if we have stdin input
