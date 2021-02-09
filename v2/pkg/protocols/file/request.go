@@ -16,7 +16,7 @@ var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(r.options.Options.RateLimit)
+	wg := sizedwaitgroup.New(r.options.Options.BulkSize)
 
 	err := r.getInputPaths(input, func(data string) {
 		wg.Add()
