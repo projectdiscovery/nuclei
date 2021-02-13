@@ -19,7 +19,7 @@
   <a href="#install-nuclei">Install</a> •
   <a href="#for-security-engineers">For Security Engineers</a> •
   <a href="#for-developers-and-organisations">For Developers</a> •
-  <a href="https://nuclei.projectdiscovery.io">Wiki</a> •
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
   <a href="#credits">Credits</a> •
   <a href="#license">License</a> •
   <a href="https://discord.gg/KECAGdH">Join Discord</a>
@@ -46,7 +46,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 ```sh
 ▶ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
-**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
+**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/#nuclei-installation).**
 
 <table>
 <tr>
@@ -58,7 +58,7 @@ You can download and update the nuclei templates using <ins>*update-templates*</
 
 `▶ nuclei -update-templates`
 
-Nuclei is designed to used with custom templates according to the target and workflow, you can write your own checks for your specific workflow and needs, please refer to nuclei **[templating guide](https://nuclei.projectdiscovery.io/templating-guide/)** to write your own custom templates.
+Nuclei is designed to used with custom templates according to the target and workflow, you can write your own checks for your specific workflow and needs, please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to write your own custom templates.
 
 </td>
 </tr>
@@ -72,7 +72,7 @@ Scanning for CVEs on given list of URLs.
 ▶ nuclei -l target_urls.txt -t cves/
 ```
 
-**More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#using-nuclei).**
+**More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
 
 # For Security Engineers
 
