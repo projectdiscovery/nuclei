@@ -67,7 +67,14 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 	defer conn.Close()
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 
+	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
+
+	// Read some data if any in the buffer
+	buffer := make([]byte, r.ReadSize)
+	n, _ := conn.Read(buffer)
+	responseBuilder.Write(buffer[:n])
+
 	for _, input := range r.Inputs {
 		var data []byte
 
@@ -92,12 +99,11 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 			return errors.Wrap(err, "could not write request to server")
 		}
 
-		bufferSize := 1024
 		if r.ReadSize != 0 {
-			bufferSize = r.ReadSize
+			buffer := make([]byte, r.ReadSize)
+			n, _ := conn.Read(buffer)
+			responseBuilder.Write(buffer[:n])
 		}
-		buffer := make([]byte, bufferSize)
-		_, _ = conn.Read(buffer)
 		r.options.Progress.IncrementRequests()
 	}
 	if err != nil {
@@ -118,15 +124,15 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 	if r.ReadSize != 0 {
 		bufferSize = r.ReadSize
 	}
-	buffer := make([]byte, bufferSize)
-	n, _ := conn.Read(buffer)
-	resp := string(buffer[:n])
+	buffer = make([]byte, bufferSize)
+	n, _ = conn.Read(buffer)
+	responseBuilder.Write(buffer[:n])
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s", resp)
+		gologger.Print().Msgf("%s", responseBuilder.String())
 	}
-	outputEvent := r.responseToDSLMap(reqBuilder.String(), resp, input, actualAddress)
+	outputEvent := r.responseToDSLMap(reqBuilder.String(), responseBuilder.String(), input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
 		outputEvent[k] = v
