@@ -13,7 +13,7 @@ import (
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partString := matcher.Part
 	switch partString {
-	case "body", "raw", "all", "":
+	case "body", "all", "":
 		partString = "data"
 	}
 
