@@ -34,6 +34,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/xid v1.2.1
+	github.com/segmentio/ksuid v1.0.3
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.7.0
