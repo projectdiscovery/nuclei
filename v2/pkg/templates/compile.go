@@ -1,7 +1,9 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -23,12 +25,18 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	err = yaml.NewDecoder(f).Decode(template)
+	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+
+	data = template.expandPreprocessors(data)
+	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	if err != nil {
+		return nil, err
+	}
 
 	if _, ok := template.Info["name"]; !ok {
 		return nil, errors.New("no template name field provided")
