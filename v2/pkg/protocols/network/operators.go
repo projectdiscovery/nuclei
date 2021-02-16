@@ -62,7 +62,7 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(req, resp string, host, matched string) output.InternalEvent {
+func (r *Request) responseToDSLMap(req, resp, raw string, host, matched string) output.InternalEvent {
 	data := make(output.InternalEvent, 6)
 
 	// Some data regarding the request metadata
@@ -70,6 +70,7 @@ func (r *Request) responseToDSLMap(req, resp string, host, matched string) outpu
 	data["matched"] = matched
 	data["request"] = req
 	data["data"] = resp
+	data["raw"] = raw
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
 	return data

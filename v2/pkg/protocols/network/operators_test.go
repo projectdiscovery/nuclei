@@ -31,7 +31,7 @@ func TestResponseToDSLMap(t *testing.T) {
 
 	req := "test-data\r\n"
 	resp := "resp-data\r\n"
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
 	require.Len(t, event, 6, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["data"], "could not get correct resp")
 }
@@ -56,7 +56,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 
 	req := "test-data\r\n"
 	resp := "resp-data\r\nSTAT \r\n"
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
@@ -119,7 +119,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 
 	req := "test-data\r\n"
 	resp := "resp-data\r\nSTAT \r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
@@ -182,7 +182,7 @@ func TestNetworkMakeResult(t *testing.T) {
 
 	req := "test-data\r\n"
 	resp := "resp-data\rSTAT \r\n1.1.1.1\n"
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	event["ip"] = "192.168.1.1"
 	if request.CompiledOperators != nil {

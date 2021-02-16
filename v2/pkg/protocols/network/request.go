@@ -99,7 +99,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 			return errors.Wrap(err, "could not write request to server")
 		}
 
-		if r.ReadSize != 0 {
+		if input.Read > 0 {
 			buffer := make([]byte, r.ReadSize)
 			n, _ := conn.Read(buffer)
 			responseBuilder.Write(buffer[:n])
@@ -124,15 +124,15 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 	if r.ReadSize != 0 {
 		bufferSize = r.ReadSize
 	}
-	buffer = make([]byte, bufferSize)
-	n, _ = conn.Read(buffer)
-	responseBuilder.Write(buffer[:n])
+	final := make([]byte, bufferSize)
+	n, _ = conn.Read(final)
+	responseBuilder.Write(final[:n])
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
 		gologger.Print().Msgf("%s", responseBuilder.String())
 	}
-	outputEvent := r.responseToDSLMap(reqBuilder.String(), responseBuilder.String(), input, actualAddress)
+	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), responseBuilder.String(), input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
 		outputEvent[k] = v
