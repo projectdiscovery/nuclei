@@ -45,6 +45,8 @@ type Input struct {
 	Data string `yaml:"data"`
 	// Type is the type of input - hex, text.
 	Type string `yaml:"type"`
+	// Read is the number of bytes to read from socket
+	Read int `yaml:"read"`
 }
 
 // GetID returns the unique ID of the request if any.

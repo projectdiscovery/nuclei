@@ -91,6 +91,13 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 			r.options.Progress.DecrementRequests(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
+
+		bufferSize := 1024
+		if r.ReadSize != 0 {
+			bufferSize = r.ReadSize
+		}
+		buffer := make([]byte, bufferSize)
+		_, _ = conn.Read(buffer)
 		r.options.Progress.IncrementRequests()
 	}
 	if err != nil {
