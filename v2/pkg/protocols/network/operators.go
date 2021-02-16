@@ -42,7 +42,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	partString := extractor.Part
 	switch partString {
-	case "body", "raw", "all", "":
+	case "body", "all", "":
 		partString = "data"
 	}
 
