@@ -80,7 +80,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
 
-	_ = set.Parse()
+	set.Parse()
 
 	if cfgFile != "" {
 		if err := set.MergeConfigFile(cfgFile); err != nil {
