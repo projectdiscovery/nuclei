@@ -15,6 +15,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
 
+const tlsSuffix = ":tls"
+
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -53,12 +55,26 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 		return err
 	}
 
-	var hostname string
+	var (
+		hostname string
+		tls      bool
+		conn     net.Conn
+		err      error
+	)
+	// check if the connection should be encrypted
+	if strings.HasSuffix(actualAddress, tlsSuffix) {
+		tls = true
+		actualAddress = strings.TrimSuffix(actualAddress, tlsSuffix)
+	}
 	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}
 
-	conn, err := r.dialer.Dial(context.Background(), "tcp", actualAddress)
+	if tls {
+		conn, err = r.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+	} else {
+		conn, err = r.dialer.Dial(context.Background(), "tcp", actualAddress)
+	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)

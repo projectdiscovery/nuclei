@@ -15,7 +15,7 @@ import (
 type Request struct {
 	ID string `yaml:"id"`
 
-	// Address is the address to send requests to (host:port combos generally)
+	// Address is the address to send requests to (host:port:tls combos generally)
 	Address   []string `yaml:"host"`
 	addresses []keyValue
 
