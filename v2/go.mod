@@ -24,7 +24,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.7
 	github.com/projectdiscovery/collaborator v0.0.2
-	github.com/projectdiscovery/fastdialer v0.0.3
+	github.com/projectdiscovery/fastdialer v0.0.6-0.20210218003601-ea4a59eb5ffd
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
