@@ -94,6 +94,7 @@ type Options struct {
 	OfflineHTTP bool
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
-
+	// Headless specifies whether to allow headless mode templates
+	Headless              bool
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }

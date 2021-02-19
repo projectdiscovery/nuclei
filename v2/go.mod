@@ -7,6 +7,7 @@ require (
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/corpix/uarand v0.1.1
+	github.com/go-rod/rod v0.91.1
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible

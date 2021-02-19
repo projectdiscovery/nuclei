@@ -1,0 +1,442 @@
+package engine
+
+import (
+	"io/ioutil"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
+	"github.com/pkg/errors"
+	"github.com/segmentio/ksuid"
+)
+
+// ExecuteActions executes a list of actions on a page.
+func (p *Page) ExecuteActions(actions []*Action) (map[string]string, error) {
+	var err error
+
+	outData := make(map[string]string)
+	for _, act := range actions {
+		switch act.ActionType {
+		case ActionNavigate:
+			err = p.NavigateURL(act, outData)
+		case ActionScript:
+			err = p.RunScript(act, outData)
+		case ActionClick:
+			err = p.ClickElement(act, outData)
+		case ActionRightClick:
+			err = p.RightClickElement(act, outData)
+		case ActionTextInput:
+			err = p.InputElement(act, outData)
+		case ActionScreenshot:
+			err = p.Screenshot(act, outData)
+		case ActionTimeInput:
+			err = p.TimeInputElement(act, outData)
+		case ActionSelectInput:
+			err = p.SelectInputElement(act, outData)
+		case ActionWaitLoad:
+			err = p.WaitLoad(act, outData)
+		case ActionGetResource:
+			err = p.GetResource(act, outData)
+		case ActionExtract:
+			err = p.SelectInputElement(act, outData)
+		case ActionWaitEvent:
+			err = p.WaitEvent(act, outData)
+		case ActionFilesInput:
+			err = p.FilesInput(act, outData)
+		case ActionAddHeader:
+			err = p.ActionAddHeader(act, outData)
+		case ActionSetHeader:
+			err = p.ActionSetHeader(act, outData)
+		case ActionDeleteHeader:
+			err = p.ActionDeleteHeader(act, outData)
+		case ActionSetBody:
+			err = p.ActionSetBody(act, outData)
+		case ActionSetMethod:
+			err = p.ActionSetMethod(act, outData)
+		default:
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "error occured executing action")
+		}
+	}
+	return outData, nil
+}
+
+type requestRule struct {
+	Action ActionType
+	Part   string
+	Args   map[string]string
+}
+
+// ActionAddHeader executes a AddHeader action.
+func (p *Page) ActionAddHeader(act *Action, out map[string]string) error {
+	in := act.GetArg("part")
+
+	args := make(map[string]string)
+	args["key"] = act.GetArg("key")
+	args["value"] = act.GetArg("value")
+	rule := requestRule{
+		Action: ActionAddHeader,
+		Part:   in,
+		Args:   args,
+	}
+	p.rules = append(p.rules, rule)
+	return nil
+}
+
+// ActionSetHeader executes a SetHeader action.
+func (p *Page) ActionSetHeader(act *Action, out map[string]string) error {
+	in := act.GetArg("part")
+
+	args := make(map[string]string)
+	args["key"] = act.GetArg("key")
+	args["value"] = act.GetArg("value")
+	rule := requestRule{
+		Action: ActionSetHeader,
+		Part:   in,
+		Args:   args,
+	}
+	p.rules = append(p.rules, rule)
+	return nil
+}
+
+// ActionDeleteHeader executes a DeleteHeader action.
+func (p *Page) ActionDeleteHeader(act *Action, out map[string]string) error {
+	in := act.GetArg("part")
+
+	args := make(map[string]string)
+	args["key"] = act.GetArg("key")
+	rule := requestRule{
+		Action: ActionDeleteHeader,
+		Part:   in,
+		Args:   args,
+	}
+	p.rules = append(p.rules, rule)
+	return nil
+}
+
+// ActionSetBody executes a SetBody action.
+func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
+	in := act.GetArg("part")
+
+	args := make(map[string]string)
+	args["body"] = act.GetArg("body")
+	rule := requestRule{
+		Action: ActionSetBody,
+		Part:   in,
+		Args:   args,
+	}
+	p.rules = append(p.rules, rule)
+	return nil
+}
+
+// ActionSetMethod executes an SetMethod action.
+func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
+	in := act.GetArg("part")
+
+	args := make(map[string]string)
+	args["method"] = act.GetArg("method")
+	rule := requestRule{
+		Action: ActionSetMethod,
+		Part:   in,
+		Args:   args,
+	}
+	p.rules = append(p.rules, rule)
+	return nil
+}
+
+// NavigateURL executes an ActionLoadURL actions loading a URL for the page.
+func (p *Page) NavigateURL(action *Action, out map[string]string) error {
+	url := action.GetArg("url")
+	if url == "" {
+		return errors.New("invalid arguments provided")
+	}
+	err := p.page.Navigate(url)
+	if err != nil {
+		return errors.Wrap(err, "could not navigate")
+	}
+	return nil
+}
+
+// RunScript runs a script on the loaded page
+func (p *Page) RunScript(action *Action, out map[string]string) error {
+	code := action.GetArg("code")
+	if code == "" {
+		return errors.New("invalid arguments provided")
+	}
+	data, err := p.page.Eval(code)
+	if err != nil {
+		return err
+	}
+	if data != nil {
+		out[action.Name] = data.Value.String()
+	}
+	return nil
+}
+
+// ClickElement executes click actions for an element.
+func (p *Page) ClickElement(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	if err = element.Click(proto.InputMouseButtonLeft); err != nil {
+		return errors.Wrap(err, "could not click element")
+	}
+	return nil
+}
+
+// RightClickElement executes right click actions for an element.
+func (p *Page) RightClickElement(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	if err = element.Click(proto.InputMouseButtonRight); err != nil {
+		return errors.Wrap(err, "could not right click element")
+	}
+	return nil
+}
+
+// Screenshot executes screenshot action on a page
+func (p *Page) Screenshot(act *Action, out map[string]string) error {
+	to := act.GetArg("to")
+	if to == "" {
+		to = ksuid.New().String()
+		out[act.Name] = to
+	}
+	var data []byte
+	var err error
+	if act.GetArg("fullpage") == "true" {
+		data, err = p.page.Screenshot(true, &proto.PageCaptureScreenshot{})
+	} else {
+		data, err = p.page.Screenshot(false, &proto.PageCaptureScreenshot{})
+	}
+	if err != nil {
+		return errors.Wrap(err, "could not take screenshot")
+	}
+	err = ioutil.WriteFile(to+".png", data, 0540)
+	if err != nil {
+		return errors.Wrap(err, "could not write screenshot")
+	}
+	return nil
+}
+
+// InputElement executes input element actions for an element.
+func (p *Page) InputElement(act *Action, out map[string]string) error {
+	value := act.GetArg("value")
+	if value == "" {
+		return errors.New("invalid arguments provided")
+	}
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	if err = element.Input(value); err != nil {
+		return errors.Wrap(err, "could not input element")
+	}
+	return nil
+}
+
+// TimeInputElement executes time input on an element
+func (p *Page) TimeInputElement(act *Action, out map[string]string) error {
+	value := act.GetArg("value")
+	if value == "" {
+		return errors.New("invalid arguments provided")
+	}
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return errors.Wrap(err, "could not parse time")
+	}
+	if err := element.InputTime(t); err != nil {
+		return errors.Wrap(err, "could not input element")
+	}
+	return nil
+}
+
+// SelectInputElement executes select input statement action on a element
+func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
+	value := act.GetArg("value")
+	if value == "" {
+		return errors.New("invalid arguments provided")
+	}
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+
+	selectedbool := false
+	if act.GetArg("selected") == "true" {
+		selectedbool = true
+	}
+	by := act.GetArg("selector")
+	if err := element.Select([]string{value}, selectedbool, selectorBy(by)); err != nil {
+		return errors.Wrap(err, "could not select input")
+	}
+	return nil
+}
+
+// WaitLoad waits for the page to load
+func (p *Page) WaitLoad(act *Action, out map[string]string) error {
+	if err := p.page.WaitLoad(); err != nil {
+		return errors.Wrap(err, "could not reset mouse")
+	}
+	p.page.WaitNavigation(proto.PageLifecycleEventNameNetworkIdle)()
+	return nil
+}
+
+// GetResource gets a resource from an element from page.
+func (p *Page) GetResource(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	resource, err := element.Resource()
+	if err != nil {
+		return errors.Wrap(err, "could not get src for element")
+	}
+	out[act.Name] = string(resource)
+	return nil
+}
+
+// FilesInput acts with a file input element on page
+func (p *Page) FilesInput(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	value := act.GetArg("value")
+	filesPaths := strings.Split(value, ",")
+	if err := element.SetFiles(filesPaths); err != nil {
+		return errors.Wrap(err, "could not set files")
+	}
+	return nil
+}
+
+// ExtractElement extracts from an element on the page.
+func (p *Page) ExtractElement(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not get element")
+	}
+	if err = element.ScrollIntoView(); err != nil {
+		return errors.Wrap(err, "could not scroll into view")
+	}
+	switch act.GetArg("target") {
+	case "attribute":
+		attrName := act.GetArg("attribute")
+		if attrName == "" {
+			return errors.New("attribute can't be empty")
+		}
+		attrValue, err := element.Attribute(attrName)
+		if err != nil {
+			return errors.Wrap(err, "could not get attribute")
+		}
+		out[act.Name] = *attrValue
+	default:
+		text, err := element.Text()
+		if err != nil {
+			return errors.Wrap(err, "could not get element text node")
+		}
+		out[act.Name] = text
+	}
+	return nil
+}
+
+type protoEvent struct {
+	event string
+}
+
+// ProtoEvent returns the cdp.Event.Method
+func (p *protoEvent) ProtoEvent() string {
+	return p.event
+}
+
+// WaitEvent waits for an event to happen on the page.
+func (p *Page) WaitEvent(act *Action, out map[string]string) error {
+	event := act.GetArg("event")
+	if event == "" {
+		return errors.New("event not recognized")
+	}
+	protoEvent := &protoEvent{event: event}
+
+	// Uses another instance in order to be able to chain the timeout only to the wait operation
+	pagec := p.page
+	timeout := act.GetArg("timeout")
+	if timeout != "" {
+		ts, err := strconv.Atoi(timeout)
+		if err != nil {
+			return errors.Wrap(err, "could not get timeout")
+		}
+		if ts > 0 {
+			pagec = p.page.Timeout(time.Duration(ts) * time.Second)
+		}
+	}
+	// Just wait the event to happen
+	pagec.WaitEvent(protoEvent)()
+	return nil
+}
+
+// pageElementBy returns a page element from a variety of inputs.
+//
+// Supported values for by: r -> selector & regex, x -> xpath, js -> eval js,
+// search => query, default ("") => selector.
+func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
+	by, ok := data["by"]
+	if !ok {
+		by = ""
+	}
+	switch by {
+	case "r":
+		return p.page.ElementR(data["selector"], data["regex"])
+	case "x":
+		return p.page.ElementX(data["xpath"])
+	case "js":
+		return p.page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
+	case "search":
+		return p.page.MustSearch(data["query"]), nil
+	default:
+		return p.page.Element(data["selector"])
+	}
+}
+
+// selectorBy returns a selector from a representation.
+func selectorBy(selector string) rod.SelectorType {
+	switch selector {
+	case "r":
+		return rod.SelectorTypeRegex
+	case "css":
+		return rod.SelectorTypeCSSSector
+	case "regex":
+		return rod.SelectorTypeRegex
+	case "text":
+		fallthrough
+	default:
+		return rod.SelectorTypeText
+	}
+}
