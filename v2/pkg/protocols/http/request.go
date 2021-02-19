@@ -247,6 +247,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		options.AutomaticContentLength = !r.DisableAutoContentLength
 		options.AutomaticHostHeader = !r.DisableAutoHostname
 		options.FollowRedirects = r.Redirects
+		options.CustomHeaders = request.rawRequest.UnsafeHeaders
 		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
 		hostname = request.request.URL.Hostname()

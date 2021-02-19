@@ -11,7 +11,6 @@ require (
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
-	github.com/gorilla/mux v1.8.0
 	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kr/pretty v0.1.0 // indirect
@@ -28,7 +27,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
-	github.com/projectdiscovery/rawhttp v0.0.4
+	github.com/projectdiscovery/rawhttp v0.0.5-0.20210219233225-23f989439837
 	github.com/projectdiscovery/retryabledns v1.0.6
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
