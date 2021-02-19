@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"net/url"
+
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 )
@@ -14,26 +16,25 @@ type Page struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(actions []*Action) (map[string]string, error) {
+func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, *rod.Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if i.browser.customAgent != "" {
 		if err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	createdPage := &Page{page: page, instance: i}
 	router := page.HijackRequests()
 	if err := router.Add("*", "", createdPage.routingRuleHandler); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	createdPage.router = router
 	go router.Run()
 	defer router.Stop()
-	defer page.Close()
 
 	err = page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{Viewport: &proto.PageViewport{
 		Scale:  1,
@@ -41,18 +42,18 @@ func (i *Instance) Run(actions []*Action) (map[string]string, error) {
 		Height: float64(1080),
 	}})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	_, err = page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	data, err := createdPage.ExecuteActions(actions)
+	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return data, nil
+	return data, page, nil
 }
 
 // Close closes a browser page

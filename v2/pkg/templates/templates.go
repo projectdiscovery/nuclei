@@ -4,6 +4,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
@@ -23,6 +24,8 @@ type Template struct {
 	RequestsFile []*file.Request `yaml:"file,omitempty"`
 	// RequestsNetwork contains the network request to make in the template
 	RequestsNetwork []*network.Request `yaml:"network,omitempty"`
+	// RequestsHeadless contains the headless request to make in the template.
+	RequestsHeadless []*headless.Request `yaml:"headless,omitempty"`
 
 	// Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline"`

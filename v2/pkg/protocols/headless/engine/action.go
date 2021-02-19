@@ -1,5 +1,7 @@
 package engine
 
+import "strings"
+
 // ActionType defines the action type for a browser action
 type ActionType int8
 
@@ -95,9 +97,28 @@ var ActionToActionString = map[ActionType]string{
 // are discovered on the found page. We also keep track and only
 // scrape new navigation from pages we haven't crawled yet.
 type Action struct {
-	Data       map[string]string
-	Name       string
-	ActionType ActionType
+	Data        map[string]string `yaml:"args"`
+	Name        string            `yaml:"name"`
+	Description string            `yaml:"description"`
+	ActionType  string            `yaml:"action"`
+}
+
+// String returns the string representation of an action
+func (a *Action) String() string {
+	builder := &strings.Builder{}
+	builder.WriteString(a.ActionType)
+	if a.Name != "" {
+		builder.WriteString(" Name:")
+		builder.WriteString(a.Name)
+	}
+	builder.WriteString(" ")
+	for k, v := range a.Data {
+		builder.WriteString(k)
+		builder.WriteString(":")
+		builder.WriteString(v)
+		builder.WriteString(",")
+	}
+	return strings.TrimSuffix(builder.String(), ",")
 }
 
 // GetArg returns an arg for a name

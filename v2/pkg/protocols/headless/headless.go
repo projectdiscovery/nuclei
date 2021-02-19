@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 )
 
 // Request contains a Headless protocol request to be made from a template
@@ -11,7 +12,7 @@ type Request struct {
 	ID string `yaml:"id"`
 
 	// Payload is the payload to send for the network request
-	Steps []*Step `yaml:"steps"`
+	Steps []*engine.Action `yaml:"steps"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`

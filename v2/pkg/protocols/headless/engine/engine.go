@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/corpix/uarand"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -21,7 +22,7 @@ type Browser struct {
 // New creates a new katana headless browser module
 func New(options *types.Options) (*Browser, error) {
 	launcher := launcher.New().
-		Leakless(false).
+		//	Leakless(false).
 		Set("disable-gpu", "true").
 		Set("ignore-certificate-errors", "true").
 		Set("ignore-certificate-errors", "1").
@@ -56,6 +57,9 @@ func New(options *types.Options) (*Browser, error) {
 		if strings.EqualFold(parts[0], "User-Agent") {
 			customAgent = parts[1]
 		}
+	}
+	if options.RandomAgent {
+		customAgent = uarand.GetRandom()
 	}
 	httpclient, err := newhttpClient(options)
 	if err != nil {

@@ -1,7 +1,11 @@
 package engine
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -10,17 +14,20 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
+	"github.com/valyala/fasttemplate"
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(actions []*Action) (map[string]string, error) {
+func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]string, error) {
 	var err error
 
 	outData := make(map[string]string)
 	for _, act := range actions {
-		switch act.ActionType {
+		actionType := ActionStringToAction[act.ActionType]
+
+		switch actionType {
 		case ActionNavigate:
-			err = p.NavigateURL(act, outData)
+			err = p.NavigateURL(act, outData, baseURL)
 		case ActionScript:
 			err = p.RunScript(act, outData)
 		case ActionClick:
@@ -149,12 +156,22 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out map[string]string) error {
+func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL) error {
 	url := action.GetArg("url")
 	if url == "" {
 		return errors.New("invalid arguments provided")
 	}
-	err := p.page.Navigate(url)
+	// Handle the dynamic value substituion here.
+	url, parsed = baseURLWithTemplatePrefs(url, parsed)
+	values := map[string]interface{}{"Hostname": parsed.Hostname()}
+	if strings.HasSuffix(parsed.Path, "/") && strings.Contains(url, "{{BaseURL}}/") {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+	}
+	parsedString := parsed.String()
+	values["BaseURL"] = parsedString
+
+	final := fasttemplate.ExecuteStringStd(url, "{{", "}}", values)
+	err := p.page.Navigate(final)
 	if err != nil {
 		return errors.Wrap(err, "could not navigate")
 	}
@@ -171,6 +188,7 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("%v %v\n", data.Value.String(), code)
 	if data != nil {
 		out[action.Name] = data.Value.String()
 	}
@@ -439,4 +457,25 @@ func selectorBy(selector string) rod.SelectorType {
 	default:
 		return rod.SelectorTypeText
 	}
+}
+
+var (
+	urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+)
+
+// baseURLWithTemplatePrefs returns the url for BaseURL keeping
+// the template port and path preference over the user provided one.
+func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
+	// template port preference over input URL port if template has a port
+	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
+	if len(matches) == 0 {
+		return data, parsed
+	}
+	port := matches[0][1]
+	parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
+	data = strings.ReplaceAll(data, ":"+port, "")
+	if parsed.Path == "" {
+		parsed.Path = "/"
+	}
+	return data, parsed
 }

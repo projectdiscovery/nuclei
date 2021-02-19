@@ -79,6 +79,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
+	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
 
 	_ = set.Parse()
 
