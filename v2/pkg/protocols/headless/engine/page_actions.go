@@ -449,7 +449,7 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	switch by {
 	case "r":
 		return p.page.ElementR(data["selector"], data["regex"])
-	case "x":
+	case "x", "xpath":
 		return p.page.ElementX(data["xpath"])
 	case "js":
 		return p.page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
