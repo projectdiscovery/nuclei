@@ -28,11 +28,11 @@ type Template struct {
 	RequestsHeadless []*headless.Request `yaml:"headless,omitempty"`
 
 	// Workflows is a yaml based workflow declaration code.
-	workflows.Workflow `yaml:",inline"`
-	CompiledWorkflow   *workflows.Workflow
+	workflows.Workflow `yaml:",inline,omitempty"`
+	CompiledWorkflow   *workflows.Workflow `yaml:"-"`
 
 	// TotalRequests is the total number of requests for the template.
-	TotalRequests int
+	TotalRequests int `yaml:"-"`
 	// Executer is the actual template executor for running template requests
-	Executer protocols.Executer
+	Executer protocols.Executer `yaml:"-"`
 }

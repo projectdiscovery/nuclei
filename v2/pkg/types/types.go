@@ -96,5 +96,6 @@ type Options struct {
 	ResolversFile string
 	// Headless specifies whether to allow headless mode templates
 	Headless              bool
+	ShowBrowser           bool     // show the browser too
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }

@@ -44,6 +44,8 @@ const (
 	ActionSetBody
 	// ActionWaitEvent waits for a specific event.
 	ActionWaitEvent
+	// ActionKeyboard performs a keyboard action event on a page.
+	ActionKeyboard
 )
 
 // ActionStringToAction converts an action from string to internal representation
@@ -66,6 +68,7 @@ var ActionStringToAction = map[string]ActionType{
 	"deleteheader": ActionDeleteHeader,
 	"setbody":      ActionSetBody,
 	"waitevent":    ActionWaitEvent,
+	"keyboard":     ActionKeyboard,
 }
 
 // ActionToActionString converts an action from  internal representation to string
@@ -88,6 +91,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionDeleteHeader: "deleteheader",
 	ActionSetBody:      "setbody",
 	ActionWaitEvent:    "waitevent",
+	ActionKeyboard:     "keyboard",
 }
 
 // Action is an action taken by the browser to reach a navigation
@@ -97,9 +101,9 @@ var ActionToActionString = map[ActionType]string{
 // are discovered on the found page. We also keep track and only
 // scrape new navigation from pages we haven't crawled yet.
 type Action struct {
-	Data        map[string]string `yaml:"args"`
-	Name        string            `yaml:"name"`
-	Description string            `yaml:"description"`
+	Data        map[string]string `yaml:"args,omitempty"`
+	Name        string            `yaml:"name,omitempty"`
+	Description string            `yaml:"description,omitempty"`
 	ActionType  string            `yaml:"action"`
 }
 

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -23,6 +22,11 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 
 	outData := make(map[string]string)
 	for _, act := range actions {
+		for _, hook := range p.hooks {
+			if _, err := p.page.Eval(hook); err != nil {
+				return nil, errors.Wrap(err, "could not run hook")
+			}
+		}
 		actionType := ActionStringToAction[act.ActionType]
 
 		switch actionType {
@@ -62,6 +66,8 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 			err = p.ActionSetBody(act, outData)
 		case ActionSetMethod:
 			err = p.ActionSetMethod(act, outData)
+		case ActionKeyboard:
+			err = p.KeyboardAction(act, outData)
 		default:
 			continue
 		}
@@ -184,11 +190,13 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 	if code == "" {
 		return errors.New("invalid arguments provided")
 	}
+	if action.GetArg("hook") == "true" {
+		p.hooks = append(p.hooks, code)
+	}
 	data, err := p.page.Eval(code)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%v %v\n", data.Value.String(), code)
 	if data != nil {
 		out[action.Name] = data.Value.String()
 	}
@@ -208,6 +216,11 @@ func (p *Page) ClickElement(act *Action, out map[string]string) error {
 		return errors.Wrap(err, "could not click element")
 	}
 	return nil
+}
+
+// KeyboardAction executes a keyboard action on the page.
+func (p *Page) KeyboardAction(act *Action, out map[string]string) error {
+	return p.page.Keyboard.Press([]rune(act.GetArg("keys"))...)
 }
 
 // RightClickElement executes right click actions for an element.
@@ -318,10 +331,14 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
 
 // WaitLoad waits for the page to load
 func (p *Page) WaitLoad(act *Action, out map[string]string) error {
+	// Wait for the window.onload event and also wait for the network requests
+	// to become idle for a maximum duration of 2 seconds. If the requests
+	// do not finish,
 	if err := p.page.WaitLoad(); err != nil {
 		return errors.Wrap(err, "could not reset mouse")
 	}
-	p.page.WaitNavigation(proto.PageLifecycleEventNameNetworkIdle)()
+	_ = p.page.WaitIdle(1 * time.Second)
+	p.page.Timeout(1*time.Second).WaitRequestIdle(300*time.Millisecond, nil, nil)()
 	return nil
 }
 

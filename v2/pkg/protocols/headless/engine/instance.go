@@ -41,7 +41,7 @@ func (i *Instance) Close() error {
 		_ = page.Close()
 		i.engine.RemoveState(page.TargetID)
 	}
-	return i.engine.Close()
+	return nil
 }
 
 // maxBackoffSleeper is a backoff sleeper respecting max backoff values

@@ -80,7 +80,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
 	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
-
+	set.BoolVar(&options.ShowBrowser, "show-browser", false, "Show the browser on the screen")
 	_ = set.Parse()
 
 	if cfgFile != "" {

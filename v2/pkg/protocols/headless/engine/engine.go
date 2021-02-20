@@ -2,25 +2,33 @@ package engine
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/corpix/uarand"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
 	customAgent string
+	tempDir     string
 	engine      *rod.Browser
 	httpclient  *http.Client
 	options     *types.Options
 }
 
-// New creates a new katana headless browser module
+// New creates a new nuclei headless browser module
 func New(options *types.Options) (*Browser, error) {
+	dataStore, err := ioutil.TempDir("", "nuclei-*")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temporary directory")
+	}
 	launcher := launcher.New().
 		//	Leakless(false).
 		Set("disable-gpu", "true").
@@ -33,9 +41,14 @@ func New(options *types.Options) (*Browser, error) {
 		Set("no-sandbox", "true").
 		Set("mute-audio", "true").
 		Set("incognito", "true").
-		Headless(false).
-		Delete("use-mock-keychain")
+		Delete("use-mock-keychain").
+		UserDataDir(dataStore)
 
+	if options.ShowBrowser {
+		launcher = launcher.Headless(false)
+	} else {
+		launcher = launcher.Headless(true)
+	}
 	if options.ProxyURL != "" {
 		launcher = launcher.Proxy(options.ProxyURL)
 	}
@@ -65,5 +78,11 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Browser{customAgent: customAgent, engine: browser, httpclient: httpclient, options: options}, nil
+	return &Browser{tempDir: dataStore, customAgent: customAgent, engine: browser, httpclient: httpclient, options: options}, nil
+}
+
+// Close closes the browser engine
+func (b *Browser) Close() {
+	b.engine.Close()
+	os.RemoveAll(b.tempDir)
 }

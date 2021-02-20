@@ -11,12 +11,12 @@ import (
 type Request struct {
 	ID string `yaml:"id"`
 
-	// Payload is the payload to send for the network request
+	// Steps is the list of actions to run for headless request
 	Steps []*engine.Action `yaml:"steps"`
 
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
-	CompiledOperators   *operators.Operators
+	operators.Operators `yaml:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
 	options *protocols.ExecuterOptions

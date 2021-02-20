@@ -18,7 +18,6 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/karrick/godirwalk v1.16.1
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/miekg/dns v1.1.38
@@ -54,10 +53,8 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
+	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.25.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )

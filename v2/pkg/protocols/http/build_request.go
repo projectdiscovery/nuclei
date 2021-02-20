@@ -55,7 +55,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		"Hostname": parsed.Hostname(),
 	})
 
-	isRawRequest := strings.Contains(data, "\n")
+	isRawRequest := len(r.request.Raw) > 0
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
@@ -114,7 +114,6 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	data += "\r\n"
 	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 }
 

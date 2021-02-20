@@ -324,6 +324,7 @@ func (r *Runner) RunEnumeration() {
 	}
 
 	if r.browser != nil {
+		r.browser.Close()
 		// kill chrome process here
 	}
 }
