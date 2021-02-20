@@ -14,21 +14,25 @@ import (
 
 // Request defines a basic HTTP raw request
 type Request struct {
-	FullURL       string
-	Method        string
-	Path          string
-	Data          string
-	Headers       map[string]string
-	UnsafeHeaders client.Headers
+	FullURL        string
+	Method         string
+	Path           string
+	Data           string
+	Headers        map[string]string
+	UnsafeHeaders  client.Headers
+	UnsafeRawBytes []byte
 }
 
 // Parse parses the raw request as supplied by the user
 func Parse(request, baseURL string, unsafe bool) (*Request, error) {
-	reader := bufio.NewReader(strings.NewReader(request))
 	rawRequest := &Request{
 		Headers: make(map[string]string),
 	}
-
+	if unsafe {
+		rawRequest.UnsafeRawBytes = []byte(request)
+		return rawRequest, nil
+	}
+	reader := bufio.NewReader(strings.NewReader(request))
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %s", err)
@@ -63,7 +67,10 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		// in case of unsafe requests multiple headers should be accepted
 		// therefore use the full line as key
 		_, found := rawRequest.Headers[key]
-		rawRequest.UnsafeHeaders = append(rawRequest.UnsafeHeaders, client.Header{Key: line})
+		if unsafe {
+			rawRequest.UnsafeHeaders = append(rawRequest.UnsafeHeaders, client.Header{Key: line})
+		}
+
 		if unsafe && found {
 			rawRequest.Headers[line] = ""
 		} else {
