@@ -4,6 +4,9 @@ import (
 	"os"
 	"path"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
@@ -17,6 +20,7 @@ var (
 
 func main() {
 	readConfig()
+	go http.ListenAndServe(":6060", http.DefaultServeMux)
 
 	runner.ParseOptions(options)
 
@@ -79,7 +83,8 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
-
+	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
+	set.BoolVar(&options.ShowBrowser, "show-browser", false, "Show the browser on the screen")
 	_ = set.Parse()
 
 	if cfgFile != "" {
