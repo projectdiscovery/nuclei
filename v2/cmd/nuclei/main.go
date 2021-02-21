@@ -4,6 +4,9 @@ import (
 	"os"
 	"path"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
@@ -17,6 +20,7 @@ var (
 
 func main() {
 	readConfig()
+	go http.ListenAndServe(":6060", http.DefaultServeMux)
 
 	runner.ParseOptions(options)
 

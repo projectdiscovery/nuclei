@@ -10,17 +10,19 @@ import (
 	"github.com/corpix/uarand"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	ps "github.com/mitchellh/go-ps"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
-	customAgent string
-	tempDir     string
-	engine      *rod.Browser
-	httpclient  *http.Client
-	options     *types.Options
+	customAgent  string
+	tempDir      string
+	previouspids map[int]struct{} // track already running pids
+	engine       *rod.Browser
+	httpclient   *http.Client
+	options      *types.Options
 }
 
 // New creates a new nuclei headless browser module
@@ -30,7 +32,7 @@ func New(options *types.Options) (*Browser, error) {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
 	launcher := launcher.New().
-		//	Leakless(false).
+		Leakless(false).
 		Set("disable-gpu", "true").
 		Set("ignore-certificate-errors", "true").
 		Set("ignore-certificate-errors", "1").
@@ -78,11 +80,45 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Browser{tempDir: dataStore, customAgent: customAgent, engine: browser, httpclient: httpclient, options: options}, nil
+	engine := &Browser{
+		tempDir:     dataStore,
+		customAgent: customAgent,
+		engine:      browser,
+		httpclient:  httpclient,
+		options:     options,
+	}
+	engine.previouspids = engine.findChromeProcesses()
+	return engine, nil
 }
 
 // Close closes the browser engine
 func (b *Browser) Close() {
 	b.engine.Close()
 	os.RemoveAll(b.tempDir)
+	b.killChromeProcesses()
+}
+
+// killChromeProcesses any and all new chrome processes started after
+// headless process launch.
+func (b *Browser) killChromeProcesses() {
+	new := b.findChromeProcesses()
+	for id := range new {
+		if _, ok := b.previouspids[id]; ok {
+			continue
+		}
+		kill(id)
+	}
+}
+
+// findChromeProcesses finds chrome process running on host
+func (b *Browser) findChromeProcesses() map[int]struct{} {
+	processes, _ := ps.Processes()
+	list := make(map[int]struct{})
+	for _, process := range processes {
+		if strings.Contains(process.Executable(), "chrome") || strings.Contains(process.Executable(), "chromium") {
+			list[process.PPid()] = struct{}{}
+			list[process.Pid()] = struct{}{}
+		}
+	}
+	return list
 }

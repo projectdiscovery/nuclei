@@ -21,6 +21,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/miekg/dns v1.1.38
+	github.com/mitchellh/go-ps v1.0.0
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
