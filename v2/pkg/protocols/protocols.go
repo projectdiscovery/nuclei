@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/ratelimit"
@@ -47,6 +48,8 @@ type ExecuterOptions struct {
 	Catalogue *catalogue.Catalogue
 	// ProjectFile is the project file for nuclei
 	ProjectFile *projectfile.ProjectFile
+	// Browser is a browser engine for running headless templates
+	Browser *engine.Browser
 
 	Operators []*operators.Operators // only used by offlinehttp module
 }

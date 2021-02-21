@@ -51,6 +51,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 		IssuesClient: r.issuesClient,
 		RateLimiter:  r.ratelimiter,
 		ProjectFile:  r.projectFile,
+		Browser:      r.browser,
 	}
 	template, err := templates.Parse(file, executerOpts)
 	if err != nil {
