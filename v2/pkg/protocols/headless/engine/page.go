@@ -11,7 +11,6 @@ import (
 type Page struct {
 	page     *rod.Page
 	rules    []requestRule
-	hooks    []string // list of js hooks for each page.
 	instance *Instance
 	router   *rod.HijackRouter
 }

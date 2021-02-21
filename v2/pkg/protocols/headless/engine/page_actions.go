@@ -22,11 +22,6 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 
 	outData := make(map[string]string)
 	for _, act := range actions {
-		for _, hook := range p.hooks {
-			if _, err := p.page.Eval(hook); err != nil {
-				return nil, errors.Wrap(err, "could not run hook")
-			}
-		}
 		actionType := ActionStringToAction[act.ActionType]
 
 		switch actionType {
@@ -191,7 +186,9 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 		return errors.New("invalid arguments provided")
 	}
 	if action.GetArg("hook") == "true" {
-		p.hooks = append(p.hooks, code)
+		if _, err := p.page.EvalOnNewDocument(code); err != nil {
+			return err
+		}
 	}
 	data, err := p.page.Eval(code)
 	if err != nil {
@@ -331,6 +328,8 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
 
 // WaitLoad waits for the page to load
 func (p *Page) WaitLoad(act *Action, out map[string]string) error {
+	p.page.Timeout(1 * time.Second).WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)()
+
 	// Wait for the window.onload event and also wait for the network requests
 	// to become idle for a maximum duration of 2 seconds. If the requests
 	// do not finish,
@@ -338,7 +337,6 @@ func (p *Page) WaitLoad(act *Action, out map[string]string) error {
 		return errors.Wrap(err, "could not reset mouse")
 	}
 	_ = p.page.WaitIdle(1 * time.Second)
-	p.page.Timeout(2*time.Second).WaitRequestIdle(300*time.Millisecond, nil, nil)()
 	return nil
 }
 
