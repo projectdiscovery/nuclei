@@ -52,7 +52,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	}
 
 	var respBody string
-	html, err := page.Element("html")
+	html, err := page.Page().Element("html")
 	if err == nil {
 		respBody, _ = html.HTML()
 	}

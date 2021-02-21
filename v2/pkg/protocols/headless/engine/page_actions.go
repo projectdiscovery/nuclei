@@ -338,7 +338,7 @@ func (p *Page) WaitLoad(act *Action, out map[string]string) error {
 		return errors.Wrap(err, "could not reset mouse")
 	}
 	_ = p.page.WaitIdle(1 * time.Second)
-	p.page.Timeout(1*time.Second).WaitRequestIdle(300*time.Millisecond, nil, nil)()
+	p.page.Timeout(2*time.Second).WaitRequestIdle(300*time.Millisecond, nil, nil)()
 	return nil
 }
 
@@ -446,17 +446,26 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	if !ok {
 		by = ""
 	}
+	page := p.page
+
 	switch by {
 	case "r":
-		return p.page.ElementR(data["selector"], data["regex"])
+		return page.ElementR(data["selector"], data["regex"])
 	case "x", "xpath":
-		return p.page.ElementX(data["xpath"])
+		return page.ElementX(data["xpath"])
 	case "js":
-		return p.page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
+		return page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
 	case "search":
-		return p.page.MustSearch(data["query"]), nil
+		elms, err := page.Search(0, 1, data["query"])
+		if err != nil {
+			return nil, err
+		}
+		if len(elms) > 0 {
+			return elms[0], nil
+		}
+		return nil, errors.New("no such element")
 	default:
-		return p.page.Element(data["selector"])
+		return page.Element(data["selector"])
 	}
 }
 

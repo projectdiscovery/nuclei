@@ -28,20 +28,15 @@ func (b *Browser) NewInstance() (*Instance, error) {
 		return nil, err
 	}
 
-	// We use a custom sleeper that sleeps from 100ms to 5000 ms waiting
+	// We use a custom sleeper that sleeps from 100ms to 500 ms waiting
 	// for an interaction. Used throughout rod for clicking, etc.
-	browser = browser.Sleeper(func() utils.Sleeper { return maxBackoffSleeper(5) })
+	browser = browser.Sleeper(func() utils.Sleeper { return maxBackoffSleeper(10) })
 	return &Instance{browser: b, engine: browser}, nil
 }
 
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
-	pages, _ := i.engine.Pages()
-	for _, page := range pages {
-		_ = page.Close()
-		i.engine.RemoveState(page.TargetID)
-	}
-	return nil
+	return i.engine.Close()
 }
 
 // maxBackoffSleeper is a backoff sleeper respecting max backoff values

@@ -17,7 +17,7 @@ type Page struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, *rod.Page, error) {
+func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
@@ -34,8 +34,6 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, 
 		return nil, nil, err
 	}
 	createdPage.router = router
-	go router.Run()
-	defer router.Stop()
 
 	err = page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{Viewport: &proto.PageViewport{
 		Scale:  1,
@@ -50,15 +48,17 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, 
 		return nil, nil, err
 	}
 
+	go router.Run()
 	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {
 		return nil, nil, err
 	}
-	return data, page, nil
+	return data, createdPage, nil
 }
 
 // Close closes a browser page
 func (p *Page) Close() {
+	p.router.Stop()
 	p.page.Close()
 }
 
