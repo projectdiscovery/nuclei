@@ -10,13 +10,13 @@ import (
 type Operators struct {
 	// Matchers contains the detection mechanism for the request to identify
 	// whether the request was successful
-	Matchers []*matchers.Matcher `yaml:"matchers"`
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
-	Extractors []*extractors.Extractor `yaml:"extractors"`
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
 	// MatchersCondition is the condition of the matchers
 	// whether to use AND or OR. Default is OR.
-	MatchersCondition string `yaml:"matchers-condition"`
+	MatchersCondition string `yaml:"matchers-condition,omitempty"`
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
 }
@@ -49,6 +49,10 @@ func (r *Operators) GetMatchersCondition() matchers.ConditionType {
 
 // Result is a result structure created from operators running on data.
 type Result struct {
+	// Matched is true if any matchers matched
+	Matched bool
+	// Extracted is true if any result type values were extracted
+	Extracted bool
 	// Matches is a map of matcher names that we matched
 	Matches map[string]struct{}
 	// Extracts contains all the data extracted from inputs
@@ -115,13 +119,18 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		}
 	}
 
+	result.Matched = matches
+	result.Extracted = len(result.OutputExtracts) > 0
+	if len(result.DynamicValues) > 0 {
+		return result, true
+	}
 	// Don't print if we have matchers and they have not matched, irregardless of extractor
 	if len(r.Matchers) > 0 && !matches {
 		return nil, false
 	}
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
-	if len(result.Extracts) > 0 || len(result.DynamicValues) > 0 || len(result.OutputExtracts) > 0 || matches {
+	if len(result.Extracts) > 0 || len(result.OutputExtracts) > 0 || matches {
 		return result, true
 	}
 	return nil, false

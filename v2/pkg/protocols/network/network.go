@@ -25,7 +25,7 @@ type Request struct {
 	ReadSize int `yaml:"read-size"`
 
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
+	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators
 
 	// cache any variables that may be needed for operation.
