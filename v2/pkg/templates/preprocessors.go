@@ -19,6 +19,9 @@ func (t *Template) expandPreprocessors(data []byte) []byte {
 			continue
 		}
 		value := expression[1]
+		if strings.Contains(value, "(") || strings.Contains(value, ")") {
+			continue
+		}
 
 		if _, ok := foundMap[value]; ok {
 			continue
