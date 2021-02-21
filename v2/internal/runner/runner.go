@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -39,6 +40,7 @@ type Runner struct {
 	colorizer       aurora.Aurora
 	issuesClient    *issues.Client
 	severityColors  *colorizer.Colorizer
+	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
 }
 
@@ -46,6 +48,13 @@ type Runner struct {
 func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
+	}
+	if options.Headless {
+		browser, err := engine.New(options)
+		if err != nil {
+			return nil, err
+		}
+		runner.browser = browser
 	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
@@ -239,6 +248,7 @@ func (r *Runner) RunEnumeration() {
 				Catalogue:    r.catalogue,
 				RateLimiter:  r.ratelimiter,
 				IssuesClient: r.issuesClient,
+				Browser:      r.browser,
 				ProjectFile:  r.projectFile,
 			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
@@ -311,5 +321,10 @@ func (r *Runner) RunEnumeration() {
 			os.Remove(r.options.Output)
 		}
 		gologger.Info().Msgf("No results found. Better luck next time!")
+	}
+
+	if r.browser != nil {
+		r.browser.Close()
+		// kill chrome process here
 	}
 }

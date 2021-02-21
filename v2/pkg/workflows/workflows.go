@@ -5,7 +5,7 @@ import "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 // Workflow is a workflow to execute with chained requests, etc.
 type Workflow struct {
 	// Workflows is a yaml based workflow declaration code.
-	Workflows []*WorkflowTemplate `yaml:"workflows"`
+	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty"`
 }
 
 // WorkflowTemplate is a template to be ran as part of a workflow
