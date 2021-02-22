@@ -139,6 +139,5 @@ func rawHasBody(data string) bool {
 	if err != nil {
 		return false
 	}
-
 	return len(body) > 0
 }

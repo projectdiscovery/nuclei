@@ -114,12 +114,12 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	// add "\r\n" only to RCF compliant requests without body
+	// Add "\r\n" only to RCF compliant requests without body
 	if !r.request.Unsafe && !rawHasBody(data) {
 		data += "\r\n"
-  } else {
-    data = strings.TrimSuffix(data, "\r\n")
-  }
+	} else {
+		data = strings.TrimSuffix(data, "\r\n")
+	}
 	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 }
 
