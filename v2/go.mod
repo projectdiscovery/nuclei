@@ -10,7 +10,6 @@ require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-rod/rod v0.91.1
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -23,7 +22,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/olekukonko/tablewriter v0.0.4
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.7
 	github.com/projectdiscovery/collaborator v0.0.2
@@ -31,7 +30,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
-	github.com/projectdiscovery/rawhttp v0.0.5
+	github.com/projectdiscovery/rawhttp v0.0.6
 	github.com/projectdiscovery/retryabledns v1.0.6
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
