@@ -304,7 +304,7 @@ func (r *Runner) RunEnumeration() {
 
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
-			} else {
+			} else if !r.options.Workflows {
 				results.CAS(false, r.processTemplateWithList(template))
 			}
 		}(t)
@@ -325,6 +325,5 @@ func (r *Runner) RunEnumeration() {
 
 	if r.browser != nil {
 		r.browser.Close()
-		// kill chrome process here
 	}
 }
