@@ -8,24 +8,34 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/projectdiscovery/rawhttp/client"
 )
 
 // Request defines a basic HTTP raw request
 type Request struct {
-	FullURL string
-	Method  string
-	Path    string
-	Data    string
-	Headers map[string]string
+	FullURL        string
+	Method         string
+	Path           string
+	Data           string
+	Headers        map[string]string
+	UnsafeHeaders  client.Headers
+	UnsafeRawBytes []byte
 }
 
 // Parse parses the raw request as supplied by the user
 func Parse(request, baseURL string, unsafe bool) (*Request, error) {
-	reader := bufio.NewReader(strings.NewReader(request))
 	rawRequest := &Request{
 		Headers: make(map[string]string),
 	}
-
+	if unsafe {
+		request = strings.ReplaceAll(request, "\\0", "\x00")
+		request = strings.ReplaceAll(request, "\\r", "\r")
+		request = strings.ReplaceAll(request, "\\n", "\n")
+		rawRequest.UnsafeRawBytes = []byte(request)
+		return rawRequest, nil
+	}
+	reader := bufio.NewReader(strings.NewReader(request))
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %s", err)
@@ -60,10 +70,14 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		// in case of unsafe requests multiple headers should be accepted
 		// therefore use the full line as key
 		_, found := rawRequest.Headers[key]
+		if unsafe {
+			rawRequest.UnsafeHeaders = append(rawRequest.UnsafeHeaders, client.Header{Key: line})
+		}
+
 		if unsafe && found {
 			rawRequest.Headers[line] = ""
 		} else {
-			rawRequest.Headers[strings.TrimSpace(key)] = strings.TrimSpace(value)
+			rawRequest.Headers[key] = strings.TrimSpace(value)
 		}
 		if readErr == io.EOF {
 			break
