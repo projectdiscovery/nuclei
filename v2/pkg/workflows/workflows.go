@@ -6,6 +6,8 @@ import "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 type Workflow struct {
 	// Workflows is a yaml based workflow declaration code.
 	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty"`
+
+	options *protocols.ExecuterOptions
 }
 
 // WorkflowTemplate is a template to be ran as part of a workflow

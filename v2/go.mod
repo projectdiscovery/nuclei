@@ -30,7 +30,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
-	github.com/projectdiscovery/rawhttp v0.0.4
+	github.com/projectdiscovery/rawhttp v0.0.5
 	github.com/projectdiscovery/retryabledns v1.0.6
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
