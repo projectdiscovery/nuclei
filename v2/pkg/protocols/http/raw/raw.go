@@ -29,6 +29,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		Headers: make(map[string]string),
 	}
 	if unsafe {
+		request = strings.ReplaceAll(request, "\\0", "\x00")
+		request = strings.ReplaceAll(request, "\\r", "\r")
+		request = strings.ReplaceAll(request, "\\n", "\n")
 		rawRequest.UnsafeRawBytes = []byte(request)
 		return rawRequest, nil
 	}
