@@ -49,6 +49,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// Set the request Method
 	rawRequest.Method = parts[0]
 
+	var mutlipartRequest bool
 	// Accepts all malformed headers
 	var key, value string
 	for {
@@ -65,6 +66,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		key = p[0]
 		if len(p) > 1 {
 			value = p[1]
+		}
+		if strings.Contains(key, "Content-Type") && strings.Contains(value, "multipart/") {
+			mutlipartRequest = true
 		}
 
 		// in case of unsafe requests multiple headers should be accepted
@@ -127,5 +131,8 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		return nil, fmt.Errorf("could not read request body: %s", err)
 	}
 	rawRequest.Data = string(b)
+	if !mutlipartRequest {
+		rawRequest.Data = strings.TrimSuffix(rawRequest.Data, "\r\n")
+	}
 	return rawRequest, nil
 }
