@@ -95,7 +95,10 @@ type Options struct {
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// Headless specifies whether to allow headless mode templates
-	Headless              bool
-	ShowBrowser           bool     // show the browser too
+	Headless bool
+	// ShowBrowser specifies whether the show the browser in headless mode
+	ShowBrowser bool
+	// Workflows specifies if only to execute workflows (no normal templates will be run)
+	Workflows             bool
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }
