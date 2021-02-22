@@ -52,10 +52,6 @@ type Request struct {
 	Pipeline bool `yaml:"pipeline"`
 	// Specify in order to skip request RFC normalization
 	Unsafe bool `yaml:"unsafe"`
-	// DisableAutoHostname Enable/Disable Host header for unsafe raw requests
-	DisableAutoHostname bool `yaml:"disable-automatic-host-header"`
-	// DisableAutoContentLength Enable/Disable Content-Length header for unsafe raw requests
-	DisableAutoContentLength bool `yaml:"disable-automatic-content-length-header"`
 	// Race determines if all the request have to be attempted at the same time
 	// The minimum number of requests is determined by threads
 	Race bool `yaml:"race"`
