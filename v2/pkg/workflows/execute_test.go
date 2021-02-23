@@ -7,20 +7,20 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWorkflowsSimple(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true}, Options: &protocols.ExecuterOptions{Progress: progress}},
 		}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.True(t, matched, "could not get correct match value")
 }
 
@@ -28,7 +28,7 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
@@ -41,8 +41,7 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 		}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -53,7 +52,7 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
@@ -65,8 +64,7 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 		}}}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -77,7 +75,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: false, executeHook: func(input string) {
 				firstInput = input
@@ -89,8 +87,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 		}}}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -101,7 +98,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
@@ -118,8 +115,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 		}}}}}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -130,7 +126,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	progress, _ := progress.NewProgress(false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &Workflow{Workflows: []*WorkflowTemplate{
+	workflow := &Workflow{options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
@@ -147,8 +143,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 		}}}}}},
 	}}
 
-	matched, err := workflow.RunWorkflow("https://test.com")
-	require.Nil(t, err, "could not run workflow")
+	matched := workflow.RunWorkflow("https://test.com")
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
