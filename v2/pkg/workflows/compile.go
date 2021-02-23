@@ -4,12 +4,13 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"gopkg.in/yaml.v2"
 )
 
 // Parse a yaml workflow file
-func Parse(file string) (*Workflow, error) {
-	workflow := &Workflow{}
+func Parse(file string, options *protocols.ExecuterOptions) (*Workflow, error) {
+	workflow := &Workflow{options: options}
 
 	f, err := os.Open(file)
 	if err != nil {

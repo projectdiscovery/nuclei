@@ -27,6 +27,9 @@ func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []stri
 			gologger.Warning().Msgf("Could not parse file '%s': %s\n", match, err)
 			continue
 		}
+		if len(t.Workflows) == 0 && r.options.Workflows {
+			continue // don't print if user only wants to run workflows
+		}
 		if len(t.Workflows) > 0 {
 			workflowCount++
 		}

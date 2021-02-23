@@ -3,25 +3,32 @@ package workflows
 import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/atomic"
 )
 
 // RunWorkflow runs a workflow on an input and returns true or false
-func (w *Workflow) RunWorkflow(input string) (bool, error) {
+func (w *Workflow) RunWorkflow(input string) bool {
 	results := &atomic.Bool{}
 
+	swg := sizedwaitgroup.New(w.options.Options.TemplateThreads)
 	for _, template := range w.Workflows {
-		err := w.runWorkflowStep(template, input, results)
-		if err != nil {
-			return results.Load(), err
-		}
+		swg.Add()
+		func(template *WorkflowTemplate) {
+			err := w.runWorkflowStep(template, input, results, &swg)
+			if err != nil {
+				gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
+			}
+			swg.Done()
+		}(template)
 	}
-	return results.Load(), nil
+	swg.Wait()
+	return results.Load()
 }
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool) error {
+func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup) error {
 	var firstMatched bool
 
 	var mainErr error
@@ -46,9 +53,6 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 	}
 
 	if len(template.Matchers) > 0 {
-		var executionErr error
-		var mainErr error
-
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
@@ -65,10 +69,14 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 					}
 
 					for _, subtemplate := range matcher.Subtemplates {
-						if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
-							executionErr = err
-							break
-						}
+						swg.Add()
+
+						go func(subtemplate *WorkflowTemplate) {
+							if err := w.runWorkflowStep(subtemplate, input, results, swg); err != nil {
+								gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", subtemplate.Template, err)
+							}
+							swg.Done()
+						}(subtemplate)
 					}
 				}
 			})
@@ -80,21 +88,20 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				}
 				continue
 			}
-			if executionErr != nil {
-				if len(template.Executers) == 1 {
-					mainErr = executionErr
-				} else {
-					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, executionErr)
-				}
-			}
 		}
 		return mainErr
 	}
 	if len(template.Subtemplates) > 0 && firstMatched {
 		for _, subtemplate := range template.Subtemplates {
-			if err := w.runWorkflowStep(subtemplate, input, results); err != nil {
-				return err
-			}
+			swg.Add()
+
+			func(template *WorkflowTemplate) {
+				err := w.runWorkflowStep(template, input, results, swg)
+				if err != nil {
+					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
+				}
+				swg.Done()
+			}(subtemplate)
 		}
 	}
 	return mainErr
