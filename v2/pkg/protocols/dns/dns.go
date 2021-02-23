@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -74,6 +75,9 @@ func (r *Request) Requests() int {
 
 // Make returns the request to be sent for the protocol
 func (r *Request) Make(domain string) (*dns.Msg, error) {
+	if r.question != dns.TypePTR && net.ParseIP(domain) != nil {
+		return nil, errors.New("cannot use IP address as DNS input")
+	}
 	domain = dns.Fqdn(domain)
 
 	// Build a request on the specified URL
