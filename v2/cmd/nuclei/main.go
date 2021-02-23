@@ -86,6 +86,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
 	set.BoolVar(&options.ShowBrowser, "show-browser", false, "Show the browser on the screen")
 	set.BoolVarP(&options.Workflows, "w", "workflows", false, "Only run workflow templates with nuclei")
+	set.IntVar(&options.StatsInterval, "stats-interval", 5, "Number of seconds between each stats line")
 	_ = set.Parse()
 
 	if cfgFile != "" {
