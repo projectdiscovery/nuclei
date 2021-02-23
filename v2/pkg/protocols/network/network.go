@@ -56,14 +56,14 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	var err error
 	var shouldUseTLS bool
+	var err error
+
 	for _, address := range r.Address {
 		// check if the connection should be encrypted
-		shouldUseTLS = false
-		if strings.HasSuffix(address, tlsSuffix) {
+		if strings.HasPrefix(address, "tls://") {
 			shouldUseTLS = true
-			address = strings.TrimSuffix(address, tlsSuffix)
+			address = strings.TrimPrefix(address, "tls://")
 		}
 		if strings.Contains(address, ":") {
 			addressHost, addressPort, err := net.SplitHostPort(address)
@@ -98,5 +98,3 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 func (r *Request) Requests() int {
 	return len(r.Address)
 }
-
-const tlsSuffix = ":tls"
