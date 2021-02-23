@@ -26,12 +26,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.7
 	github.com/projectdiscovery/collaborator v0.0.2
-	github.com/projectdiscovery/fastdialer v0.0.6
+	github.com/projectdiscovery/fastdialer v0.0.7-0.20210223220811-0f076345f912
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/rawhttp v0.0.6
-	github.com/projectdiscovery/retryabledns v1.0.6
+	github.com/projectdiscovery/retryabledns v1.0.7-0.20210223220509-b2042117f565
 	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
