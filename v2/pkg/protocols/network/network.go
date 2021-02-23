@@ -15,9 +15,9 @@ import (
 type Request struct {
 	ID string `yaml:"id"`
 
-	// Address is the address to send requests to (host:port combos generally)
+	// Address is the address to send requests to (host:port:tls combos generally)
 	Address   []string `yaml:"host"`
-	addresses []keyValue
+	addresses []addressKV
 
 	// Payload is the payload to send for the network request
 	Inputs []*Input `yaml:"inputs"`
@@ -33,10 +33,10 @@ type Request struct {
 	options *protocols.ExecuterOptions
 }
 
-// keyValue is a key value pair
-type keyValue struct {
-	key   string
-	value string
+type addressKV struct {
+	ip   string
+	port string
+	tls  bool
 }
 
 // Input is the input to send on the network
@@ -56,16 +56,23 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+	var shouldUseTLS bool
 	var err error
+
 	for _, address := range r.Address {
+		// check if the connection should be encrypted
+		if strings.HasPrefix(address, "tls://") {
+			shouldUseTLS = true
+			address = strings.TrimPrefix(address, "tls://")
+		}
 		if strings.Contains(address, ":") {
 			addressHost, addressPort, err := net.SplitHostPort(address)
 			if err != nil {
 				return errors.Wrap(err, "could not parse address")
 			}
-			r.addresses = append(r.addresses, keyValue{key: addressHost, value: addressPort})
+			r.addresses = append(r.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
 		} else {
-			r.addresses = append(r.addresses, keyValue{key: address})
+			r.addresses = append(r.addresses, addressKV{ip: address, tls: shouldUseTLS})
 		}
 	}
 
