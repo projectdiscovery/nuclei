@@ -11,7 +11,7 @@ import (
 func (w *Workflow) RunWorkflow(input string) bool {
 	results := &atomic.Bool{}
 
-	swg := sizedwaitgroup.New(w.options.Options.TemplateThreads)
+	swg := sizedwaitgroup.New(w.Options.Options.TemplateThreads)
 	for _, template := range w.Workflows {
 		swg.Add()
 		func(template *WorkflowTemplate) {

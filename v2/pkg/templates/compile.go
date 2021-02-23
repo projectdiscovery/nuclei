@@ -71,6 +71,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 			return nil, errors.Wrap(err, "could not compile workflow")
 		}
 		template.CompiledWorkflow = compiled
+		template.CompiledWorkflow.Options = &options
 	}
 
 	// Compile the requests found

@@ -10,7 +10,7 @@ import (
 
 // Parse a yaml workflow file
 func Parse(file string, options *protocols.ExecuterOptions) (*Workflow, error) {
-	workflow := &Workflow{options: options}
+	workflow := &Workflow{Options: options}
 
 	f, err := os.Open(file)
 	if err != nil {
