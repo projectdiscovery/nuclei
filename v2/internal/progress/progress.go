@@ -23,10 +23,10 @@ type Progress struct {
 }
 
 // NewProgress creates and returns a new progress tracking object.
-func NewProgress(active, metrics bool, port int) (*Progress, error) {
+func NewProgress(duration int, active, metrics bool, port int) (*Progress, error) {
 	var tickDuration time.Duration
 	if active {
-		tickDuration = 5 * time.Second
+		tickDuration = time.Duration(duration) * time.Second
 	} else {
 		tickDuration = -1
 	}

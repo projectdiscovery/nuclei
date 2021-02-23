@@ -155,7 +155,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Creates the progress tracking object
 	var progressErr error
-	runner.progress, progressErr = progress.NewProgress(options.EnableProgressBar, options.Metrics, options.MetricsPort)
+	runner.progress, progressErr = progress.NewProgress(options.StatsInterval, options.EnableProgressBar, options.Metrics, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}

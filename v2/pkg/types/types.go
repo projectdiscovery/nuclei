@@ -99,6 +99,9 @@ type Options struct {
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
 	// Workflows specifies if only to execute workflows (no normal templates will be run)
-	Workflows             bool
+	Workflows bool
+	// StatsInterval is the number of seconds to display stats after
+	StatsInterval int
+
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }
