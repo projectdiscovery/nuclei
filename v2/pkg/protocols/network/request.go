@@ -27,15 +27,15 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	}
 
 	for _, kv := range r.addresses {
-		actualAddress := replacer.Replace(kv.key, map[string]interface{}{"Hostname": address})
-		if kv.value != "" {
+		actualAddress := replacer.Replace(kv.ip, map[string]interface{}{"Hostname": address})
+		if kv.port != "" {
 			if strings.Contains(address, ":") {
 				actualAddress, _, _ = net.SplitHostPort(actualAddress)
 			}
-			actualAddress = net.JoinHostPort(actualAddress, kv.value)
+			actualAddress = net.JoinHostPort(actualAddress, kv.port)
 		}
 
-		err = r.executeAddress(actualAddress, address, input, previous, callback)
+		err = r.executeAddress(actualAddress, address, input, kv.tls, previous, callback)
 		if err != nil {
 			gologger.Verbose().Lable("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
@@ -45,7 +45,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 }
 
 // executeAddress executes the request for an address
-func (r *Request) executeAddress(actualAddress, address, input string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) executeAddress(actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
@@ -53,12 +53,21 @@ func (r *Request) executeAddress(actualAddress, address, input string, previous 
 		return err
 	}
 
-	var hostname string
+	var (
+		hostname string
+		conn     net.Conn
+		err      error
+	)
+
 	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}
 
-	conn, err := r.dialer.Dial(context.Background(), "tcp", actualAddress)
+	if shouldUseTLS {
+		conn, err = r.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+	} else {
+		conn, err = r.dialer.Dial(context.Background(), "tcp", actualAddress)
+	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
 		r.options.Progress.DecrementRequests(1)
