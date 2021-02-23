@@ -1,8 +1,10 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -91,7 +93,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		return httputil.DumpRequestOut(req.request.Request, true)
 	}
-	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)))
+	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders})
 }
 
 // handleDecompression if the user specified a custom encoding (as golang transport doesn't do this automatically)
@@ -115,4 +117,27 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 		return bodyDec, nil
 	}
 	return bodyOrig, nil
+}
+
+// rawHasBody checks if a RFC compliant request has the body
+func rawHasBody(data string) bool {
+	b := bufio.NewReader(strings.NewReader(data))
+	req, err := http.ReadRequest(b)
+	if err == io.EOF {
+		return false
+	}
+	if err != nil {
+		return false
+	}
+
+	if req.Body == http.NoBody {
+		return false
+	}
+
+	// It's enough to read a chunk to check the presence of the body
+	body, err := ioutil.ReadAll(io.LimitReader(req.Body, 512))
+	if err != nil {
+		return false
+	}
+	return len(body) > 0
 }
