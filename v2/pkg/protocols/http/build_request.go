@@ -114,7 +114,6 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	data = strings.TrimSuffix(data, "\r\n")
 	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
 }
 
@@ -173,12 +172,16 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 		return nil, err
 	}
 	for key, value := range rawRequestData.Headers {
+		if key == "" {
+			continue
+		}
 		req.Header[key] = []string{value}
 	}
 	request, err := r.fillRequest(req, values)
 	if err != nil {
 		return nil, err
 	}
+
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
 }
 
