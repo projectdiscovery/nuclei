@@ -36,6 +36,8 @@ type Matcher struct {
 	Binary []string `yaml:"binary,omitempty"`
 	// DSL are the dsl queries
 	DSL []string `yaml:"dsl,omitempty"`
+	// Encoding specifies the encoding for the word content if any.
+	Encoding string `yaml:"encoding,omitempty"`
 
 	// cached data for the compiled matcher
 	condition     ConditionType

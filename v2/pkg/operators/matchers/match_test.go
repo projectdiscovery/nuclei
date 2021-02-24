@@ -28,3 +28,12 @@ func TestORCondition(t *testing.T) {
 	matched = m.MatchWords("c")
 	require.False(t, matched, "Could match invalid OR condition")
 }
+
+func TestHexEncoding(t *testing.T) {
+	m := &Matcher{Encoding: "hex", Type: "word", Part: "body", Words: []string{"50494e47"}}
+	err := m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	matched := m.MatchWords("PING")
+	require.True(t, matched, "Could not match valid Hex condition")
+}

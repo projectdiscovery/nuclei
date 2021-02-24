@@ -31,9 +31,5 @@ func newhttpClient(options *types.Options) (*http.Client, error) {
 			InsecureSkipVerify: true,
 		},
 	}
-
-	return &http.Client{
-		Transport: transport,
-		Timeout:   time.Duration(options.Timeout*3) * time.Second,
-	}, nil
+	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}, nil
 }
