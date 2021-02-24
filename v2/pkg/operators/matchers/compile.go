@@ -1,6 +1,7 @@
 package matchers
 
 import (
+	"encoding/hex"
 	"fmt"
 	"regexp"
 
@@ -11,6 +12,16 @@ import (
 // CompileMatchers performs the initial setup operation on a matcher
 func (m *Matcher) CompileMatchers() error {
 	var ok bool
+
+	// Support hexadecimal encoding for matchers too.
+	switch m.Encoding {
+	case "hex":
+		for i, word := range m.Words {
+			if decoded, err := hex.DecodeString(word); err == nil && len(decoded) > 0 {
+				m.Words[i] = string(decoded)
+			}
+		}
+	}
 
 	// Setup the matcher type
 	m.matcherType, ok = MatcherTypes[m.Type]
