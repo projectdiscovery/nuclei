@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"encoding/hex"
+	"io"
 	"net"
 	"net/url"
 	"strings"
@@ -74,15 +75,10 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		return errors.Wrap(err, "could not connect to server request")
 	}
 	defer conn.Close()
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
 
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
-
-	// Read some data if any in the buffer
-	buffer := make([]byte, r.ReadSize)
-	n, _ := conn.Read(buffer)
-	responseBuilder.Write(buffer[:n])
 
 	for _, input := range r.Inputs {
 		var data []byte
@@ -134,7 +130,12 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		bufferSize = r.ReadSize
 	}
 	final := make([]byte, bufferSize)
-	n, _ = conn.Read(final)
+	n, err := conn.Read(final)
+	if err != nil && err != io.EOF {
+		r.options.Output.Request(r.options.TemplateID, address, "network", err)
+		r.options.Progress.DecrementRequests(1)
+		return errors.Wrap(err, "could not read from server")
+	}
 	responseBuilder.Write(final[:n])
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
@@ -22,8 +22,7 @@ import (
 )
 
 var (
-	urlWithPortRegex        = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
-	templateExpressionRegex = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
+	urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 )
 
 // generatedRequest is a single wrapped generated request for a template request
@@ -122,31 +121,13 @@ func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest,
 	// Combine the template payloads along with base
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
-	rawRequest = replacer.Replace(rawRequest, finalValues)
 
-	// Check if the match contains a dynamic variable, for each
-	// found one we will check if it's an expression and can
-	// be compiled, it will be evaluated and the results will be returned.
-	//
-	// The provided keys from finalValues will be used as variable names
-	// for substitution inside the expression.
-	dynamicValues := make(map[string]interface{})
-	for _, match := range templateExpressionRegex.FindAllString(rawRequest, -1) {
-		expr := generators.TrimDelimiters(match)
-
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
-		if err != nil {
-			return nil, err
-		}
-		result, err := compiled.Evaluate(finalValues)
-		if err != nil {
-			return nil, err
-		}
-		dynamicValues[expr] = result // convert base64(<payload_name>) => <base64-representation>
+	// Evaulate the expressions for raw request if any.
+	var err error
+	rawRequest, err = expressions.Evaluate(rawRequest, finalValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
-
-	// Replacer dynamic values if any in raw request and parse it
-	rawRequest = replacer.Replace(rawRequest, dynamicValues)
 	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
 		return nil, err
