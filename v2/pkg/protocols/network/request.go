@@ -38,7 +38,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 
 		err = r.executeAddress(actualAddress, address, input, kv.tls, previous, callback)
 		if err != nil {
-			gologger.Verbose().Lable("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
 	}
