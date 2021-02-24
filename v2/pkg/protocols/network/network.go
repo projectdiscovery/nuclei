@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 )
 
@@ -73,6 +74,15 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			r.addresses = append(r.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
 		} else {
 			r.addresses = append(r.addresses, addressKV{ip: address, tls: shouldUseTLS})
+		}
+	}
+	// Pre-compile any input dsl functions before executing the request.
+	for _, input := range r.Inputs {
+		if input.Type != "" {
+			continue
+		}
+		if compiled, err := expressions.Evaluate(input.Data, map[string]interface{}{}); err == nil {
+			input.Data = string(compiled)
 		}
 	}
 
