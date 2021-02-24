@@ -80,6 +80,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
 
+	inputEvents := make(map[string]interface{})
 	for _, input := range r.Inputs {
 		var data []byte
 
@@ -108,6 +109,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 			buffer := make([]byte, r.ReadSize)
 			n, _ := conn.Read(buffer)
 			responseBuilder.Write(buffer[:n])
+			if input.Name != "" {
+				inputEvents[input.Name] = string(buffer[:n])
+			}
 		}
 		r.options.Progress.IncrementRequests()
 	}
@@ -145,6 +149,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), responseBuilder.String(), input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
+		outputEvent[k] = v
+	}
+	for k, v := range inputEvents {
 		outputEvent[k] = v
 	}
 
