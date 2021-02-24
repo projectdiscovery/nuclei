@@ -93,7 +93,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		return httputil.DumpRequestOut(req.request.Request, true)
 	}
-	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders})
+	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes})
 }
 
 // handleDecompression if the user specified a custom encoding (as golang transport doesn't do this automatically)
