@@ -17,6 +17,7 @@ func Init(options *types.Options) error {
 		return nil
 	}
 	opts := fastdialer.DefaultOptions
+	opts.EnableFallback = true
 	if options.ResolversFile != "" {
 		opts.BaseResolvers = options.InternalResolversList
 	}
