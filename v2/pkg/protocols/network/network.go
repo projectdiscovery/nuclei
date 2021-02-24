@@ -48,6 +48,8 @@ type Input struct {
 	Type string `yaml:"type"`
 	// Read is the number of bytes to read from socket
 	Read int `yaml:"read"`
+	// Name is the optional name of the input to provide matching on
+	Name string `yaml:"name"`
 }
 
 // GetID returns the unique ID of the request if any.
