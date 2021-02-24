@@ -101,6 +101,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		if options.ResolversFile != "" {
 			opts.BaseResolvers = options.InternalResolversList
 		}
+		opts.EnableFallback = true
 		Dialer, err = fastdialer.NewDialer(opts)
 	}
 	if err != nil {
