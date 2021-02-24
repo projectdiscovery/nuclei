@@ -33,7 +33,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		request = strings.ReplaceAll(request, "\\r", "\r")
 		request = strings.ReplaceAll(request, "\\n", "\n")
 		rawRequest.UnsafeRawBytes = []byte(request)
-		return rawRequest, nil
 	}
 	reader := bufio.NewReader(strings.NewReader(request))
 	s, err := reader.ReadString('\n')
@@ -43,7 +42,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 
 	parts := strings.Split(s, " ")
 	//nolint:gomnd // this is not a magic number
-	if len(parts) < 3 {
+	if len(parts) < 3 && !unsafe {
 		return nil, fmt.Errorf("malformed request supplied")
 	}
 	// Set the request Method
@@ -98,7 +97,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 
 		rawRequest.Path = parts[1]
 		rawRequest.Headers["Host"] = parsed.Host
-	} else {
+	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
 	}
 
