@@ -1,0 +1,17 @@
+id: basic-get-redirects
+
+info:
+  name: Basic GET Redirects Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    redirects: true
+    max-redirects: 3
+    matchers:
+      - type: word
+        words:
+          - "This is test redirects matcher text"

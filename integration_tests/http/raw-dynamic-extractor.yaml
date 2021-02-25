@@ -1,0 +1,43 @@
+id: dynamic-extractor-raw-example
+
+info:
+  name: Test Dynamic Extractor RAW Template
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 1
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+        testing=parameter
+      - |
+        GET /?username={{randkey}} HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+    extractors:
+      - type: regex
+        name: randkey
+        part: body
+        group: 1
+        internal: true
+        regex:
+          - "Token: '([A-Za-z0-9]+)'"
+
+    cookie-reuse: true
+    matchers:
+      - type: word
+        words:
+          - "Test is test-dynamic-extractor-raw matcher text"
