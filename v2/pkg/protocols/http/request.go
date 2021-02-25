@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -209,10 +208,6 @@ const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occured
 func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
-	if r.options.Options.RandomAgent {
-		r.customHeaders["User-Agent"] = uarand.GetRandom()
-	}
 	r.setCustomHeaders(request)
 
 	var (

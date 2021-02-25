@@ -102,6 +102,8 @@ type Options struct {
 	Workflows bool
 	// StatsInterval is the number of seconds to display stats after
 	StatsInterval int
+	// SytemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
+	SystemResolvers bool
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 }

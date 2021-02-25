@@ -13,7 +13,9 @@ import (
 // newhttpClient creates a new http client for headless communication with a timeout
 func newhttpClient(options *types.Options) (*http.Client, error) {
 	opts := fastdialer.DefaultOptions
-	opts.EnableFallback = true
+	if options.SystemResolvers {
+		opts.EnableFallback = true
+	}
 	if options.ResolversFile != "" {
 		opts.BaseResolvers = options.InternalResolversList
 	}
