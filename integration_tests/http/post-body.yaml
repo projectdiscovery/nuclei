@@ -1,0 +1,19 @@
+id: basic-post-body
+
+info:
+  name: Basic POST Body Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: POST
+    path:
+      - "{{BaseURL}}"
+    headers: 
+      Content-Type: application/x-www-form-urlencoded
+      Content-Length: 1 # as long as there is a value, nuclei will auto-recalculate it.
+    body: username=test&password=nuclei
+    matchers:
+      - type: word
+        words:
+          - "This is test post-body matcher text"

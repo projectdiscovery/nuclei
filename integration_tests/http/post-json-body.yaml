@@ -1,0 +1,19 @@
+id: basic-post-json-body
+
+info:
+  name: Basic POST JSON Body Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: POST
+    path:
+      - "{{BaseURL}}"
+    headers: 
+      Content-Type: application/json
+      Content-Length: 1
+    body: '{"username":"test","password":"nuclei"}'
+    matchers:
+      - type: word
+        words:
+          - "This is test post-json-body matcher text"
