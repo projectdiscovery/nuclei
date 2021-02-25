@@ -12,6 +12,7 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
+	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/json-iterator/go v1.1.10
@@ -26,7 +27,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.7
 	github.com/projectdiscovery/collaborator v0.0.2
-	github.com/projectdiscovery/fastdialer v0.0.7
+	github.com/projectdiscovery/fastdialer v0.0.8
 	github.com/projectdiscovery/goflags v0.0.2
 	github.com/projectdiscovery/gologger v1.1.3
 	github.com/projectdiscovery/hmap v0.0.1

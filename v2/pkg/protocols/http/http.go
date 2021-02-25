@@ -3,6 +3,7 @@ package http
 import (
 	"strings"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -78,6 +79,11 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
+	if r.options.Options.RandomAgent {
+		r.customHeaders["User-Agent"] = uarand.GetRandom()
+	}
+
 	client, err := httpclientpool.Get(options.Options, &httpclientpool.Configuration{
 		Threads:         r.Threads,
 		MaxRedirects:    r.MaxRedirects,
