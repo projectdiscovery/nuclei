@@ -194,7 +194,7 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 	if err != nil {
 		return err
 	}
-	if data != nil {
+	if data != nil && action.Name != "" {
 		out[action.Name] = data.Value.String()
 	}
 	return nil
@@ -447,7 +447,7 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	page := p.page
 
 	switch by {
-	case "r":
+	case "r", "regex":
 		return page.ElementR(data["selector"], data["regex"])
 	case "x", "xpath":
 		return page.ElementX(data["xpath"])

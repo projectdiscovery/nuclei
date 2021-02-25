@@ -259,7 +259,7 @@ func (r *Runner) RunEnumeration() {
 				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
-			clusterCount++
+			clusterCount += len(cluster)
 		} else {
 			for _, item := range cluster {
 				finalTemplates = append(finalTemplates, item)
