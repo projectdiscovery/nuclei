@@ -336,8 +336,8 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		}
 	}
 
-	var matchedURL string
-	if request.rawRequest != nil {
+	matchedURL := reqURL
+	if request.rawRequest != nil && request.rawRequest.FullURL != "" {
 		matchedURL = request.rawRequest.FullURL
 	}
 	if request.request != nil {
