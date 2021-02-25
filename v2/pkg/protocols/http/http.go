@@ -79,11 +79,6 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
-	if r.options.Options.RandomAgent {
-		r.customHeaders["User-Agent"] = uarand.GetRandom()
-	}
-
 	client, err := httpclientpool.Get(options.Options, &httpclientpool.Configuration{
 		Threads:         r.Threads,
 		MaxRedirects:    r.MaxRedirects,
@@ -102,6 +97,10 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			continue
 		}
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
+	}
+	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
+	if r.options.Options.RandomAgent {
+		r.customHeaders["User-Agent"] = uarand.GetRandom()
 	}
 
 	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
