@@ -32,7 +32,7 @@ var StringToType = map[string]Type{
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, Type Type, templatePath string) (*Generator, error) {
+func New(payloads map[string]interface{}, payloadType Type, templatePath string) (*Generator, error) {
 	generator := &Generator{}
 	if err := generator.validate(payloads, templatePath); err != nil {
 		return nil, err
@@ -42,11 +42,11 @@ func New(payloads map[string]interface{}, Type Type, templatePath string) (*Gene
 	if err != nil {
 		return nil, err
 	}
-	generator.Type = Type
+	generator.Type = payloadType
 	generator.payloads = compiled
 
 	// Validate the payload types
-	if Type == PitchFork {
+	if payloadType == PitchFork {
 		var totalLength int
 		for v := range compiled {
 			if totalLength != 0 && totalLength != len(v) {
@@ -110,7 +110,7 @@ func (i *Iterator) Total() int {
 	case ClusterBomb:
 		count = 1
 		for _, p := range i.payloads {
-			count = count * len(p.values)
+			count *= len(p.values)
 		}
 	}
 	return count

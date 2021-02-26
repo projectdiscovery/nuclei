@@ -49,12 +49,12 @@ func Init(options *types.Options) error {
 
 // Configuration contains the custom configuration options for a client
 type Configuration struct {
-	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
-	CookieReuse bool
 	// Threads contains the threads for the client
 	Threads int
 	// MaxRedirects is the maximum number of redirects to follow
 	MaxRedirects int
+	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
+	CookieReuse bool
 	// FollowRedirects specifies whether to follow redirects
 	FollowRedirects bool
 }
@@ -161,17 +161,17 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if options.ProxySocksURL != "" {
 		var proxyAuth *proxy.Auth
 
-		socksURL, err := url.Parse(options.ProxySocksURL)
-		if err == nil {
+		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+		if proxyErr == nil {
 			proxyAuth = &proxy.Auth{}
 			proxyAuth.User = socksURL.User.Username()
 			proxyAuth.Password, _ = socksURL.User.Password()
 		}
-		dialer, err := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
-		if err == nil {
+		if proxyErr == nil {
 			transport.DialContext = dc.DialContext
 		}
 	}

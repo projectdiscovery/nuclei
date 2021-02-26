@@ -1,10 +1,6 @@
 package runner
 
 import (
-	"fmt"
-	"os"
-	"path"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/remeh/sizedwaitgroup"
@@ -51,14 +47,4 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 	})
 	wg.Wait()
 	return results.Load()
-}
-
-// resolvePathWithBaseFolder resolves a path with the base folder
-func resolvePathWithBaseFolder(baseFolder, templateName string) (string, error) {
-	templatePath := path.Join(baseFolder, templateName)
-	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		gologger.Debug().Msgf("Found template in current directory: %s\n", templatePath)
-		return templatePath, nil
-	}
-	return "", fmt.Errorf("no such path found: %s", templateName)
 }

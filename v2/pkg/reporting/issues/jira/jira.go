@@ -75,45 +75,45 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 
 // jiraFormatDescription formats a short description of the generated
 // event by the nuclei scanner in Jira format.
-func jiraFormatDescription(output *output.ResultEvent) string {
-	template := format.GetMatchedTemplate(output)
+func jiraFormatDescription(event *output.ResultEvent) string {
+	template := format.GetMatchedTemplate(event)
 
 	builder := &bytes.Buffer{}
 	builder.WriteString("*Details*: *")
 	builder.WriteString(template)
 	builder.WriteString("* ")
 	builder.WriteString(" matched at ")
-	builder.WriteString(output.Host)
+	builder.WriteString(event.Host)
 	builder.WriteString("\n\n*Protocol*: ")
-	builder.WriteString(strings.ToUpper(output.Type))
+	builder.WriteString(strings.ToUpper(event.Type))
 	builder.WriteString("\n\n*Full URL*: ")
-	builder.WriteString(output.Matched)
+	builder.WriteString(event.Matched)
 	builder.WriteString("\n\n*Timestamp*: ")
-	builder.WriteString(output.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	builder.WriteString("\n\n*Template Information*\n\n| Key | Value |\n")
-	for k, v := range output.Info {
+	for k, v := range event.Info {
 		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
 	}
 	builder.WriteString("\n*Request*\n\n{code}\n")
-	builder.WriteString(output.Request)
+	builder.WriteString(event.Request)
 	builder.WriteString("\n{code}\n\n*Response*\n\n{code}\n")
-	builder.WriteString(output.Response)
+	builder.WriteString(event.Response)
 	builder.WriteString("\n{code}\n\n")
 
-	if len(output.ExtractedResults) > 0 || len(output.Metadata) > 0 {
+	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
 		builder.WriteString("*Extra Information*\n\n")
-		if len(output.ExtractedResults) > 0 {
+		if len(event.ExtractedResults) > 0 {
 			builder.WriteString("*Extracted results*:\n\n")
-			for _, v := range output.ExtractedResults {
+			for _, v := range event.ExtractedResults {
 				builder.WriteString("- ")
 				builder.WriteString(v)
 				builder.WriteString("\n")
 			}
 			builder.WriteString("\n")
 		}
-		if len(output.Metadata) > 0 {
+		if len(event.Metadata) > 0 {
 			builder.WriteString("*Metadata*:\n\n")
-			for k, v := range output.Metadata {
+			for k, v := range event.Metadata {
 				builder.WriteString("- ")
 				builder.WriteString(k)
 				builder.WriteString(": ")

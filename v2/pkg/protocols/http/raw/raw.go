@@ -41,7 +41,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 
 	parts := strings.Split(s, " ")
-	//nolint:gomnd // this is not a magic number
 	if len(parts) < 3 && !unsafe {
 		return nil, fmt.Errorf("malformed request supplied")
 	}

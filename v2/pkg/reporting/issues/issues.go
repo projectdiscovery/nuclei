@@ -53,10 +53,7 @@ func (f *Filter) Compile() {
 func (f *Filter) GetMatch(event *output.ResultEvent) bool {
 	severity := types.ToString(event.Info["severity"])
 	if len(f.severity) > 0 {
-		if stringSliceContains(f.severity, severity) {
-			return true
-		}
-		return false
+		return stringSliceContains(f.severity, severity)
 	}
 
 	tags := event.Info["tags"]
@@ -94,8 +91,8 @@ func New(config, db string) (*Client, error) {
 	defer file.Close()
 
 	options := &Options{}
-	if err := yaml.NewDecoder(file).Decode(options); err != nil {
-		return nil, err
+	if parseErr := yaml.NewDecoder(file).Decode(options); parseErr != nil {
+		return nil, parseErr
 	}
 	if options.AllowList != nil {
 		options.AllowList.Compile()
@@ -143,7 +140,7 @@ func (c *Client) CreateIssue(event *output.ResultEvent) error {
 
 	found, err := c.dedupe.Index(event)
 	if err != nil {
-		c.tracker.CreateIssue(event)
+		_ = c.tracker.CreateIssue(event)
 		return err
 	}
 	if found {

@@ -8,28 +8,30 @@ import (
 
 // Request contains a File matching mechanism for local disk operations.
 type Request struct {
-	ID string `yaml:"id"`
-
-	// MaxSize is the maximum size of the file to run request on.
-	// By default, nuclei will process 5MB files and not go more than that.
-	// It can be set to much lower or higher depending on use.
-	MaxSize int `yaml:"max-size"`
-	// NoRecursive specifies whether to not do recursive checks if folders are provided.
-	NoRecursive bool `yaml:"no-recursive"`
+	// Operators for the current request go here.
+	operators.Operators `yaml:",inline"`
 	// Extensions is the list of extensions to perform matching on.
 	Extensions []string `yaml:"extensions"`
 	// ExtensionDenylist is the list of file extensions to deny during matching.
 	ExtensionDenylist []string `yaml:"denylist"`
 
-	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
-	CompiledOperators   *operators.Operators
+	ID string `yaml:"id"`
+
+	// MaxSize is the maximum size of the file to run request on.
+	// By default, nuclei will process 5MB files and not go more than that.
+	// It can be set to much lower or higher depending on use.
+	MaxSize           int `yaml:"max-size"`
+	CompiledOperators *operators.Operators
 
 	// cache any variables that may be needed for operation.
 	options           *protocols.ExecuterOptions
 	extensions        map[string]struct{}
-	allExtensions     bool
 	extensionDenylist map[string]struct{}
+
+	// NoRecursive specifies whether to not do recursive checks if folders are provided.
+	NoRecursive bool `yaml:"no-recursive"`
+
+	allExtensions bool
 }
 
 // defaultDenylist is the default list of extensions to be denied

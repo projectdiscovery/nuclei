@@ -11,7 +11,7 @@ func TestDNSCompileMake(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-dns"
+	const templateID = "testing-dns"
 	request := &Request{
 		Type:      "A",
 		Class:     "INET",

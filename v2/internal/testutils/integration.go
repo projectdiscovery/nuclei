@@ -8,10 +8,10 @@ import (
 )
 
 // RunNucleiAndGetResults returns a list of results for a template
-func RunNucleiAndGetResults(template string, URL string, debug bool) ([]string, error) {
-	cmd := exec.Command("./nuclei", "-t", template, "-target", URL)
+func RunNucleiAndGetResults(template, url string, debug bool) ([]string, error) {
+	cmd := exec.Command("./nuclei", "-t", template, "-target", url)
 	if debug {
-		cmd = exec.Command("./nuclei", "-t", template, "-target", URL, "-debug")
+		cmd = exec.Command("./nuclei", "-t", template, "-target", url, "-debug")
 		cmd.Stderr = os.Stderr
 	}
 	data, err := cmd.Output()
@@ -30,7 +30,7 @@ func RunNucleiAndGetResults(template string, URL string, debug bool) ([]string, 
 
 // TestCase is a single integration test case
 type TestCase interface {
-	// Execute executes a test case and returns any errors if occured
+	// Execute executes a test case and returns any errors if occurred
 	Execute(filePath string) error
 }
 

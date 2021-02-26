@@ -14,8 +14,7 @@ func (m *Matcher) CompileMatchers() error {
 	var ok bool
 
 	// Support hexadecimal encoding for matchers too.
-	switch m.Encoding {
-	case "hex":
+	if m.Encoding == "hex" {
 		for i, word := range m.Words {
 			if decoded, err := hex.DecodeString(word); err == nil && len(decoded) > 0 {
 				m.Words[i] = string(decoded)

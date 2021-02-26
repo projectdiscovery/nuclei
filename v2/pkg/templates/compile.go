@@ -18,6 +18,7 @@ import (
 )
 
 // Parse parses a yaml request template file
+//nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 
@@ -84,12 +85,12 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	}
 	if len(template.RequestsHTTP) > 0 {
 		if options.Options.OfflineHTTP {
-			operators := []*operators.Operators{}
+			operatorsList := []*operators.Operators{}
 
 			for _, req := range template.RequestsHTTP {
-				operators = append(operators, &req.Operators)
+				operatorsList = append(operatorsList, &req.Operators)
 			}
-			options.Operators = operators
+			options.Operators = operatorsList
 			template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
 		} else {
 			for _, req := range template.RequestsHTTP {
@@ -130,8 +131,8 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 }
 
 // compileWorkflow compiles the workflow for execution
-func (t *Template) compileWorkflow(options *protocols.ExecuterOptions, workflows *workflows.Workflow) error {
-	for _, workflow := range workflows.Workflows {
+func (t *Template) compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow) error {
+	for _, workflow := range workflow.Workflows {
 		if err := t.parseWorkflow(workflow, options); err != nil {
 			return err
 		}
@@ -161,7 +162,7 @@ func (t *Template) parseWorkflow(workflow *workflows.WorkflowTemplate, options *
 
 // parseWorkflowTemplate parses a workflow template creating an executer
 func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions) error {
-	paths, err := options.Catalogue.GetTemplatePath(workflow.Template)
+	paths, err := options.Catalog.GetTemplatePath(workflow.Template)
 	if err != nil {
 		return errors.Wrap(err, "could not get workflow template")
 	}
@@ -170,7 +171,7 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 			Output:       options.Output,
 			Options:      options.Options,
 			Progress:     options.Progress,
-			Catalogue:    options.Catalogue,
+			Catalog:      options.Catalog,
 			RateLimiter:  options.RateLimiter,
 			IssuesClient: options.IssuesClient,
 			ProjectFile:  options.ProjectFile,
@@ -220,9 +221,7 @@ mainLoop:
 }
 
 // getKeyValue returns key value pair for a data string
-func getKeyValue(data string) (string, string) {
-	var key, value string
-
+func getKeyValue(data string) (key, value string) {
 	if strings.Contains(data, ":") {
 		parts := strings.SplitN(data, ":", 2)
 		if len(parts) == 2 {

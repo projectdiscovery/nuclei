@@ -8,8 +8,7 @@ type Colorizer struct {
 }
 
 const (
-	fgOrange  uint8  = 208
-	undefined string = "undefined"
+	fgOrange uint8 = 208
 )
 
 // New returns a new severity based colorizer

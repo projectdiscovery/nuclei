@@ -120,7 +120,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if w.json {
 		data, err = w.formatJSON(event)
 	} else {
-		data, err = w.formatScreen(event)
+		data = w.formatScreen(event)
 	}
 	if err != nil {
 		return errors.Wrap(err, "could not format output")

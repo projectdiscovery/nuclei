@@ -60,7 +60,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		err      error
 	)
 
-	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
+	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
 	}
 
@@ -75,7 +75,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		return errors.Wrap(err, "could not connect to server request")
 	}
 	defer conn.Close()
-	conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
 
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}

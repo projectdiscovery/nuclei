@@ -26,12 +26,12 @@ func (r *Request) newGenerator() *requestGenerator {
 
 // nextValue returns the next path or the next raw request depending on user input
 // It returns false if all the inputs have been exhausted by the generator instance.
-func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
+func (r *requestGenerator) nextValue() (value string, payloads map[string]interface{}, result bool) {
 	// If we have paths, return the next path.
 	if len(r.request.Path) > 0 && r.currentIndex < len(r.request.Path) {
-		if item := r.request.Path[r.currentIndex]; item != "" {
+		if value := r.request.Path[r.currentIndex]; value != "" {
 			r.currentIndex++
-			return item, nil, true
+			return value, nil, true
 		}
 	}
 

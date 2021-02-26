@@ -22,15 +22,15 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, 
 		return nil, nil, err
 	}
 	if i.browser.customAgent != "" {
-		if err := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); err != nil {
-			return nil, nil, err
+		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
+			return nil, nil, userAgentErr
 		}
 	}
 
 	createdPage := &Page{page: page, instance: i}
 	router := page.HijackRequests()
-	if err := router.Add("*", "", createdPage.routingRuleHandler); err != nil {
-		return nil, nil, err
+	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
+		return nil, nil, routerErr
 	}
 	createdPage.router = router
 
@@ -57,7 +57,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, 
 
 // Close closes a browser page
 func (p *Page) Close() {
-	p.router.Stop()
+	_ = p.router.Stop()
 	p.page.Close()
 }
 

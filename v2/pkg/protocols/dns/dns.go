@@ -15,10 +15,11 @@ import (
 
 // Request contains a DNS protocol request to be made from a template
 type Request struct {
+	// Operators for the current request go here.
+	operators.Operators `yaml:",inline"`
+
 	ID string `yaml:"id"`
 
-	// Recursion specifies whether to recurse all the answers.
-	Recursion bool `yaml:"recursion"`
 	// Path contains the path/s for the request
 	Name string `yaml:"name"`
 	// Type is the type of DNS request to make
@@ -28,15 +29,16 @@ type Request struct {
 	// Retries is the number of retries for the DNS request
 	Retries int `yaml:"retries"`
 
-	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
-	CompiledOperators   *operators.Operators
+	CompiledOperators *operators.Operators
+	dnsClient         *retryabledns.Client
+	options           *protocols.ExecuterOptions
 
 	// cache any variables that may be needed for operation.
-	class     uint16
-	question  uint16
-	dnsClient *retryabledns.Client
-	options   *protocols.ExecuterOptions
+	class    uint16
+	question uint16
+
+	// Recursion specifies whether to recurse all the answers.
+	Recursion bool `yaml:"recursion"`
 }
 
 // GetID returns the unique ID of the request if any.
@@ -97,11 +99,11 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 }
 
 // questionTypeToInt converts DNS question type to internal representation
-func questionTypeToInt(Type string) uint16 {
-	Type = strings.TrimSpace(strings.ToUpper(Type))
+func questionTypeToInt(questionType string) uint16 {
+	questionType = strings.TrimSpace(strings.ToUpper(questionType))
 	question := dns.TypeA
 
-	switch Type {
+	switch questionType {
 	case "A":
 		question = dns.TypeA
 	case "NS":
@@ -119,7 +121,7 @@ func questionTypeToInt(Type string) uint16 {
 	case "AAAA":
 		question = dns.TypeAAAA
 	}
-	return uint16(question)
+	return question
 }
 
 // classToInt converts a dns class name to it's internal representation

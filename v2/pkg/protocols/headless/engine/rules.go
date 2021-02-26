@@ -27,7 +27,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 			ctx.Request.SetBody(body)
 		}
 	}
-	ctx.LoadResponse(p.instance.browser.httpclient, true)
+	_ = ctx.LoadResponse(p.instance.browser.httpclient, true)
 
 	for _, rule := range p.rules {
 		if rule.Part != "response" {

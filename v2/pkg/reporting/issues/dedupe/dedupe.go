@@ -22,8 +22,6 @@ type Storage struct {
 	storage   *leveldb.DB
 }
 
-const storageFilename = "nuclei-events.db"
-
 // New creates a new duplicate detecting storage for nuclei scan events.
 func New(dbPath string) (*Storage, error) {
 	storage := &Storage{}
@@ -65,29 +63,29 @@ func (s *Storage) Close() {
 func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 	hasher := sha1.New()
 	if result.TemplateID != "" {
-		hasher.Write(unsafeToBytes(result.TemplateID))
+		_, _ = hasher.Write(unsafeToBytes(result.TemplateID))
 	}
 	if result.MatcherName != "" {
-		hasher.Write(unsafeToBytes(result.MatcherName))
+		_, _ = hasher.Write(unsafeToBytes(result.MatcherName))
 	}
 	if result.ExtractorName != "" {
-		hasher.Write(unsafeToBytes(result.ExtractorName))
+		_, _ = hasher.Write(unsafeToBytes(result.ExtractorName))
 	}
 	if result.Type != "" {
-		hasher.Write(unsafeToBytes(result.Type))
+		_, _ = hasher.Write(unsafeToBytes(result.Type))
 	}
 	if result.Host != "" {
-		hasher.Write(unsafeToBytes(result.Host))
+		_, _ = hasher.Write(unsafeToBytes(result.Host))
 	}
 	if result.Matched != "" {
-		hasher.Write(unsafeToBytes(result.Matched))
+		_, _ = hasher.Write(unsafeToBytes(result.Matched))
 	}
 	for _, v := range result.ExtractedResults {
-		hasher.Write(unsafeToBytes(v))
+		_, _ = hasher.Write(unsafeToBytes(v))
 	}
 	for k, v := range result.Metadata {
-		hasher.Write(unsafeToBytes(k))
-		hasher.Write(unsafeToBytes(types.ToString(v)))
+		_, _ = hasher.Write(unsafeToBytes(k))
+		_, _ = hasher.Write(unsafeToBytes(types.ToString(v)))
 	}
 	hash := hasher.Sum(nil)
 
