@@ -62,7 +62,7 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(resp, req string, host, matched string) output.InternalEvent {
+func (r *Request) responseToDSLMap(resp, req, host, matched string) output.InternalEvent {
 	data := make(output.InternalEvent, 5)
 
 	// Some data regarding the request metadata

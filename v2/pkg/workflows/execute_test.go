@@ -12,11 +12,11 @@ import (
 )
 
 func TestWorkflowsSimple(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			Executer: &mockExecuter{result: true}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 	}}
 
@@ -25,19 +25,19 @@ func TestWorkflowsSimple(t *testing.T) {
 }
 
 func TestWorkflowsSimpleMultiple(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 	}}
 
@@ -49,18 +49,18 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplates(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
 	}}
 
@@ -72,18 +72,18 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: false, executeHook: func(input string) {
 				firstInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
 	}}
 
@@ -95,7 +95,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -107,11 +107,11 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 					Matches:  map[string]struct{}{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*Matcher{{Name: "tomcat", Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 
@@ -123,7 +123,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewProgress(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -135,11 +135,11 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 					Matches:  map[string]struct{}{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*Matcher{{Name: "apache", Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
-			}}, Options: &protocols.ExecuterOptions{Progress: progress}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 

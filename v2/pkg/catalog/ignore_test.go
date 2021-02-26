@@ -1,4 +1,4 @@
-package catalogue
+package catalog
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestIgnoreFilesIgnore(t *testing.T) {
-	c := &Catalogue{
+	c := &Catalog{
 		ignoreFiles:        []string{"workflows/", "cves/2020/cve-2020-5432.yaml"},
 		templatesDirectory: "test",
 	}
@@ -30,7 +30,7 @@ func TestIgnoreFilesIgnore(t *testing.T) {
 }
 
 func TestExcludeFilesIgnore(t *testing.T) {
-	c := &Catalogue{}
+	c := &Catalog{}
 	excludes := []string{"workflows/", "cves/2020/cve-2020-5432.yaml"}
 	paths := []string{"/Users/test/nuclei-templates/workflows/", "/Users/test/nuclei-templates/cves/2020/cve-2020-5432.yaml", "/Users/test/nuclei-templates/workflows/test-workflow.yaml", "/Users/test/nuclei-templates/cves/"}
 

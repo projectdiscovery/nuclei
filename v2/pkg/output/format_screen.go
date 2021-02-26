@@ -7,7 +7,7 @@ import (
 )
 
 // formatScreen formats the output for showing on screen.
-func (w *StandardWriter) formatScreen(output *ResultEvent) ([]byte, error) {
+func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 	builder := &bytes.Buffer{}
 
 	if !w.noMetadata {
@@ -63,5 +63,5 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) ([]byte, error) {
 		}
 		builder.WriteString("]")
 	}
-	return builder.Bytes(), nil
+	return builder.Bytes()
 }

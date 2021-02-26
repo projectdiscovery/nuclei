@@ -34,7 +34,7 @@ func ToString(data interface{}) string {
 	case uint:
 		return strconv.FormatUint(uint64(s), 10)
 	case uint64:
-		return strconv.FormatUint(uint64(s), 10)
+		return strconv.FormatUint(s, 10)
 	case uint32:
 		return strconv.FormatUint(uint64(s), 10)
 	case uint16:

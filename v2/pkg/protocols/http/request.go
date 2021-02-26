@@ -26,7 +26,7 @@ import (
 const defaultMaxWorkers = 150
 
 // executeRaceRequest executes race condition request for a URL
-func (r *Request) executeRaceRequest(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := r.newGenerator()
 
 	maxWorkers := r.RaceNumberRequests
@@ -42,7 +42,7 @@ func (r *Request) executeRaceRequest(reqURL string, dynamicValues, previous outp
 	for i := 0; i < r.RaceNumberRequests; i++ {
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -79,7 +79,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			defer swg.Done()
 
 			r.options.RateLimiter.Take()
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -138,7 +138,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, dynamicValues, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -160,7 +160,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 	// verify if a basic race condition was requested
 	if r.Race && r.RaceNumberRequests > 0 {
-		return r.executeRaceRequest(reqURL, dynamicValues, previous, callback)
+		return r.executeRaceRequest(reqURL, previous, callback)
 	}
 
 	// verify if parallel elaboration was requested
@@ -183,7 +183,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 		var gotOutput bool
 		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotOutput = true
@@ -206,8 +206,8 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 const drainReqSize = int64(8 * 1024)
 
-// executeRequest executes the actual generated request and returns error if occured
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynamicvalues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+// executeRequest executes the actual generated request and returns error if occurred
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	r.setCustomHeaders(request)
 
 	var (
@@ -235,27 +235,26 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	timeStart := time.Now()
 	if request.original.Pipeline {
 		formedURL = request.rawRequest.FullURL
-		if parsed, err := url.Parse(formedURL); err == nil {
-			hostname = parsed.Hostname()
+		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+			hostname = parsed.Host
 		}
 		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
 	} else if request.original.Unsafe && request.rawRequest != nil {
 		formedURL = request.rawRequest.FullURL
-		if parsed, err := url.Parse(formedURL); err == nil {
-			hostname = parsed.Hostname()
+		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+			hostname = parsed.Host
 		}
 		options := request.original.rawhttpClient.Options
 		options.FollowRedirects = r.Redirects
-		options.CustomRawBytes = []byte(request.rawRequest.UnsafeRawBytes)
+		options.CustomRawBytes = request.rawRequest.UnsafeRawBytes
 		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
 	} else {
-		hostname = request.request.URL.Hostname()
+		hostname = request.request.URL.Host
 		formedURL = request.request.URL.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if r.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromcache = true
-			// nolint:bodyclose // false positive the response is generated at runtime
 			resp, err = r.options.ProjectFile.Get(dumpedRequest)
 			if err != nil {
 				fromcache = false
@@ -278,6 +277,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 		r.options.Progress.DecrementRequests(1)
 		return err
 	}
+	defer func() {
+		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		resp.Body.Close()
+	}()
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
 	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
@@ -286,8 +289,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 
 	dumpedResponseHeaders, err := httputil.DumpResponse(resp, false)
 	if err != nil {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
-		resp.Body.Close()
 		return errors.Wrap(err, "could not dump http response")
 	}
 
@@ -299,8 +300,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	}
 	data, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
-		resp.Body.Close()
 		return errors.Wrap(err, "could not read http body")
 	}
 	resp.Body.Close()
@@ -363,8 +362,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, dynam
 	callback(event)
 	return nil
 }
-
-const two = 2
 
 // setCustomHeaders sets the custom headers for generated request
 func (r *Request) setCustomHeaders(req *generatedRequest) {

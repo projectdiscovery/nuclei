@@ -41,7 +41,7 @@ func httpDebugRequestDump(r *http.Request) {
 
 type httpGetHeaders struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpGetHeaders) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -65,7 +65,7 @@ func (h *httpGetHeaders) Execute(filePath string) error {
 
 type httpGetQueryString struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpGetQueryString) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -89,12 +89,12 @@ func (h *httpGetQueryString) Execute(filePath string) error {
 
 type httpGetRedirects struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpGetRedirects) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
-		http.Redirect(w, r, "/redirected", 302)
+		http.Redirect(w, r, "/redirected", http.StatusFound)
 	}))
 	router.GET("/redirected", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
@@ -115,7 +115,7 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 
 type httpGet struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -137,7 +137,7 @@ func (h *httpGet) Execute(filePath string) error {
 
 type httpPostBody struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpPostBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -170,7 +170,7 @@ func (h *httpPostBody) Execute(filePath string) error {
 
 type httpPostJSONBody struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpPostJSONBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -209,7 +209,7 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 
 type httpPostMultipartBody struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpPostMultipartBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -252,7 +252,7 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 
 type httpRawDynamicExtractor struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -291,7 +291,7 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 
 type httpRawGetQuery struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawGetQuery) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -320,7 +320,7 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 
 type httpRawGet struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawGet) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -348,7 +348,7 @@ func (h *httpRawGet) Execute(filePath string) error {
 
 type httpRawPayload struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawPayload) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -384,7 +384,7 @@ func (h *httpRawPayload) Execute(filePath string) error {
 
 type httpRawPostBody struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawPostBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -417,7 +417,7 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 
 type httpRawCookieReuse struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawCookieReuse) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -466,14 +466,14 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 
 type httpRawUnsafeRequest struct{}
 
-// Executes executes a test case and returns an error if occured
+// Executes executes a test case and returns an error if occurred
 func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	var routerErr error
 
 	ts := testutils.NewTCPServer(func(conn net.Conn) {
 		defer conn.Close()
 
-		conn.Write([]byte("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 40\r\nContent-Type: text/plain; charset=utf-8\r\nDate: Thu, 25 Feb 2021 17:17:28 GMT\r\n\r\nThis is test-raw-unsafe request matcher.\r\n"))
+		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 40\r\nContent-Type: text/plain; charset=utf-8\r\nDate: Thu, 25 Feb 2021 17:17:28 GMT\r\n\r\nThis is test-raw-unsafe request matcher.\r\n"))
 	})
 	defer ts.Close()
 

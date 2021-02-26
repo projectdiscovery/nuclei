@@ -2,7 +2,7 @@ package protocols
 
 import (
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -44,8 +44,8 @@ type ExecuterOptions struct {
 	Progress *progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter ratelimit.Limiter
-	// Catalogue is a template catalogue implementation for nuclei
-	Catalogue *catalogue.Catalogue
+	// Catalog is a template catalog implementation for nuclei
+	Catalog *catalog.Catalog
 	// ProjectFile is the project file for nuclei
 	ProjectFile *projectfile.ProjectFile
 	// Browser is a browser engine for running headless templates

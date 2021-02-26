@@ -69,9 +69,9 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			address = strings.TrimPrefix(address, "tls://")
 		}
 		if strings.Contains(address, ":") {
-			addressHost, addressPort, err := net.SplitHostPort(address)
-			if err != nil {
-				return errors.Wrap(err, "could not parse address")
+			addressHost, addressPort, portErr := net.SplitHostPort(address)
+			if portErr != nil {
+				return errors.Wrap(portErr, "could not parse address")
 			}
 			r.addresses = append(r.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
 		} else {
@@ -83,8 +83,8 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		if input.Type != "" {
 			continue
 		}
-		if compiled, err := expressions.Evaluate(input.Data, map[string]interface{}{}); err == nil {
-			input.Data = string(compiled)
+		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
+			input.Data = compiled
 		}
 	}
 

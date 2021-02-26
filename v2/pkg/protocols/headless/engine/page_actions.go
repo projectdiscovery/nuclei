@@ -67,7 +67,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 			continue
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "error occured executing action")
+			return nil, errors.Wrap(err, "error occurred executing action")
 		}
 	}
 	return outData, nil
@@ -158,20 +158,20 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
 func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL) error {
-	url := action.GetArg("url")
-	if url == "" {
+	URL := action.GetArg("url")
+	if URL == "" {
 		return errors.New("invalid arguments provided")
 	}
-	// Handle the dynamic value substituion here.
-	url, parsed = baseURLWithTemplatePrefs(url, parsed)
+	// Handle the dynamic value substitution here.
+	URL, parsed = baseURLWithTemplatePrefs(URL, parsed)
 	values := map[string]interface{}{"Hostname": parsed.Hostname()}
-	if strings.HasSuffix(parsed.Path, "/") && strings.Contains(url, "{{BaseURL}}/") {
+	if strings.HasSuffix(parsed.Path, "/") && strings.Contains(URL, "{{BaseURL}}/") {
 		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
 	parsedString := parsed.String()
 	values["BaseURL"] = parsedString
 
-	final := fasttemplate.ExecuteStringStd(url, "{{", "}}", values)
+	final := fasttemplate.ExecuteStringStd(URL, "{{", "}}", values)
 	err := p.page.Navigate(final)
 	if err != nil {
 		return errors.Wrap(err, "could not navigate")
@@ -476,8 +476,6 @@ func selectorBy(selector string) rod.SelectorType {
 		return rod.SelectorTypeCSSSector
 	case "regex":
 		return rod.SelectorTypeRegex
-	case "text":
-		fallthrough
 	default:
 		return rod.SelectorTypeText
 	}

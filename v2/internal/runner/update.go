@@ -278,15 +278,14 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 
 	// If we don't find a previous file in new download and it hasn't been
 	// changed on the disk, delete it.
-	if previousChecksum != nil {
-		for k, v := range previousChecksum {
-			_, ok := checksums[k]
-			if !ok && v[0] == v[1] {
-				os.Remove(k)
-				deletions = append(deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
-			}
+	for k, v := range previousChecksum {
+		_, ok := checksums[k]
+		if !ok && v[0] == v[1] {
+			os.Remove(k)
+			deletions = append(deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
 		}
 	}
+
 	r.printUpdateChangelog(additions, modifications, deletions, version, totalCount)
 	return writeTemplatesChecksum(checksumFile, checksums)
 }
@@ -342,10 +341,10 @@ func writeTemplatesChecksum(file string, checksum map[string]string) error {
 	defer f.Close()
 
 	for k, v := range checksum {
-		f.WriteString(k)
-		f.WriteString(",")
-		f.WriteString(v)
-		f.WriteString("\n")
+		_, _ = f.WriteString(k)
+		_, _ = f.WriteString(",")
+		_, _ = f.WriteString(v)
+		_, _ = f.WriteString("\n")
 	}
 	return nil
 }

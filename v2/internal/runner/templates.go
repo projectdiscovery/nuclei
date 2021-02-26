@@ -14,13 +14,12 @@ import (
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
-func (r *Runner) getParsedTemplatesFor(templatePaths []string, severities []string) (map[string]*templates.Template, int) {
-	workflowCount := 0
+func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string) (parsedTemplates map[string]*templates.Template, workflowCount int) {
 	filterBySeverity := len(severities) > 0
 
 	gologger.Info().Msgf("Loading templates...")
 
-	parsedTemplates := make(map[string]*templates.Template)
+	parsedTemplates = make(map[string]*templates.Template)
 	for _, match := range templatePaths {
 		t, err := r.parseTemplateFile(match)
 		if err != nil {
@@ -50,7 +49,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 		Output:       r.output,
 		Options:      r.options,
 		Progress:     r.progress,
-		Catalogue:    r.catalogue,
+		Catalog:      r.catalog,
 		IssuesClient: r.issuesClient,
 		RateLimiter:  r.ratelimiter,
 		ProjectFile:  r.projectFile,
@@ -142,21 +141,4 @@ func directoryWalker(fsPath string, callback func(fsPath string, d *godirwalk.Di
 	}
 
 	return nil
-}
-
-func isFilePath(filePath string) (bool, error) {
-	info, err := os.Stat(filePath)
-	if err != nil {
-		return false, err
-	}
-
-	return info.Mode().IsRegular(), nil
-}
-
-func isNewPath(filePath string, pathMap map[string]bool) bool {
-	if _, already := pathMap[filePath]; already {
-		gologger.Warning().Msgf("Skipping already specified path '%s'", filePath)
-		return false
-	}
-	return true
 }

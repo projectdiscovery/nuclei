@@ -1,4 +1,4 @@
-package catalogue
+package catalog
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 const nucleiIgnoreFile = ".nuclei-ignore"
 
 // readNucleiIgnoreFile reads the nuclei ignore file marking it in map
-func (c *Catalogue) readNucleiIgnoreFile() {
+func (c *Catalog) readNucleiIgnoreFile() {
 	file, err := os.Open(path.Join(c.templatesDirectory, nucleiIgnoreFile))
 	if err != nil {
 		return
@@ -33,7 +33,7 @@ func (c *Catalogue) readNucleiIgnoreFile() {
 }
 
 // checkIfInNucleiIgnore checks if a path falls under nuclei-ignore rules.
-func (c *Catalogue) checkIfInNucleiIgnore(item string) bool {
+func (c *Catalog) checkIfInNucleiIgnore(item string) bool {
 	if c.templatesDirectory == "" {
 		return false
 	}
@@ -54,7 +54,7 @@ func (c *Catalogue) checkIfInNucleiIgnore(item string) bool {
 }
 
 // ignoreFilesWithExcludes ignores results with exclude paths
-func (c *Catalogue) ignoreFilesWithExcludes(results, excluded []string) []string {
+func (c *Catalog) ignoreFilesWithExcludes(results, excluded []string) []string {
 	var templates []string
 
 	for _, result := range results {

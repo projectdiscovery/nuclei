@@ -3,7 +3,7 @@ package testutils
 import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -13,7 +13,7 @@ import (
 
 // Init initializes the protocols and their configurations
 func Init(options *types.Options) {
-	protocolinit.Init(options)
+	_ = protocolinit.Init(options)
 }
 
 // DefaultOptions is the default options structure for nuclei during mocking.
@@ -102,18 +102,18 @@ type TemplateInfo struct {
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progress, _ := progress.NewProgress(0, false, false, 0)
+	progressImpl, _ := progress.NewProgress(0, false, false, 0)
 	executerOpts := &protocols.ExecuterOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
 		Output:       NewMockOutputWriter(),
 		Options:      options,
-		Progress:     progress,
+		Progress:     progressImpl,
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalogue:    catalogue.New(options.TemplatesDirectory),
+		Catalog:      catalog.New(options.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(options.RateLimit),
 	}
 	return executerOpts

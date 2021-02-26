@@ -21,7 +21,7 @@ func TestFindResponses(t *testing.T) {
 		ID:   templateID,
 		Info: map[string]interface{}{"severity": "low", "name": "test"},
 	})
-	executerOpts.Operators = []*operators.Operators{&operators.Operators{}}
+	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 

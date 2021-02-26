@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -16,18 +16,18 @@ import (
 )
 
 func TestHTTPRequestsCluster(t *testing.T) {
-	catalogue := catalogue.New("/Users/ice3man/nuclei-templates")
-	templatesList, err := catalogue.GetTemplatePath("/Users/ice3man/nuclei-templates")
+	catalogImpl := catalog.New("/Users/ice3man/nuclei-templates")
+	templatesList, err := catalogImpl.GetTemplatePath("/Users/ice3man/nuclei-templates")
 	require.Nil(t, err, "could not get templates")
 
-	protocolinit.Init(&types.Options{})
+	_ = protocolinit.Init(&types.Options{})
 	list := make(map[string]*templates.Template)
 	for _, template := range templatesList {
 		executerOpts := protocols.ExecuterOptions{
 			Output:       &mockOutput{},
 			Options:      &types.Options{},
 			Progress:     nil,
-			Catalogue:    catalogue,
+			Catalog:      catalogImpl,
 			RateLimiter:  nil,
 			IssuesClient: nil,
 			ProjectFile:  nil,
@@ -45,8 +45,8 @@ func TestHTTPRequestsCluster(t *testing.T) {
 
 	totalClusterCount := 0
 	totalRequestsSentNew := 0
-	new := Cluster(list)
-	for i, cluster := range new {
+	newRequests := Cluster(list)
+	for i, cluster := range newRequests {
 		if len(cluster) == 1 {
 			continue
 		}

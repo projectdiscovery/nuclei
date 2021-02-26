@@ -31,7 +31,7 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
-	launcher := launcher.New().
+	chromeLauncher := launcher.New().
 		Leakless(false).
 		Set("disable-gpu", "true").
 		Set("ignore-certificate-errors", "true").
@@ -47,21 +47,21 @@ func New(options *types.Options) (*Browser, error) {
 		UserDataDir(dataStore)
 
 	if options.ShowBrowser {
-		launcher = launcher.Headless(false)
+		chromeLauncher = chromeLauncher.Headless(false)
 	} else {
-		launcher = launcher.Headless(true)
+		chromeLauncher = chromeLauncher.Headless(true)
 	}
 	if options.ProxyURL != "" {
-		launcher = launcher.Proxy(options.ProxyURL)
+		chromeLauncher = chromeLauncher.Proxy(options.ProxyURL)
 	}
-	launcherURL, err := launcher.Launch()
+	launcherURL, err := chromeLauncher.Launch()
 	if err != nil {
 		return nil, err
 	}
 
 	browser := rod.New().ControlURL(launcherURL)
-	if err := browser.Connect(); err != nil {
-		return nil, err
+	if browserErr := browser.Connect(); browserErr != nil {
+		return nil, browserErr
 	}
 	customAgent := ""
 	for _, option := range options.CustomHeaders {
@@ -101,8 +101,8 @@ func (b *Browser) Close() {
 // killChromeProcesses any and all new chrome processes started after
 // headless process launch.
 func (b *Browser) killChromeProcesses() {
-	new := b.findChromeProcesses()
-	for id := range new {
+	newProcesses := b.findChromeProcesses()
+	for id := range newProcesses {
 		if _, ok := b.previouspids[id]; ok {
 			continue
 		}

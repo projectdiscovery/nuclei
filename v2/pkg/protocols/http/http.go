@@ -116,8 +116,8 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
 		compiled := &r.Operators
-		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
+		if compileErr := compiled.Compile(); compileErr != nil {
+			return errors.Wrap(compileErr, "could not compile operators")
 		}
 		r.CompiledOperators = compiled
 	}
@@ -131,16 +131,15 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 
 		// Resolve payload paths if they are files.
 		for name, payload := range r.Payloads {
-			switch pt := payload.(type) {
-			case string:
-				final, err := options.Catalogue.ResolvePath(pt, options.TemplatePath)
-				if err != nil {
-					return errors.Wrap(err, "could not read payload file")
+			payloadStr, ok := payload.(string)
+			if ok {
+				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
+				if resolveErr != nil {
+					return errors.Wrap(resolveErr, "could not read payload file")
 				}
 				r.Payloads[name] = final
 			}
 		}
-
 		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
@@ -160,7 +159,7 @@ func (r *Request) Requests() int {
 	if len(r.Raw) > 0 {
 		requests := len(r.Raw)
 		if requests == 1 && r.RaceNumberRequests != 0 {
-			requests = requests * r.RaceNumberRequests
+			requests *= r.RaceNumberRequests
 		}
 		return requests
 	}

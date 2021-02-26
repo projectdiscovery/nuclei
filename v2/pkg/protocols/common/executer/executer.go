@@ -48,6 +48,8 @@ func (e *Executer) Execute(input string) (bool, error) {
 	dynamicValues := make(map[string]interface{})
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
+		req := req
+
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
@@ -70,7 +72,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 					}
 				}
 				results = true
-				e.options.Output.Write(result)
+				_ = e.options.Output.Write(result)
 				e.options.Progress.IncrementMatched()
 			}
 		})
@@ -87,6 +89,8 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 	previous := make(map[string]interface{})
 
 	for _, req := range e.requests {
+		req := req
+
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {

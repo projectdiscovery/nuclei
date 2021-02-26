@@ -1,4 +1,4 @@
-package catalogue
+package catalog
 
 import (
 	"os"
@@ -12,7 +12,7 @@ import (
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
-func (c *Catalogue) GetTemplatesPath(definitions []string) []string {
+func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
@@ -38,7 +38,7 @@ func (c *Catalogue) GetTemplatesPath(definitions []string) []string {
 // GetTemplatePath parses the specified input template path and returns a compiled
 // list of finished absolute paths to the templates evaluating any glob patterns
 // or folders provided as in.
-func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
+func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 
 	absPath, err := c.convertPathToAbsolute(target)
@@ -48,9 +48,9 @@ func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 
 	// Template input includes a wildcard
 	if strings.Contains(absPath, "*") {
-		matches, err := c.findGlobPathMatches(absPath, processed)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not find glob matches")
+		matches, findErr := c.findGlobPathMatches(absPath, processed)
+		if findErr != nil {
+			return nil, errors.Wrap(findErr, "could not find glob matches")
 		}
 		if len(matches) == 0 {
 			return nil, errors.Errorf("no templates found for path")
@@ -84,7 +84,7 @@ func (c *Catalogue) GetTemplatePath(target string) ([]string, error) {
 
 // convertPathToAbsolute resolves the paths provided to absolute paths
 // before doing any operations on them regardless of them being blob, folders, files, etc.
-func (c *Catalogue) convertPathToAbsolute(t string) (string, error) {
+func (c *Catalog) convertPathToAbsolute(t string) (string, error) {
 	if strings.Contains(t, "*") {
 		file := path.Base(t)
 		absPath, err := c.ResolvePath(path.Dir(t), "")
@@ -97,7 +97,7 @@ func (c *Catalogue) convertPathToAbsolute(t string) (string, error) {
 }
 
 // findGlobPathMatches returns the matched files from a glob path
-func (c *Catalogue) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
+func (c *Catalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	matches, err := filepath.Glob(absPath)
 	if err != nil {
 		return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
@@ -114,7 +114,7 @@ func (c *Catalogue) findGlobPathMatches(absPath string, processed map[string]str
 
 // findFileMatches finds if a path is an absolute file. If the path
 // is a file, it returns true otherwise false with no errors.
-func (c *Catalogue) findFileMatches(absPath string, processed map[string]struct{}) (string, bool, error) {
+func (c *Catalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
 	info, err := os.Stat(absPath)
 	if err != nil {
 		return "", false, err
@@ -130,7 +130,7 @@ func (c *Catalogue) findFileMatches(absPath string, processed map[string]struct{
 }
 
 // findDirectoryMatches finds matches for templates from a directory
-func (c *Catalogue) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
+func (c *Catalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	var results []string
 	err := godirwalk.Walk(absPath, &godirwalk.Options{
 		Unsorted: true,

@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalogue"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -35,7 +35,7 @@ type Runner struct {
 	templatesConfig *nucleiConfig
 	options         *types.Options
 	projectFile     *projectfile.ProjectFile
-	catalogue       *catalogue.Catalogue
+	catalog         *catalog.Catalog
 	progress        *progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *issues.Client
@@ -63,7 +63,7 @@ func New(options *types.Options) (*Runner, error) {
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
 	}
-	runner.catalogue = catalogue.New(runner.options.TemplatesDirectory)
+	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 
 	if options.ReportingConfig != "" {
 		if client, err := issues.New(options.ReportingConfig, options.ReportingDB); err != nil {
@@ -147,11 +147,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	output, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create output file '%s': %s\n", options.Output, err)
 	}
-	runner.output = output
+	runner.output = outputWriter
 
 	// Creates the progress tracking object
 	var progressErr error
@@ -200,8 +200,8 @@ func (r *Runner) RunEnumeration() {
 	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
-	includedTemplates := r.catalogue.GetTemplatesPath(r.options.Templates)
-	excludedTemplates := r.catalogue.GetTemplatesPath(r.options.ExcludedTemplates)
+	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates)
+	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates
 	allTemplates := includedTemplates
 
@@ -245,7 +245,7 @@ func (r *Runner) RunEnumeration() {
 				Output:       r.output,
 				Options:      r.options,
 				Progress:     r.progress,
-				Catalogue:    r.catalogue,
+				Catalog:      r.catalog,
 				RateLimiter:  r.ratelimiter,
 				IssuesClient: r.issuesClient,
 				Browser:      r.browser,
@@ -261,9 +261,7 @@ func (r *Runner) RunEnumeration() {
 			})
 			clusterCount += len(cluster)
 		} else {
-			for _, item := range cluster {
-				finalTemplates = append(finalTemplates, item)
-			}
+			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
 

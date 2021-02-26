@@ -76,7 +76,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 							gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 						}
 					}
-					e.options.Output.Write(r)
+					_ = e.options.Output.Write(r)
 					e.options.Progress.IncrementMatched()
 				}
 			}

@@ -1,4 +1,4 @@
-package catalogue
+package catalog
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 // It checks if the filename is an absolute path, looks in the current directory
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
-func (c *Catalogue) ResolvePath(templateName, second string) (string, error) {
+func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 	if strings.HasPrefix(templateName, "/") || strings.Contains(templateName, ":\\") {
 		return templateName, nil
 	}
