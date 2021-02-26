@@ -8,12 +8,14 @@ import (
 )
 
 // RunNucleiAndGetResults returns a list of results for a template
-func RunNucleiAndGetResults(template, url string, debug bool) ([]string, error) {
+func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei", "-t", template, "-target", url)
 	if debug {
 		cmd = exec.Command("./nuclei", "-t", template, "-target", url, "-debug")
 		cmd.Stderr = os.Stderr
 	}
+	cmd.Args = append(cmd.Args, extra...)
+
 	data, err := cmd.Output()
 	if err != nil {
 		return nil, err

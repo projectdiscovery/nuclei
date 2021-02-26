@@ -106,7 +106,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		}
 
 		if input.Read > 0 {
-			buffer := make([]byte, r.ReadSize)
+			buffer := make([]byte, input.Read)
 			n, _ := conn.Read(buffer)
 			responseBuilder.Write(buffer[:n])
 			if input.Name != "" {

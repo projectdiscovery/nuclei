@@ -9,3 +9,4 @@ cp integration-test ../../../integration_tests/integration-test
 cd ../../../integration_tests
 ./integration-test
 # Build and run nuclei.
+rm -f resolvers.txt
