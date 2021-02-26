@@ -69,7 +69,11 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	}
 	poolMutex.RUnlock()
 
-	client := retryabledns.New(defaultResolvers, configuration.Retries)
+	resolvers := defaultResolvers
+	if options.ResolversFile != "" {
+		resolvers = options.InternalResolversList
+	}
+	client := retryabledns.New(resolvers, configuration.Retries)
 
 	poolMutex.Lock()
 	clientPool[hash] = client

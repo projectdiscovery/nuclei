@@ -1,0 +1,18 @@
+id: basic-network-request
+
+info:
+  name: Basic Network Request
+  author: pdteam
+  severity: info
+
+network:
+  - host: 
+      - "{{Hostname}}"
+    inputs:
+      - data: "PING\r\n"
+    read-size: 4
+    matchers:
+      - type: word
+        part: data
+        words:
+          - "PONG"
