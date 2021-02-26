@@ -26,11 +26,11 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
-			return "", err
+			continue
 		}
 		result, err := compiled.Evaluate(base)
 		if err != nil {
-			return "", err
+			continue
 		}
 		dynamicValues[expr] = result // convert x(<payload_name>) => <x-representation>
 	}
