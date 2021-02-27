@@ -69,8 +69,8 @@ func (r *Request) responseToDSLMap(req, resp, raw, host, matched string) output.
 	data["host"] = host
 	data["matched"] = matched
 	data["request"] = req
-	data["data"] = resp
-	data["raw"] = raw
+	data["data"] = resp // Data is the last bytes read
+	data["raw"] = raw   // Raw is the full transaction data for network
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
 	return data
