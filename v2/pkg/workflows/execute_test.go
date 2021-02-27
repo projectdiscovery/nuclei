@@ -56,6 +56,8 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 		{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				firstInput = input
+			}, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*WorkflowTemplate{{Executers: []*ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {

@@ -30,13 +30,26 @@ func (w *Workflow) RunWorkflow(input string) bool {
 // in a recursive manner running all subtemplates and matchers.
 func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup) error {
 	var firstMatched bool
-
+	var err error
 	var mainErr error
+
 	if len(template.Matchers) == 0 {
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
-			matched, err := executer.Executer.Execute(input)
+			// Don't print results with subtemplates, only print results on template.
+			if len(template.Subtemplates) > 0 {
+				err = executer.Executer.ExecuteWithResults(input, func(result *output.InternalWrappedEvent) {
+					if result.OperatorsResult == nil {
+						return
+					}
+					if len(result.Results) > 0 {
+						firstMatched = true
+					}
+				})
+			} else {
+				firstMatched, err = executer.Executer.Execute(input)
+			}
 			if err != nil {
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -45,13 +58,11 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 				}
 				continue
 			}
-			if matched {
-				firstMatched = matched
-				results.CAS(false, matched)
-			}
 		}
 	}
-
+	if len(template.Subtemplates) == 0 {
+		results.CAS(false, firstMatched)
+	}
 	if len(template.Matchers) > 0 {
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
@@ -95,7 +106,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 		for _, subtemplate := range template.Subtemplates {
 			swg.Add()
 
-			func(template *WorkflowTemplate) {
+			go func(template *WorkflowTemplate) {
 				err := w.runWorkflowStep(template, input, results, swg)
 				if err != nil {
 					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)

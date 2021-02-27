@@ -71,7 +71,7 @@ func (r *Runner) updateTemplates() error {
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
-		err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
+		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig.CurrentVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
-		err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
+		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
@@ -181,48 +181,71 @@ func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.Repositor
 }
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
-func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadURL string) error {
+func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadURL string) (*templateUpdateResults, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create HTTP request to %s: %s", downloadURL, err)
+		return nil, fmt.Errorf("failed to create HTTP request to %s: %s", downloadURL, err)
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to download a release file from %s: %s", downloadURL, err)
+		return nil, fmt.Errorf("failed to download a release file from %s: %s", downloadURL, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download a release file from %s: Not successful status %d", downloadURL, res.StatusCode)
+		return nil, fmt.Errorf("failed to download a release file from %s: Not successful status %d", downloadURL, res.StatusCode)
 	}
 
 	buf, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to create buffer for zip file: %s", err)
+		return nil, fmt.Errorf("failed to create buffer for zip file: %s", err)
 	}
 
 	reader := bytes.NewReader(buf)
 	z, err := zip.NewReader(reader, reader.Size())
 	if err != nil {
-		return fmt.Errorf("failed to uncompress zip file: %s", err)
+		return nil, fmt.Errorf("failed to uncompress zip file: %s", err)
 	}
 
 	// Create the template folder if it doesn't exists
 	err = os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("failed to create template base folder: %s", err)
+		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
-	totalCount := 0
-	additions, deletions, modifications := []string{}, []string{}, []string{}
+	results, err := r.compareAndWriteTemplates(z)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write templates: %s", err)
+	}
+
+	r.printUpdateChangelog(results, version)
+	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	err = writeTemplatesChecksum(checksumFile, results.checksums)
+	return results, err
+}
+
+type templateUpdateResults struct {
+	additions     []string
+	deletions     []string
+	modifications []string
+	totalCount    int
+	checksums     map[string]string
+}
+
+// compareAndWriteTemplates compares and returns the stats of a template
+// update operations.
+func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults, error) {
+	results := &templateUpdateResults{
+		checksums: make(map[string]string),
+	}
+
 	// We use file-checksums that are md5 hashes to store the list of files->hashes
 	// that have been downloaded previously.
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
-	previousChecksum := readPreviousTemplatesChecksum(checksumFile)
-	checksums := make(map[string]string)
+	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
 		if name == "" {
@@ -234,11 +257,11 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		if (!strings.EqualFold(name, ".nuclei-ignore") && strings.HasPrefix(name, ".")) || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
 		}
-		totalCount++
+		results.totalCount++
 		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
-		err = os.MkdirAll(templateDirectory, os.ModePerm)
+		err := os.MkdirAll(templateDirectory, os.ModePerm)
 		if err != nil {
-			return fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
+			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
 		templatePath := path.Join(templateDirectory, name)
@@ -250,13 +273,13 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			f.Close()
-			return fmt.Errorf("could not create uncompressed file: %s", err)
+			return nil, fmt.Errorf("could not create uncompressed file: %s", err)
 		}
 
 		reader, err := file.Open()
 		if err != nil {
 			f.Close()
-			return fmt.Errorf("could not open archive to extract file: %s", err)
+			return nil, fmt.Errorf("could not open archive to extract file: %s", err)
 		}
 		hasher := md5.New()
 
@@ -264,40 +287,41 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		_, err = io.Copy(f, io.TeeReader(reader, hasher))
 		if err != nil {
 			f.Close()
-			return fmt.Errorf("could not write template file: %s", err)
+			return nil, fmt.Errorf("could not write template file: %s", err)
 		}
 		f.Close()
 
+		oldChecksum, checksumOK := previousChecksum[templatePath]
+
+		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
-			additions = append(additions, path.Join(finalPath, name))
-		} else {
-			modifications = append(modifications, path.Join(finalPath, name))
+			results.additions = append(results.additions, path.Join(finalPath, name))
+		} else if checksumOK && oldChecksum[0] != checksum {
+			results.modifications = append(results.modifications, path.Join(finalPath, name))
 		}
-		checksums[templatePath] = hex.EncodeToString(hasher.Sum(nil))
+		results.checksums[templatePath] = checksum
 	}
 
 	// If we don't find a previous file in new download and it hasn't been
 	// changed on the disk, delete it.
 	for k, v := range previousChecksum {
-		_, ok := checksums[k]
+		_, ok := results.checksums[k]
 		if !ok && v[0] == v[1] {
 			os.Remove(k)
-			deletions = append(deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
 		}
 	}
-
-	r.printUpdateChangelog(additions, modifications, deletions, version, totalCount)
-	return writeTemplatesChecksum(checksumFile, checksums)
+	return results, nil
 }
 
 // readPreviousTemplatesChecksum reads the previous checksum file from the disk.
 //
 // It reads two checksums, the first checksum is what we expect and the second is
 // the actual checksum of the file on disk currently.
-func readPreviousTemplatesChecksum(file string) map[string][2]string {
+func readPreviousTemplatesChecksum(file string) (map[string][2]string, error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
@@ -316,20 +340,19 @@ func readPreviousTemplatesChecksum(file string) map[string][2]string {
 
 		f, err := os.Open(parts[0])
 		if err != nil {
-			continue
+			return nil, err
 		}
 
 		hasher := md5.New()
 		if _, err := io.Copy(hasher, f); err != nil {
-			f.Close()
-			continue
+			return nil, err
 		}
 		f.Close()
 
 		values[1] = hex.EncodeToString(hasher.Sum(nil))
 		checksum[parts[0]] = values
 	}
-	return checksum
+	return checksum, nil
 }
 
 // writeTemplatesChecksum writes the nuclei-templates checksum data to disk.
@@ -340,44 +363,36 @@ func writeTemplatesChecksum(file string, checksum map[string]string) error {
 	}
 	defer f.Close()
 
+	builder := &strings.Builder{}
 	for k, v := range checksum {
-		_, _ = f.WriteString(k)
-		_, _ = f.WriteString(",")
-		_, _ = f.WriteString(v)
-		_, _ = f.WriteString("\n")
+		builder.WriteString(k)
+		builder.WriteString(",")
+		builder.WriteString(v)
+		builder.WriteString("\n")
+
+		if _, checksumErr := f.WriteString(builder.String()); checksumErr != nil {
+			return err
+		}
+		builder.Reset()
 	}
 	return nil
 }
 
-func (r *Runner) printUpdateChangelog(additions, modifications, deletions []string, version string, totalCount int) {
-	if len(additions) > 0 {
-		gologger.Print().Msgf("\nNew additions: \n\n")
+func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version string) {
+	if len(results.additions) > 0 {
+		gologger.Print().Msgf("\nNewly added templates: \n\n")
 
-		for _, addition := range additions {
+		for _, addition := range results.additions {
 			gologger.Print().Msgf("%s", addition)
-		}
-	}
-	if len(modifications) > 0 {
-		gologger.Print().Msgf("\nModifications: \n\n")
-
-		for _, modification := range modifications {
-			gologger.Print().Msgf("%s", modification)
-		}
-	}
-	if len(deletions) > 0 {
-		gologger.Print().Msgf("\nDeletions: \n\n")
-
-		for _, deletion := range deletions {
-			gologger.Print().Msgf("%s", deletion)
 		}
 	}
 
 	gologger.Print().Msgf("\nNuclei Templates v%s Changelog\n", version)
 	data := [][]string{
-		{strconv.Itoa(totalCount), strconv.Itoa(len(additions)), strconv.Itoa(len(modifications)), strconv.Itoa(len(deletions))},
+		{strconv.Itoa(results.totalCount), strconv.Itoa(len(results.additions)), strconv.Itoa(len(results.deletions))},
 	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Total", "New", "Modifications", "Deletions"})
+	table.SetHeader([]string{"Total", "Added", "Removed"})
 	for _, v := range data {
 		table.Append(v)
 	}
