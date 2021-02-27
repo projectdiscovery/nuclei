@@ -41,7 +41,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		},
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(exampleBody))
+		_, _ = w.Write([]byte(exampleBody))
 	}))
 	defer ts.Close()
 
