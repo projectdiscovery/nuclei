@@ -17,8 +17,7 @@ type dnsBasic struct{}
 func (h *dnsBasic) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	msg := dns.Msg{}
 	msg.SetReply(r)
-	switch r.Question[0].Qtype {
-	case dns.TypeCNAME:
+	if r.Question[0].Qtype == dns.TypeCNAME {
 		msg.Authoritative = true
 		domain := msg.Question[0].Name
 		if domain == "test.nuclei." {
@@ -28,7 +27,7 @@ func (h *dnsBasic) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			})
 		}
 	}
-	w.WriteMsg(&msg)
+	_ = w.WriteMsg(&msg)
 }
 
 // Executes executes a test case and returns an error if occurred
