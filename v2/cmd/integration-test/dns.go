@@ -34,7 +34,7 @@ func (h *dnsBasic) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 func (h *dnsBasic) Execute(filePath string) error {
 	var routerErr error
 
-	srv := &dns.Server{Addr: ":" + strconv.Itoa(54), Net: "udp"}
+	srv := &dns.Server{Addr: "127.0.0.1:" + strconv.Itoa(54), Net: "udp"}
 	srv.Handler = h
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
