@@ -1,0 +1,15 @@
+id: basic-get-nomatch
+
+info:
+  name: Basic GET Request NoMatch
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "Random"

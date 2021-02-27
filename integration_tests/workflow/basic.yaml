@@ -6,5 +6,5 @@ info:
   severity: info
 
 workflows:
-  - template: match-1.yaml
-  - template: match-2.yaml
+  - template: workflow/match-1.yaml
+  - template: workflow/match-2.yaml

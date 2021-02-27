@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -118,3 +119,9 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 	}
 	return executerOpts
 }
+
+// NoopWriter is a NooP gologger writer.
+type NoopWriter struct{}
+
+// Write writes the data to an output writer.
+func (n *NoopWriter) Write(data []byte, level levels.Level) {}

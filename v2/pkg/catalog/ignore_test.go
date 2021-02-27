@@ -5,18 +5,12 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
 
-type noopWriter struct{}
-
-// Write writes the data to an output writer.
-func (n *noopWriter) Write(data []byte, level levels.Level) {}
-
 func TestIgnoreFilesIgnore(t *testing.T) {
-	writer := &noopWriter{}
-	gologger.DefaultLogger.SetWriter(writer)
+	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
 	c := &Catalog{
 		ignoreFiles:        []string{"workflows/", "cves/2020/cve-2020-5432.yaml"},
