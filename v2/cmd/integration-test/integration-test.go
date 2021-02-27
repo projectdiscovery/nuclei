@@ -35,6 +35,7 @@ func main() {
 				err := test.Execute(file)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, file, err)
+					os.Exit(1)
 				} else {
 					fmt.Printf("%s Test \"%s\" passed!\n", success, file)
 				}

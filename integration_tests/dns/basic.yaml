@@ -7,12 +7,11 @@ info:
 
 dns:
   - name: "{{FQDN}}"
-    type: CNAME
+    type: A
     class: inet
     recursion: true
     retries: 3
     matchers:
       - type: word
         words:
-          # The response must contains a CNAME record
-          - "IN\tCNAME"
+          - "1.1.1.1"

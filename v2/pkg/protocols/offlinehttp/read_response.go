@@ -17,7 +17,7 @@ func readResponseFromString(data string) (*http.Response, error) {
 		if lastIndex == -1 {
 			return nil, errors.New("malformed raw http response")
 		}
-		final = data // choose last http/ in case of it being later.
+		final = data[lastIndex:] // choose last http/ in case of it being later.
 	}
 	return http.ReadResponse(bufio.NewReader(strings.NewReader(final)), nil)
 }
