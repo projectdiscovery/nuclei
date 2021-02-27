@@ -1,12 +1,23 @@
 package catalog
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/stretchr/testify/require"
 )
 
+type noopWriter struct{}
+
+// Write writes the data to an output writer.
+func (n *noopWriter) Write(data []byte, level levels.Level) {}
+
 func TestIgnoreFilesIgnore(t *testing.T) {
+	writer := &noopWriter{}
+	gologger.DefaultLogger.SetWriter(writer)
+
 	c := &Catalog{
 		ignoreFiles:        []string{"workflows/", "cves/2020/cve-2020-5432.yaml"},
 		templatesDirectory: "test",
@@ -25,7 +36,7 @@ func TestIgnoreFilesIgnore(t *testing.T) {
 		{"/Users/test/nuclei-templates/cves/2020/cve-2020-5432.yaml", true},
 	}
 	for _, test := range tests {
-		require.Equal(t, test.ignore, c.checkIfInNucleiIgnore(test.path), "could not ignore file correctly")
+		require.Equal(t, test.ignore, c.checkIfInNucleiIgnore(test.path), fmt.Sprintf("could not ignore file correctly: %v", test))
 	}
 }
 

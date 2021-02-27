@@ -38,17 +38,21 @@ func (c *Catalog) checkIfInNucleiIgnore(item string) bool {
 		return false
 	}
 
+	matched := false
 	for _, paths := range c.ignoreFiles {
-		dir := path.Dir(item)
-
-		if strings.EqualFold(dir, paths) {
-			gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
-			return true
+		if !strings.HasSuffix(paths, ".yaml") {
+			if strings.HasSuffix(strings.TrimSuffix(item, "/"), strings.TrimSuffix(paths, "/")) {
+				matched = true
+				break
+			}
+		} else if strings.HasSuffix(item, paths) {
+			matched = true
+			break
 		}
-		if strings.HasSuffix(paths, ".yaml") && strings.HasSuffix(item, paths) {
-			gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
-			return true
-		}
+	}
+	if matched {
+		gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
+		return true
 	}
 	return false
 }
@@ -60,13 +64,12 @@ func (c *Catalog) ignoreFilesWithExcludes(results, excluded []string) []string {
 	for _, result := range results {
 		matched := false
 		for _, paths := range excluded {
-			dir := path.Dir(result)
-
-			if strings.EqualFold(dir, paths) {
-				matched = true
-				break
-			}
-			if strings.HasSuffix(paths, ".yaml") && strings.HasSuffix(result, paths) {
+			if !strings.HasSuffix(paths, ".yaml") {
+				if strings.HasSuffix(strings.TrimSuffix(result, "/"), strings.TrimSuffix(paths, "/")) {
+					matched = true
+					break
+				}
+			} else if strings.HasSuffix(result, paths) {
 				matched = true
 				break
 			}
