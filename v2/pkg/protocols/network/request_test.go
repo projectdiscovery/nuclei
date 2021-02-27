@@ -25,12 +25,12 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
-				Part:  "raw",
+				Part:  "data",
 				Type:  "word",
 				Words: []string{"400 - Bad Request"},
 			}},
 			Extractors: []*extractors.Extractor{{
-				Part:  "raw",
+				Part:  "data",
 				Type:  "regex",
 				Regex: []string{"<h1>.*</h1>"},
 			}},

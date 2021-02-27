@@ -31,8 +31,8 @@ func TestResponseToDSLMap(t *testing.T) {
 
 	req := "test-data\r\n"
 	resp := "resp-data\r\n"
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
-	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(req, resp, "test", "one.one.one.one", "one.one.one.one")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["data"], "could not get correct resp")
 }
 
@@ -73,7 +73,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
-			Part:     "raw",
+			Part:     "data",
 			Type:     "word",
 			Negative: true,
 			Words:    []string{"random"},
@@ -87,7 +87,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
-			Part:  "raw",
+			Part:  "data",
 			Type:  "word",
 			Words: []string{"random"},
 		}
@@ -123,7 +123,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Part:  "raw",
+			Part:  "data",
 			Type:  "regex",
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
@@ -162,12 +162,12 @@ func TestNetworkMakeResult(t *testing.T) {
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
-				Part:  "raw",
+				Part:  "data",
 				Type:  "word",
 				Words: []string{"STAT "},
 			}},
 			Extractors: []*extractors.Extractor{{
-				Part:  "raw",
+				Part:  "data",
 				Type:  "regex",
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
