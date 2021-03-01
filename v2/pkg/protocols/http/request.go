@@ -46,10 +46,12 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
+				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 			swg.Done()
 		}(request)
+		r.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
 	return requestErr
@@ -83,6 +85,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
+				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 		}(request)
@@ -142,6 +145,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
+				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 		}(request)
