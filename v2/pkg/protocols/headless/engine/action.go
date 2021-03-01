@@ -46,6 +46,10 @@ const (
 	ActionWaitEvent
 	// ActionKeyboard performs a keyboard action event on a page.
 	ActionKeyboard
+	// Action debug slows down headless and adds a sleep to each page.
+	ActionDebug
+	// ActionSleep executes a sleep for a specified duration
+	ActionSleep
 )
 
 // ActionStringToAction converts an action from string to internal representation
@@ -69,6 +73,8 @@ var ActionStringToAction = map[string]ActionType{
 	"setbody":      ActionSetBody,
 	"waitevent":    ActionWaitEvent,
 	"keyboard":     ActionKeyboard,
+	"debug":        ActionDebug,
+	"sleep":        ActionSleep,
 }
 
 // ActionToActionString converts an action from  internal representation to string
@@ -92,6 +98,8 @@ var ActionToActionString = map[ActionType]string{
 	ActionSetBody:      "setbody",
 	ActionWaitEvent:    "waitevent",
 	ActionKeyboard:     "keyboard",
+	ActionDebug:        "debug",
+	ActionSleep:        "sleep",
 }
 
 // Action is an action taken by the browser to reach a navigation

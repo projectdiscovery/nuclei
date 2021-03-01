@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestActionNavigate(t *testing.T) {
 	require.Nil(t, err, "could not parse URL")
 
 	actions := []*Action{{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: "waitload"}}
-	_, page, err := instance.Run(parsed, actions)
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
@@ -73,7 +74,7 @@ func TestActionScript(t *testing.T) {
 			{ActionType: "waitload"},
 			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
 		}
-		out, page, err := instance.Run(parsed, actions)
+		out, page, err := instance.Run(parsed, actions, 20*time.Second)
 		require.Nil(t, err, "could not run page actions")
 		defer page.Close()
 
@@ -102,7 +103,7 @@ func TestActionScript(t *testing.T) {
 			{ActionType: "waitload"},
 			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
 		}
-		out, page, err := instance.Run(parsed, actions)
+		out, page, err := instance.Run(parsed, actions, 20*time.Second)
 		require.Nil(t, err, "could not run page actions")
 		defer page.Close()
 
@@ -139,7 +140,7 @@ func TestActionClick(t *testing.T) {
 		{ActionType: "waitload"},
 		{ActionType: "click", Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
 	}
-	_, page, err := instance.Run(parsed, actions)
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
@@ -185,7 +186,7 @@ func TestActionRightClick(t *testing.T) {
 		{ActionType: "waitload"},
 		{ActionType: "rightclick", Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
 	}
-	_, page, err := instance.Run(parsed, actions)
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
@@ -223,7 +224,7 @@ func TestActionTextInput(t *testing.T) {
 		{ActionType: "waitload"},
 		{ActionType: "text", Data: map[string]string{"selector": "input", "value": "test"}},
 	}
-	_, page, err := instance.Run(parsed, actions)
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
@@ -257,7 +258,7 @@ func TestActionHeadersChange(t *testing.T) {
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: "waitload"},
 	}
-	_, page, err := instance.Run(parsed, actions)
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 

@@ -63,6 +63,10 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 			err = p.ActionSetMethod(act, outData)
 		case ActionKeyboard:
 			err = p.KeyboardAction(act, outData)
+		case ActionDebug:
+			err = p.DebugAction(act, outData)
+		case ActionSleep:
+			err = p.SleepAction(act, outData)
 		default:
 			continue
 		}
@@ -465,6 +469,27 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	default:
 		return page.Element(data["selector"])
 	}
+}
+
+// DebugAction enables debug action on a page.
+func (p *Page) DebugAction(act *Action, out map[string]string) error {
+	p.instance.browser.engine.SlowMotion(5 * time.Second)
+	p.instance.browser.engine.Trace(true)
+	return nil
+}
+
+// SleepAction sleeps on the page for a specified duration
+func (p *Page) SleepAction(act *Action, out map[string]string) error {
+	seconds := act.Data["duration"]
+	if seconds == "" {
+		seconds = "5"
+	}
+	parsed, err := strconv.Atoi(seconds)
+	if err != nil {
+		return err
+	}
+	time.Sleep(time.Duration(parsed) * time.Second)
+	return nil
 }
 
 // selectorBy returns a selector from a representation.
