@@ -3,6 +3,7 @@ package headless
 import (
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -28,7 +29,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 		r.options.Progress.DecrementRequests(1)
 		return errors.Wrap(err, "could get html element")
 	}
-	out, page, err := instance.Run(parsed, r.Steps)
+	out, page, err := instance.Run(parsed, r.Steps, time.Duration(r.options.Options.PageTimeout)*time.Second)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "headless", err)
 		r.options.Progress.DecrementRequests(1)

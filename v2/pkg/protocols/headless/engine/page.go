@@ -2,6 +2,7 @@ package engine
 
 import (
 	"net/url"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -16,11 +17,13 @@ type Page struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(baseURL *url.URL, actions []*Action) (map[string]string, *Page, error) {
+func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duration) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
 	}
+	page = page.Timeout(timeout)
+
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
 			return nil, nil, userAgentErr
