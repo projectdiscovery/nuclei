@@ -32,7 +32,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 
 // processTemplateWithList process a template on the URL list
 func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
-	if r.options.Workflows {
+	if !r.options.Workflows {
 		return false
 	}
 	results := &atomic.Bool{}
