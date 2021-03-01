@@ -302,7 +302,7 @@ func (r *Runner) RunEnumeration() {
 
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
-			} else if !r.options.Workflows {
+			} else {
 				results.CAS(false, r.processTemplateWithList(template))
 			}
 		}(t)
