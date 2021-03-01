@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestIgnoreFilesIgnore(t *testing.T) {
-	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
-
 	c := &Catalog{
 		ignoreFiles:        []string{"workflows/", "cves/2020/cve-2020-5432.yaml"},
 		templatesDirectory: "test",

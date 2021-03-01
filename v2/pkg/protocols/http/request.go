@@ -27,21 +27,43 @@ const defaultMaxWorkers = 150
 
 // executeRaceRequest executes race condition request for a URL
 func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	var requests []*generatedRequest
+
+	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
+	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := r.newGenerator()
-
-	maxWorkers := r.RaceNumberRequests
-	swg := sizedwaitgroup.New(maxWorkers)
-
-	var requestErr error
-	mutex := &sync.Mutex{}
-
-	request, err := generator.Make(reqURL, nil)
+	requestForDump, err := generator.Make(reqURL, nil)
 	if err != nil {
 		return err
 	}
+	r.setCustomHeaders(requestForDump)
+	dumpedRequest, err := dump(requestForDump, reqURL)
+	if err != nil {
+		return err
+	}
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
+		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
+		gologger.Print().Msgf("%s", string(dumpedRequest))
+	}
+	previous["request"] = string(dumpedRequest)
+
+	// Pre-Generate requests
 	for i := 0; i < r.RaceNumberRequests; i++ {
-		swg.Add()
+		generator := r.newGenerator()
+		request, err := generator.Make(reqURL, nil)
+		if err != nil {
+			return err
+		}
+		requests = append(requests, request)
+	}
+
+	wg := sync.WaitGroup{}
+	var requestErr error
+	mutex := &sync.Mutex{}
+	for i := 0; i < r.RaceNumberRequests; i++ {
+		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
+			defer wg.Done()
 			err := r.executeRequest(reqURL, httpRequest, previous, callback)
 			mutex.Lock()
 			if err != nil {
@@ -50,10 +72,11 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 			}
 			mutex.Unlock()
 			swg.Done()
-		}(request)
+		}(requests[i])
 		r.options.Progress.IncrementRequests()
 	}
-	swg.Wait()
+	wg.Wait()
+
 	return requestErr
 }
 
@@ -221,7 +244,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		err           error
 	)
 
-	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event
+	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !request.original.Race {
 		dumpedRequest, err = dump(request, reqURL)
 		if err != nil {
