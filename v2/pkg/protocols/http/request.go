@@ -71,7 +71,6 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
-			swg.Done()
 		}(requests[i])
 		r.options.Progress.IncrementRequests()
 	}
