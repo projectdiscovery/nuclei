@@ -68,7 +68,6 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 		}(requests[i])
@@ -95,7 +94,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			break
 		}
 		if err != nil {
-			r.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
 		swg.Add()
@@ -107,7 +106,6 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 		}(request)
@@ -154,7 +152,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 			break
 		}
 		if err != nil {
-			r.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
 		request.pipelinedClient = pipeclient
@@ -167,7 +165,6 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
-				r.options.Progress.DecrementRequests(1)
 			}
 			mutex.Unlock()
 		}(request)
@@ -203,7 +200,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			break
 		}
 		if err != nil {
-			r.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
 
@@ -223,7 +220,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		r.options.Progress.IncrementRequests()
 
 		if request.original.options.Options.StopAtFirstMatch && gotOutput {
-			r.options.Progress.DecrementRequests(int64(generator.Total()))
+			r.options.Progress.IncrementErrorsBy(int64(generator.Total()))
 			break
 		}
 	}
@@ -300,7 +297,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			resp.Body.Close()
 		}
 		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementErrorsBy(1)
 		return err
 	}
 	defer func() {

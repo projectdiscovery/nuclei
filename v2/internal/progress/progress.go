@@ -91,8 +91,13 @@ func (p *Progress) IncrementMatched() {
 	p.stats.IncrementCounter("matched", 1)
 }
 
-// DecrementRequests decrements the number of requests from total.
-func (p *Progress) DecrementRequests(count int64) {
+// IncrementErrorsBy increments the error counter by count.
+func (p *Progress) IncrementErrorsBy(count int64) {
+	p.stats.IncrementCounter("errors", 1)
+}
+
+// IncrementFailedRequestsBy increments the number of requests counter by count along with errors.
+func (p *Progress) IncrementFailedRequestsBy(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
