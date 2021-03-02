@@ -18,7 +18,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	instance, err := r.options.Browser.NewInstance()
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "headless", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
 	defer instance.Close()
@@ -26,13 +26,13 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	parsed, err := url.Parse(input)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "headless", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
 	out, page, err := instance.Run(parsed, r.Steps, time.Duration(r.options.Options.PageTimeout)*time.Second)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "headless", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
 	defer page.Close()
