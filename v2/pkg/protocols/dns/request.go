@@ -25,7 +25,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	compiledRequest, err := r.Make(domain)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not build request")
 	}
 
@@ -38,7 +38,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	resp, err := r.dnsClient.Do(compiledRequest)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send dns request")
 	}
 	r.options.Progress.IncrementRequests()

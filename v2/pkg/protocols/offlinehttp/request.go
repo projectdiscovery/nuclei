@@ -98,7 +98,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	wg.Wait()
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "file", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
 	r.options.Progress.IncrementRequests()
