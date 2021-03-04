@@ -87,11 +87,19 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		if options.Options.OfflineHTTP {
 			operatorsList := []*operators.Operators{}
 
+		mainLoop:
 			for _, req := range template.RequestsHTTP {
+				for _, path := range req.Path {
+					if !(strings.EqualFold(path, "{{BaseURL}}") || strings.EqualFold(path, "{{BaseURL}}/")) {
+						break mainLoop
+					}
+				}
 				operatorsList = append(operatorsList, &req.Operators)
 			}
-			options.Operators = operatorsList
-			template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+			if len(operatorsList) > 0 {
+				options.Operators = operatorsList
+				template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+			}
 		} else {
 			for _, req := range template.RequestsHTTP {
 				requests = append(requests, req)
