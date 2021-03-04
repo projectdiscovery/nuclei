@@ -23,7 +23,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	address, err := getAddress(input)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "network", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
 
@@ -50,7 +50,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server request")
 	}
 	defer conn.Close()
@@ -92,7 +92,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		}
 		if err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
-			r.options.Progress.DecrementRequests(1)
+			r.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
@@ -101,7 +101,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		_, err = conn.Write(data)
 		if err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
-			r.options.Progress.DecrementRequests(1)
+			r.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
 
@@ -117,7 +117,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not write request to server")
 	}
 
@@ -137,7 +137,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	n, err := conn.Read(final)
 	if err != nil && err != io.EOF {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.DecrementRequests(1)
+		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not read from server")
 	}
 	responseBuilder.Write(final[:n])
