@@ -14,7 +14,7 @@ import (
 
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
-func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string) (parsedTemplates map[string]*templates.Template, workflowCount int) {
+func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workflows bool) (parsedTemplates map[string]*templates.Template, workflowCount int) {
 	filterBySeverity := len(severities) > 0
 
 	gologger.Info().Msgf("Loading templates...")
@@ -26,8 +26,11 @@ func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string) (pars
 			gologger.Warning().Msgf("Could not parse file '%s': %s\n", match, err)
 			continue
 		}
-		if len(t.Workflows) == 0 && r.options.Workflows {
+		if len(t.Workflows) == 0 && workflows {
 			continue // don't print if user only wants to run workflows
+		}
+		if len(t.Workflows) > 0 && !workflows {
+			continue // don't print workflow if user only wants to run templates
 		}
 		if len(t.Workflows) > 0 {
 			workflowCount++

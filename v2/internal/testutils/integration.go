@@ -30,6 +30,29 @@ func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) (
 	return parts, nil
 }
 
+// RunNucleiWorkflowAndGetResults returns a list of results for a workflow
+func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
+	cmd := exec.Command("./nuclei", "-w", template, "-target", url)
+	if debug {
+		cmd = exec.Command("./nuclei", "-w", template, "-target", url, "-debug")
+		cmd.Stderr = os.Stderr
+	}
+	cmd.Args = append(cmd.Args, extra...)
+
+	data, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	parts := []string{}
+	items := strings.Split(string(data), "\n")
+	for _, i := range items {
+		if i != "" {
+			parts = append(parts, i)
+		}
+	}
+	return parts, nil
+}
+
 // TestCase is a single integration test case
 type TestCase interface {
 	// Execute executes a test case and returns any errors if occurred
