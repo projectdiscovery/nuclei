@@ -9,6 +9,9 @@ import (
 
 // processTemplateWithList process a template on the URL list
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
+	if r.options.Workflows {
+		return false
+	}
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 	r.hostMap.Scan(func(k, _ []byte) error {
@@ -32,9 +35,6 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 
 // processTemplateWithList process a template on the URL list
 func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
-	if !r.options.Workflows {
-		return false
-	}
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 

@@ -84,7 +84,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVarP(&options.Workflows, "workflows", "w", false, "Only run workflow templates with nuclei")
 	set.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "Number of seconds between each stats line")
 	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
-	set.IntVar(&options.PageTimeout, "page-timeout", 15, "Seconds to wait for each page in headless")
+	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
 	_ = set.Parse()
 
 	if cfgFile != "" {
