@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
 
-var templateExpressionRegex = regexp.MustCompile(`(?m)\{\{[^}]+\}\}`)
+var templateExpressionRegex = regexp.MustCompile(`(?m)\{\{[^}]+\}\}["'\)\}]*`)
 
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
@@ -32,8 +32,8 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 		if err != nil {
 			continue
 		}
-		dynamicValues[expr] = result // convert x(<payload_name>) => <x-representation>
+		dynamicValues[expr] = result
 	}
-	// Replacer dynamic values if any in raw request and parse it
+	// Replacer dynamic values if any in raw request and parse  it
 	return replacer.Replace(data, dynamicValues), nil
 }

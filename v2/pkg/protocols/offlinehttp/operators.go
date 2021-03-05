@@ -137,7 +137,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "http",
-		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
