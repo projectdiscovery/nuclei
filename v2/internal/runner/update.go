@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/google/go-github/v32/github"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -221,6 +221,21 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	r.printUpdateChangelog(results, version)
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	err = writeTemplatesChecksum(checksumFile, results.checksums)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not write checksum")
+	}
+
+	// Write the additions to a cached file for new runs.
+	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	buffer := &bytes.Buffer{}
+	for _, addition := range results.additions {
+		buffer.WriteString(addition)
+		buffer.WriteString("\n")
+	}
+	err = ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not write new additions file")
+	}
 	return results, err
 }
 

@@ -8,6 +8,8 @@ type Options struct {
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
 	Tags goflags.StringSlice
+	// Workflows specifies any workflows to run by nuclei
+	Workflows goflags.StringSlice
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
@@ -65,8 +67,6 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
-	// Workflows specifies if only to execute workflows (no normal templates will be run)
-	Workflows bool
 	// SytemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
 	// RandomAgent generates random User-Agent
@@ -107,4 +107,6 @@ type Options struct {
 	NoMeta bool
 	// Project is used to avoid sending same HTTP request multiple times
 	Project bool
+	// NewTemplates only runs newly added templates from the repository
+	NewTemplates bool
 }

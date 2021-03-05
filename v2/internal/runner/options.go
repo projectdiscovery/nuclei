@@ -82,7 +82,7 @@ func validateOptions(options *types.Options) error {
 
 	if !options.TemplateList {
 		// Check if a list of templates was provided and it exists
-		if len(options.Templates) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
+		if len(options.Templates) == 0 && len(options.Workflows) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
 			return errors.New("no template/templates provided")
 		}
 	}

@@ -28,7 +28,7 @@ func (h *workflowBasic) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (h *workflowConditionMatched) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (h *workflowConditionUnmatch) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (h *workflowMatcherName) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}

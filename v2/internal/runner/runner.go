@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -82,7 +83,7 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
@@ -200,6 +201,13 @@ func (r *Runner) RunEnumeration() {
 	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
+	if r.options.NewTemplates {
+		templates, err := r.readNewTemplatesFile()
+		if err != nil {
+			gologger.Warning().Msgf("Could not get newly added templates: %s\n", err)
+		}
+		r.options.Templates = append(r.options.Templates, templates...)
+	}
 	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates)
 	// defaults to all templates
@@ -224,7 +232,10 @@ func (r *Runner) RunEnumeration() {
 
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
-	availableTemplates, workflowCount := r.getParsedTemplatesFor(allTemplates, r.options.Severity)
+
+	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows)
+	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
+	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
 
 	var unclusteredRequests int64 = 0
 	for _, template := range availableTemplates {
@@ -264,6 +275,9 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
+	for _, workflows := range availableWorkflows {
+		finalTemplates = append(finalTemplates, workflows)
+	}
 
 	var totalRequests int64 = 0
 	for _, t := range finalTemplates {
@@ -275,7 +289,7 @@ func (r *Runner) RunEnumeration() {
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
 	}
-	templateCount := originalTemplatesCount
+	templateCount := originalTemplatesCount + len(availableWorkflows)
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
@@ -324,4 +338,25 @@ func (r *Runner) RunEnumeration() {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+}
+
+// readNewTemplatesFile reads newly added templates from directory if it exists
+func (r *Runner) readNewTemplatesFile() ([]string, error) {
+	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	file, err := os.Open(additionsFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	templates := []string{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		templates = append(templates, text)
+	}
+	return templates, nil
 }
