@@ -48,10 +48,10 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if len(options.Options.Tags) > 0 {
 		templateTags, ok := template.Info["tags"]
 		if !ok {
-			return nil, errors.New("no tags found for template")
+			return nil, nil
 		}
 		if err := matchTemplateWithTags(types.ToString(templateTags), options.Options); err != nil {
-			return nil, err
+			return nil, nil
 		}
 	}
 
