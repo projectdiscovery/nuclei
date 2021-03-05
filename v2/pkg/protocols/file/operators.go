@@ -66,7 +66,7 @@ func (r *Request) responseToDSLMap(raw, host, matched string) output.InternalEve
 	data := make(output.InternalEvent, 5)
 
 	// Some data regarding the request metadata
-	data["host"] = host
+	data["path"] = host
 	data["matched"] = matched
 	data["raw"] = raw
 	data["template-id"] = r.options.TemplateID
