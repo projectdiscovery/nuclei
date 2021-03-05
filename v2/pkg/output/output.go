@@ -63,6 +63,8 @@ type ResultEvent struct {
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
 	Host string `json:"host,omitempty"`
+	// Path is the path input on which match was found.
+	Path string `json:"path,omitempty"`
 	// Matched contains the matched input in its transformed form.
 	Matched string `json:"matched,omitempty"`
 	// ExtractedResults contains the extraction result from the inputs.
