@@ -1,6 +1,8 @@
 package file
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -61,16 +63,25 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	r.extensionDenylist = make(map[string]struct{})
 
 	for _, extension := range r.Extensions {
-		if extension == "*" {
+		if extension == "all" {
 			r.allExtensions = true
 		} else {
+			if strings.HasPrefix(extension, ".") {
+				extension = "." + extension
+			}
 			r.extensions[extension] = struct{}{}
 		}
 	}
 	for _, extension := range defaultDenylist {
+		if strings.HasPrefix(extension, ".") {
+			extension = "." + extension
+		}
 		r.extensionDenylist[extension] = struct{}{}
 	}
 	for _, extension := range r.ExtensionDenylist {
+		if strings.HasPrefix(extension, ".") {
+			extension = "." + extension
+		}
 		r.extensionDenylist[extension] = struct{}{}
 	}
 	return nil

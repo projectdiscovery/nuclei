@@ -83,7 +83,7 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 		data[k] = v
 	}
 
-	data["host"] = host
+	data["path"] = host
 	data["matched"] = matched
 	data["request"] = rawReq
 	data["response"] = rawResp
