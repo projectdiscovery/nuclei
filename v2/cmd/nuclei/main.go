@@ -85,7 +85,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "Number of seconds between each stats line")
 	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
 	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
-	set.BoolVar(&options.NewTemplates, "new-templates", false, "Only run newly added templates")
+	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
 	_ = set.Parse()
 
 	if cfgFile != "" {
