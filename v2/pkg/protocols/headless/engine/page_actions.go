@@ -244,7 +244,9 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	to := act.GetArg("to")
 	if to == "" {
 		to = ksuid.New().String()
-		out[act.Name] = to
+		if act.Name != "" {
+			out[act.Name] = to
+		}
 	}
 	var data []byte
 	var err error
@@ -354,7 +356,9 @@ func (p *Page) GetResource(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get src for element")
 	}
-	out[act.Name] = string(resource)
+	if act.Name != "" {
+		out[act.Name] = string(resource)
+	}
 	return nil
 }
 
@@ -394,13 +398,17 @@ func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 		if err != nil {
 			return errors.Wrap(err, "could not get attribute")
 		}
-		out[act.Name] = *attrValue
+		if act.Name != "" {
+			out[act.Name] = *attrValue
+		}
 	default:
 		text, err := element.Text()
 		if err != nil {
 			return errors.Wrap(err, "could not get element text node")
 		}
-		out[act.Name] = text
+		if act.Name != "" {
+			out[act.Name] = text
+		}
 	}
 	return nil
 }
