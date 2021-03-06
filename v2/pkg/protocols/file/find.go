@@ -110,6 +110,8 @@ func (r *Request) validatePath(item string) bool {
 	if len(r.extensions) > 0 {
 		if _, ok := r.extensions[extension]; ok {
 			return true
+		} else if !r.allExtensions {
+			return false
 		}
 	}
 	if _, ok := r.extensionDenylist[extension]; ok {
