@@ -17,7 +17,11 @@ import (
 func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workflows bool) (parsedTemplates map[string]*templates.Template, workflowCount int) {
 	filterBySeverity := len(severities) > 0
 
-	gologger.Info().Msgf("Loading templates...")
+	if !workflows {
+		gologger.Info().Msgf("Loading templates...")
+	} else {
+		gologger.Info().Msgf("Loading workflows...")
+	}
 
 	parsedTemplates = make(map[string]*templates.Template)
 	for _, match := range templatePaths {
