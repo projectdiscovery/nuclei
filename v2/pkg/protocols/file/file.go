@@ -66,20 +66,20 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		if extension == "all" {
 			r.allExtensions = true
 		} else {
-			if strings.HasPrefix(extension, ".") {
+			if !strings.HasPrefix(extension, ".") {
 				extension = "." + extension
 			}
 			r.extensions[extension] = struct{}{}
 		}
 	}
 	for _, extension := range defaultDenylist {
-		if strings.HasPrefix(extension, ".") {
+		if !strings.HasPrefix(extension, ".") {
 			extension = "." + extension
 		}
 		r.extensionDenylist[extension] = struct{}{}
 	}
 	for _, extension := range r.ExtensionDenylist {
-		if strings.HasPrefix(extension, ".") {
+		if !strings.HasPrefix(extension, ".") {
 			extension = "." + extension
 		}
 		r.extensionDenylist[extension] = struct{}{}
