@@ -116,6 +116,8 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
+	event.Timestamp = time.Now()
+
 	var data []byte
 	var err error
 
