@@ -75,6 +75,9 @@ func (r *Request) findFileMatches(absPath string, processed map[string]struct{},
 		return false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
+		if !r.validatePath(absPath) {
+			return false, nil
+		}
 		processed[absPath] = struct{}{}
 		callback(absPath)
 	}
