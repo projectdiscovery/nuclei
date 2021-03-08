@@ -58,7 +58,10 @@ type Request struct {
 	Race bool `yaml:"race"`
 	// MaxSize is the maximum size of http response body to read in bytes.
 	MaxSize int `yaml:"max-size"`
-
+	// ReqCondition automatically assigns numbers to requests and preserves
+	// their history for being matched at the end.
+	// Currently only works with sequential http requests.
+	ReqCondition bool `yaml:"req-condition"`
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 	CompiledOperators   *operators.Operators

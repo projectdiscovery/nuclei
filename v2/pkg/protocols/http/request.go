@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -193,6 +194,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 	generator := r.newGenerator()
 
+	requestCount := 1
 	var requestErr error
 	for {
 		request, err := generator.Make(reqURL, dynamicValues)
@@ -205,6 +207,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		}
 
 		var gotOutput bool
+		var outputEvent output.InternalEvent
 		r.options.RateLimiter.Take()
 		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
@@ -212,11 +215,21 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
 			}
+			if r.ReqCondition {
+				outputEvent = event.InternalEvent
+			}
 			callback(event)
 		})
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
 		}
+		// Add to history the current request number metadata if asked by the user.
+		if r.ReqCondition {
+			for k, v := range outputEvent {
+				previous[fmt.Sprintf("%s_%d", k, requestCount)] = v
+			}
+		}
+		requestCount++
 		r.options.Progress.IncrementRequests()
 
 		if request.original.options.Options.StopAtFirstMatch && gotOutput {
@@ -296,7 +309,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
+		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
 		r.options.Progress.IncrementErrorsBy(1)
 		return err
 	}
@@ -306,7 +319,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}()
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
-	r.options.Output.Request(r.options.TemplateID, reqURL, "http", err)
+	r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
 
 	duration := time.Since(timeStart)
 

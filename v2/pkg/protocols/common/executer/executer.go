@@ -77,7 +77,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 		})
 		if err != nil {
-			gologger.Warning().Msgf("Could not execute request for %s: %s\n", e.options.TemplateID, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
 	}
 	return results, nil
@@ -109,7 +109,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			callback(event)
 		})
 		if err != nil {
-			gologger.Warning().Msgf("Could not execute request for %s: %s\n", e.options.TemplateID, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
 	}
 	return nil
