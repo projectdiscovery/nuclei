@@ -23,7 +23,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 		ID:                templateID,
 		MaxSize:           1024,
 		NoRecursive:       false,
-		Extensions:        []string{"*"},
+		Extensions:        []string{"all"},
 		ExtensionDenylist: []string{".go"},
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
