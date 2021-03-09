@@ -81,25 +81,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string]interface{}),
 	}
-	for _, matcher := range r.Matchers {
-		// Check if the matcher matched
-		if !match(data, matcher) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				return nil, false
-			}
-		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
-				result.Matches[matcher.Name] = struct{}{}
-			}
-			matches = true
-		}
-	}
-
-	// All matchers have successfully completed so now start with the
-	// next task which is extraction of input from matchers.
+	// Start with the extractors first and evaluate them.
 	for _, extractor := range r.Extractors {
 		var extractorResults []string
 
@@ -116,6 +98,26 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		}
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
+		}
+	}
+
+	for _, matcher := range r.Matchers {
+		// Check if the matcher matched
+		if !match(data, matcher) {
+			// If the condition is AND we haven't matched, try next request.
+			if matcherCondition == matchers.ANDCondition {
+				if len(result.DynamicValues) > 0 {
+					return result, true
+				}
+				return nil, false
+			}
+		} else {
+			// If the matcher has matched, and its an OR
+			// write the first output then move to next matcher.
+			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
+				result.Matches[matcher.Name] = struct{}{}
+			}
+			matches = true
 		}
 	}
 
