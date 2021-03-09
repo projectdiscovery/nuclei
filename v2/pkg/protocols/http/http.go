@@ -15,8 +15,13 @@ import (
 
 // Request contains a http request to be made from a template
 type Request struct {
-	ID string `yaml:"id"`
-
+	// Operators for the current request go here.
+	operators.Operators `yaml:",inline"`
+	// Path contains the path/s for the request
+	Path []string `yaml:"path"`
+	// Raw contains raw requests
+	Raw []string `yaml:"raw"`
+	ID  string   `yaml:"id"`
 	// Name is the name of the request
 	Name string `yaml:"Name"`
 	// AttackType is the attack type
@@ -26,10 +31,6 @@ type Request struct {
 	Method string `yaml:"method"`
 	// Body is an optional parameter which contains the request body for POST methods, etc
 	Body string `yaml:"body"`
-	// Path contains the path/s for the request
-	Path []string `yaml:"path"`
-	// Raw contains raw requests
-	Raw []string `yaml:"raw"`
 	// Path contains the path/s for the request variables
 	Payloads map[string]interface{} `yaml:"payloads"`
 	// Headers contains headers to send with the request
@@ -44,6 +45,19 @@ type Request struct {
 	PipelineRequestsPerConnection int `yaml:"pipeline-requests-per-connection"`
 	// Threads specifies number of threads for sending requests
 	Threads int `yaml:"threads"`
+
+	// MaxSize is the maximum size of http response body to read in bytes.
+	MaxSize int `yaml:"max-size"`
+
+	CompiledOperators *operators.Operators
+
+	options       *protocols.ExecuterOptions
+	attackType    generators.Type
+	totalRequests int
+	customHeaders map[string]string
+	generator     *generators.Generator // optional, only enabled when using payloads
+	httpClient    *retryablehttp.Client
+	rawhttpClient *rawhttp.Client
 	// CookieReuse is an optional setting that makes cookies shared within requests
 	CookieReuse bool `yaml:"cookie-reuse"`
 	// Redirects specifies whether redirects should be followed.
@@ -56,23 +70,10 @@ type Request struct {
 	// Race determines if all the request have to be attempted at the same time
 	// The minimum number of requests is determined by threads
 	Race bool `yaml:"race"`
-	// MaxSize is the maximum size of http response body to read in bytes.
-	MaxSize int `yaml:"max-size"`
 	// ReqCondition automatically assigns numbers to requests and preserves
 	// their history for being matched at the end.
 	// Currently only works with sequential http requests.
 	ReqCondition bool `yaml:"req-condition"`
-	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
-	CompiledOperators   *operators.Operators
-
-	options       *protocols.ExecuterOptions
-	attackType    generators.Type
-	totalRequests int
-	customHeaders map[string]string
-	generator     *generators.Generator // optional, only enabled when using payloads
-	httpClient    *retryablehttp.Client
-	rawhttpClient *rawhttp.Client
 }
 
 // GetID returns the unique ID of the request if any.

@@ -282,7 +282,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		templatePath := path.Join(templateDirectory, name)
 
 		isAddition := false
-		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
 			isAddition = true
 		}
 		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)

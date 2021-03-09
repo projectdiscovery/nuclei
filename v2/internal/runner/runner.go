@@ -202,11 +202,11 @@ func (r *Runner) RunEnumeration() {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
 	if r.options.NewTemplates {
-		templates, err := r.readNewTemplatesFile()
+		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
 			gologger.Warning().Msgf("Could not get newly added templates: %s\n", err)
 		}
-		r.options.Templates = append(r.options.Templates, templates...)
+		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
 	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates)
 	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates)
@@ -349,14 +349,14 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	}
 	defer file.Close()
 
-	templates := []string{}
+	templatesList := []string{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
 			continue
 		}
-		templates = append(templates, text)
+		templatesList = append(templatesList, text)
 	}
-	return templates, nil
+	return templatesList, nil
 }
