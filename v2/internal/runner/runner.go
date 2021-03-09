@@ -12,9 +12,9 @@ import (
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
@@ -37,7 +37,7 @@ type Runner struct {
 	options         *types.Options
 	projectFile     *projectfile.ProjectFile
 	catalog         *catalog.Catalog
-	progress        *progress.Progress
+	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *issues.Client
 	severityColors  *colorizer.Colorizer
@@ -156,7 +156,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Creates the progress tracking object
 	var progressErr error
-	runner.progress, progressErr = progress.NewProgress(options.StatsInterval, options.EnableProgressBar, options.Metrics, options.MetricsPort)
+	runner.progress, progressErr = progress.NewStatsTicker(options.StatsInterval, options.EnableProgressBar, options.Metrics, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}
