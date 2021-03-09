@@ -65,7 +65,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
 			defer wg.Done()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -103,7 +103,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			defer swg.Done()
 
 			r.options.RateLimiter.Take()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -162,7 +162,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, previous, callback)
+			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -207,7 +207,6 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		}
 
 		var gotOutput bool
-		var outputEvent output.InternalEvent
 		r.options.RateLimiter.Take()
 		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
@@ -215,19 +214,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
 			}
-			if r.ReqCondition {
-				outputEvent = event.InternalEvent
-			}
 			callback(event)
-		})
+		}, requestCount)
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
-		}
-		// Add to history the current request number metadata if asked by the user.
-		if r.ReqCondition {
-			for k, v := range outputEvent {
-				previous[fmt.Sprintf("%s_%d", k, requestCount)] = v
-			}
 		}
 		requestCount++
 		r.options.Progress.IncrementRequests()
@@ -243,7 +233,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback, requestCount int) error {
 	r.setCustomHeaders(request)
 
 	var (
@@ -379,21 +369,35 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	if request.request != nil {
 		matchedURL = request.request.URL.String()
 	}
+	finalEvent := make(output.InternalEvent)
+
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
 	for k, v := range previous {
-		outputEvent[k] = v
+		finalEvent[k] = v
+	}
+	for k, v := range outputEvent {
+		finalEvent[k] = v
+	}
+	// Add to history the current request number metadata if asked by the user.
+	if r.ReqCondition {
+		for k, v := range outputEvent {
+			key := fmt.Sprintf("%s_%d", k, requestCount)
+			previous[key] = v
+			finalEvent[key] = v
+		}
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if r.CompiledOperators != nil {
 		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
+		event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
 		if ok && event.OperatorsResult != nil {
 			event.OperatorsResult.PayloadValues = request.meta
 			event.Results = r.MakeResultEvent(event)
 		}
+		event.InternalEvent = outputEvent
 	}
 	callback(event)
 	return nil

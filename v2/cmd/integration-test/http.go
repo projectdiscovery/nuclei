@@ -29,6 +29,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-payload.yaml":           &httpRawPayload{},
 	"http/raw-post-body.yaml":         &httpRawPostBody{},
 	"http/raw-unsafe-request.yaml":    &httpRawUnsafeRequest{},
+	"http/request-condition.yaml":     &httpRequestCondition{},
+	"http/request-condition-new.yaml": &httpRequestCondition{},
 }
 
 func httpDebugRequestDump(r *http.Request) {
@@ -478,6 +480,37 @@ func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiAndGetResults(filePath, "http://"+ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return routerErr
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpRequestCondition struct{}
+
+// Executes executes a test case and returns an error if occurred
+func (h *httpRequestCondition) Execute(filePath string) error {
+	router := httprouter.New()
+	var routerErr error
+
+	router.GET("/200", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		httpDebugRequestDump(r)
+		w.WriteHeader(200)
+	}))
+	router.GET("/400", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		httpDebugRequestDump(r)
+		w.WriteHeader(400)
+	}))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
