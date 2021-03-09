@@ -3,16 +3,16 @@ package workflows
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWorkflowsSimple(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
 		{Executers: []*ProtocolExecuterPair{{
@@ -25,7 +25,7 @@ func TestWorkflowsSimple(t *testing.T) {
 }
 
 func TestWorkflowsSimpleMultiple(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -49,7 +49,7 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplates(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -74,7 +74,7 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -97,7 +97,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{
@@ -125,7 +125,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 }
 
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
-	progressBar, _ := progress.NewProgress(0, false, false, 0)
+	progressBar, _ := progress.NewStatsTicker(0, false, false, 0)
 
 	var firstInput, secondInput string
 	workflow := &Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*WorkflowTemplate{

@@ -14,16 +14,38 @@ import (
 	"github.com/projectdiscovery/gologger"
 )
 
-// Progress is a progress instance for showing program stats
-type Progress struct {
+// Progress is an interface implemented by nuclei progress display
+// driver.
+type Progress interface {
+	// Stop stops the progress recorder.
+	Stop()
+	// Init inits the progress bar with initial details for scan
+	Init(hostCount int64, rulesCount int, requestCount int64)
+	// AddToTotal adds a value to the total request count
+	AddToTotal(delta int64)
+	// IncrementRequests increments the requests counter by 1.
+	IncrementRequests()
+	// IncrementMatched increments the matched counter by 1.
+	IncrementMatched()
+	// IncrementErrorsBy increments the error counter by count.
+	IncrementErrorsBy(count int64)
+	// IncrementFailedRequestsBy increments the number of requests counter by count
+	// along with errors.
+	IncrementFailedRequestsBy(count int64)
+}
+
+var _ Progress = &StatsTicker{}
+
+// StatsTicker is a progress instance for showing program stats
+type StatsTicker struct {
 	active       bool
 	tickDuration time.Duration
 	stats        clistats.StatisticsClient
 	server       *http.Server
 }
 
-// NewProgress creates and returns a new progress tracking object.
-func NewProgress(duration int, active, metrics bool, port int) (*Progress, error) {
+// NewStatsTicker creates and returns a new progress tracking object.
+func NewStatsTicker(duration int, active, metrics bool, port int) (Progress, error) {
 	var tickDuration time.Duration
 	if active {
 		tickDuration = time.Duration(duration) * time.Second
@@ -31,7 +53,7 @@ func NewProgress(duration int, active, metrics bool, port int) (*Progress, error
 		tickDuration = -1
 	}
 
-	progress := &Progress{}
+	progress := &StatsTicker{}
 
 	stats, err := clistats.New()
 	if err != nil {
@@ -60,7 +82,7 @@ func NewProgress(duration int, active, metrics bool, port int) (*Progress, error
 }
 
 // Init initializes the progress display mechanism by setting counters, etc.
-func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
+func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddStatic("templates", rulesCount)
 	p.stats.AddStatic("hosts", hostCount)
 	p.stats.AddStatic("startedAt", time.Now())
@@ -77,27 +99,27 @@ func (p *Progress) Init(hostCount int64, rulesCount int, requestCount int64) {
 }
 
 // AddToTotal adds a value to the total request count
-func (p *Progress) AddToTotal(delta int64) {
+func (p *StatsTicker) AddToTotal(delta int64) {
 	p.stats.IncrementCounter("total", int(delta))
 }
 
 // IncrementRequests increments the requests counter by 1.
-func (p *Progress) IncrementRequests() {
+func (p *StatsTicker) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
 }
 
 // IncrementMatched increments the matched counter by 1.
-func (p *Progress) IncrementMatched() {
+func (p *StatsTicker) IncrementMatched() {
 	p.stats.IncrementCounter("matched", 1)
 }
 
 // IncrementErrorsBy increments the error counter by count.
-func (p *Progress) IncrementErrorsBy(count int64) {
+func (p *StatsTicker) IncrementErrorsBy(count int64) {
 	p.stats.IncrementCounter("errors", int(count))
 }
 
 // IncrementFailedRequestsBy increments the number of requests counter by count along with errors.
-func (p *Progress) IncrementFailedRequestsBy(count int64) {
+func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
@@ -149,7 +171,7 @@ func printCallback(stats clistats.StatisticsClient) {
 }
 
 // getMetrics returns a map of important metrics for client
-func (p *Progress) getMetrics() map[string]interface{} {
+func (p *StatsTicker) getMetrics() map[string]interface{} {
 	results := make(map[string]interface{})
 
 	startedAt, _ := p.stats.GetStatic("startedAt")
@@ -190,7 +212,7 @@ func fmtDuration(d time.Duration) string {
 }
 
 // Stop stops the progress bar execution
-func (p *Progress) Stop() {
+func (p *StatsTicker) Stop() {
 	if p.active {
 		// Print one final summary
 		printCallback(p.stats)
