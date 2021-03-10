@@ -6,9 +6,9 @@ linters-settings:
   # funlen:
   #   lines: 100
   #   statements: 50
-  goconst:
-    min-len: 2
-    min-occurrences: 2
+  #goconst:
+  #  min-len: 2
+  #  min-occurrences: 2
   gocritic:
     enabled-tags:
       - diagnostic
@@ -56,18 +56,18 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - bodyclose
+    #- bodyclose
     - deadcode
     - dogsled
     - errcheck
     - exhaustive
     - gochecknoinits
-    - goconst
+    #- goconst
     - gocritic
     - gofmt
     - goimports
     - golint
-    - gomnd
+    #- gomnd
     - goprintffuncname
     - gosimple
     - govet

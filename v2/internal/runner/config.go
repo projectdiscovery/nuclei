@@ -93,30 +93,7 @@ func (r *Runner) readNucleiIgnoreFile() {
 	}
 }
 
-// checkIfInNucleiIgnore checks if a path falls under nuclei-ignore rules.
-func (r *Runner) checkIfInNucleiIgnore(item string) bool {
-	if r.templatesConfig == nil {
-		return false
-	}
-
-	for _, paths := range r.templatesConfig.IgnorePaths {
-		// If we have a path to ignore, check if it's in the item.
-		if paths[len(paths)-1] == '/' {
-			if strings.Contains(item, paths) {
-				return true
-			}
-
-			continue
-		}
-		// Check for file based extension in ignores
-		if strings.HasSuffix(item, paths) {
-			return true
-		}
-	}
-
-	return false
-}
-
+// getIgnoreFilePath returns the ignore file path for the runner
 func (r *Runner) getIgnoreFilePath() string {
 	defIgnoreFilePath := path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile)
 
@@ -124,13 +101,11 @@ func (r *Runner) getIgnoreFilePath() string {
 	if err != nil {
 		return defIgnoreFilePath
 	}
-
 	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
 
 	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
 	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
 		return defIgnoreFilePath
 	}
-
 	return cwdIgnoreFilePath
 }

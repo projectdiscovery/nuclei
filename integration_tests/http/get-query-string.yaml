@@ -1,0 +1,15 @@
+id: basic-get-querystring
+
+info:
+  name: Basic GET QueryString Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}?test=nuclei"
+    matchers:
+      - type: word
+        words:
+          - "This is test querystring matcher text"
