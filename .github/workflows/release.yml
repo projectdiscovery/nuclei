@@ -26,3 +26,5 @@ jobs:
         with: 
           args: "release --rm-dist"
           version: latest
+          workdir: v2/
+        
