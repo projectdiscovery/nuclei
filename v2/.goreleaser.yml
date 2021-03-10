@@ -4,7 +4,7 @@ before:
 
 builds:
     - binary: nuclei
-      main: v2/cmd/nuclei/main.go
+      main: cmd/nuclei/main.go
       goos:
         - linux
         - windows
