@@ -1,3 +1,7 @@
+before:
+  hooks:
+    - go mod tidy
+
 builds:
     - binary: nuclei
       main: v2/cmd/nuclei/main.go
