@@ -4,12 +4,13 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"gopkg.in/yaml.v2"
 )
 
 // Parse a yaml workflow file
-func Parse(file string) (*Workflow, error) {
-	workflow := &Workflow{}
+func Parse(file string, options *protocols.ExecuterOptions) (*Workflow, error) {
+	workflow := &Workflow{Options: options}
 
 	f, err := os.Open(file)
 	if err != nil {
@@ -22,14 +23,8 @@ func Parse(file string) (*Workflow, error) {
 		return nil, err
 	}
 
-	if len(workflow.Workflows) > 0 {
-		if err := workflow.generateLogicFromWorkflows(); err != nil {
-			return nil, errors.Wrap(err, "could not generate workflow")
-		}
+	if len(workflow.Workflows) == 0 {
+		return nil, errors.New("no workflow defined")
 	}
-	if workflow.Logic == "" {
-		return nil, errors.New("no logic provided")
-	}
-	workflow.path = file
 	return workflow, nil
 }

@@ -1,0 +1,18 @@
+id: basic-raw-query-example
+
+info:
+  name: Test RAW GET Query Template
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        GET ?test=nuclei HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test raw-get-query-matcher text"

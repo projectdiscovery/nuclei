@@ -46,6 +46,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 ```sh
 ▶ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
+
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/#nuclei-installation).**
 
 <table>
@@ -142,13 +143,11 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Resources
 
-
 - [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
 - [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
 - [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
 - [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
 - [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
-
 
 ### Credits
 

@@ -1,0 +1,29 @@
+id: payload-raw-example
+info:
+  name: Test RAW With Payload Template
+  author: pdteam
+  severity: info
+
+requests:
+  - payloads:
+      username:
+        - test
+      password:
+        - nuclei
+        - guest
+    attack: clusterbomb
+    raw:
+      - |
+        POST / HTTP/1.1
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5)
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 1
+        another_header: {{base64('§password§')}}
+        Accept: */*
+
+        username=§username§&password={{password}}
+    matchers:
+      - type: word
+        words:
+          - "Test is raw-payload matcher text"
