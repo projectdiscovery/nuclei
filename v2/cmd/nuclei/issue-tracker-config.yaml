@@ -1,0 +1,47 @@
+#allow-list:
+#  severity: high,critical
+#deny-list:
+#  severity: low
+
+# github contains configuration options for github issue tracker
+#github: 
+#  # base-url is the optional self-hosted github application url
+#  base-url: ""
+#  # username is the username of the github user
+#  username: ""
+#  # owner is the owner name of the repository for issues.
+#  owner: ""
+#  # token is the token for github account.
+#  token: ""
+#  # project-name is the name of the repository.
+#  project-name: ""
+#  # issue-label is the label of the created issue type
+#  issue-label: ""
+
+# gitlab contains configuration options for gitlab issue tracker
+#gitlab: 
+#  # base-url is the optional self-hosted gitlab application url
+#  base-url: ""
+#  # username is the username of the gitlab user
+#  username: ""
+#  # token is the token for gitlab account.
+#  token: ""
+#  # project-id is the ID of the repository.
+#  project-id: ""
+#  # issue-label is the label of the created issue type
+#  issue-label: ""
+
+# jira contains configuration options for jira issue tracker
+#jira: 
+#  # URL is the jira application url
+#  url: ""
+#  # account-id is the account-id of the jira user
+#  account-id: ""
+#  # email is the email of the user for jira instance
+#  email: ""
+#  # token is the token for jira instance.
+#  token: ""
+#  # project-name is the name of the project.
+#  project-name: ""
+#  # issue-type is the name of the created issue type
+#  issue-type: ""
