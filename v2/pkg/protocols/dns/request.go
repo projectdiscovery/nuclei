@@ -39,6 +39,8 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
 		r.options.Progress.IncrementFailedRequestsBy(1)
+	}
+	if resp == nil {
 		return errors.Wrap(err, "could not send dns request")
 	}
 	r.options.Progress.IncrementRequests()
