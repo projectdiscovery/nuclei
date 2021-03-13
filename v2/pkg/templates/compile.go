@@ -51,13 +51,13 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	}
 	matchWithTags := false
 	if len(options.Options.Tags) > 0 {
-		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options); err != nil {
+		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.Tags); err != nil {
 			return nil, nil
 		}
 		matchWithTags = true
 	}
 	if len(options.Options.ExcludeTags) > 0 && !matchWithTags {
-		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options); err == nil {
+		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.ExcludeTags); err == nil {
 			return nil, nil
 		}
 	}
@@ -207,7 +207,7 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 }
 
 // matchTemplateWithTags matches if the template matches a tag
-func matchTemplateWithTags(tags, severity string, options *types.Options) error {
+func matchTemplateWithTags(tags, severity string, tagsInput []string) error {
 	actualTags := strings.Split(tags, ",")
 	if severity != "" {
 		actualTags = append(actualTags, severity) // also add severity to tag
@@ -215,7 +215,7 @@ func matchTemplateWithTags(tags, severity string, options *types.Options) error 
 
 	matched := false
 mainLoop:
-	for _, t := range options.Tags {
+	for _, t := range tagsInput {
 		commaTags := strings.Split(t, ",")
 		for _, tag := range commaTags {
 			tag = strings.TrimSpace(tag)
