@@ -45,12 +45,19 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if _, ok := template.Info["author"]; !ok {
 		return nil, errors.New("no template author field provided")
 	}
+	templateTags, ok := template.Info["tags"]
+	if !ok {
+		templateTags = ""
+	}
+	matchWithTags := false
 	if len(options.Options.Tags) > 0 {
-		templateTags, ok := template.Info["tags"]
-		if !ok {
-			templateTags = ""
-		}
 		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options); err != nil {
+			return nil, nil
+		}
+		matchWithTags = true
+	}
+	if len(options.Options.ExcludeTags) > 0 && !matchWithTags {
+		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options); err == nil {
 			return nil, nil
 		}
 	}
