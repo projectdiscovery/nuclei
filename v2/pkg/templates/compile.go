@@ -52,13 +52,13 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	matchWithTags := false
 	if len(options.Options.Tags) > 0 {
 		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.Tags); err != nil {
-			return nil, nil
+			return nil, fmt.Errorf("tags filter not matched %s", templateTags)
 		}
 		matchWithTags = true
 	}
 	if len(options.Options.ExcludeTags) > 0 && !matchWithTags {
 		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.ExcludeTags); err == nil {
-			return nil, nil
+			return nil, fmt.Errorf("exclude-tags filter matched %s", templateTags)
 		}
 	}
 
