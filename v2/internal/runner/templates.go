@@ -131,9 +131,18 @@ func (r *Runner) listAvailableTemplates() {
 
 func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
 	for _, s := range allowedSeverities {
-		s = strings.ToLower(s)
-		if s != "" && strings.HasPrefix(templateSeverity, s) {
-			return true
+		finalSeverities := []string{}
+		if strings.Contains(s, ",") {
+			finalSeverities = strings.Split(s, ",")
+		} else {
+			finalSeverities = append(finalSeverities, s)
+		}
+
+		for _, sev := range finalSeverities {
+			sev = strings.ToLower(sev)
+			if sev != "" && strings.HasPrefix(templateSeverity, sev) {
+				return true
+			}
 		}
 	}
 	return false
