@@ -34,4 +34,9 @@ func TestMatchTemplateWithTags(t *testing.T) {
 		err = matchTemplateWithTags("lang:php,os:linux,cms:symfony", "low", &types.Options{Tags: []string{"low"}})
 		require.Nil(t, err, "could get key value tag for severity")
 	})
+
+	t.Run("blank-tags", func(t *testing.T) {
+		err = matchTemplateWithTags("", "low", &types.Options{Tags: []string{"jira"}})
+		require.NotNil(t, err, "could get value tag for blank severity")
+	})
 }
