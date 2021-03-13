@@ -47,7 +47,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workf
 			parsedTemplates[t.ID] = t
 			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
 		} else {
-			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
+			gologger.Warning().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
 		}
 	}
 	return parsedTemplates, workflowCount

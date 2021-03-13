@@ -50,7 +50,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		if !ok {
 			return nil, nil
 		}
-		if err := matchTemplateWithTags(types.ToString(templateTags), options.Options); err != nil {
+		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options); err != nil {
 			return nil, nil
 		}
 	}
@@ -200,8 +200,11 @@ func (t *Template) parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, o
 }
 
 // matchTemplateWithTags matches if the template matches a tag
-func matchTemplateWithTags(tags string, options *types.Options) error {
+func matchTemplateWithTags(tags, severity string, options *types.Options) error {
 	actualTags := strings.Split(tags, ",")
+	if severity != "" {
+		actualTags = append(actualTags, severity) // also add severity to tag
+	}
 
 	matched := false
 mainLoop:
