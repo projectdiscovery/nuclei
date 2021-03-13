@@ -24,7 +24,11 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 		if !ok {
 			return false
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
+		status, ok := statusCode.(int)
+		if !ok {
+			return false
+		}
+		return matcher.Result(matcher.MatchStatusCode(status))
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item)))
 	case matchers.WordsMatcher:
