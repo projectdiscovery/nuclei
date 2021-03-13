@@ -198,7 +198,7 @@ func (r *Runner) Close() {
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
 	// If we have no templates, run on whole template directory with provided tags
-	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0 {
+	if len(r.options.Templates) == 0 && (len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0) {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
 	if r.options.NewTemplates {
