@@ -47,7 +47,7 @@ func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workf
 			parsedTemplates[t.ID] = t
 			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
 		} else {
-			gologger.Error().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
+			gologger.Warning().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
 		}
 	}
 	return parsedTemplates, workflowCount
@@ -131,9 +131,18 @@ func (r *Runner) listAvailableTemplates() {
 
 func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
 	for _, s := range allowedSeverities {
-		s = strings.ToLower(s)
-		if s != "" && strings.HasPrefix(templateSeverity, s) {
-			return true
+		finalSeverities := []string{}
+		if strings.Contains(s, ",") {
+			finalSeverities = strings.Split(s, ",")
+		} else {
+			finalSeverities = append(finalSeverities, s)
+		}
+
+		for _, sev := range finalSeverities {
+			sev = strings.ToLower(sev)
+			if sev != "" && strings.HasPrefix(templateSeverity, sev) {
+				return true
+			}
 		}
 	}
 	return false
