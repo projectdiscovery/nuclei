@@ -197,8 +197,8 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() {
-	// resolves input templates definitions and any optional exclusion
-	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 {
+	// If we have no templates, run on whole template directory with provided tags
+	if len(r.options.Templates) == 0 && len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0 {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
 	if r.options.NewTemplates {

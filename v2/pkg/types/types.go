@@ -8,6 +8,8 @@ type Options struct {
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
 	Tags goflags.StringSlice
+	// ExcludeTags is the list of tags to exclude
+	ExcludeTags goflags.StringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
 	// Templates specifies the template/templates to use
