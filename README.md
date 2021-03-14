@@ -12,6 +12,7 @@
 <a href="https://github.com/projectdiscovery/nuclei/releases"><img src="https://img.shields.io/github/release/projectdiscovery/nuclei"></a>
 <a href="https://twitter.com/pdnuclei"><img src="https://img.shields.io/twitter/follow/pdnuclei.svg?logo=twitter"></a>
 <a href="https://discord.gg/KECAGdH"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
+<a href="https://github.com/projectdiscovery/nuclei/actions/workflows/build.yaml"><img src="https://github.com/projectdiscovery/nuclei/actions/workflows/build.yaml/badge.svg?branch=master"></a>
 </p>
       
 <p align="center">

@@ -25,6 +25,7 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
+	options.ExcludeTags = append(options.ExcludeTags, "dos")
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", Version)
 		os.Exit(0)
