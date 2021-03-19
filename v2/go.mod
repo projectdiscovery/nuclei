@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.7
+	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/collaborator v0.0.2
 	github.com/projectdiscovery/fastdialer v0.0.8
 	github.com/projectdiscovery/goflags v0.0.3
