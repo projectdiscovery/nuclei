@@ -60,8 +60,8 @@ func (r *Runner) updateTemplates() error {
 			IgnoreURL:          ignoreURL,
 			NucleiVersion:      Version,
 		}
-		if err := r.writeConfiguration(currentConfig); err != nil {
-			return errors.Wrap(err, "could not write template configuration")
+		if writeErr := r.writeConfiguration(currentConfig); writeErr != nil {
+			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
 	}
