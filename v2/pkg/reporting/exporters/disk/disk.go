@@ -44,7 +44,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	filenameBuilder := &strings.Builder{}
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
-	filenameBuilder.WriteString(strings.ReplaceAll(event.Matched, "/", "_"))
+	filenameBuilder.WriteString(strings.ReplaceAll(strings.ReplaceAll(event.Matched, "/", "_"), ":", "_"))
 	filenameBuilder.WriteString(".md")
 	finalFilename := filenameBuilder.String()
 
