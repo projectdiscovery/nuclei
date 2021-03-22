@@ -1,17 +1,17 @@
-package issues
+package reporting
 
 import (
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/dedupe"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/github"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/gitlab"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/jira"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"gopkg.in/yaml.v2"
+	"go.uber.org/multierr"
 )
 
 // Options is a configuration file for nuclei reporting module
@@ -26,6 +26,8 @@ type Options struct {
 	Gitlab *gitlab.Options `yaml:"gitlab"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
+	// DiskExporter contains configuration options for Disk Exporter Module
+	DiskExporter *disk.Options `yaml:"disk"`
 }
 
 // Filter filters the received event and decides whether to perform
@@ -75,25 +77,22 @@ type Tracker interface {
 	CreateIssue(event *output.ResultEvent) error
 }
 
+// Exporter is an interface implemented by an issue exporter
+type Exporter interface {
+	// Export exports an issue to an exporter
+	Export(event *output.ResultEvent) error
+}
+
 // Client is a client for nuclei issue tracking module
 type Client struct {
-	tracker Tracker
-	options *Options
-	dedupe  *dedupe.Storage
+	trackers  []Tracker
+	exporters []Exporter
+	options   *Options
+	dedupe    *dedupe.Storage
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(config, db string) (*Client, error) {
-	file, err := os.Open(config)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not open reporting config file")
-	}
-	defer file.Close()
-
-	options := &Options{}
-	if parseErr := yaml.NewDecoder(file).Decode(options); parseErr != nil {
-		return nil, parseErr
-	}
+func New(options *Options, db string) (*Client, error) {
 	if options.AllowList != nil {
 		options.AllowList.Compile()
 	}
@@ -101,27 +100,41 @@ func New(config, db string) (*Client, error) {
 		options.DenyList.Compile()
 	}
 
-	var tracker Tracker
+	client := &Client{options: options}
 	if options.Github != nil {
-		tracker, err = github.New(options.Github)
+		tracker, err := github.New(options.Github)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create reporting client")
+		}
+		client.trackers = append(client.trackers, tracker)
 	}
 	if options.Gitlab != nil {
-		tracker, err = gitlab.New(options.Gitlab)
+		tracker, err := gitlab.New(options.Gitlab)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create reporting client")
+		}
+		client.trackers = append(client.trackers, tracker)
 	}
 	if options.Jira != nil {
-		tracker, err = jira.New(options.Jira)
+		tracker, err := jira.New(options.Jira)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create reporting client")
+		}
+		client.trackers = append(client.trackers, tracker)
 	}
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create reporting client")
-	}
-	if tracker == nil {
-		return nil, errors.New("no issue tracker configuration found")
+	if options.DiskExporter != nil {
+		exporter, err := disk.New(options.DiskExporter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create exporting client")
+		}
+		client.exporters = append(client.exporters, exporter)
 	}
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{tracker: tracker, dedupe: storage, options: options}, nil
+	client.dedupe = storage
+	return client, nil
 }
 
 // Close closes the issue tracker reporting client
@@ -138,15 +151,20 @@ func (c *Client) CreateIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	found, err := c.dedupe.Index(event)
-	if err != nil {
-		_ = c.tracker.CreateIssue(event)
-		return err
+	unique, err := c.dedupe.Index(event)
+	if unique {
+		for _, tracker := range c.trackers {
+			if trackerErr := tracker.CreateIssue(event); trackerErr != nil {
+				err = multierr.Append(err, trackerErr)
+			}
+		}
+		for _, exporter := range c.exporters {
+			if exportErr := exporter.Export(event); exportErr != nil {
+				err = multierr.Append(err, exportErr)
+			}
+		}
 	}
-	if found {
-		return c.tracker.CreateIssue(event)
-	}
-	return nil
+	return err
 }
 
 func stringSliceContains(slice []string, item string) bool {

@@ -8,7 +8,7 @@ import (
 
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues/format"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
