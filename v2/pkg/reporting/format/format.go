@@ -47,11 +47,12 @@ func MarkdownDescription(event *output.ResultEvent) string {
 		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
 	}
 	if event.Request != "" {
-		builder.WriteString("\n**Request**\n\n```\n")
+		builder.WriteString("\n**Request**\n\n```http\n")
 		builder.WriteString(event.Request)
+		builder.WriteString("\n```\n")
 	}
 	if event.Response != "" {
-		builder.WriteString("\n```\n\n**Response**\n\n```\n")
+		builder.WriteString("\n**Response**\n\n```http\n")
 		// If the response is larger than 5 kb, truncate it before writing.
 		if len(event.Response) > 5*1024 {
 			builder.WriteString(event.Response[:5*1024])
