@@ -46,11 +46,21 @@ func MarkdownDescription(event *output.ResultEvent) string {
 	for k, v := range event.Info {
 		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
 	}
-	builder.WriteString("\n**Request**\n\n```\n")
-	builder.WriteString(event.Request)
-	builder.WriteString("\n```\n\n<details><summary>**Response**</summary>\n\n```\n")
-	builder.WriteString(event.Response)
-	builder.WriteString("\n```\n\n")
+	if event.Request != "" {
+		builder.WriteString("\n**Request**\n\n```\n")
+		builder.WriteString(event.Request)
+	}
+	if event.Response != "" {
+		builder.WriteString("\n```\n\n**Response**\n\n```\n")
+		// If the response is larger than 5 kb, truncate it before writing.
+		if len(event.Response) > 5*1024 {
+			builder.WriteString(event.Response[:5*1024])
+			builder.WriteString(".... Truncated ....")
+		} else {
+			builder.WriteString(event.Response)
+		}
+		builder.WriteString("\n```\n\n")
+	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
 		builder.WriteString("**Extra Information**\n\n")

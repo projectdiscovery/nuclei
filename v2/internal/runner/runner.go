@@ -19,13 +19,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/rs/xid"
 	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
+	"gopkg.in/yaml.v2"
 )
 
 // Runner is a client for running the enumeration process.
@@ -39,7 +41,7 @@ type Runner struct {
 	catalog         *catalog.Catalog
 	progress        progress.Progress
 	colorizer       aurora.Aurora
-	issuesClient    *issues.Client
+	issuesClient    *reporting.Client
 	severityColors  *colorizer.Colorizer
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
@@ -66,13 +68,36 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 
+	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
-		if client, err := issues.New(options.ReportingConfig, options.ReportingDB); err != nil {
+		file, err := os.Open(options.ReportingConfig)
+		if err != nil {
+			gologger.Fatal().Msgf("Could not open reporting config file: %s\n", err)
+		}
+
+		reportingOptions = &reporting.Options{}
+		if parseErr := yaml.NewDecoder(file).Decode(options); parseErr != nil {
+			file.Close()
+			gologger.Fatal().Msgf("Could not parse reporting config file: %s\n", parseErr)
+		}
+		file.Close()
+	}
+	if options.DiskExportDirectory != "" {
+		if reportingOptions != nil {
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		}
+	}
+	if reportingOptions != nil {
+		if client, err := reporting.New(reportingOptions, options.ReportingDB); err != nil {
 			gologger.Fatal().Msgf("Could not create issue reporting client: %s\n", err)
 		} else {
 			runner.issuesClient = client
 		}
 	}
+
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
