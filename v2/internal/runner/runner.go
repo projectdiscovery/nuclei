@@ -76,7 +76,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 
 		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(options); parseErr != nil {
+		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
 			file.Close()
 			gologger.Fatal().Msgf("Could not parse reporting config file: %s\n", parseErr)
 		}
