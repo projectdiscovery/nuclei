@@ -183,7 +183,7 @@ func (p *StatsTicker) getMetrics() map[string]interface{} {
 	results["templates"] = clistats.String(templates)
 	hosts, _ := p.stats.GetStatic("hosts")
 	results["hosts"] = clistats.String(hosts)
-	matched, _ := p.stats.GetStatic("matched")
+	matched, _ := p.stats.GetCounter("matched")
 	results["matched"] = clistats.String(matched)
 	requests, _ := p.stats.GetCounter("requests")
 	results["requests"] = clistats.String(requests)

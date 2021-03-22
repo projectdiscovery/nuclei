@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/issues"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/ratelimit"
 )
@@ -39,7 +39,7 @@ type ExecuterOptions struct {
 	// Options contains configuration options for the executer.
 	Options *types.Options
 	// IssuesClient is a client for nuclei issue tracker reporting
-	IssuesClient *issues.Client
+	IssuesClient *reporting.Client
 	// Progress is a progress client for scan reporting
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.

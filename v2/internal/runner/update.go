@@ -41,6 +41,8 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
+	configDir := path.Join(home, "/.config", "/nuclei")
+	_ = os.MkdirAll(configDir, os.ModePerm)
 
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
@@ -51,15 +53,61 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig = config
 	}
 
+	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+	if r.templatesConfig == nil {
+		currentConfig := &nucleiConfig{
+			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+			IgnoreURL:          ignoreURL,
+			NucleiVersion:      Version,
+		}
+		if writeErr := r.writeConfiguration(currentConfig); writeErr != nil {
+			return errors.Wrap(writeErr, "could not write template configuration")
+		}
+		r.templatesConfig = currentConfig
+	}
+	// Check if last checked for nuclei-ignore is more than 1 hours.
+	// and if true, run the check.
+	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
+		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL == "" {
+			ignoreURL = r.templatesConfig.IgnoreURL
+		}
+		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
+		if reqErr == nil {
+			resp, httpGet := http.DefaultClient.Do(req)
+			if httpGet != nil {
+				if resp != nil && resp.Body != nil {
+					resp.Body.Close()
+				}
+				gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+			} else {
+				data, _ := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				if len(data) > 0 {
+					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
+				}
+				if r.templatesConfig != nil {
+					r.templatesConfig.LastCheckedIgnore = time.Now()
+				}
+			}
+		}
+		cancel()
+	}
+
 	ctx := context.Background()
-	if r.templatesConfig == nil || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
+	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		if !r.options.UpdateTemplates {
-			gologger.Warning().Msgf("nuclei-templates are not installed, use update-templates flag.\n")
+			gologger.Warning().Msgf("nuclei-templates are not installed (or indexed), use update-templates flag.\n")
 			return nil
 		}
 
 		// Use custom location if user has given a template directory
-		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
+		r.templatesConfig = &nucleiConfig{
+			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+		}
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
@@ -132,7 +180,6 @@ func (r *Runner) updateTemplates() error {
 		if err != nil {
 			return err
 		}
-
 		err = r.writeConfiguration(r.templatesConfig)
 		if err != nil {
 			return err
