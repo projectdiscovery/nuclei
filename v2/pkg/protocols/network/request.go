@@ -113,13 +113,8 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 				inputEvents[input.Name] = string(buffer[:n])
 			}
 		}
-		r.options.Progress.IncrementRequests()
 	}
-	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not write request to server")
-	}
+	r.options.Progress.IncrementRequests()
 
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
@@ -137,7 +132,6 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	n, err := conn.Read(final)
 	if err != nil && err != io.EOF {
 		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not read from server")
 	}
 	responseBuilder.Write(final[:n])

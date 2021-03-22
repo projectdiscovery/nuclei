@@ -16,13 +16,15 @@ type nucleiConfig struct {
 	TemplatesDirectory string    `json:"templates-directory,omitempty"`
 	CurrentVersion     string    `json:"current-version,omitempty"`
 	LastChecked        time.Time `json:"last-checked,omitempty"`
-
+	IgnoreURL          string    `json:"ignore-url,omitempty"`
+	NucleiVersion      string    `json:"nuclei-version,omitempty"`
+	LastCheckedIgnore  time.Time `json:"last-checked-ignore,omitempty"`
 	// IgnorePaths ignores all the paths listed unless specified manually
 	IgnorePaths []string `json:"ignore-paths,omitempty"`
 }
 
 // nucleiConfigFilename is the filename of nuclei configuration file.
-const nucleiConfigFilename = ".nuclei-config.json"
+const nucleiConfigFilename = ".templates-config.json"
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
@@ -32,8 +34,10 @@ func readConfiguration() (*nucleiConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	configDir := path.Join(home, "/.config", "/nuclei")
+	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(home, nucleiConfigFilename)
+	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	file, err := os.Open(templatesConfigFile)
 	if err != nil {
 		return nil, err
@@ -54,9 +58,16 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	if err != nil {
 		return err
 	}
+	configDir := path.Join(home, "/.config", "/nuclei")
+	_ = os.MkdirAll(configDir, os.ModePerm)
 
+	if config.IgnoreURL == "" {
+		config.IgnoreURL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+	}
 	config.LastChecked = time.Now()
-	templatesConfigFile := path.Join(home, nucleiConfigFilename)
+	config.LastCheckedIgnore = time.Now()
+	config.NucleiVersion = Version
+	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return err
@@ -95,7 +106,15 @@ func (r *Runner) readNucleiIgnoreFile() {
 
 // getIgnoreFilePath returns the ignore file path for the runner
 func (r *Runner) getIgnoreFilePath() string {
-	defIgnoreFilePath := path.Join(r.templatesConfig.TemplatesDirectory, nucleiIgnoreFile)
+	var defIgnoreFilePath string
+
+	home, err := os.UserHomeDir()
+	if err == nil {
+		configDir := path.Join(home, "/.config", "/nuclei")
+		_ = os.MkdirAll(configDir, os.ModePerm)
+
+		defIgnoreFilePath = path.Join(configDir, nucleiIgnoreFile)
+	}
 
 	cwd, err := os.Getwd()
 	if err != nil {

@@ -24,9 +24,7 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
-
 	nucleiRunner.RunEnumeration()
-	nucleiRunner.Close()
 }
 
 func readConfig() {
@@ -77,7 +75,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.OfflineHTTP, "passive", false, "Enable Passive HTTP response processing mode")
 	set.StringVarP(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "biid", "", "Burp Collaborator BIID")
 	set.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "Nuclei Reporting Module configuration file")
-	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database")
+	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database (Always use this to persistent report data)")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
 	set.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "Exclude templates with the provided tags")
 	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
@@ -87,6 +85,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
 	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
 	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
+	set.StringVarP(&options.DiskExportDirectory, "disk-export", "de", "", "Directory on disk to export reports in markdown to")
 	_ = set.Parse()
 
 	if cfgFile != "" {

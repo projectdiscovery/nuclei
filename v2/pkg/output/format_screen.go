@@ -10,11 +10,11 @@ import (
 func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 	builder := &bytes.Buffer{}
 
-	builder.WriteRune('[')
-	builder.WriteString(w.aurora.Cyan(output.Timestamp.Format("2006-01-02 15:04:05")).String())
-	builder.WriteString("] ")
-
 	if !w.noMetadata {
+		builder.WriteRune('[')
+		builder.WriteString(w.aurora.Cyan(output.Timestamp.Format("2006-01-02 15:04:05")).String())
+		builder.WriteString("] ")
+
 		builder.WriteRune('[')
 		builder.WriteString(w.aurora.BrightGreen(output.TemplateID).String())
 
