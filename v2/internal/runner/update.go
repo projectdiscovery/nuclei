@@ -68,7 +68,7 @@ func (r *Runner) updateTemplates() error {
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
 	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
-		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL == "" {
+		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
 			ignoreURL = r.templatesConfig.IgnoreURL
 		}
 		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
