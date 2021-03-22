@@ -2,18 +2,13 @@ package disk
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"fmt"
-	"io"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/segmentio/ksuid"
 )
 
 type Exporter struct {
@@ -46,15 +41,10 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
 
-	var filename string
-	if outputFile := baseFilenameFromURL(event.Matched, event.Type); outputFile != "" {
-		filename = outputFile
-	} else {
-		filename = ksuid.New().String()
-	}
-
 	filenameBuilder := &strings.Builder{}
-	filenameBuilder.WriteString(filename)
+	filenameBuilder.WriteString(event.TemplateID)
+	filenameBuilder.WriteString("-")
+	filenameBuilder.WriteString(strings.ReplaceAll(event.Matched, "/", "_"))
 	filenameBuilder.WriteString(".md")
 	finalFilename := filenameBuilder.String()
 
@@ -67,25 +57,4 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	err := ioutil.WriteFile(path.Join(i.directory, finalFilename), data, 0644)
 	return err
-}
-
-// Taken from https://github.com/michenriksen/aquatone/blob/854a5d56fbb7a00b2e5ec80d443026c7a4ced798/core/session.go#L215
-func baseFilenameFromURL(stru, protocol string) string {
-	u, err := url.Parse(stru)
-	if err != nil {
-		return ""
-	}
-
-	h := sha1.New()
-	_, _ = io.WriteString(h, u.Path)
-	_, _ = io.WriteString(h, u.RawQuery)
-	_, _ = io.WriteString(h, u.Fragment)
-
-	pathHash := fmt.Sprintf("%x", h.Sum(nil))[0:16]
-	host := strings.Replace(u.Host, ":", "__", 1)
-	if u.Scheme == "" {
-		u.Scheme = protocol
-	}
-	filename := fmt.Sprintf("%s__%s__%s", u.Scheme, strings.ReplaceAll(host, ".", "_"), pathHash)
-	return strings.ToLower(filename)
 }
