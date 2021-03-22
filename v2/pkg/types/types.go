@@ -43,6 +43,8 @@ type Options struct {
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
 	ReportingConfig string
+	// DiskExportDirectory is the directory to export reports in markdown on disk to
+	DiskExportDirectory string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
