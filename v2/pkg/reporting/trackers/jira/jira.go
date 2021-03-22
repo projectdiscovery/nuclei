@@ -97,7 +97,13 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 	builder.WriteString("\n*Request*\n\n{code}\n")
 	builder.WriteString(event.Request)
 	builder.WriteString("\n{code}\n\n*Response*\n\n{code}\n")
-	builder.WriteString(event.Response)
+	// If the response is larger than 5 kb, truncate it before writing.
+	if len(event.Response) > 5*1024 {
+		builder.WriteString(event.Response[:5*1024])
+		builder.WriteString(".... Truncated ....")
+	} else {
+		builder.WriteString(event.Response)
+	}
 	builder.WriteString("\n{code}\n\n")
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
