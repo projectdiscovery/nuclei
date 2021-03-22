@@ -41,6 +41,8 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
+	configDir := path.Join(home, "/.config", "/nuclei")
+	_ = os.MkdirAll(configDir, os.ModePerm)
 
 	templatesConfigFile := path.Join(home, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
@@ -51,6 +53,34 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig = config
 	}
 
+	// Check if last checked for nuclei-ignore is more than 1 hours.
+	// and if true, run the check.
+	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
+		ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL == "" {
+			ignoreURL = r.templatesConfig.IgnoreURL
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
+		if reqErr == nil {
+			resp, httpGet := http.DefaultClient.Do(req)
+			if httpGet == nil {
+				data, _ := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				if len(data) > 0 {
+					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
+				}
+				if r.templatesConfig != nil {
+					r.templatesConfig.LastCheckedIgnore = time.Now()
+				}
+			} else if resp.Body != nil {
+				resp.Body.Close()
+			}
+		}
+		cancel()
+	}
+
 	ctx := context.Background()
 	if r.templatesConfig == nil || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		if !r.options.UpdateTemplates {
@@ -59,7 +89,9 @@ func (r *Runner) updateTemplates() error {
 		}
 
 		// Use custom location if user has given a template directory
-		r.templatesConfig = &nucleiConfig{TemplatesDirectory: path.Join(home, "nuclei-templates")}
+		r.templatesConfig = &nucleiConfig{
+			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+		}
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
@@ -132,7 +164,6 @@ func (r *Runner) updateTemplates() error {
 		if err != nil {
 			return err
 		}
-
 		err = r.writeConfiguration(r.templatesConfig)
 		if err != nil {
 			return err
