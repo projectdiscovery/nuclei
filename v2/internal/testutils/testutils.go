@@ -19,7 +19,6 @@ func Init(options *types.Options) {
 
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
-	RandomAgent:          false,
 	Metrics:              false,
 	Debug:                false,
 	DebugRequests:        false,
