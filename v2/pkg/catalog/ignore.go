@@ -1,36 +1,10 @@
 package catalog
 
 import (
-	"bufio"
-	"os"
-	"path"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
 )
-
-const nucleiIgnoreFile = ".nuclei-ignore"
-
-// readNucleiIgnoreFile reads the nuclei ignore file marking it in map
-func (c *Catalog) readNucleiIgnoreFile() {
-	file, err := os.Open(path.Join(c.templatesDirectory, nucleiIgnoreFile))
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-		if strings.HasPrefix(text, "#") {
-			continue
-		}
-		c.ignoreFiles = append(c.ignoreFiles, text)
-	}
-}
 
 // checkIfInNucleiIgnore checks if a path falls under nuclei-ignore rules.
 func (c *Catalog) checkIfInNucleiIgnore(item string) bool {
