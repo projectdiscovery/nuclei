@@ -67,6 +67,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.readNucleiIgnoreFile()
 	}
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
+	runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
 
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {

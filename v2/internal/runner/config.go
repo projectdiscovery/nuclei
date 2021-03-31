@@ -114,17 +114,12 @@ func (r *Runner) getIgnoreFilePath() string {
 		_ = os.MkdirAll(configDir, os.ModePerm)
 
 		defIgnoreFilePath = path.Join(configDir, nucleiIgnoreFile)
+		return defIgnoreFilePath
 	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		return defIgnoreFilePath
 	}
 	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
-
-	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
-	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
-		return defIgnoreFilePath
-	}
 	return cwdIgnoreFilePath
 }

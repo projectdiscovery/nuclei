@@ -44,7 +44,7 @@ func (r *Runner) updateTemplates() error {
 	configDir := path.Join(home, "/.config", "/nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(home, nucleiConfigFilename)
+	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
 		config, readErr := readConfiguration()
 		if err != nil {
@@ -65,6 +65,7 @@ func (r *Runner) updateTemplates() error {
 		}
 		r.templatesConfig = currentConfig
 	}
+
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
 	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
