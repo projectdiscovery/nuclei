@@ -103,7 +103,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
-	if r.options.Options.RandomAgent {
+	if _, ok := r.customHeaders["User-Agent"]; !ok {
 		r.customHeaders["User-Agent"] = uarand.GetRandom()
 	}
 
