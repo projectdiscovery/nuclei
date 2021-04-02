@@ -25,7 +25,7 @@ func (c *Catalog) checkIfInNucleiIgnore(item string) bool {
 		}
 	}
 	if matched {
-		gologger.Error().Msgf("Excluding %s due to nuclei-ignore filter", item)
+		gologger.Warning().Msgf("Excluding %s due to nuclei-ignore filter", item)
 		return true
 	}
 	return false
