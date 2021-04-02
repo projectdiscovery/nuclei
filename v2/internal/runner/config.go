@@ -102,10 +102,8 @@ func (r *Runner) readNucleiIgnoreFile() {
 		gologger.Error().Msgf("Could not parse nuclei-ignore file: %s\n", err)
 		return
 	}
-	for _, file := range ignore.Files {
-		r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, file)
-	}
 	r.options.ExcludeTags = append(r.options.ExcludeTags, ignore.Tags...)
+	r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, ignore.Files...)
 }
 
 // getIgnoreFilePath returns the ignore file path for the runner
