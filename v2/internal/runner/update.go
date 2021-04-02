@@ -317,7 +317,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		paths := strings.Split(directory, "/")
 		finalPath := strings.Join(paths[1:], "/")
 
-		if (!strings.EqualFold(name, ".nuclei-ignore") && strings.HasPrefix(name, ".")) || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
 		}
 		results.totalCount++
