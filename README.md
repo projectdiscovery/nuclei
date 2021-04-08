@@ -22,8 +22,8 @@
   <a href="#for-developers-and-organisations">For Developers</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
   <a href="#credits">Credits</a> •
-  <a href="#license">License</a> •
-  <a href="https://discord.gg/KECAGdH">Join Discord</a>
+  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
+  <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 
 ---
