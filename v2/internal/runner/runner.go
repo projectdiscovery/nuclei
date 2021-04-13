@@ -67,6 +67,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.readNucleiIgnoreFile()
 	}
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
+	runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
 
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
@@ -235,8 +236,8 @@ func (r *Runner) RunEnumeration() {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates)
-	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates)
+	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates, false)
+	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates, true)
 	// defaults to all templates
 	allTemplates := includedTemplates
 
@@ -260,7 +261,7 @@ func (r *Runner) RunEnumeration() {
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows)
+	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows, false)
 	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
 	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
 

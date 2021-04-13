@@ -73,7 +73,7 @@ func New(options *types.Options) (*Browser, error) {
 			customAgent = parts[1]
 		}
 	}
-	if options.RandomAgent {
+	if customAgent == "" {
 		customAgent = uarand.GetRandom()
 	}
 	httpclient, err := newhttpClient(options)

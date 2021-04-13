@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"bufio"
 	"os"
 	"path"
 	"regexp"
-	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/projectdiscovery/gologger"
+	"gopkg.in/yaml.v2"
 )
 
 // nucleiConfig contains some configuration options for nuclei
@@ -83,25 +83,27 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 
 const nucleiIgnoreFile = ".nuclei-ignore"
 
+type ignoreFile struct {
+	Tags  []string `yaml:"tags"`
+	Files []string `yaml:"files"`
+}
+
 // readNucleiIgnoreFile reads the nuclei ignore file marking it in map
 func (r *Runner) readNucleiIgnoreFile() {
 	file, err := os.Open(r.getIgnoreFilePath())
 	if err != nil {
+		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
 		return
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-		if strings.HasPrefix(text, "#") {
-			continue
-		}
-		r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, text)
+	ignore := &ignoreFile{}
+	if err := yaml.NewDecoder(file).Decode(ignore); err != nil {
+		gologger.Error().Msgf("Could not parse nuclei-ignore file: %s\n", err)
+		return
 	}
+	r.options.ExcludeTags = append(r.options.ExcludeTags, ignore.Tags...)
+	r.templatesConfig.IgnorePaths = append(r.templatesConfig.IgnorePaths, ignore.Files...)
 }
 
 // getIgnoreFilePath returns the ignore file path for the runner
@@ -114,17 +116,12 @@ func (r *Runner) getIgnoreFilePath() string {
 		_ = os.MkdirAll(configDir, os.ModePerm)
 
 		defIgnoreFilePath = path.Join(configDir, nucleiIgnoreFile)
+		return defIgnoreFilePath
 	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		return defIgnoreFilePath
 	}
 	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
-
-	cwdIfpInfo, err := os.Stat(cwdIgnoreFilePath)
-	if os.IsNotExist(err) || cwdIfpInfo.IsDir() {
-		return defIgnoreFilePath
-	}
 	return cwdIgnoreFilePath
 }
