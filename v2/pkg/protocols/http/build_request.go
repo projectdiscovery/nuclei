@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -182,7 +183,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	if r.request.Body != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(r.request.Body))
 	}
-	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+	setHeader(req, "User-Agent", uarand.GetRandom())
 
 	// Only set these headers on non raw requests
 	if len(r.request.Raw) == 0 {
