@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -113,11 +114,11 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	return r.handleRawWithPaylods(ctx, data, baseURL, values, payloads)
+	return r.handleRawWithPayloads(ctx, data, baseURL, values, payloads)
 }
 
-// handleRawWithPaylods handles raw requests along with paylaods
-func (r *requestGenerator) handleRawWithPaylods(ctx context.Context, rawRequest, baseURL string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
+// handleRawWithPayloads handles raw requests along with payloads
+func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest, baseURL string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
 	// Combine the template payloads along with base
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
@@ -182,7 +183,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	if r.request.Body != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(r.request.Body))
 	}
-	setHeader(req, "User-Agent", "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)")
+	setHeader(req, "User-Agent", uarand.GetRandom())
 
 	// Only set these headers on non raw requests
 	if len(r.request.Raw) == 0 {
