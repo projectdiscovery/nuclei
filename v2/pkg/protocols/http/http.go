@@ -3,7 +3,6 @@ package http
 import (
 	"strings"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -101,10 +100,6 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			continue
 		}
 		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
-	}
-	// Add User-Agent value randomly to the customHeaders slice if `random-agent` flag is given
-	if _, ok := r.customHeaders["User-Agent"]; !ok {
-		r.customHeaders["User-Agent"] = uarand.GetRandom()
 	}
 
 	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
