@@ -62,6 +62,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 		Catalog:      r.catalog,
 		IssuesClient: r.issuesClient,
 		RateLimiter:  r.ratelimiter,
+		Interactsh:   r.interactsh,
 		ProjectFile:  r.projectFile,
 		Browser:      r.browser,
 	}

@@ -1,6 +1,9 @@
 package http
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+)
 
 // requestGenerator generates requests sequentially based on various
 // configurations for a http request template.
@@ -11,12 +14,13 @@ import "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 type requestGenerator struct {
 	currentIndex    int
 	request         *Request
+	options         *protocols.ExecuterOptions
 	payloadIterator *generators.Iterator
 }
 
 // newGenerator creates a new request generator instance
 func (r *Request) newGenerator() *requestGenerator {
-	generator := &requestGenerator{request: r}
+	generator := &requestGenerator{request: r, options: r.options}
 
 	if len(r.Payloads) > 0 {
 		generator.payloadIterator = r.generator.NewIterator()
