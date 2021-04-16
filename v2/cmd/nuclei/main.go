@@ -85,6 +85,12 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
 	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
 	set.StringVarP(&options.DiskExportDirectory, "disk-export", "de", "", "Directory on disk to export reports in markdown to")
+	set.BoolVar(&options.Interactsh, "interactsh", false, "Use interactsh server for blind interaction polling")
+	set.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "Interactsh Server URL")
+	set.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "Number of requests to keep in interactions cache")
+	set.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "Number of seconds to wait before evicting requests from cache")
+	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")
+	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
 	_ = set.Parse()
 
 	if cfgFile != "" {

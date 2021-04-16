@@ -33,7 +33,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := r.newGenerator()
-	requestForDump, err := generator.Make(reqURL, nil)
+	requestForDump, err := generator.Make(reqURL, nil, "")
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 	// Pre-Generate requests
 	for i := 0; i < r.RaceNumberRequests; i++ {
 		generator := r.newGenerator()
-		request, err := generator.Make(reqURL, nil)
+		request, err := generator.Make(reqURL, nil, "")
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		request, err := generator.Make(reqURL, dynamicValues, "")
 		if err == io.EOF {
 			break
 		}
@@ -148,7 +148,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		request, err := generator.Make(reqURL, dynamicValues, "")
 		if err == io.EOF {
 			break
 		}
@@ -197,7 +197,12 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 	requestCount := 1
 	var requestErr error
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		var interactURL string
+
+		if r.options.Interactsh != nil {
+			interactURL = r.options.Interactsh.URL()
+		}
+		request, err := generator.Make(reqURL, dynamicValues, interactURL)
 		if err == io.EOF {
 			break
 		}
@@ -213,6 +218,9 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			if event.OperatorsResult != nil {
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
+			}
+			if r.options.Interactsh != nil {
+				r.options.Interactsh.RequestEvent(interactURL, event, r.MakeResultEvent)
 			}
 			callback(event)
 		}, requestCount)
