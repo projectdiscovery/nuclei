@@ -1,8 +1,8 @@
 package networkclientpool
 
 import (
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -16,18 +16,7 @@ func Init(options *types.Options) error {
 	if normalClient != nil {
 		return nil
 	}
-	opts := fastdialer.DefaultOptions
-	if options.SystemResolvers {
-		opts.EnableFallback = true
-	}
-	if options.ResolversFile != "" {
-		opts.BaseResolvers = options.InternalResolversList
-	}
-	dialer, err := fastdialer.NewDialer(opts)
-	if err != nil {
-		return errors.Wrap(err, "could not create dialer")
-	}
-	normalClient = dialer
+	normalClient = protocolstate.Dialer
 	return nil
 }
 

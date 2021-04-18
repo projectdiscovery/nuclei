@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -97,14 +98,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	var err error
 
 	if Dialer == nil {
-		opts := fastdialer.DefaultOptions
-		if options.SystemResolvers {
-			opts.EnableFallback = true
-		}
-		if options.ResolversFile != "" {
-			opts.BaseResolvers = options.InternalResolversList
-		}
-		Dialer, err = fastdialer.NewDialer(opts)
+		Dialer = protocolstate.Dialer
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dialer")
