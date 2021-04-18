@@ -198,9 +198,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 	requestCount := 1
 	var requestErr error
 	for {
-		var interactURL string
+		hasInteractMarkers := interactsh.HasMatchers(r.CompiledOperators)
 
-		if r.options.Interactsh != nil {
+		var interactURL string
+		if r.options.Interactsh != nil && hasInteractMarkers {
 			interactURL = r.options.Interactsh.URL()
 		}
 		request, err := generator.Make(reqURL, dynamicValues, interactURL)
@@ -220,16 +221,14 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
 			}
-			if interactsh.HasMatchers(r.CompiledOperators) {
-				if r.options.Interactsh != nil {
-					r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
-						MakeResultFunc: r.MakeResultEvent,
-						Event:          event,
-						Operators:      r.CompiledOperators,
-						MatchFunc:      r.Match,
-						ExtractFunc:    r.Extract,
-					})
-				}
+			if hasInteractMarkers && r.options.Interactsh != nil {
+				r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+					MakeResultFunc: r.MakeResultEvent,
+					Event:          event,
+					Operators:      r.CompiledOperators,
+					MatchFunc:      r.Match,
+					ExtractFunc:    r.Extract,
+				})
 			}
 			callback(event)
 		}, requestCount)

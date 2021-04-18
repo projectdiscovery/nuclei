@@ -78,8 +78,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
 
+	hasInteractMarkers := interactsh.HasMatchers(r.CompiledOperators)
 	var interactURL string
-	if r.options.Interactsh != nil {
+	if r.options.Interactsh != nil && hasInteractMarkers {
 		interactURL = r.options.Interactsh.URL()
 	}
 
@@ -94,7 +95,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		case "hex":
 			data, err = hex.DecodeString(input.Data)
 		default:
-			if r.options.Interactsh != nil {
+			if interactURL != "" {
 				input.Data = r.options.Interactsh.ReplaceMarkers(input.Data, interactURL)
 			}
 			data = []byte(input.Data)
@@ -159,7 +160,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if !interactsh.HasMatchers(r.CompiledOperators) {
+	if !hasInteractMarkers {
 		if r.CompiledOperators != nil {
 			result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 			if ok && result != nil {

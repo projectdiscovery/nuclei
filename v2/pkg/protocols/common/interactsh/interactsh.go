@@ -175,12 +175,17 @@ func HasMatchers(operators *operators.Operators) bool {
 	}
 
 	for _, matcher := range operators.Matchers {
-		if strings.HasPrefix(matcher.Part, "interactsh-") {
+		for _, dsl := range matcher.DSL {
+			if strings.HasPrefix(dsl, "interactsh") {
+				return true
+			}
+		}
+		if strings.HasPrefix(matcher.Part, "interactsh") {
 			return true
 		}
 	}
 	for _, matcher := range operators.Extractors {
-		if strings.HasPrefix(matcher.Part, "interactsh-") {
+		if strings.HasPrefix(matcher.Part, "interactsh") {
 			return true
 		}
 	}
