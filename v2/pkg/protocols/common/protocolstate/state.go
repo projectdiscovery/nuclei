@@ -18,7 +18,7 @@ func Init(options *types.Options) error {
 	}
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
-		errors.Wrap(err, "could not create dialer")
+		return errors.Wrap(err, "could not create dialer")
 	}
 	Dialer = dialer
 	return nil

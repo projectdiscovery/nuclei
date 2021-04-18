@@ -10,7 +10,7 @@ import (
 )
 
 // newhttpClient creates a new http client for headless communication with a timeout
-func newhttpClient(options *types.Options) (*http.Client, error) {
+func newhttpClient(options *types.Options) *http.Client {
 	dialer := protocolstate.Dialer
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
@@ -22,5 +22,5 @@ func newhttpClient(options *types.Options) (*http.Client, error) {
 			InsecureSkipVerify: true,
 		},
 	}
-	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}, nil
+	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}
 }
