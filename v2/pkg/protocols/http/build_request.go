@@ -61,7 +61,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 	parsedString := parsed.String()
 
-	if r.options.Interactsh != nil {
+	if interactURL != "" {
 		parsedString = r.options.Interactsh.ReplaceMarkers(parsedString, interactURL)
 	}
 	values["BaseURL"] = parsedString
@@ -118,7 +118,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}, interactURL string) (*generatedRequest, error) {
-	if r.options.Interactsh != nil {
+	if interactURL != "" {
 		data = r.options.Interactsh.ReplaceMarkers(data, interactURL)
 	}
 	return r.handleRawWithPayloads(ctx, data, baseURL, values, payloads)
@@ -178,7 +178,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}, interactURL string) (*retryablehttp.Request, error) {
 	// Set the header values requested
 	for header, value := range r.request.Headers {
-		if interactURL != "" && r.options.Interactsh != nil {
+		if interactURL != "" {
 			value = r.options.Interactsh.ReplaceMarkers(value, interactURL)
 		}
 		req.Header[header] = []string{replacer.Replace(value, values)}
@@ -192,7 +192,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	// Check if the user requested a request body
 	if r.request.Body != "" {
 		body := r.request.Body
-		if interactURL != "" && r.options.Interactsh != nil {
+		if interactURL != "" {
 			body = r.options.Interactsh.ReplaceMarkers(body, interactURL)
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
