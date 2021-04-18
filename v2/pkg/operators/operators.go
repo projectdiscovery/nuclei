@@ -65,6 +65,32 @@ type Result struct {
 	PayloadValues map[string]interface{}
 }
 
+// Merge merges a result structure into the other.
+func (r *Result) Merge(result *Result) {
+	if !r.Matched && result.Matched {
+		r.Matched = result.Matched
+	}
+	if !r.Extracted && result.Extracted {
+		r.Extracted = result.Extracted
+	}
+
+	for k, v := range result.Matches {
+		r.Matches[k] = v
+	}
+	for k, v := range result.Extracts {
+		r.Extracts[k] = v
+	}
+	for _, v := range result.OutputExtracts {
+		r.OutputExtracts = append(r.OutputExtracts, v)
+	}
+	for k, v := range result.DynamicValues {
+		r.DynamicValues[k] = v
+	}
+	for k, v := range result.PayloadValues {
+		r.PayloadValues[k] = v
+	}
+}
+
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
 type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
 
@@ -81,6 +107,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string]interface{}),
 	}
+
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range r.Extractors {
 		var extractorResults []string

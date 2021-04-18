@@ -372,7 +372,10 @@ func (r *Runner) RunEnumeration() {
 	wgtemplates.Wait()
 
 	if r.interactsh != nil {
-		r.interactsh.Close()
+		matched := r.interactsh.Close()
+		if matched {
+			results.CAS(false, true)
+		}
 	}
 	r.progress.Stop()
 

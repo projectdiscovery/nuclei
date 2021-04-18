@@ -22,6 +22,7 @@ type Client struct {
 	// requests is a stored cache for interactsh-url->request-event data.
 	requests *ccache.Cache
 
+	matched          bool
 	dotHostname      string
 	eviction         time.Duration
 	pollDuration     time.Duration
@@ -77,24 +78,38 @@ func New(options *Options) (*Client, error) {
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.ColldownPeriod,
 	}
+
 	interactClient.interactsh.StartPolling(interactClient.pollDuration, func(interaction *server.Interaction) {
 		item := interactClient.requests.Get(interaction.UniqueID)
 		if item == nil {
 			return
 		}
-		data, ok := item.Value().(*internalRequestEvent)
+		data, ok := item.Value().(*RequestData)
 		if !ok {
 			return
 		}
+
+		data.Event.InternalEvent["interactsh-protocol"] = interaction.Protocol
+		data.Event.InternalEvent["interactsh-request"] = interaction.RawRequest
+		data.Event.InternalEvent["interactsh-response"] = interaction.RawResponse
+		result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
+		if !matched || result == nil {
+			return // if we don't match, return
+		}
 		interactClient.requests.Delete(interaction.UniqueID)
 
-		data.event.OperatorsResult = &operators.Result{
-			Matches: map[string]struct{}{strings.ToLower(interaction.Protocol): {}},
+		if data.Event.OperatorsResult != nil {
+			data.Event.OperatorsResult.Merge(result)
+		} else {
+			data.Event.OperatorsResult = result
 		}
-		data.event.Results = data.makeResultFunc(data.event)
-		for _, result := range data.event.Results {
+		data.Event.Results = data.MakeResultFunc(data.Event)
+		for _, result := range data.Event.Results {
 			result.Interaction = interaction
 			_ = options.Output.Write(result)
+			if !interactClient.matched {
+				interactClient.matched = true
+			}
 			options.Progress.IncrementMatched()
 		}
 	})
@@ -107,12 +122,13 @@ func (c *Client) URL() string {
 }
 
 // Close closes the interactsh clients after waiting for cooldown period.
-func (c *Client) Close() {
+func (c *Client) Close() bool {
 	if c.cooldownDuration > 0 {
 		time.Sleep(c.cooldownDuration)
 	}
 	c.interactsh.StopPolling()
 	c.interactsh.Close()
+	return c.matched
 }
 
 // ReplaceMarkers replaces the {{interactsh-url}} placeholders to actual
@@ -133,13 +149,36 @@ func (c *Client) ReplaceMarkers(data, interactshURL string) string {
 // MakeResultEventFunc is a result making function for nuclei
 type MakeResultEventFunc func(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
 
-type internalRequestEvent struct {
-	makeResultFunc MakeResultEventFunc
-	event          *output.InternalWrappedEvent
+// RequestData contains data for a request event
+type RequestData struct {
+	MakeResultFunc MakeResultEventFunc
+	Event          *output.InternalWrappedEvent
+	Operators      *operators.Operators
+	MatchFunc      operators.MatchFunc
+	ExtractFunc    operators.ExtractFunc
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
-func (c *Client) RequestEvent(interactshURL string, event *output.InternalWrappedEvent, makeResult MakeResultEventFunc) {
+func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
 	id := strings.TrimSuffix(interactshURL, c.dotHostname)
-	c.requests.Set(id, &internalRequestEvent{makeResultFunc: makeResult, event: event}, c.eviction)
+	c.requests.Set(id, data, c.eviction)
+}
+
+// HasMatchers returns true if an operator has interactsh part
+// matchers or extractors.
+//
+// Used by requests to show result or not depending on presence of interact.sh
+// data part matchers.
+func HasMatchers(operators *operators.Operators) bool {
+	for _, matcher := range operators.Matchers {
+		if strings.HasPrefix(matcher.Part, "interactsh-") {
+			return true
+		}
+	}
+	for _, matcher := range operators.Extractors {
+		if strings.HasPrefix(matcher.Part, "interactsh-") {
+			return true
+		}
+	}
+	return false
 }
