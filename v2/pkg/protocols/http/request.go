@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
@@ -219,8 +220,16 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
 			}
-			if r.options.Interactsh != nil {
-				r.options.Interactsh.RequestEvent(interactURL, event, r.MakeResultEvent)
+			if interactsh.HasMatchers(r.CompiledOperators) {
+				if r.options.Interactsh != nil {
+					r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+						MakeResultFunc: r.MakeResultEvent,
+						Event:          event,
+						Operators:      r.CompiledOperators,
+						MatchFunc:      r.Match,
+						ExtractFunc:    r.Extract,
+					})
+				}
 			}
 			callback(event)
 		}, requestCount)
@@ -398,14 +407,16 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
-		if ok && event.OperatorsResult != nil {
-			event.OperatorsResult.PayloadValues = request.meta
-			event.Results = r.MakeResultEvent(event)
+	if !interactsh.HasMatchers(r.CompiledOperators) {
+		if r.CompiledOperators != nil {
+			var ok bool
+			event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
+			if ok && event.OperatorsResult != nil {
+				event.OperatorsResult.PayloadValues = request.meta
+				event.Results = r.MakeResultEvent(event)
+			}
+			event.InternalEvent = outputEvent
 		}
-		event.InternalEvent = outputEvent
 	}
 	callback(event)
 	return nil
