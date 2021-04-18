@@ -5,25 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // newhttpClient creates a new http client for headless communication with a timeout
 func newhttpClient(options *types.Options) (*http.Client, error) {
-	opts := fastdialer.DefaultOptions
-	if options.SystemResolvers {
-		opts.EnableFallback = true
-	}
-	if options.ResolversFile != "" {
-		opts.BaseResolvers = options.InternalResolversList
-	}
-	dialer, err := fastdialer.NewDialer(opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create dialer")
-	}
-
+	dialer := protocolstate.Dialer
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
 		MaxIdleConns:        500,
