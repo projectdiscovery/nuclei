@@ -199,7 +199,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if options.Interactsh {
+	if !options.NoInteractsh {
 		interactshClient, err := interactsh.New(&interactsh.Options{
 			ServerURL:      options.InteractshURL,
 			CacheSize:      int64(options.InteractionsCacheSize),
