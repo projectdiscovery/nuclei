@@ -89,9 +89,9 @@ func New(options *Options) (*Client, error) {
 			return
 		}
 
-		data.Event.InternalEvent["interactsh-protocol"] = interaction.Protocol
-		data.Event.InternalEvent["interactsh-request"] = interaction.RawRequest
-		data.Event.InternalEvent["interactsh-response"] = interaction.RawResponse
+		data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
+		data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
+		data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 		result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
 		if !matched || result == nil {
 			return // if we don't match, return
