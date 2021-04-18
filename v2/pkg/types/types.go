@@ -123,6 +123,6 @@ type Options struct {
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
 	NewTemplates bool
-	// Interactsh enables use of interactsh server for interaction polling
-	Interactsh bool
+	// NoInteractsh disables use of interactsh server for interaction polling
+	NoInteractsh bool
 }
