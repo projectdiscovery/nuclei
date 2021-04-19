@@ -176,7 +176,7 @@ func HasMatchers(operators *operators.Operators) bool {
 
 	for _, matcher := range operators.Matchers {
 		for _, dsl := range matcher.DSL {
-			if strings.HasPrefix(dsl, "interactsh") {
+			if strings.Contains(dsl, "interactsh") {
 				return true
 			}
 		}
