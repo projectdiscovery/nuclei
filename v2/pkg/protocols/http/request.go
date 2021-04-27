@@ -372,6 +372,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	finalEvent := make(output.InternalEvent)
 
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
+	if i := strings.LastIndex(hostname, ":"); i != -1 {
+		hostname = hostname[:i]
+	}
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
 	for k, v := range previous {
