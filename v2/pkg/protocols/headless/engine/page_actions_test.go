@@ -9,11 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestActionNavigate(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
@@ -46,6 +49,8 @@ func TestActionNavigate(t *testing.T) {
 }
 
 func TestActionScript(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
@@ -113,6 +118,8 @@ func TestActionScript(t *testing.T) {
 }
 
 func TestActionClick(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
@@ -151,6 +158,8 @@ func TestActionClick(t *testing.T) {
 }
 
 func TestActionRightClick(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
@@ -197,6 +206,8 @@ func TestActionRightClick(t *testing.T) {
 }
 
 func TestActionTextInput(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
@@ -236,6 +247,8 @@ func TestActionTextInput(t *testing.T) {
 }
 
 func TestActionHeadersChange(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()

@@ -2,6 +2,7 @@ package protocolinit
 
 import (
 	"github.com/corpix/uarand"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
@@ -12,6 +13,9 @@ import (
 func Init(options *types.Options) error {
 	uarand.Default = uarand.NewWithCustomList(userAgents)
 
+	if err := protocolstate.Init(options); err != nil {
+		return err
+	}
 	if err := dnsclientpool.Init(options); err != nil {
 		return err
 	}
@@ -57,4 +61,8 @@ var userAgents = []string{
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36",
 	"Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1866.237 Safari/537.36",
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/4E423F",
+}
+
+func Close() {
+	protocolstate.Dialer.Close()
 }
