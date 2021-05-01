@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
@@ -237,6 +238,7 @@ func (r *Runner) Close() {
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
+	protocolinit.Close()
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
