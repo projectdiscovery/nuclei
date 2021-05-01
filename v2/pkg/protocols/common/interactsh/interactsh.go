@@ -169,12 +169,12 @@ func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
 //
 // Used by requests to show result or not depending on presence of interact.sh
 // data part matchers.
-func HasMatchers(operators *operators.Operators) bool {
-	if operators == nil {
+func HasMatchers(op *operators.Operators) bool {
+	if op == nil {
 		return false
 	}
 
-	for _, matcher := range operators.Matchers {
+	for _, matcher := range op.Matchers {
 		for _, dsl := range matcher.DSL {
 			if strings.Contains(dsl, "interactsh") {
 				return true
@@ -184,7 +184,7 @@ func HasMatchers(operators *operators.Operators) bool {
 			return true
 		}
 	}
-	for _, matcher := range operators.Extractors {
+	for _, matcher := range op.Extractors {
 		if strings.HasPrefix(matcher.Part, "interactsh") {
 			return true
 		}
