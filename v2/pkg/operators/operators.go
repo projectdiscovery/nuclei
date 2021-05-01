@@ -80,9 +80,7 @@ func (r *Result) Merge(result *Result) {
 	for k, v := range result.Extracts {
 		r.Extracts[k] = v
 	}
-	for _, v := range result.OutputExtracts {
-		r.OutputExtracts = append(r.OutputExtracts, v)
-	}
+	r.OutputExtracts = append(r.OutputExtracts, result.OutputExtracts...)
 	for k, v := range result.DynamicValues {
 		r.DynamicValues[k] = v
 	}
