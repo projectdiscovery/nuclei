@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/url"
 	"strings"
 
@@ -100,20 +99,11 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.Path = parts[1]
 	}
 
-	// If raw request doesn't have a Host header and/ path,
-	// this will be generated from the parsed baseURL
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse request URL: %s", err)
 	}
-
-	templateHost := rawRequest.Headers["Host"]
 	hostURL := parsedURL.Host
-
-	if strings.Contains(templateHost, ":") {
-		_, templatePort, _ := net.SplitHostPort(templateHost)
-		hostURL = net.JoinHostPort(parsedURL.Hostname(), templatePort)
-	}
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
@@ -122,6 +112,12 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+
+	// If raw request doesn't have a Host header
+	// this will be generated from the parsed baseURL
+	if rawRequest.Headers["Host"] == "" {
+		rawRequest.Headers["Host"] = hostURL
+	}
 
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)

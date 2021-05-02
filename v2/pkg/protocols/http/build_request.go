@@ -158,6 +158,9 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 			continue
 		}
 		req.Header[key] = []string{value}
+		if key == "Host" {
+			req.Host = value
+		}
 	}
 	request, err := r.fillRequest(req, values)
 	if err != nil {
@@ -172,6 +175,9 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	// Set the header values requested
 	for header, value := range r.request.Headers {
 		req.Header[header] = []string{replacer.Replace(value, values)}
+		if header == "Host" {
+			req.Host = replacer.Replace(value, values)
+		}
 	}
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
@@ -197,5 +203,8 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 func setHeader(req *http.Request, name, value string) {
 	if _, ok := req.Header[name]; !ok {
 		req.Header.Set(name, value)
+	}
+	if name == "Host" {
+		req.Host = value
 	}
 }
