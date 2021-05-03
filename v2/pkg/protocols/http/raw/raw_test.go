@@ -15,7 +15,7 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
 Accept-Language: en-US,en;q=0.9`, "https://example.com:8080", false)
 	require.Nil(t, err, "could not parse GET request")
-	require.Equal(t, "https://example.com:123/gg/phpinfo.php", request.FullURL, "Could not parse request url correctly")
+	require.Equal(t, "https://example.com:8080/gg/phpinfo.php", request.FullURL, "Could not parse request url correctly")
 	require.Equal(t, "/gg/phpinfo.php", request.Path, "Could not parse request path correctly")
 
 	t.Run("path-suffix", func(t *testing.T) {
@@ -29,17 +29,17 @@ Host: {{Hostname}}`, "https://example.com:8080/test", false)
 		request, err := Parse(`GET ?username=test&password=test HTTP/1.1
 Host: {{Hostname}}:123`, "https://example.com:8080/test", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:123/test?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		require.Equal(t, "https://example.com:8080/test?username=test&password=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET ?username=test&password=test HTTP/1.1
 Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:123/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		require.Equal(t, "https://example.com:8080/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET /?username=test&password=test HTTP/1.1
 		Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:123/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		require.Equal(t, "https://example.com:8080/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
 	})
 }
 
