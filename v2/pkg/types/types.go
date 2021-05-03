@@ -25,6 +25,8 @@ type Options struct {
 	BurpCollaboratorBiid string
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
+	// InteractshURL is the URL for the interactsh server.
+	InteractshURL string
 	// Target is a single URL/Domain to scan using a template
 	Target string
 	// Targets specifies the targets to scan using templates.
@@ -63,6 +65,16 @@ type Options struct {
 	RateLimit int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
+	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
+	InteractionsCacheSize int
+	// InteractionsPollDuration is the number of seconds to wait before each interaction poll
+	InteractionsPollDuration int
+	// Eviction is the number of seconds after which to automatically discard
+	// interaction requests.
+	InteractionsEviction int
+	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// of the poller.
+	InteractionsColldownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -111,4 +123,6 @@ type Options struct {
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
 	NewTemplates bool
+	// NoInteractsh disables use of interactsh server for interaction polling
+	NoInteractsh bool
 }
