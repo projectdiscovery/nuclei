@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
 
@@ -77,6 +78,12 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
 
+	hasInteractMarkers := interactsh.HasMatchers(r.CompiledOperators)
+	var interactURL string
+	if r.options.Interactsh != nil && hasInteractMarkers {
+		interactURL = r.options.Interactsh.URL()
+	}
+
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
 
@@ -88,6 +95,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		case "hex":
 			data, err = hex.DecodeString(input.Data)
 		default:
+			if interactURL != "" {
+				input.Data = r.options.Interactsh.ReplaceMarkers(input.Data, interactURL)
+			}
 			data = []byte(input.Data)
 		}
 		if err != nil {
@@ -150,11 +160,23 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.Results = r.MakeResultEvent(event)
+	if !hasInteractMarkers {
+		if r.CompiledOperators != nil {
+			result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
+			if ok && result != nil {
+				event.OperatorsResult = result
+				event.Results = r.MakeResultEvent(event)
+			}
+		}
+	} else {
+		if r.options.Interactsh != nil {
+			r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+				MakeResultFunc: r.MakeResultEvent,
+				Event:          event,
+				Operators:      r.CompiledOperators,
+				MatchFunc:      r.Match,
+				ExtractFunc:    r.Extract,
+			})
 		}
 	}
 	callback(event)
