@@ -208,6 +208,7 @@ func New(options *types.Options) (*Runner, error) {
 			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
 			PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
 			Output:         runner.output,
+			IssuesClient:   runner.issuesClient,
 			Progress:       runner.progress,
 		})
 		if err != nil {

@@ -7,11 +7,13 @@ import (
 
 	"github.com/karlseguin/ccache"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/valyala/fasttemplate"
 )
 
@@ -48,6 +50,8 @@ type Options struct {
 	PollDuration time.Duration
 	// Output is the output writer for nuclei
 	Output output.Writer
+	// IssuesClient is a client for issue exporting
+	IssuesClient *reporting.Client
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
 }
@@ -111,6 +115,12 @@ func New(options *Options) (*Client, error) {
 				interactClient.matched = true
 			}
 			options.Progress.IncrementMatched()
+
+			if options.IssuesClient != nil {
+				if err := options.IssuesClient.CreateIssue(result); err != nil {
+					gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+				}
+			}
 		}
 	})
 	return interactClient, nil
