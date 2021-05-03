@@ -60,10 +60,6 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
 	parsedString := parsed.String()
-
-	if interactURL != "" {
-		parsedString = r.options.Interactsh.ReplaceMarkers(parsedString, interactURL)
-	}
 	values["BaseURL"] = parsedString
 
 	// If data contains \n it's a raw request, process it like raw. Else
@@ -102,6 +98,9 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}, interactURL string) (*generatedRequest, error) {
 	final := replacer.Replace(data, values)
+	if interactURL != "" {
+		final = r.options.Interactsh.ReplaceMarkers(final, interactURL)
+	}
 
 	// Build a request on the specified URL
 	req, err := http.NewRequestWithContext(ctx, r.request.Method, final, nil)
