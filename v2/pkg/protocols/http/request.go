@@ -412,7 +412,11 @@ func (r *Request) setCustomHeaders(req *generatedRequest) {
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
-			req.request.Header.Set(strings.TrimSpace(k), strings.TrimSpace(v))
+			kk, vv := strings.TrimSpace(k), strings.TrimSpace(v)
+			req.request.Header.Set(kk, vv)
+			if kk == "Host" {
+				req.request.Host = vv
+			}
 		}
 	}
 }
