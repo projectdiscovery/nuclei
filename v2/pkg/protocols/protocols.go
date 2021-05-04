@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -50,6 +51,8 @@ type ExecuterOptions struct {
 	ProjectFile *projectfile.ProjectFile
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
+	// Interactsh is a client for interactsh oob polling server
+	Interactsh *interactsh.Client
 
 	Operators []*operators.Operators // only used by offlinehttp module
 }

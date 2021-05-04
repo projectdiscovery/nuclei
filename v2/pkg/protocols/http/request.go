@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
@@ -33,7 +34,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := r.newGenerator()
-	requestForDump, err := generator.Make(reqURL, nil)
+	requestForDump, err := generator.Make(reqURL, nil, "")
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 	// Pre-Generate requests
 	for i := 0; i < r.RaceNumberRequests; i++ {
 		generator := r.newGenerator()
-		request, err := generator.Make(reqURL, nil)
+		request, err := generator.Make(reqURL, nil, "")
 		if err != nil {
 			return err
 		}
@@ -90,7 +91,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		request, err := generator.Make(reqURL, dynamicValues, "")
 		if err == io.EOF {
 			break
 		}
@@ -148,7 +149,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		request, err := generator.Make(reqURL, dynamicValues, "")
 		if err == io.EOF {
 			break
 		}
@@ -197,7 +198,13 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 	requestCount := 1
 	var requestErr error
 	for {
-		request, err := generator.Make(reqURL, dynamicValues)
+		hasInteractMarkers := interactsh.HasMatchers(r.CompiledOperators)
+
+		var interactURL string
+		if r.options.Interactsh != nil && hasInteractMarkers {
+			interactURL = r.options.Interactsh.URL()
+		}
+		request, err := generator.Make(reqURL, dynamicValues, interactURL)
 		if err == io.EOF {
 			break
 		}
@@ -213,6 +220,15 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			if event.OperatorsResult != nil {
 				gotOutput = true
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
+			}
+			if hasInteractMarkers && r.options.Interactsh != nil {
+				r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+					MakeResultFunc: r.MakeResultEvent,
+					Event:          event,
+					Operators:      r.CompiledOperators,
+					MatchFunc:      r.Match,
+					ExtractFunc:    r.Extract,
+				})
 			}
 			callback(event)
 		}, requestCount)
@@ -393,14 +409,16 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
-		if ok && event.OperatorsResult != nil {
-			event.OperatorsResult.PayloadValues = request.meta
-			event.Results = r.MakeResultEvent(event)
+	if !interactsh.HasMatchers(r.CompiledOperators) {
+		if r.CompiledOperators != nil {
+			var ok bool
+			event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
+			if ok && event.OperatorsResult != nil {
+				event.OperatorsResult.PayloadValues = request.meta
+				event.Results = r.MakeResultEvent(event)
+			}
+			event.InternalEvent = outputEvent
 		}
-		event.InternalEvent = outputEvent
 	}
 	callback(event)
 	return nil
@@ -412,7 +430,11 @@ func (r *Request) setCustomHeaders(req *generatedRequest) {
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
-			req.request.Header.Set(strings.TrimSpace(k), strings.TrimSpace(v))
+			kk, vv := strings.TrimSpace(k), strings.TrimSpace(v)
+			req.request.Header.Set(kk, vv)
+			if kk == "Host" {
+				req.request.Host = vv
+			}
 		}
 	}
 }
