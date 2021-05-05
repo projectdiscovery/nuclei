@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -29,7 +29,7 @@ func main() {
 
 func readConfig() {
 	home, _ := os.UserHomeDir()
-	templatesDirectory := path.Join(home, "nuclei-templates")
+	templatesDirectory := filepath.Join(home, "nuclei-templates")
 
 	set := goflags.New()
 	set.SetDescription(`Nuclei is a fast tool for configurable targeted scanning 
@@ -40,6 +40,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVarP(&options.Target, "target", "u", "", "URL to scan with nuclei")
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
+	set.StringSliceVarP(&options.AdvancedWorkflows, "advanced-workflows", "wa", []string{}, "Advanced workflows to run for nuclei")
 	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "et", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Severity, "severity", "impact", []string{}, "Templates to run based on severity, supports single and multiple severity.")
 	set.StringVarP(&options.Targets, "list", "l", "", "List of URLs to run templates on")

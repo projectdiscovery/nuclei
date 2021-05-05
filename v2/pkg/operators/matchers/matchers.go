@@ -2,8 +2,6 @@ package matchers
 
 import (
 	"regexp"
-
-	"github.com/Knetic/govaluate"
 )
 
 // Matcher is used to match a part in the output from a protocol.
@@ -43,7 +41,6 @@ type Matcher struct {
 	condition     ConditionType
 	matcherType   MatcherType
 	regexCompiled []*regexp.Regexp
-	dslCompiled   []*govaluate.EvaluableExpression
 }
 
 // MatcherType is the type of the matcher specified

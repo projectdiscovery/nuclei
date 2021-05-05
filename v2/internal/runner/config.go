@@ -2,7 +2,7 @@ package runner
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -34,10 +34,10 @@ func readConfiguration() (*nucleiConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	configDir := path.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, "/.config", "/nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	file, err := os.Open(templatesConfigFile)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	if err != nil {
 		return err
 	}
-	configDir := path.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, "/.config", "/nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
 	if config.IgnoreURL == "" {
@@ -67,7 +67,7 @@ func (r *Runner) writeConfiguration(config *nucleiConfig) error {
 	config.LastChecked = time.Now()
 	config.LastCheckedIgnore = time.Now()
 	config.NucleiVersion = Version
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return err
@@ -112,16 +112,17 @@ func (r *Runner) getIgnoreFilePath() string {
 
 	home, err := os.UserHomeDir()
 	if err == nil {
-		configDir := path.Join(home, "/.config", "/nuclei")
+		configDir := filepath.Join(home, "/.config", "/nuclei")
 		_ = os.MkdirAll(configDir, os.ModePerm)
 
-		defIgnoreFilePath = path.Join(configDir, nucleiIgnoreFile)
+		defIgnoreFilePath = filepath.Join(configDir, nucleiIgnoreFile)
 		return defIgnoreFilePath
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return defIgnoreFilePath
 	}
-	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
+
+	cwdIgnoreFilePath := filepath.Join(cwd, nucleiIgnoreFile)
 	return cwdIgnoreFilePath
 }

@@ -68,8 +68,13 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	options.TemplatePath = filePath
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows) == 0 {
-		return nil, fmt.Errorf("no requests defined for %s", template.ID)
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows) == 0 && template.Code == "" {
+		return nil, fmt.Errorf("no requests or code defined for %s", template.ID)
+	}
+
+	// If advanced workflow pass along the options
+	if template.Code != "" {
+		template.Options = &options
 	}
 
 	// Compile the workflow request
@@ -139,7 +144,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		}
 		template.TotalRequests += template.Executer.Requests()
 	}
-	if template.Executer == nil && template.CompiledWorkflow == nil {
+	if template.Executer == nil && template.CompiledWorkflow == nil && template.Code == "" {
 		return nil, errors.New("cannot create template executer")
 	}
 	return template, nil

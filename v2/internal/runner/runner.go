@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -70,6 +70,7 @@ func New(options *types.Options) (*Runner, error) {
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
 	}
+
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 	runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
 
@@ -227,6 +228,7 @@ func New(options *types.Options) (*Runner, error) {
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
+
 	return runner, nil
 }
 
@@ -248,7 +250,7 @@ func (r *Runner) RunEnumeration() {
 	defer r.Close()
 
 	// If we have no templates, run on whole template directory with provided tags
-	if len(r.options.Templates) == 0 && len(r.options.Workflows) == 0 && !r.options.NewTemplates && (len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0) {
+	if len(r.options.Templates) == 0 && len(r.options.Workflows) == 0 && len(r.options.AdvancedWorkflows) == 0 && !r.options.NewTemplates && (len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0) {
 		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
 	}
 	if r.options.NewTemplates {
@@ -284,9 +286,10 @@ func (r *Runner) RunEnumeration() {
 	finalTemplates := []*templates.Template{}
 
 	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows, false)
-	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
-	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
-
+	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, Template)
+	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, Workflows)
+	advancedWorkflowPaths := r.catalog.GetTemplatesPath(r.options.AdvancedWorkflows, false)
+	availableAdvancedWorkflows, advancedWorkflowCount := r.getParsedTemplatesFor(advancedWorkflowPaths, r.options.Severity, AdvancedWorkflow)
 	var unclusteredRequests int64 = 0
 	for _, template := range availableTemplates {
 		// workflows will dynamically adjust the totals while running, as
@@ -329,6 +332,9 @@ func (r *Runner) RunEnumeration() {
 	for _, workflows := range availableWorkflows {
 		finalTemplates = append(finalTemplates, workflows)
 	}
+	for _, advancedWorkflow := range availableAdvancedWorkflows {
+		finalTemplates = append(finalTemplates, advancedWorkflow)
+	}
 
 	var totalRequests int64 = 0
 	for _, t := range finalTemplates {
@@ -340,17 +346,18 @@ func (r *Runner) RunEnumeration() {
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
 	}
-	templateCount := originalTemplatesCount + len(availableWorkflows)
+	templateCount := originalTemplatesCount + len(availableWorkflows) + len(availableAdvancedWorkflows)
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
 		gologger.Fatal().Msgf("Error, no templates were found.\n")
 	}
 
-	gologger.Info().Msgf("Using %s rules (%s templates, %s workflows)",
+	gologger.Info().Msgf("Using %s rules (%s templates, %s workflows, %s advanced workflows)",
 		r.colorizer.Bold(templateCount).String(),
-		r.colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Bold(workflowCount).String())
+		r.colorizer.Bold(templateCount-workflowCount-advancedWorkflowCount).String(),
+		r.colorizer.Bold(workflowCount).String(),
+		r.colorizer.Bold(advancedWorkflowCount).String())
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
@@ -367,6 +374,8 @@ func (r *Runner) RunEnumeration() {
 
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
+			} else if template.Code != "" {
+				results.CAS(false, r.processAdvancedWorkflowWithList(template))
 			} else {
 				results.CAS(false, r.processTemplateWithList(template))
 			}
@@ -400,7 +409,7 @@ func (r *Runner) RunEnumeration() {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) readNewTemplatesFile() ([]string, error) {
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return nil, err

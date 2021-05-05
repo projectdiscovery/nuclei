@@ -3,10 +3,9 @@ package expressions
 import (
 	"regexp"
 
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/starlight"
 )
 
 var templateExpressionRegex = regexp.MustCompile(`(?m)\{\{[^}]+\}\}["'\)\}]*`)
@@ -23,12 +22,7 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 	dynamicValues := make(map[string]interface{})
 	for _, match := range templateExpressionRegex.FindAllString(data, -1) {
 		expr := generators.TrimDelimiters(match)
-
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
-		if err != nil {
-			continue
-		}
-		result, err := compiled.Evaluate(base)
+		result, err := starlight.Eval(expr, base)
 		if err != nil {
 			continue
 		}

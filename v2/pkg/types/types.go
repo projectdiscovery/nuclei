@@ -12,6 +12,11 @@ type Options struct {
 	ExcludeTags goflags.StringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
+	// AdvancedWorkflows specifies any advanced workflows to run by nuclei
+	AdvancedWorkflows goflags.StringSlice
+	// Variables specifies any CLI variables supplied to nuclei
+	Variables         goflags.StringSlice
+	InternalVariables map[string]interface{} // normalized variables to use internally
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude

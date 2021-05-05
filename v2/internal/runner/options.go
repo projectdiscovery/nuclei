@@ -54,8 +54,11 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
-	err := protocolinit.Init(options)
-	if err != nil {
+	if err := parseVariables(options); err != nil {
+		gologger.Fatal().Msgf("Cannot initialize variables: %s\n", err)
+	}
+
+	if err := protocolinit.Init(options); err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
 }
@@ -82,7 +85,7 @@ func validateOptions(options *types.Options) error {
 
 	if !options.TemplateList {
 		// Check if a list of templates was provided and it exists
-		if len(options.Templates) == 0 && !options.NewTemplates && len(options.Workflows) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
+		if len(options.Templates) == 0 && !options.NewTemplates && len(options.Workflows) == 0 && len(options.AdvancedWorkflows) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
 			return errors.New("no template/templates provided")
 		}
 	}
@@ -154,4 +157,21 @@ func loadResolvers(options *types.Options) {
 			options.InternalResolversList = append(options.InternalResolversList, part+":53")
 		}
 	}
+}
+
+func parseVariables(options *types.Options) error {
+	varsp := make(map[string]interface{})
+	for _, v := range options.Variables {
+		vv := strings.Split(v, "=")
+		if len(vv) != 2 {
+			return errors.New("incorrect variable syntax")
+		}
+		vname := strings.TrimSpace(vv[0])
+		vvalue := strings.TrimSpace(vv[1])
+		varsp[vname] = vvalue
+	}
+
+	options.InternalVariables = varsp
+
+	return nil
 }

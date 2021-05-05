@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/advancedworkflow"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
@@ -30,6 +31,9 @@ type Template struct {
 	// Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
+
+	// Advanced Workflows is a yaml based starlight declaration code.
+	advancedworkflow.AdvancedWorkflow `yaml:",inline,omitempty"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`

@@ -12,15 +12,27 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+type TemplateType uint16
+
+const (
+	Template TemplateType = iota
+	Workflows
+	AdvancedWorkflow
+)
+
 // getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
 // by severity, along with a flag indicating if workflows are present.
-func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workflows bool) (parsedTemplates map[string]*templates.Template, workflowCount int) {
+func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, templateType TemplateType) (parsedTemplates map[string]*templates.Template, workflowCount int) {
 	filterBySeverity := len(severities) > 0
-
-	if !workflows {
-		gologger.Info().Msgf("Loading templates...")
-	} else {
+	switch templateType {
+	case AdvancedWorkflow:
+		gologger.Info().Msgf("Loading advanced workflows...")
+	case Workflows:
 		gologger.Info().Msgf("Loading workflows...")
+	case Template:
+		fallthrough
+	default:
+		gologger.Info().Msgf("Loading templates...")
 	}
 
 	parsedTemplates = make(map[string]*templates.Template)
@@ -33,15 +45,24 @@ func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workf
 		if t == nil {
 			continue
 		}
-		if len(t.Workflows) == 0 && workflows {
-			continue // don't print if user only wants to run workflows
-		}
-		if len(t.Workflows) > 0 && !workflows {
-			continue // don't print workflow if user only wants to run templates
-		}
-		if len(t.Workflows) > 0 {
+
+		switch templateType {
+		case AdvancedWorkflow:
+			if t.Code == "" {
+				continue // don't print if no code is available
+			}
 			workflowCount++
+		case Workflows:
+			if len(t.Workflows) == 0 {
+				continue // don't print if user only wants to run workflows
+			}
+			workflowCount++
+		case Template:
+			if len(t.Workflows) > 0 || t.Code != "" {
+				continue // don't print workflow if user only wants to run templates
+			}
 		}
+
 		sev := strings.ToLower(types.ToString(t.Info["severity"]))
 		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
 			parsedTemplates[t.ID] = t
