@@ -82,9 +82,9 @@ func New(options *Options) (*Client, error) {
 	configure = configure.MaxSize(options.CacheSize)
 	cache := ccache.New(configure)
 
-	interactionsConfig := ccache.Configure()
-	interactionsConfig = configure.MaxSize(defaultMaxInteractionsCount)
-	interactionsCache := ccache.New(interactionsConfig)
+	interactionsCfg := ccache.Configure()
+	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
+	interactionsCache := ccache.New(interactionsCfg)
 
 	interactClient := &Client{
 		interactsh:       interactsh,
@@ -105,11 +105,9 @@ func New(options *Options) (*Client, error) {
 			gotItem := interactClient.interactions.Get(interaction.UniqueID)
 			if gotItem == nil {
 				interactClient.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
-			} else {
-				if items, ok := gotItem.Value().([]*server.Interaction); ok {
-					items = append(items, interaction)
-					interactClient.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
-				}
+			} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
+				items = append(items, interaction)
+				interactClient.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
 			}
 			return
 		}
