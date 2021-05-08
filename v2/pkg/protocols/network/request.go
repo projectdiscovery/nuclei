@@ -168,6 +168,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 				event.Results = r.MakeResultEvent(event)
 			}
 		}
+		callback(event)
 	} else {
 		if r.options.Interactsh != nil {
 			r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
@@ -179,7 +180,6 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 			})
 		}
 	}
-	callback(event)
 	return nil
 }
 
