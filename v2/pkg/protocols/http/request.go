@@ -229,8 +229,9 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 					MatchFunc:      r.Match,
 					ExtractFunc:    r.Extract,
 				})
+			} else {
+				callback(event)
 			}
-			callback(event)
 		}, requestCount)
 		if err != nil {
 			requestErr = multierr.Append(requestErr, err)
