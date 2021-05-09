@@ -23,7 +23,10 @@ type Client struct {
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
 	requests *ccache.Cache
+	// interactions is a stored cache for interactsh-interaction->interactsh-url data
+	interactions *ccache.Cache
 
+	options          *Options
 	matched          bool
 	dotHostname      string
 	eviction         time.Duration
@@ -31,7 +34,10 @@ type Client struct {
 	cooldownDuration time.Duration
 }
 
-var interactshURLMarker = "{{interactsh-url}}"
+var (
+	defaultInteractionDuration = 60 * time.Second
+	interactshURLMarker        = "{{interactsh-url}}"
+)
 
 // Options contains configuration options for interactsh nuclei integration.
 type Options struct {
@@ -56,6 +62,8 @@ type Options struct {
 	Progress progress.Progress
 }
 
+const defaultMaxInteractionsCount = 5000
+
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
 	parsed, err := url.Parse(options.ServerURL)
@@ -74,10 +82,16 @@ func New(options *Options) (*Client, error) {
 	configure = configure.MaxSize(options.CacheSize)
 	cache := ccache.New(configure)
 
+	interactionsCfg := ccache.Configure()
+	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
+	interactionsCache := ccache.New(interactionsCfg)
+
 	interactClient := &Client{
 		interactsh:       interactsh,
 		eviction:         options.Eviction,
+		interactions:     interactionsCache,
 		dotHostname:      "." + parsed.Host,
+		options:          options,
 		requests:         cache,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.ColldownPeriod,
@@ -86,44 +100,59 @@ func New(options *Options) (*Client, error) {
 	interactClient.interactsh.StartPolling(interactClient.pollDuration, func(interaction *server.Interaction) {
 		item := interactClient.requests.Get(interaction.UniqueID)
 		if item == nil {
+			// If we don't have any request for this ID, add it to temporary
+			// lru cache so we can correlate when we get an add request.
+			gotItem := interactClient.interactions.Get(interaction.UniqueID)
+			if gotItem == nil {
+				interactClient.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+			} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
+				items = append(items, interaction)
+				interactClient.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
+			}
 			return
 		}
-		data, ok := item.Value().(*RequestData)
+		request, ok := item.Value().(*RequestData)
 		if !ok {
 			return
 		}
-
-		data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
-		data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
-		data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
-		result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
-		if !matched || result == nil {
-			return // if we don't match, return
-		}
-		interactClient.requests.Delete(interaction.UniqueID)
-
-		if data.Event.OperatorsResult != nil {
-			data.Event.OperatorsResult.Merge(result)
-		} else {
-			data.Event.OperatorsResult = result
-		}
-		data.Event.Results = data.MakeResultFunc(data.Event)
-		for _, result := range data.Event.Results {
-			result.Interaction = interaction
-			_ = options.Output.Write(result)
-			if !interactClient.matched {
-				interactClient.matched = true
-			}
-			options.Progress.IncrementMatched()
-
-			if options.IssuesClient != nil {
-				if err := options.IssuesClient.CreateIssue(result); err != nil {
-					gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-				}
-			}
-		}
+		_ = interactClient.processInteractionForRequest(interaction, request)
 	})
 	return interactClient, nil
+}
+
+// processInteractionForRequest processes an interaction for a request
+func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
+	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
+	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
+	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
+	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
+	if !matched || result == nil {
+		return false // if we don't match, return
+	}
+	c.requests.Delete(interaction.UniqueID)
+
+	if data.Event.OperatorsResult != nil {
+		data.Event.OperatorsResult.Merge(result)
+	} else {
+		data.Event.OperatorsResult = result
+	}
+	data.Event.Results = data.MakeResultFunc(data.Event)
+
+	for _, result := range data.Event.Results {
+		result.Interaction = interaction
+		_ = c.options.Output.Write(result)
+		if !c.matched {
+			c.matched = true
+		}
+		c.options.Progress.IncrementMatched()
+
+		if c.options.IssuesClient != nil {
+			if err := c.options.IssuesClient.CreateIssue(result); err != nil {
+				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+			}
+		}
+	}
+	return true
 }
 
 // URL returns a new URL that can be interacted with
@@ -171,7 +200,28 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
 	id := strings.TrimSuffix(interactshURL, c.dotHostname)
-	c.requests.Set(id, data, c.eviction)
+
+	interaction := c.interactions.Get(id)
+	if interaction != nil {
+		// If we have previous interactions, get them and process them.
+		interactions, ok := interaction.Value().([]*server.Interaction)
+		if !ok {
+			c.requests.Set(id, data, c.eviction)
+			return
+		}
+		matched := false
+		for _, interaction := range interactions {
+			if c.processInteractionForRequest(interaction, data) {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			c.interactions.Delete(id)
+		}
+	} else {
+		c.requests.Set(id, data, c.eviction)
+	}
 }
 
 // HasMatchers returns true if an operator has interactsh part

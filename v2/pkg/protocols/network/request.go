@@ -168,18 +168,16 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 				event.Results = r.MakeResultEvent(event)
 			}
 		}
-	} else {
-		if r.options.Interactsh != nil {
-			r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
-				MakeResultFunc: r.MakeResultEvent,
-				Event:          event,
-				Operators:      r.CompiledOperators,
-				MatchFunc:      r.Match,
-				ExtractFunc:    r.Extract,
-			})
-		}
+		callback(event)
+	} else if r.options.Interactsh != nil {
+		r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+			MakeResultFunc: r.MakeResultEvent,
+			Event:          event,
+			Operators:      r.CompiledOperators,
+			MatchFunc:      r.Match,
+			ExtractFunc:    r.Extract,
+		})
 	}
-	callback(event)
 	return nil
 }
 
