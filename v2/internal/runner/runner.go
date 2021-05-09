@@ -212,9 +212,10 @@ func New(options *types.Options) (*Runner, error) {
 			Progress:       runner.progress,
 		})
 		if err != nil {
-			return nil, err
+			gologger.Error().Msgf("Could not create interactsh client: %s", err)
+		} else {
+			runner.interactsh = interactshClient
 		}
-		runner.interactsh = interactshClient
 	}
 
 	// Enable Polling
