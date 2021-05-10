@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine as build-env
+FROM golang:1.16.4-alpine as build-env
 RUN GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 
 FROM alpine:latest
