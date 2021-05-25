@@ -33,7 +33,7 @@ require (
 	github.com/projectdiscovery/interactsh v0.0.3
 	github.com/projectdiscovery/rawhttp v0.0.6
 	github.com/projectdiscovery/retryabledns v1.0.10
-	github.com/projectdiscovery/retryablehttp-go v1.0.1
+	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/xid v1.2.1
@@ -49,11 +49,9 @@ require (
 	go.uber.org/multierr v1.6.0
 	go.uber.org/ratelimit v0.1.0
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/net v0.0.0-20210521195947-fe42d452be8f
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
-	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
-	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0
