@@ -228,6 +228,10 @@ github.com/projectdiscovery/interactsh v0.0.3 h1:PUkWk+NzSyd5glMqfORmuqizhsd7c3W
 github.com/projectdiscovery/interactsh v0.0.3/go.mod h1:dWnKO14d2FLP3kLhI9DecEsiAC/aZiJoUBGFjGhDskY=
 github.com/projectdiscovery/rawhttp v0.0.6 h1:HbgPB1eKXQVV5F9sq0Uxflm95spWFyZYD8dgFpeOC9M=
 github.com/projectdiscovery/rawhttp v0.0.6/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.7-0.20210603051339-3582c0c9ea3e h1:it83hXLxlmjf9/nwwVt+yMN1wwOvWMFITXVFVvxYYqs=
+github.com/projectdiscovery/rawhttp v0.0.7-0.20210603051339-3582c0c9ea3e/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.7 h1:5m4peVgjbl7gqDcRYMTVEuX+Xs/nh76ohTkkvufucLg=
+github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/retryabledns v1.0.7/go.mod h1:/UzJn4I+cPdQl6pKiiQfvVAT636YZvJQYZhYhGB0dUQ=
 github.com/projectdiscovery/retryabledns v1.0.10 h1:xJZ2aKoqrNg/OZEw1+4+QIOH40V/WkZDYY1ZZc+uphE=
 github.com/projectdiscovery/retryabledns v1.0.10/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
