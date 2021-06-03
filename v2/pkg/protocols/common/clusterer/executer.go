@@ -60,8 +60,9 @@ func (e *Executer) Requests() int {
 func (e *Executer) Execute(input string) (bool, error) {
 	var results bool
 
+	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
-	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
+	err := e.requests.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract)
 			if matched && result != nil {
