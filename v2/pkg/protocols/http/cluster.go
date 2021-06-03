@@ -10,7 +10,7 @@ import (
 // are similar enough to be considered one and can be checked by
 // just adding the matcher/extractors for the request and the correct IDs.
 func (r *Request) CanCluster(other *Request) bool {
-	if len(r.Payloads) > 0 || len(r.Raw) > 0 || len(r.Body) > 0 || r.Unsafe {
+	if len(r.Payloads) > 0 || len(r.Raw) > 0 || len(r.Body) > 0 || r.Unsafe || r.ReqCondition || r.Name != "" {
 		return false
 	}
 	if r.Method != other.Method ||
