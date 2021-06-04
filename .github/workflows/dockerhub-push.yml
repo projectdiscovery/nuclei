@@ -1,19 +1,17 @@
-# dockerhub-push pushes docker build to dockerhub automatically
-# on the creation of a new release
-name: Publish to Dockerhub on creation of a new release
-on: 
-  release:
-    types: [published]
+name: ◎ Docker Push
+on:
+  workflow_dispatch:
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
     - name: Publish to Dockerhub Registry
-      #pre: echo ::save-state name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
-      uses: elgohr/Publish-Docker-Github-Action@master
+      uses: dawidd6/action-docker-publish-changed@v3
       with:
         name: projectdiscovery/nuclei
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        tags: "latest" #"latest,${{ env.STATE_RELEASE_VERSION }}"
+        username: ${{secrets.DOCKER_USERNAME}}
+        password: ${{secrets.DOCKER_PASSWORD}}
+        platforms: linux/amd64,linux/arm64,linux/arm
+        tag: latest
