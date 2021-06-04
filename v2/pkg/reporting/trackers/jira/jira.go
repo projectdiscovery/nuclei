@@ -57,38 +57,77 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 
-	fields := &jira.IssueFields{
-		Assignee:    &jira.User{AccountID: i.options.AccountID},
-		Reporter:    &jira.User{AccountID: i.options.AccountID},
-		Description: jiraFormatDescription(event),
-		Type:        jira.IssueType{Name: i.options.IssueType},
-		Project:     jira.Project{Key: i.options.ProjectName},
-		Summary:     summary,
-	}
-	// On-prem version of Jira server does not use AccountID
-	if !i.options.Cloud {
-		fields = &jira.IssueFields{
-			Assignee:    &jira.User{Name: i.options.AccountID},
+	issue_id, err := i.FindExistingIssue(event)
+	if issue_id != "" {
+		i.jira.Issue.AddComment(issue_id, &jira.Comment{
+			Body: jiraFormatDescription(event),
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		fields := &jira.IssueFields{
+			Assignee:    &jira.User{AccountID: i.options.AccountID},
+			Reporter:    &jira.User{AccountID: i.options.AccountID},
 			Description: jiraFormatDescription(event),
 			Type:        jira.IssueType{Name: i.options.IssueType},
 			Project:     jira.Project{Key: i.options.ProjectName},
 			Summary:     summary,
 		}
+		// On-prem version of Jira server does not use AccountID
+		if !i.options.Cloud {
+			fields = &jira.IssueFields{
+				Assignee:    &jira.User{Name: i.options.AccountID},
+				Description: jiraFormatDescription(event),
+				Type:        jira.IssueType{Name: i.options.IssueType},
+				Project:     jira.Project{Key: i.options.ProjectName},
+				Summary:     summary,
+			}
+		}
+
+		issueData := &jira.Issue{
+			Fields: fields,
+		}
+		_, resp, err := i.jira.Issue.Create(issueData)
+		if err != nil {
+			var data string
+			if resp != nil && resp.Body != nil {
+				d, _ := ioutil.ReadAll(resp.Body)
+				data = string(d)
+			}
+			return fmt.Errorf("%s => %s", err, data)
+		}
+	}
+	return nil
+}
+
+// FindExistingIssue checks if the issue already exists and returns its ID
+func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
+	template := format.GetMatchedTemplate(event)
+	jql := fmt.Sprintf("text ~ \"%s\" AND text ~ \"%s\" AND status = \"Open\"", template, event.Host)
+
+	search_options := &jira.SearchOptions{
+		MaxResults: 1, // if any issue exists, then we won't create a new one
 	}
 
-	issueData := &jira.Issue{
-		Fields: fields,
-	}
-	_, resp, err := i.jira.Issue.Create(issueData)
+	chunk, resp, err := i.jira.Issue.Search(jql, search_options)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
 			d, _ := ioutil.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return fmt.Errorf("%s => %s", err, data)
+		return "", fmt.Errorf("%s => %s", err, data)
 	}
-	return nil
+
+	switch resp.Total {
+	case 0:
+		return "", nil
+	case 1:
+		return chunk[0].ID, nil
+	default:
+		return chunk[0].ID, fmt.Errorf("multiple opened issues found for \"%s\" -> \"%s\" - the first one will be used", template, event.Host)
+	}
 }
 
 // jiraFormatDescription formats a short description of the generated
