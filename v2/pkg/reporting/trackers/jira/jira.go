@@ -20,6 +20,8 @@ type Integration struct {
 
 // Options contains the configuration options for jira client
 type Options struct {
+	// Cloud value is set to true when Jira cloud is used
+	Cloud bool `yaml:"cloud"`
 	// URL is the URL of the jira server
 	URL string `yaml:"url"`
 	// AccountID is the accountID of the jira user.
@@ -36,8 +38,12 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	username := options.Email
+	if !options.Cloud {
+		username = options.AccountID
+	}
 	tp := jira.BasicAuthTransport{
-		Username: options.Email,
+		Username: username,
 		Password: options.Token,
 	}
 	jiraClient, err := jira.NewClient(tp.Client(), options.URL)
@@ -51,15 +57,27 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 
-	issueData := &jira.Issue{
-		Fields: &jira.IssueFields{
-			Assignee:    &jira.User{AccountID: i.options.AccountID},
-			Reporter:    &jira.User{AccountID: i.options.AccountID},
+	fields := &jira.IssueFields{
+		Assignee:    &jira.User{AccountID: i.options.AccountID},
+		Reporter:    &jira.User{AccountID: i.options.AccountID},
+		Description: jiraFormatDescription(event),
+		Type:        jira.IssueType{Name: i.options.IssueType},
+		Project:     jira.Project{Key: i.options.ProjectName},
+		Summary:     summary,
+	}
+	// On-prem version of Jira server does not use AccountID
+	if !i.options.Cloud {
+		fields = &jira.IssueFields{
+			Assignee:    &jira.User{Name: i.options.AccountID},
 			Description: jiraFormatDescription(event),
 			Type:        jira.IssueType{Name: i.options.IssueType},
 			Project:     jira.Project{Key: i.options.ProjectName},
 			Summary:     summary,
-		},
+		}
+	}
+
+	issueData := &jira.Issue{
+		Fields: fields,
 	}
 	_, resp, err := i.jira.Issue.Create(issueData)
 	if err != nil {
