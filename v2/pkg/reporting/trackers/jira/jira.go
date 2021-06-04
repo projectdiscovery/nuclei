@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	jira "github.com/andygrunwald/go-jira"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -22,6 +23,8 @@ type Integration struct {
 type Options struct {
 	// Cloud value is set to true when Jira cloud is used
 	Cloud bool `yaml:"cloud"`
+	// UpdateExisting value if true, the existing opened issue is updated
+	UpdateExisting bool `yaml:"update-existing"`
 	// URL is the URL of the jira server
 	URL string `yaml:"url"`
 	// AccountID is the accountID of the jira user.
@@ -53,58 +56,64 @@ func New(options *Options) (*Integration, error) {
 	return &Integration{jira: jiraClient, options: options}, nil
 }
 
-// CreateIssue creates an issue in the tracker
-func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+// CreateNewIssue creates a new issue in the tracker
+func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 
-	issue_id, err := i.FindExistingIssue(event)
-	if issue_id != "" {
-		i.jira.Issue.AddComment(issue_id, &jira.Comment{
-			Body: jiraFormatDescription(event),
-		})
-		if err != nil {
-			return err
-		}
-	} else {
-		fields := &jira.IssueFields{
-			Assignee:    &jira.User{AccountID: i.options.AccountID},
-			Reporter:    &jira.User{AccountID: i.options.AccountID},
+	fields := &jira.IssueFields{
+		Assignee:    &jira.User{AccountID: i.options.AccountID},
+		Reporter:    &jira.User{AccountID: i.options.AccountID},
+		Description: jiraFormatDescription(event),
+		Type:        jira.IssueType{Name: i.options.IssueType},
+		Project:     jira.Project{Key: i.options.ProjectName},
+		Summary:     summary,
+	}
+	// On-prem version of Jira server does not use AccountID
+	if !i.options.Cloud {
+		fields = &jira.IssueFields{
+			Assignee:    &jira.User{Name: i.options.AccountID},
 			Description: jiraFormatDescription(event),
 			Type:        jira.IssueType{Name: i.options.IssueType},
 			Project:     jira.Project{Key: i.options.ProjectName},
 			Summary:     summary,
 		}
-		// On-prem version of Jira server does not use AccountID
-		if !i.options.Cloud {
-			fields = &jira.IssueFields{
-				Assignee:    &jira.User{Name: i.options.AccountID},
-				Description: jiraFormatDescription(event),
-				Type:        jira.IssueType{Name: i.options.IssueType},
-				Project:     jira.Project{Key: i.options.ProjectName},
-				Summary:     summary,
-			}
-		}
+	}
 
-		issueData := &jira.Issue{
-			Fields: fields,
+	issueData := &jira.Issue{
+		Fields: fields,
+	}
+	_, resp, err := i.jira.Issue.Create(issueData)
+	if err != nil {
+		var data string
+		if resp != nil && resp.Body != nil {
+			d, _ := ioutil.ReadAll(resp.Body)
+			data = string(d)
 		}
-		_, resp, err := i.jira.Issue.Create(issueData)
-		if err != nil {
-			var data string
-			if resp != nil && resp.Body != nil {
-				d, _ := ioutil.ReadAll(resp.Body)
-				data = string(d)
-			}
-			return fmt.Errorf("%s => %s", err, data)
-		}
+		return fmt.Errorf("%s => %s", err, data)
 	}
 	return nil
+}
+
+// CreateIssue creates an issue in the tracker or updates the existing one
+func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+	if i.options.UpdateExisting {
+		issue_id, err := i.FindExistingIssue(event)
+		if err != nil {
+			return err
+		} else if issue_id != "" {
+			_, _, err = i.jira.Issue.AddComment(issue_id, &jira.Comment{
+				Body: jiraFormatDescription(event),
+			})
+			return err
+		}
+	}
+	return i.CreateNewIssue(event)
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
 func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
 	template := format.GetMatchedTemplate(event)
-	jql := fmt.Sprintf("text ~ \"%s\" AND text ~ \"%s\" AND status = \"Open\"", template, event.Host)
+	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status = \"Open\"", template, event.Host)
 
 	search_options := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
@@ -126,7 +135,8 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 	case 1:
 		return chunk[0].ID, nil
 	default:
-		return chunk[0].ID, fmt.Errorf("multiple opened issues found for \"%s\" -> \"%s\" - the first one will be used", template, event.Host)
+		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
+		return chunk[0].ID, nil
 	}
 }
 
