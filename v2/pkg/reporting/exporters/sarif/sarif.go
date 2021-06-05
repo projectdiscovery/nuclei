@@ -87,7 +87,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		WithLevel(sarifSeverity).
 		WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(event.Host)).WithPhysicalLocation(
 			sarif.NewPhysicalLocation().
-				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(os.Getenv("github.action_path"))).
+				WithArtifactLocation(sarif.NewArtifactLocation().WithUri("README.md")).
 				WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(1).WithEndLine(1).WithEndColumn(1)),
 		))
 	return nil
