@@ -3,7 +3,6 @@ package sarif
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -38,14 +37,6 @@ func New(options *Options) (*Exporter, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create sarif exporter")
 	}
-	tempFile, err := ioutil.TempFile("", "sarif-test-*")
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create sarif temp file")
-	}
-	defer tempFile.Close()
-
-	tempFile.WriteString("github.com/projectdiscovery/nuclei Scan Result")
-	tempFileName := tempFile.Name()
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -54,7 +45,7 @@ func New(options *Options) (*Exporter, error) {
 	templatePath := path.Join(home, "nuclei-templates")
 
 	run := sarif.NewRun("nuclei", "https://github.com/projectdiscovery/nuclei")
-	return &Exporter{options: options, tempFile: tempFileName, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
+	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
 }
 
 // Export exports a passed result event to sarif structure
@@ -91,13 +82,12 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		WithHelp(fullDescription).
 		WithHelpURI(templateURL).
 		WithFullDescription(sarif.NewMultiformatMessageString(ruleDescription))
-
 	_ = i.run.AddResult(templateID).
 		WithMessage(sarif.NewMessage().WithText(event.Host)).
 		WithLevel(sarifSeverity).
 		WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(event.Host)).WithPhysicalLocation(
 			sarif.NewPhysicalLocation().
-				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(i.tempFile)).
+				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(os.Getenv("github.action_path"))).
 				WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(1).WithEndLine(1).WithEndColumn(1)),
 		))
 	return nil
@@ -112,13 +102,13 @@ func getSarifSeverity(event *output.ResultEvent) string {
 
 	switch ruleSeverity {
 	case "info":
-		return "none"
+		return "note"
 	case "low", "medium":
 		return "warning"
 	case "high", "critical":
 		return "error"
 	default:
-		return "none"
+		return "note"
 	}
 }
 
