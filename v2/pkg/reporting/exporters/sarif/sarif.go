@@ -148,24 +148,24 @@ func getSarifResultMessage(event *output.ResultEvent, templatePath string) strin
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
 		if len(event.ExtractedResults) > 0 {
-			builder.WriteString(" **Extracted results**:\n\n")
+			builder.WriteString(" **Extracted results**:<br><br>")
 			for _, v := range event.ExtractedResults {
 				builder.WriteString("- ")
 				builder.WriteString(v)
-				builder.WriteString("\n")
+				builder.WriteString("<br>")
 			}
-			builder.WriteString("\n")
+			builder.WriteString("<br>")
 		}
 		if len(event.Metadata) > 0 {
-			builder.WriteString(" **Metadata**:\n\n")
+			builder.WriteString(" **Metadata**:<br>")
 			for k, v := range event.Metadata {
 				builder.WriteString("- ")
 				builder.WriteString(k)
 				builder.WriteString(": ")
 				builder.WriteString(types.ToString(v))
-				builder.WriteString("\n")
+				builder.WriteString("<br>")
 			}
-			builder.WriteString("\n")
+			builder.WriteString("<br>")
 		}
 	}
 	if event.Interaction != nil {
@@ -173,7 +173,7 @@ func getSarifResultMessage(event *output.ResultEvent, templatePath string) strin
 		builder.WriteString(event.Interaction.Protocol)
 	}
 
-	builder.WriteString(" To Reproduce - `nuclei -t ")
+	builder.WriteString(" <br>To Reproduce - `nuclei -t ")
 	builder.WriteString(strings.TrimPrefix(templatePath, "/"))
 	builder.WriteString(" -target \"")
 	builder.WriteString(event.Host)
