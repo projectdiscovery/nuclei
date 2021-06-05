@@ -39,7 +39,7 @@ func NewExecuter(requests []*templates.Template, options *protocols.ExecuterOpti
 		executer.operators = append(executer.operators, &clusteredOperator{
 			templateID:   req.ID,
 			templateInfo: req.Info,
-			templatePath: req.Options.TemplatePath,
+			templatePath: req.Path,
 			operator:     req.RequestsHTTP[0].CompiledOperators,
 		})
 	}
