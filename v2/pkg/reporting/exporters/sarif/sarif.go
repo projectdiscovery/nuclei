@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+// Exporter is an exporter for nuclei sarif output format.
 type Exporter struct {
 	sarif *sarif.Report
 	run   *sarif.Run
@@ -45,10 +46,8 @@ func New(options *Options) (*Exporter, error) {
 	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
 }
 
-// Export exports a passed result event to disk
+// Export exports a passed result event to sarif structure
 func (i *Exporter) Export(event *output.ResultEvent) error {
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
 	templatePath := strings.TrimPrefix(event.TemplatePath, i.home)
 
 	description := getSarifResultMessage(event, templatePath)
@@ -80,6 +79,9 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		builder.WriteString(templateURL)
 	}
 	ruleHelp := builder.String()
+
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
 
 	_ = i.run.AddRule(event.TemplateID).
 		WithDescription(ruleName).
@@ -183,6 +185,9 @@ func getSarifResultMessage(event *output.ResultEvent, templatePath string) strin
 
 // Close closes the exporter after operation
 func (i *Exporter) Close() error {
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
 	i.sarif.AddRun(i.run)
 
 	file, err := os.Create(i.options.File)
