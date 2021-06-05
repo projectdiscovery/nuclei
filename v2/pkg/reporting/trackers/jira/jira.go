@@ -161,7 +161,9 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 
 		switch v := d.(type) {
 		case string:
-			builder.WriteString("- ")
+			if !strings.HasPrefix(v, "-") {
+				builder.WriteString("- ")
+			}
 			builder.WriteString(v)
 		case []interface{}:
 			slice := types.ToStringSlice(v)
