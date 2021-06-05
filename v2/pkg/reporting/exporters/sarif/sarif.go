@@ -1,7 +1,9 @@
 package sarif
 
 import (
-	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -11,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Exporter is an exporter for nuclei sarif output format.
@@ -20,8 +21,9 @@ type Exporter struct {
 	run   *sarif.Run
 	mutex *sync.Mutex
 
-	home    string
-	options *Options
+	home     string
+	tempFile string
+	options  *Options
 }
 
 // Options contains the configuration options for sarif exporter client
@@ -36,6 +38,15 @@ func New(options *Options) (*Exporter, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create sarif exporter")
 	}
+	tempFile, err := ioutil.TempFile("", "sarif-test-*")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create sarif temp file")
+	}
+	defer tempFile.Close()
+
+	tempFile.WriteString("github.com/projectdiscovery/nuclei Scan Result")
+	tempFileName := tempFile.Name()
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get home dir")
@@ -43,16 +54,19 @@ func New(options *Options) (*Exporter, error) {
 	templatePath := path.Join(home, "nuclei-templates")
 
 	run := sarif.NewRun("nuclei", "https://github.com/projectdiscovery/nuclei")
-	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
+	return &Exporter{options: options, tempFile: tempFileName, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
 }
 
 // Export exports a passed result event to sarif structure
 func (i *Exporter) Export(event *output.ResultEvent) error {
 	templatePath := strings.TrimPrefix(event.TemplatePath, i.home)
 
-	description := getSarifResultMessage(event, templatePath)
+	h := sha1.New()
+	h.Write([]byte(event.Host))
+	templateID := event.TemplateID + "-" + hex.EncodeToString(h.Sum(nil))
+
+	fullDescription := format.MarkdownDescription(event)
 	sarifSeverity := getSarifSeverity(event)
-	sarifRuleHelpURIs := getSarifRuleHelpURIFromReferences(event)
 
 	var ruleName string
 	if s, ok := event.Info["name"]; ok {
@@ -68,33 +82,22 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	if d, ok := event.Info["description"]; ok {
 		ruleDescription = d.(string)
 	}
-	builder := &strings.Builder{}
-	builder.WriteString(ruleDescription)
-	if sarifRuleHelpURIs != "" {
-		builder.WriteString("\nReferences: \n")
-		builder.WriteString(sarifRuleHelpURIs)
-	}
-	if templateURL != "" {
-		builder.WriteString("\nTemplate URL: ")
-		builder.WriteString(templateURL)
-	}
-	ruleHelp := builder.String()
 
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	_ = i.run.AddRule(event.TemplateID).
+	_ = i.run.AddRule(templateID).
 		WithDescription(ruleName).
-		WithHelp(ruleHelp).
+		WithHelp(fullDescription).
 		WithHelpURI(templateURL).
-		WithFullDescription(sarif.NewMultiformatMessageString(sarifRuleHelpURIs))
+		WithFullDescription(sarif.NewMultiformatMessageString(ruleDescription))
 
-	_ = i.run.AddResult(event.TemplateID).
-		WithMessage(sarif.NewMessage().WithText(description)).
+	_ = i.run.AddResult(templateID).
+		WithMessage(sarif.NewMessage().WithText(event.Host)).
 		WithLevel(sarifSeverity).
 		WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(event.Host)).WithPhysicalLocation(
 			sarif.NewPhysicalLocation().
-				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(event.Type)).
+				WithArtifactLocation(sarif.NewArtifactLocation().WithUri(i.tempFile)).
 				WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(1).WithEndLine(1).WithEndColumn(1)),
 		))
 	return nil
@@ -119,77 +122,15 @@ func getSarifSeverity(event *output.ResultEvent) string {
 	}
 }
 
-// getSarifRuleHelpURIFromReferences returns the sarif rule help uri
-func getSarifRuleHelpURIFromReferences(event *output.ResultEvent) string {
-	if d, ok := event.Info["reference"]; ok {
-		switch v := d.(type) {
-		case string:
-			return v
-		case []interface{}:
-			slice := types.ToStringSlice(v)
-			return strings.Join(slice, "\n")
-		}
-	}
-	return ""
-}
-
-// getSarifResultMessage gets a sarif result message from event
-func getSarifResultMessage(event *output.ResultEvent, templatePath string) string {
-	template := format.GetMatchedTemplate(event)
-	builder := &bytes.Buffer{}
-
-	builder.WriteString(template)
-	builder.WriteString(" matched at ")
-	builder.WriteString(event.Host)
-	builder.WriteString(" (")
-	builder.WriteString(strings.ToUpper(event.Type))
-	builder.WriteString(") => ")
-	builder.WriteString(event.Matched)
-
-	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
-		if len(event.ExtractedResults) > 0 {
-			builder.WriteString(" **Extracted results**:<br><br>")
-			for _, v := range event.ExtractedResults {
-				builder.WriteString("- ")
-				builder.WriteString(v)
-				builder.WriteString("<br>")
-			}
-			builder.WriteString("<br>")
-		}
-		if len(event.Metadata) > 0 {
-			builder.WriteString(" **Metadata**:<br>")
-			for k, v := range event.Metadata {
-				builder.WriteString("- ")
-				builder.WriteString(k)
-				builder.WriteString(": ")
-				builder.WriteString(types.ToString(v))
-				builder.WriteString("<br>")
-			}
-			builder.WriteString("<br>")
-		}
-	}
-	if event.Interaction != nil {
-		builder.WriteString("**Interaction Data**\n---\n")
-		builder.WriteString(event.Interaction.Protocol)
-	}
-
-	builder.WriteString(" <br>To Reproduce - `nuclei -t ")
-	builder.WriteString(strings.TrimPrefix(templatePath, "/"))
-	builder.WriteString(" -target \"")
-	builder.WriteString(event.Host)
-	builder.WriteString("\"`")
-
-	data := builder.String()
-	return data
-}
-
 // Close closes the exporter after operation
 func (i *Exporter) Close() error {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
 	i.sarif.AddRun(i.run)
-
+	if len(i.run.Results) == 0 {
+		return nil // do not write when no results
+	}
 	file, err := os.Create(i.options.File)
 	if err != nil {
 		return errors.Wrap(err, "could not create sarif output file")

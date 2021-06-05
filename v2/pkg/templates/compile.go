@@ -142,6 +142,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if template.Executer == nil && template.CompiledWorkflow == nil {
 		return nil, errors.New("cannot create template executer")
 	}
+	template.Path = filePath
 	return template, nil
 }
 
