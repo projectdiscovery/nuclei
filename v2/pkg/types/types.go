@@ -47,8 +47,8 @@ type Options struct {
 	ReportingConfig string
 	// DiskExportDirectory is the directory to export reports in markdown on disk to
 	DiskExportDirectory string
-	// SarifFile is the file to export sarif output format to
-	SarifFile string
+	// SarifExport is the file to export sarif output format to
+	SarifExport string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
