@@ -96,12 +96,12 @@ func New(options *types.Options) (*Runner, error) {
 			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
 		}
 	}
-	if options.SarifFile != "" {
+	if options.SarifExport != "" {
 		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifFile}
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifFile}
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 		}
 	}
 	if reportingOptions != nil {
