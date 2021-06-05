@@ -44,6 +44,9 @@ func MarkdownDescription(event *output.ResultEvent) string {
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
 	for k, v := range event.Info {
+		if k == "reference" {
+			continue
+		}
 		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
 	}
 	if event.Request != "" {
