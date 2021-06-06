@@ -91,11 +91,10 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		// Also write file match metadata to file
 	if event.Type == "file" && event.FileToIndexPosition != nil {
 		for file, line := range event.FileToIndexPosition {
-			sc, sl, el, ec := getLimitedLineAndColumns(line)
 			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(file)).WithPhysicalLocation(
 				sarif.NewPhysicalLocation().
 					WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)).
-					WithRegion(sarif.NewRegion().WithStartColumn(sc).WithStartLine(sl).WithEndLine(el).WithEndColumn(ec)),
+					WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(line).WithEndLine(line).WithEndColumn(32)),
 			))
 		}
 	} else {
