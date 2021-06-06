@@ -84,6 +84,8 @@ type ResultEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Interaction is the full details of interactsh interaction.
 	Interaction *server.Interaction `json:"interaction,omitempty"`
+
+	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
