@@ -119,7 +119,7 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 			line := 1
 			for scanner.Scan() {
 				if strings.Contains(scanner.Text(), extraction) {
-					if result.FileToIndexPosition != nil {
+					if result.FileToIndexPosition == nil {
 						result.FileToIndexPosition = make(map[string]int)
 					}
 					result.FileToIndexPosition[result.Matched] = line
