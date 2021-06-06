@@ -110,7 +110,7 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 	builder.WriteString("\n{code}\n\n")
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
-		builder.WriteString("*Extra Information*\n\n")
+		builder.WriteString("\n*Extra Information*\n\n")
 		if len(event.ExtractedResults) > 0 {
 			builder.WriteString("*Extracted results*:\n\n")
 			for _, v := range event.ExtractedResults {

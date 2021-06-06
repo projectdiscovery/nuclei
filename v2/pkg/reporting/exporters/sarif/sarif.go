@@ -89,7 +89,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		WithLevel(sarifSeverity)
 
 		// Also write file match metadata to file
-	if event.Type == "file" && event.FileToIndexPosition != nil {
+	if event.Type == "file" && (event.FileToIndexPosition != nil && len(event.FileToIndexPosition) > 0) {
 		for file, line := range event.FileToIndexPosition {
 			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(ruleName)).WithPhysicalLocation(
 				sarif.NewPhysicalLocation().
