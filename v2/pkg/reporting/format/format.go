@@ -63,11 +63,11 @@ func MarkdownDescription(event *output.ResultEvent) string {
 		} else {
 			builder.WriteString(event.Response)
 		}
-		builder.WriteString("\n```\n\n")
+		builder.WriteString("\n```\n")
 	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
-		builder.WriteString("**Extra Information**\n\n")
+		builder.WriteString("\n**Extra Information**\n\n")
 		if len(event.ExtractedResults) > 0 {
 			builder.WriteString("**Extracted results**:\n\n")
 			for _, v := range event.ExtractedResults {
