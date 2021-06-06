@@ -67,6 +67,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	var templateURL string
 	if strings.HasPrefix(event.TemplatePath, i.home) {
 		templateURL = "https://github.com/projectdiscovery/nuclei-templates/blob/master" + templatePath
+	} else {
+		templateURL = "https://github.com/projectdiscovery/nuclei-templates"
 	}
 
 	var ruleDescription string
@@ -82,14 +84,27 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		WithHelp(fullDescription).
 		WithHelpURI(templateURL).
 		WithFullDescription(sarif.NewMultiformatMessageString(ruleDescription))
-	_ = i.run.AddResult(templateID).
+	result := i.run.AddResult(templateID).
 		WithMessage(sarif.NewMessage().WithText(event.Host)).
-		WithLevel(sarifSeverity).
-		WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(event.Host)).WithPhysicalLocation(
+		WithLevel(sarifSeverity)
+
+		// Also write file match metadata to file
+	if event.Type == "file" && event.FileToIndexPosition != nil {
+		for file, line := range event.FileToIndexPosition {
+			sc, sl, el, ec := getLimitedLineAndColumns(line)
+			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(file)).WithPhysicalLocation(
+				sarif.NewPhysicalLocation().
+					WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)).
+					WithRegion(sarif.NewRegion().WithStartColumn(sc).WithStartLine(sl).WithEndLine(el).WithEndColumn(ec)),
+			))
+		}
+	} else {
+		result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(event.Host)).WithPhysicalLocation(
 			sarif.NewPhysicalLocation().
 				WithArtifactLocation(sarif.NewArtifactLocation().WithUri("README.md")).
 				WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(1).WithEndLine(1).WithEndColumn(1)),
 		))
+	}
 	return nil
 }
 
@@ -110,6 +125,16 @@ func getSarifSeverity(event *output.ResultEvent) string {
 	default:
 		return "note"
 	}
+}
+
+func getLimitedLineAndColumns(line int) (int, int, int, int) {
+	var endline = line
+
+	if line-3 != 0 {
+		endline = line + 6
+		line = line - 3
+	}
+	return 1, line, endline, 32
 }
 
 // Close closes the exporter after operation
