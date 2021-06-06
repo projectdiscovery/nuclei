@@ -91,7 +91,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		// Also write file match metadata to file
 	if event.Type == "file" && event.FileToIndexPosition != nil {
 		for file, line := range event.FileToIndexPosition {
-			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(file)).WithPhysicalLocation(
+			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(ruleName)).WithPhysicalLocation(
 				sarif.NewPhysicalLocation().
 					WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)).
 					WithRegion(sarif.NewRegion().WithStartColumn(1).WithStartLine(line).WithEndLine(line).WithEndColumn(32)),
@@ -124,15 +124,6 @@ func getSarifSeverity(event *output.ResultEvent) string {
 	default:
 		return "note"
 	}
-}
-
-func getLimitedLineAndColumns(line int) (int, int, int, int) {
-	endline := line + 3
-
-	if line-3 > 0 {
-		line = line - 3
-	}
-	return 1, line, endline, 32
 }
 
 // Close closes the exporter after operation
