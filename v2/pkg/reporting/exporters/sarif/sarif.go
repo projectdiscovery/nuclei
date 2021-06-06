@@ -128,10 +128,9 @@ func getSarifSeverity(event *output.ResultEvent) string {
 }
 
 func getLimitedLineAndColumns(line int) (int, int, int, int) {
-	var endline = line
+	endline := line + 3
 
-	if line-3 != 0 {
-		endline = line + 6
+	if line-3 > 0 {
 		line = line - 3
 	}
 	return 1, line, endline, 32
