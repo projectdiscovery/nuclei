@@ -23,6 +23,7 @@ func TestActionNavigate(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `

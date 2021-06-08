@@ -23,6 +23,7 @@ require (
 	github.com/miekg/dns v1.1.38
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/owenrumney/go-sarif v1.0.4 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/collaborator v0.0.2
@@ -53,7 +54,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
-	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0

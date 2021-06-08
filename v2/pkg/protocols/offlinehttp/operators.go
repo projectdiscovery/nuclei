@@ -101,6 +101,7 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 	data["duration"] = duration.Seconds()
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
+	data["template-path"] = r.options.TemplatePath
 	return data
 }
 
@@ -135,6 +136,7 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "http",
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
