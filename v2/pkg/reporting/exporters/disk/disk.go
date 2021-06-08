@@ -58,3 +58,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	err := ioutil.WriteFile(path.Join(i.directory, finalFilename), data, 0644)
 	return err
 }
+
+// Close closes the exporter after operation
+func (i *Exporter) Close() error {
+	return nil
+}

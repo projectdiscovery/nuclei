@@ -54,6 +54,8 @@ type InternalWrappedEvent struct {
 type ResultEvent struct {
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"templateID"`
+	// TemplatePath is the path of template
+	TemplatePath string `json:"-"`
 	// Info contains information block of the template for the result.
 	Info map[string]interface{} `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
@@ -82,6 +84,8 @@ type ResultEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Interaction is the full details of interactsh interaction.
 	Interaction *server.Interaction `json:"interaction,omitempty"`
+
+	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
