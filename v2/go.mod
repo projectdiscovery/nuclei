@@ -23,6 +23,7 @@ require (
 	github.com/miekg/dns v1.1.38
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/owenrumney/go-sarif v1.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/collaborator v0.0.2
@@ -31,7 +32,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.3
-	github.com/projectdiscovery/rawhttp v0.0.6
+	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
 	github.com/remeh/sizedwaitgroup v1.0.0

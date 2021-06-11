@@ -32,14 +32,16 @@
 #  issue-label: ""
 
 # jira contains configuration options for jira issue tracker
-#jira: 
+#jira:
+#  # Cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+#  cloud: true
 #  # URL is the jira application url
 #  url: ""
-#  # account-id is the account-id of the jira user
+#  # account-id is the account-id of the jira user or username in case of on-prem Jira
 #  account-id: ""
 #  # email is the email of the user for jira instance
 #  email: ""
-#  # token is the token for jira instance.
+#  # token is the token for jira instance or password in case of on-prem Jira
 #  token: ""
 #  # project-name is the name of the project.
 #  project-name: ""

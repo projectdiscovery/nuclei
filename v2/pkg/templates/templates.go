@@ -35,4 +35,6 @@ type Template struct {
 	TotalRequests int `yaml:"-" json:"-"`
 	// Executer is the actual template executor for running template requests
 	Executer protocols.Executer `yaml:"-" json:"-"`
+
+	Path string `yaml:"-" json:"-"`
 }
