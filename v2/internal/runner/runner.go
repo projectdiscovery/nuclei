@@ -66,13 +66,13 @@ func New(options *types.Options) (*Runner, error) {
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
+
+	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 	// Read nucleiignore file if given a templateconfig
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
+		runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
 	}
-	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
-
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
