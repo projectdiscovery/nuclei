@@ -387,13 +387,8 @@ func (r *Runner) RunEnumeration() {
 		r.issuesClient.Close()
 	}
 	if !results.Load() {
-		if r.output != nil {
-			r.output.Close()
-			os.Remove(r.options.Output)
-		}
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
-
 	if r.browser != nil {
 		r.browser.Close()
 	}
