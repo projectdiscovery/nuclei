@@ -347,7 +347,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 	data, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		return errors.Wrap(err, "could not read http body")
+		if !strings.Contains(err.Error(), "unexpected EOF") { // ignore EOF error
+			return errors.Wrap(err, "could not read http body")
+		}
 	}
 	resp.Body.Close()
 
