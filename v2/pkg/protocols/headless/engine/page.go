@@ -49,7 +49,6 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 	if err != nil {
 		return nil, nil, err
 	}
-
 	go router.Run()
 	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {

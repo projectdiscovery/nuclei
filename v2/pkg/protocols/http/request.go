@@ -117,7 +117,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 	return requestErr
 }
 
-// executeRaceRequest executes turbo http request for a URL
+// executeTurboHTTP executes turbo http request for a URL
 func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := r.newGenerator()
 
@@ -277,11 +277,15 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	var hostname string
 	timeStart := time.Now()
 	if request.original.Pipeline {
-		formedURL = request.rawRequest.FullURL
-		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
-			hostname = parsed.Host
+		if request.rawRequest != nil {
+			formedURL = request.rawRequest.FullURL
+			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+				hostname = parsed.Host
+			}
+			resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
+		} else if request.request != nil {
+			resp, err = request.pipelinedClient.Dor(request.request)
 		}
-		resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
 	} else if request.original.Unsafe && request.rawRequest != nil {
 		formedURL = request.rawRequest.FullURL
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
@@ -343,7 +347,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 	data, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		return errors.Wrap(err, "could not read http body")
+		if !strings.Contains(err.Error(), "unexpected EOF") { // ignore EOF error
+			return errors.Wrap(err, "could not read http body")
+		}
 	}
 	resp.Body.Close()
 

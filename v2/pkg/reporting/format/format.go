@@ -44,6 +44,9 @@ func MarkdownDescription(event *output.ResultEvent) string {
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
 	for k, v := range event.Info {
+		if k == "reference" {
+			continue
+		}
 		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
 	}
 	if event.Request != "" {
@@ -60,11 +63,11 @@ func MarkdownDescription(event *output.ResultEvent) string {
 		} else {
 			builder.WriteString(event.Response)
 		}
-		builder.WriteString("\n```\n\n")
+		builder.WriteString("\n```\n")
 	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
-		builder.WriteString("**Extra Information**\n\n")
+		builder.WriteString("\n**Extra Information**\n\n")
 		if len(event.ExtractedResults) > 0 {
 			builder.WriteString("**Extracted results**:\n\n")
 			for _, v := range event.ExtractedResults {
@@ -108,6 +111,26 @@ func MarkdownDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n**Interaction Response**\n\n```\n")
 			builder.WriteString(event.Interaction.RawResponse)
 			builder.WriteString("\n```\n")
+		}
+	}
+	if d, ok := event.Info["reference"]; ok {
+		builder.WriteString("\nReference: \n")
+
+		switch v := d.(type) {
+		case string:
+			if !strings.HasPrefix(v, "-") {
+				builder.WriteString("- ")
+			}
+			builder.WriteString(v)
+		case []interface{}:
+			slice := types.ToStringSlice(v)
+			for i, item := range slice {
+				builder.WriteString("- ")
+				builder.WriteString(item)
+				if len(slice)-1 != i {
+					builder.WriteString("\n")
+				}
+			}
 		}
 	}
 
