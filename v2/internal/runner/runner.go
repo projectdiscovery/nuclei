@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/remeh/sizedwaitgroup"
@@ -66,13 +67,13 @@ func New(options *types.Options) (*Runner, error) {
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
+
+	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 	// Read nucleiignore file if given a templateconfig
 	if runner.templatesConfig != nil {
 		runner.readNucleiIgnoreFile()
+		runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
 	}
-	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
-
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
@@ -93,6 +94,14 @@ func New(options *types.Options) (*Runner, error) {
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		}
+	}
+	if options.SarifExport != "" {
+		if reportingOptions != nil {
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 		}
 	}
 	if reportingOptions != nil {
@@ -387,13 +396,8 @@ func (r *Runner) RunEnumeration() {
 		r.issuesClient.Close()
 	}
 	if !results.Load() {
-		if r.output != nil {
-			r.output.Close()
-			os.Remove(r.options.Output)
-		}
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
-
 	if r.browser != nil {
 		r.browser.Close()
 	}
