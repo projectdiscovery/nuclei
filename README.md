@@ -94,7 +94,7 @@ Nuclei offers great number of features that are helpful for security engineers t
 
 **For bugbounty hunters:**
 
-Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moroever, Nuclei can be easily integrated into any continuous scanning workflow.
+Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moreover, Nuclei can be easily integrated into any continuous scanning workflow.
 
 - Designed to be easily integrated into other tool workflow.
 - Can process thousands of hosts in few minutes.
