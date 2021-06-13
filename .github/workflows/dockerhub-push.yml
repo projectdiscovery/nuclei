@@ -1,9 +1,8 @@
 name: ◎ Docker Push
 
 on:
-  push:
-    branches:
-      - 'master'
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -32,4 +31,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm
           push: true
-          tags: user/app:latest
+          tags: projectdiscovery/nuclei:latest
