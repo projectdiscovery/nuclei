@@ -10,7 +10,6 @@ jobs:
     - name: Publish to Dockerhub Registry
       uses: dawidd6/action-docker-publish-changed@v3
       with:
-        name: projectdiscovery/nuclei
         username: ${{secrets.DOCKER_USERNAME}}
         password: ${{secrets.DOCKER_PASSWORD}}
         platforms: linux/amd64,linux/arm64,linux/arm
