@@ -297,7 +297,7 @@ func (r *Runner) RunEnumeration() {
 	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
 	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
 
-	var unclusteredRequests int64 = 0
+	var unclusteredRequests int64
 	for _, template := range availableTemplates {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
@@ -340,7 +340,7 @@ func (r *Runner) RunEnumeration() {
 		finalTemplates = append(finalTemplates, workflows)
 	}
 
-	var totalRequests int64 = 0
+	var totalRequests int64
 	for _, t := range finalTemplates {
 		if len(t.Workflows) > 0 {
 			continue

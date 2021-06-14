@@ -20,9 +20,8 @@ type Exporter struct {
 	run   *sarif.Run
 	mutex *sync.Mutex
 
-	home     string
-	tempFile string
-	options  *Options
+	home    string
+	options *Options
 }
 
 // Options contains the configuration options for sarif exporter client
