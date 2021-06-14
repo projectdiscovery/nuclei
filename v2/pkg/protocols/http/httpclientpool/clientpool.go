@@ -24,7 +24,9 @@ import (
 )
 
 var (
-	Dialer        *fastdialer.Dialer
+	// Dialer is a copy of the fatdialer from protocolstate
+	Dialer *fastdialer.Dialer
+
 	rawhttpClient *rawhttp.Client
 	poolMutex     *sync.RWMutex
 	normalClient  *retryablehttp.Client
