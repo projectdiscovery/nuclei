@@ -109,7 +109,7 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 	case "deflate":
 		reader, err = zlib.NewReader(resp.Body)
 	default:
-		reader = resp.Body
+		return bodyOrig, nil
 	}
 	if err != nil {
 		return nil, err
