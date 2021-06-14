@@ -11,7 +11,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -227,11 +226,6 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	// Enable Polling
-	if options.BurpCollaboratorBiid != "" {
-		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
-	}
-
 	if options.RateLimit > 0 {
 		runner.ratelimiter = ratelimit.New(options.RateLimit)
 	} else {
@@ -364,8 +358,6 @@ func (r *Runner) RunEnumeration() {
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
-	// Starts polling or ignore
-	collaborator.DefaultCollaborator.Poll()
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.inputCount, templateCount, totalRequests)
