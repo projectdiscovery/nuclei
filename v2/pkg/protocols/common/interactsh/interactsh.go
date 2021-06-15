@@ -20,6 +20,7 @@ import (
 
 // Client is a wrapped client for interactsh server.
 type Client struct {
+	dotHostname string
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
@@ -27,13 +28,13 @@ type Client struct {
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
 	interactions *ccache.Cache
 
-	generated        uint32 // decide to wait if we have a generated url
 	options          *Options
-	matched          bool
-	dotHostname      string
 	eviction         time.Duration
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
+
+	generated uint32 // decide to wait if we have a generated url
+	matched   bool
 }
 
 var (
