@@ -22,10 +22,7 @@ func Init(options *types.Options) error {
 	if err := httpclientpool.Init(options); err != nil {
 		return err
 	}
-	if err := networkclientpool.Init(options); err != nil {
-		return err
-	}
-	return nil
+	return networkclientpool.Init(options)
 }
 
 var userAgents = []string{

@@ -105,11 +105,11 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 	var reader io.ReadCloser
 	switch resp.Header.Get("Content-Encoding") {
 	case "gzip":
-		reader, err = gzip.NewReader(resp.Body)
+		reader, err = gzip.NewReader(bytes.NewReader(bodyOrig))
 	case "deflate":
-		reader, err = zlib.NewReader(resp.Body)
+		reader, err = zlib.NewReader(bytes.NewReader(bodyOrig))
 	default:
-		reader = resp.Body
+		return bodyOrig, nil
 	}
 	if err != nil {
 		return nil, err

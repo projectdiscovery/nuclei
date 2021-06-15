@@ -21,8 +21,6 @@ type Options struct {
 	// Severity filters templates based on their severity and only run the matching ones.
 	Severity              goflags.StringSlice
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
-	// BurpCollaboratorBiid is the Burp Collaborator BIID for polling interactions.
-	BurpCollaboratorBiid string
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
