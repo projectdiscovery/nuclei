@@ -3,6 +3,7 @@ package interactsh
 import (
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/karlseguin/ccache"
@@ -26,6 +27,7 @@ type Client struct {
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
 	interactions *ccache.Cache
 
+	generated        uint32 // decide to wait if we have a generated url
 	options          *Options
 	matched          bool
 	dotHostname      string
@@ -157,12 +159,13 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() string {
+	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
 	return c.interactsh.URL()
 }
 
 // Close closes the interactsh clients after waiting for cooldown period.
 func (c *Client) Close() bool {
-	if c.cooldownDuration > 0 {
+	if c.cooldownDuration > 0 && atomic.LoadUint32(&c.generated) == 1 {
 		time.Sleep(c.cooldownDuration)
 	}
 	c.interactsh.StopPolling()
