@@ -1,8 +1,9 @@
-name: Release
+name: 🎉 Release Binary
 on:
   create:
     tags:
       - v*
+  workflow_dispatch:
 
 jobs: 
   release: 
@@ -17,7 +18,7 @@ jobs:
         name: "Set up Go"
         uses: actions/setup-go@v2
         with: 
-          go-version: 1.15
+          go-version: 1.16
       - 
         env: 
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -27,4 +28,3 @@ jobs:
           args: "release --rm-dist"
           version: latest
           workdir: v2/
-        
