@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
 )
@@ -268,12 +267,6 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		seconds := args[0].(float64)
 		time.Sleep(time.Duration(seconds) * time.Second)
 		return true, nil
-	}
-
-	// Collaborator
-	functions["collab"] = func(args ...interface{}) (interface{}, error) {
-		// check if collaborator contains a specific pattern
-		return collaborator.DefaultCollaborator.Has(types.ToString(args[0])), nil
 	}
 	return functions
 }
