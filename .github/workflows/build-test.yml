@@ -1,13 +1,12 @@
-name: Build
+name: 🙏🏻 Build Test
 on:
   push:
-    branches:
-      - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lint:
-    name: golangci-lint
+    name: Lint Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -15,13 +14,12 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: latest
           args: --timeout 5m
           working-directory: v2/
         
   build:
-    name: Build
+    name: Test Builds
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
