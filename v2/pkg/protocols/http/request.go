@@ -362,7 +362,11 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 	dataOrig := data
-	data, _ = handleDecompression(resp, data)
+	data, err = handleDecompression(resp, data)
+	// in case of error use original data
+	if err != nil {
+		data = dataOrig
+	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	dumpedResponseBuilder := &bytes.Buffer{}
