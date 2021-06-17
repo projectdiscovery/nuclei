@@ -237,6 +237,8 @@ github.com/projectdiscovery/retryabledns v1.0.10/go.mod h1:4sMC8HZyF01HXukRleSQY
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727 h1:CJHP3CLCc/eqdXQEvZy8KiiqtAk9kEsd1URtPyPAQ1s=
 github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
+github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d h1:nlOAex7twmrEqD5i6WLnugF9uO3DQ6jDEKN9gevrTAk=
+github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d/go.mod h1:TVSdZC0rRQeMIbsNSiGPhbmhyRtxqqtAGA9JiiNp2r4=
 github.com/prologic/smtpd v0.0.0-20210126001904-0893ad18168e h1:ZT3wZ92sp/EHEE/HcFCWCsYS3ROLjHb6EqSX8qYrgXw=
 github.com/prologic/smtpd v0.0.0-20210126001904-0893ad18168e/go.mod h1:GkLsdH1RZj6RDKeI9A05NGZYmEZQ/PbQcZPnZoSZuYI=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
