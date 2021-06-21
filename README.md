@@ -20,7 +20,7 @@
   <a href="#install-nuclei">Install</a> •
   <a href="#for-security-engineers">For Security Engineers</a> •
   <a href="#for-developers-and-organisations">For Developers</a> •
-  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started.html/">Documentation</a> •
   <a href="#credits">Credits</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
   <a href="https://discord.gg/projectdiscovery">Join Discord</a>
