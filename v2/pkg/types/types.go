@@ -51,6 +51,8 @@ type Options struct {
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
 	StatsInterval int
+	// StatsJSON writes stats ouput in JSON format
+	StatsJSON bool
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
 	// BulkSize is the of targets analyzed in parallel for each template
