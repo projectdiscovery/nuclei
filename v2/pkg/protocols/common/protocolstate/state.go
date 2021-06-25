@@ -6,8 +6,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+// Dialer is a shared fastdialer instance for host DNS resolution
 var Dialer *fastdialer.Dialer
 
+// Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	if options.SystemResolvers {
@@ -24,6 +26,7 @@ func Init(options *types.Options) error {
 	return nil
 }
 
+// Close closes the global shared fastdialer
 func Close() {
 	if Dialer != nil {
 		Dialer.Close()

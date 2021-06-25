@@ -32,7 +32,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	req := "test-data\r\n"
 	resp := "resp-data\r\n"
 	event := request.responseToDSLMap(req, resp, "test", "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	require.Len(t, event, 8, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["data"], "could not get correct resp")
 }
 

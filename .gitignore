@@ -4,3 +4,4 @@ v2/cmd/nuclei/nuclei
 integration_tests/integration-test
 integration_tests/nuclei
 v2/cmd/integration-test/integration-test
+bin
