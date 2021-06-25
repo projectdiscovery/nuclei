@@ -25,6 +25,7 @@ func main() {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 	nucleiRunner.RunEnumeration()
+	nucleiRunner.Close()
 }
 
 func readConfig() {
@@ -72,7 +73,6 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "Don't display metadata for the matches")
 	set.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "Shows the installed nuclei-templates version")
 	set.BoolVar(&options.OfflineHTTP, "passive", false, "Enable Passive HTTP response processing mode")
-	set.StringVarP(&options.BurpCollaboratorBiid, "burp-collaborator-biid", "biid", "", "Burp Collaborator BIID")
 	set.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "Nuclei Reporting Module configuration file")
 	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database (Always use this to persistent report data)")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
@@ -84,9 +84,10 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
 	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
 	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
-	set.StringVarP(&options.DiskExportDirectory, "disk-export", "de", "", "Directory on disk to export reports in markdown to")
+	set.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "Directory to export results in markdown format")
+	set.StringVarP(&options.SarifExport, "sarif-export", "se", "", "File to export results in sarif format")
 	set.BoolVar(&options.NoInteractsh, "no-interactsh", false, "Do not use interactsh server for blind interaction polling")
-	set.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "Interactsh Server URL")
+	set.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "Self Hosted Interactsh Server URL")
 	set.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "Number of requests to keep in interactions cache")
 	set.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "Number of seconds to wait before evicting requests from cache")
 	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")

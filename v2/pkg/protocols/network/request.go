@@ -127,8 +127,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	r.options.Progress.IncrementRequests()
 
 	if r.options.Options.Debug || r.options.Options.DebugRequests {
+		requestOutput := reqBuilder.String()
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", r.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s", reqBuilder.String())
+		gologger.Print().Msgf("%s\nHex: %s", requestOutput, hex.EncodeToString([]byte(requestOutput)))
 	}
 
 	r.options.Output.Request(r.options.TemplateID, actualAddress, "network", err)
@@ -147,8 +148,9 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	responseBuilder.Write(final[:n])
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		responseOutput := responseBuilder.String()
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s", responseBuilder.String())
+		gologger.Print().Msgf("%s\nHex: %s", responseOutput, hex.EncodeToString([]byte(responseOutput)))
 	}
 	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), responseBuilder.String(), input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
