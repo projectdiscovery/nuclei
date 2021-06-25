@@ -3,6 +3,8 @@ package http
 import (
 	"bytes"
 	"compress/gzip"
+	"compress/zlib"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -100,19 +102,23 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 		return bodyOrig, nil
 	}
 
-	encodingHeader := strings.TrimSpace(strings.ToLower(resp.Header.Get("Content-Encoding")))
-	if strings.Contains(encodingHeader, "gzip") {
-		gzipreader, err := gzip.NewReader(bytes.NewReader(bodyOrig))
-		if err != nil {
-			return bodyOrig, err
-		}
-		defer gzipreader.Close()
-
-		bodyDec, err = ioutil.ReadAll(gzipreader)
-		if err != nil {
-			return bodyOrig, err
-		}
-		return bodyDec, nil
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(bytes.NewReader(bodyOrig))
+	case "deflate":
+		reader, err = zlib.NewReader(bytes.NewReader(bodyOrig))
+	default:
+		return bodyOrig, nil
 	}
-	return bodyOrig, nil
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	bodyDec, err = ioutil.ReadAll(reader)
+	if err != nil {
+		return bodyOrig, err
+	}
+	return bodyDec, nil
 }

@@ -1,6 +1,8 @@
 package file
 
 import (
+	"bufio"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -71,6 +73,7 @@ func (r *Request) responseToDSLMap(raw, host, matched string) output.InternalEve
 	data["raw"] = raw
 	data["template-id"] = r.options.TemplateID
 	data["template-info"] = r.options.TemplateInfo
+	data["template-path"] = r.options.TemplatePath
 	return data
 }
 
@@ -99,16 +102,45 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 		data := r.makeResultEventItem(wrapped)
 		results = append(results, data)
 	}
+	raw, ok := wrapped.InternalEvent["raw"]
+	if !ok {
+		return results
+	}
+	rawStr, ok := raw.(string)
+	if !ok {
+		return results
+	}
+
+	// Identify the position of match in file using a dirty hack.
+	for _, result := range results {
+		for _, extraction := range result.ExtractedResults {
+			scanner := bufio.NewScanner(strings.NewReader(rawStr))
+
+			line := 1
+			for scanner.Scan() {
+				if strings.Contains(scanner.Text(), extraction) {
+					if result.FileToIndexPosition == nil {
+						result.FileToIndexPosition = make(map[string]int)
+					}
+					result.FileToIndexPosition[result.Matched] = line
+					continue
+				}
+				line++
+			}
+		}
+	}
 	return results
 }
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
 		Type:             "file",
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
+		Host:             types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 	}

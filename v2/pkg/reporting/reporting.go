@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
@@ -28,6 +29,8 @@ type Options struct {
 	Jira *jira.Options `yaml:"jira"`
 	// DiskExporter contains configuration options for Disk Exporter Module
 	DiskExporter *disk.Options `yaml:"disk"`
+	// SarifExporter contains configuration options for Sarif Exporter Module
+	SarifExporter *sarif.Options `yaml:"sarif"`
 }
 
 // Filter filters the received event and decides whether to perform
@@ -79,6 +82,8 @@ type Tracker interface {
 
 // Exporter is an interface implemented by an issue exporter
 type Exporter interface {
+	// Close closes the exporter after operation
+	Close() error
 	// Export exports an issue to an exporter
 	Export(event *output.ResultEvent) error
 }
@@ -129,6 +134,13 @@ func New(options *Options, db string) (*Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.SarifExporter != nil {
+		exporter, err := sarif.New(options.SarifExporter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create exporting client")
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
@@ -140,6 +152,9 @@ func New(options *Options, db string) (*Client, error) {
 // Close closes the issue tracker reporting client
 func (c *Client) Close() {
 	c.dedupe.Close()
+	for _, exporter := range c.exporters {
+		exporter.Close()
+	}
 }
 
 // CreateIssue creates an issue in the tracker

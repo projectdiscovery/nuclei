@@ -99,6 +99,7 @@ func (b *Browser) Close() {
 // headless process launch.
 func (b *Browser) killChromeProcesses() {
 	newProcesses := b.findChromeProcesses()
+
 	for id := range newProcesses {
 		if _, ok := b.previouspids[id]; ok {
 			continue

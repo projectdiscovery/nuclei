@@ -17,4 +17,4 @@ requests:
     matchers:
       - type: word
         words:
-          - "This is test-raw-unsafe request matcher."
+          - "This is test raw-unsafe-matcher test"
