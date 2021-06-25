@@ -22,6 +22,7 @@ type Executer struct {
 
 type clusteredOperator struct {
 	templateID   string
+	templatePath string
 	templateInfo map[string]interface{}
 	operator     *operators.Operators
 }
@@ -38,6 +39,7 @@ func NewExecuter(requests []*templates.Template, options *protocols.ExecuterOpti
 		executer.operators = append(executer.operators, &clusteredOperator{
 			templateID:   req.ID,
 			templateInfo: req.Info,
+			templatePath: req.Path,
 			operator:     req.RequestsHTTP[0].CompiledOperators,
 		})
 	}
@@ -68,6 +70,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 			if matched && result != nil {
 				event.OperatorsResult = result
 				event.InternalEvent["template-id"] = operator.templateID
+				event.InternalEvent["template-path"] = operator.templatePath
 				event.InternalEvent["template-info"] = operator.templateInfo
 				event.Results = e.requests.MakeResultEvent(event)
 				results = true
@@ -95,6 +98,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			if matched && result != nil {
 				event.OperatorsResult = result
 				event.InternalEvent["template-id"] = operator.templateID
+				event.InternalEvent["template-path"] = operator.templatePath
 				event.InternalEvent["template-info"] = operator.templateInfo
 				event.Results = e.requests.MakeResultEvent(event)
 				callback(event)

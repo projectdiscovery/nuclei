@@ -1,0 +1,31 @@
+name: 🔨 Build Test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+
+jobs:  
+  build:
+    name: Test Builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Test
+        run: go test ./...
+        working-directory: v2/
+
+      - name: Integration Tests
+        run: bash run.sh
+        working-directory: integration_tests/
+
+      - name: Build
+        run: go build .
+        working-directory: v2/cmd/nuclei/

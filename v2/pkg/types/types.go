@@ -21,8 +21,6 @@ type Options struct {
 	// Severity filters templates based on their severity and only run the matching ones.
 	Severity              goflags.StringSlice
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
-	// BurpCollaboratorBiid is the Burp Collaborator BIID for polling interactions.
-	BurpCollaboratorBiid string
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
@@ -47,6 +45,8 @@ type Options struct {
 	ReportingConfig string
 	// DiskExportDirectory is the directory to export reports in markdown on disk to
 	DiskExportDirectory string
+	// SarifExport is the file to export sarif output format to
+	SarifExport string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
