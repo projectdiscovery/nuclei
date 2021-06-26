@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/stringsutil"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 )
@@ -347,7 +348,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 	data, err := ioutil.ReadAll(bodyReader)
 	if err != nil {
-		if !strings.Contains(err.Error(), "unexpected EOF") { // ignore EOF error
+		// Ignore body read due to server misconfiguration errors
+		if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
+			gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
+		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF") { // ignore EOF error
 			return errors.Wrap(err, "could not read http body")
 		}
 	}
@@ -362,7 +366,11 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 	dataOrig := data
-	data, _ = handleDecompression(resp, data)
+	data, err = handleDecompression(resp, data)
+	// in case of error use original data
+	if err != nil {
+		data = dataOrig
+	}
 
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	dumpedResponseBuilder := &bytes.Buffer{}
