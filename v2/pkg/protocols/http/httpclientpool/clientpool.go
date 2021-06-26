@@ -79,9 +79,11 @@ func (c *Configuration) Hash() string {
 }
 
 // GetRawHTTP returns the rawhttp request client
-func GetRawHTTP() *rawhttp.Client {
+func GetRawHTTP(options *types.Options) *rawhttp.Client {
 	if rawhttpClient == nil {
-		rawhttpClient = rawhttp.NewClient(rawhttp.DefaultOptions)
+		rawhttpOptions := rawhttp.DefaultOptions
+		rawhttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+		rawhttpClient = rawhttp.NewClient(rawhttpOptions)
 	}
 	return rawhttpClient
 }
