@@ -104,9 +104,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if Dialer == nil {
 		Dialer = protocolstate.Dialer
 	}
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create dialer")
-	}
 
 	hash := configuration.Hash()
 	poolMutex.RLock()
