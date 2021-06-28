@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	// Dialer is a copy of the fatdialer from protocolstate
+	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
 	rawhttpClient *rawhttp.Client
@@ -96,16 +96,13 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 	return wrappedGet(options, configuration)
 }
 
-// wrappedGet wraps a get operation without normal cliet check
+// wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var proxyURL *url.URL
 	var err error
 
 	if Dialer == nil {
 		Dialer = protocolstate.Dialer
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create dialer")
 	}
 
 	hash := configuration.Hash()
