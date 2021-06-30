@@ -11,9 +11,10 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/internal/collaborator"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -40,7 +41,7 @@ type Runner struct {
 	output          output.Writer
 	interactsh      *interactsh.Client
 	inputCount      int64
-	templatesConfig *nucleiConfig
+	templatesConfig *config.Config
 	options         *types.Options
 	projectFile     *projectfile.ProjectFile
 	catalog         *catalog.Catalog
@@ -69,11 +70,6 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	// Read nucleiignore file if given a templateconfig
-	if runner.templatesConfig != nil {
-		runner.readNucleiIgnoreFile()
-		runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
-	}
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
@@ -227,11 +223,6 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	// Enable Polling
-	if options.BurpCollaboratorBiid != "" {
-		collaborator.DefaultCollaborator.Collab.AddBIID(options.BurpCollaboratorBiid)
-	}
-
 	if options.RateLimit > 0 {
 		runner.ratelimiter = ratelimit.New(options.RateLimit)
 	} else {
@@ -257,10 +248,7 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() {
 	defer r.Close()
 
-	// If we have no templates, run on whole template directory with provided tags
-	if len(r.options.Templates) == 0 && len(r.options.Workflows) == 0 && !r.options.NewTemplates && (len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0) {
-		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
-	}
+	// If user asked for new templates to be executed, collect the list from template directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
@@ -268,32 +256,32 @@ func (r *Runner) RunEnumeration() {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates, false)
-	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates, true)
-	// defaults to all templates
-	allTemplates := includedTemplates
+	ignoreFile := config.ReadIgnoreFile()
+	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
-	if len(excludedTemplates) > 0 {
-		excludedMap := make(map[string]struct{}, len(excludedTemplates))
-		for _, excl := range excludedTemplates {
-			excludedMap[excl] = struct{}{}
-		}
-		// rebuild list with only non-excluded templates
-		allTemplates = []string{}
-
-		for _, incl := range includedTemplates {
-			if _, found := excludedMap[incl]; !found {
-				allTemplates = append(allTemplates, incl)
-			} else {
-				gologger.Warning().Msgf("Excluding '%s'", incl)
-			}
-		}
+	loaderConfig := &loader.Config{
+		Templates:          r.options.Templates,
+		Workflows:          r.options.Workflows,
+		ExcludeTemplates:   r.options.ExcludedTemplates,
+		Tags:               r.options.Tags,
+		ExcludeTags:        r.options.ExcludeTags,
+		IncludeTemplates:   r.options.IncludeTemplates,
+		Authors:            r.options.Author,
+		Severities:         r.options.Severity,
+		IncludeTags:        r.options.IncludeTags,
+		TemplatesDirectory: r.options.TemplatesDirectory,
+		Catalog:            r.catalog,
+	}
+	store, err := loader.New(loaderConfig)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
 	}
 
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows, false)
+	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows)
 	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
 	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
 
@@ -364,8 +352,6 @@ func (r *Runner) RunEnumeration() {
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
-	// Starts polling or ignore
-	collaborator.DefaultCollaborator.Poll()
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.inputCount, templateCount, totalRequests)

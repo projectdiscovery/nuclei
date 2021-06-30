@@ -12,47 +12,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// getParsedTemplatesFor parse the specified templates and returns a slice of the parsable ones, optionally filtered
-// by severity, along with a flag indicating if workflows are present.
-func (r *Runner) getParsedTemplatesFor(templatePaths, severities []string, workflows bool) (parsedTemplates map[string]*templates.Template, workflowCount int) {
-	filterBySeverity := len(severities) > 0
-
-	if !workflows {
-		gologger.Info().Msgf("Loading templates...")
-	} else {
-		gologger.Info().Msgf("Loading workflows...")
-	}
-
-	parsedTemplates = make(map[string]*templates.Template)
-	for _, match := range templatePaths {
-		t, err := r.parseTemplateFile(match)
-		if err != nil {
-			gologger.Warning().Msgf("Could not parse file '%s': %s\n", match, err)
-			continue
-		}
-		if t == nil {
-			continue
-		}
-		if len(t.Workflows) == 0 && workflows {
-			continue // don't print if user only wants to run workflows
-		}
-		if len(t.Workflows) > 0 && !workflows {
-			continue // don't print workflow if user only wants to run templates
-		}
-		if len(t.Workflows) > 0 {
-			workflowCount++
-		}
-		sev := strings.ToLower(types.ToString(t.Info["severity"]))
-		if !filterBySeverity || hasMatchingSeverity(sev, severities) {
-			parsedTemplates[t.ID] = t
-			gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), sev))
-		} else {
-			gologger.Warning().Msgf("Excluding template %s due to severity filter (%s not in [%s])", t.ID, sev, severities)
-		}
-	}
-	return parsedTemplates, workflowCount
-}
-
 // parseTemplateFile returns the parsed template file
 func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	executerOpts := protocols.ExecuterOptions{
