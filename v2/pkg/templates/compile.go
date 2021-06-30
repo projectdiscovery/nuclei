@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"gopkg.in/yaml.v2"
 )
@@ -44,22 +43,6 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	}
 	if _, ok := template.Info["author"]; !ok {
 		return nil, errors.New("no template author field provided")
-	}
-	templateTags, ok := template.Info["tags"]
-	if !ok {
-		templateTags = ""
-	}
-	matchWithTags := false
-	if len(options.Options.Tags) > 0 {
-		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.Tags); err != nil {
-			return nil, fmt.Errorf("tags filter not matched %s", templateTags)
-		}
-		matchWithTags = true
-	}
-	if len(options.Options.ExcludeTags) > 0 && !matchWithTags {
-		if err := matchTemplateWithTags(types.ToString(templateTags), types.ToString(template.Info["severity"]), options.Options.ExcludeTags); err == nil {
-			return nil, fmt.Errorf("exclude-tags filter matched %s", templateTags)
-		}
 	}
 
 	// Setting up variables regarding template metadata

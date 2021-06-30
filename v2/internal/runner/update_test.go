@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +42,7 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
-	r := &Runner{templatesConfig: &nucleiConfig{TemplatesDirectory: templatesDirectory}}
+	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}}
 
 	results, err := r.downloadReleaseAndUnzip(context.Background(), "1.0.0", ts.URL)
 	require.Nil(t, err, "could not download release and unzip")
@@ -94,7 +95,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
-	r := &Runner{templatesConfig: &nucleiConfig{TemplatesDirectory: templatesDirectory}}
+	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}}
 
 	results, err := r.downloadReleaseAndUnzip(context.Background(), "1.0.0", ts.URL)
 	require.Nil(t, err, "could not download release and unzip")
