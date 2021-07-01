@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -51,6 +52,21 @@ type Runner struct {
 	ratelimiter     ratelimit.Limiter
 }
 
+func isUrlWithScheme(urlString string) bool {
+
+	_, err := url.ParseRequestURI(urlString)
+	if err != nil {
+		return false
+	}
+
+	u, err := url.Parse(urlString)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	return true
+}
+
 // New creates a new client for running enumeration process.
 func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
@@ -87,6 +103,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 		file.Close()
 	}
+
 	if options.DiskExportDirectory != "" {
 		if reportingOptions != nil {
 			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
@@ -135,6 +152,9 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Handle single target
 	if options.Target != "" {
+		if !isUrlWithScheme(options.Target) {
+			gologger.Fatal().Msgf("Invalid URL Scheme")
+		}
 		runner.inputCount++
 		// nolint:errcheck // ignoring error
 		runner.hostMap.Set(options.Target, nil)
