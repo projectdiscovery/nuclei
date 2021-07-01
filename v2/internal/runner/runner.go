@@ -260,6 +260,17 @@ func (r *Runner) RunEnumeration() {
 	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
+	executerOpts := protocols.ExecuterOptions{
+		Output:       r.output,
+		Options:      r.options,
+		Progress:     r.progress,
+		Catalog:      r.catalog,
+		IssuesClient: r.issuesClient,
+		RateLimiter:  r.ratelimiter,
+		Interactsh:   r.interactsh,
+		ProjectFile:  r.projectFile,
+		Browser:      r.browser,
+	}
 	loaderConfig := &loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
@@ -272,21 +283,60 @@ func (r *Runner) RunEnumeration() {
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
+		ExecutorOptions:    executerOpts,
 	}
 	store, err := loader.New(loaderConfig)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
 	}
+	store.Load()
+
+	builder := &strings.Builder{}
+	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
+		builder.WriteString(" (")
+
+		if config.Version == r.templatesConfig.NucleiLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
+		}
+		builder.WriteString(")")
+	}
+	messageStr := builder.String()
+	builder.Reset()
+
+	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
+
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" {
+		builder.WriteString(" (")
+
+		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
+		}
+		builder.WriteString(")")
+	}
+	messageStr = builder.String()
+	builder.Reset()
+
+	gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+
+	if r.interactsh != nil {
+		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
+	}
+	if len(store.Templates()) > 0 {
+		gologger.Info().Msgf("Running Nuclei Templates (%d)", len(store.Templates()))
+	}
+	if len(store.Workflows()) > 0 {
+		gologger.Info().Msgf("Running Nuclei Workflows (%d)", len(store.Workflows()))
+	}
 
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows)
-	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
-	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
-
 	var unclusteredRequests int64 = 0
-	for _, template := range availableTemplates {
+	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
 		if len(template.Workflows) > 0 {
@@ -295,9 +345,21 @@ func (r *Runner) RunEnumeration() {
 		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
 	}
 
-	originalTemplatesCount := len(availableTemplates)
+	if r.options.Verbose {
+		for _, template := range store.Templates() {
+			r.logAvailableTemplate(template.Path)
+		}
+		for _, template := range store.Workflows() {
+			r.logAvailableTemplate(template.Path)
+		}
+	}
+	templatesMap := make(map[string]*templates.Template)
+	for _, v := range store.Templates() {
+		templatesMap[v.ID] = v
+	}
+	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
-	clusters := clusterer.Cluster(availableTemplates)
+	clusters := clusterer.Cluster(templatesMap)
 	for _, cluster := range clusters {
 		if len(cluster) > 1 && !r.options.OfflineHTTP {
 			executerOpts := protocols.ExecuterOptions{
@@ -324,7 +386,7 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
-	for _, workflows := range availableWorkflows {
+	for _, workflows := range store.Workflows() {
 		finalTemplates = append(finalTemplates, workflows)
 	}
 
@@ -336,19 +398,15 @@ func (r *Runner) RunEnumeration() {
 		totalRequests += int64(t.TotalRequests) * r.inputCount
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
+		gologger.Info().Msgf("Reduced %d requests (%d templates clustered)", unclusteredRequests-totalRequests, clusterCount)
 	}
-	templateCount := originalTemplatesCount + len(availableWorkflows)
+	workflowCount := len(store.Workflows())
+	templateCount := originalTemplatesCount + workflowCount
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
 		gologger.Fatal().Msgf("Error, no templates were found.\n")
 	}
-
-	gologger.Info().Msgf("Using %s rules (%s templates, %s workflows)",
-		r.colorizer.Bold(templateCount).String(),
-		r.colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Bold(workflowCount).String())
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)

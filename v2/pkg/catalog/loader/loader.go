@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"gopkg.in/yaml.v2"
@@ -28,6 +29,7 @@ type Config struct {
 	IncludeTags []string
 
 	Catalog            *catalog.Catalog
+	ExecutorOptions    protocols.ExecuterOptions
 	TemplatesDirectory string
 }
 
@@ -37,6 +39,9 @@ type Store struct {
 	config          *Config
 	finalTemplates  []string
 	templateMatched bool
+
+	templates []*templates.Template
+	workflows []*templates.Template
 }
 
 // New creates a new template store based on provided configuration
@@ -47,7 +52,6 @@ func New(config *Config) (*Store, error) {
 		tagFilter: config.createTagFilter(),
 	}
 
-	//	hasFindByMetadata := config.hasFindByMetadata()
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(config.Templates) == 0 && len(config.Workflows) == 0 {
 		config.Templates = append(config.Templates, config.TemplatesDirectory)
@@ -55,13 +59,24 @@ func New(config *Config) (*Store, error) {
 		store.templateMatched = true
 	}
 	store.finalTemplates = append(store.finalTemplates, config.Templates...)
+
 	return store, nil
+}
+
+// Templates returns all the templates in the store
+func (s *Store) Templates() []*templates.Template {
+	return s.templates
+}
+
+// Workflows returns all the workflows in the store
+func (s *Store) Workflows() []*templates.Template {
+	return s.workflows
 }
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (s *Store) Load() (templates []string, workflows []string) {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(s.config.Templates)
+func (s *Store) Load() {
+	includedTemplates := s.config.Catalog.GetTemplatesPath(s.finalTemplates)
 	includedWorkflows := s.config.Catalog.GetTemplatesPath(s.config.Workflows)
 	excludedTemplates := s.config.Catalog.GetTemplatesPath(s.config.ExcludeTemplates)
 	alwaysIncludeTemplates := s.config.Catalog.GetTemplatesPath(s.config.IncludeTemplates)
@@ -89,7 +104,12 @@ func (s *Store) Load() (templates []string, workflows []string) {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
 		}
 		if loaded {
-			templates = append(templates, k)
+			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
+			if err != nil {
+				gologger.Warning().Msgf("Could not parse template %s: %s\n", k, err)
+			} else if parsed != nil {
+				s.templates = append(s.templates, parsed)
+			}
 		}
 	}
 
@@ -110,10 +130,14 @@ func (s *Store) Load() (templates []string, workflows []string) {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", k, err)
 		}
 		if loaded {
-			workflows = append(workflows, k)
+			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
+			if err != nil {
+				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", k, err)
+			} else if parsed != nil {
+				s.workflows = append(s.workflows, parsed)
+			}
 		}
 	}
-	return templates, workflows
 }
 
 // loadTemplateParseMetadata loads a template by parsing metadata and running
