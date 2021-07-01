@@ -72,12 +72,11 @@ func (config *Config) createTagFilter() *tagFilter {
 		block:       make(map[string]struct{}),
 		matchAllows: make(map[string]struct{}),
 	}
-	for _, tag := range config.Tags {
+	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.allowedTags[val]; !ok {
-				filter.allowedTags[val] = struct{}{}
+			if _, ok := filter.block[val]; !ok {
+				filter.block[val] = struct{}{}
 			}
-			delete(filter.block, val)
 		}
 	}
 	for _, tag := range config.Severities {
@@ -94,11 +93,12 @@ func (config *Config) createTagFilter() *tagFilter {
 			}
 		}
 	}
-	for _, tag := range config.ExcludeTags {
+	for _, tag := range config.Tags {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.block[val]; !ok {
-				filter.block[val] = struct{}{}
+			if _, ok := filter.allowedTags[val]; !ok {
+				filter.allowedTags[val] = struct{}{}
 			}
+			delete(filter.block, val)
 		}
 	}
 	for _, tag := range config.IncludeTags {
