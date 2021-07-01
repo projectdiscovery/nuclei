@@ -107,7 +107,8 @@ type Options struct {
 	// Version specifies if we should just show version and exit
 	Version bool
 	// Verbose flag indicates whether to show verbose output or not
-	Verbose bool
+	Verbose        bool
+	VerboseVerbose bool
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup

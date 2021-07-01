@@ -345,7 +345,7 @@ func (r *Runner) RunEnumeration() {
 		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
 	}
 
-	if r.options.Verbose {
+	if r.options.VerboseVerbose {
 		for _, template := range store.Templates() {
 			r.logAvailableTemplate(template.Path)
 		}
