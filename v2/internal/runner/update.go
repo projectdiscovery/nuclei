@@ -108,7 +108,10 @@ func (r *Runner) updateTemplates() error {
 					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
 				}
 				if r.templatesConfig != nil {
-					r.templatesConfig.LastCheckedIgnore = time.Now()
+					err = config.WriteConfiguration(r.templatesConfig, false, true)
+					if err != nil {
+						gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+					}
 				}
 			}
 		}
@@ -502,6 +505,7 @@ type githubTagData struct {
 }
 
 // githubFetchLatestTagRepo fetches latest tag from github
+// This function was half written by github copilot AI :D.
 func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

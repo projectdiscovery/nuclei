@@ -70,7 +70,7 @@ func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
 		config.LastCheckedIgnore = time.Now()
 	}
 	config.NucleiVersion = Version
-	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
+	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
 	}
