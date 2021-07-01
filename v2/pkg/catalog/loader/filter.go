@@ -1,6 +1,9 @@
 package loader
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 // tagFilter is used to filter nuclei tag based execution
 type tagFilter struct {
@@ -11,6 +14,9 @@ type tagFilter struct {
 	matchAllows map[string]struct{}
 }
 
+// ErrExcluded is returned for execluded templates
+var ErrExcluded = errors.New("the template was excluded")
+
 // match takes a tag and whether the template was matched from user
 // input and returns true or false using a tag filter.
 //
@@ -19,40 +25,40 @@ type tagFilter struct {
 // matchAllows section.
 //
 // It returns true if the tag is specified, or false.
-func (t *tagFilter) match(tag, author, severity string, templateMatched bool) bool {
+func (t *tagFilter) match(tag, author, severity string, templateMatched bool) (bool, error) {
 	_, ok := t.block[tag]
 	if ok {
 		if _, allowOk := t.matchAllows[tag]; allowOk && templateMatched {
-			return true
+			return true, nil
 		}
-		return false
+		return false, ErrExcluded
 	}
 	matchedAny := false
 	if len(t.allowedTags) > 0 {
 		_, ok = t.allowedTags[tag]
 		if !ok {
-			return false
+			return false, nil
 		}
 		matchedAny = true
 	}
 	if len(t.authors) > 0 {
 		_, ok = t.authors[author]
 		if !ok {
-			return false
+			return false, nil
 		}
 		matchedAny = true
 	}
 	if len(t.severities) > 0 {
 		_, ok = t.severities[severity]
 		if !ok {
-			return false
+			return false, nil
 		}
 		matchedAny = true
 	}
 	if len(t.allowedTags) == 0 && len(t.authors) == 0 && len(t.severities) == 0 {
-		return true
+		return true, nil
 	}
-	return matchedAny
+	return matchedAny, nil
 }
 
 // createTagFilter returns a tag filter for nuclei tag based execution
