@@ -26,20 +26,20 @@ var ErrExcluded = errors.New("the template was excluded")
 //
 // It returns true if the tag is specified, or false.
 func (t *tagFilter) match(tag, author, severity string) (bool, error) {
+	matchedAny := false
+	if len(t.allowedTags) > 0 {
+		_, ok := t.allowedTags[tag]
+		if !ok {
+			return false, nil
+		}
+		matchedAny = true
+	}
 	_, ok := t.block[tag]
 	if ok {
 		if _, allowOk := t.matchAllows[tag]; allowOk {
 			return true, nil
 		}
 		return false, ErrExcluded
-	}
-	matchedAny := false
-	if len(t.allowedTags) > 0 {
-		_, ok = t.allowedTags[tag]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
 	}
 	if len(t.authors) > 0 {
 		_, ok = t.authors[author]
@@ -77,6 +77,7 @@ func (config *Config) createTagFilter() *tagFilter {
 			if _, ok := filter.allowedTags[val]; !ok {
 				filter.allowedTags[val] = struct{}{}
 			}
+			delete(filter.block, val)
 		}
 	}
 	for _, tag := range config.Severities {
