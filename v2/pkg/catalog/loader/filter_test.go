@@ -22,7 +22,6 @@ func TestTagBasedFilter(t *testing.T) {
 	})
 	t.Run("not-match-excludes", func(t *testing.T) {
 		config := &Config{
-			Tags:        []string{"cves", "dos"},
 			ExcludeTags: []string{"dos"},
 		}
 		filter := config.createTagFilter()
@@ -37,6 +36,16 @@ func TestTagBasedFilter(t *testing.T) {
 			IncludeTags: []string{"fuzz"},
 		}
 
+		filter := config.createTagFilter()
+		matched, err := filter.match("fuzz", "pdteam", "low")
+		require.Nil(t, err, "could not get match")
+		require.True(t, matched, "could not get correct match")
+	})
+	t.Run("match-includes", func(t *testing.T) {
+		config := &Config{
+			Tags:        []string{"fuzz"},
+			ExcludeTags: []string{"fuzz"},
+		}
 		filter := config.createTagFilter()
 		matched, err := filter.match("fuzz", "pdteam", "low")
 		require.Nil(t, err, "could not get match")
