@@ -1,36 +1,36 @@
 package runner
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/karrick/godirwalk"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"gopkg.in/yaml.v2"
 )
 
 // parseTemplateFile returns the parsed template file
 func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
-	executerOpts := protocols.ExecuterOptions{
-		Output:       r.output,
-		Options:      r.options,
-		Progress:     r.progress,
-		Catalog:      r.catalog,
-		IssuesClient: r.issuesClient,
-		RateLimiter:  r.ratelimiter,
-		Interactsh:   r.interactsh,
-		ProjectFile:  r.projectFile,
-		Browser:      r.browser,
-	}
-	template, err := templates.Parse(file, executerOpts)
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	if template == nil {
-		return nil, nil
+	defer f.Close()
+
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	template := &templates.Template{}
+	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	if err != nil {
+		return nil, err
 	}
 	return template, nil
 }
@@ -52,7 +52,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
+		gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
 	}
 }
 
@@ -89,38 +89,12 @@ func (r *Runner) listAvailableTemplates() {
 	}
 }
 
-func hasMatchingSeverity(templateSeverity string, allowedSeverities []string) bool {
-	for _, s := range allowedSeverities {
-		finalSeverities := []string{}
-		if strings.Contains(s, ",") {
-			finalSeverities = strings.Split(s, ",")
-		} else {
-			finalSeverities = append(finalSeverities, s)
-		}
-
-		for _, sev := range finalSeverities {
-			sev = strings.ToLower(sev)
-			if sev != "" && strings.HasPrefix(templateSeverity, sev) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func directoryWalker(fsPath string, callback func(fsPath string, d *godirwalk.Dirent) error) error {
-	err := godirwalk.Walk(fsPath, &godirwalk.Options{
+	return godirwalk.Walk(fsPath, &godirwalk.Options{
 		Callback: callback,
 		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
 			return godirwalk.SkipNode
 		},
 		Unsorted: true,
 	})
-
-	// directory couldn't be walked
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

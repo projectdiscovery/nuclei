@@ -81,13 +81,6 @@ func validateOptions(options *types.Options) error {
 		return errors.New("both verbose and silent mode specified")
 	}
 
-	if !options.TemplateList {
-		// Check if a list of templates was provided and it exists
-		if len(options.Templates) == 0 && !options.NewTemplates && len(options.Workflows) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
-			return errors.New("no template/templates provided")
-		}
-	}
-
 	// Validate proxy options if provided
 	err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)")
 	if err != nil {

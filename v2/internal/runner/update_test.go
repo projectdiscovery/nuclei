@@ -43,7 +43,6 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	defer os.RemoveAll(templatesDirectory)
 
 	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}}
-
 	results, err := r.downloadReleaseAndUnzip(context.Background(), "1.0.0", ts.URL)
 	require.Nil(t, err, "could not download release and unzip")
 	require.Equal(t, "base.yaml", results.additions[0], "could not get correct base addition")

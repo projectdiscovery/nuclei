@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path"
-	"regexp"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -19,12 +18,13 @@ type Config struct {
 	IgnoreURL          string    `json:"ignore-url,omitempty"`
 	NucleiVersion      string    `json:"nuclei-version,omitempty"`
 	LastCheckedIgnore  time.Time `json:"last-checked-ignore,omitempty"`
+
+	NucleiLatestVersion          string `json:"nuclei-latest-version"`
+	NucleiTemplatesLatestVersion string `json:"nuclei-templates-latest-version"`
 }
 
 // nucleiConfigFilename is the filename of nuclei configuration file.
 const nucleiConfigFilename = ".templates-config.json"
-
-var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // Version is the current version of nuclei
 const Version = `2.3.8`
@@ -59,12 +59,16 @@ func ReadConfiguration() (*Config, error) {
 }
 
 // WriteConfiguration writes the updated nuclei configuration to disk
-func WriteConfiguration(config *Config) error {
+func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
 	if config.IgnoreURL == "" {
 		config.IgnoreURL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 	}
-	config.LastChecked = time.Now()
-	config.LastCheckedIgnore = time.Now()
+	if checked {
+		config.LastChecked = time.Now()
+	}
+	if checkedIgnore {
+		config.LastCheckedIgnore = time.Now()
+	}
 	config.NucleiVersion = Version
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
