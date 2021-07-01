@@ -35,10 +35,9 @@ type Config struct {
 
 // Store is a storage for loaded nuclei templates
 type Store struct {
-	tagFilter       *tagFilter
-	config          *Config
-	finalTemplates  []string
-	templateMatched bool
+	tagFilter      *tagFilter
+	config         *Config
+	finalTemplates []string
 
 	templates []*templates.Template
 	workflows []*templates.Template
@@ -55,8 +54,6 @@ func New(config *Config) (*Store, error) {
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(config.Templates) == 0 && len(config.Workflows) == 0 {
 		config.Templates = append(config.Templates, config.TemplatesDirectory)
-	} else {
-		store.templateMatched = true
 	}
 	store.finalTemplates = append(store.finalTemplates, config.Templates...)
 
@@ -169,8 +166,9 @@ func (s *Store) loadTemplateParseMetadata(templatePath string, workflow bool) (b
 	}
 	severity, ok := template.Info["severity"]
 	if !ok {
-		return false, errors.New("no template severity field provided")
+		severity = ""
 	}
+
 	templateTags, ok := template.Info["tags"]
 	if !ok {
 		templateTags = ""
@@ -185,7 +183,7 @@ func (s *Store) loadTemplateParseMetadata(templatePath string, workflow bool) (b
 
 	for _, tag := range tags {
 		for _, author := range authors {
-			match, err := s.tagFilter.match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr, s.templateMatched)
+			match, err := s.tagFilter.match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
 			if err == ErrExcluded {
 				return false, ErrExcluded
 			}

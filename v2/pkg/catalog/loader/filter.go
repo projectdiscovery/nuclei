@@ -25,10 +25,10 @@ var ErrExcluded = errors.New("the template was excluded")
 // matchAllows section.
 //
 // It returns true if the tag is specified, or false.
-func (t *tagFilter) match(tag, author, severity string, templateMatched bool) (bool, error) {
+func (t *tagFilter) match(tag, author, severity string) (bool, error) {
 	_, ok := t.block[tag]
 	if ok {
-		if _, allowOk := t.matchAllows[tag]; allowOk && templateMatched {
+		if _, allowOk := t.matchAllows[tag]; allowOk {
 			return true, nil
 		}
 		return false, ErrExcluded
@@ -93,18 +93,19 @@ func (config *Config) createTagFilter() *tagFilter {
 			}
 		}
 	}
-	for _, tag := range config.IncludeTags {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.matchAllows[val]; !ok {
-				filter.matchAllows[val] = struct{}{}
-			}
-		}
-	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
 			if _, ok := filter.block[val]; !ok {
 				filter.block[val] = struct{}{}
 			}
+		}
+	}
+	for _, tag := range config.IncludeTags {
+		for _, val := range splitCommaTrim(tag) {
+			if _, ok := filter.matchAllows[val]; !ok {
+				filter.matchAllows[val] = struct{}{}
+			}
+			delete(filter.block, val)
 		}
 	}
 	return filter
