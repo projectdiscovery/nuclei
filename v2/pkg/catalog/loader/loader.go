@@ -129,6 +129,7 @@ func (s *Store) Load() {
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", k, err)
 		}
+
 		if loaded {
 			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
 			if err != nil {
@@ -181,12 +182,15 @@ func (s *Store) loadTemplateParseMetadata(templatePath string, workflow bool) (b
 	authors := strings.Split(types.ToString(author), ",")
 
 	matched := false
-mainLoop:
+
 	for _, tag := range tags {
 		for _, author := range authors {
-			if !matched && s.tagFilter.match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr, s.templateMatched) {
+			match, err := s.tagFilter.match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr, s.templateMatched)
+			if err == ErrExcluded {
+				return false, ErrExcluded
+			}
+			if !matched && match && err == nil {
 				matched = true
-				break mainLoop
 			}
 		}
 	}
