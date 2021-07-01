@@ -530,5 +530,5 @@ func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 	if len(tags) == 0 {
 		return "", fmt.Errorf("no tags found for %s", repo)
 	}
-	return tags[0].Name, nil
+	return strings.TrimPrefix(tags[0].Name, "v"), nil
 }
