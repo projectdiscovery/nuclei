@@ -12,7 +12,7 @@ import (
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
-func (c *Catalog) GetTemplatesPath(definitions []string, noCheckIgnore bool) []string {
+func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
@@ -23,9 +23,6 @@ func (c *Catalog) GetTemplatesPath(definitions []string, noCheckIgnore bool) []s
 			gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
 		}
 		for _, path := range paths {
-			if !noCheckIgnore && c.checkIfInNucleiIgnore(path) {
-				continue
-			}
 			if _, ok := processed[path]; !ok {
 				processed[path] = true
 				allTemplates = append(allTemplates, path)

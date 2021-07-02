@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,12 +25,20 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 )
 
 const (
 	userName = "projectdiscovery"
 	repoName = "nuclei-templates"
 )
+
+const nucleiIgnoreFile = ".nuclei-ignore"
+
+// nucleiConfigFilename is the filename of nuclei configuration file.
+const nucleiConfigFilename = ".templates-config.json"
+
+var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // updateTemplates checks if the default list of nuclei-templates
 // exist in the users home directory, if not the latest revision
@@ -46,7 +56,7 @@ func (r *Runner) updateTemplates() error {
 
 	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		config, readErr := readConfiguration()
+		config, readErr := config.ReadConfiguration()
 		if err != nil {
 			return readErr
 		}
@@ -55,12 +65,12 @@ func (r *Runner) updateTemplates() error {
 
 	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 	if r.templatesConfig == nil {
-		currentConfig := &nucleiConfig{
+		currentConfig := &config.Config{
 			TemplatesDirectory: path.Join(home, "nuclei-templates"),
 			IgnoreURL:          ignoreURL,
-			NucleiVersion:      Version,
+			NucleiVersion:      config.Version,
 		}
-		if writeErr := r.writeConfiguration(currentConfig); writeErr != nil {
+		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
@@ -68,12 +78,19 @@ func (r *Runner) updateTemplates() error {
 
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
+	//
+	// Also at the same time fetch latest version from github to do outdated nuclei
+	// and templates check.
+	checkedIgnore := false
 	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
+		r.fetchLatestVersionsFromGithub()
+
 		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
 			ignoreURL = r.templatesConfig.IgnoreURL
 		}
 		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
 
+		checkedIgnore = true
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
 		if reqErr == nil {
@@ -91,7 +108,10 @@ func (r *Runner) updateTemplates() error {
 					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
 				}
 				if r.templatesConfig != nil {
-					r.templatesConfig.LastCheckedIgnore = time.Now()
+					err = config.WriteConfiguration(r.templatesConfig, false, true)
+					if err != nil {
+						gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+					}
 				}
 			}
 		}
@@ -106,7 +126,7 @@ func (r *Runner) updateTemplates() error {
 		}
 
 		// Use custom location if user has given a template directory
-		r.templatesConfig = &nucleiConfig{
+		r.templatesConfig = &config.Config{
 			TemplatesDirectory: path.Join(home, "nuclei-templates"),
 		}
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
@@ -120,13 +140,14 @@ func (r *Runner) updateTemplates() error {
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
+		r.fetchLatestVersionsFromGithub() // also fetch latest versions
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
 		r.templatesConfig.CurrentVersion = version.String()
 
-		err = r.writeConfiguration(r.templatesConfig)
+		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
 		if err != nil {
 			return err
 		}
@@ -162,13 +183,13 @@ func (r *Runner) updateTemplates() error {
 
 	if version.EQ(oldVersion) {
 		gologger.Info().Msgf("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
-		return r.writeConfiguration(r.templatesConfig)
+		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
 	}
 
 	if version.GT(oldVersion) {
 		if !r.options.UpdateTemplates {
 			gologger.Warning().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
-			return r.writeConfiguration(r.templatesConfig)
+			return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
 		}
 
 		if r.options.TemplatesDirectory != "" {
@@ -177,11 +198,12 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig.CurrentVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
+		r.fetchLatestVersionsFromGithub()
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
-		err = r.writeConfiguration(r.templatesConfig)
+		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
 		if err != nil {
 			return err
 		}
@@ -460,4 +482,57 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 		table.Append(v)
 	}
 	table.Render()
+}
+
+// fetchLatestVersionsFromGithub fetches latest versions of nuclei repos from github
+func (r *Runner) fetchLatestVersionsFromGithub() {
+	nucleiLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei")
+	if err != nil {
+		gologger.Warning().Msgf("Could not fetch latest nuclei release: %s", err)
+	}
+	templatesLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei-templates")
+	if err != nil {
+		gologger.Warning().Msgf("Could not fetch latest nuclei-templates release: %s", err)
+	}
+	if r.templatesConfig != nil {
+		r.templatesConfig.NucleiLatestVersion = nucleiLatest
+		r.templatesConfig.NucleiTemplatesLatestVersion = templatesLatest
+	}
+}
+
+type githubTagData struct {
+	Name string
+}
+
+// githubFetchLatestTagRepo fetches latest tag from github
+// This function was half written by github copilot AI :D.
+func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/tags", repo)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var tags []githubTagData
+	err = json.Unmarshal(body, &tags)
+	if err != nil {
+		return "", err
+	}
+	if len(tags) == 0 {
+		return "", fmt.Errorf("no tags found for %s", repo)
+	}
+	return strings.TrimPrefix(tags[0].Name, "v"), nil
 }
