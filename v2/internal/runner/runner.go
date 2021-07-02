@@ -390,7 +390,7 @@ func (r *Runner) RunEnumeration() {
 		finalTemplates = append(finalTemplates, workflows)
 	}
 
-	var totalRequests int64 = 0
+	var totalRequests int64
 	for _, t := range finalTemplates {
 		if len(t.Workflows) > 0 {
 			continue
