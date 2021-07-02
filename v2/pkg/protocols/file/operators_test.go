@@ -32,7 +32,7 @@ func TestResponseToDSLMap(t *testing.T) {
 
 	resp := "test-data\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 5, "could not get correct number of items in dsl map")
+	require.Len(t, event, 6, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 }
 
@@ -57,7 +57,7 @@ func TestFileOperatorMatch(t *testing.T) {
 
 	resp := "test-data\r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 5, "could not get correct number of items in dsl map")
+	require.Len(t, event, 6, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("valid", func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestFileOperatorExtract(t *testing.T) {
 
 	resp := "test-data\r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 5, "could not get correct number of items in dsl map")
+	require.Len(t, event, 6, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("extract", func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestFileMakeResult(t *testing.T) {
 
 	resp := "test-data\r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 5, "could not get correct number of items in dsl map")
+	require.Len(t, event, 6, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
