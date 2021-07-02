@@ -19,7 +19,14 @@ type Options struct {
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Severity filters templates based on their severity and only run the matching ones.
-	Severity              goflags.StringSlice
+	Severity goflags.StringSlice
+	// Author filters templates based on their author and only run the matching ones.
+	Author goflags.StringSlice
+	// IncludeTags includes specified tags to be run even while being in denylist
+	IncludeTags goflags.StringSlice
+	// IncludeTemplates includes specified templates to be run even while being in denylist
+	IncludeTemplates goflags.StringSlice
+
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
@@ -98,7 +105,8 @@ type Options struct {
 	// Version specifies if we should just show version and exit
 	Version bool
 	// Verbose flag indicates whether to show verbose output or not
-	Verbose bool
+	Verbose        bool
+	VerboseVerbose bool
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup

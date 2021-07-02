@@ -13,6 +13,8 @@ import (
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -39,7 +41,7 @@ type Runner struct {
 	output          output.Writer
 	interactsh      *interactsh.Client
 	inputCount      int64
-	templatesConfig *nucleiConfig
+	templatesConfig *config.Config
 	options         *types.Options
 	projectFile     *projectfile.ProjectFile
 	catalog         *catalog.Catalog
@@ -68,11 +70,6 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	// Read nucleiignore file if given a templateconfig
-	if runner.templatesConfig != nil {
-		runner.readNucleiIgnoreFile()
-		runner.catalog.AppendIgnore(runner.templatesConfig.IgnorePaths)
-	}
 	var reportingOptions *reporting.Options
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
@@ -251,10 +248,7 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() {
 	defer r.Close()
 
-	// If we have no templates, run on whole template directory with provided tags
-	if len(r.options.Templates) == 0 && len(r.options.Workflows) == 0 && !r.options.NewTemplates && (len(r.options.Tags) > 0 || len(r.options.ExcludeTags) > 0) {
-		r.options.Templates = append(r.options.Templates, r.options.TemplatesDirectory)
-	}
+	// If user asked for new templates to be executed, collect the list from template directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
@@ -262,37 +256,87 @@ func (r *Runner) RunEnumeration() {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	includedTemplates := r.catalog.GetTemplatesPath(r.options.Templates, false)
-	excludedTemplates := r.catalog.GetTemplatesPath(r.options.ExcludedTemplates, true)
-	// defaults to all templates
-	allTemplates := includedTemplates
+	ignoreFile := config.ReadIgnoreFile()
+	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
-	if len(excludedTemplates) > 0 {
-		excludedMap := make(map[string]struct{}, len(excludedTemplates))
-		for _, excl := range excludedTemplates {
-			excludedMap[excl] = struct{}{}
-		}
-		// rebuild list with only non-excluded templates
-		allTemplates = []string{}
+	executerOpts := protocols.ExecuterOptions{
+		Output:       r.output,
+		Options:      r.options,
+		Progress:     r.progress,
+		Catalog:      r.catalog,
+		IssuesClient: r.issuesClient,
+		RateLimiter:  r.ratelimiter,
+		Interactsh:   r.interactsh,
+		ProjectFile:  r.projectFile,
+		Browser:      r.browser,
+	}
+	loaderConfig := &loader.Config{
+		Templates:          r.options.Templates,
+		Workflows:          r.options.Workflows,
+		ExcludeTemplates:   r.options.ExcludedTemplates,
+		Tags:               r.options.Tags,
+		ExcludeTags:        r.options.ExcludeTags,
+		IncludeTemplates:   r.options.IncludeTemplates,
+		Authors:            r.options.Author,
+		Severities:         r.options.Severity,
+		IncludeTags:        r.options.IncludeTags,
+		TemplatesDirectory: r.options.TemplatesDirectory,
+		Catalog:            r.catalog,
+		ExecutorOptions:    executerOpts,
+	}
+	store, err := loader.New(loaderConfig)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
+	}
+	store.Load()
 
-		for _, incl := range includedTemplates {
-			if _, found := excludedMap[incl]; !found {
-				allTemplates = append(allTemplates, incl)
-			} else {
-				gologger.Warning().Msgf("Excluding '%s'", incl)
-			}
+	builder := &strings.Builder{}
+	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
+		builder.WriteString(" (")
+
+		if config.Version == r.templatesConfig.NucleiLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
 		}
+		builder.WriteString(")")
+	}
+	messageStr := builder.String()
+	builder.Reset()
+
+	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
+
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" {
+		builder.WriteString(" (")
+
+		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
+		}
+		builder.WriteString(")")
+	}
+	messageStr = builder.String()
+	builder.Reset()
+
+	gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+
+	if r.interactsh != nil {
+		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
+	}
+	if len(store.Templates()) > 0 {
+		gologger.Info().Msgf("Running Nuclei Templates (%d)", len(store.Templates()))
+	}
+	if len(store.Workflows()) > 0 {
+		gologger.Info().Msgf("Running Nuclei Workflows (%d)", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	workflowPaths := r.catalog.GetTemplatesPath(r.options.Workflows, false)
-	availableTemplates, _ := r.getParsedTemplatesFor(allTemplates, r.options.Severity, false)
-	availableWorkflows, workflowCount := r.getParsedTemplatesFor(workflowPaths, r.options.Severity, true)
-
-	var unclusteredRequests int64
-	for _, template := range availableTemplates {
+	var unclusteredRequests int64 = 0
+	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
 		if len(template.Workflows) > 0 {
@@ -301,9 +345,21 @@ func (r *Runner) RunEnumeration() {
 		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
 	}
 
-	originalTemplatesCount := len(availableTemplates)
+	if r.options.VerboseVerbose {
+		for _, template := range store.Templates() {
+			r.logAvailableTemplate(template.Path)
+		}
+		for _, template := range store.Workflows() {
+			r.logAvailableTemplate(template.Path)
+		}
+	}
+	templatesMap := make(map[string]*templates.Template)
+	for _, v := range store.Templates() {
+		templatesMap[v.ID] = v
+	}
+	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
-	clusters := clusterer.Cluster(availableTemplates)
+	clusters := clusterer.Cluster(templatesMap)
 	for _, cluster := range clusters {
 		if len(cluster) > 1 && !r.options.OfflineHTTP {
 			executerOpts := protocols.ExecuterOptions{
@@ -330,7 +386,7 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
-	for _, workflows := range availableWorkflows {
+	for _, workflows := range store.Workflows() {
 		finalTemplates = append(finalTemplates, workflows)
 	}
 
@@ -342,19 +398,15 @@ func (r *Runner) RunEnumeration() {
 		totalRequests += int64(t.TotalRequests) * r.inputCount
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Reduced %d requests to %d (%d templates clustered)", unclusteredRequests, totalRequests, clusterCount)
+		gologger.Info().Msgf("Reduced %d requests (%d templates clustered)", unclusteredRequests-totalRequests, clusterCount)
 	}
-	templateCount := originalTemplatesCount + len(availableWorkflows)
+	workflowCount := len(store.Workflows())
+	templateCount := originalTemplatesCount + workflowCount
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
 		gologger.Fatal().Msgf("Error, no templates were found.\n")
 	}
-
-	gologger.Info().Msgf("Using %s rules (%s templates, %s workflows)",
-		r.colorizer.Bold(templateCount).String(),
-		r.colorizer.Bold(templateCount-workflowCount).String(),
-		r.colorizer.Bold(workflowCount).String())
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
