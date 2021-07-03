@@ -120,10 +120,7 @@ func (r *Runner) updateTemplates() error {
 
 	ctx := context.Background()
 	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
-		if !r.options.UpdateTemplates {
-			gologger.Warning().Msgf("nuclei-templates are not installed (or indexed), use update-templates flag.\n")
-			return nil
-		}
+		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 		// Use custom location if user has given a template directory
 		r.templatesConfig = &config.Config{
@@ -155,7 +152,7 @@ func (r *Runner) updateTemplates() error {
 		return nil
 	}
 
-	// Check if last checked is more than 24 hours.
+	// Check if last checked is more than 24 hours and we don't have updateTemplates flag.
 	// If not, return since we don't want to do anything now.
 	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
@@ -187,10 +184,8 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.GT(oldVersion) {
-		if !r.options.UpdateTemplates {
-			gologger.Warning().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
-			return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
-		}
+		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
+		gologger.Info().Msgf("Downloading latest release...")
 
 		if r.options.TemplatesDirectory != "" {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
@@ -464,7 +459,7 @@ func writeTemplatesChecksum(file string, checksum map[string]string) error {
 }
 
 func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version string) {
-	if len(results.additions) > 0 {
+	if len(results.additions) > 0 && r.options.Verbose {
 		gologger.Print().Msgf("\nNewly added templates: \n\n")
 
 		for _, addition := range results.additions {
