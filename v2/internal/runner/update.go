@@ -283,7 +283,9 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to write templates: %s", err)
 	}
 
-	r.printUpdateChangelog(results, version)
+	if !r.options.Silent {
+		r.printUpdateChangelog(results, version)
+	}
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	err = writeTemplatesChecksum(checksumFile, results.checksums)
 	if err != nil {
