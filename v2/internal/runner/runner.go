@@ -326,10 +326,10 @@ func (r *Runner) RunEnumeration() {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Running Nuclei Templates (%d)", len(store.Templates()))
+		gologger.Info().Msgf("Running %d Nuclei Templates", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Running Nuclei Workflows (%d)", len(store.Workflows()))
+		gologger.Info().Msgf("Running %d Nuclei Workflows", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
