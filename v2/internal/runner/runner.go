@@ -271,7 +271,7 @@ func (r *Runner) RunEnumeration() {
 		ProjectFile:  r.projectFile,
 		Browser:      r.browser,
 	}
-	loaderConfig := &loader.Config{
+	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
 		ExcludeTemplates:   r.options.ExcludedTemplates,
@@ -285,7 +285,7 @@ func (r *Runner) RunEnumeration() {
 		Catalog:            r.catalog,
 		ExecutorOptions:    executerOpts,
 	}
-	store, err := loader.New(loaderConfig)
+	store, err := loader.New(&loaderConfig)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
 	}
