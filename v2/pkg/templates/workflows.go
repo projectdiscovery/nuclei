@@ -1,7 +1,7 @@
 package templates
 
 import (
-	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
@@ -11,7 +11,8 @@ import (
 func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) error {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(workflow, options, loader); err != nil {
-			return err
+			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			continue
 		}
 	}
 	return nil
@@ -29,13 +30,15 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 	}
 	for _, subtemplates := range workflow.Subtemplates {
 		if err := parseWorkflow(subtemplates, options, loader); err != nil {
-			return err
+			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			continue
 		}
 	}
 	for _, matcher := range workflow.Matchers {
 		for _, subtemplates := range matcher.Subtemplates {
 			if err := parseWorkflow(subtemplates, options, loader); err != nil {
-				return err
+				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+				continue
 			}
 		}
 	}
@@ -68,10 +71,12 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 		}
 		template, err := Parse(path, opts)
 		if err != nil {
-			return errors.Wrap(err, "could not parse workflow template")
+			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
+			continue
 		}
 		if template.Executer == nil {
-			return errors.New("no executer found for template")
+			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
+			continue
 		}
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
 			Executer: template.Executer,
