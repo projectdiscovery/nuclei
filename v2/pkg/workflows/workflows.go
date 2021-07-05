@@ -15,7 +15,7 @@ type WorkflowTemplate struct {
 	// Template is the template to run
 	Template string `yaml:"template"`
 	// Tags to perform filtering of supplied templates on
-	Tags []string `yaml:"tags"`
+	Tags string `yaml:"tags"`
 	// Matchers perform name based matching to run subtemplates for a workflow.
 	Matchers []*Matcher `yaml:"matchers"`
 	// Subtemplates are ran if the template matches.
