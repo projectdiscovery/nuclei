@@ -65,6 +65,13 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 
 	matched := false
 
+	_, workflowsFound := template["workflows"]
+	if !workflowsFound && workflow {
+		return false, nil
+	}
+	if workflow {
+		return true, nil
+	}
 	for _, tag := range tags {
 		for _, author := range authors {
 			var match bool
@@ -84,10 +91,6 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 		}
 	}
 	if !matched {
-		return false, nil
-	}
-	_, workflowsFound := template["workflows"]
-	if !workflowsFound && workflow {
 		return false, nil
 	}
 	if workflowsFound && !workflow {
