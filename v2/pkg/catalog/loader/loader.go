@@ -104,24 +104,6 @@ func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
 	return loadedTemplates
 }
 
-// ListTemplates takes a list of templates and returns paths for them
-func (s *Store) ListTemplates(templatesList []string) []string {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
-	templatesMap := s.pathFilter.Match(includedTemplates)
-
-	loadedTemplates := make([]string, 0, len(templatesMap))
-	for k := range templatesMap {
-		loaded, err := s.loadTemplate(k, false)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
-		}
-		if loaded {
-			loadedTemplates = append(loadedTemplates, k)
-		}
-	}
-	return loadedTemplates
-}
-
 // LoadWorkflows takes a list of workflows and returns paths for them
 func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
 	includedWorkflows := s.config.Catalog.GetTemplatesPath(s.config.Workflows)
@@ -145,30 +127,6 @@ func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
 	return loadedWorkflows
 }
 
-// ListTags lists a list of templates for tags from the provided templates directory
-func (s *Store) ListTags(templatesList, tags []string) []string {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
-	templatesMap := s.pathFilter.Match(includedTemplates)
-
-	loadedTemplates := make([]string, 0, len(templatesMap))
-	for k := range templatesMap {
-		loaded, err := s.loadTemplateWithTags(k, tags)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
-		}
-		if loaded {
-			loadedTemplates = append(loadedTemplates, k)
-		}
-	}
-	return loadedTemplates
-}
-
 func (s *Store) loadTemplate(templatePath string, workflow bool) (bool, error) {
-	return load.Load(templatePath, false, nil, s.tagFilter)
-}
-
-// loadTemplateParseMetadata loads a template by parsing metadata and running
-// all tag and path based filters on the template.
-func (s *Store) loadTemplateWithTags(templatePath string, tags []string) (bool, error) {
-	return load.Load(templatePath, false, tags, s.tagFilter)
+	return load.Load(templatePath, workflow, nil, s.tagFilter)
 }

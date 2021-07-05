@@ -36,7 +36,10 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 	if !ok {
 		return false, errors.New("no template info field provided")
 	}
-	infoMap := info.(map[interface{}]interface{})
+	infoMap, ok := info.(map[interface{}]interface{})
+	if !ok {
+		return false, errors.New("could not get info")
+	}
 
 	if _, ok := infoMap["name"]; !ok {
 		return false, errors.New("no template name field provided")
@@ -75,7 +78,7 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 			if err == filter.ErrExcluded {
 				return false, filter.ErrExcluded
 			}
-			if !matched && match && err == nil {
+			if !matched && match {
 				matched = true
 			}
 		}
@@ -84,7 +87,6 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 		return false, nil
 	}
 	_, workflowsFound := template["workflows"]
-
 	if !workflowsFound && workflow {
 		return false, nil
 	}
