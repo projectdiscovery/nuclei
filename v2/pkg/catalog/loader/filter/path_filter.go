@@ -8,20 +8,20 @@ type PathFilter struct {
 	alwaysIncludedTemplatesMap map[string]struct{}
 }
 
-// PathFilterConfig contains configuraton options for Path based templates Filter
+// PathFilterConfig contains configuration options for Path based templates Filter
 type PathFilterConfig struct {
 	IncludedTemplates []string
 	ExcludedTemplates []string
 }
 
 // NewPathFilter creates a new path filter from provided config
-func NewPathFilter(config *PathFilterConfig, catalog *catalog.Catalog) *PathFilter {
+func NewPathFilter(config *PathFilterConfig, catalogClient *catalog.Catalog) *PathFilter {
 	filter := &PathFilter{
-		excludedTemplates:          catalog.GetTemplatesPath(config.ExcludedTemplates),
+		excludedTemplates:          catalogClient.GetTemplatesPath(config.ExcludedTemplates),
 		alwaysIncludedTemplatesMap: make(map[string]struct{}),
 	}
 
-	alwaysIncludeTemplates := catalog.GetTemplatesPath(config.IncludedTemplates)
+	alwaysIncludeTemplates := catalogClient.GetTemplatesPath(config.IncludedTemplates)
 	for _, tpl := range alwaysIncludeTemplates {
 		filter.alwaysIncludedTemplatesMap[tpl] = struct{}{}
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"gopkg.in/yaml.v2"
 )
@@ -29,21 +30,24 @@ const nucleiConfigFilename = ".templates-config.json"
 // Version is the current version of nuclei
 const Version = `2.4.0-dev`
 
-var (
-	homeDir             string
-	configDir           string
-	templatesConfigFile string
-)
-
-func init() {
-	homeDir, _ = os.UserHomeDir()
-	configDir = path.Join(homeDir, "/.config", "/nuclei")
+func getConfigDetails() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get home directory")
+	}
+	configDir := path.Join(homeDir, "/.config", "/nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
-	templatesConfigFile = path.Join(configDir, nucleiConfigFilename)
+	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
+	return templatesConfigFile, nil
 }
 
-// readConfiguration reads the nuclei configuration file from disk.
+// ReadConfiguration reads the nuclei configuration file from disk.
 func ReadConfiguration() (*Config, error) {
+	templatesConfigFile, err := getConfigDetails()
+	if err != nil {
+		return nil, err
+	}
+
 	file, err := os.Open(templatesConfigFile)
 	if err != nil {
 		return nil, err
@@ -70,6 +74,11 @@ func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
 		config.LastCheckedIgnore = time.Now()
 	}
 	config.NucleiVersion = Version
+
+	templatesConfigFile, err := getConfigDetails()
+	if err != nil {
+		return err
+	}
 	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return err

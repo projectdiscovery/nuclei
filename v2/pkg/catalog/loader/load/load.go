@@ -41,7 +41,7 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 		return false, errors.New("could not get info")
 	}
 
-	if _, ok := infoMap["name"]; !ok {
+	if _, nameOk := infoMap["name"]; !nameOk {
 		return false, errors.New("no template name field provided")
 	}
 	author, ok := infoMap["author"]

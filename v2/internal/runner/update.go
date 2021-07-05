@@ -56,11 +56,11 @@ func (r *Runner) updateTemplates() error {
 
 	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		config, readErr := config.ReadConfiguration()
+		configuration, readErr := config.ReadConfiguration()
 		if err != nil {
 			return readErr
 		}
-		r.templatesConfig = config
+		r.templatesConfig = configuration
 	}
 
 	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"

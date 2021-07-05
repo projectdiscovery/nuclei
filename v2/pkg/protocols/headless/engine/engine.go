@@ -111,7 +111,7 @@ func (b *Browser) killChromeProcesses() {
 		if _, ok := b.previouspids[process.Pid]; ok {
 			continue
 		}
-		process.Kill()
+		_ = process.Kill()
 	}
 }
 
