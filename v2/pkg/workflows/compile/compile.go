@@ -11,9 +11,9 @@ import (
 // initialization.
 type WorkflowLoader interface {
 	// ListTags lists a list of templates for tags from the provided templates directory
-	ListTags(templatesList, tags []string) []string
+	ListTags(tags []string) []string
 	// ListTemplates takes a list of templates and returns paths for them
-	ListTemplates(templatesList []string) []string
+	ListTemplates(templatesList []string, noValidate bool) []string
 }
 
 type workflowLoader struct {
@@ -39,8 +39,8 @@ func NewLoader(options *protocols.ExecuterOptions) (WorkflowLoader, error) {
 }
 
 // ListTags lists a list of templates for tags from the provided templates directory
-func (w *workflowLoader) ListTags(templatesList, tags []string) []string {
-	includedTemplates := w.options.Catalog.GetTemplatesPath(templatesList)
+func (w *workflowLoader) ListTags(tags []string) []string {
+	includedTemplates := w.options.Catalog.GetTemplatesPath([]string{w.options.Options.TemplatesDirectory})
 	templatesMap := w.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]string, 0, len(templatesMap))
@@ -56,16 +56,16 @@ func (w *workflowLoader) ListTags(templatesList, tags []string) []string {
 }
 
 // ListTemplates takes a list of templates and returns paths for them
-func (w *workflowLoader) ListTemplates(templatesList []string) []string {
+func (w *workflowLoader) ListTemplates(templatesList []string, noValidate bool) []string {
 	includedTemplates := w.options.Catalog.GetTemplatesPath(templatesList)
 	templatesMap := w.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]string, 0, len(templatesMap))
 	for k := range templatesMap {
-		_, err := load.Load(k, false, nil, w.tagFilter)
+		matched, err := load.Load(k, false, nil, w.tagFilter)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
-		} else {
+		} else if matched || noValidate {
 			loadedTemplates = append(loadedTemplates, k)
 		}
 	}

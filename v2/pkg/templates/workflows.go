@@ -10,7 +10,7 @@ import (
 // compileWorkflow compiles the workflow for execution
 func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) error {
 	for _, workflow := range workflow.Workflows {
-		if err := parseWorkflow(workflow, options, loader); err != nil {
+		if err := parseWorkflow(workflow, options, loader, false); err != nil {
 			return err
 		}
 	}
@@ -18,18 +18,18 @@ func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Wor
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
-	if err := parseWorkflowTemplate(workflow, options, loader); err != nil {
+func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
+	if err := parseWorkflowTemplate(workflow, options, loader, true); err != nil {
 		return err
 	}
 	for _, subtemplates := range workflow.Subtemplates {
-		if err := parseWorkflow(subtemplates, options, loader); err != nil {
+		if err := parseWorkflow(subtemplates, options, loader, false); err != nil {
 			return err
 		}
 	}
 	for _, matcher := range workflow.Matchers {
 		for _, subtemplates := range matcher.Subtemplates {
-			if err := parseWorkflow(subtemplates, options, loader); err != nil {
+			if err := parseWorkflow(subtemplates, options, loader, false); err != nil {
 				return err
 			}
 		}
@@ -38,13 +38,13 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
-func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
+func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
 	if len(workflow.Tags) > 0 {
-		paths = loader.ListTags([]string{workflow.Template}, workflow.Tags)
+		paths = loader.ListTags(workflow.Tags)
 	} else {
-		paths = loader.ListTemplates([]string{workflow.Template})
+		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
 	}
 	if len(paths) == 0 {
 		return nil
