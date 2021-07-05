@@ -10,7 +10,7 @@ import (
 // compileWorkflow compiles the workflow for execution
 func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) error {
 	for _, workflow := range workflow.Workflows {
-		if err := parseWorkflow(workflow, options, loader, false); err != nil {
+		if err := parseWorkflow(workflow, options, loader); err != nil {
 			return err
 		}
 	}
@@ -18,18 +18,23 @@ func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Wor
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
-	if err := parseWorkflowTemplate(workflow, options, loader, true); err != nil {
+func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
+	shouldNotValidate := false
+
+	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
+		shouldNotValidate = true
+	}
+	if err := parseWorkflowTemplate(workflow, options, loader, shouldNotValidate); err != nil {
 		return err
 	}
 	for _, subtemplates := range workflow.Subtemplates {
-		if err := parseWorkflow(subtemplates, options, loader, false); err != nil {
+		if err := parseWorkflow(subtemplates, options, loader); err != nil {
 			return err
 		}
 	}
 	for _, matcher := range workflow.Matchers {
 		for _, subtemplates := range matcher.Subtemplates {
-			if err := parseWorkflow(subtemplates, options, loader, false); err != nil {
+			if err := parseWorkflow(subtemplates, options, loader); err != nil {
 				return err
 			}
 		}

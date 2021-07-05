@@ -295,7 +295,9 @@ func (r *Runner) RunEnumeration() {
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
 		builder.WriteString(" (")
 
-		if config.Version == r.templatesConfig.NucleiLatestVersion {
+		if strings.Contains(config.Version, "-dev") {
+			builder.WriteString(r.colorizer.Blue("development").String())
+		} else if config.Version == r.templatesConfig.NucleiLatestVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
