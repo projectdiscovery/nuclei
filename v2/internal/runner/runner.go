@@ -335,7 +335,7 @@ func (r *Runner) RunEnumeration() {
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	var unclusteredRequests int64 = 0
+	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
@@ -386,9 +386,7 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
-	for _, workflows := range store.Workflows() {
-		finalTemplates = append(finalTemplates, workflows)
-	}
+	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
 	for _, t := range finalTemplates {
