@@ -47,7 +47,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 	var paths []string
 
 	if len(workflow.Tags) > 0 {
-		paths = loader.ListTags(workflow.Tags)
+		paths = loader.ListTags([]string{workflow.Tags})
 	} else {
 		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
 	}
