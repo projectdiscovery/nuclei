@@ -48,8 +48,7 @@ func (w *workflowLoader) ListTags(templatesList, tags []string) []string {
 		loaded, err := load.Load(k, false, tags, w.tagFilter)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
-		}
-		if loaded {
+		} else if loaded {
 			loadedTemplates = append(loadedTemplates, k)
 		}
 	}
@@ -63,11 +62,10 @@ func (w *workflowLoader) ListTemplates(templatesList []string) []string {
 
 	loadedTemplates := make([]string, 0, len(templatesMap))
 	for k := range templatesMap {
-		loaded, err := load.Load(k, false, nil, w.tagFilter)
+		_, err := load.Load(k, false, nil, w.tagFilter)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
-		}
-		if loaded {
+		} else {
 			loadedTemplates = append(loadedTemplates, k)
 		}
 	}

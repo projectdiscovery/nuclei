@@ -15,6 +15,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/json-iterator/go v1.1.10
+	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
