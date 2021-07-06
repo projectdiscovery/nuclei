@@ -8,14 +8,13 @@ import (
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) error {
+func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 			continue
 		}
 	}
-	return nil
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
