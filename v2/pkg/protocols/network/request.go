@@ -209,6 +209,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		if r.CompiledOperators != nil {
 			result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 			if ok && result != nil {
+				event.OperatorsResult.PayloadValues = payloads
 				event.OperatorsResult = result
 				event.Results = r.MakeResultEvent(event)
 			}
