@@ -130,11 +130,11 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		}
 		reqBuilder.Grow(len(input.Data))
 
-		finalData, err := expressions.EvaluateByte(data, payloads)
-		if err != nil {
-			r.options.Output.Request(r.options.TemplateID, address, "network", err)
+		finalData, dataErr := expressions.EvaluateByte(data, payloads)
+		if dataErr != nil {
+			r.options.Output.Request(r.options.TemplateID, address, "network", dataErr)
 			r.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not evaluate template expressions")
+			return errors.Wrap(dataErr, "could not evaluate template expressions")
 		}
 		reqBuilder.Write(finalData)
 
