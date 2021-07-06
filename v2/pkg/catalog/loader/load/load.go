@@ -77,7 +77,7 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 			var match bool
 			var err error
 
-			if len(customTags) > 0 {
+			if len(customTags) == 0 {
 				match, err = tagFilter.Match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
 			} else {
 				match, err = tagFilter.MatchWithAllowedTags(customTags, strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
