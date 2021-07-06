@@ -149,8 +149,18 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 			buffer := make([]byte, input.Read)
 			n, _ := conn.Read(buffer)
 			responseBuilder.Write(buffer[:n])
+
+			bufferStr := string(buffer[:n])
 			if input.Name != "" {
-				inputEvents[input.Name] = string(buffer[:n])
+				inputEvents[input.Name] = bufferStr
+			}
+
+			// Run any internal extractors for the request here and add found values to map.
+			if r.CompiledOperators != nil {
+				values := r.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, r.Extract)
+				for k, v := range values {
+					payloads[k] = v
+				}
 			}
 		}
 	}
