@@ -63,9 +63,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create workflow loader")
 		}
-		if err := compileWorkflow(&options, compiled, loader); err != nil {
-			return nil, errors.Wrap(err, "could not compile workflow")
-		}
+		compileWorkflow(&options, compiled, loader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
