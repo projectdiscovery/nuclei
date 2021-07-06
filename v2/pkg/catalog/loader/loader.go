@@ -1,18 +1,12 @@
 package loader
 
 import (
-	"bytes"
-	"errors"
-	"io/ioutil"
-	"os"
-	"strings"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/load"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"gopkg.in/yaml.v2"
 )
 
 // Config contains the configuration options for the loader
@@ -35,7 +29,8 @@ type Config struct {
 
 // Store is a storage for loaded nuclei templates
 type Store struct {
-	tagFilter      *tagFilter
+	tagFilter      *filter.TagFilter
+	pathFilter     *filter.PathFilter
 	config         *Config
 	finalTemplates []string
 
@@ -47,8 +42,18 @@ type Store struct {
 func New(config *Config) (*Store, error) {
 	// Create a tag filter based on provided configuration
 	store := &Store{
-		config:    config,
-		tagFilter: config.createTagFilter(),
+		config: config,
+		tagFilter: filter.New(&filter.Config{
+			Tags:        config.Tags,
+			ExcludeTags: config.ExcludeTags,
+			Authors:     config.Authors,
+			Severities:  config.Severities,
+			IncludeTags: config.IncludeTags,
+		}),
+		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
+			IncludedTemplates: config.IncludeTemplates,
+			ExcludedTemplates: config.ExcludeTemplates,
+		}, config.Catalog),
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
@@ -56,7 +61,6 @@ func New(config *Config) (*Store, error) {
 		config.Templates = append(config.Templates, config.TemplatesDirectory)
 	}
 	store.finalTemplates = append(store.finalTemplates, config.Templates...)
-
 	return store, nil
 }
 
@@ -73,30 +77,18 @@ func (s *Store) Workflows() []*templates.Template {
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (s *Store) Load() {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(s.finalTemplates)
-	includedWorkflows := s.config.Catalog.GetTemplatesPath(s.config.Workflows)
-	excludedTemplates := s.config.Catalog.GetTemplatesPath(s.config.ExcludeTemplates)
-	alwaysIncludeTemplates := s.config.Catalog.GetTemplatesPath(s.config.IncludeTemplates)
+	s.templates = s.LoadTemplates(s.finalTemplates)
+	s.workflows = s.LoadWorkflows(s.config.Workflows)
+}
 
-	alwaysIncludedTemplatesMap := make(map[string]struct{})
-	for _, tpl := range alwaysIncludeTemplates {
-		alwaysIncludedTemplatesMap[tpl] = struct{}{}
-	}
+// LoadTemplates takes a list of templates and returns paths for them
+func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
+	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
+	templatesMap := s.pathFilter.Match(includedTemplates)
 
-	templatesMap := make(map[string]struct{})
-	for _, tpl := range includedTemplates {
-		templatesMap[tpl] = struct{}{}
-	}
-	for _, template := range excludedTemplates {
-		if _, ok := alwaysIncludedTemplatesMap[template]; ok {
-			continue
-		} else {
-			delete(templatesMap, template)
-		}
-	}
-
+	loadedTemplates := make([]*templates.Template, 0, len(templatesMap))
 	for k := range templatesMap {
-		loaded, err := s.loadTemplateParseMetadata(k, false)
+		loaded, err := s.loadTemplate(k, false)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
 		}
@@ -105,101 +97,36 @@ func (s *Store) Load() {
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", k, err)
 			} else if parsed != nil {
-				s.templates = append(s.templates, parsed)
+				loadedTemplates = append(loadedTemplates, parsed)
 			}
 		}
 	}
+	return loadedTemplates
+}
 
-	workflowsMap := make(map[string]struct{})
-	for _, tpl := range includedWorkflows {
-		workflowsMap[tpl] = struct{}{}
-	}
-	for _, template := range excludedTemplates {
-		if _, ok := alwaysIncludedTemplatesMap[template]; ok {
-			continue
-		} else {
-			delete(templatesMap, template)
-		}
-	}
+// LoadWorkflows takes a list of workflows and returns paths for them
+func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+	includedWorkflows := s.config.Catalog.GetTemplatesPath(s.config.Workflows)
+	workflowsMap := s.pathFilter.Match(includedWorkflows)
+
+	loadedWorkflows := make([]*templates.Template, 0, len(workflowsMap))
 	for k := range workflowsMap {
-		loaded, err := s.loadTemplateParseMetadata(k, true)
+		loaded, err := s.loadTemplate(k, true)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", k, err)
 		}
-
 		if loaded {
 			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", k, err)
 			} else if parsed != nil {
-				s.workflows = append(s.workflows, parsed)
+				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
 		}
 	}
+	return loadedWorkflows
 }
 
-// loadTemplateParseMetadata loads a template by parsing metadata and running
-// all tag and path based filters on the template.
-func (s *Store) loadTemplateParseMetadata(templatePath string, workflow bool) (bool, error) {
-	f, err := os.Open(templatePath)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return false, err
-	}
-
-	template := &templates.Template{}
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
-	if err != nil {
-		return false, err
-	}
-	if _, ok := template.Info["name"]; !ok {
-		return false, errors.New("no template name field provided")
-	}
-	author, ok := template.Info["author"]
-	if !ok {
-		return false, errors.New("no template author field provided")
-	}
-	severity, ok := template.Info["severity"]
-	if !ok {
-		severity = ""
-	}
-
-	templateTags, ok := template.Info["tags"]
-	if !ok {
-		templateTags = ""
-	}
-	tagStr := types.ToString(templateTags)
-
-	tags := strings.Split(tagStr, ",")
-	severityStr := types.ToString(severity)
-	authors := strings.Split(types.ToString(author), ",")
-
-	matched := false
-
-	for _, tag := range tags {
-		for _, author := range authors {
-			match, err := s.tagFilter.match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
-			if err == ErrExcluded {
-				return false, ErrExcluded
-			}
-			if !matched && match && err == nil {
-				matched = true
-			}
-		}
-	}
-	if !matched {
-		return false, nil
-	}
-	if len(template.Workflows) == 0 && workflow {
-		return false, nil
-	}
-	if len(template.Workflows) > 0 && !workflow {
-		return false, nil
-	}
-	return true, nil
+func (s *Store) loadTemplate(templatePath string, workflow bool) (bool, error) {
+	return load.Load(templatePath, workflow, nil, s.tagFilter)
 }

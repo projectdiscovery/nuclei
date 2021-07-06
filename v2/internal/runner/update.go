@@ -56,11 +56,11 @@ func (r *Runner) updateTemplates() error {
 
 	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		config, readErr := config.ReadConfiguration()
+		configuration, readErr := config.ReadConfiguration()
 		if err != nil {
 			return readErr
 		}
-		r.templatesConfig = config
+		r.templatesConfig = configuration
 	}
 
 	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
@@ -283,7 +283,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to write templates: %s", err)
 	}
 
-	if !r.options.Silent {
+	if r.options.Verbose {
 		r.printUpdateChangelog(results, version)
 	}
 	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")

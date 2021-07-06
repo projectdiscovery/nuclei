@@ -271,7 +271,7 @@ func (r *Runner) RunEnumeration() {
 		ProjectFile:  r.projectFile,
 		Browser:      r.browser,
 	}
-	loaderConfig := &loader.Config{
+	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
 		ExcludeTemplates:   r.options.ExcludedTemplates,
@@ -285,7 +285,7 @@ func (r *Runner) RunEnumeration() {
 		Catalog:            r.catalog,
 		ExecutorOptions:    executerOpts,
 	}
-	store, err := loader.New(loaderConfig)
+	store, err := loader.New(&loaderConfig)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
 	}
@@ -295,7 +295,9 @@ func (r *Runner) RunEnumeration() {
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
 		builder.WriteString(" (")
 
-		if config.Version == r.templatesConfig.NucleiLatestVersion {
+		if strings.Contains(config.Version, "-dev") {
+			builder.WriteString(r.colorizer.Blue("development").String())
+		} else if config.Version == r.templatesConfig.NucleiLatestVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -335,7 +337,7 @@ func (r *Runner) RunEnumeration() {
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
-	var unclusteredRequests int64 = 0
+	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
@@ -386,9 +388,7 @@ func (r *Runner) RunEnumeration() {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
-	for _, workflows := range store.Workflows() {
-		finalTemplates = append(finalTemplates, workflows)
-	}
+	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
 	for _, t := range finalTemplates {
