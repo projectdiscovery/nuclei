@@ -82,7 +82,7 @@ func (t *TagFilter) MatchWithAllowedTags(allowed []string, tag, author, severity
 		matchedAny = true
 	}
 	_, ok := t.block[tag]
-	if ok {
+	if ok && !matchedAny {
 		if _, allowOk := t.matchAllows[tag]; allowOk {
 			return true, nil
 		}
