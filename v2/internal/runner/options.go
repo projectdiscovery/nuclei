@@ -31,11 +31,11 @@ func ParseOptions(options *types.Options) {
 		os.Exit(0)
 	}
 	if options.TemplatesVersion {
-		config, err := config.ReadConfiguration()
+		configuration, err := config.ReadConfiguration()
 		if err != nil {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
-		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", config.CurrentVersion, config.TemplatesDirectory)
+		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.CurrentVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
 
