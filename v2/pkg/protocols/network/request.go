@@ -197,6 +197,9 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
+	for k, v := range payloads {
+		outputEvent[k] = v
+	}
 	for k, v := range inputEvents {
 		outputEvent[k] = v
 	}
