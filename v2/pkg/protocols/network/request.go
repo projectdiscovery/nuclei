@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
@@ -55,6 +56,28 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 		return err
 	}
 
+	if r.generator != nil {
+		iterator := r.generator.NewIterator()
+
+		for {
+			value, ok := iterator.Value()
+			if !ok {
+				break
+			}
+			if err := r.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
+				return err
+			}
+		}
+	} else {
+		value := make(map[string]interface{})
+		if err := r.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Request) executeRequestWithPayloads(actualAddress, address, input string, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var (
 		hostname string
 		conn     net.Conn
@@ -106,9 +129,16 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
-		reqBuilder.WriteString(input.Data)
 
-		_, err = conn.Write(data)
+		finalData, err := expressions.EvaluateByte(data, payloads)
+		if err != nil {
+			r.options.Output.Request(r.options.TemplateID, address, "network", err)
+			r.options.Progress.IncrementFailedRequestsBy(1)
+			return errors.Wrap(err, "could not evaluate template expressions")
+		}
+		reqBuilder.Write(finalData)
+
+		_, err = conn.Write(finalData)
 		if err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.IncrementFailedRequestsBy(1)
@@ -162,7 +192,7 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if !hasInteractMarkers {
+	if interactURL == "" {
 		if r.CompiledOperators != nil {
 			result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
 			if ok && result != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 )
 
@@ -20,6 +21,12 @@ type Request struct {
 	Address   []string `yaml:"host"`
 	addresses []addressKV
 
+	// AttackType is the attack type
+	// Sniper, PitchFork and ClusterBomb. Default is Sniper
+	AttackType string `yaml:"attack"`
+	// Path contains the path/s for the request variables
+	Payloads map[string]interface{} `yaml:"payloads"`
+
 	// Payload is the payload to send for the network request
 	Inputs []*Input `yaml:"inputs"`
 	// ReadSize is the size of response to read (1024 if not provided by default)
@@ -29,6 +36,8 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators
 
+	generator  *generators.Generator
+	attackType generators.Type
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
 	options *protocols.ExecuterOptions
@@ -62,6 +71,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	var shouldUseTLS bool
 	var err error
 
+	r.options = options
 	for _, address := range r.Address {
 		// check if the connection should be encrypted
 		if strings.HasPrefix(address, "tls://") {
@@ -88,6 +98,30 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 
+	if len(r.Payloads) > 0 {
+		attackType := r.AttackType
+		if attackType == "" {
+			attackType = "sniper"
+		}
+		r.attackType = generators.StringToType[attackType]
+
+		// Resolve payload paths if they are files.
+		for name, payload := range r.Payloads {
+			payloadStr, ok := payload.(string)
+			if ok {
+				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
+				if resolveErr != nil {
+					return errors.Wrap(resolveErr, "could not read payload file")
+				}
+				r.Payloads[name] = final
+			}
+		}
+		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
+		if err != nil {
+			return errors.Wrap(err, "could not parse payloads")
+		}
+	}
+
 	// Create a client for the class
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
@@ -102,7 +136,6 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		r.CompiledOperators = compiled
 	}
-	r.options = options
 	return nil
 }
 
