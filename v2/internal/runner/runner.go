@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -74,13 +75,13 @@ func New(options *types.Options) (*Runner, error) {
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
 		if err != nil {
-			gologger.Fatal().Msgf("Could not open reporting config file: %s\n", err)
+			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
 
 		reportingOptions = &reporting.Options{}
 		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
 			file.Close()
-			gologger.Fatal().Msgf("Could not parse reporting config file: %s\n", parseErr)
+			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
 		}
 		file.Close()
 	}
@@ -101,11 +102,11 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 	if reportingOptions != nil {
-		if client, err := reporting.New(reportingOptions, options.ReportingDB); err != nil {
-			gologger.Fatal().Msgf("Could not create issue reporting client: %s\n", err)
-		} else {
-			runner.issuesClient = client
+		client, err := reporting.New(reportingOptions, options.ReportingDB)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
+		runner.issuesClient = client
 	}
 
 	// output coloring
@@ -121,11 +122,11 @@ func New(options *types.Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
-		gologger.Fatal().Msgf("Could not create temporary input file: %s\n", err)
-	} else {
-		runner.hostMap = hm
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temporary input file")
 	}
+	runner.hostMap = hm
 
 	runner.inputCount = 0
 	dupeCount := 0
@@ -157,9 +158,9 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Handle taget file
 	if options.Targets != "" {
-		input, err := os.Open(options.Targets)
-		if err != nil {
-			gologger.Fatal().Msgf("Could not open targets file '%s': %s\n", options.Targets, err)
+		input, inputErr := os.Open(options.Targets)
+		if inputErr != nil {
+			return nil, errors.Wrap(inputErr, "could not open targets file")
 		}
 		scanner := bufio.NewScanner(input)
 		for scanner.Scan() {
@@ -185,7 +186,7 @@ func New(options *types.Options) (*Runner, error) {
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
 	if err != nil {
-		gologger.Fatal().Msgf("Could not create output file '%s': %s\n", options.Output, err)
+		return nil, errors.Wrap(err, "could not create output file")
 	}
 	runner.output = outputWriter
 
@@ -245,14 +246,14 @@ func (r *Runner) Close() {
 
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
-func (r *Runner) RunEnumeration() {
+func (r *Runner) RunEnumeration() error {
 	defer r.Close()
 
 	// If user asked for new templates to be executed, collect the list from template directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
-			gologger.Warning().Msgf("Could not get newly added templates: %s\n", err)
+			return errors.Wrap(err, "could not get newly added templates")
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
@@ -287,7 +288,14 @@ func (r *Runner) RunEnumeration() {
 	}
 	store, err := loader.New(&loaderConfig)
 	if err != nil {
-		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
+		return errors.Wrap(err, "could not load templates from config")
+	}
+	if r.options.Validate {
+		if !store.ValidateTemplates(r.options.Templates, r.options.Workflows) {
+			return errors.New("an error occurred during templates validation")
+		}
+		gologger.Info().Msgf("All templates validated successfully\n")
+		return nil // exit
 	}
 	store.Load()
 
@@ -405,7 +413,7 @@ func (r *Runner) RunEnumeration() {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		gologger.Fatal().Msgf("Error, no templates were found.\n")
+		return errors.New("no templates were found")
 	}
 
 	results := &atomic.Bool{}
@@ -445,6 +453,7 @@ func (r *Runner) RunEnumeration() {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+	return nil
 }
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
