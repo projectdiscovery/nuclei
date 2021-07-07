@@ -102,11 +102,11 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 	if reportingOptions != nil {
-		if client, err := reporting.New(reportingOptions, options.ReportingDB); err != nil {
+		client, err := reporting.New(reportingOptions, options.ReportingDB)
+		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
-		} else {
-			runner.issuesClient = client
 		}
+		runner.issuesClient = client
 	}
 
 	// output coloring
@@ -122,11 +122,11 @@ func New(options *types.Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	if hm, err := hybrid.New(hybrid.DefaultDiskOptions); err != nil {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary input file")
-	} else {
-		runner.hostMap = hm
 	}
+	runner.hostMap = hm
 
 	runner.inputCount = 0
 	dupeCount := 0
@@ -158,9 +158,9 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Handle taget file
 	if options.Targets != "" {
-		input, err := os.Open(options.Targets)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not open targets file")
+		input, inputErr := os.Open(options.Targets)
+		if inputErr != nil {
+			return nil, errors.Wrap(inputErr, "could not open targets file")
 		}
 		scanner := bufio.NewScanner(input)
 		for scanner.Scan() {
@@ -293,10 +293,9 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.Validate {
 		if !store.ValidateTemplates(r.options.Templates, r.options.Workflows) {
 			return errors.New("an error occurred during templates validation")
-		} else {
-			gologger.Info().Msgf("All templates validated successfully\n")
-			return nil // exit
 		}
+		gologger.Info().Msgf("All templates validated successfully\n")
+		return nil // exit
 	}
 	store.Load()
 
