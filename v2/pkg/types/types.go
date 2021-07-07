@@ -104,6 +104,8 @@ type Options struct {
 	Silent bool
 	// Version specifies if we should just show version and exit
 	Version bool
+	// Validate validates the templates passed to nuclei.
+	Validate bool
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool

@@ -96,6 +96,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")
 	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
 	set.BoolVar(&options.VerboseVerbose, "vv", false, "Display Extra Verbose Information")
+	set.BoolVar(&options.Validate, "validate", false, "Validate the passed templates to nuclei")
 	_ = set.Parse()
 
 	if cfgFile != "" {
