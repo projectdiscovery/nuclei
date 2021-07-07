@@ -148,7 +148,7 @@ func (r *Runner) updateTemplates() error {
 		if err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", version.String())
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
 		return nil
 	}
 
@@ -202,7 +202,7 @@ func (r *Runner) updateTemplates() error {
 		if err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). Enjoy!\n", version.String())
+		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
 	}
 	return nil
 }

@@ -336,10 +336,10 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Running %d Nuclei Templates", len(store.Templates()))
+		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Running %d Nuclei Workflows", len(store.Workflows()))
+		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
@@ -406,7 +406,7 @@ func (r *Runner) RunEnumeration() error {
 		totalRequests += int64(t.TotalRequests) * r.inputCount
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Reduced %d requests (%d templates clustered)", unclusteredRequests-totalRequests, clusterCount)
+		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount,unclusteredRequests-totalRequests)
 	}
 	workflowCount := len(store.Workflows())
 	templateCount := originalTemplatesCount + workflowCount
