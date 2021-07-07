@@ -167,7 +167,7 @@ func printCallback(stats clistats.StatisticsClient) {
 	builder.WriteRune(')')
 	builder.WriteRune('\n')
 
-	gologger.Print().Msgf("%s", builder.String())
+	fmt.Printf("%s", builder.String())
 }
 
 // getMetrics returns a map of important metrics for client
