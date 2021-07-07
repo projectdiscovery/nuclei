@@ -100,7 +100,7 @@ func (s *Store) ValidateTemplates(templatesList []string) bool {
 				continue
 			}
 			notErrored = false
-			gologger.Error().Msgf("Error occured loading template %s: %s\n", k, err)
+			gologger.Error().Msgf("Error occurred loading template %s: %s\n", k, err)
 		}
 		_, err = templates.Parse(k, s.config.ExecutorOptions)
 		if err != nil {
@@ -111,7 +111,7 @@ func (s *Store) ValidateTemplates(templatesList []string) bool {
 				continue
 			}
 			notErrored = false
-			gologger.Error().Msgf("Error occured parsing template %s: %s\n", k, err)
+			gologger.Error().Msgf("Error occurred parsing template %s: %s\n", k, err)
 		}
 	}
 	return notErrored

@@ -291,7 +291,7 @@ func (r *Runner) RunEnumeration() {
 	}
 	if r.options.Validate {
 		if !store.ValidateTemplates(r.options.Templates) {
-			gologger.Fatal().Msgf("An Error occured during templates validation\n")
+			gologger.Fatal().Msgf("An Error occurred during templates validation\n")
 		} else {
 			gologger.Info().Msgf("All templates validated successfully\n")
 			os.Exit(0)
