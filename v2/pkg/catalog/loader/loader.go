@@ -85,7 +85,7 @@ func (s *Store) Load() {
 
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
-func (s *Store) ValidateTemplates(templatesList []string, workflowsList []string) bool {
+func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
 	includedWorkflows := s.config.Catalog.GetTemplatesPath(workflowsList)
 	templatesMap := s.pathFilter.Match(includedTemplates)
