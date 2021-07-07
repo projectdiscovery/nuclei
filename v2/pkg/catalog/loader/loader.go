@@ -1,6 +1,8 @@
 package loader
 
 import (
+	"strings"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
@@ -79,6 +81,40 @@ func (s *Store) Workflows() []*templates.Template {
 func (s *Store) Load() {
 	s.templates = s.LoadTemplates(s.finalTemplates)
 	s.workflows = s.LoadWorkflows(s.config.Workflows)
+}
+
+// ValidateTemplates takes a list of templates and validates them
+// erroring out on discovering any faulty templates.
+func (s *Store) ValidateTemplates(templatesList []string) bool {
+	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
+	templatesMap := s.pathFilter.Match(includedTemplates)
+
+	notErrored := true
+	for k := range templatesMap {
+		_, err := s.loadTemplate(k, false)
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot create template executer") {
+				continue
+			}
+			if err == filter.ErrExcluded {
+				continue
+			}
+			notErrored = false
+			gologger.Error().Msgf("Error occured loading template %s: %s\n", k, err)
+		}
+		_, err = templates.Parse(k, s.config.ExecutorOptions)
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot create template executer") {
+				continue
+			}
+			if err == filter.ErrExcluded {
+				continue
+			}
+			notErrored = false
+			gologger.Error().Msgf("Error occured parsing template %s: %s\n", k, err)
+		}
+	}
+	return notErrored
 }
 
 // LoadTemplates takes a list of templates and returns paths for them

@@ -289,6 +289,14 @@ func (r *Runner) RunEnumeration() {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not load templates from config: %s\n", err)
 	}
+	if r.options.Validate {
+		if !store.ValidateTemplates(r.options.Templates) {
+			gologger.Fatal().Msgf("An Error occured during templates validation\n")
+		} else {
+			gologger.Info().Msgf("All templates validated successfully\n")
+			os.Exit(0)
+		}
+	}
 	store.Load()
 
 	builder := &strings.Builder{}
