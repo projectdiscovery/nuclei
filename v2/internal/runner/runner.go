@@ -336,7 +336,7 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()))
+		gologger.Info().Msgf("Templates loaded: %d (New:)", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
