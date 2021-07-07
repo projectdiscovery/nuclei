@@ -39,10 +39,10 @@ var _ Progress = &StatsTicker{}
 // StatsTicker is a progress instance for showing program stats
 type StatsTicker struct {
 	active       bool
-	tickDuration time.Duration
-	stats        clistats.StatisticsClient
-	server       *http.Server
 	outputJSON   bool
+	server       *http.Server
+	stats        clistats.StatisticsClient
+	tickDuration time.Duration
 }
 
 // NewStatsTicker creates and returns a new progress tracking object.
