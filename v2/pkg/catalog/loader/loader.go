@@ -85,9 +85,11 @@ func (s *Store) Load() {
 
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
-func (s *Store) ValidateTemplates(templatesList []string) bool {
+func (s *Store) ValidateTemplates(templatesList []string, workflowsList []string) bool {
 	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
+	includedWorkflows := s.config.Catalog.GetTemplatesPath(workflowsList)
 	templatesMap := s.pathFilter.Match(includedTemplates)
+	workflowsMap := s.pathFilter.Match(includedWorkflows)
 
 	notErrored := true
 	for k := range templatesMap {
@@ -112,6 +114,30 @@ func (s *Store) ValidateTemplates(templatesList []string) bool {
 			}
 			notErrored = false
 			gologger.Error().Msgf("Error occurred parsing template %s: %s\n", k, err)
+		}
+	}
+	for k := range workflowsMap {
+		_, err := s.loadTemplate(k, true)
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot create template executer") {
+				continue
+			}
+			if err == filter.ErrExcluded {
+				continue
+			}
+			notErrored = false
+			gologger.Error().Msgf("Error occurred loading workflow %s: %s\n", k, err)
+		}
+		_, err = templates.Parse(k, s.config.ExecutorOptions)
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot create template executer") {
+				continue
+			}
+			if err == filter.ErrExcluded {
+				continue
+			}
+			notErrored = false
+			gologger.Error().Msgf("Error occurred parsing workflow %s: %s\n", k, err)
 		}
 	}
 	return notErrored
