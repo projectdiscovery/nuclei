@@ -103,6 +103,7 @@ func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 			}
 			notErrored = false
 			gologger.Error().Msgf("Error occurred loading template %s: %s\n", k, err)
+			continue
 		}
 		_, err = templates.Parse(k, s.config.ExecutorOptions)
 		if err != nil {
