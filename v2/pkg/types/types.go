@@ -51,8 +51,6 @@ type Options struct {
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
 	StatsInterval int
-	// StatsJSON writes stats output in JSON format
-	StatsJSON bool
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
 	// BulkSize is the of targets analyzed in parallel for each template
@@ -81,6 +79,8 @@ type Options struct {
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
 	OfflineHTTP bool
+	// StatsJSON writes stats output in JSON format
+	StatsJSON bool
 	// Headless specifies whether to allow headless mode templates
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
