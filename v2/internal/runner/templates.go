@@ -40,11 +40,34 @@ func (r *Runner) templateLogMsg(id, name, author, severity string) string {
 	message := fmt.Sprintf("[%s] %s (%s)",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
-		r.colorizer.BrightYellow("@"+author).String())
+		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String())
 	if severity != "" {
 		message += " [" + r.severityColors.Data[severity] + "]"
 	}
 	return message
+}
+
+// appendAtSignToAuthors appends @ before each author and returns final string
+func appendAtSignToAuthors(author string) string {
+	authors := strings.Split(author, ",")
+	if len(authors) == 0 {
+		return "@none"
+	}
+	if len(authors) == 1 {
+		if !strings.HasPrefix(authors[0], "@") {
+			return fmt.Sprintf("@%s", authors[0])
+		}
+		return authors[0]
+	}
+	values := make([]string, 0, len(authors))
+	for _, k := range authors {
+		if !strings.HasPrefix(authors[0], "@") {
+			values = append(values, fmt.Sprintf("@%s", k))
+		} else {
+			values = append(values, k)
+		}
+	}
+	return strings.Join(values, ",")
 }
 
 func (r *Runner) logAvailableTemplate(tplPath string) {
