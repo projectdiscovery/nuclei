@@ -149,6 +149,12 @@ Flags:
 
 ### Running Nuclei
 
+Scanning target domain with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
+
+```sh
+nuclei -target https://example.com
+```
+
 Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
 
 ```sh
@@ -158,10 +164,10 @@ nuclei -list urls.txt
 Example of `urls.txt`:
 
 ```yaml
-https://redacted.com
-https://test.redacted.com
 http://example.com
 http://app.example.com
+http://test.example.com
+http://uat.example.com
 ```
 
 **More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
