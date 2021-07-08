@@ -192,6 +192,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.output = outputWriter
 
+	if options.JSON {
+		options.StatsJSON = true
+	}
 	// Creates the progress tracking object
 	var progressErr error
 	runner.progress, progressErr = progress.NewStatsTicker(options.StatsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.MetricsPort)
