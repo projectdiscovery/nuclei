@@ -45,22 +45,20 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 # Install Nuclei
 
 ```sh
-▶ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 ```
 
-**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started.html).**
+**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
 <tr>
 <td>  
 
-### Download Templates
+### Nuclei Templates
 
-You can download and update the nuclei templates using <ins>*update-templates*</ins> flag of nuclei that downloads all the available **nuclei-templates** from [Github project](https://github.com/projectdiscovery/nuclei-templates), a community curated list of templates that are ready to use.
+Nuclei has had built-in support for automatic update/download templates since version [v2.4.0](https://github.com/projectdiscovery/nuclei/releases/tag/v2.4.0). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
 
-`▶ nuclei -update-templates`
-
-Nuclei is designed to used with custom templates according to the target and workflow, you can write your own checks for your specific workflow and needs, please refer to nuclei [templating guide](https://nuclei.projectdiscovery.io/templating-guide/) to write your own custom templates.
+You may still use the `update-templates` flag to update the nuclei templates at any time; automatic updates happen every 24 hours. You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
 </td>
 </tr>
@@ -82,74 +80,88 @@ Usage:
   nuclei [flags]
 
 Flags:
-   -H, -header value                      Custom Header.
-   -biid, -burp-collaborator-biid string  Burp Collaborator BIID
-   -bs, -bulk-size int                    Maximum Number of hosts analyzed in parallel per template (default 25)
-   -c, -concurrency int                   Maximum Number of templates executed in parallel (default 10)
-   -config string                         Nuclei configuration file
-   -debug                                 Debugging request and responses
-   -debug-req                             Debugging request
-   -debug-resp                            Debugging response
-   -et, -exclude value                    Templates to exclude, supports single and multiple templates using directory.
-   -etags, -exclude-tags value            Exclude templates with the provided tags
-   -headless                              Enable headless browser based templates support
-   -impact, -severity value               Templates to run based on severity, supports single and multiple severity.
-   -irr, -include-rr                      Write requests/responses for matches in JSON output
-   -interactions-cache-size int           Number of requests to keep in interactions cache (default 5000)
-   -interactions-cooldown-period int      Extra time for interaction polling before exiting (default 5)
-   -interactions-eviction int             Number of seconds to wait before evicting requests from cache (default 60)
-   -interactions-poll-duration int        Number of seconds before each interaction poll request (default 5)
-   -interactsh-url string                 Self Hosted Interactsh Server URL (default https://interact.sh)
-   -json                                  Write json output to files
-   -l, -list string                       List of URLs to run templates on
-   -me, -markdown-export string           Directory to export results in markdown format
-   -metrics                               Expose nuclei metrics on a port
-   -metrics-port int                      Port to expose nuclei metrics on (default 9092)
-   -nc, -no-color                         Disable colors in output
-   -nt, -new-templates                    Only run newly added templates
-   -nm, -no-meta                          Don't display metadata for the matches
-   -no-interactsh                         Do not use interactsh server for blind interaction polling
-   -o, -output string                     File to write output to (optional)
-   -page-timeout int                      Seconds to wait for each page in headless (default 20)
-   -passive                               Enable Passive HTTP response processing mode
-   -project                               Use a project folder to avoid sending same request multiple times
-   -project-path string                   Use a user defined project folder, temporary folder is used if not specified but enabled
-   -proxy-socks-url string                URL of the proxy socks server
-   -proxy-url string                      URL of the proxy server
-   -r, -resolvers string                  File containing resolver list for nuclei
-   -rl, -rate-limit int                   Maximum requests to send per second (default 150)
-   -rc, -report-config string             Nuclei Reporting Module configuration file
-   -rdb, -report-db string                Local Nuclei Reporting Database (Always use this to persistent report data)
-   -retries int                           Number of times to retry a failed request (default 1)
-   -se, -sarif-export string              File to export results in sarif format
-   -show-browser                          Show the browser on the screen
-   -si, -stats-interval int               Number of seconds between each stats line (default 5)
-   -silent                                Show only results in output
-   -spm, -stop-at-first-path              Stop processing http requests at first match (this may break template/workflow logic)
-   -stats                                 Display stats of the running scan
-   -system-resolvers                      Use system dns resolving as error fallback
-   -t, -templates value                   Templates to run, supports single and multiple templates using directory.
-   -tags value                            Tags to execute templates for
-   -u, -target string                     URL to scan with nuclei
-   -tv, -templates-version                Shows the installed nuclei-templates version
-   -timeout int                           Time to wait in seconds before timeout (default 5)
-   -tl                                    List available templates
-   -trace-log string                      File to write sent requests trace log
-   -ud, -update-directory string          Directory storing nuclei-templates (default /Users/geekboy/nuclei-templates)
-   -ut, -update-templates                 Download / updates nuclei community templates
-   -v, -verbose                           Show verbose output
-   -version                               Show version of nuclei
-   -w, -workflows value                   Workflows to run for nuclei
+   -H, -header value                  Custom Header.
+   -author value                      Templates to run based on author
+   -bs, -bulk-size int                Maximum Number of hosts analyzed in parallel per template (default 25)
+   -c, -concurrency int               Maximum Number of templates executed in parallel (default 10)
+   -config string                     Nuclei configuration file
+   -debug                             Debugging request and responses
+   -debug-req                         Debugging request
+   -debug-resp                        Debugging response
+   -et, -exclude value                Templates to exclude, supports single and multiple templates using directory.
+   -etags, -exclude-tags value        Exclude templates with the provided tags
+   -headless                          Enable headless browser based templates support
+   -impact, -severity value           Templates to run based on severity
+   -irr, -include-rr                  Write requests/responses for matches in JSON output
+   -include-tags value                Tags to force run even if they are in denylist
+   -include-templates value           Templates to force run even if they are in denylist
+   -interactions-cache-size int       Number of requests to keep in interactions cache (default 5000)
+   -interactions-cooldown-period int  Extra time for interaction polling before exiting (default 5)
+   -interactions-eviction int         Number of seconds to wait before evicting requests from cache (default 60)
+   -interactions-poll-duration int    Number of seconds before each interaction poll request (default 5)
+   -interactsh-url string             Self Hosted Interactsh Server URL (default https://interact.sh)
+   -json                              Write json output to files
+   -l, -list string                   List of URLs to run templates on
+   -me, -markdown-export string       Directory to export results in markdown format
+   -metrics                           Expose nuclei metrics on a port
+   -metrics-port int                  Port to expose nuclei metrics on (default 9092)
+   -nc, -no-color                     Disable colors in output
+   -nt, -new-templates                Only run newly added templates
+   -nm, -no-meta                      Don't display metadata for the matches
+   -no-interactsh                     Do not use interactsh server for blind interaction polling
+   -o, -output string                 File to write output to (optional)
+   -page-timeout int                  Seconds to wait for each page in headless (default 20)
+   -passive                           Enable Passive HTTP response processing mode
+   -project                           Use a project folder to avoid sending same request multiple times
+   -project-path string               Use a user defined project folder, temporary folder is used if not specified but enabled
+   -proxy-socks-url string            URL of the proxy socks server
+   -proxy-url string                  URL of the proxy server
+   -r, -resolvers string              File containing resolver list for nuclei
+   -rl, -rate-limit int               Maximum requests to send per second (default 150)
+   -rc, -report-config string         Nuclei Reporting Module configuration file
+   -rdb, -report-db string            Local Nuclei Reporting Database (Always use this to persistent report data)
+   -retries int                       Number of times to retry a failed request (default 1)
+   -se, -sarif-export string          File to export results in sarif format
+   -show-browser                      Show the browser on the screen
+   -si, -stats-interval int           Number of seconds between each stats line (default 5)
+   -silent                            Show only results in output
+   -spm, -stop-at-first-path          Stop processing http requests at first match (this may break template/workflow logic)
+   -stats                             Display stats of the running scan
+   -stats-json                        Write stats output in JSON format
+   -system-resolvers                  Use system dns resolving as error fallback
+   -t, -templates value               Templates to run, supports single and multiple templates using directory.
+   -tags value                        Tags to execute templates for
+   -u, -target string                 URL to scan with nuclei
+   -tv, -templates-version            Shows the installed nuclei-templates version
+   -timeout int                       Time to wait in seconds before timeout (default 5)
+   -tl                                List available templates
+   -trace-log string                  File to write sent requests trace log
+   -ud, -update-directory string      Directory storing nuclei-templates (default /Users/geekboy/nuclei-templates)
+   -ut, -update-templates             Download / updates nuclei community templates
+   -v, -verbose                       Show verbose output
+   -validate                          Validate the passed templates to nuclei
+   -version                           Show version of nuclei
+   -vv                                Display Extra Verbose Information
+   -w, -workflows value               Workflows to run for nuclei
 ```
 
 </details>
 
 ### Running Nuclei
 
-Scanning for CVEs on given list of URLs.
+Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
 
 ```sh
-▶ nuclei -l target_urls.txt -t cves/
+nuclei -list urls.txt
+```
+
+Example of `urls.txt`:
+
+```yaml
+https://redacted.com
+https://test.redacted.com
+http://example.com
+http://app.example.com
 ```
 
 **More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
