@@ -181,7 +181,7 @@ func printCallback(stats clistats.StatisticsClient) {
 func printCallbackJSON(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
 	_ = json.NewEncoder(builder).Encode(metricsMap(stats))
-	gologger.Print().Msg(builder.String())
+	fmt.Printf("%s", builder.String())
 }
 
 func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
