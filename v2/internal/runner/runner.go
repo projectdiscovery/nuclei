@@ -336,7 +336,7 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates loaded: %d (New:)", len(store.Templates()))
+		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
 	}
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
@@ -475,4 +475,25 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		templatesList = append(templatesList, text)
 	}
 	return templatesList, nil
+}
+
+// readNewTemplatesFile reads newly added templates from directory if it exists
+func (r *Runner) countNewTemplates() int {
+	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	file, err := os.Open(additionsFile)
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
+
+	count := 0
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			continue
+		}
+		count++
+	}
+	return count
 }

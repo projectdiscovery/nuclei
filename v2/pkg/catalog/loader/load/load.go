@@ -60,7 +60,7 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 	tagStr := types.ToString(templateTags)
 
 	tags := strings.Split(tagStr, ",")
-	severityStr := types.ToString(severity)
+	severityStr := strings.ToLower(types.ToString(severity))
 	authors := strings.Split(types.ToString(author), ",")
 
 	matched := false
@@ -78,9 +78,9 @@ func Load(templatePath string, workflow bool, customTags []string, tagFilter *fi
 			var err error
 
 			if len(customTags) == 0 {
-				match, err = tagFilter.Match(strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
+				match, err = tagFilter.Match(strings.ToLower(strings.TrimSpace(tag)), strings.ToLower(strings.TrimSpace(author)), severityStr)
 			} else {
-				match, err = tagFilter.MatchWithAllowedTags(customTags, strings.TrimSpace(tag), strings.TrimSpace(author), severityStr)
+				match, err = tagFilter.MatchWithAllowedTags(customTags, strings.ToLower(strings.TrimSpace(tag)), strings.ToLower(strings.TrimSpace(author)), severityStr)
 			}
 			if err == filter.ErrExcluded {
 				return false, filter.ErrExcluded

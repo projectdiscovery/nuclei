@@ -169,12 +169,12 @@ func New(config *Config) *TagFilter {
 
 func splitCommaTrim(value string) []string {
 	if !strings.Contains(value, ",") {
-		return []string{value}
+		return []string{strings.ToLower(value)}
 	}
 	splitted := strings.Split(value, ",")
 	final := make([]string, len(splitted))
 	for i, value := range splitted {
-		final[i] = strings.TrimSpace(value)
+		final[i] = strings.ToLower(strings.TrimSpace(value))
 	}
 	return final
 }
