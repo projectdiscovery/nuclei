@@ -24,7 +24,9 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
-	nucleiRunner.RunEnumeration()
+	if err := nucleiRunner.RunEnumeration(); err != nil {
+		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+	}
 	nucleiRunner.Close()
 }
 
@@ -41,11 +43,14 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVarP(&options.Target, "target", "u", "", "URL to scan with nuclei")
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
-	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "et", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
-	set.StringSliceVarP(&options.Severity, "severity", "impact", []string{}, "Templates to run based on severity, supports single and multiple severity.")
+	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
+	set.StringSliceVarP(&options.Severity, "severity", "impact", []string{}, "Templates to run based on severity")
+	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author")
+	set.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "Templates to force run even if they are in denylist")
+	set.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "Tags to force run even if they are in denylist")
 	set.StringVarP(&options.Targets, "list", "l", "", "List of URLs to run templates on")
 	set.StringVarP(&options.Output, "output", "o", "", "File to write output to (optional)")
-	set.StringVar(&options.ProxyURL, "proxy-url", "", "URL of the proxy server")
+	set.StringVarP(&options.ProxyURL, "proxy-url", "proxy", "", "URL of the proxy server")
 	set.StringVar(&options.ProxySocksURL, "proxy-socks-url", "", "URL of the proxy socks server")
 	set.BoolVar(&options.Silent, "silent", false, "Show only results in output")
 	set.BoolVar(&options.Version, "version", false, "Show version of nuclei")
@@ -81,6 +86,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
 	set.BoolVar(&options.ShowBrowser, "show-browser", false, "Show the browser on the screen")
 	set.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "Number of seconds between each stats line")
+	set.BoolVar(&options.StatsJSON, "stats-json", false, "Write stats output in JSON format")
 	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
 	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
 	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
@@ -92,6 +98,8 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "Number of seconds to wait before evicting requests from cache")
 	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")
 	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
+	set.BoolVar(&options.VerboseVerbose, "vv", false, "Display Extra Verbose Information")
+	set.BoolVar(&options.Validate, "validate", false, "Validate the passed templates to nuclei")
 	_ = set.Parse()
 
 	if cfgFile != "" {
