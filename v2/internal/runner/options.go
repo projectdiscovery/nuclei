@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -26,15 +27,15 @@ func ParseOptions(options *types.Options) {
 	showBanner()
 
 	if options.Version {
-		gologger.Info().Msgf("Current Version: %s\n", Version)
+		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
 	}
 	if options.TemplatesVersion {
-		config, err := readConfiguration()
+		configuration, err := config.ReadConfiguration()
 		if err != nil {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
-		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", config.CurrentVersion, config.TemplatesDirectory)
+		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.CurrentVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
 
@@ -78,13 +79,6 @@ func validateOptions(options *types.Options) error {
 	// Both verbose and silent flags were used
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
-	}
-
-	if !options.TemplateList {
-		// Check if a list of templates was provided and it exists
-		if len(options.Templates) == 0 && !options.NewTemplates && len(options.Workflows) == 0 && len(options.Tags) == 0 && !options.UpdateTemplates {
-			return errors.New("no template/templates provided")
-		}
 	}
 
 	// Validate proxy options if provided

@@ -48,7 +48,11 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 					}
 				})
 			} else {
-				firstMatched, err = executer.Executer.Execute(input)
+				var matched bool
+				matched, err = executer.Executer.Execute(input)
+				if matched {
+					firstMatched = true
+				}
 			}
 			if err != nil {
 				if len(template.Executers) == 1 {

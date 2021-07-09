@@ -162,3 +162,21 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	}
 	return nil, false
 }
+
+// ExecuteInternalExtractors executes internal dynamic extractors
+func (r *Operators) ExecuteInternalExtractors(data map[string]interface{}, extract ExtractFunc) map[string]interface{} {
+	dynamicValues := make(map[string]interface{})
+
+	// Start with the extractors first and evaluate them.
+	for _, extractor := range r.Extractors {
+		if !extractor.Internal {
+			continue
+		}
+		for match := range extract(data, extractor) {
+			if _, ok := dynamicValues[extractor.Name]; !ok {
+				dynamicValues[extractor.Name] = match
+			}
+		}
+	}
+	return dynamicValues
+}
