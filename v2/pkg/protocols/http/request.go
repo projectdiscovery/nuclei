@@ -82,7 +82,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 }
 
 // executeRaceRequest executes parallel requests for a template
-func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) executeParallelHTTP(reqURL string, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := r.newGenerator()
 
 	// Workers that keeps enqueuing new requests
@@ -105,6 +105,8 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous out
 			defer swg.Done()
 
 			r.options.RateLimiter.Take()
+
+			previous := make(map[string]interface{})
 			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
 			mutex.Lock()
 			if err != nil {
@@ -191,7 +193,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 	// verify if parallel elaboration was requested
 	if r.Threads > 0 {
-		return r.executeParallelHTTP(reqURL, dynamicValues, previous, callback)
+		return r.executeParallelHTTP(reqURL, dynamicValues, callback)
 	}
 
 	generator := r.newGenerator()
