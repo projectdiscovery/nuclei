@@ -152,13 +152,13 @@ Flags:
 Scanning target domain with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
 
 ```sh
-nuclei -target https://example.com
+nuclei -u https://example.com
 ```
 
 Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
 
 ```sh
-nuclei -list urls.txt
+nuclei -u urls.txt
 ```
 
 Example of `urls.txt`:
