@@ -35,7 +35,7 @@ type Options struct {
 
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
-type Filter struct {
+type Filter struct { // TODO
 	Severity string `yaml:"severity"`
 	severity []string
 	Tags     string `yaml:"tags"`
@@ -56,18 +56,14 @@ func (f *Filter) Compile() {
 
 // GetMatch returns true if a filter matches result event
 func (f *Filter) GetMatch(event *output.ResultEvent) bool {
-	severity := types.ToString(event.Info["severity"])
+	severity := types.ToString(event.Info.Severity) // TODO review
 	if len(f.severity) > 0 {
 		return stringSliceContains(f.severity, severity)
 	}
 
-	tags := event.Info["tags"]
-	tagParts := strings.Split(types.ToString(tags), ",")
-	for i, tag := range tagParts {
-		tagParts[i] = strings.TrimSpace(tag)
-	}
+	tags := event.Info.Tags.Value
 	for _, tag := range f.tags {
-		if stringSliceContains(tagParts, tag) {
+		if stringSliceContains(tags.([]string), tag) { // TODO review
 			return true
 		}
 	}

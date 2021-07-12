@@ -3,6 +3,8 @@ package sarif
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"os"
 	"path"
 	"strings"
@@ -59,8 +61,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	sarifSeverity := getSarifSeverity(event)
 
 	var ruleName string
-	if s, ok := event.Info["name"]; ok {
-		ruleName = s.(string)
+	if utils.IsNotEmpty(event.Info.Name) {
+		ruleName = event.Info.Name
 	}
 
 	var templateURL string
@@ -71,8 +73,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	var ruleDescription string
-	if d, ok := event.Info["description"]; ok {
-		ruleDescription = d.(string)
+	if utils.IsNotEmpty(event.Info.Description) {
+		ruleDescription = event.Info.Description
 	}
 
 	i.mutex.Lock()
@@ -108,17 +110,12 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 // getSarifSeverity returns the sarif severity
 func getSarifSeverity(event *output.ResultEvent) string {
-	var ruleSeverity string
-	if s, ok := event.Info["severity"]; ok {
-		ruleSeverity = s.(string)
-	}
-
-	switch ruleSeverity {
-	case "info":
+	switch event.Info.Severity.Severity {
+	case goflags.Info:
 		return "note"
-	case "low", "medium":
+	case goflags.Low, goflags.Medium:
 		return "warning"
-	case "high", "critical":
+	case goflags.High, goflags.Critical:
 		return "error"
 	default:
 		return "note"

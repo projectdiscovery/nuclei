@@ -1,6 +1,8 @@
 package offlinehttp
 
 import (
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"io/ioutil"
 	"os"
 	"path"
@@ -19,7 +21,7 @@ func TestFindResponses(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)

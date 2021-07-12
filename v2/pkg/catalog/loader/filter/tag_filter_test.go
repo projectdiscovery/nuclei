@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"github.com/projectdiscovery/goflags"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,7 @@ func TestTagBasedFilter(t *testing.T) {
 	})
 	t.Run("match-severity", func(t *testing.T) {
 		config := &Config{
-			Severities: []string{"high"},
+			Severities: goflags.Severities{goflags.High},
 		}
 		filter := New(config)
 		matched, _ := filter.Match("fuzz", "pdteam", "high")
@@ -70,7 +71,7 @@ func TestTagBasedFilter(t *testing.T) {
 		config := &Config{
 			Authors:    []string{"pdteam"},
 			Tags:       []string{"jira"},
-			Severities: []string{"high"},
+			Severities: goflags.Severities{goflags.High},
 		}
 		filter := New(config)
 		matched, _ := filter.Match("jira", "pdteam", "high")

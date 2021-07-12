@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func IsEmpty(value interface{}) bool {
+func isEmpty(value interface{}) bool {
 	if value == nil {
 		return true
 	}
@@ -27,4 +27,17 @@ func IsEmpty(value interface{}) bool {
 		}
 		return false
 	}
+}
+
+func IsEmpty(value ...interface{}) bool {
+	for _, current := range value {
+		if IsNotEmpty(current) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsNotEmpty(value interface{}) bool {
+	return !isEmpty(value)
 }

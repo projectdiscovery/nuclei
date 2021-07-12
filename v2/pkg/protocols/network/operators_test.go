@@ -1,6 +1,8 @@
 package network
 
 import (
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
@@ -24,7 +26,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
@@ -49,7 +51,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
@@ -112,7 +114,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
@@ -175,7 +177,7 @@ func TestNetworkMakeResult(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")

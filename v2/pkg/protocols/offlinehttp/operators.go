@@ -1,6 +1,7 @@
 package offlinehttp
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"net/http"
 	"strings"
 	"time"
@@ -137,7 +138,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "http",
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),

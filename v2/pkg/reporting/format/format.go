@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -17,9 +18,9 @@ func Summary(event *output.ResultEvent) string {
 	builder.WriteString("[")
 	builder.WriteString(template)
 	builder.WriteString("] [")
-	builder.WriteString(types.ToString(event.Info["severity"]))
+	builder.WriteString(types.ToString(event.Info.Severity))
 	builder.WriteString("] ")
-	builder.WriteString(types.ToString(event.Info["name"]))
+	builder.WriteString(types.ToString(event.Info.Name))
 	builder.WriteString(" found on ")
 	builder.WriteString(event.Host)
 	data := builder.String()
@@ -43,12 +44,21 @@ func MarkdownDescription(event *output.ResultEvent) string {
 	builder.WriteString("\n\n**Timestamp**: ")
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
-	for k, v := range event.Info {
-		if k == "reference" {
+
+	fields := reflect.TypeOf(event.Info)
+	values := reflect.ValueOf(event.Info)
+	numberOfFields := fields.NumField()
+
+	for i := 0; i < numberOfFields; i++ { // TODO review
+		field := fields.Field(i)
+		value := values.Field(i)
+
+		if field.Name == "reference" {
 			continue
 		}
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+		builder.WriteString(fmt.Sprintf("| %s | %s |\n", field.Name, value))
 	}
+
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
 		builder.WriteString(event.Request)
@@ -113,17 +123,18 @@ func MarkdownDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n```\n")
 		}
 	}
-	if d, ok := event.Info["reference"]; ok {
+
+	if !event.Info.Reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		switch v := d.(type) {
+		switch value := event.Info.Reference.Value.(type) { // TODO revisit
 		case string:
-			if !strings.HasPrefix(v, "-") {
+			if !strings.HasPrefix(value, "-") {
 				builder.WriteString("- ")
 			}
-			builder.WriteString(v)
+			builder.WriteString(value)
 		case []interface{}:
-			slice := types.ToStringSlice(v)
+			slice := types.ToStringSlice(value)
 			for i, item := range slice {
 				builder.WriteString("- ")
 				builder.WriteString(item)

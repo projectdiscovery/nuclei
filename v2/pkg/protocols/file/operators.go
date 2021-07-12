@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"strings"
 	"time"
 
@@ -136,7 +137,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "file",
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),

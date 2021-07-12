@@ -1,6 +1,8 @@
 package offlinehttp
 
 import (
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"net/http"
 	"testing"
 	"time"
@@ -21,7 +23,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -47,7 +49,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -113,7 +115,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -166,7 +168,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{
 		Matchers: []*matchers.Matcher{{

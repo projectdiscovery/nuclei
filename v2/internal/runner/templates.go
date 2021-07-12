@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"fmt"
+	"github.com/projectdiscovery/goflags"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -35,16 +36,13 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	return template, nil
 }
 
-func (r *Runner) templateLogMsg(id, name, author, severity string) string {
+func (r *Runner) templateLogMsg(id string, name string, author string, severity goflags.Severity) string {
 	// Display the message for the template
-	message := fmt.Sprintf("[%s] %s (%s)",
+	return fmt.Sprintf("[%s] %s (%s) [%s]",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
-		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String())
-	if severity != "" {
-		message += " [" + r.severityColors.Data[severity] + "]"
-	}
-	return message
+		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String(),
+		r.addColor(severity))
 }
 
 // appendAtSignToAuthors appends @ before each author and returns final string
@@ -75,7 +73,10 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID,
+			types.ToString(t.Info.Name),
+			types.ToString(t.Info.Author),
+			t.Info.Severity.Severity))
 	}
 }
 

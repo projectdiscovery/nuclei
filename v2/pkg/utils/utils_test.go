@@ -15,6 +15,7 @@ func TestIsEmpty(t *testing.T) {
 		{" ", true},
 		{"\n", true},
 		{"\t", true},
+		{0, true},
 		{[]string{}, true},
 		{[0]string{}, true},
 		{[...]string{}, true},
@@ -27,7 +28,6 @@ func TestIsEmpty(t *testing.T) {
 		{nil, true},
 
 		{'a', false},
-		{0, true},
 		{1, false},
 		{3.14, false},
 		{" test ", false},
@@ -46,4 +46,16 @@ func TestIsEmpty(t *testing.T) {
 			assert.Equal(t, testCase[1], IsEmpty(testCase[0]))
 		})
 	}
+}
+
+func TestIsEmptyMultiple(t *testing.T) {
+	assert.False(t, IsEmpty([2]int{1, 2}, [0]int{}))
+	assert.False(t, IsEmpty([0]int{}, [2]int{1, 2}))
+	assert.False(t, IsEmpty([0]int{}, " abc "))
+	assert.False(t, IsEmpty([0]int{}, []string{}, 123))
+	assert.False(t, IsEmpty([0]int{}, []string{}, []string{"a"}))
+
+	assert.True(t, IsEmpty([0]int{}, ""))
+	assert.True(t, IsEmpty([0]int{}, []string{}))
+	assert.True(t, IsEmpty([0]int{}, []string{}, 0))
 }
