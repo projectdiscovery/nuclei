@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"github.com/projectdiscovery/goflags"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
@@ -21,7 +22,7 @@ type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  []string
+	Severities  goflags.Severities
 	IncludeTags []string
 
 	Catalog            *catalog.Catalog

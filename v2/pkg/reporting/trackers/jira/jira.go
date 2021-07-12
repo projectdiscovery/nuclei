@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 
 	jira "github.com/andygrunwald/go-jira"
@@ -109,12 +110,21 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 	builder.WriteString("\n\n*Timestamp*: ")
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	builder.WriteString("\n\n*Template Information*\n\n| Key | Value |\n")
-	for k, v := range event.Info {
-		if k == "reference" {
+
+	fields := reflect.TypeOf(event.Info)
+	values := reflect.ValueOf(event.Info)
+	numberOfFields := fields.NumField()
+
+	for i := 0; i < numberOfFields; i++ { // TODO review
+		field := fields.Field(i)
+		value := values.Field(i)
+
+		if field.Name == "reference" {
 			continue
 		}
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+		builder.WriteString(fmt.Sprintf("| %s | %s |\n", field.Name, value))
 	}
+
 	builder.WriteString("\n*Request*\n\n{code}\n")
 	builder.WriteString(event.Request)
 	builder.WriteString("\n{code}\n\n*Response*\n\n{code}\n")
@@ -174,10 +184,10 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n{code}\n")
 		}
 	}
-	if d, ok := event.Info["reference"]; ok {
+	if !event.Info.Reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		switch v := d.(type) {
+		switch v := event.Info.Reference.Value.(type) { // TODO revisit
 		case string:
 			if !strings.HasPrefix(v, "-") {
 				builder.WriteString("- ")

@@ -4,6 +4,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/projectdiscovery/goflags"
 	"strconv"
 	"strings"
 )
@@ -43,6 +44,10 @@ func ToString(data interface{}) string {
 		return strconv.FormatUint(uint64(s), 10)
 	case []byte:
 		return string(s)
+	case goflags.SeverityHolder:
+		return s.Severity.String()
+	case goflags.Severity:
+		return s.String()
 	case fmt.Stringer:
 		return s.String()
 	case error:

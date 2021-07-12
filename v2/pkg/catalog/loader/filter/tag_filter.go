@@ -2,6 +2,7 @@ package filter
 
 import (
 	"errors"
+	"github.com/projectdiscovery/goflags"
 	"strings"
 )
 
@@ -112,7 +113,7 @@ type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  []string
+	Severities  goflags.Severities
 	IncludeTags []string
 }
 
@@ -135,10 +136,8 @@ func New(config *Config) *TagFilter {
 		}
 	}
 	for _, tag := range config.Severities {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.severities[val]; !ok {
-				filter.severities[val] = struct{}{}
-			}
+		if _, ok := filter.severities[tag.String()]; !ok { // TODO
+			filter.severities[tag.String()] = struct{}{}
 		}
 	}
 	for _, tag := range config.Authors {

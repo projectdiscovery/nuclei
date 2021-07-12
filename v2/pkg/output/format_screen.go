@@ -2,7 +2,6 @@ package output
 
 import (
 	"bytes"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -31,7 +30,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("] ")
 
 		builder.WriteString("[")
-		builder.WriteString(w.severityColors.Data[types.ToString(output.Info["severity"])])
+		builder.WriteString(w.severityColors(output.Info.Severity.Severity))
 		builder.WriteString("] ")
 	}
 	builder.WriteString(output.Matched)

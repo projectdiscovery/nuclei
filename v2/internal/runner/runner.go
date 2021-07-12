@@ -3,6 +3,8 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"os"
 	"path"
 	"strings"
@@ -49,7 +51,7 @@ type Runner struct {
 	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *reporting.Client
-	severityColors  *colorizer.Colorizer
+	addColor        func(goflags.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
 }
@@ -112,14 +114,14 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.severityColors = colorizer.New(runner.colorizer)
+	runner.addColor = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
+	if (utils.IsEmpty(options.Templates) || !options.NewTemplates || (utils.IsEmpty(options.Targets, options.Target) && utils.IsNotEmpty(options.Stdin))) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -207,7 +209,7 @@ func New(options *types.Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsEmpty(options.ProjectPath)})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}

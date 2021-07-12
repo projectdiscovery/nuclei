@@ -19,7 +19,7 @@ type Options struct {
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Severity filters templates based on their severity and only run the matching ones.
-	Severity goflags.StringSlice
+	Severity goflags.Severities
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.StringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist

@@ -34,7 +34,7 @@ func readConfig() {
 	home, _ := os.UserHomeDir()
 	templatesDirectory := path.Join(home, "nuclei-templates")
 
-	set := goflags.New()
+	set := goflags.NewFlagSet()
 	set.SetDescription(`Nuclei is a fast tool for configurable targeted scanning 
 based on templates offering massive extensibility and ease of use.`)
 	set.StringVar(&cfgFile, "config", "", "Nuclei configuration file")
@@ -44,7 +44,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
 	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
-	set.StringSliceVarP(&options.Severity, "severity", "impact", []string{}, "Templates to run based on severity")
+	set.SeverityVarP(&options.Severity, "severity", "impact", goflags.GetSupportedSeverities(), "Templates to run based on severity")
 	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author")
 	set.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "Templates to force run even if they are in denylist")
 	set.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "Tags to force run even if they are in denylist")

@@ -44,7 +44,7 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 	return nil
 }
 
-// parseWorkflowTemplate parses a workflow template creating an executer
+// parseWorkflowTemplate parses a workflow template creating an executor
 func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
@@ -74,7 +74,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 			continue
 		}
 		if template.Executer == nil {
-			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
+			gologger.Warning().Msgf("Could not parse workflow template %s: no executor found\n", path)
 			continue
 		}
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
