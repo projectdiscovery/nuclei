@@ -42,7 +42,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if utils.IsEmpty(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
 	}
-	if utils.IsEmpty(template.Info.Author) {
+	if utils.IsEmpty(template.Info.Authors) {
 		return nil, errors.New("no template author field provided")
 	}
 

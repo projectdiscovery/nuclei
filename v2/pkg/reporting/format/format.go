@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"reflect"
 	"strings"
 
@@ -18,7 +19,7 @@ func Summary(event *output.ResultEvent) string {
 	builder.WriteString("[")
 	builder.WriteString(template)
 	builder.WriteString("] [")
-	builder.WriteString(types.ToString(event.Info.Severity))
+	builder.WriteString(types.ToString(event.Info.SeverityHolder))
 	builder.WriteString("] ")
 	builder.WriteString(types.ToString(event.Info.Name))
 	builder.WriteString(" found on ")
@@ -124,10 +125,11 @@ func MarkdownDescription(event *output.ResultEvent) string {
 		}
 	}
 
-	if !event.Info.Reference.IsEmpty() {
+	referenceValue := event.Info.Reference.Value
+	if utils.IsNotEmpty(referenceValue) {
 		builder.WriteString("\nReference: \n")
 
-		switch value := event.Info.Reference.Value.(type) { // TODO revisit
+		switch value := referenceValue.(type) { // TODO revisit
 		case string:
 			if !strings.HasPrefix(value, "-") {
 				builder.WriteString("- ")

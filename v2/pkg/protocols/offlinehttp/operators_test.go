@@ -23,7 +23,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -49,7 +49,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -115,7 +115,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -168,7 +168,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{Severity: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{
 		Matchers: []*matchers.Matcher{{

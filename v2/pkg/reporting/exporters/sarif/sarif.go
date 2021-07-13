@@ -110,7 +110,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 // getSarifSeverity returns the sarif severity
 func getSarifSeverity(event *output.ResultEvent) string {
-	switch event.Info.Severity.Severity {
+	switch event.Info.SeverityHolder.Severity {
 	case goflags.Info:
 		return "note"
 	case goflags.Low, goflags.Medium:

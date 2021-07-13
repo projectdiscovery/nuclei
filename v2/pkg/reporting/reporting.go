@@ -56,7 +56,7 @@ func (f *Filter) Compile() {
 
 // GetMatch returns true if a filter matches result event
 func (f *Filter) GetMatch(event *output.ResultEvent) bool {
-	severity := types.ToString(event.Info.Severity) // TODO review
+	severity := types.ToString(event.Info.SeverityHolder) // TODO review
 	if len(f.severity) > 0 {
 		return stringSliceContains(f.severity, severity)
 	}

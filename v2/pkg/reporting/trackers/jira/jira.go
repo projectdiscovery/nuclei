@@ -3,6 +3,7 @@ package jira
 import (
 	"bytes"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"io/ioutil"
 	"reflect"
 	"strings"
@@ -184,10 +185,11 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n{code}\n")
 		}
 	}
-	if !event.Info.Reference.IsEmpty() {
+	referenceValue := event.Info.Reference.Value
+	if utils.IsNotEmpty(referenceValue) {
 		builder.WriteString("\nReference: \n")
 
-		switch v := event.Info.Reference.Value.(type) { // TODO revisit
+		switch v := referenceValue.(type) { // TODO revisit
 		case string:
 			if !strings.HasPrefix(v, "-") {
 				builder.WriteString("- ")
