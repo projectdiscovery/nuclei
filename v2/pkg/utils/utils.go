@@ -17,7 +17,7 @@ func isEmpty(value interface{}) bool {
 	case reflect.String:
 		reflectedValue := actualValueInterface.(string)
 		return strings.TrimSpace(reflectedValue) == ""
-	case reflect.Slice, reflect.Array:
+	case reflect.Slice, reflect.Array, reflect.Map:
 		return reflectValue.Len() == 0
 	case reflect.Int32:
 		return IsEmpty(string(actualValueInterface.(rune)))

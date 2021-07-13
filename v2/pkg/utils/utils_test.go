@@ -25,6 +25,7 @@ func TestIsEmpty(t *testing.T) {
 		{interface{}(nil), true},
 		{[]struct{}(nil), true},
 		{[]interface{}(nil), true},
+		{map[string]interface{}{}, true},
 		{nil, true},
 
 		{'a', false},
@@ -39,6 +40,7 @@ func TestIsEmpty(t *testing.T) {
 		{struct{ a string }{"a"}, false},
 		{&struct{ a string }{"a"}, false},
 		{[]struct{ a string }{{"b"}, {"b"}}, false},
+		{map[string]interface{}{"a": 13}, false},
 	}
 
 	for index, testCase := range testCases {
@@ -48,14 +50,21 @@ func TestIsEmpty(t *testing.T) {
 	}
 }
 
-func TestIsEmptyMultiple(t *testing.T) {
-	assert.False(t, IsEmpty([2]int{1, 2}, [0]int{}))
-	assert.False(t, IsEmpty([0]int{}, [2]int{1, 2}))
-	assert.False(t, IsEmpty([0]int{}, " abc "))
-	assert.False(t, IsEmpty([0]int{}, []string{}, 123))
-	assert.False(t, IsEmpty([0]int{}, []string{}, []string{"a"}))
+func TestVariadicIsEmpty(t *testing.T) {
+	testVariadicIsEmpty := func(expected bool, value ...interface{}) {
+		t.Run(fmt.Sprintf("%v", value), func(testCase *testing.T) {
+			assert.Equal(testCase, expected, IsEmpty(value...))
+		})
+	}
 
-	assert.True(t, IsEmpty([0]int{}, ""))
-	assert.True(t, IsEmpty([0]int{}, []string{}))
-	assert.True(t, IsEmpty([0]int{}, []string{}, 0))
+	testVariadicIsEmpty(false, [2]int{1, 2}, [0]int{})
+	testVariadicIsEmpty(false, [0]int{}, [2]int{1, 2})
+	testVariadicIsEmpty(false, [0]int{}, " abc ")
+	testVariadicIsEmpty(false, [0]int{}, []string{}, 123)
+	testVariadicIsEmpty(false, [0]int{}, []string{}, []string{"a"})
+	testVariadicIsEmpty(false, [0]int{}, map[string]int{"a": 123}, map[string]interface{}{"b": "c"})
+
+	testVariadicIsEmpty(true, [0]int{}, "")
+	testVariadicIsEmpty(true, [0]int{}, []string{})
+	testVariadicIsEmpty(true, [0]int{}, []string{}, 0)
 }

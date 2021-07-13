@@ -7,12 +7,12 @@ import (
 )
 
 type Info struct {
-	Name        string
-	Author      string
-	Tags        StringSlice `yaml:"tags"`
-	Description string
-	Reference   StringSlice `yaml:"reference"`
-	Severity    goflags.SeverityHolder
+	Name           string
+	Authors        StringSlice `yaml:"author"`
+	Tags           StringSlice `yaml:"tags"`
+	Description    string
+	Reference      StringSlice            `yaml:"reference"`
+	SeverityHolder goflags.SeverityHolder `yaml:"severity"`
 }
 
 type StringSlice struct {

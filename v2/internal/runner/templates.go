@@ -75,8 +75,8 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	} else {
 		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID,
 			types.ToString(t.Info.Name),
-			types.ToString(t.Info.Author),
-			t.Info.Severity.Severity))
+			types.ToString(t.Info.Authors),
+			t.Info.SeverityHolder.Severity))
 	}
 }
 
