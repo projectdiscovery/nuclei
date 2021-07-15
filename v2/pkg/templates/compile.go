@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
 	"gopkg.in/yaml.v2"
 )
 
@@ -60,11 +59,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	if utils.IsNotEmpty(template.Workflows) {
 		compiled := &template.Workflow
 
-		loader, err := compile.NewLoader(&options)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create workflow loader")
-		}
-		compileWorkflow(&options, compiled, loader)
+		compileWorkflow(&options, compiled, options.WorkflowLoader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
