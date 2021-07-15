@@ -29,35 +29,48 @@ func (stringSlice StringSlice) ToSlice() []string {
 		return []string{value}
 	case []string:
 		return value
+	case nil:
+		return []string{}
 	}
 	panic("Illegal State: StringSlice holds non-string value(s)")
 }
 
 func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var str string
-	var slice []string
-
-	err := unmarshal(&slice)
+	marshalledSlice, err := marshalStringToSlice(unmarshal)
 	if err != nil {
-		err := unmarshal(&str)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
-	var result []string
-	var split []string
-	if len(slice) > 0 {
-		split = slice
-	} else if strings.TrimSpace(str) != "" {
-		split = strings.Split(str, ",")
-	}
-
-	for _, value := range split {
+	result := make([]string, len(marshalledSlice))
+	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value)))
 	}
 	stringSlice.Value = result
 	return nil
+}
+
+func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
+	var marshalledValueAsString string
+	var marshalledValuesAsSlice []string
+
+	sliceMarshalError := unmarshal(&marshalledValuesAsSlice)
+	if sliceMarshalError != nil {
+		stringMarshalError := unmarshal(&marshalledValueAsString)
+		if stringMarshalError != nil {
+			return nil, stringMarshalError
+		}
+	}
+
+	var result []string
+	if len(marshalledValuesAsSlice) > 0 {
+		result = marshalledValuesAsSlice
+	} else if utils.IsNotEmpty(marshalledValueAsString) {
+		result = strings.Split(marshalledValueAsString, ",")
+	} else {
+		result = []string{}
+	}
+
+	return result, nil
 }
 
 func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {

@@ -88,7 +88,7 @@ func (c *Catalog) convertPathToAbsolute(t string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return path.Join(absPath, file), nil
+		return path.Join(absPath, file), nil // TODO this might rather be filepath.Join to make it OS agnostic. Search for other occurrences
 	}
 	return c.ResolvePath(t, "")
 }
