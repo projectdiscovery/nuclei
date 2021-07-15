@@ -158,7 +158,7 @@ nuclei -u https://example.com
 Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
 
 ```sh
-nuclei -u urls.txt
+nuclei -list urls.txt
 ```
 
 Example of `urls.txt`:
