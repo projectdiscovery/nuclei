@@ -3,19 +3,20 @@ package filter
 import (
 	"errors"
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution
 type TagFilter struct {
 	allowedTags map[string]struct{}
-	severities  map[string]struct{}
+	severities  map[goflags.Severity]struct{}
 	authors     map[string]struct{}
 	block       map[string]struct{}
 	matchAllows map[string]struct{}
 }
 
-// ErrExcluded is returned for execluded templates
+// ErrExcluded is returned for excluded templates
 var ErrExcluded = errors.New("the template was excluded")
 
 // Match takes a tag and whether the template was matched from user
@@ -26,87 +27,102 @@ var ErrExcluded = errors.New("the template was excluded")
 // matchAllows section.
 //
 // It returns true if the tag is specified, or false.
-func (t *TagFilter) Match(tag, author, severity string) (bool, error) {
-	matchedAny := false
-	if len(t.allowedTags) > 0 {
-		_, ok := t.allowedTags[tag]
-		if !ok {
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severity goflags.Severity) (bool, error) {
+	for _, templateTag := range templateTags {
+		_, blocked := tagFilter.block[templateTag]
+		_, allowed := tagFilter.matchAllows[templateTag]
+
+		if blocked && !allowed { // the whitelist has precedence over the blacklist
+			return false, ErrExcluded
+		}
+	}
+
+	if !isTagMatch(templateTags, tagFilter) {
+		return false, nil
+	}
+
+	if !isAuthorMatch(templateAuthors, tagFilter) {
+		return false, nil
+	}
+
+	if utils.IsNotEmpty(tagFilter.severities) {
+		if _, ok := tagFilter.severities[severity]; !ok {
 			return false, nil
 		}
-		matchedAny = true
 	}
-	_, ok := t.block[tag]
-	if ok {
-		if _, allowOk := t.matchAllows[tag]; allowOk {
-			return true, nil
-		}
-		return false, ErrExcluded
-	}
-	if len(t.authors) > 0 {
-		_, ok = t.authors[author]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(t.severities) > 0 {
-		_, ok = t.severities[severity]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(t.allowedTags) == 0 && len(t.authors) == 0 && len(t.severities) == 0 {
-		return true, nil
-	}
-	return matchedAny, nil
+
+	return true, nil
 }
 
-// MatchWithAllowedTags takes an addition list of allowed tags
-// and returns true if the match was successful.
-func (t *TagFilter) MatchWithAllowedTags(allowed []string, tag, author, severity string) (bool, error) {
-	matchedAny := false
-
-	allowedMap := make(map[string]struct{})
-	for _, tag := range allowed {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := allowedMap[val]; !ok {
-				allowedMap[val] = struct{}{}
+func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
+	if utils.IsEmpty(tagFilter.authors) {
+		return true
+	} else {
+		for _, templateAuthor := range templateAuthors {
+			if _, ok := tagFilter.authors[templateAuthor]; ok {
+				return true
 			}
 		}
 	}
-	if len(allowedMap) > 0 {
-		_, ok := allowedMap[tag]
-		if !ok {
+	return false
+}
+
+func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
+	if utils.IsEmpty(tagFilter.allowedTags) {
+		return true
+	} else {
+		for _, templateTag := range templateTags {
+			if _, ok := tagFilter.allowedTags[templateTag]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// MatchWithWorkflowTags takes an addition list of allowed tags
+// and returns true if the match was successful.
+func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity goflags.Severity, workflowTags []string) (bool, error) {
+
+	workflowAllowedTagMap := make(map[string]struct{})
+	for _, workflowTag := range workflowTags {
+		if _, ok := workflowAllowedTagMap[workflowTag]; !ok {
+			workflowAllowedTagMap[workflowTag] = struct{}{}
+		}
+	}
+
+	for _, templateTag := range templateTags {
+		_, blocked := tagFilter.block[templateTag]
+		_, allowed := tagFilter.matchAllows[templateTag]
+
+		if blocked && !allowed { // the whitelist has precedence over the blacklist
+			return false, ErrExcluded
+		}
+	}
+
+	if utils.IsNotEmpty(workflowAllowedTagMap) { // TODO review, does not seem to make sense
+		for _, templateTag := range templateTags {
+			if _, ok := workflowAllowedTagMap[templateTag]; !ok {
+				return false, nil
+			}
+		}
+	}
+
+	if utils.IsNotEmpty(tagFilter.authors) {
+		for _, templateAuthor := range templateAuthors {
+			if _, ok := tagFilter.authors[templateAuthor]; !ok {
+				return false, nil
+			}
+		}
+
+	}
+	if utils.IsNotEmpty(tagFilter.severities) {
+		if _, ok := tagFilter.severities[templateSeverity]; !ok {
 			return false, nil
 		}
-		matchedAny = true
 	}
-	_, ok := t.block[tag]
-	if ok && !matchedAny {
-		if _, allowOk := t.matchAllows[tag]; allowOk {
-			return true, nil
-		}
-		return false, ErrExcluded
-	}
-	if len(t.authors) > 0 {
-		_, ok = t.authors[author]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(t.severities) > 0 {
-		_, ok = t.severities[severity]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(allowedMap) == 0 && len(t.authors) == 0 && len(t.severities) == 0 {
-		return true, nil
-	}
-	return matchedAny, nil
+
+	return true, nil
 }
 
 type Config struct {
@@ -124,7 +140,7 @@ func New(config *Config) *TagFilter {
 	filter := &TagFilter{
 		allowedTags: make(map[string]struct{}),
 		authors:     make(map[string]struct{}),
-		severities:  make(map[string]struct{}),
+		severities:  make(map[goflags.Severity]struct{}),
 		block:       make(map[string]struct{}),
 		matchAllows: make(map[string]struct{}),
 	}
@@ -136,8 +152,8 @@ func New(config *Config) *TagFilter {
 		}
 	}
 	for _, tag := range config.Severities {
-		if _, ok := filter.severities[tag.String()]; !ok { // TODO
-			filter.severities[tag.String()] = struct{}{}
+		if _, ok := filter.severities[tag]; !ok {
+			filter.severities[tag] = struct{}{}
 		}
 	}
 	for _, tag := range config.Authors {
@@ -166,6 +182,11 @@ func New(config *Config) *TagFilter {
 	return filter
 }
 
+/*
+TODO similar logic is used over and over again. It should be extracted and reused
+Changing []string and string data types that hold string slices to StringSlice would be the preferred solution,
+which implicitly does the normalization before any other calls starting to use it.
+*/
 func splitCommaTrim(value string) []string {
 	if !strings.Contains(value, ",") {
 		return []string{strings.ToLower(value)}

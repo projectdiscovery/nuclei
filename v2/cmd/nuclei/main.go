@@ -1,13 +1,13 @@
 package main
 
 import (
-	"os"
-	"path"
-
+	"fmt"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"os"
+	"path"
 )
 
 var (
@@ -37,6 +37,11 @@ func readConfig() {
 	set := goflags.NewFlagSet()
 	set.SetDescription(`Nuclei is a fast tool for configurable targeted scanning 
 based on templates offering massive extensibility and ease of use.`)
+
+	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
+	This can be very confusing and should be addressed
+	*/
+
 	set.StringVar(&cfgFile, "config", "", "Nuclei configuration file")
 	set.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
 	set.IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
@@ -44,7 +49,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
 	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
-	set.SeverityVarP(&options.Severity, "severity", "impact", goflags.GetSupportedSeverities(), "Templates to run based on severity")
+	set.SeverityVarP(&options.Severity, "severity", "impact", goflags.Severities{}, fmt.Sprintf("Templates to run based on severity. Possible values: %s", goflags.GetSupportedSeverities().String()))
 	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author")
 	set.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "Templates to force run even if they are in denylist")
 	set.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "Tags to force run even if they are in denylist")

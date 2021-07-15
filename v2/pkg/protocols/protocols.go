@@ -56,6 +56,8 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 
 	Operators []*operators.Operators // only used by offlinehttp module
+
+	WorkflowLoader model.WorkflowLoader
 }
 
 // Request is an interface implemented any protocol based request generator.
