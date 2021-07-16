@@ -4,6 +4,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"strconv"
 	"strings"
 )
@@ -43,6 +44,10 @@ func ToString(data interface{}) string {
 		return strconv.FormatUint(uint64(s), 10)
 	case []byte:
 		return string(s)
+	case severity.SeverityHolder:
+		return s.Severity.String()
+	case severity.Severity:
+		return s.String()
 	case fmt.Stringer:
 		return s.String()
 	case error:

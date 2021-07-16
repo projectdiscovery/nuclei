@@ -2,13 +2,14 @@ package templates
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) {
+func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
@@ -18,7 +19,7 @@ func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Wor
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
+func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader) error {
 	shouldNotValidate := false
 
 	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
@@ -44,12 +45,13 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 	return nil
 }
 
-// parseWorkflowTemplate parses a workflow template creating an executer
-func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
+// parseWorkflowTemplate parses a workflow template creating an executor
+func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
-	if len(workflow.Tags) > 0 {
-		paths = loader.ListTags([]string{workflow.Tags})
+	workflowTags := workflow.Tags.ToSlice()
+	if utils.IsNotEmpty(workflowTags) {
+		paths = loader.ListTags(workflowTags)
 	} else {
 		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
 	}
@@ -74,7 +76,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 			continue
 		}
 		if template.Executer == nil {
-			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
+			gologger.Warning().Msgf("Could not parse workflow template %s: no executor found\n", path)
 			continue
 		}
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{

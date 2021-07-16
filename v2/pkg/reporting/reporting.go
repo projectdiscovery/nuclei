@@ -1,6 +1,9 @@
 package reporting
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/multierr"
 )
 
@@ -36,39 +38,32 @@ type Options struct {
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {
-	Severity string `yaml:"severity"`
-	severity []string
-	Tags     string `yaml:"tags"`
-	tags     []string
-}
-
-// Compile compiles the filter creating match structures.
-func (f *Filter) Compile() {
-	parts := strings.Split(f.Severity, ",")
-	for _, part := range parts {
-		f.severity = append(f.severity, strings.TrimSpace(part))
-	}
-	parts = strings.Split(f.Tags, ",")
-	for _, part := range parts {
-		f.tags = append(f.tags, strings.TrimSpace(part))
-	}
+	Severities severity.Severities `yaml:"severity"`
+	Tags       model.StringSlice   `yaml:"tags"`
 }
 
 // GetMatch returns true if a filter matches result event
-func (f *Filter) GetMatch(event *output.ResultEvent) bool {
-	severity := types.ToString(event.Info["severity"])
-	if len(f.severity) > 0 {
-		return stringSliceContains(f.severity, severity)
-	}
+func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
+	return isSeverityMatch(event, filter) && isTagMatch(event, filter)
+}
 
-	tags := event.Info["tags"]
-	tagParts := strings.Split(types.ToString(tags), ",")
-	for i, tag := range tagParts {
-		tagParts[i] = strings.TrimSpace(tag)
-	}
-	for _, tag := range f.tags {
-		if stringSliceContains(tagParts, tag) {
+func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
+	tags := event.Info.Tags.Value
+	for _, tag := range filter.Tags.ToSlice() {
+		if stringSliceContains(tags.([]string), tag) { // TODO review
 			return true
+		}
+	}
+	return false
+}
+
+func isSeverityMatch(event *output.ResultEvent, filter *Filter) bool {
+	severity := event.Info.SeverityHolder.Severity // TODO review
+	if utils.IsNotEmpty(filter.Severities) {
+		for _, current := range filter.Severities {
+			if current == severity {
+				return true
+			}
 		}
 	}
 	return false
@@ -98,13 +93,6 @@ type Client struct {
 
 // New creates a new nuclei issue tracker reporting client
 func New(options *Options, db string) (*Client, error) {
-	if options.AllowList != nil {
-		options.AllowList.Compile()
-	}
-	if options.DenyList != nil {
-		options.DenyList.Compile()
-	}
-
 	client := &Client{options: options}
 	if options.Github != nil {
 		tracker, err := github.New(options.Github)

@@ -2,6 +2,7 @@ package dns
 
 import (
 	"bytes"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"time"
 
 	"github.com/miekg/dns"
@@ -139,7 +140,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "dns",
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),

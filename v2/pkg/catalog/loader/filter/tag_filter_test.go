@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,11 +14,11 @@ func TestTagBasedFilter(t *testing.T) {
 	filter := New(config)
 
 	t.Run("true", func(t *testing.T) {
-		matched, _ := filter.Match("jira", "pdteam", "low")
+		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("false", func(t *testing.T) {
-		matched, _ := filter.Match("consul", "pdteam", "low")
+		matched, _ := filter.Match([]string{"consul"}, []string{"pdteam"}, severity.Low)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("not-match-excludes", func(t *testing.T) {
@@ -25,7 +26,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"dos"},
 		}
 		filter := New(config)
-		matched, err := filter.Match("dos", "pdteam", "low")
+		matched, err := filter.Match([]string{"dos"}, []string{"pdteam"}, severity.Low)
 		require.False(t, matched, "could not get correct match")
 		require.Equal(t, ErrExcluded, err, "could not get correct error")
 	})
@@ -36,7 +37,7 @@ func TestTagBasedFilter(t *testing.T) {
 			IncludeTags: []string{"fuzz"},
 		}
 		filter := New(config)
-		matched, err := filter.Match("fuzz", "pdteam", "low")
+		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
 	})
@@ -46,7 +47,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"fuzz"},
 		}
 		filter := New(config)
-		matched, err := filter.Match("fuzz", "pdteam", "low")
+		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
 	})
@@ -55,31 +56,31 @@ func TestTagBasedFilter(t *testing.T) {
 			Authors: []string{"pdteam"},
 		}
 		filter := New(config)
-		matched, _ := filter.Match("fuzz", "pdteam", "low")
+		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-severity", func(t *testing.T) {
 		config := &Config{
-			Severities: []string{"high"},
+			Severities: severity.Severities{severity.High},
 		}
 		filter := New(config)
-		matched, _ := filter.Match("fuzz", "pdteam", "high")
+		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.High)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-conditions", func(t *testing.T) {
 		config := &Config{
 			Authors:    []string{"pdteam"},
 			Tags:       []string{"jira"},
-			Severities: []string{"high"},
+			Severities: severity.Severities{severity.High},
 		}
 		filter := New(config)
-		matched, _ := filter.Match("jira", "pdteam", "high")
+		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.High)
 		require.True(t, matched, "could not get correct match")
-		matched, _ = filter.Match("jira", "pdteam", "low")
+		matched, _ = filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low)
 		require.False(t, matched, "could not get correct match")
-		matched, _ = filter.Match("jira", "random", "low")
+		matched, _ = filter.Match([]string{"jira"}, []string{"random"}, severity.Low)
 		require.False(t, matched, "could not get correct match")
-		matched, _ = filter.Match("consul", "random", "low")
+		matched, _ = filter.Match([]string{"consul"}, []string{"random"}, severity.Low)
 		require.False(t, matched, "could not get correct match")
 	})
 }

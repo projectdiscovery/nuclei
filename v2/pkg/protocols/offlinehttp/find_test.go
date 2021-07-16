@@ -1,6 +1,8 @@
 package offlinehttp
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"io/ioutil"
 	"os"
 	"path"
@@ -19,7 +21,7 @@ func TestFindResponses(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)

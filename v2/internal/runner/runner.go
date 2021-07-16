@@ -3,6 +3,9 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"os"
 	"path"
 	"strings"
@@ -49,7 +52,7 @@ type Runner struct {
 	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *reporting.Client
-	severityColors  *colorizer.Colorizer
+	addColor        func(severity.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
 }
@@ -112,14 +115,14 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.severityColors = colorizer.New(runner.colorizer)
+	runner.addColor = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
+	if (utils.IsEmpty(options.Templates) || !options.NewTemplates || (utils.IsEmpty(options.Targets, options.Target) && utils.IsNotEmpty(options.Stdin))) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -156,7 +159,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	// Handle taget file
+	// Handle target file
 	if options.Targets != "" {
 		input, inputErr := os.Open(options.Targets)
 		if inputErr != nil {
@@ -207,7 +210,7 @@ func New(options *types.Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsEmpty(options.ProjectPath)})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
@@ -279,6 +282,14 @@ func (r *Runner) RunEnumeration() error {
 		ProjectFile:  r.projectFile,
 		Browser:      r.browser,
 	}
+
+	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	if err != nil {
+		return errors.Wrap(err, "Could not create loader.")
+	}
+
+	executerOpts.WorkflowLoader = workflowLoader
+
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
@@ -287,7 +298,7 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeTags:        r.options.ExcludeTags,
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
-		Severities:         r.options.Severity,
+		Severities:         r.options.Severities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
@@ -324,7 +335,7 @@ func (r *Runner) RunEnumeration() error {
 
 	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
 
-	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" {
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
 		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
@@ -342,10 +353,10 @@ func (r *Runner) RunEnumeration() error {
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
-	if len(store.Templates()) > 0 {
+	if utils.IsNotEmpty(store.Templates()) {
 		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
 	}
-	if len(store.Workflows()) > 0 {
+	if utils.IsNotEmpty(store.Workflows()) {
 		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
 	}
 
@@ -356,7 +367,7 @@ func (r *Runner) RunEnumeration() error {
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
 		// it can't be know in advance which requests will be called
-		if len(template.Workflows) > 0 {
+		if utils.IsNotEmpty(template.Workflows) {
 			continue
 		}
 		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
@@ -407,7 +418,7 @@ func (r *Runner) RunEnumeration() error {
 
 	var totalRequests int64
 	for _, t := range finalTemplates {
-		if len(t.Workflows) > 0 {
+		if utils.IsNotEmpty(t.Workflows) {
 			continue
 		}
 		totalRequests += int64(t.TotalRequests) * r.inputCount
@@ -422,6 +433,11 @@ func (r *Runner) RunEnumeration() error {
 	if templateCount == 0 {
 		return errors.New("no templates were found")
 	}
+
+	/*
+		TODO does it make sense to run the logic below if there are no targets specified?
+		Can we safely assume the user is just experimenting with the template/workflow filters before running them?
+	*/
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
