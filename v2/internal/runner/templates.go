@@ -3,7 +3,7 @@ package runner
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -36,7 +36,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	return template, nil
 }
 
-func (r *Runner) templateLogMsg(id string, name string, author string, severity goflags.Severity) string {
+func (r *Runner) templateLogMsg(id string, name string, author string, severity severity.Severity) string {
 	// Display the message for the template
 	return fmt.Sprintf("[%s] %s (%s) [%s]",
 		r.colorizer.BrightBlue(id).String(),

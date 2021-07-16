@@ -2,37 +2,37 @@ package colorizer
 
 import (
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 )
 
 const (
 	fgOrange uint8 = 208
 )
 
-func GetColor(colorizer aurora.Aurora, severity goflags.Severity) string {
+func GetColor(colorizer aurora.Aurora, templateSeverity severity.Severity) string {
 	var method func(arg interface{}) aurora.Value
-	switch severity {
-	case goflags.Info:
+	switch templateSeverity {
+	case severity.Info:
 		method = colorizer.Blue
-	case goflags.Low:
+	case severity.Low:
 		method = colorizer.Green
-	case goflags.Medium:
+	case severity.Medium:
 		method = colorizer.Yellow
-	case goflags.High:
+	case severity.High:
 		method = func(stringValue interface{}) aurora.Value { return colorizer.Index(fgOrange, stringValue) }
-	case goflags.Critical:
+	case severity.Critical:
 		method = colorizer.Red
 	default:
-		gologger.Warning().Msgf("The '%s' severity does not have an color associated!", severity)
+		gologger.Warning().Msgf("The '%s' severity does not have an color associated!", templateSeverity)
 		method = colorizer.White
 	}
 
-	return method(severity.String()).String()
+	return method(templateSeverity.String()).String()
 }
 
-func New(aurora aurora.Aurora) func(goflags.Severity) string {
-	return func(severity goflags.Severity) string {
+func New(aurora aurora.Aurora) func(severity.Severity) string {
+	return func(severity severity.Severity) string {
 		return GetColor(aurora, severity)
 	}
 }
