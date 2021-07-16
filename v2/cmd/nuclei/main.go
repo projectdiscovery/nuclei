@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"os"
 	"path"
@@ -49,7 +50,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
 	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
-	set.SeverityVarP(&options.Severity, "severity", "impact", goflags.Severities{}, fmt.Sprintf("Templates to run based on severity. Possible values: %s", goflags.GetSupportedSeverities().String()))
+	set.VarP(&options.Severities, "severity", "impact", fmt.Sprintf("Templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String()))
 	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author")
 	set.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "Templates to force run even if they are in denylist")
 	set.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "Tags to force run even if they are in denylist")

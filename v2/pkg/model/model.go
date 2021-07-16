@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 )
@@ -11,8 +11,8 @@ type Info struct {
 	Authors        StringSlice `yaml:"author"`
 	Tags           StringSlice `yaml:"tags"`
 	Description    string
-	Reference      StringSlice            `yaml:"reference"`
-	SeverityHolder goflags.SeverityHolder `yaml:"severity"`
+	Reference      StringSlice             `yaml:"reference"`
+	SeverityHolder severity.SeverityHolder `yaml:"severity"`
 }
 
 type StringSlice struct {

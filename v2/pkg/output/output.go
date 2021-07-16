@@ -1,7 +1,7 @@
 package output
 
 import (
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"os"
 	"regexp"
@@ -37,7 +37,7 @@ type StandardWriter struct {
 	outputMutex    *sync.Mutex
 	traceFile      *fileWriter
 	traceMutex     *sync.Mutex
-	severityColors func(goflags.Severity) string
+	severityColors func(severity.Severity) string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)

@@ -1,6 +1,9 @@
 package types
 
-import "github.com/projectdiscovery/goflags"
+import (
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+)
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
@@ -18,8 +21,8 @@ type Options struct {
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
-	// Severity filters templates based on their severity and only run the matching ones.
-	Severity goflags.Severities
+	// Severities filters templates based on their severity and only run the matching ones.
+	Severities severity.Severities
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.StringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist

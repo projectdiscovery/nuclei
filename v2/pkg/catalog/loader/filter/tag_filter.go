@@ -2,7 +2,7 @@ package filter
 
 import (
 	"errors"
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 )
@@ -10,7 +10,7 @@ import (
 // TagFilter is used to filter nuclei templates for tag based execution
 type TagFilter struct {
 	allowedTags map[string]struct{}
-	severities  map[goflags.Severity]struct{}
+	severities  map[severity.Severity]struct{}
 	authors     map[string]struct{}
 	block       map[string]struct{}
 	matchAllows map[string]struct{}
@@ -27,7 +27,7 @@ var ErrExcluded = errors.New("the template was excluded")
 // matchAllows section.
 //
 // It returns true if the tag is specified, or false.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severity goflags.Severity) (bool, error) {
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severity severity.Severity) (bool, error) {
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -82,7 +82,7 @@ func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 
 // MatchWithWorkflowTags takes an addition list of allowed tags
 // and returns true if the match was successful.
-func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity goflags.Severity, workflowTags []string) (bool, error) {
+func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity severity.Severity, workflowTags []string) (bool, error) {
 
 	workflowAllowedTagMap := make(map[string]struct{})
 	for _, workflowTag := range workflowTags {
@@ -129,7 +129,7 @@ type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  goflags.Severities
+	Severities  severity.Severities
 	IncludeTags []string
 }
 
@@ -140,7 +140,7 @@ func New(config *Config) *TagFilter {
 	filter := &TagFilter{
 		allowedTags: make(map[string]struct{}),
 		authors:     make(map[string]struct{}),
-		severities:  make(map[goflags.Severity]struct{}),
+		severities:  make(map[severity.Severity]struct{}),
 		block:       make(map[string]struct{}),
 		matchAllows: make(map[string]struct{}),
 	}

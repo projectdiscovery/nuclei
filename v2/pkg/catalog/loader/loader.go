@@ -1,10 +1,10 @@
 package loader
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
@@ -24,7 +24,7 @@ type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  goflags.Severities
+	Severities  severity.Severities
 	IncludeTags []string
 
 	Catalog            *catalog.Catalog

@@ -1,7 +1,7 @@
 package reporting
 
 import (
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
@@ -38,8 +38,8 @@ type Options struct {
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {
-	Severities goflags.Severities `yaml:"severity"`
-	Tags       model.StringSlice  `yaml:"tags"`
+	Severities severity.Severities `yaml:"severity"`
+	Tags       model.StringSlice   `yaml:"tags"`
 }
 
 // GetMatch returns true if a filter matches result event
