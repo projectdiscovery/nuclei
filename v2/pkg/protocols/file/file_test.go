@@ -1,7 +1,7 @@
 package file
 
 import (
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"testing"
 
@@ -23,7 +23,7 @@ func TestFileCompile(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{SeverityHolder: goflags.SeverityHolder{Severity: goflags.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")

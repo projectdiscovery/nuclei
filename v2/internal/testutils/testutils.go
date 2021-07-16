@@ -2,8 +2,8 @@ package testutils
 
 import (
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -46,7 +46,7 @@ var DefaultOptions = &types.Options{
 	Retries:            1,
 	RateLimit:          150,
 	ProjectPath:        "",
-	Severity:           goflags.Severities{},
+	Severities:         severity.Severities{},
 	Target:             "",
 	Targets:            "",
 	Output:             "",

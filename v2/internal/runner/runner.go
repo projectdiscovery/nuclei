@@ -3,7 +3,7 @@ package runner
 import (
 	"bufio"
 	"fmt"
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"os"
@@ -52,7 +52,7 @@ type Runner struct {
 	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *reporting.Client
-	addColor        func(goflags.Severity) string
+	addColor        func(severity.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
 }
@@ -298,7 +298,7 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeTags:        r.options.ExcludeTags,
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
-		Severities:         r.options.Severity,
+		Severities:         r.options.Severities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
