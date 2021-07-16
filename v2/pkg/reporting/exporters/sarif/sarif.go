@@ -3,7 +3,7 @@ package sarif
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"os"
 	"path"
@@ -111,11 +111,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 // getSarifSeverity returns the sarif severity
 func getSarifSeverity(event *output.ResultEvent) string {
 	switch event.Info.SeverityHolder.Severity {
-	case goflags.Info:
+	case severity.Info:
 		return "note"
-	case goflags.Low, goflags.Medium:
+	case severity.Low, severity.Medium:
 		return "warning"
-	case goflags.High, goflags.Critical:
+	case severity.High, severity.Critical:
 		return "error"
 	default:
 		return "note"
