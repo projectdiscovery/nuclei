@@ -1,7 +1,6 @@
 package dsl
 
 import (
-	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
 )
@@ -96,7 +96,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
-		return insertInto(sEnc, 76, '\n'), nil
+		return deserialization.InsertInto(sEnc, 76, '\n'), nil
 	}
 
 	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
@@ -292,18 +292,4 @@ func randSeq(base string, n int) string {
 		b[i] = rune(base[rand.Intn(len(base))])
 	}
 	return string(b)
-}
-
-func insertInto(s string, interval int, sep rune) string {
-	var buffer bytes.Buffer
-	before := interval - 1
-	last := len(s) - 1
-	for i, char := range s {
-		buffer.WriteRune(char)
-		if i%interval == before && i != last {
-			buffer.WriteRune(sep)
-		}
-	}
-	buffer.WriteRune(sep)
-	return buffer.String()
 }
