@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/valyala/fasttemplate"
 )
 
 // Client is a wrapped client for interactsh server.
@@ -183,9 +182,7 @@ func (c *Client) ReplaceMarkers(data, interactshURL string) string {
 	if !strings.Contains(data, interactshURLMarker) {
 		return data
 	}
-	replaced := fasttemplate.ExecuteStringStd(data, "{{", "}}", map[string]interface{}{
-		"interactsh-url": interactshURL,
-	})
+	replaced := strings.NewReplacer("{{interactsh-url}}", interactshURL).Replace(data)
 	return replaced
 }
 
