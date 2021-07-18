@@ -268,6 +268,19 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		time.Sleep(time.Duration(seconds) * time.Second)
 		return true, nil
 	}
+
+	// deserialization Functions
+	functions["generate_java_gadget"] = func(args ...interface{}) (interface{}, error) {
+		gadget := args[0].(string)
+		cmd := args[1].(string)
+
+		var encoding string
+		if len(args) > 2 {
+			encoding = args[2].(string)
+		}
+		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
+		return data, nil
+	}
 	return functions
 }
 
