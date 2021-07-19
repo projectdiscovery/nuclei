@@ -76,12 +76,12 @@ func (severityHolder SeverityHolder) MarshalJSON() ([]byte, error) {
 }
 
 func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var marshalledSeverity map[string]string
+	var marshalledSeverity string
 	if err := unmarshal(&marshalledSeverity); err != nil {
 		return err
 	}
 
-	computedSeverity, err := toSeverity(getFirstValue(marshalledSeverity))
+	computedSeverity, err := toSeverity(marshalledSeverity)
 	if err != nil {
 		return err
 	}
