@@ -1,12 +1,12 @@
 package http
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"net/url"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 

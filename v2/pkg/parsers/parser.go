@@ -2,21 +2,21 @@ package parsers
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"os"
 )
 
 const mandatoryFieldMissingTemplate = "mandatory '%s' field is missing"
 
-// Load loads a template by parsing metadata and running
-// all tag and path based filters on the template.
+// Load loads a template by parsing metadata and running all tag and path based filters on the template.
 func Load(templatePath string, isWorkflow bool, workflowTags []string, tagFilter *filter.TagFilter) (bool, error) {
 	template, templateParseError := parseTemplate(templatePath)
 	if templateParseError != nil {
@@ -24,24 +24,24 @@ func Load(templatePath string, isWorkflow bool, workflowTags []string, tagFilter
 	}
 
 	templateInfo := template.Info
-	if validationError := validateMandatoryInfoFields(templateInfo); validationError != nil {
+	if validationError := validateMandatoryInfoFields(&templateInfo); validationError != nil {
 		return false, validationError
 	}
 
 	if utils.IsNotEmpty(template.Workflows) {
 		if isWorkflow {
 			return true, nil // if a workflow is declared and this template is a workflow, then load
-		} else {
+		} else { //nolint:indent-error-flow,revive // preferred: readability and extensibility
 			return false, nil // if a workflow is declared and this template is not a workflow then do not load
 		}
 	} else if isWorkflow {
 		return false, nil // if no workflows are declared and this template is a workflow then do not load
 	} else { // if workflows are not declared and the template is not a workflow then parse it
-		return isInfoMetadataMatch(tagFilter, templateInfo, workflowTags)
+		return isInfoMetadataMatch(tagFilter, &templateInfo, workflowTags)
 	}
 }
 
-func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo model.Info, workflowTags []string) (bool, error) {
+func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, workflowTags []string) (bool, error) {
 	templateTags := templateInfo.Tags.ToSlice()
 	templateAuthors := templateInfo.Authors.ToSlice()
 	templateSeverity := templateInfo.SeverityHolder.Severity
@@ -61,18 +61,18 @@ func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo model.Info, w
 	return match, nil
 }
 
-func validateMandatoryInfoFields(info model.Info) error {
-	if utils.IsEmpty(info) {
-		return errors.New(fmt.Sprintf(mandatoryFieldMissingTemplate, "info"))
+func validateMandatoryInfoFields(info *model.Info) error {
+	if utils.IsEmpty(&info) {
+		return fmt.Errorf(mandatoryFieldMissingTemplate, "info")
 	}
 
-	if utils.IsEmpty(info.Name) {
-		return errors.New(fmt.Sprintf(mandatoryFieldMissingTemplate, "name"))
+	if utils.IsEmpty(&info.Name) {
+		return fmt.Errorf(mandatoryFieldMissingTemplate, "name")
 	}
 
 	authors := info.Authors.ToSlice()
-	if utils.IsEmpty(authors) {
-		return errors.New(fmt.Sprintf(mandatoryFieldMissingTemplate, "author"))
+	if utils.IsEmpty(&authors) {
+		return fmt.Errorf(mandatoryFieldMissingTemplate, "author")
 	}
 	return nil
 }

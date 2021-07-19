@@ -3,16 +3,17 @@ package runner
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/karrick/godirwalk"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"gopkg.in/yaml.v2"
 )
 
 // parseTemplateFile returns the parsed template file
@@ -36,13 +37,13 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	return template, nil
 }
 
-func (r *Runner) templateLogMsg(id string, name string, author string, severity severity.Severity) string {
+func (r *Runner) templateLogMsg(id, name, author string, templateSeverity severity.Severity) string {
 	// Display the message for the template
 	return fmt.Sprintf("[%s] %s (%s) [%s]",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
 		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String(),
-		r.addColor(severity))
+		r.addColor(templateSeverity))
 }
 
 // appendAtSignToAuthors appends @ before each author and returns final string
