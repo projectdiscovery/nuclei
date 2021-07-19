@@ -3,17 +3,18 @@ package templates
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Parse parses a yaml request template file

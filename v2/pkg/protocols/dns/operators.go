@@ -2,10 +2,11 @@ package dns
 
 import (
 	"bytes"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"time"
 
 	"github.com/miekg/dns"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"

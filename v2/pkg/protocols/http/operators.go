@@ -1,11 +1,11 @@
 package http
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"

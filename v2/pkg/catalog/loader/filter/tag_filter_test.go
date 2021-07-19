@@ -1,10 +1,11 @@
 package filter
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 )
 
 func TestTagBasedFilter(t *testing.T) {

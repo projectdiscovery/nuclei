@@ -1,9 +1,10 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
-	"strings"
 )
 
 type Info struct {

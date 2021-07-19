@@ -1,14 +1,14 @@
 package file
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"

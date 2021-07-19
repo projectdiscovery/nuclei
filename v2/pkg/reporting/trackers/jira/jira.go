@@ -3,15 +3,16 @@ package jira
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"io/ioutil"
 	"reflect"
 	"strings"
 
-	jira "github.com/andygrunwald/go-jira"
+	"github.com/andygrunwald/go-jira"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Integration is a client for a issue tracker integration

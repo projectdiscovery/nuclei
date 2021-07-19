@@ -3,26 +3,28 @@ package severity
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 	"testing"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJsonUnmarshal(t *testing.T) {
-	testUnmarshal(t, json.Unmarshal, createJson)
+	testUnmarshal(t, json.Unmarshal, createJSON)
 }
 
 // TODO
-//func TestYamlUnmarshal(t *testing.T) {
-//	testUnmarshal(t, yaml.Unmarshal, createYaml)
-//}
+// func TestYamlUnmarshal(t *testing.T) {
+// 	testUnmarshal(t, yaml.Unmarshal, createYAML)
+// }
 
 func TestJsonUnmarshalFail(t *testing.T) {
-	testUnmarshalFail(t, json.Unmarshal, createJson)
+	testUnmarshalFail(t, json.Unmarshal, createJSON)
 }
 
 func TestYamlUnmarshalFail(t *testing.T) {
-	testUnmarshalFail(t, yaml.Unmarshal, createYaml)
+	testUnmarshalFail(t, yaml.Unmarshal, createYAML)
 }
 
 func TestJsonMarshalFails(t *testing.T) {
@@ -34,11 +36,11 @@ func TestYamlMarshalFails(t *testing.T) {
 }
 
 func TestJsonMarshalSucceed(t *testing.T) {
-	testMarshal(t, json.Marshal, createJson)
+	testMarshal(t, json.Marshal, createJSON)
 }
 
 func TestYamlMarshal(t *testing.T) {
-	testMarshal(t, yaml.Marshal, createYaml)
+	testMarshal(t, yaml.Marshal, createYAML)
 }
 
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
@@ -50,7 +52,7 @@ func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) e
 		payloadCreator(" INFO "),
 	}
 
-	for _, payload := range payloads {
+	for _, payload := range payloads { // nolint:scopelint // false-positive
 		t.Run(payload, func(t *testing.T) {
 			result := unmarshal(payload, unmarshaller)
 			assert.Equal(t, result.Severity, Info)
@@ -66,12 +68,12 @@ func testMarshal(t *testing.T, marshaller func(v interface{}) ([]byte, error), p
 	}
 }
 
-func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) bool {
-	return assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
+func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
+	assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
 }
 
 func testMarshallerFails(t *testing.T, marshaller func(v interface{}) ([]byte, error)) {
-	assert.Panics(t, func() { marshaller(&SeverityHolder{Severity: 13}) })
+	assert.Panics(t, func() { _, _ = marshaller(&SeverityHolder{Severity: 13}) })
 }
 
 func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error) SeverityHolder {
@@ -83,10 +85,10 @@ func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error
 	return severityStruct
 }
 
-func createJson(severityString string) string {
+func createJSON(severityString string) string {
 	return fmt.Sprintf(`{"Severity":"%s"}`, severityString)
 }
 
-func createYaml(value string) string {
+func createYAML(value string) string {
 	return "severity: " + value + "\n"
 }

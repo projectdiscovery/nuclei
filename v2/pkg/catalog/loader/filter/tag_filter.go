@@ -2,9 +2,10 @@ package filter
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
-	"strings"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution
@@ -27,7 +28,7 @@ var ErrExcluded = errors.New("the template was excluded")
 // matchAllows section.
 //
 // It returns true if the tag is specified, or false.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severity severity.Severity) (bool, error) {
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity) (bool, error) {
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -46,7 +47,7 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severi
 	}
 
 	if utils.IsNotEmpty(tagFilter.severities) {
-		if _, ok := tagFilter.severities[severity]; !ok {
+		if _, ok := tagFilter.severities[templateSeverity]; !ok {
 			return false, nil
 		}
 	}
@@ -57,16 +58,18 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, severi
 func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
 	if utils.IsEmpty(tagFilter.authors) {
 		return true
-	} else {
-		for _, templateAuthor := range templateAuthors {
-			if _, ok := tagFilter.authors[templateAuthor]; ok {
-				return true
-			}
+	}
+
+	for _, templateAuthor := range templateAuthors {
+		if _, ok := tagFilter.authors[templateAuthor]; ok {
+			return true
 		}
 	}
+
 	return false
 }
 
+//nolint:indent-error-flow,revive // keeping conditions together
 func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 	if utils.IsEmpty(tagFilter.allowedTags) {
 		return true
@@ -80,10 +83,8 @@ func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 	return false
 }
 
-// MatchWithWorkflowTags takes an addition list of allowed tags
-// and returns true if the match was successful.
+// MatchWithWorkflowTags takes an addition list of allowed tags and returns true if the match was successful.
 func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity severity.Severity, workflowTags []string) (bool, error) {
-
 	workflowAllowedTagMap := make(map[string]struct{})
 	for _, workflowTag := range workflowTags {
 		if _, ok := workflowAllowedTagMap[workflowTag]; !ok {
@@ -114,8 +115,8 @@ func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors 
 				return false, nil
 			}
 		}
-
 	}
+
 	if utils.IsNotEmpty(tagFilter.severities) {
 		if _, ok := tagFilter.severities[templateSeverity]; !ok {
 			return false, nil

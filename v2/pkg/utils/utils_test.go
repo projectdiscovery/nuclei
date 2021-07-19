@@ -2,10 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
+//nolint:scopelint //false-positive
 func TestIsEmpty(t *testing.T) {
 	testCases := [...][2]interface{}{
 		{"", true},

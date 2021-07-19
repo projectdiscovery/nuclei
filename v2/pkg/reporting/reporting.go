@@ -1,12 +1,13 @@
 package reporting
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
@@ -14,7 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	"go.uber.org/multierr"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Options is a configuration file for nuclei reporting module
@@ -58,10 +59,10 @@ func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
 }
 
 func isSeverityMatch(event *output.ResultEvent, filter *Filter) bool {
-	severity := event.Info.SeverityHolder.Severity // TODO review
+	resultEventSeverity := event.Info.SeverityHolder.Severity // TODO review
 	if utils.IsNotEmpty(filter.Severities) {
 		for _, current := range filter.Severities {
-			if current == severity {
+			if current == resultEventSeverity {
 				return true
 			}
 		}

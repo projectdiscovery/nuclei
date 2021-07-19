@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
