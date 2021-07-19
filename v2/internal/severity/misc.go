@@ -1,7 +1,6 @@
 package severity
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +13,7 @@ func (severities Severities) String() string {
 	return strings.Join(severities.ToStringArray(), ", ")
 }
 
+//nolint:indent-error-flow,revive //reducing the scope of the variables
 func (severities *Severities) Set(value string) error {
 	if inputSeverities, err := goflags.ToStringSlice(value); err != nil {
 		return err
@@ -30,8 +30,9 @@ func (severities *Severities) Set(value string) error {
 func setSeverity(severities *Severities, value string) error {
 	computedSeverity, err := toSeverity(value)
 	if err != nil {
-		return errors.New(fmt.Sprintf("'%s' is not a valid severity!", value))
+		return fmt.Errorf("'%s' is not a valid severity", value)
 	}
+
 	// TODO change the Severities type to map[Severity]interface{}, where the values are struct{}{}, to "simulates" a "set" data structure
 	*severities = append(*severities, computedSeverity)
 	return nil

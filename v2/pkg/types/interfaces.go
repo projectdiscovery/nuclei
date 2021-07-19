@@ -4,9 +4,10 @@ package types
 
 import (
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"strconv"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 )
 
 // ToString converts an interface to string in a quick way

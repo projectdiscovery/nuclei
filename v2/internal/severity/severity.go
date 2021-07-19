@@ -2,8 +2,9 @@ package severity
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type Severity int
@@ -47,14 +48,12 @@ func normalizeValue(value string) string {
 	return strings.TrimSpace(strings.ToLower(value))
 }
 
-func (severity Severity) normalize() string {
-	return normalizeValue(severity.String())
-}
-
 func (severity Severity) String() string {
 	return severityMappings[severity]
 }
 
+//nolint:exported,revive //prefer to be explicit about the name, and make it refactor-safe
+//goland:noinspection GoNameStartsWithPackageName
 type SeverityHolder struct {
 	Severity Severity
 }
@@ -62,17 +61,17 @@ type SeverityHolder struct {
 func (severityHolder SeverityHolder) MarshalYAML() (interface{}, error) {
 	if value, found := severityMappings[severityHolder.Severity]; found {
 		return &struct{ Severity string }{value}, nil // TODO see if the new struct can be dynamically created using reflection to make it refactor safe
-	} else {
-		panic("Invalid field to marshall")
 	}
+
+	panic("Invalid field to marshall")
 }
 
 func (severityHolder SeverityHolder) MarshalJSON() ([]byte, error) {
 	if value, found := severityMappings[severityHolder.Severity]; found {
 		return json.Marshal(&struct{ Severity string }{value}) // TODO see if the new struct can be dynamically created using reflection to make it refactor safe
-	} else {
-		panic("Invalid field to marshall")
 	}
+
+	panic("Invalid field to marshall")
 }
 
 func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -96,20 +95,21 @@ func (severityHolder *SeverityHolder) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	return mapToSeverity(objMap, severityHolder)
+	return severityHolder.mapToSeverity(objMap)
 }
 
-func mapToSeverity(objMap map[string]string, severity *SeverityHolder) error {
+func (severityHolder *SeverityHolder) mapToSeverity(objMap map[string]string) error {
 	if len(objMap) != 1 {
 		return errors.New("There can only be one severity defined")
 	}
 	stringSeverity := getFirstValue(objMap)
-	if readableSeverity, err := toSeverity(stringSeverity); err == nil {
-		severity = &SeverityHolder{readableSeverity}
-		return nil
-	} else {
+	readableSeverity, err := toSeverity(stringSeverity)
+	if err != nil {
 		return err
 	}
+
+	*severityHolder = SeverityHolder{readableSeverity}
+	return nil
 }
 
 func getFirstValue(stringMap map[string]string) string {

@@ -13,6 +13,7 @@ func isEmpty(value interface{}) bool {
 	reflectValue := reflect.ValueOf(value)
 	actualValueInterface := reflectValue.Interface()
 
+	// nolint:exhaustive //default branch handles other cases
 	switch reflect.TypeOf(value).Kind() {
 	case reflect.String:
 		reflectedValue := actualValueInterface.(string)

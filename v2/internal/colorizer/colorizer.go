@@ -1,6 +1,8 @@
 package colorizer
 
 import (
+	"fmt"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
@@ -10,7 +12,7 @@ const (
 	fgOrange uint8 = 208
 )
 
-func GetColor(colorizer aurora.Aurora, templateSeverity severity.Severity) string {
+func GetColor(colorizer aurora.Aurora, templateSeverity fmt.Stringer) string {
 	var method func(arg interface{}) aurora.Value
 	switch templateSeverity {
 	case severity.Info:
@@ -31,8 +33,8 @@ func GetColor(colorizer aurora.Aurora, templateSeverity severity.Severity) strin
 	return method(templateSeverity.String()).String()
 }
 
-func New(aurora aurora.Aurora) func(severity.Severity) string {
+func New(colorizer aurora.Aurora) func(severity.Severity) string {
 	return func(severity severity.Severity) string {
-		return GetColor(aurora, severity)
+		return GetColor(colorizer, severity)
 	}
 }

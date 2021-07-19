@@ -3,12 +3,12 @@ package format
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"reflect"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Summary returns a formatted built one line summary of the event

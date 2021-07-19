@@ -1,12 +1,13 @@
 package dns
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 )
 
 func TestDNSCompileMake(t *testing.T) {
