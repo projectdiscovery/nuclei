@@ -323,7 +323,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
+		if r.options.Output != nil {
+			r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
+		}
 		r.options.Progress.IncrementErrorsBy(1)
 		return err
 	}
@@ -333,7 +335,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}()
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
-	r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
+	if r.options.Output != nil {
+		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
+	}
 
 	duration := time.Since(timeStart)
 
