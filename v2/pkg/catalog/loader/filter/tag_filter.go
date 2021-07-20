@@ -69,17 +69,17 @@ func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
 	return false
 }
 
-//nolint:indent-error-flow,revive // keeping conditions together
 func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 	if utils.IsEmpty(tagFilter.allowedTags) {
 		return true
-	} else {
-		for _, templateTag := range templateTags {
-			if _, ok := tagFilter.allowedTags[templateTag]; ok {
-				return true
-			}
+	}
+
+	for _, templateTag := range templateTags {
+		if _, ok := tagFilter.allowedTags[templateTag]; ok {
+			return true
 		}
 	}
+
 	return false
 }
 

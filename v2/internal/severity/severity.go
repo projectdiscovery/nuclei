@@ -1,7 +1,6 @@
 package severity
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -66,14 +65,6 @@ func (severityHolder SeverityHolder) MarshalYAML() (interface{}, error) {
 	panic("Invalid field to marshall")
 }
 
-func (severityHolder SeverityHolder) MarshalJSON() ([]byte, error) {
-	if value, found := severityMappings[severityHolder.Severity]; found {
-		return json.Marshal(&struct{ Severity string }{value}) // TODO see if the new struct can be dynamically created using reflection to make it refactor safe
-	}
-
-	panic("Invalid field to marshall")
-}
-
 func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var marshalledSeverity string
 	if err := unmarshal(&marshalledSeverity); err != nil {
@@ -87,36 +78,4 @@ func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) 
 
 	severityHolder.Severity = computedSeverity
 	return nil
-}
-
-func (severityHolder *SeverityHolder) UnmarshalJSON(data []byte) error {
-	var objMap map[string]string
-	if err := json.Unmarshal(data, &objMap); err != nil {
-		return err
-	}
-
-	return severityHolder.mapToSeverity(objMap)
-}
-
-func (severityHolder *SeverityHolder) mapToSeverity(objMap map[string]string) error {
-	if len(objMap) != 1 {
-		return errors.New("There can only be one severity defined")
-	}
-	stringSeverity := getFirstValue(objMap)
-	readableSeverity, err := toSeverity(stringSeverity)
-	if err != nil {
-		return err
-	}
-
-	*severityHolder = SeverityHolder{readableSeverity}
-	return nil
-}
-
-func getFirstValue(stringMap map[string]string) string {
-	var result string
-	for _, value := range stringMap {
-		result = value
-		break
-	}
-	return result
 }

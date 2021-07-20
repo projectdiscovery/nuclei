@@ -13,18 +13,20 @@ func (severities Severities) String() string {
 	return strings.Join(severities.ToStringArray(), ", ")
 }
 
-//nolint:indent-error-flow,revive //reducing the scope of the variables
 func (severities *Severities) Set(value string) error {
-	if inputSeverities, err := goflags.ToStringSlice(value); err != nil {
+	inputSeverities, err := goflags.ToStringSlice(value)
+
+	if err != nil {
 		return err
-	} else {
-		for _, inputSeverity := range inputSeverities {
-			if err := setSeverity(severities, inputSeverity); err != nil {
-				return err
-			}
-		}
-		return nil
 	}
+
+	for _, inputSeverity := range inputSeverities {
+		if err := setSeverity(severities, inputSeverity); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func setSeverity(severities *Severities, value string) error {

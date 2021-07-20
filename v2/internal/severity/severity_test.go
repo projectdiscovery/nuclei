@@ -1,8 +1,6 @@
 package severity
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"gopkg.in/yaml.v2"
@@ -10,33 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestJsonUnmarshal(t *testing.T) {
-	testUnmarshal(t, json.Unmarshal, createJSON)
-}
-
-// TODO
-// func TestYamlUnmarshal(t *testing.T) {
-// 	testUnmarshal(t, yaml.Unmarshal, createYAML)
-// }
-
-func TestJsonUnmarshalFail(t *testing.T) {
-	testUnmarshalFail(t, json.Unmarshal, createJSON)
+func TestYamlUnmarshal(t *testing.T) {
+	testUnmarshal(t, yaml.Unmarshal, func(value string) string { return value })
 }
 
 func TestYamlUnmarshalFail(t *testing.T) {
 	testUnmarshalFail(t, yaml.Unmarshal, createYAML)
 }
 
-func TestJsonMarshalFails(t *testing.T) {
-	testMarshallerFails(t, json.Marshal)
-}
-
 func TestYamlMarshalFails(t *testing.T) {
 	testMarshallerFails(t, yaml.Marshal)
-}
-
-func TestJsonMarshalSucceed(t *testing.T) {
-	testMarshal(t, json.Marshal, createJSON)
 }
 
 func TestYamlMarshal(t *testing.T) {
@@ -83,10 +64,6 @@ func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error
 		panic(err)
 	}
 	return severityStruct
-}
-
-func createJSON(severityString string) string {
-	return fmt.Sprintf(`{"Severity":"%s"}`, severityString)
 }
 
 func createYAML(value string) string {
