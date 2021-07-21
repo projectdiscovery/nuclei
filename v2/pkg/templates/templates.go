@@ -37,4 +37,6 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+
+	preprocessor Preprocessor
 }

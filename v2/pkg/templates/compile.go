@@ -18,7 +18,7 @@ import (
 
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
-func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error) {
+func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 
 	f, err := os.Open(filePath)
@@ -33,6 +33,10 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	}
 
 	data = template.expandPreprocessors(data)
+	if preprocessor != nil {
+		data = preprocessor.Process(data)
+	}
+
 	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
 	if err != nil {
 		return nil, err
@@ -63,7 +67,7 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create workflow loader")
 		}
-		compileWorkflow(&options, compiled, loader)
+		compileWorkflow(preprocessor, &options, compiled, loader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
