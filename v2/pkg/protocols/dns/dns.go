@@ -118,6 +118,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeMX
 	case "TXT":
 		question = dns.TypeTXT
+	case "DS":
+		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
 	}
