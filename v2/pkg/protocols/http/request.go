@@ -263,19 +263,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		err           error
 	)
 
-	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
-	if !request.original.Race {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
-		}
-
-		if r.options.Options.Debug || r.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
-		}
-	}
-
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
@@ -314,6 +301,20 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			resp, err = r.httpClient.Do(request.request)
 		}
 	}
+
+	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
+	if !request.original.Race {
+		dumpedRequest, err = dump(request, reqURL)
+		if err != nil {
+			return err
+		}
+
+		if r.options.Options.Debug || r.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
+			gologger.Print().Msgf("%s", string(dumpedRequest))
+		}
+	}
+
 	if resp == nil {
 		err = errors.New("no response got for request")
 	}
