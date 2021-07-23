@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html"
 	"math"
@@ -234,15 +235,18 @@ var functions = map[string]govaluate.ExpressionFunction{
 	},
 }
 
-// HelperFunctions contains the dsl helper functions
+// HelperFunctions returns the dsl helper functions
 func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	return functions
 }
 
-func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) {
+// AddHelperFunction allows creation of additiona helper functions to be supported with templates
+func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
 	if _, ok := functions[key]; !ok {
 		functions[key] = value
+		return nil
 	}
+	return errors.New("duplicate helper function key defined")
 }
 
 func reverseString(s string) string {
