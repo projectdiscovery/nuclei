@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/blang/semver"
 	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
@@ -540,11 +541,14 @@ func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 }
 
 // updateNucleiVersionToLatest implements nuclei auto-updation using Github Releases.
-func updateNucleiVersionToLatest() error {
+func updateNucleiVersionToLatest(verbose bool) error {
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
 	m := &update.Manager{
 		Command: "nuclei",
 		Store: &githubUpdateStore.Store{
-			Owner:   "projectdiscovery",
+			Owner:   "ehsandeep",
 			Repo:    "nuclei",
 			Version: config.Version,
 		},
@@ -576,6 +580,6 @@ func updateNucleiVersionToLatest() error {
 	if err := m.Install(tarball); err != nil {
 		return errors.Wrap(err, "could not install latest release")
 	}
-	gologger.Info().Msgf("Auto-Updated Nuclei to %s\n", latest.Version)
+	gologger.Info().Msgf("Updated Nuclei to %s\n", latest.Version)
 	return nil
 }
