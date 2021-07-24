@@ -137,4 +137,6 @@ type Options struct {
 	NewTemplates bool
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
+	// UpdateNuclei checks for an update for the nuclei engine
+	UpdateNuclei bool
 }

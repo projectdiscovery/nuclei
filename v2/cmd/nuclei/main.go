@@ -24,6 +24,10 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
+	if nucleiRunner == nil {
+		nucleiRunner.Close()
+		return
+	}
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
 	}
@@ -100,6 +104,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
 	set.BoolVar(&options.VerboseVerbose, "vv", false, "Display Extra Verbose Information")
 	set.BoolVar(&options.Validate, "validate", false, "Validate the passed templates to nuclei")
+	set.BoolVar(&options.UpdateNuclei, "update", false, "Auto-Update the nuclei engine to latest")
 	_ = set.Parse()
 
 	if cfgFile != "" {
