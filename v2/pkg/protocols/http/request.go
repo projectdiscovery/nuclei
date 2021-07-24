@@ -427,16 +427,14 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if !interactsh.HasMatchers(r.CompiledOperators) {
-		if r.CompiledOperators != nil {
-			var ok bool
-			event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
-			if ok && event.OperatorsResult != nil {
-				event.OperatorsResult.PayloadValues = request.meta
-				event.Results = r.MakeResultEvent(event)
-			}
-			event.InternalEvent = outputEvent
+	if r.CompiledOperators != nil {
+		var ok bool
+		event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
+		if ok && event.OperatorsResult != nil {
+			event.OperatorsResult.PayloadValues = request.meta
+			event.Results = r.MakeResultEvent(event)
 		}
+		event.InternalEvent = outputEvent
 	}
 	callback(event)
 	return nil

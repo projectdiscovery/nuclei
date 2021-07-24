@@ -1,7 +1,6 @@
 package dsl
 
 import (
-	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
 )
@@ -81,7 +81,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	"base64_py": func(args ...interface{}) (interface{}, error) {
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
-		return insertInto(sEnc, 76, '\n'), nil
+		return deserialization.InsertInto(sEnc, 76, '\n'), nil
 	},
 	"base64_decode": func(args ...interface{}) (interface{}, error) {
 		return base64.StdEncoding.DecodeString(types.ToString(args[0]))
@@ -233,6 +233,18 @@ var functions = map[string]govaluate.ExpressionFunction{
 		time.Sleep(time.Duration(seconds) * time.Second)
 		return true, nil
 	},
+	// deserialization Functions
+	"generate_java_gadget": func(args ...interface{}) (interface{}, error) {
+		gadget := args[0].(string)
+		cmd := args[1].(string)
+
+		var encoding string
+		if len(args) > 2 {
+			encoding = args[2].(string)
+		}
+		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
+		return data, nil
+	},
 }
 
 // HelperFunctions returns the dsl helper functions
@@ -270,18 +282,4 @@ func randSeq(base string, n int) string {
 		b[i] = rune(base[rand.Intn(len(base))])
 	}
 	return string(b)
-}
-
-func insertInto(s string, interval int, sep rune) string {
-	var buffer bytes.Buffer
-	before := interval - 1
-	last := len(s) - 1
-	for i, char := range s {
-		buffer.WriteRune(char)
-		if i%interval == before && i != last {
-			buffer.WriteRune(sep)
-		}
-	}
-	buffer.WriteRune(sep)
-	return buffer.String()
 }
