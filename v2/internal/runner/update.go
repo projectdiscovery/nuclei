@@ -564,7 +564,7 @@ func updateNucleiVersionToLatest(verbose bool) error {
 		return errors.Wrap(err, "could not fetch latest release")
 	}
 	if len(releases) == 0 {
-		return errors.New("no latest releases found for repository")
+		return nil
 	}
 
 	latest := releases[0]
