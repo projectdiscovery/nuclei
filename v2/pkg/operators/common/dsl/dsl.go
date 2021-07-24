@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html"
 	"math"
@@ -29,113 +30,88 @@ const (
 	withMaxRandArgsSize  = withCutSetArgsSize
 )
 
-// HelperFunctions contains the dsl helper functions
-func HelperFunctions() map[string]govaluate.ExpressionFunction {
-	functions := make(map[string]govaluate.ExpressionFunction)
-
-	functions["len"] = func(args ...interface{}) (interface{}, error) {
+var functions = map[string]govaluate.ExpressionFunction{
+	"len": func(args ...interface{}) (interface{}, error) {
 		length := len(types.ToString(args[0]))
 		return float64(length), nil
-	}
-
-	functions["toupper"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"toupper": func(args ...interface{}) (interface{}, error) {
 		return strings.ToUpper(types.ToString(args[0])), nil
-	}
-
-	functions["tolower"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"tolower": func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(types.ToString(args[0])), nil
-	}
-
-	functions["replace"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"replace": func(args ...interface{}) (interface{}, error) {
 		return strings.ReplaceAll(types.ToString(args[0]), types.ToString(args[1]), types.ToString(args[2])), nil
-	}
-
-	functions["replace_regex"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"replace_regex": func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(types.ToString(args[1]))
 		if err != nil {
 			return nil, err
 		}
 		return compiled.ReplaceAllString(types.ToString(args[0]), types.ToString(args[2])), nil
-	}
-
-	functions["trim"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trim": func(args ...interface{}) (interface{}, error) {
 		return strings.Trim(types.ToString(args[0]), types.ToString(args[2])), nil
-	}
-
-	functions["trimleft"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trimleft": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
-	}
-
-	functions["trimright"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trimright": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimRight(types.ToString(args[0]), types.ToString(args[1])), nil
-	}
-
-	functions["trimspace"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trimspace": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimSpace(types.ToString(args[0])), nil
-	}
-
-	functions["trimprefix"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trimprefix": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimPrefix(types.ToString(args[0]), types.ToString(args[1])), nil
-	}
-
-	functions["trimsuffix"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"trimsuffix": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimSuffix(types.ToString(args[0]), types.ToString(args[1])), nil
-	}
-
-	functions["reverse"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"reverse": func(args ...interface{}) (interface{}, error) {
 		return reverseString(types.ToString(args[0])), nil
-	}
-
+	},
 	// encoding
-	functions["base64"] = func(args ...interface{}) (interface{}, error) {
+	"base64": func(args ...interface{}) (interface{}, error) {
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 
 		return sEnc, nil
-	}
-
+	},
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
-	functions["base64_py"] = func(args ...interface{}) (interface{}, error) {
+	"base64_py": func(args ...interface{}) (interface{}, error) {
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 		return deserialization.InsertInto(sEnc, 76, '\n'), nil
-	}
-
-	functions["base64_decode"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"base64_decode": func(args ...interface{}) (interface{}, error) {
 		return base64.StdEncoding.DecodeString(types.ToString(args[0]))
-	}
-
-	functions["url_encode"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"url_encode": func(args ...interface{}) (interface{}, error) {
 		return url.PathEscape(types.ToString(args[0])), nil
-	}
-
-	functions["url_decode"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"url_decode": func(args ...interface{}) (interface{}, error) {
 		return url.PathUnescape(types.ToString(args[0]))
-	}
-
-	functions["hex_encode"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"hex_encode": func(args ...interface{}) (interface{}, error) {
 		return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
-	}
-
-	functions["hex_decode"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"hex_decode": func(args ...interface{}) (interface{}, error) {
 		hx, _ := hex.DecodeString(types.ToString(args[0]))
 		return string(hx), nil
-	}
-
-	functions["html_escape"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"html_escape": func(args ...interface{}) (interface{}, error) {
 		return html.EscapeString(types.ToString(args[0])), nil
-	}
-
-	functions["html_unescape"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"html_unescape": func(args ...interface{}) (interface{}, error) {
 		return html.UnescapeString(types.ToString(args[0])), nil
-	}
-
+	},
 	// hashing
-	functions["md5"] = func(args ...interface{}) (interface{}, error) {
+	"md5": func(args ...interface{}) (interface{}, error) {
 		hash := md5.Sum([]byte(types.ToString(args[0])))
 
 		return hex.EncodeToString(hash[:]), nil
-	}
-
-	functions["sha256"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"sha256": func(args ...interface{}) (interface{}, error) {
 		h := sha256.New()
 		_, err := h.Write([]byte(types.ToString(args[0])))
 
@@ -143,9 +119,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			return nil, err
 		}
 		return hex.EncodeToString(h.Sum(nil)), nil
-	}
-
-	functions["sha1"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"sha1": func(args ...interface{}) (interface{}, error) {
 		h := sha1.New()
 		_, err := h.Write([]byte(types.ToString(args[0])))
 
@@ -153,27 +128,23 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			return nil, err
 		}
 		return hex.EncodeToString(h.Sum(nil)), nil
-	}
-
-	functions["mmh3"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"mmh3": func(args ...interface{}) (interface{}, error) {
 		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(types.ToString(args[0])), 0))), nil
-	}
-
+	},
 	// search
-	functions["contains"] = func(args ...interface{}) (interface{}, error) {
+	"contains": func(args ...interface{}) (interface{}, error) {
 		return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
-	}
-
-	functions["regex"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"regex": func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(types.ToString(args[0]))
 		if err != nil {
 			return nil, err
 		}
 		return compiled.MatchString(types.ToString(args[1])), nil
-	}
-
+	},
 	// random generators
-	functions["rand_char"] = func(args ...interface{}) (interface{}, error) {
+	"rand_char": func(args ...interface{}) (interface{}, error) {
 		chars := letters + numbers
 		bad := ""
 		if len(args) >= 1 {
@@ -184,9 +155,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		chars = trimAll(chars, bad)
 		return chars[rand.Intn(len(chars))], nil
-	}
-
-	functions["rand_base"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"rand_base": func(args ...interface{}) (interface{}, error) {
 		l := 0
 		bad := ""
 		base := letters + numbers
@@ -202,9 +172,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		base = trimAll(base, bad)
 		return randSeq(base, l), nil
-	}
-
-	functions["rand_text_alphanumeric"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"rand_text_alphanumeric": func(args ...interface{}) (interface{}, error) {
 		l := 0
 		bad := ""
 		chars := letters + numbers
@@ -217,9 +186,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
-	}
-
-	functions["rand_text_alpha"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"rand_text_alpha": func(args ...interface{}) (interface{}, error) {
 		l := 0
 		bad := ""
 		chars := letters
@@ -232,9 +200,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
-	}
-
-	functions["rand_text_numeric"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"rand_text_numeric": func(args ...interface{}) (interface{}, error) {
 		l := 0
 		bad := ""
 		chars := numbers
@@ -247,9 +214,8 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		chars = trimAll(chars, bad)
 		return randSeq(chars, l), nil
-	}
-
-	functions["rand_int"] = func(args ...interface{}) (interface{}, error) {
+	},
+	"rand_int": func(args ...interface{}) (interface{}, error) {
 		min := 0
 		max := math.MaxInt32
 
@@ -260,17 +226,15 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 			max = args[1].(int)
 		}
 		return rand.Intn(max-min) + min, nil
-	}
-
+	},
 	// Time Functions
-	functions["waitfor"] = func(args ...interface{}) (interface{}, error) {
+	"waitfor": func(args ...interface{}) (interface{}, error) {
 		seconds := args[0].(float64)
 		time.Sleep(time.Duration(seconds) * time.Second)
 		return true, nil
-	}
-
+	},
 	// deserialization Functions
-	functions["generate_java_gadget"] = func(args ...interface{}) (interface{}, error) {
+  "generate_java_gadget": func(args ...interface{}) (interface{}, error) {
 		gadget := args[0].(string)
 		cmd := args[1].(string)
 
@@ -280,8 +244,21 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 		}
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
-	}
+	},
+}
+
+// HelperFunctions returns the dsl helper functions
+func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	return functions
+}
+
+// AddHelperFunction allows creation of additiona helper functions to be supported with templates
+func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
+	if _, ok := functions[key]; !ok {
+		functions[key] = value
+		return nil
+	}
+	return errors.New("duplicate helper function key defined")
 }
 
 func reverseString(s string) string {
