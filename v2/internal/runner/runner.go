@@ -66,6 +66,12 @@ func New(options *types.Options) (*Runner, error) {
 		}
 		runner.browser = browser
 	}
+	if options.UpdateNuclei {
+		if err := updateNucleiVersionToLatest(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
