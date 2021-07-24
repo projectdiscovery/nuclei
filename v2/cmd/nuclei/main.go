@@ -25,7 +25,6 @@ func main() {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
-		nucleiRunner.Close()
 		return
 	}
 	if err := nucleiRunner.RunEnumeration(); err != nil {
