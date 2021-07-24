@@ -234,7 +234,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return true, nil
 	},
 	// deserialization Functions
-  "generate_java_gadget": func(args ...interface{}) (interface{}, error) {
+	"generate_java_gadget": func(args ...interface{}) (interface{}, error) {
 		gadget := args[0].(string)
 		cmd := args[1].(string)
 
