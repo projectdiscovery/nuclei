@@ -545,10 +545,17 @@ func updateNucleiVersionToLatest(verbose bool) error {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "nuclei.exe"
+	default:
+		command = "nuclei"
+	}
 	m := &update.Manager{
-		Command: "nuclei",
+		Command: command,
 		Store: &githubUpdateStore.Store{
-			Owner:   "ehsandeep",
+			Owner:   "projectdiscovery",
 			Repo:    "nuclei",
 			Version: config.Version,
 		},
