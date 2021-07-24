@@ -3,7 +3,7 @@
 ### Test Unsafe Java Deserialization
 
 ```
-javac java-deserialize.java ValueObject.java
+javac Deserialize.java ValueObject.java
 # generate payload and write to ValueObject2.ser
 java Deserialize
 ```
