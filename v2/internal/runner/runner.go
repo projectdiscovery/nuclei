@@ -59,15 +59,21 @@ func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 	}
+	if options.UpdateNuclei {
+		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if err := runner.updateTemplates(); err != nil {
+		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+	}
 	if options.Headless {
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
 		}
 		runner.browser = browser
-	}
-	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
