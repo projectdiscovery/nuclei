@@ -196,10 +196,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.output = outputWriter
 
-	if options.JSON {
+	if options.JSON && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
-
 	if options.StatsJSON {
 		options.EnableProgressBar = true
 	}
