@@ -185,7 +185,6 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Info().Msgf("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
 		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
 	}
 
