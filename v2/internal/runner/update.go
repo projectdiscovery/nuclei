@@ -586,6 +586,6 @@ func updateNucleiVersionToLatest(verbose bool) error {
 	if err := m.Install(tarball); err != nil {
 		return errors.Wrap(err, "could not install latest release")
 	}
-	gologger.Info().Msgf("Updated Nuclei to %s\n", latest.Version)
+	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
 	return nil
 }
