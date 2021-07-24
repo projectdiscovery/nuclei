@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -175,13 +176,13 @@ func printCallback(stats clistats.StatisticsClient) {
 	builder.WriteRune(')')
 	builder.WriteRune('\n')
 
-	fmt.Printf("%s", builder.String())
+	fmt.Fprintf(os.Stderr, "%s", builder.String())
 }
 
 func printCallbackJSON(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
 	_ = json.NewEncoder(builder).Encode(metricsMap(stats))
-	fmt.Printf("%s", builder.String())
+	fmt.Fprintf(os.Stderr, "%s", builder.String())
 }
 
 func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
