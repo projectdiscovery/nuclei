@@ -564,6 +564,7 @@ func updateNucleiVersionToLatest(verbose bool) error {
 		return errors.Wrap(err, "could not fetch latest release")
 	}
 	if len(releases) == 0 {
+		gologger.Info().Msgf("No new updates found for nuclei engine!")
 		return nil
 	}
 
