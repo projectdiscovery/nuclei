@@ -42,8 +42,8 @@ func readConfig() {
 based on templates offering massive extensibility and ease of use.`)
 
 	set.SetGroup("input", "Input Options")
-	set.StringVarP(&options.Target, "target", "u", "", "URL/Host to scan with nuclei").Group("input")
-	set.StringVarP(&options.Targets, "list", "l", "", "List of URLs/Hosts to run templates on").Group("input")
+	set.StringVarP(&options.Target, "target", "u", "", "URL/Host to scan with nuclei templates").Group("input")
+	set.StringVarP(&options.Targets, "list", "l", "", "List of URLs/Hosts to scan with nuclei templates").Group("input")
 
 	set.SetGroup("templates", "Templates Options")
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.").Group("templates")
