@@ -37,13 +37,17 @@ func readConfig() {
 	home, _ := os.UserHomeDir()
 	templatesDirectory := path.Join(home, "nuclei-templates")
 
-	set := goflags.New()
+	set := goflags.NewFlagSet()
 	set.SetDescription(`Nuclei is a fast tool for configurable targeted scanning 
 based on templates offering massive extensibility and ease of use.`)
+
+	set.SetGroup("input", "Input Options")
+	set.SetGroup("stats", "Stats Options")
+
 	set.StringVar(&cfgFile, "config", "", "Nuclei configuration file")
 	set.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
 	set.IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
-	set.StringVarP(&options.Target, "target", "u", "", "URL to scan with nuclei")
+	set.StringVarP(&options.Target, "target", "u", "", "URL to scan with nuclei").Group("input")
 	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
 	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
