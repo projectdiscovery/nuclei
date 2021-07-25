@@ -50,7 +50,7 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei").Group("templates")
 	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates").Group("templates")
 
-	set.SetGroup("filters", "Template Filters")
+	set.SetGroup("filters", "Template Filter Options")
 	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for").Group("filters")
 	set.StringSliceVarP(&options.Severity, "impact", "severity", []string{}, "Templates to run based on severity").Group("filters")
 	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author").Group("filters")
