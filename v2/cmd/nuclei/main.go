@@ -121,8 +121,8 @@ based on templates offering massive extensibility and ease of use.`)
 	set.StringVar(&options.TraceLogFile, "trace-log", "", "File to write sent requests trace log").Group("debug")
 
 	set.SetGroup("update", "Update Options")
-	set.BoolVar(&options.UpdateNuclei, "update", false, "Self Update the nuclei engine to latest").Group("update")
-	set.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "Download / updates nuclei community templates").Group("update")
+	set.BoolVar(&options.UpdateNuclei, "update", false, "Self update the nuclei engine to latest release").Group("update")
+	set.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "Self update the community templates to latest release").Group("update")
 	set.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "Directory storing nuclei-templates").Group("update")
 
 	set.BoolVar(&options.Project, "project", false, "Use a project folder to avoid sending same request multiple times")
