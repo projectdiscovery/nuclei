@@ -37,78 +37,141 @@ func readConfig() {
 	home, _ := os.UserHomeDir()
 	templatesDirectory := path.Join(home, "nuclei-templates")
 
-	set := goflags.New()
-	set.SetDescription(`Nuclei is a fast tool for configurable targeted scanning 
-based on templates offering massive extensibility and ease of use.`)
-	set.StringVar(&cfgFile, "config", "", "Nuclei configuration file")
-	set.BoolVar(&options.Metrics, "metrics", false, "Expose nuclei metrics on a port")
-	set.IntVar(&options.MetricsPort, "metrics-port", 9092, "Port to expose nuclei metrics on")
-	set.StringVarP(&options.Target, "target", "u", "", "URL to scan with nuclei")
-	set.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "Templates to run, supports single and multiple templates using directory.")
-	set.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "Workflows to run for nuclei")
-	set.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "Templates to exclude, supports single and multiple templates using directory.")
-	set.StringSliceVarP(&options.Severity, "severity", "impact", []string{}, "Templates to run based on severity")
-	set.StringSliceVar(&options.Author, "author", []string{}, "Templates to run based on author")
-	set.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "Templates to force run even if they are in denylist")
-	set.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "Tags to force run even if they are in denylist")
-	set.StringVarP(&options.Targets, "list", "l", "", "List of URLs to run templates on")
-	set.StringVarP(&options.Output, "output", "o", "", "File to write output to (optional)")
-	set.StringVarP(&options.ProxyURL, "proxy-url", "proxy", "", "URL of the proxy server")
-	set.StringVar(&options.ProxySocksURL, "proxy-socks-url", "", "URL of the proxy socks server")
-	set.BoolVar(&options.Silent, "silent", false, "Show only results in output")
-	set.BoolVar(&options.Version, "version", false, "Show version of nuclei")
-	set.BoolVarP(&options.Verbose, "verbose", "v", false, "Show verbose output")
-	set.BoolVarP(&options.NoColor, "no-color", "nc", false, "Disable colors in output")
-	set.IntVar(&options.Timeout, "timeout", 5, "Time to wait in seconds before timeout")
-	set.IntVar(&options.Retries, "retries", 1, "Number of times to retry a failed request")
-	set.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "Custom Header.")
-	set.BoolVar(&options.Debug, "debug", false, "Debugging request and responses")
-	set.BoolVar(&options.DebugRequests, "debug-req", false, "Debugging request")
-	set.BoolVar(&options.DebugResponse, "debug-resp", false, "Debugging response")
-	set.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "Download / updates nuclei community templates")
-	set.StringVar(&options.TraceLogFile, "trace-log", "", "File to write sent requests trace log")
-	set.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "Directory storing nuclei-templates")
-	set.BoolVar(&options.JSON, "json", false, "Write json output to files")
-	set.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "Write requests/responses for matches in JSON output")
-	set.BoolVar(&options.EnableProgressBar, "stats", false, "Display stats of the running scan")
-	set.BoolVar(&options.TemplateList, "tl", false, "List available templates")
-	set.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "Maximum requests to send per second")
-	set.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "Stop processing http requests at first match (this may break template/workflow logic)")
-	set.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "Maximum Number of hosts analyzed in parallel per template")
-	set.IntVarP(&options.TemplateThreads, "concurrency", "c", 10, "Maximum Number of templates executed in parallel")
-	set.BoolVar(&options.Project, "project", false, "Use a project folder to avoid sending same request multiple times")
-	set.StringVar(&options.ProjectPath, "project-path", "", "Use a user defined project folder, temporary folder is used if not specified but enabled")
-	set.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "Don't display metadata for the matches")
-	set.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "Shows the installed nuclei-templates version")
-	set.BoolVar(&options.OfflineHTTP, "passive", false, "Enable Passive HTTP response processing mode")
-	set.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "Nuclei Reporting Module configuration file")
-	set.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "Local Nuclei Reporting Database (Always use this to persistent report data)")
-	set.StringSliceVar(&options.Tags, "tags", []string{}, "Tags to execute templates for")
-	set.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "Exclude templates with the provided tags")
-	set.StringVarP(&options.ResolversFile, "resolvers", "r", "", "File containing resolver list for nuclei")
-	set.BoolVar(&options.Headless, "headless", false, "Enable headless browser based templates support")
-	set.BoolVar(&options.ShowBrowser, "show-browser", false, "Show the browser on the screen")
-	set.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "Number of seconds between each stats line")
-	set.BoolVar(&options.StatsJSON, "stats-json", false, "Write stats output in JSON format")
-	set.BoolVar(&options.SystemResolvers, "system-resolvers", false, "Use system dns resolving as error fallback")
-	set.IntVar(&options.PageTimeout, "page-timeout", 20, "Seconds to wait for each page in headless")
-	set.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "Only run newly added templates")
-	set.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "Directory to export results in markdown format")
-	set.StringVarP(&options.SarifExport, "sarif-export", "se", "", "File to export results in sarif format")
-	set.BoolVar(&options.NoInteractsh, "no-interactsh", false, "Do not use interactsh server for blind interaction polling")
-	set.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "Self Hosted Interactsh Server URL")
-	set.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "Number of requests to keep in interactions cache")
-	set.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "Number of seconds to wait before evicting requests from cache")
-	set.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "Number of seconds before each interaction poll request")
-	set.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "Extra time for interaction polling before exiting")
-	set.BoolVar(&options.VerboseVerbose, "vv", false, "Display Extra Verbose Information")
-	set.BoolVar(&options.Validate, "validate", false, "Validate the passed templates to nuclei")
-	set.BoolVar(&options.UpdateNuclei, "update", false, "Auto-Update the nuclei engine to latest")
-	_ = set.Parse()
+	flagSet := goflags.NewFlagSet()
+	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
+on extensive configurability, massive extensibility and ease of use.`)
+
+	createGroup(flagSet, "input", "Target",
+		flagSet.StringVarP(&options.Target, "target", "u", "", "target URL/host to scan"),
+		flagSet.StringVarP(&options.Targets, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+	)
+
+	createGroup(flagSet, "templates", "Templates",
+		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
+
+		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
+		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflows to run"),
+
+		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run newly added templates only"),
+		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
+	)
+
+	createGroup(flagSet, "filters", "Filtering",
+		flagSet.StringSliceVar(&options.Tags, "tags", []string{}, "execute a subset of templates that contain the provided tags"),
+		flagSet.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "tags from the default deny list that permit executing more intrusive templates"), // TODO show default deny list
+		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "exclude templates with the provided tags"),
+
+		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
+		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
+
+		flagSet.StringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
+		flagSet.StringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
+	)
+
+	createGroup(flagSet, "output", "Output",
+		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
+
+		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
+		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
+		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display extra verbose information"),
+		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
+
+		flagSet.BoolVar(&options.JSON, "json", false, "write output in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
+
+		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "don't display match metadata"),
+		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "local nuclei reporting database (always use this to persist report data)"),
+
+		flagSet.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
+		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
+	)
+
+	createGroup(flagSet, "configs", "Configurations",
+		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
+		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
+
+		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
+
+		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
+		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
+		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+	)
+
+	createGroup(flagSet, "interactsh", "interactsh",
+		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "do not use interactsh server for blind interaction polling"),
+		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "self-hosted Interactsh Server URL"),
+
+		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
+		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
+		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
+		flagSet.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
+	)
+
+	createGroup(flagSet, "rate-limit", "Rate-Limit",
+		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
+		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
+		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 10, "maximum number of templates to be executed in parallel"),
+	)
+
+	createGroup(flagSet, "optimization", "Optimizations",
+		flagSet.IntVar(&options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
+		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
+
+		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
+		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
+
+		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
+	)
+
+	createGroup(flagSet, "headless", "Headless",
+		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support"),
+		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
+		flagSet.BoolVar(&options.ShowBrowser, "show-browser", false, "show the browser on the screen when running templates with headless mode"),
+	)
+
+	createGroup(flagSet, "debug", "Debug",
+		flagSet.BoolVar(&options.Debug, "debug", false, "show all requests and responses"),
+		flagSet.BoolVar(&options.DebugRequests, "debug-req", false, "show all sent requests"),
+		flagSet.BoolVar(&options.DebugResponse, "debug-resp", false, "show all received responses"),
+
+		/* TODO why the separation? http://proxy:port vs socks5://proxy:port etc
+		   TODO should auto-set the HTTP_PROXY variable for the process? */
+		flagSet.StringVarP(&options.ProxyURL, "proxy-url", "proxy", "", "URL of the HTTP proxy server"),
+		flagSet.StringVar(&options.ProxySocksURL, "proxy-socks-url", "", "URL of the SOCKS proxy server"),
+
+		flagSet.StringVar(&options.TraceLogFile, "trace-log", "", "file to write sent requests trace log"),
+
+		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
+		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
+	)
+
+	createGroup(flagSet, "update", "Update",
+		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei to the latest released version"),
+		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update the community templates to latest released version"),
+		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "overwrite the default nuclei-templates directory"),
+	)
+
+	createGroup(flagSet, "stats", "Statistics",
+		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
+		flagSet.BoolVar(&options.StatsJSON, "stats-json", false, "write statistics data to and output file in JSONL(ines) format"),
+		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
+
+		flagSet.BoolVar(&options.Metrics, "metrics", false, "expose nuclei metrics on a port"),
+		flagSet.IntVar(&options.MetricsPort, "metrics-port", 9092, "port to expose nuclei metrics on"),
+	)
+
+	_ = flagSet.Parse()
 
 	if cfgFile != "" {
-		if err := set.MergeConfigFile(cfgFile); err != nil {
+		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
+	}
+}
+
+func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
+	flagSet.SetGroup(groupName, description)
+	for _, currentFlag := range flags {
+		currentFlag.Group(groupName)
 	}
 }
