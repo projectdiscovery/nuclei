@@ -38,7 +38,8 @@ func readConfig() {
 	templatesDirectory := path.Join(home, "nuclei-templates")
 
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription("Nuclei is a fast, template based vulnerability scanner focusing on extensive configurability, massive extensibility and ease of use.")
+	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
+on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringVarP(&options.Target, "target", "u", "", "target URL/host to scan"),
@@ -48,7 +49,7 @@ func readConfig() {
 	createGroup(flagSet, "templates", "Templates",
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 
-		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template names or names of template directories to include in the scan"),
+		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflows to run"),
 
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run newly added templates only"),
@@ -61,7 +62,7 @@ func readConfig() {
 		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "exclude templates with the provided tags"),
 
 		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
-		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template names or names of template directories to exclude"),
+		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
 		flagSet.StringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
 		flagSet.StringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
