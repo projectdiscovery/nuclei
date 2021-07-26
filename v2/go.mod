@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/andygrunwald/go-jira v1.13.0
-	github.com/apex/log v1.9.0 // indirect
+	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
@@ -13,7 +13,6 @@ require (
 	github.com/go-rod/rod v0.91.1
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-github/v32 v32.1.0
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -30,7 +29,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/fastdialer v0.0.8
-	github.com/projectdiscovery/goflags v0.0.4
+	github.com/projectdiscovery/goflags v0.0.5
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.3
@@ -47,7 +46,7 @@ require (
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible // indirect
+	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/xanzy/go-gitlab v0.44.0
