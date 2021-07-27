@@ -11,7 +11,8 @@ import (
 type Request struct {
 	ID string `yaml:"id"`
 
-	// Steps is the list of actions to run for headless request
+	// description: |
+	//   Steps is the list of actions to run for headless request
 	Steps []*engine.Action `yaml:"steps"`
 
 	// Operators for the current request go here.

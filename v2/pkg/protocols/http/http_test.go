@@ -14,7 +14,6 @@ func TestHTTPCompile(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-http"
 	request := &Request{
-		ID:   templateID,
 		Name: "testing",
 		Payloads: map[string]interface{}{
 			"username": []string{"admin"},
