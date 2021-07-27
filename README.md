@@ -11,7 +11,7 @@
 <a href="https://github.com/projectdiscovery/nuclei/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat"></a>
 <a href="https://github.com/projectdiscovery/nuclei/releases"><img src="https://img.shields.io/github/release/projectdiscovery/nuclei"></a>
 <a href="https://twitter.com/pdnuclei"><img src="https://img.shields.io/twitter/follow/pdnuclei.svg?logo=twitter"></a>
-<a href="https://discord.gg/KECAGdH"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
+<a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
 <a href="https://github.com/projectdiscovery/nuclei/actions/workflows/build-test.yml"><img src="https://github.com/projectdiscovery/nuclei/actions/workflows/build-test.yml/badge.svg?branch=master"></a>
 </p>
       
@@ -72,8 +72,6 @@ nuclei -h
 
 This will display help for the tool. Here are all the switches it supports.
 
-<details>
-<summary> 👉 nuclei help menu 👈</summary>
 
 ```yaml
 Nuclei is a fast, template based vulnerability scanner focusing
@@ -171,8 +169,6 @@ STATISTICS:
    -metrics                  expose nuclei metrics on a port
    -metrics-port int         port to expose nuclei metrics on (default 9092)
 ```
-
-</details>
 
 ### Running Nuclei
 
@@ -284,5 +280,5 @@ Thanks to all the amazing community [contributors for sending PRs](https://githu
 Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
 
 <h1 align="left">
-  <a href="https://discord.gg/KECAGdH"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>
+  <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>
 </h1>
