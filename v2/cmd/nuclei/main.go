@@ -153,7 +153,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "stats", "Statistics",
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
-		flagSet.BoolVar(&options.StatsJSON, "stats-json", false, "write statistics data to and output file in JSONL(ines) format"),
+		flagSet.BoolVar(&options.StatsJSON, "stats-json", false, "write statistics data to an output file in JSONL(ines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
 
 		flagSet.BoolVar(&options.Metrics, "metrics", false, "expose nuclei metrics on a port"),
