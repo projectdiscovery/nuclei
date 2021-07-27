@@ -29,10 +29,9 @@ func (t *TagFilter) Match(tag, author, severity string) (bool, error) {
 	matchedAny := false
 	if len(t.allowedTags) > 0 {
 		_, ok := t.allowedTags[tag]
-		if !ok {
-			return false, nil
+		if ok {
+			matchedAny = true
 		}
-		matchedAny = true
 	}
 	_, ok := t.block[tag]
 	if ok {
@@ -76,10 +75,9 @@ func (t *TagFilter) MatchWithAllowedTags(allowed []string, tag, author, severity
 	}
 	if len(allowedMap) > 0 {
 		_, ok := allowedMap[tag]
-		if !ok {
-			return false, nil
+		if ok {
+			matchedAny = true
 		}
-		matchedAny = true
 	}
 	_, ok := t.block[tag]
 	if ok && !matchedAny {
