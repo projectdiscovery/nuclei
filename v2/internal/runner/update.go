@@ -16,16 +16,22 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/blang/semver"
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+
+	"github.com/tj/go-update"
+	"github.com/tj/go-update/progress"
+	githubUpdateStore "github.com/tj/go-update/stores/github"
 )
 
 const (
@@ -179,7 +185,6 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Info().Msgf("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
 		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
 	}
 
@@ -532,4 +537,56 @@ func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 		return "", fmt.Errorf("no tags found for %s", repo)
 	}
 	return strings.TrimPrefix(tags[0].Name, "v"), nil
+}
+
+// updateNucleiVersionToLatest implements nuclei auto-updation using Github Releases.
+func updateNucleiVersionToLatest(verbose bool) error {
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "nuclei.exe"
+	default:
+		command = "nuclei"
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "projectdiscovery",
+			Repo:    "nuclei",
+			Version: config.Version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return errors.Wrap(err, "could not fetch latest release")
+	}
+	if len(releases) == 0 {
+		gologger.Info().Msgf("No new updates found for nuclei engine!")
+		return nil
+	}
+
+	latest := releases[0]
+	var currentOS string
+	switch runtime.GOOS {
+	case "darwin":
+		currentOS = "macOS"
+	default:
+		currentOS = runtime.GOOS
+	}
+	final := latest.FindZip(currentOS, runtime.GOARCH)
+	if final == nil {
+		return fmt.Errorf("no compatible binary found for %s/%s", currentOS, runtime.GOARCH)
+	}
+	tarball, err := final.DownloadProxy(progress.Reader)
+	if err != nil {
+		return errors.Wrap(err, "could not download latest release")
+	}
+	if err := m.Install(tarball); err != nil {
+		return errors.Wrap(err, "could not install latest release")
+	}
+	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
+	return nil
 }

@@ -8,9 +8,9 @@ import (
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) {
+func compileWorkflow(preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
-		if err := parseWorkflow(workflow, options, loader); err != nil {
+		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 			continue
 		}
@@ -18,24 +18,24 @@ func compileWorkflow(options *protocols.ExecuterOptions, workflow *workflows.Wor
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
+func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
 	shouldNotValidate := false
 
 	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
 		shouldNotValidate = true
 	}
-	if err := parseWorkflowTemplate(workflow, options, loader, shouldNotValidate); err != nil {
+	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
 		return err
 	}
 	for _, subtemplates := range workflow.Subtemplates {
-		if err := parseWorkflow(subtemplates, options, loader); err != nil {
+		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 			continue
 		}
 	}
 	for _, matcher := range workflow.Matchers {
 		for _, subtemplates := range matcher.Subtemplates {
-			if err := parseWorkflow(subtemplates, options, loader); err != nil {
+			if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
 				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 				continue
 			}
@@ -45,7 +45,7 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
-func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
+func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
 	if len(workflow.Tags) > 0 {
@@ -68,7 +68,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 			Interactsh:   options.Interactsh,
 			ProjectFile:  options.ProjectFile,
 		}
-		template, err := Parse(path, opts)
+		template, err := Parse(path, preprocessor, opts)
 		if err != nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue
