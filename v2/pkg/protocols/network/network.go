@@ -17,19 +17,44 @@ import (
 type Request struct {
 	ID string `yaml:"id"`
 
-	// Address is the address to send requests to (host:port:tls combos generally)
+	// description: |
+	//   Address is the address to send requests to.
+	//
+	//   Usually it's set to `{{Hostname}}`. If you want to enable TLS for
+	//   TCP Connection, you can use `tls://{{Hostname}}`.
+	// examples:
+	//   - value: |
+	//       []string{"{{Hostname}}"}
 	Address   []string `yaml:"host"`
 	addresses []addressKV
 
-	// AttackType is the attack type
-	// Sniper, PitchFork and ClusterBomb. Default is Sniper
+	// description: |
+	//   Attack is the type of payload combinations to perform.
+	//
+	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   permutations and combinations for all payloads.
+	// values:
+	//   - "sniper"
+	//   - "pitchfork"
+	//   - "clusterbomb"
 	AttackType string `yaml:"attack"`
-	// Path contains the path/s for the request variables
+	// description: |
+	//   Payloads contains any payloads for the current request.
+	//
+	//   Payloads support both key-values combinations where a list
+	//   of payloads is provided, or optionally a single file can also
+	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads"`
 
-	// Payload is the payload to send for the network request
+	// description: |
+	//   Inputs contains inputs for the network socket
 	Inputs []*Input `yaml:"inputs"`
-	// ReadSize is the size of response to read (1024 if not provided by default)
+	// description: |
+	//   ReadSize is the size of response to read at the end
+	//
+	//   Default value for read-size is 1024.
+	// examples:
+	//   - value: "2048"
 	ReadSize int `yaml:"read-size"`
 
 	// Operators for the current request go here.
@@ -51,13 +76,37 @@ type addressKV struct {
 
 // Input is the input to send on the network
 type Input struct {
-	// Data is the data to send as the input
+	// description: |
+	//   Data is the data to send as the input.
+	//
+	//   It supports DSL Helper Functions as well as normal expressions.
+	// examples:
+	//   - value: "\"TEST\""
+	//   - value: "\"hex_decode('50494e47')\""
 	Data string `yaml:"data"`
-	// Type is the type of input - hex, text.
+	// description: |
+	//   Type is the type of input specified in `data` field.
+	//
+	//   Default value is text, but hex can be used for hex formatted data.
+	// values:
+	//   - "hex"
+	//   - "text"
 	Type string `yaml:"type"`
-	// Read is the number of bytes to read from socket
+	// description: |
+	//   Read is the number of bytes to read from socket.
+	//
+	//   This can be used for protcols which expected an immediate response. You can
+	//   read and write responses one after another and evetually perform matching
+	//   on every data captured with `name` attribute.
+	//
+	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
+	// examples:
+	//   - value: "1024"
 	Read int `yaml:"read"`
-	// Name is the optional name of the input to provide matching on
+	// description: |
+	//   Name is the optional name of the data read to provide matching on.
+	// examples:
+	//   - value: "\"prefix\""
 	Name string `yaml:"name"`
 }
 

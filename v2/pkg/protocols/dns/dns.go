@@ -20,13 +20,42 @@ type Request struct {
 
 	ID string `yaml:"id"`
 
-	// Path contains the path/s for the request
+	// description: |
+	//   Name is the Hostname to make DNS request for.
+	//
+	//   Generally, it is set to {{FQDN}} which is the domain we get from input.
+	// examples:
+	//   - value: "\"{{FQDN}}\""
 	Name string `yaml:"name"`
-	// Type is the type of DNS request to make
+	// description: |
+	//   Type is the type of DNS request to make.
+	// values:
+	//   - "A"
+	//   - "NS"
+	//   - "CNAME"
+	//   - "SOA"
+	//   - "PTR"
+	//   - "MX"
+	//   - "TXT"
+	//   - "AAAA"
 	Type string `yaml:"type"`
-	// Class is the class of the DNS request
+	// description: |
+	//   Class is the class of the DNS request.
+	//
+	//   Usually it's enough to just leave it as INET.
+	// values:
+	//   - "INET"
+	//   - "CSNET"
+	//   - "CHAOS"
+	//   - "HESIOD"
+	//   - "NONE"
+	//   - "ANY"
 	Class string `yaml:"class"`
-	// Retries is the number of retries for the DNS request
+	// description: |
+	//   Retries is the number of retries for the DNS request
+	// examples:
+	//   - name: Use a retry of 3 to 5 generally
+	//     value: 5
 	Retries int `yaml:"retries"`
 
 	CompiledOperators *operators.Operators
@@ -37,7 +66,8 @@ type Request struct {
 	class    uint16
 	question uint16
 
-	// Recursion specifies whether to recurse all the answers.
+	// description: |
+	//   Recursion determines if resolver should recurse all records to get fresh results.
 	Recursion bool `yaml:"recursion"`
 }
 

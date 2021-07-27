@@ -4,7 +4,8 @@ import "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 
 // Workflow is a workflow to execute with chained requests, etc.
 type Workflow struct {
-	// Workflows is a yaml based workflow declaration code.
+	// description: |
+	//   Workflows is a list of workflows to execute for a template.
 	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty"`
 
 	Options *protocols.ExecuterOptions
@@ -12,13 +13,22 @@ type Workflow struct {
 
 // WorkflowTemplate is a template to be ran as part of a workflow
 type WorkflowTemplate struct {
-	// Template is the template to run
+	// description: |
+	//   Template is a single template or directory to execute as part of workflow.
+	// examples:
+	//   - name: A single template
+	//     value: "\"dns/worksites-detection.yaml\""
+	//   - name: A template directory
+	//     value: "\"misconfigurations/aem\""
 	Template string `yaml:"template"`
-	// Tags to perform filtering of supplied templates on
+	// description: |
+	//    Tags to run templates based on.
 	Tags string `yaml:"tags"`
-	// Matchers perform name based matching to run subtemplates for a workflow.
+	// description: |
+	//    Matchers perform name based matching to run subtemplates for a workflow.
 	Matchers []*Matcher `yaml:"matchers"`
-	// Subtemplates are ran if the template matches.
+	// description: |
+	//    Subtemplates are ran if the `template` field Template matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
 	// Executers perform the actual execution for the workflow template
 	Executers []*ProtocolExecuterPair
@@ -32,8 +42,10 @@ type ProtocolExecuterPair struct {
 
 // Matcher performs conditional matching on the workflow template results.
 type Matcher struct {
-	// Name is the name of the item to match.
+	// description: |
+	//    Name is the name of the item to match.
 	Name string `yaml:"name"`
-	// Subtemplates are ran if the name of matcher matches.
+	// description: |
+	//    Subtemplates are ran if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
 }
