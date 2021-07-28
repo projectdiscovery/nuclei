@@ -28,7 +28,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/fastdialer v0.0.8
-	github.com/projectdiscovery/goflags v0.0.6-0.20210728150719-aebf81f4ee42
+	github.com/projectdiscovery/goflags v0.0.6-0.20210728155622-9178c1036db6
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.3

@@ -90,7 +90,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
 
-		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
+		flagSet.StringSliceRawVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
 
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
