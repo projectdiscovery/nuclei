@@ -49,8 +49,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "templates", "Templates",
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 
-		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
-		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflows to run"),
+		flagSet.PathSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
+		flagSet.PathSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflows to run"),
 
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run newly added templates only"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
@@ -61,8 +61,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "tags from the default deny list that permit executing more intrusive templates"), // TODO show default deny list
 		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "exclude templates with the provided tags"),
 
-		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
-		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
+		flagSet.PathSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
+		flagSet.PathSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
 		flagSet.StringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
 		flagSet.StringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
