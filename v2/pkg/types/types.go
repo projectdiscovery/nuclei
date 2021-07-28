@@ -11,13 +11,13 @@ type Options struct {
 	// ExcludeTags is the list of tags to exclude
 	ExcludeTags goflags.StringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.StringSlice
+	Workflows goflags.PathSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.StringSlice
+	Templates goflags.PathSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.StringSlice
+	ExcludedTemplates goflags.PathSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders goflags.StringSlice
+	CustomHeaders goflags.StringSliceRaw
 	// Severity filters templates based on their severity and only run the matching ones.
 	Severity goflags.StringSlice
 	// Author filters templates based on their author and only run the matching ones.
@@ -25,7 +25,7 @@ type Options struct {
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.StringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.StringSlice
+	IncludeTemplates goflags.PathSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
