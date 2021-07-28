@@ -18,7 +18,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/json-iterator/go v1.1.10
-	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -29,7 +28,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/fastdialer v0.0.8
-	github.com/projectdiscovery/goflags v0.0.5
+	github.com/projectdiscovery/goflags v0.0.6-0.20210728060216-ea1ec6f4b660
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.3
@@ -44,7 +43,6 @@ require (
 	github.com/shirou/gopsutil/v3 v3.21.5
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.3.1
-	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/trivago/tgo v1.0.7 // indirect
