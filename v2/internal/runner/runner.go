@@ -125,7 +125,7 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (len(options.Targets) == 0 && !options.Stdin && len(options.Target) == 0)) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && len(options.Target) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
