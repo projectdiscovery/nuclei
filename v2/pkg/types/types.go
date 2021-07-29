@@ -35,7 +35,9 @@ type Options struct {
 	// Target is a single URL/Domain to scan using a template
 	Target string
 	// Targets specifies the targets to scan using templates.
-	Targets string
+	Targets goflags.StringSlice
+	// TargetsFile specifies the targets in a file to scan using templates.
+	TargetsFile string
 	// Output is the file to write found results to.
 	Output string
 	// ProxyURL is the URL for the proxy server

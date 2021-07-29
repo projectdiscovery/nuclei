@@ -43,7 +43,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringVarP(&options.Target, "target", "u", "", "target URL/host to scan"),
-		flagSet.StringVarP(&options.Targets, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringSliceVarP(&options.Targets, "list", "l", []string{}, "list of target URL/hosts to scan"),
+		flagSet.StringVarP(&options.TargetsFile, "file", "f", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",
