@@ -82,6 +82,9 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig = currentConfig
 	}
 
+	if r.options.NoUpdateTemplates {
+		return nil
+	}
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
 	//
