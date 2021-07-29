@@ -33,11 +33,9 @@ type Options struct {
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
 	// Target is a single URL/Domain to scan using a template
-	Target string
+	Target goflags.StringSlice
 	// Targets specifies the targets to scan using templates.
-	Targets goflags.StringSlice
-	// TargetsFile specifies the targets in a file to scan using templates.
-	TargetsFile string
+	Targets string
 	// Output is the file to write found results to.
 	Output string
 	// ProxyURL is the URL for the proxy server
