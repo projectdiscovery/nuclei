@@ -139,4 +139,6 @@ type Options struct {
 	NoInteractsh bool
 	// UpdateNuclei checks for an update for the nuclei engine
 	UpdateNuclei bool
+	// NoUpdateTemplates disables checking for nuclei templates updates
+	NoUpdateTemplates bool
 }
