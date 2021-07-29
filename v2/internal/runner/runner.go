@@ -125,7 +125,7 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (len(options.Targets) == 0 && !options.Stdin && options.Target == "" && options.TargetsFile == "")) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (len(options.Targets) == 0 && !options.Stdin && len(options.Target) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -138,15 +138,8 @@ func New(options *types.Options) (*Runner, error) {
 	dupeCount := 0
 
 	// Handle single target
-	if options.Target != "" {
-		runner.inputCount++
-		// nolint:errcheck // ignoring error
-		runner.hostMap.Set(options.Target, nil)
-	}
-
-	// Handle multiple targets
-	if len(options.Targets) != 0 {
-		for _, target := range options.Targets {
+	if len(options.Target) != 0 {
+		for _, target := range options.Target {
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(target, nil)
@@ -172,8 +165,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Handle taget file
-	if options.TargetsFile != "" {
-		input, inputErr := os.Open(options.TargetsFile)
+	if options.Targets != "" {
+		input, inputErr := os.Open(options.Targets)
 		if inputErr != nil {
 			return nil, errors.Wrap(inputErr, "could not open targets file")
 		}
