@@ -57,14 +57,6 @@ type SeverityHolder struct {
 	Severity Severity
 }
 
-func (severityHolder SeverityHolder) MarshalYAML() (interface{}, error) {
-	if value, found := severityMappings[severityHolder.Severity]; found {
-		return &struct{ Severity string }{value}, nil // TODO see if the new struct can be dynamically created using reflection to make it refactor safe
-	}
-
-	panic("Invalid field to marshall")
-}
-
 func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var marshalledSeverity string
 	if err := unmarshal(&marshalledSeverity); err != nil {
