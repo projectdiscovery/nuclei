@@ -49,9 +49,9 @@ func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
 }
 
 func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
-	tags := event.Info.Tags.Value
+	tags := event.Info.Tags.ToSlice()
 	for _, tag := range filter.Tags.ToSlice() {
-		if stringSliceContains(tags.([]string), tag) { // TODO review
+		if stringSliceContains(tags, tag) {
 			return true
 		}
 	}

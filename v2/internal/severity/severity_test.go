@@ -16,14 +16,6 @@ func TestYamlUnmarshalFail(t *testing.T) {
 	testUnmarshalFail(t, yaml.Unmarshal, createYAML)
 }
 
-func TestYamlMarshalFails(t *testing.T) {
-	testMarshallerFails(t, yaml.Marshal)
-}
-
-func TestYamlMarshal(t *testing.T) {
-	testMarshal(t, yaml.Marshal, createYAML)
-}
-
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
 	payloads := [...]string{
 		payloadCreator("Info"),
@@ -42,19 +34,8 @@ func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) e
 	}
 }
 
-func testMarshal(t *testing.T, marshaller func(v interface{}) ([]byte, error), payloadCreator func(value string) string) {
-	for _, severity := range GetSupportedSeverities() {
-		result, _ := marshaller(&SeverityHolder{Severity: severity})
-		assert.Equal(t, string(result), payloadCreator(severity.String()))
-	}
-}
-
 func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
 	assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
-}
-
-func testMarshallerFails(t *testing.T, marshaller func(v interface{}) ([]byte, error)) {
-	assert.Panics(t, func() { _, _ = marshaller(&SeverityHolder{Severity: 13}) })
 }
 
 func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error) SeverityHolder {
