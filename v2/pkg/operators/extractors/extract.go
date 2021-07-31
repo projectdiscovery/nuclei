@@ -66,13 +66,11 @@ func (e *Extractor) ExtractJson(corpus string) map[string]struct{} {
 			if _, ok := v.(error); ok {
 				break
 			}
-			bytes, err := json.Marshal(v)
-			if err != nil {
-				break
+			itemString := types.ToString(v)
+			if _, ok := results[itemString]; !ok {
+				results[itemString] = struct{}{}
 			}
-			results[string(bytes)] = struct{}{}
 		}
 	}
-
 	return results
 }
