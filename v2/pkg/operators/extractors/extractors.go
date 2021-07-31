@@ -22,7 +22,7 @@ type Extractor struct {
 	// KVal are the kval to be present in the response headers/cookies
 	KVal []string `yaml:"kval,omitempty"`
 
-	// Regex are the regex pattern required to be present in the response
+	// JSON are the json pattern required to be present in the response
 	Json []string `yaml:"json"`
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
