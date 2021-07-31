@@ -236,7 +236,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if options.RateLimit > 0 {
+	if options.RateLimitMinute > 0 {
+		runner.ratelimiter = ratelimit.New(options.RateLimitMinute, ratelimit.Per(60*time.Second))
+	} else if options.RateLimit > 0 {
 		runner.ratelimiter = ratelimit.New(options.RateLimit)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited()
