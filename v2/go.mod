@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/alecthomas/participle v0.3.0 // indirect
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -17,15 +18,20 @@ require (
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
+	github.com/hokaccha/go-prettyjson v0.0.0-20180920040306-f579f869bbfe // indirect
+	github.com/itchyny/astgen-go v0.0.0-20190623123749-11f6ca3e2b1f // indirect
+	github.com/itchyny/gojq v0.12.4 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
+	github.com/lestrrat-go/strftime v0.0.0-20190725011945-5c849dd2c51d // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/miekg/dns v1.1.38
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/owenrumney/go-sarif v1.0.4
+	github.com/pbnjay/strptime v0.0.0-20140226051138-5c05b0d668c9 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/fastdialer v0.0.8

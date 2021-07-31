@@ -1,6 +1,7 @@
 package extractors
 
 import (
+	"encoding/json"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -40,5 +41,38 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 			results[itemString] = struct{}{}
 		}
 	}
+	return results
+}
+
+// ExtractJson extracts key value pairs from a data map
+func (e *Extractor) ExtractJson(corpus string) map[string]struct{} {
+	results := make(map[string]struct{})
+
+	var jsonObj interface{}
+
+	err := json.Unmarshal([]byte(corpus), &jsonObj)
+
+	if err != nil {
+		return results
+	}
+
+	for _, k := range e.jsonCompiled {
+		iter := k.Run(jsonObj)
+		for {
+			v, ok := iter.Next()
+			if !ok {
+				break
+			}
+			if _, ok := v.(error); ok {
+				break
+			}
+			bytes, err := json.Marshal(v)
+			if err != nil {
+				break
+			}
+			results[string(bytes)] = struct{}{}
+		}
+	}
+
 	return results
 }
