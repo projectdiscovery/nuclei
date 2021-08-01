@@ -1,7 +1,9 @@
 package extractors
 
-import "regexp"
-import "github.com/itchyny/gojq"
+import (
+	"github.com/itchyny/gojq"
+	"regexp"
+)
 
 // Extractor is used to extract part of response using a regex.
 type Extractor struct {
