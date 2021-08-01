@@ -172,7 +172,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	t.Run("json", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Type: "json",
-			Json: []string{".batters | .batter | .[] | .id"},
+			JSON: []string{".batters | .batter | .[] | .id"},
 		}
 		err = extractor.CompileExtractors()
 		require.Nil(t, err, "could not compile json extractor")

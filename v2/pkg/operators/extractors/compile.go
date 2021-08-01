@@ -2,9 +2,10 @@ package extractors
 
 import (
 	"fmt"
-	"github.com/itchyny/gojq"
 	"regexp"
 	"strings"
+
+	"github.com/itchyny/gojq"
 )
 
 // CompileExtractors performs the initial setup operation on a extractor
@@ -29,7 +30,7 @@ func (e *Extractor) CompileExtractors() error {
 		e.KVal[i] = strings.ToLower(kval)
 	}
 
-	for _, query := range e.Json {
+	for _, query := range e.JSON {
 		query, err := gojq.Parse(query)
 		if err != nil {
 			return fmt.Errorf("could not parse json: %s", query)
