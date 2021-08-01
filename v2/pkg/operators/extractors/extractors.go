@@ -1,8 +1,9 @@
 package extractors
 
 import (
-	"github.com/itchyny/gojq"
 	"regexp"
+
+	"github.com/itchyny/gojq"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -25,7 +26,7 @@ type Extractor struct {
 	KVal []string `yaml:"kval,omitempty"`
 
 	// JSON are the json pattern required to be present in the response
-	Json []string `yaml:"json"`
+	JSON []string `yaml:"json"`
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 
