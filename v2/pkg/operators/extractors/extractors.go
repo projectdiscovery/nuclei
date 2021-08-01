@@ -53,7 +53,7 @@ const (
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
-	"json": JSONExtractor,
+	"json":  JSONExtractor,
 }
 
 // GetType returns the type of the matcher
