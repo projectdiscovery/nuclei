@@ -1,12 +1,15 @@
 #!/bin/bash
 
-git checkout master
-cd ../nuclei/
+currentBranch=$(git branch --show-current)
+
+echo 'Building functional-test binary'
 go build
-cp nuclei ../functional-test/nuclei_main
-git checkout dev
-go build
-cp nuclei ../functional-test/nuclei_dev
-cd ../functional-test
-go build
-./functional-test -main ./nuclei_main -dev ./nuclei_dev -testcases testcases.txt
+
+echo 'Building Nuclei binary from' $currentBranch 'branch'
+go build -o nuclei_$currentBranch ../nuclei
+
+echo 'Installing latest release of nuclei'
+GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+
+echo 'Starting Nuclei functional test'
+./functional-test -main $GOPATH/bin/nuclei -dev ./nuclei_$currentBranch -testcases testcases.txt
