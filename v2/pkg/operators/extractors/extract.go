@@ -1,6 +1,8 @@
 package extractors
 
 import (
+	"encoding/json"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -38,6 +40,44 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 		itemString := types.ToString(item)
 		if _, ok := results[itemString]; !ok {
 			results[itemString] = struct{}{}
+		}
+	}
+	return results
+}
+
+// ExtractJSON extracts text from a corpus using JQ queries and returns it
+func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
+	results := make(map[string]struct{})
+
+	var jsonObj interface{}
+
+	err := json.Unmarshal([]byte(corpus), &jsonObj)
+
+	if err != nil {
+		return results
+	}
+
+	for _, k := range e.jsonCompiled {
+		iter := k.Run(jsonObj)
+		for {
+			v, ok := iter.Next()
+			if !ok {
+				break
+			}
+			if _, ok := v.(error); ok {
+				break
+			}
+			var result string
+			if res, err := types.JSONScalarToString(v); err == nil {
+				result = res
+			} else if res, err := json.Marshal(v); err == nil {
+				result = string(res)
+			} else {
+				result = types.ToString(v)
+			}
+			if _, ok := results[result]; !ok {
+				results[result] = struct{}{}
+			}
 		}
 	}
 	return results
