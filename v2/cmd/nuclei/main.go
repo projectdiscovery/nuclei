@@ -162,10 +162,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.MetricsPort, "metrics-port", 9092, "port to expose nuclei metrics on"),
 	)
 
-	createGroup(flagSet, "env", "DotEnv",
-		flagSet.StringVar(&options.DotEnvPath, "env", ".env", "path of .env file to use"),
-	)
-
 	_ = flagSet.Parse()
 
 	if cfgFile != "" {

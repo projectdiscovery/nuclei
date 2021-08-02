@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -129,19 +128,6 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	// Combine the template payloads along with base
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
-
-	// read env variables
-	envVars := strings.Split(strings.Trim(r.request.EnvVars, " "), ",")
-	if len(envVars) > 0 {
-		envVarValues := make(map[string]interface{})
-		for _, envVar := range envVars {
-			envVarValue := os.Getenv(envVar)
-			if len(envVarValue) > 0 {
-				envVarValues[envVar] = envVarValue
-			}
-		}
-		finalValues = generators.MergeMaps(finalValues, envVarValues)
-	}
 
 	// Evaulate the expressions for raw request if any.
 	var err error

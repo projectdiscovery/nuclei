@@ -73,8 +73,6 @@ type Request struct {
 	// their history for being matched at the end.
 	// Currently only works with sequential http requests.
 	ReqCondition bool `yaml:"req-condition"`
-	// Dynamic ENV Variables
-	EnvVars string `yaml:"env-vars"`
 }
 
 // GetID returns the unique ID of the request if any.

@@ -143,6 +143,4 @@ type Options struct {
 	UpdateNuclei bool
 	// NoUpdateTemplates disables checking for nuclei templates updates
 	NoUpdateTemplates bool
-	// .env file path
-	DotEnvPath string
 }

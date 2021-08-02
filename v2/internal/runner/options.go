@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/joho/godotenv"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
@@ -59,13 +58,6 @@ func ParseOptions(options *types.Options) {
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
-	}
-
-	if len(options.DotEnvPath) > 0 {
-		err := godotenv.Load(options.DotEnvPath)
-		if err != nil {
-			gologger.Warning().Msgf("Failed loading .env file: %s\n", err)
-		}
 	}
 }
 
