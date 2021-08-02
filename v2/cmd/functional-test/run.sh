@@ -12,4 +12,4 @@ echo 'Installing latest release of nuclei'
 GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 
 echo 'Starting Nuclei functional test'
-./functional-test -main $GOPATH/bin/nuclei -dev ./nuclei_$currentBranch -testcases testcases.txt
+./functional-test -main nuclei -dev ./nuclei_$currentBranch -testcases testcases.txt
