@@ -44,7 +44,7 @@ const (
 	RegexExtractor ExtractorType = iota + 1
 	// KValExtractor extracts responses with key:value
 	KValExtractor
-	// XPathExtractor extracts respones with Xpath selectors
+	// XPathExtractor extracts responses with Xpath selectors
 	XPathExtractor
 )
 
