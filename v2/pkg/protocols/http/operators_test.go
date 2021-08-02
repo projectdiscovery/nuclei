@@ -170,17 +170,44 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	})
 
 	t.Run("json", func(t *testing.T) {
-		extractor := &extractors.Extractor{
-			Type: "json",
-			JSON: []string{".batters | .batter | .[] | .id"},
-		}
-		err = extractor.CompileExtractors()
-		require.Nil(t, err, "could not compile json extractor")
-
 		event["body"] = exampleJSONResponseBody
-		data := request.Extract(event, extractor)
-		require.Greater(t, len(data), 0, "could not extractor json valid response")
-		require.Equal(t, map[string]struct{}{"1001": {}, "1002": {}, "1003": {}, "1004": {}}, data, "could not extract correct json data")
+
+		t.Run("jq-simple", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".batters | .batter | .[] | .id"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"1001": {}, "1002": {}, "1003": {}, "1004": {}}, data, "could not extract correct json data")
+		})
+		t.Run("jq-array", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".array"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"[\"hello\",\"world\"]": {}}, data, "could not extract correct json data")
+		})
+		t.Run("jq-object", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".batters"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"{\"batter\":[{\"id\":\"1001\",\"type\":\"Regular\"},{\"id\":\"1002\",\"type\":\"Chocolate\"},{\"id\":\"1003\",\"type\":\"Blueberry\"},{\"id\":\"1004\",\"type\":\"Devil's Food\"}]}": {}}, data, "could not extract correct json data")
+		})
 	})
 }
 
@@ -326,6 +353,7 @@ const exampleJSONResponseBody = `
   "type": "donut",
   "name": "Cake",
   "ppu": 0.55,
+  "array": ["hello", "world"],
   "batters": {
     "batter": [
       {

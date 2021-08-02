@@ -45,7 +45,7 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 	return results
 }
 
-// ExtractJSON extracts key value pairs from a data map
+// ExtractJSON extracts text from a corpus using JQ queries and returns it
 func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
@@ -67,9 +67,16 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 			if _, ok := v.(error); ok {
 				break
 			}
-			itemString := types.ToString(v)
-			if _, ok := results[itemString]; !ok {
-				results[itemString] = struct{}{}
+			var result string
+			if res, err := types.JSONScalarToString(v); err == nil {
+				result = res
+			} else if res, err := json.Marshal(v); err == nil {
+				result = string(res)
+			} else {
+				result = types.ToString(v)
+			}
+			if _, ok := results[result]; !ok {
+				results[result] = struct{}{}
 			}
 		}
 	}
