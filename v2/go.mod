@@ -4,7 +4,9 @@ go 1.15
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/PuerkitoBio/goquery v1.7.1
 	github.com/andygrunwald/go-jira v1.13.0
+	github.com/antchfx/htmlquery v1.2.3 // indirect
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/c4milo/unpackit v0.1.0 // indirect
@@ -54,7 +56,7 @@ require (
 	go.uber.org/multierr v1.6.0
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
-	golang.org/x/net v0.0.0-20210521195947-fe42d452be8f
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
