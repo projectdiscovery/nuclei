@@ -70,6 +70,8 @@ type Options struct {
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target
 	RateLimit int
+	// Rate-Limit is the maximum number of requests per minute for specified target
+	RateLimitMinute int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
 	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
