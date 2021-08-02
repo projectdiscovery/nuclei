@@ -52,7 +52,7 @@ require (
 	github.com/xanzy/go-gitlab v0.44.0
 	go.uber.org/atomic v1.7.0
 	go.uber.org/multierr v1.6.0
-	go.uber.org/ratelimit v0.1.0
+	go.uber.org/ratelimit v0.2.0
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
 	golang.org/x/net v0.0.0-20210521195947-fe42d452be8f
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99

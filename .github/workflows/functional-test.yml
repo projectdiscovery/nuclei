@@ -1,0 +1,25 @@
+name: 🧪 Functional Test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+
+jobs:  
+  build:
+    name: Functional Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Functional Tests
+        run: |
+          chmod +x run.sh
+          bash run.sh
+        working-directory: v2/cmd/functional-test
