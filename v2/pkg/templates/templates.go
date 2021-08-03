@@ -1,3 +1,4 @@
+//go:generate dstdocgen -path "" -structure Template -output templates_doc.go -package templates
 package templates
 
 import (

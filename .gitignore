@@ -11,3 +11,4 @@ v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 v2/cmd/functional-test/nuclei_dev
 v2/cmd/functional-test/nuclei_main
 v2/cmd/functional-test/functional-test
+v2/cmd/docgen/docgen

@@ -38,6 +38,7 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
 	github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d
+	github.com/projectdiscovery/yamldoc-go v0.0.0-20210803152633-4db1fb7fe36a // indirect
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/xid v1.2.1
