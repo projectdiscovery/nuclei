@@ -2,10 +2,10 @@ package model
 
 import (
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 type Info struct {
@@ -47,6 +47,7 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 	}
 
 	result := make([]string, len(marshalledSlice))
+	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
 	}
