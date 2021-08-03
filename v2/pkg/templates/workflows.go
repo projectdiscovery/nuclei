@@ -4,7 +4,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -45,13 +44,13 @@ func parseWorkflow(workflow *workflows.WorkflowTemplate, options *protocols.Exec
 	return nil
 }
 
-// parseWorkflowTemplate parses a workflow template creating an executor
+// parseWorkflowTemplate parses a workflow template creating an executer
 func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
-	workflowTags := workflow.Tags.ToSlice()
-	if utils.IsNotEmpty(workflowTags) {
-		paths = loader.ListTags(workflowTags)
+	workflowTags := workflow.Tags
+	if !workflowTags.IsEmpty() {
+		paths = loader.ListTags(workflowTags.ToSlice())
 	} else {
 		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
 	}
@@ -76,7 +75,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, options *protoc
 			continue
 		}
 		if template.Executer == nil {
-			gologger.Warning().Msgf("Could not parse workflow template %s: no executor found\n", path)
+			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
 		}
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{

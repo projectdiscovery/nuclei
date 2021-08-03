@@ -123,7 +123,7 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if (utils.IsEmpty(options.Templates) || !options.NewTemplates || (utils.IsEmpty(options.Targets, options.Target) && utils.IsNotEmpty(options.Stdin))) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && options.Target == "")) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -211,7 +211,7 @@ func New(options *types.Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsEmpty(options.ProjectPath)})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
@@ -354,10 +354,10 @@ func (r *Runner) RunEnumeration() error {
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
-	if utils.IsNotEmpty(store.Templates()) {
+	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
 	}
-	if utils.IsNotEmpty(store.Workflows()) {
+	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
 	}
 
@@ -367,8 +367,8 @@ func (r *Runner) RunEnumeration() error {
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
-		// it can't be know in advance which requests will be called
-		if utils.IsNotEmpty(template.Workflows) {
+		// it can't be known in advance which requests will be called
+		if len(template.Workflows) > 0 {
 			continue
 		}
 		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
@@ -419,7 +419,7 @@ func (r *Runner) RunEnumeration() error {
 
 	var totalRequests int64
 	for _, t := range finalTemplates {
-		if utils.IsNotEmpty(t.Workflows) {
+		if len(t.Workflows) > 0 {
 			continue
 		}
 		totalRequests += int64(t.TotalRequests) * r.inputCount

@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Integration is a client for a issue tracker integration
@@ -186,11 +185,13 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n{code}\n")
 		}
 	}
-	referenceValue := event.Info.Reference.Value
-	if utils.IsNotEmpty(referenceValue) {
+
+	reference := event.Info.Reference
+	if !reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		switch v := referenceValue.(type) { // TODO revisit
+		// TODO remove the code duplication: format.go <-> jira.go
+		switch v := reference.Value.(type) {
 		case string:
 			if !strings.HasPrefix(v, "-") {
 				builder.WriteString("- ")
