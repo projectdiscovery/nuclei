@@ -29,7 +29,7 @@ func Summary(event *output.ResultEvent) string {
 
 // MarkdownDescription formats a short description of the generated
 // event by the nuclei scanner in Markdown format.
-func MarkdownDescription(event *output.ResultEvent) string {
+func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the code duplication: format.go <-> jira.go
 	template := GetMatchedTemplate(event)
 	builder := &bytes.Buffer{}
 	builder.WriteString("**Details**: **")
@@ -128,7 +128,16 @@ func MarkdownDescription(event *output.ResultEvent) string {
 	if !reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		// TODO remove the code duplication: format.go <-> jira.go
+		/*TODO couldn't the following code replace the logic below?
+		referenceSlice := reference.ToSlice()
+		for i, item := range referenceSlice {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			if len(referenceSlice)-1 != i {
+				builder.WriteString("\n")
+			}
+		}*/
+
 		switch value := reference.Value.(type) {
 		case string:
 			if !strings.HasPrefix(value, "-") {
