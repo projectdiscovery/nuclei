@@ -71,9 +71,16 @@ type Request struct {
 	//   be provided as payload which will be read on run-time.
 	// examples:
 	//   - name: A payload list for Tomcat Bruteforce
-	//     value: exampleTomcatUserPassPayload
+	//     value: >
+	//       map[string]interface{}{
+	//			"username": []string{"tomcat", "admin"},
+	//	        "password": []string{"tomcat", "admin", "password"},
+	//       }
 	//   - name: A payload example of reading from file
-	//     value: exampleFileBasedPayload
+	//     value: >
+	//       map[string]interface{}{
+	//	       "data": "helpers/payloads/command-injection.txt",
+	//       }
 	Payloads map[string]interface{} `yaml:"payloads"`
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
