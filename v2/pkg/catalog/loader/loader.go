@@ -39,6 +39,8 @@ type Store struct {
 
 	templates []*templates.Template
 	workflows []*templates.Template
+
+	preprocessor templates.Preprocessor
 }
 
 // New creates a new template store based on provided configuration
@@ -77,6 +79,11 @@ func (s *Store) Workflows() []*templates.Template {
 	return s.workflows
 }
 
+// RegisterPreprocessor allows a custom preprocessor to be passed to the store to run against templates
+func (s *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
+	s.preprocessor = preprocessor
+}
+
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (s *Store) Load() {
@@ -106,7 +113,7 @@ func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 			gologger.Error().Msgf("Error occurred loading template %s: %s\n", k, err)
 			continue
 		}
-		_, err = templates.Parse(k, s.config.ExecutorOptions)
+		_, err = templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot create template executer") {
 				continue
@@ -130,7 +137,7 @@ func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 			notErrored = false
 			gologger.Error().Msgf("Error occurred loading workflow %s: %s\n", k, err)
 		}
-		_, err = templates.Parse(k, s.config.ExecutorOptions)
+		_, err = templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot create template executer") {
 				continue
@@ -157,7 +164,7 @@ func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
+			parsed, err := templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", k, err)
 			} else if parsed != nil {
@@ -180,7 +187,7 @@ func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", k, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(k, s.config.ExecutorOptions)
+			parsed, err := templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", k, err)
 			} else if parsed != nil {
