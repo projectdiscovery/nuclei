@@ -54,6 +54,8 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 		return extractor.ExtractRegex(item)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
+	case extractors.JSONExtractor:
+		return extractor.ExtractJSON(item)
 	}
 	return nil
 }

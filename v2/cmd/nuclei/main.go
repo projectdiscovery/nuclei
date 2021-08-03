@@ -57,15 +57,15 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	createGroup(flagSet, "filters", "Filtering",
-		flagSet.StringSliceVar(&options.Tags, "tags", []string{}, "execute a subset of templates that contain the provided tags"),
-		flagSet.StringSliceVar(&options.IncludeTags, "include-tags", []string{}, "tags from the default deny list that permit executing more intrusive templates"), // TODO show default deny list
-		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "exclude templates with the provided tags"),
+		flagSet.NormalizedStringSliceVar(&options.Tags, "tags", []string{}, "execute a subset of templates that contain the provided tags"),
+		flagSet.NormalizedStringSliceVar(&options.IncludeTags, "include-tags", []string{}, "tags from the default deny list that permit executing more intrusive templates"), // TODO show default deny list
+		flagSet.NormalizedStringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "exclude templates with the provided tags"),
 
 		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
 		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
-		flagSet.StringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
-		flagSet.StringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
+		flagSet.NormalizedStringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
+		flagSet.NormalizedStringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
 	)
 
 	createGroup(flagSet, "output", "Output",
@@ -109,6 +109,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
+		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 10, "maximum number of templates to be executed in parallel"),
 	)
@@ -148,12 +149,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "update", "Update",
 		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update the community templates to latest released version"),
+		flagSet.BoolVarP(&options.NoUpdateTemplates, "no-update-templates", "nut", false, "Do not check for nuclei-templates updates"),
 		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "overwrite the default nuclei-templates directory"),
 	)
 
 	createGroup(flagSet, "stats", "Statistics",
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
-		flagSet.BoolVar(&options.StatsJSON, "stats-json", false, "write statistics data to and output file in JSONL(ines) format"),
+		flagSet.BoolVar(&options.StatsJSON, "stats-json", false, "write statistics data to an output file in JSONL(ines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
 
 		flagSet.BoolVar(&options.Metrics, "metrics", false, "expose nuclei metrics on a port"),

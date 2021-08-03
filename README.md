@@ -164,7 +164,7 @@ UPDATE:
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -stats-json               write statistics data to and output file in JSONL(ines) format
+   -stats-json               write statistics data to an output file in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -metrics                  expose nuclei metrics on a port
    -metrics-port int         port to expose nuclei metrics on (default 9092)
