@@ -18,6 +18,7 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 
+	// ID is the ID of the request
 	ID string `yaml:"id"`
 
 	// description: |

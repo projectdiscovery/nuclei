@@ -26,6 +26,7 @@ type Request struct {
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
 	ExtensionDenylist []string `yaml:"denylist"`
 
+	// ID is the ID of the request
 	ID string `yaml:"id"`
 
 	// description: |

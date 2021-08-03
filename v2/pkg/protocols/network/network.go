@@ -15,6 +15,7 @@ import (
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
+	// ID is the ID of the request
 	ID string `yaml:"id"`
 
 	// description: |
