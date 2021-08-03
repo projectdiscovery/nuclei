@@ -44,28 +44,38 @@ type Filter struct {
 
 // GetMatch returns true if a filter matches result event
 func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
-	return isSeverityMatch(event, filter) && isTagMatch(event, filter)
+	return isSeverityMatch(event, filter) && isTagMatch(event, filter) // TODO revisit this
 }
 
 func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
+	filterTags := filter.Tags
+	if filterTags.IsEmpty() {
+		return true
+	}
+
 	tags := event.Info.Tags.ToSlice()
-	for _, tag := range filter.Tags.ToSlice() {
+	for _, tag := range filterTags.ToSlice() {
 		if stringSliceContains(tags, tag) {
 			return true
 		}
 	}
+
 	return false
 }
 
 func isSeverityMatch(event *output.ResultEvent, filter *Filter) bool {
 	resultEventSeverity := event.Info.SeverityHolder.Severity // TODO review
-	if utils.IsNotEmpty(filter.Severities) {
-		for _, current := range filter.Severities {
-			if current == resultEventSeverity {
-				return true
-			}
+
+	if len(filter.Severities) == 0 {
+		return true
+	}
+
+	for _, current := range filter.Severities {
+		if current == resultEventSeverity {
+			return true
 		}
 	}
+
 	return false
 }
 
