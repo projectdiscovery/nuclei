@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Options is a configuration file for nuclei reporting module

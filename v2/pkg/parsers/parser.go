@@ -28,7 +28,7 @@ func Load(templatePath string, isWorkflow bool, workflowTags []string, tagFilter
 		return false, validationError
 	}
 
-	if utils.IsNotEmpty(template.Workflows) {
+	if len(template.Workflows) > 0 {
 		if isWorkflow {
 			return true, nil // if a workflow is declared and this template is a workflow, then load
 		} else { //nolint:indent-error-flow,revive // preferred: readability and extensibility
@@ -48,7 +48,7 @@ func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, 
 
 	var match bool
 	var err error
-	if utils.IsEmpty(workflowTags) {
+	if len(workflowTags) == 0 {
 		match, err = tagFilter.Match(templateTags, templateAuthors, templateSeverity)
 	} else {
 		match, err = tagFilter.MatchWithWorkflowTags(templateTags, templateAuthors, templateSeverity, workflowTags)
@@ -62,16 +62,15 @@ func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, 
 }
 
 func validateMandatoryInfoFields(info *model.Info) error {
-	if utils.IsEmpty(&info) {
+	if &info == nil {
 		return fmt.Errorf(mandatoryFieldMissingTemplate, "info")
 	}
 
-	if utils.IsEmpty(&info.Name) {
+	if utils.IsBlank(info.Name) {
 		return fmt.Errorf(mandatoryFieldMissingTemplate, "name")
 	}
 
-	authors := info.Authors.ToSlice()
-	if utils.IsEmpty(&authors) {
+	if info.Authors.IsEmpty() {
 		return fmt.Errorf(mandatoryFieldMissingTemplate, "author")
 	}
 	return nil

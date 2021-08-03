@@ -1,10 +1,11 @@
 package model
 
 import (
+	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 type Info struct {
@@ -16,12 +17,14 @@ type Info struct {
 	SeverityHolder severity.SeverityHolder `yaml:"severity"`
 }
 
+// StringSlice represents a single (in-lined) or multiple string value(s).
+// The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
 type StringSlice struct {
 	Value interface{}
 }
 
 func (stringSlice *StringSlice) IsEmpty() bool {
-	return utils.IsEmpty(stringSlice.Value)
+	return len(stringSlice.ToSlice()) == 0
 }
 
 func (stringSlice StringSlice) ToSlice() []string {
@@ -32,8 +35,9 @@ func (stringSlice StringSlice) ToSlice() []string {
 		return value
 	case nil:
 		return []string{}
+	default:
+		panic(fmt.Sprintf("Unexpected StringSlice type: '%T'", value))
 	}
-	panic("Illegal State: StringSlice holds non-string value(s)")
 }
 
 func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -44,7 +48,7 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 
 	result := make([]string, len(marshalledSlice))
 	for _, value := range marshalledSlice {
-		result = append(result, strings.ToLower(strings.TrimSpace(value)))
+		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
 	}
 	stringSlice.Value = result
 	return nil
@@ -65,7 +69,7 @@ func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
 	var result []string
 	if len(marshalledValuesAsSlice) > 0 {
 		result = marshalledValuesAsSlice
-	} else if utils.IsNotEmpty(marshalledValueAsString) {
+	} else if utils.IsNotBlank(marshalledValueAsString) {
 		result = strings.Split(marshalledValueAsString, ",")
 	} else {
 		result = []string{}

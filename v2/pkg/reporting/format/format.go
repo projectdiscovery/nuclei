@@ -8,7 +8,6 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Summary returns a formatted built one line summary of the event
@@ -125,11 +124,12 @@ func MarkdownDescription(event *output.ResultEvent) string {
 		}
 	}
 
-	referenceValue := event.Info.Reference.Value
-	if utils.IsNotEmpty(referenceValue) {
+	reference := event.Info.Reference
+	if !reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		switch value := referenceValue.(type) { // TODO revisit
+		// TODO remove the code duplication: format.go <-> jira.go
+		switch value := reference.Value.(type) {
 		case string:
 			if !strings.HasPrefix(value, "-") {
 				builder.WriteString("- ")
