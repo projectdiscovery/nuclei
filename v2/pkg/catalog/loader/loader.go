@@ -10,7 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Config contains the configuration options for the loader
@@ -61,7 +60,7 @@ func New(config *Config) (*Store, error) {
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if utils.IsEmpty(config.Templates, config.Workflows) {
+	if len(config.Templates) == 0 && len(config.Workflows) == 0 {
 		config.Templates = append(config.Templates, config.TemplatesDirectory)
 	}
 	store.finalTemplates = append(store.finalTemplates, config.Templates...)

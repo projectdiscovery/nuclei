@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution
@@ -46,7 +45,7 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 		return false, nil
 	}
 
-	if utils.IsNotEmpty(tagFilter.severities) {
+	if len(tagFilter.severities) > 0 {
 		if _, ok := tagFilter.severities[templateSeverity]; !ok {
 			return false, nil
 		}
@@ -56,7 +55,7 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 }
 
 func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
-	if utils.IsEmpty(tagFilter.authors) {
+	if len(tagFilter.authors) == 0 {
 		return true
 	}
 
@@ -70,7 +69,7 @@ func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
 }
 
 func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
-	if utils.IsEmpty(tagFilter.allowedTags) {
+	if len(tagFilter.allowedTags) == 0 {
 		return true
 	}
 
@@ -101,7 +100,7 @@ func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors 
 		}
 	}
 
-	if utils.IsNotEmpty(workflowAllowedTagMap) { // TODO review, does not seem to make sense
+	if len(workflowAllowedTagMap) > 0 { // TODO review, does not seem to make sense
 		for _, templateTag := range templateTags {
 			if _, ok := workflowAllowedTagMap[templateTag]; !ok {
 				return false, nil
@@ -109,7 +108,7 @@ func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors 
 		}
 	}
 
-	if utils.IsNotEmpty(tagFilter.authors) {
+	if len(tagFilter.authors) > 0 {
 		for _, templateAuthor := range templateAuthors {
 			if _, ok := tagFilter.authors[templateAuthor]; !ok {
 				return false, nil
@@ -117,7 +116,7 @@ func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors 
 		}
 	}
 
-	if utils.IsNotEmpty(tagFilter.severities) {
+	if len(tagFilter.severities) > 0 {
 		if _, ok := tagFilter.severities[templateSeverity]; !ok {
 			return false, nil
 		}

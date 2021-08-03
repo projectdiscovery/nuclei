@@ -62,7 +62,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	sarifSeverity := getSarifSeverity(event)
 
 	var ruleName string
-	if utils.IsNotEmpty(event.Info.Name) {
+	if utils.IsNotBlank(event.Info.Name) {
 		ruleName = event.Info.Name
 	}
 
@@ -74,7 +74,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	var ruleDescription string
-	if utils.IsNotEmpty(event.Info.Description) {
+	if utils.IsNotBlank(event.Info.Description) {
 		ruleDescription = event.Info.Description
 	}
 

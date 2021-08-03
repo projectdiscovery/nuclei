@@ -39,10 +39,10 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 		return nil, err
 	}
 
-	if utils.IsEmpty(template.Info.Name) {
+	if utils.IsBlank(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
 	}
-	if utils.IsEmpty(template.Info.Authors) {
+	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
 	}
 
@@ -52,12 +52,12 @@ func Parse(filePath string, options protocols.ExecuterOptions) (*Template, error
 	options.TemplatePath = filePath
 
 	// If no requests, and it is also not a workflow, return error.
-	if utils.IsEmpty(template.RequestsDNS, template.RequestsHTTP, template.RequestsFile, template.RequestsNetwork, template.RequestsHeadless, template.Workflows) {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
 	// Compile the workflow request
-	if utils.IsNotEmpty(template.Workflows) {
+	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
 
 		compileWorkflow(&options, compiled, options.WorkflowLoader)
