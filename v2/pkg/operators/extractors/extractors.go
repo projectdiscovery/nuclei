@@ -1,6 +1,10 @@
 package extractors
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/itchyny/gojq"
+)
 
 // Extractor is used to extract part of response using a regex.
 type Extractor struct {
@@ -65,6 +69,17 @@ type Extractor struct {
 	//   - value: "\"body\""
 	//   - value: "\"raw\""
 	Part string `yaml:"part,omitempty"`
+
+	// description: |
+	//   JSON allows using jq-style syntax to extract items from json response
+	//
+	// examples:
+	//   - value: "\".[] | .id\""
+	//   - value: "\".batters | .batter | .[] | .id\""
+	JSON []string `yaml:"json"`
+	// jsonCompiled is the compiled variant
+	jsonCompiled []*gojq.Code
+
 	// description: |
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
@@ -79,12 +94,15 @@ const (
 	RegexExtractor ExtractorType = iota + 1
 	// KValExtractor extracts responses with key:value
 	KValExtractor
+	// JSONExtractor extracts responses with json
+	JSONExtractor
 )
 
 // ExtractorTypes is an table for conversion of extractor type from string.
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
+	"json":  JSONExtractor,
 }
 
 // GetType returns the type of the matcher

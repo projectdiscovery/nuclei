@@ -7,9 +7,9 @@ type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
-	Tags goflags.StringSlice
+	Tags goflags.NormalizedStringSlice
 	// ExcludeTags is the list of tags to exclude
-	ExcludeTags goflags.StringSlice
+	ExcludeTags goflags.NormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
 	// Templates specifies the template/templates to use
@@ -19,11 +19,11 @@ type Options struct {
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Severity filters templates based on their severity and only run the matching ones.
-	Severity goflags.StringSlice
+	Severity goflags.NormalizedStringSlice
 	// Author filters templates based on their author and only run the matching ones.
-	Author goflags.StringSlice
+	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
-	IncludeTags goflags.StringSlice
+	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
 	IncludeTemplates goflags.StringSlice
 
@@ -70,6 +70,8 @@ type Options struct {
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target
 	RateLimit int
+	// Rate-Limit is the maximum number of requests per minute for specified target
+	RateLimitMinute int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
 	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
@@ -139,4 +141,6 @@ type Options struct {
 	NoInteractsh bool
 	// UpdateNuclei checks for an update for the nuclei engine
 	UpdateNuclei bool
+	// NoUpdateTemplates disables checking for nuclei templates updates
+	NoUpdateTemplates bool
 }
