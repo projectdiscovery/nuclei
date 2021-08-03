@@ -84,13 +84,6 @@ func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 
 // MatchWithWorkflowTags takes an addition list of allowed tags and returns true if the match was successful.
 func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity severity.Severity, workflowTags []string) (bool, error) {
-	workflowAllowedTagMap := make(map[string]struct{})
-	for _, workflowTag := range workflowTags {
-		if _, ok := workflowAllowedTagMap[workflowTag]; !ok {
-			workflowAllowedTagMap[workflowTag] = struct{}{}
-		}
-	}
-
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -100,17 +93,17 @@ func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors 
 		}
 	}
 
-	if len(workflowAllowedTagMap) > 0 { // TODO review, does not seem to make sense
-		for _, templateTag := range templateTags {
-			if _, ok := workflowAllowedTagMap[templateTag]; !ok {
-				return false, nil
-			}
+	templatesTagMap := toMap(templateTags)
+	for _, workflowTag := range workflowTags {
+		if _, ok := templatesTagMap[workflowTag]; !ok {
+			return false, nil
 		}
 	}
 
 	if len(tagFilter.authors) > 0 {
-		for _, templateAuthor := range templateAuthors {
-			if _, ok := tagFilter.authors[templateAuthor]; !ok {
+		templateAuthorTagMap := toMap(templateAuthors)
+		for requiredAuthor := range tagFilter.authors {
+			if _, ok := templateAuthorTagMap[requiredAuthor]; !ok {
 				return false, nil
 			}
 		}
@@ -197,4 +190,14 @@ func splitCommaTrim(value string) []string {
 		final[i] = strings.ToLower(strings.TrimSpace(value))
 	}
 	return final
+}
+
+func toMap(slice []string) map[string]struct{} {
+	result := make(map[string]struct{})
+	for _, value := range slice {
+		if _, ok := result[value]; !ok {
+			result[value] = struct{}{}
+		}
+	}
+	return result
 }
