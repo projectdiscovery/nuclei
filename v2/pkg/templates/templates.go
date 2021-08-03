@@ -15,9 +15,11 @@ var (
 		"username": []string{"tomcat", "admin"},
 		"password": []string{"tomcat", "admin", "password"},
 	}
+	_                       = exampleTomcatUserPassPayload
 	exampleFileBasedPayload = map[string]interface{}{
 		"data": "helpers/payloads/command-injection.txt",
 	}
+	_ = exampleFileBasedPayload
 )
 
 // Template is a YAML input file which defines the requests and
@@ -29,7 +31,7 @@ type Template struct {
 	//
 	//   #### Good IDs
 	//
-	//   A good ID unqiuely identifies what the requests in the template
+	//   A good ID uniquely identifies what the requests in the template
 	//   are doing. Let's say you have a template that identifies a git-config
 	//   file on the webservers, a good name would be `git-config-exposure`. Another
 	//   example name is `azure-apps-nxdomain-takeover`.
