@@ -95,7 +95,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 
 // jiraFormatDescription formats a short description of the generated
 // event by the nuclei scanner in Jira format.
-func jiraFormatDescription(event *output.ResultEvent) string {
+func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove the code duplication: format.go <-> jira.go
 	template := format.GetMatchedTemplate(event)
 
 	builder := &bytes.Buffer{}
@@ -190,7 +190,16 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 	if !reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		// TODO remove the code duplication: format.go <-> jira.go
+		/*TODO couldn't the following code replace the logic below?
+		referenceSlice := reference.ToSlice()
+		for i, item := range referenceSlice {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			if len(referenceSlice)-1 != i {
+				builder.WriteString("\n")
+			}
+		}*/
+
 		switch v := reference.Value.(type) {
 		case string:
 			if !strings.HasPrefix(v, "-") {
