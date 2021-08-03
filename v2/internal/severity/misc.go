@@ -3,8 +3,6 @@ package severity
 import (
 	"fmt"
 	"strings"
-
-	"github.com/projectdiscovery/goflags"
 )
 
 type Severities []Severity
@@ -14,11 +12,7 @@ func (severities Severities) String() string {
 }
 
 func (severities *Severities) Set(value string) error {
-	inputSeverities, err := goflags.ToStringSlice(value)
-
-	if err != nil {
-		return err
-	}
+	inputSeverities := toStringSlice(value)
 
 	for _, inputSeverity := range inputSeverities {
 		if err := setSeverity(severities, inputSeverity); err != nil {
@@ -44,6 +38,20 @@ func (severities *Severities) ToStringArray() []string {
 	var result []string
 	for _, severity := range *severities {
 		result = append(result, severity.String())
+	}
+	return result
+}
+
+func toStringSlice(value string) []string {
+	var result []string
+	if strings.Contains(value, ",") {
+		slices := strings.Split(value, ",")
+		result = make([]string, 0, len(slices))
+		for _, slice := range slices {
+			result = append(result, slice)
+		}
+	} else {
+		result = []string{value}
 	}
 	return result
 }

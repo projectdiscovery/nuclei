@@ -63,15 +63,21 @@ func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 	}
+	if options.UpdateNuclei {
+		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if err := runner.updateTemplates(); err != nil {
+		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+	}
 	if options.Headless {
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
 		}
 		runner.browser = browser
-	}
-	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
@@ -194,10 +200,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.output = outputWriter
 
-	if options.JSON {
+	if options.JSON && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
-
 	if options.StatsJSON {
 		options.EnableProgressBar = true
 	}
@@ -235,7 +240,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if options.RateLimit > 0 {
+	if options.RateLimitMinute > 0 {
+		runner.ratelimiter = ratelimit.New(options.RateLimitMinute, ratelimit.Per(60*time.Second))
+	} else if options.RateLimit > 0 {
 		runner.ratelimiter = ratelimit.New(options.RateLimit)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited()

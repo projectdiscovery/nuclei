@@ -139,12 +139,23 @@ func New(options *Options, db string) (*Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
 	}
 	client.dedupe = storage
 	return client, nil
+}
+
+// RegisterTracker registers a custom tracker to the reporter
+func (c *Client) RegisterTracker(tracker Tracker) {
+	c.trackers = append(c.trackers, tracker)
+}
+
+// RegisterExporter registers a custom exporter to the reporter
+func (c *Client) RegisterExporter(exporter Exporter) {
+	c.exporters = append(c.exporters, exporter)
 }
 
 // Close closes the issue tracker reporting client
