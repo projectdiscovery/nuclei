@@ -32,7 +32,7 @@ type Request struct {
 	//       []string{"GET /etc/passwd HTTP/1.1\nHost:\nContent-Length: 4", "POST /.%0d./.%0d./.%0d./.%0d./bin/sh HTTP/1.1\nHost: {{Hostname}}\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0\nContent-Length: 1\nConnection: close\n\necho\necho\ncat /etc/passwd 2>&1"}
 	Raw []string `yaml:"raw"`
 	// docgen:nodoc
-	ID string `yaml:"-"`
+	ID string `yaml:"id"`
 	// description: |
 	//  Name is the optional name of the request.
 	//
