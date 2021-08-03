@@ -10,16 +10,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
+// nolint:deadcode // this is intentional
 var (
 	exampleTomcatUserPassPayload = map[string]interface{}{
 		"username": []string{"tomcat", "admin"},
 		"password": []string{"tomcat", "admin", "password"},
 	}
-	_                       = exampleTomcatUserPassPayload
 	exampleFileBasedPayload = map[string]interface{}{
 		"data": "helpers/payloads/command-injection.txt",
 	}
-	_ = exampleFileBasedPayload
 )
 
 // Template is a YAML input file which defines the requests and
