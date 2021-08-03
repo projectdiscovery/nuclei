@@ -62,7 +62,7 @@ func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, 
 }
 
 func validateMandatoryInfoFields(info *model.Info) error {
-	if &info == nil {
+	if info == nil {
 		return fmt.Errorf(mandatoryFieldMissingTemplate, "info")
 	}
 
