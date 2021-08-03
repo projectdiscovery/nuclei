@@ -68,6 +68,15 @@ func TestTagBasedFilter(t *testing.T) {
 		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.High)
 		require.True(t, matched, "could not get correct match")
 	})
+	t.Run("match-exclude-with-tags", func(t *testing.T) {
+		config := &Config{
+			Tags:        []string{"tag"},
+			ExcludeTags: []string{"another"},
+		}
+		filter := New(config)
+		matched, _ := filter.Match([]string{"another"}, []string{"pdteam"}, severity.High)
+		require.False(t, matched, "could not get correct match")
+	})
 	t.Run("match-conditions", func(t *testing.T) {
 		config := &Config{
 			Authors:    []string{"pdteam"},
