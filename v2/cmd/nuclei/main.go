@@ -42,8 +42,8 @@ func readConfig() {
 on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "input", "Target",
-		flagSet.StringSliceVarP(&options.Target, "target", "u", []string{}, "target URLs/hosts to scan"),
-		flagSet.StringVarP(&options.Targets, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
+		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",

@@ -125,7 +125,7 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.Targets == "" && !options.Stdin && len(options.Target) == 0)) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -138,11 +138,21 @@ func New(options *types.Options) (*Runner, error) {
 	dupeCount := 0
 
 	// Handle single target
-	if len(options.Target) != 0 {
-		for _, target := range options.Target {
+	if len(options.Targets) != 0 {
+		for _, target := range options.Targets {
+			url := strings.TrimSpace(target)
+			if url == "" {
+				continue
+			}
+
+			if _, ok := runner.hostMap.Get(url); ok {
+				dupeCount++
+				continue
+			}
+
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(target, nil)
+			runner.hostMap.Set(url, nil)
 		}
 	}
 
@@ -154,10 +164,12 @@ func New(options *types.Options) (*Runner, error) {
 			if url == "" {
 				continue
 			}
+
 			if _, ok := runner.hostMap.Get(url); ok {
 				dupeCount++
 				continue
 			}
+
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
@@ -165,8 +177,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Handle taget file
-	if options.Targets != "" {
-		input, inputErr := os.Open(options.Targets)
+	if options.TargetsFilePath != "" {
+		input, inputErr := os.Open(options.TargetsFilePath)
 		if inputErr != nil {
 			return nil, errors.Wrap(inputErr, "could not open targets file")
 		}
