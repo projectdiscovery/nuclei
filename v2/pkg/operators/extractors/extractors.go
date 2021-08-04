@@ -35,13 +35,13 @@ type Extractor struct {
 	//   - name: Wordpress Author Extraction regex
 	//     value: >
 	//       []string{"Author:(?:[A-Za-z0-9 -\\_=\"]+)?<span(?:[A-Za-z0-9 -\\_=\"]+)?>([A-Za-z0-9]+)<\\/span>"}
-	Regex []string `yaml:"regex"`
+	Regex []string `yaml:"regex,omitempty"`
 	// description: |
 	//   Group specifies a numbered group to extract from the regex.
 	// examples:
 	//   - name: Example Regex Group
 	//   - value: "1"
-	RegexGroup int `yaml:"group"`
+	RegexGroup int `yaml:"group,omitempty"`
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
 
@@ -76,7 +76,7 @@ type Extractor struct {
 	// examples:
 	//   - value: "\".[] | .id\""
 	//   - value: "\".batters | .batter | .[] | .id\""
-	JSON []string `yaml:"json"`
+	JSON []string `yaml:"json,omitempty"`
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 

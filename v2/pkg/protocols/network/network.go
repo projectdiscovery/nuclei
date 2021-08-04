@@ -16,7 +16,7 @@ import (
 // Request contains a Network protocol request to be made from a template
 type Request struct {
 	// ID is the ID of the request
-	ID string `yaml:"id"`
+	ID string `yaml:"id,omitempty"`
 
 	// description: |
 	//   Address is the address to send requests to.
@@ -26,7 +26,7 @@ type Request struct {
 	// examples:
 	//   - value: |
 	//       []string{"{{Hostname}}"}
-	Address   []string `yaml:"host"`
+	Address   []string `yaml:"host,omitempty"`
 	addresses []addressKV
 
 	// description: |
@@ -38,29 +38,29 @@ type Request struct {
 	//   - "sniper"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack"`
+	AttackType string `yaml:"attack,omitempty"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	Payloads map[string]interface{} `yaml:"payloads"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
 
 	// description: |
 	//   Inputs contains inputs for the network socket
-	Inputs []*Input `yaml:"inputs"`
+	Inputs []*Input `yaml:"inputs,omitempty"`
 	// description: |
 	//   ReadSize is the size of response to read at the end
 	//
 	//   Default value for read-size is 1024.
 	// examples:
 	//   - value: "2048"
-	ReadSize int `yaml:"read-size"`
+	ReadSize int `yaml:"read-size,omitempty"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators
+	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	generator  *generators.Generator
 	attackType generators.Type
@@ -84,7 +84,7 @@ type Input struct {
 	// examples:
 	//   - value: "\"TEST\""
 	//   - value: "\"hex_decode('50494e47')\""
-	Data string `yaml:"data"`
+	Data string `yaml:"data,omitempty"`
 	// description: |
 	//   Type is the type of input specified in `data` field.
 	//
@@ -92,7 +92,7 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type string `yaml:"type"`
+	Type string `yaml:"type,omitempty"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
@@ -103,12 +103,12 @@ type Input struct {
 	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
 	// examples:
 	//   - value: "1024"
-	Read int `yaml:"read"`
+	Read int `yaml:"read,omitempty"`
 	// description: |
 	//   Name is the optional name of the data read to provide matching on.
 	// examples:
 	//   - value: "\"prefix\""
-	Name string `yaml:"name"`
+	Name string `yaml:"name,omitempty"`
 }
 
 // GetID returns the unique ID of the request if any.

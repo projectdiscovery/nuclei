@@ -25,8 +25,8 @@ var (
 
 func init() {
 	TemplateDoc.Type = "Template"
-	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines the requests and"
-	TemplateDoc.Description = "Template is a YAML input file which defines the requests and\n others metadata for a scan template."
+	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
+	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
 	TemplateDoc.Fields = make([]encoder.Doc, 8)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
@@ -40,26 +40,36 @@ func init() {
 	TemplateDoc.Fields[1].Note = ""
 	TemplateDoc.Fields[1].Description = "Info contains metadata information about the template. At minimum, it\nshould contain `name`, `author`, `severity`, `description`, `tags`. Optionally\nyou can also specify a list of `references` for the template."
 	TemplateDoc.Fields[1].Comments[encoder.LineComment] = "Info contains metadata information about the template. At minimum, it"
+
+	TemplateDoc.Fields[1].AddExample("", exampleInfoStructure)
 	TemplateDoc.Fields[2].Name = "requests"
 	TemplateDoc.Fields[2].Type = "[]http.Request"
 	TemplateDoc.Fields[2].Note = ""
-	TemplateDoc.Fields[2].Description = "Requests contains the http request to make in the template"
-	TemplateDoc.Fields[2].Comments[encoder.LineComment] = "Requests contains the http request to make in the template"
+	TemplateDoc.Fields[2].Description = "Requests contains the http request to make in the template."
+	TemplateDoc.Fields[2].Comments[encoder.LineComment] = "Requests contains the http request to make in the template."
+
+	TemplateDoc.Fields[2].AddExample("", exampleNormalHTTPRequest)
 	TemplateDoc.Fields[3].Name = "dns"
 	TemplateDoc.Fields[3].Type = "[]dns.Request"
 	TemplateDoc.Fields[3].Note = ""
 	TemplateDoc.Fields[3].Description = "DNS contains the dns request to make in the template"
 	TemplateDoc.Fields[3].Comments[encoder.LineComment] = "DNS contains the dns request to make in the template"
+
+	TemplateDoc.Fields[3].AddExample("", exampleNormalDNSRequest)
 	TemplateDoc.Fields[4].Name = "file"
 	TemplateDoc.Fields[4].Type = "[]file.Request"
 	TemplateDoc.Fields[4].Note = ""
 	TemplateDoc.Fields[4].Description = "File contains the file request to make in the template"
 	TemplateDoc.Fields[4].Comments[encoder.LineComment] = "File contains the file request to make in the template"
+
+	TemplateDoc.Fields[4].AddExample("", exampleNormalFileRequest)
 	TemplateDoc.Fields[5].Name = "network"
 	TemplateDoc.Fields[5].Type = "[]network.Request"
 	TemplateDoc.Fields[5].Note = ""
 	TemplateDoc.Fields[5].Description = "Network contains the network request to make in the template"
 	TemplateDoc.Fields[5].Comments[encoder.LineComment] = "Network contains the network request to make in the template"
+
+	TemplateDoc.Fields[5].AddExample("", exampleNormalNetworkRequest)
 	TemplateDoc.Fields[6].Name = "headless"
 	TemplateDoc.Fields[6].Type = "[]headless.Request"
 	TemplateDoc.Fields[6].Note = ""
@@ -74,6 +84,8 @@ func init() {
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
 	HTTPRequestDoc.Description = "Request contains a http request to be made from a template"
+
+	HTTPRequestDoc.AddExample("", exampleNormalHTTPRequest)
 	HTTPRequestDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "Template",
@@ -459,6 +471,8 @@ func init() {
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
 	DNSRequestDoc.Description = "Request contains a DNS protocol request to be made from a template"
+
+	DNSRequestDoc.AddExample("", exampleNormalDNSRequest)
 	DNSRequestDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "Template",
@@ -541,6 +555,8 @@ func init() {
 	FILERequestDoc.Type = "file.Request"
 	FILERequestDoc.Comments[encoder.LineComment] = " Request contains a File matching mechanism for local disk operations."
 	FILERequestDoc.Description = "Request contains a File matching mechanism for local disk operations."
+
+	FILERequestDoc.AddExample("", exampleNormalFileRequest)
 	FILERequestDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "Template",
@@ -602,6 +618,8 @@ func init() {
 	NETWORKRequestDoc.Type = "network.Request"
 	NETWORKRequestDoc.Comments[encoder.LineComment] = " Request contains a Network protocol request to be made from a template"
 	NETWORKRequestDoc.Description = "Request contains a Network protocol request to be made from a template"
+
+	NETWORKRequestDoc.AddExample("", exampleNormalNetworkRequest)
 	NETWORKRequestDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "Template",
