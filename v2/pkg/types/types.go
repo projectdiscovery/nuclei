@@ -34,7 +34,7 @@ type Options struct {
 	InteractshURL string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
-	// Targets specifies the targets to scan using templates.
+	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string

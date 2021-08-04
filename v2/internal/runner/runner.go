@@ -137,7 +137,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.inputCount = 0
 	dupeCount := 0
 
-	// Handle single target
+	// Handle multiple target
 	if len(options.Targets) != 0 {
 		for _, target := range options.Targets {
 			url := strings.TrimSpace(target)
@@ -176,7 +176,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	// Handle taget file
+	// Handle target file
 	if options.TargetsFilePath != "" {
 		input, inputErr := os.Open(options.TargetsFilePath)
 		if inputErr != nil {
