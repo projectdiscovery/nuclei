@@ -40,7 +40,7 @@ type Extractor struct {
 	//   Group specifies a numbered group to extract from the regex.
 	// examples:
 	//   - name: Example Regex Group
-	//   - value: "1"
+	//     value: "1"
 	RegexGroup int `yaml:"group,omitempty"`
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
@@ -74,8 +74,10 @@ type Extractor struct {
 	//   JSON allows using jq-style syntax to extract items from json response
 	//
 	// examples:
-	//   - value: "\".[] | .id\""
-	//   - value: "\".batters | .batter | .[] | .id\""
+	//   - value: >
+	//       []string{".[] | .id"}
+	//   - value: >
+	//       []string{".batters | .batter | .[] | .id"}
 	JSON []string `yaml:"json,omitempty"`
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
