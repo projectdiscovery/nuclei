@@ -32,10 +32,10 @@ type Options struct {
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
-	// Target is a single URL/Domain to scan using a template
-	Target string
-	// Targets specifies the targets to scan using templates.
-	Targets string
+	// Target URLs/Domains to scan using a template
+	Targets goflags.StringSlice
+	// TargetsFilePath specifies the targets from a file to scan using templates.
+	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
 	// ProxyURL is the URL for the proxy server
