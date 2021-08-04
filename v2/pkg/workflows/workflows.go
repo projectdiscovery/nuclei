@@ -20,16 +20,16 @@ type WorkflowTemplate struct {
 	//     value: "\"dns/worksites-detection.yaml\""
 	//   - name: A template directory
 	//     value: "\"misconfigurations/aem\""
-	Template string `yaml:"template"`
+	Template string `yaml:"template,omitempty"`
 	// description: |
 	//    Tags to run templates based on.
-	Tags string `yaml:"tags"`
+	Tags string `yaml:"tags,omitempty"`
 	// description: |
 	//    Matchers perform name based matching to run subtemplates for a workflow.
-	Matchers []*Matcher `yaml:"matchers"`
+	Matchers []*Matcher `yaml:"matchers,omitempty"`
 	// description: |
 	//    Subtemplates are ran if the `template` field Template matches.
-	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty"`
 	// Executers perform the actual execution for the workflow template
 	Executers []*ProtocolExecuterPair
 }
@@ -44,8 +44,8 @@ type ProtocolExecuterPair struct {
 type Matcher struct {
 	// description: |
 	//    Name is the name of the item to match.
-	Name string `yaml:"name"`
+	Name string `yaml:"name,omitempty"`
 	// description: |
 	//    Subtemplates are ran if the name of matcher matches.
-	Subtemplates []*WorkflowTemplate `yaml:"subtemplates"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty"`
 }

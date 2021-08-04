@@ -11,8 +11,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
-// Template is a YAML input file which defines the requests and
-// others metadata for a scan template.
+// Template is a YAML input file which defines all the requests and
+// other metadata for a template.
 type Template struct {
 	// description: |
 	//   ID is the unique id for the template. IDs must be lowercase
@@ -32,18 +32,28 @@ type Template struct {
 	//   Info contains metadata information about the template. At minimum, it
 	//   should contain `name`, `author`, `severity`, `description`, `tags`. Optionally
 	//   you can also specify a list of `references` for the template.
+	// examples:
+	//   - value: exampleInfoStructure
 	Info map[string]interface{} `yaml:"info"`
 	// description: |
-	//   Requests contains the http request to make in the template
+	//   Requests contains the http request to make in the template.
+	// examples:
+	//   - value: exampleNormalHTTPRequest
 	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests"`
 	// description: |
 	//   DNS contains the dns request to make in the template
+	// examples:
+	//   - value: exampleNormalDNSRequest
 	RequestsDNS []*dns.Request `yaml:"dns,omitempty" json:"dns"`
 	// description: |
 	//   File contains the file request to make in the template
+	// examples:
+	//   - value: exampleNormalFileRequest
 	RequestsFile []*file.Request `yaml:"file,omitempty" json:"file"`
 	// description: |
 	//   Network contains the network request to make in the template
+	// examples:
+	//   - value: exampleNormalNetworkRequest
 	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
