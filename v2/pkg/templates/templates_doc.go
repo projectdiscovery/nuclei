@@ -459,9 +459,9 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[6].Description = "JSON allows using jq-style syntax to extract items from json response"
 	EXTRACTORSExtractorDoc.Fields[6].Comments[encoder.LineComment] = "JSON allows using jq-style syntax to extract items from json response"
 
-	EXTRACTORSExtractorDoc.Fields[6].AddExample("", ".[] | .id")
+	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".[] | .id"})
 
-	EXTRACTORSExtractorDoc.Fields[6].AddExample("", ".batters | .batter | .[] | .id")
+	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".batters | .batter | .[] | .id"})
 	EXTRACTORSExtractorDoc.Fields[7].Name = "internal"
 	EXTRACTORSExtractorDoc.Fields[7].Type = "bool"
 	EXTRACTORSExtractorDoc.Fields[7].Note = ""

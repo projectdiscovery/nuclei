@@ -294,6 +294,10 @@ github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d h1:nl
 github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d/go.mod h1:TVSdZC0rRQeMIbsNSiGPhbmhyRtxqqtAGA9JiiNp2r4=
 github.com/projectdiscovery/yamldoc-go v0.0.0-20210803152633-4db1fb7fe36a h1:3mQRJkqj9TQiFMm3vQZAwrxImPov4gw8LBifyfCZGsg=
 github.com/projectdiscovery/yamldoc-go v0.0.0-20210803152633-4db1fb7fe36a/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
+github.com/projectdiscovery/yamldoc-go v1.0.0 h1:CGIsFTEGfrcdZHKIxuWfQgDwtY0Y2LRzZW+6aXeU17g=
+github.com/projectdiscovery/yamldoc-go v1.0.0/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
+github.com/projectdiscovery/yamldoc-go v1.0.1 h1:q3LyS2Sq8RTxOQEWVza3wNA811eXlmqly3b2eiaQ+as=
+github.com/projectdiscovery/yamldoc-go v1.0.1/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
 github.com/prologic/smtpd v0.0.0-20210126001904-0893ad18168e h1:ZT3wZ92sp/EHEE/HcFCWCsYS3ROLjHb6EqSX8qYrgXw=
 github.com/prologic/smtpd v0.0.0-20210126001904-0893ad18168e/go.mod h1:GkLsdH1RZj6RDKeI9A05NGZYmEZQ/PbQcZPnZoSZuYI=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
