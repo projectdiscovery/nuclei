@@ -46,10 +46,7 @@ func toStringSlice(value string) []string {
 	var result []string
 	if strings.Contains(value, ",") {
 		slices := strings.Split(value, ",")
-		result = make([]string, 0, len(slices))
-		for _, slice := range slices {
-			result = append(result, slice)
-		}
+		result = append(result, slices...)
 	} else {
 		result = []string{value}
 	}
