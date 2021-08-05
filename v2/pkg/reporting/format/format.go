@@ -3,9 +3,9 @@ package format
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -35,29 +35,21 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 	builder.WriteString("**Details**: **")
 	builder.WriteString(template)
 	builder.WriteString("** ")
+
 	builder.WriteString(" matched at ")
 	builder.WriteString(event.Host)
+
 	builder.WriteString("\n\n**Protocol**: ")
 	builder.WriteString(strings.ToUpper(event.Type))
+
 	builder.WriteString("\n\n**Full URL**: ")
 	builder.WriteString(event.Matched)
+
 	builder.WriteString("\n\n**Timestamp**: ")
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
-
-	fields := reflect.TypeOf(event.Info)
-	values := reflect.ValueOf(event.Info)
-	numberOfFields := fields.NumField()
-
-	for i := 0; i < numberOfFields; i++ { // TODO review
-		field := fields.Field(i)
-		value := values.Field(i)
-
-		if field.Name == "reference" {
-			continue
-		}
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", field.Name, value))
-	}
+	builder.WriteString(toMarkdownTableString(&event.Info))
 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
@@ -175,4 +167,28 @@ func GetMatchedTemplate(event *output.ResultEvent) string {
 	}
 	template := builder.String()
 	return template
+}
+
+/*
+TODO remove and reuse the duplicated logic below jira.go <-> format.go
+*/
+
+func toMarkdownTableString(templateInfo *model.Info) string {
+	fields := map[string]string{
+		"Name":        templateInfo.Name,
+		"Authors":     sliceToString(templateInfo.Authors),
+		"Tags":        sliceToString(templateInfo.Tags),
+		"Description": templateInfo.Description,
+		"Severity":    templateInfo.SeverityHolder.Severity.String(),
+	}
+
+	builder := &bytes.Buffer{}
+	for k, v := range fields {
+		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+	}
+	return builder.String()
+}
+
+func sliceToString(stringSlice model.StringSlice) string {
+	return strings.Join(stringSlice.ToSlice(), ", ")
 }
