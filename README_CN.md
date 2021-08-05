@@ -97,7 +97,7 @@ nuclei -h
 |burp-collaborator-biid|使用burp-collaborator插件|nuclei -burp-collaborator-biid XXXX|
 |c|并行的最大模板数量(默认10)|nuclei -c 10|
 |l|对URL列表进行测试|nuclei -l urls.txt|
-|target|对目标进行测试|nuclei -target hxxps://example.com|
+|target|对目标进行测试|nuclei -target hxxps://example.com -target hxxps://example2.com|
 |t|要检测的模板种类|nuclei -t git-core.yaml -t cves/|
 |no-color|输出不显示颜色|nuclei -no-color|
 |no-meta|不显示匹配的元数据|nuclei -no-meta|
