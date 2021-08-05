@@ -49,7 +49,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
-	builder.WriteString(toMarkdownTableString(&event.Info))
+	builder.WriteString(ToMarkdownTableString(&event.Info))
 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
@@ -169,11 +169,7 @@ func GetMatchedTemplate(event *output.ResultEvent) string {
 	return template
 }
 
-/*
-TODO remove and reuse the duplicated logic below jira.go <-> format.go
-*/
-
-func toMarkdownTableString(templateInfo *model.Info) string {
+func ToMarkdownTableString(templateInfo *model.Info) string {
 	fields := map[string]string{
 		"Name":        templateInfo.Name,
 		"Authors":     sliceToString(templateInfo.Authors),
