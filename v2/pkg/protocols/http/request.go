@@ -298,20 +298,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			}
 		}
 		if resp == nil {
-			var disableKeepAliveOrigin bool
-			hasConnectionHeader := request.request.Header.Get("Connection") != ""
-			// if the request contains the connection header we need to disable automatic keep alive settings
-			if hasConnectionHeader {
-				disableKeepAliveOrigin = r.httpClient.HTTPClient.Transport.(*http.Transport).DisableKeepAlives
-				r.httpClient.HTTPClient.Transport.(*http.Transport).DisableKeepAlives = false
-			}
-
 			resp, err = r.httpClient.Do(request.request)
-
-			// now we should restore the settings
-			if hasConnectionHeader {
-				r.httpClient.HTTPClient.Transport.(*http.Transport).DisableKeepAlives = disableKeepAliveOrigin
-			}
 		}
 	}
 
