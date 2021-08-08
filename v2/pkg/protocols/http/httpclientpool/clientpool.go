@@ -50,6 +50,12 @@ func Init(options *types.Options) error {
 	return nil
 }
 
+// // Configuration contains the custom configuration options for a connection
+type ConnectionConfiguration struct {
+	// DisableKeepAlive of the connection
+	DisableKeepAlive bool
+}
+
 // Configuration contains the custom configuration options for a client
 type Configuration struct {
 	// Threads contains the threads for the client
@@ -60,6 +66,8 @@ type Configuration struct {
 	CookieReuse bool
 	// FollowRedirects specifies whether to follow redirects
 	FollowRedirects bool
+	// Connection defines custom connection configuration
+	Connection *ConnectionConfiguration
 }
 
 // Hash returns the hash of the configuration to allow client pooling
@@ -74,8 +82,15 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.FollowRedirects))
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatBool(c.CookieReuse))
+	builder.WriteString("c")
+	builder.WriteString(strconv.FormatBool(c.Connection != nil))
 	hash := builder.String()
 	return hash
+}
+
+// HasCustomOptions checks whether the configuration requires custom settings
+func (c *Configuration) HasStandardOptions() bool {
+	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -90,7 +105,7 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	if configuration.Threads == 0 && configuration.MaxRedirects == 0 && !configuration.FollowRedirects && !configuration.CookieReuse {
+	if configuration.HasStandardOptions() {
 		return normalClient, nil
 	}
 	return wrappedGet(options, configuration)
@@ -139,6 +154,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	retryablehttpOptions.RetryMax = options.Retries
 	followRedirects := configuration.FollowRedirects
 	maxRedirects := configuration.MaxRedirects
+
+	// override connection's settings if required
+	if configuration.Connection != nil {
+		disableKeepAlives = configuration.Connection.DisableKeepAlive
+	}
 
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
