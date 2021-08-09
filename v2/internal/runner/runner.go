@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -257,6 +258,9 @@ func New(options *types.Options) (*Runner, error) {
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
+
+	dsl.AddCustomHelpers()
+
 	return runner, nil
 }
 
