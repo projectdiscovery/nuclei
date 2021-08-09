@@ -8,19 +8,14 @@ import (
 
 var envVars map[string]interface{}
 
-func init() {
-	// snapshot env vars at bootstrap
-	envVars = parseEnvVars()
-}
-
 func parseEnvVars() map[string]interface{} {
 	sliceEnvVars := os.Environ()
-	envVars := make(map[string]interface{}, len(sliceEnvVars))
+	parsedEnvVars := make(map[string]interface{}, len(sliceEnvVars))
 	for _, envVar := range sliceEnvVars {
 		key, val := stringsutil.Before(envVar, "="), stringsutil.After(envVar, "=")
-		envVars[key] = val
+		parsedEnvVars[key] = val
 	}
-	return envVars
+	return parsedEnvVars
 }
 
 // EnvVars returns a map with all environment variables into a map
