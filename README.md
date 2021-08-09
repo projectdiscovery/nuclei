@@ -82,7 +82,7 @@ Usage:
 
 Flags:
 TARGET:
-   -u, -target string  target URL/host to scan
+   -u, -target string[]  target URLs/hosts to scan
    -l, -list string    path to file containing a list of target URLs/hosts to scan (one per line)
 
 TEMPLATES:

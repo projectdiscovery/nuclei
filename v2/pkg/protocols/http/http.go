@@ -82,12 +82,19 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	client, err := httpclientpool.Get(options.Options, &httpclientpool.Configuration{
+	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:         r.Threads,
 		MaxRedirects:    r.MaxRedirects,
 		FollowRedirects: r.Redirects,
 		CookieReuse:     r.CookieReuse,
-	})
+	}
+
+	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
+	if _, hasConnectionHeader := r.Headers["Connection"]; hasConnectionHeader {
+		connectionConfiguration.Connection = &httpclientpool.ConnectionConfiguration{DisableKeepAlive: false}
+	}
+
+	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
