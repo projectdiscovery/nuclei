@@ -19,7 +19,7 @@ type Options struct {
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
-	Vars goflags.StringSlice
+	Vars goflags.RuntimeMap
 	// Severity filters templates based on their severity and only run the matching ones.
 	Severity goflags.NormalizedStringSlice
 	// Author filters templates based on their author and only run the matching ones.
