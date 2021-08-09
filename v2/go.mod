@@ -38,7 +38,6 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
 	github.com/projectdiscovery/stringsutil v0.0.0-20210617141317-00728870f68d
-	github.com/prologic/smtpd v0.0.0-20210126001904-0893ad18168e // indirect
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/xid v1.3.0
@@ -55,7 +54,6 @@ require (
 	go.uber.org/atomic v1.7.0
 	go.uber.org/multierr v1.6.0
 	go.uber.org/ratelimit v0.2.0
-	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
 	golang.org/x/net v0.0.0-20210521195947-fe42d452be8f
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
