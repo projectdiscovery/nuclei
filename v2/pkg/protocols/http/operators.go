@@ -56,6 +56,8 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 		return extractor.ExtractKval(data)
 	case extractors.XPathExtractor:
 		return extractor.ExtractHTML(item)
+	case extractors.JSONExtractor:
+		return extractor.ExtractJSON(item)
 	}
 	return nil
 }
