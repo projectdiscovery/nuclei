@@ -63,7 +63,9 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	values["BaseURL"] = parsedString
 
 	// merge with vars
-	values = generators.MergeMaps(values, generators.SliceToMap(r.options.Options.Vars, "="))
+	if !r.options.Options.Vars.IsEmpty() {
+		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
+	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
