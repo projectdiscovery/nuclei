@@ -2,8 +2,9 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.15
 
+replace github.com/projectdiscovery/nebula => /Users/marcornvh/go/src/github.com/projectdiscovery/nebula
+
 require (
-	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -22,7 +23,6 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
-	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/miekg/dns v1.1.43
@@ -35,6 +35,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.4
+	github.com/projectdiscovery/nebula v0.0.0-20210802111745-ce1775478b49
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
@@ -44,7 +45,6 @@ require (
 	github.com/rs/xid v1.3.0
 	github.com/segmentio/ksuid v1.0.3
 	github.com/shirou/gopsutil/v3 v3.21.5
-	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0

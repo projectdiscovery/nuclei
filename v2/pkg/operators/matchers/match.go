@@ -3,6 +3,8 @@ package matchers
 import (
 	"encoding/hex"
 	"strings"
+
+	"github.com/projectdiscovery/nebula"
 )
 
 // MatchStatusCode matches a status code check against a corpus
@@ -125,8 +127,8 @@ func (m *Matcher) MatchBinary(corpus string) bool {
 // MatchDSL matches on a generic map result
 func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
-	for i, expression := range m.dslCompiled {
-		result, err := expression.Evaluate(data)
+	for i, expression := range m.DSL {
+		result, err := nebula.EvalExp(expression, data)
 		if err != nil {
 			continue
 		}
@@ -151,7 +153,7 @@ func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 		}
 
 		// If we are at the end of the dsl, return with true
-		if len(m.dslCompiled)-1 == i {
+		if len(m.DSL)-1 == i {
 			return true
 		}
 	}

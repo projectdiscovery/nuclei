@@ -3,8 +3,7 @@ package expressions
 import (
 	"regexp"
 
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nebula"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
@@ -24,14 +23,11 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 	for _, match := range templateExpressionRegex.FindAllString(data, -1) {
 		expr := generators.TrimDelimiters(match)
 
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
+		result, err := nebula.EvalExp(expr, base)
 		if err != nil {
 			continue
 		}
-		result, err := compiled.Evaluate(base)
-		if err != nil {
-			continue
-		}
+
 		dynamicValues[expr] = result
 	}
 	// Replacer dynamic values if any in raw request and parse  it
@@ -45,22 +41,6 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 // The provided keys from finalValues will be used as variable names
 // for substitution inside the expression.
 func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
-	final := replacer.Replace(string(data), base)
-
-	dynamicValues := make(map[string]interface{})
-	for _, match := range templateExpressionRegex.FindAllString(final, -1) {
-		expr := generators.TrimDelimiters(match)
-
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
-		if err != nil {
-			continue
-		}
-		result, err := compiled.Evaluate(base)
-		if err != nil {
-			continue
-		}
-		dynamicValues[expr] = result
-	}
-	// Replacer dynamic values if any in raw request and parse  it
-	return []byte(replacer.Replace(final, dynamicValues)), nil
+	strData, err := Evaluate(string(data), base)
+	return []byte(strData), err
 }
