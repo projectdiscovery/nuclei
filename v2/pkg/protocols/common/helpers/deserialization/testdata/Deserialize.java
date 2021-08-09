@@ -1,6 +1,6 @@
 import java.io.*;
 
-class Deserialize{  
+class Deserialize {  
     public static void main(String args[]) {
         FileInputStream fileIn = null;
         ObjectInputStream in = null;
