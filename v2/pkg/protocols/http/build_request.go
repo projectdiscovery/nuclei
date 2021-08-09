@@ -62,6 +62,11 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	parsedString := parsed.String()
 	values["BaseURL"] = parsedString
 
+	// merge with vars
+	if !r.options.Options.Vars.IsEmpty() {
+		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
+	}
+
 	// merge with env vars
 	if r.options.Options.EnvironmentVariables {
 		values = generators.MergeMaps(values, generators.EnvVars())
