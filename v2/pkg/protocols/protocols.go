@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/runtime"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -55,6 +56,7 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 
 	Operators []*operators.Operators // only used by offlinehttp module
+	Store     *runtime.Store
 }
 
 // Request is an interface implemented any protocol based request generator.

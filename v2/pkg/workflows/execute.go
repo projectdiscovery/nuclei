@@ -46,6 +46,11 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 					if len(result.Results) > 0 {
 						firstMatched = true
 					}
+
+					// store the global values regardless of outcome
+					for k, v := range result.OperatorsResult.GlobalValues {
+						executer.Options.Store.Set(k, v)
+					}
 				})
 			} else {
 				var matched bool

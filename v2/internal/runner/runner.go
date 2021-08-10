@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/runtime"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
@@ -259,8 +260,6 @@ func New(options *types.Options) (*Runner, error) {
 		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
 
-	dsl.AddCustomHelpers()
-
 	return runner, nil
 }
 
@@ -293,6 +292,10 @@ func (r *Runner) RunEnumeration() error {
 	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
+	s, _ := runtime.New()
+
+	dsl.AddGlobalCustomHelpers(&dsl.Options{Store: s})
+
 	executerOpts := protocols.ExecuterOptions{
 		Output:       r.output,
 		Options:      r.options,
@@ -303,6 +306,7 @@ func (r *Runner) RunEnumeration() error {
 		Interactsh:   r.interactsh,
 		ProjectFile:  r.projectFile,
 		Browser:      r.browser,
+		Store:        s,
 	}
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
@@ -414,6 +418,7 @@ func (r *Runner) RunEnumeration() error {
 				Browser:      r.browser,
 				ProjectFile:  r.projectFile,
 				Interactsh:   r.interactsh,
+				Store:        s,
 			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 

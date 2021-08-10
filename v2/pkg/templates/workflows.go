@@ -67,6 +67,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			IssuesClient: options.IssuesClient,
 			Interactsh:   options.Interactsh,
 			ProjectFile:  options.ProjectFile,
+			Store:        options.Store,
 		}
 		template, err := Parse(path, preprocessor, opts)
 		if err != nil {

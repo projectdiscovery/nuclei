@@ -40,6 +40,8 @@ type Extractor struct {
 	Part string `yaml:"part,omitempty"`
 	// Internal defines if this is used internally
 	Internal bool `yaml:"internal,omitempty"`
+	// Global defines if this should be available globally
+	Global bool `yaml:"global,omitempty"`
 }
 
 // ExtractorType is the type of the extractor specified

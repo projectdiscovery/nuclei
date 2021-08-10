@@ -63,6 +63,8 @@ type Result struct {
 	DynamicValues map[string]interface{}
 	// PayloadValues contains payload values provided by user. (Optional)
 	PayloadValues map[string]interface{}
+	// GlobalValues contains values to be exported to other templates (Optional)
+	GlobalValues map[string]interface{}
 }
 
 // Merge merges a result structure into the other.
@@ -104,6 +106,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		Matches:       make(map[string]struct{}),
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string]interface{}),
+		GlobalValues:  make(map[string]interface{}),
 	}
 
 	// Start with the extractors first and evaluate them.
@@ -123,6 +126,9 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		}
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
+			if extractor.Global {
+				result.GlobalValues[extractor.Name] = extractorResults
+			}
 		}
 	}
 

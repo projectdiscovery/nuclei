@@ -13,4 +13,6 @@ func MergeVariables(values map[string]interface{}, options *types.Options) map[s
 	if options.EnvironmentVariables {
 		values = MergeMaps(values, EnvVars())
 	}
+
+	return values
 }
