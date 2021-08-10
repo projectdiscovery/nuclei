@@ -60,16 +60,10 @@ type Extractor struct {
 	//       []string{"PHPSESSID"}
 	KVal []string `yaml:"kval,omitempty"`
 
-	// description: |
-	//   Part is the part of the request response to extract data from.
-	//
-	//   Each protocol exposes a lot of different parts which are well
-	//   documented in docs for each request type.
-	// examples:
-	//   - value: "\"body\""
-	//   - value: "\"raw\""
-	Part string `yaml:"part,omitempty"`
-
+	// XPath are the Xpath selectors for the extractor
+	XPath []string `yaml:"xpath"`
+	// Attribute is an optional attribute to extract from response XPath
+	Attribute string `yaml:"attribute"`
 	// description: |
 	//   JSON allows using jq-style syntax to extract items from json response
 	//
@@ -79,9 +73,19 @@ type Extractor struct {
 	//   - value: >
 	//       []string{".batters | .batter | .[] | .id"}
 	JSON []string `yaml:"json,omitempty"`
+	// JSON are the json pattern required to be present in the response
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 
+	// description: |
+	//   Part is the part of the request response to extract data from.
+	//
+	//   Each protocol exposes a lot of different parts which are well
+	//   documented in docs for each request type.
+	// examples:
+	//   - value: "\"body\""
+	//   - value: "\"raw\""
+	Part string `yaml:"part,omitempty"`
 	// description: |
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
@@ -96,6 +100,8 @@ const (
 	RegexExtractor ExtractorType = iota + 1
 	// KValExtractor extracts responses with key:value
 	KValExtractor
+	// XPathExtractor extracts responses with Xpath selectors
+	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
 )
@@ -104,6 +110,7 @@ const (
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
+	"xpath": XPathExtractor,
 	"json":  JSONExtractor,
 }
 
