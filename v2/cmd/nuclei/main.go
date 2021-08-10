@@ -92,9 +92,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
 
+		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in var=value format"),
+
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "Enable environment variables support"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
