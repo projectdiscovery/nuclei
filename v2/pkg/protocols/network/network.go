@@ -88,12 +88,16 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			r.addresses = append(r.addresses, addressKV{ip: address, tls: shouldUseTLS})
 		}
 	}
+
+	// add global cli vars and environment vars to allow their usage in the payload processing
+	values := generators.MergeVariables(map[string]interface{}{}, options.Options)
+
 	// Pre-compile any input dsl functions before executing the request.
 	for _, input := range r.Inputs {
 		if input.Type != "" {
 			continue
 		}
-		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
+		if compiled, evalErr := expressions.Evaluate(input.Data, values); evalErr == nil {
 			input.Data = compiled
 		}
 	}

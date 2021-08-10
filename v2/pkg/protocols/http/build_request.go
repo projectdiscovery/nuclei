@@ -62,15 +62,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	parsedString := parsed.String()
 	values["BaseURL"] = parsedString
 
-	// merge with vars
-	if !r.options.Options.Vars.IsEmpty() {
-		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
-	}
-
-	// merge with env vars
-	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(values, generators.EnvVars())
-	}
+	values = generators.MergeVariables(values, r.options.Options)
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
