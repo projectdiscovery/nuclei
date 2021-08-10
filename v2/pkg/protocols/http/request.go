@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nebula"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -436,6 +437,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 		event.InternalEvent = outputEvent
 	}
+
+	r.Set(finalEvent)
+
 	callback(event)
 	return nil
 }
@@ -452,5 +456,11 @@ func (r *Request) setCustomHeaders(req *generatedRequest) {
 				req.request.Host = vv
 			}
 		}
+	}
+}
+
+func (r *Request) Set(data map[string]interface{}) {
+	for _, set := range r.Sets {
+		nebula.Eval(set.Code, data)
 	}
 }

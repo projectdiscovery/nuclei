@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/sets"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -14,6 +15,7 @@ type Operators struct {
 	// Extractors contains the extraction mechanism for the request to identify
 	// and extract parts of the response.
 	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
+	Sets       []*sets.Set             `yaml:"sets,omitempty"`
 	// MatchersCondition is the condition of the matchers
 	// whether to use AND or OR. Default is OR.
 	MatchersCondition string `yaml:"matchers-condition,omitempty"`
