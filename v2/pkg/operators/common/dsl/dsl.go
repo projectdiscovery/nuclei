@@ -245,6 +245,11 @@ var functions = map[string]govaluate.ExpressionFunction{
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
 	},
+	// for debug purposes
+	"print_stdout": func(args ...interface{}) (interface{}, error) {
+		fmt.Println(args)
+		return true, nil
+	},
 }
 
 // HelperFunctions returns the dsl helper functions
