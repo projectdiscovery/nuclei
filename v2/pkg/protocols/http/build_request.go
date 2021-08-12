@@ -51,16 +51,13 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 
 	data, parsed = baseURLWithTemplatePrefs(data, parsed)
-	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"Hostname": parsed.Host,
-	})
 
+	trailingSlash := false
 	isRawRequest := len(r.request.Raw) > 0
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+		trailingSlash = true
 	}
-	parsedString := parsed.String()
-	values["BaseURL"] = parsedString
+	values := generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash))
 
 	// merge with vars
 	if !r.options.Options.Vars.IsEmpty() {
@@ -75,7 +72,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
-		return r.makeHTTPRequestFromRaw(ctx, parsedString, data, values, payloads, interactURL)
+		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads, interactURL)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values, interactURL)
 }
@@ -229,5 +226,34 @@ func setHeader(req *http.Request, name, value string) {
 	}
 	if name == "Host" {
 		req.Host = value
+	}
+}
+
+// generateVariables will create default variables after parsing a url
+func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
+	domain := parsed.Host
+	if strings.Contains(parsed.Host, ":") {
+		domain = strings.Split(parsed.Host, ":")[0]
+	}
+
+	port := parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else if parsed.Scheme == "http" {
+			port = "80"
+		}
+	}
+
+	if trailingSlash {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+	}
+
+	return map[string]interface{}{
+		"BaseURL":  parsed.String(),
+		"Domain":   domain,
+		"Hostname": parsed.Host,
+		"Path":     parsed.EscapedPath(),
+		"Port":     port,
 	}
 }
