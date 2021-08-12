@@ -2,8 +2,6 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.15
 
-replace github.com/projectdiscovery/nebula => /Users/marcornvh/go/src/github.com/projectdiscovery/nebula
-
 require (
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/antchfx/htmlquery v1.2.3
@@ -30,12 +28,13 @@ require (
 	github.com/owenrumney/go-sarif v1.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
+	github.com/projectdiscovery/executil v0.0.0-20210804143524-823f37935565 // indirect
 	github.com/projectdiscovery/fastdialer v0.0.8
 	github.com/projectdiscovery/goflags v0.0.7
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.1
 	github.com/projectdiscovery/interactsh v0.0.4
-	github.com/projectdiscovery/nebula v0.0.0-20210802111745-ce1775478b49
+	github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
@@ -55,9 +54,12 @@ require (
 	go.uber.org/atomic v1.7.0
 	go.uber.org/multierr v1.6.0
 	go.uber.org/ratelimit v0.2.0
+	golang.org/x/crypto v0.0.0-20210812204632-0ba0e8f03122 // indirect
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d
 	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	lukechampine.com/blake3 v1.1.5 // indirect
 )
