@@ -18,6 +18,38 @@ func TestBaseURLWithTemplatePrefs(t *testing.T) {
 	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
 }
 
+func TestVariables(t *testing.T) {
+	baseURL := "http://localhost:9001/test/123"
+	parsed, _ := url.Parse(baseURL)
+	values := generateVariables(parsed, true)
+
+	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
+	require.Equal(t, values["Domain"], "localhost", "incorrect domain name")
+	require.Equal(t, values["Path"], "/test/123", "incorrect path")
+	require.Equal(t, values["Port"], "9001", "incorrect port number")
+	require.Equal(t, values["Hostname"], "localhost:9001", "incorrect hostname")
+
+	baseURL = "https://example.com"
+	parsed, _ = url.Parse(baseURL)
+	values = generateVariables(parsed, false)
+
+	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
+	require.Equal(t, values["Domain"], "example.com", "incorrect domain name")
+	require.Equal(t, values["Path"], "", "incorrect path")
+	require.Equal(t, values["Port"], "443", "incorrect port number")
+	require.Equal(t, values["Hostname"], "example.com", "incorrect hostname")
+
+	baseURL = "ftp://foobar.com/"
+	parsed, _ = url.Parse(baseURL)
+	values = generateVariables(parsed, true)
+
+	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
+	require.Equal(t, values["Domain"], "foobar.com", "incorrect domain name")
+	require.Equal(t, values["Path"], "", "incorrect path")
+	require.Equal(t, values["Port"], "", "incorrect port number") // Unsupported protocol results in a blank port
+	require.Equal(t, values["Hostname"], "foobar.com", "incorrect hostname")
+}
+
 func TestMakeRequestFromModal(t *testing.T) {
 	options := testutils.DefaultOptions
 
