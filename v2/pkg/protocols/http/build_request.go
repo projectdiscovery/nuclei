@@ -69,7 +69,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	// merge with env vars
 	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(values, generators.EnvVars())
+		values = generators.MergeMaps(generators.EnvVars(), values)
 	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
