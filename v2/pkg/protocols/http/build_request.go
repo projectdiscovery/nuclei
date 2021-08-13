@@ -77,7 +77,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	if isRawRequest {
 		return r.makeHTTPRequestFromRaw(ctx, parsedString, data, values, payloads, interactURL)
 	}
-	return r.makeHTTPRequestFromModel(ctx, data, values, interactURL)
+	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
 }
 
 // Total returns the total number of requests for the generator
@@ -106,14 +106,24 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}, interactURL string) (*generatedRequest, error) {
-	final := replacer.Replace(data, values)
+func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values, generatorValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
 	if interactURL != "" {
-		final = r.options.Interactsh.ReplaceMarkers(final, interactURL)
+		data = r.options.Interactsh.ReplaceMarkers(data, interactURL)
+	}
+
+	// Combine the template payloads along with base
+	// request values.
+	finalValues := generators.MergeMaps(generatorValues, values)
+
+	// Evaulate the expressions for the request if any.
+	var err error
+	data, err = expressions.Evaluate(data, finalValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.request.Method, final, nil)
+	req, err := http.NewRequestWithContext(ctx, r.request.Method, data, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +132,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
