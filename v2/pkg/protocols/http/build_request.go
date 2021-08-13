@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -251,9 +252,11 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 
 	return map[string]interface{}{
 		"BaseURL":  parsed.String(),
-		"Domain":   domain,
+		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
 		"Hostname": parsed.Host,
-		"Path":     parsed.EscapedPath(),
+		"Host":     domain,
 		"Port":     port,
+		"Path":     parsed.EscapedPath(),
+		"Scheme":   parsed.Scheme,
 	}
 }
