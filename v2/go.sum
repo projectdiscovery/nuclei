@@ -335,7 +335,6 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/projectdiscovery/clistats v0.0.8 h1:tjmWb15mqsPf/yrQXVHLe2ThZX/5+mgKSfZBKWWLh20=
 github.com/projectdiscovery/clistats v0.0.8/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
-github.com/projectdiscovery/executil v0.0.0-20210414225944-2ad029b6a1fd h1:kPBRsSG8ZwNHLOBzDM/vfGi/Oaj/dzdbTeEkv+6UhEw=
 github.com/projectdiscovery/executil v0.0.0-20210414225944-2ad029b6a1fd/go.mod h1:C8Cevz76yJLH0RpmIa+wWTVnZQyIL6CyhTnJJl6hHas=
 github.com/projectdiscovery/executil v0.0.0-20210804143524-823f37935565 h1:oUSOmpbnQqHiVf8VRPhaEZyWBXYKSnb3EVL50JczMB8=
 github.com/projectdiscovery/executil v0.0.0-20210804143524-823f37935565/go.mod h1:124/FKhihb7SX7YF6b7JM3MWgFa4F+nwUxSYZR1UZVQ=
@@ -352,8 +351,6 @@ github.com/projectdiscovery/interactsh v0.0.4 h1:3BtCZrrTovGYiqdFktXJ4NxKAQFvUvz
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
 github.com/projectdiscovery/mapsutil v0.0.1 h1:hXIQUPvU+5HtPzzyaLvsPg4R/39N77CCAL0ezYhFdgw=
 github.com/projectdiscovery/mapsutil v0.0.1/go.mod h1:Q49P7sQzz9m+dWgdx/ryNwOfsClt8ZmHhF4WdXTheyE=
-github.com/projectdiscovery/nebula v0.0.0-20210802111745-ce1775478b49 h1:ktRs9zNmuGovhewcQ1qadnwMEclvPGvUxVSHwJsNjMY=
-github.com/projectdiscovery/nebula v0.0.0-20210802111745-ce1775478b49/go.mod h1:yRk2l4QV4G+biDC4jW6Vuiv9OVMq15V/U072fxH4Gnc=
 github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8 h1:VcDFFNUh8qb5/OWnOqeV53gv7qcThbO5wu95mXIGyF8=
 github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8/go.mod h1:snzwYWdwuDmCBzPtSPC1d5noN1tXljedoiAJlVorKoc=
 github.com/projectdiscovery/rawhttp v0.0.7 h1:5m4peVgjbl7gqDcRYMTVEuX+Xs/nh76ohTkkvufucLg=
@@ -464,7 +461,6 @@ golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20201112155050-0c6587e931a9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f/go.mod h1:jdWPYTVW3xRLrWPugEBEK3UY2ZEsg3UU495nc5E+M+I=
-golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad h1:DN0cp81fZ3njFcrLCytUHRSUkqBjfTo4Tx9RJTWs0EY=
 golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad/go.mod h1:jdWPYTVW3xRLrWPugEBEK3UY2ZEsg3UU495nc5E+M+I=
 golang.org/x/crypto v0.0.0-20210812204632-0ba0e8f03122 h1:AOT7vJYHE32m61R8d1WlcqhOO1AocesDsKpcMq+UOaA=
 golang.org/x/crypto v0.0.0-20210812204632-0ba0e8f03122/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
@@ -591,7 +587,6 @@ golang.org/x/sys v0.0.0-20210217105451-b926d437f341/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210303074136-134d130e1a04/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210426230700-d19ff857e887/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b h1:qh4f65QIVFjq9eBURLEYWqaEXmOyqdUyiBSgaXWccWk=
 golang.org/x/sys v0.0.0-20210601080250-7ecdf8ef093b/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e h1:WUoyKPm6nCo1BnNUvPGnFG3T5DUVem42yDJZZ4CNxMA=
@@ -764,7 +759,6 @@ honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt0JzvZhAg=
 honnef.co/go/tools v0.0.1-2020.1.3/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
 honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
-lukechampine.com/blake3 v1.1.4 h1:cVl4fhMGfCaCFrs4sBb8R/iEMeL0g4CfQp/sAHBDxOI=
 lukechampine.com/blake3 v1.1.4/go.mod h1:hE8RpzdO8ttZ7446CXEwDP1eu2V4z7stv0Urj1El20g=
 lukechampine.com/blake3 v1.1.5 h1:hsACfxWvLdGmjYbWGrumQIphOvO+ZruZehWtgd2fxoM=
 lukechampine.com/blake3 v1.1.5/go.mod h1:hE8RpzdO8ttZ7446CXEwDP1eu2V4z7stv0Urj1El20g=

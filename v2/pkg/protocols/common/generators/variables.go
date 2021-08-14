@@ -2,7 +2,7 @@ package generators
 
 import "github.com/projectdiscovery/nuclei/v2/pkg/types"
 
-// Init initializes the client pools for the protocols
+// Merge the variables to the map of values
 func MergeVariables(values map[string]interface{}, options *types.Options) map[string]interface{} {
 	// merge with global vars if any
 	if !options.Vars.IsEmpty() {
@@ -11,7 +11,7 @@ func MergeVariables(values map[string]interface{}, options *types.Options) map[s
 
 	// merge with env vars
 	if options.EnvironmentVariables {
-		values = MergeMaps(values, EnvVars())
+		values = MergeMaps(EnvVars(), values)
 	}
 
 	return values
