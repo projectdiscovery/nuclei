@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/rawhttp"
@@ -122,13 +121,18 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
+	method, err := expressions.Evaluate(r.request.Method, finalValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+	}
+
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.request.Method, data, nil)
+	req, err := http.NewRequestWithContext(ctx, method, data, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	request, err := r.fillRequest(req, values, interactURL)
+	request, err := r.fillRequest(req, finalValues, interactURL)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +192,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 			req.Host = value
 		}
 	}
-	request, err := r.fillRequest(req, values, "")
+	request, err := r.fillRequest(req, finalValues, "")
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +207,13 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if interactURL != "" {
 			value = r.options.Interactsh.ReplaceMarkers(value, interactURL)
 		}
-		req.Header[header] = []string{replacer.Replace(value, values)}
+		value, err := expressions.Evaluate(value, values)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		}
+		req.Header[header] = []string{value}
 		if header == "Host" {
-			req.Host = replacer.Replace(value, values)
+			req.Host = value
 		}
 	}
 
@@ -219,6 +227,10 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		body := r.request.Body
 		if interactURL != "" {
 			body = r.options.Interactsh.ReplaceMarkers(body, interactURL)
+		}
+		body, err := expressions.Evaluate(body, values)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not evaluate helper expressions")
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}
