@@ -304,19 +304,16 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !request.original.Race {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
+		var dumpError error
+		dumpedRequest, dumpError = dump(request, reqURL)
+		if dumpError != nil {
+			return dumpError
 		}
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", string(dumpedRequest))
 		}
-	}
-
-	if resp == nil {
-		err = errors.New("no response got for request")
 	}
 	if err != nil {
 		// rawhttp doesn't supports draining response bodies.
