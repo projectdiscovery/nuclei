@@ -76,11 +76,7 @@ func (c *Cache) Check(value string) bool {
 		return false
 	}
 	numberOfErrorsValue := numberOfErrors.(int)
-
-	if numberOfErrorsValue >= c.hostMaxErrors {
-		return true
-	}
-	return false
+	return numberOfErrorsValue >= c.hostMaxErrors
 }
 
 // MarkFailed marks a host as failed previously
@@ -107,9 +103,5 @@ var checkErrorRegexp = regexp.MustCompile(`(no address found for host|Client\.Ti
 // added to the host skipping table.
 func (c *Cache) CheckError(err error) bool {
 	errString := err.Error()
-
-	if checkErrorRegexp.MatchString(errString) {
-		return true
-	}
-	return false
+	return checkErrorRegexp.MatchString(errString)
 }
