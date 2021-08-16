@@ -7,6 +7,7 @@ require (
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
 	github.com/fatih/structs v1.1.0 // indirect
@@ -17,6 +18,7 @@ require (
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
