@@ -42,8 +42,8 @@ func readConfig() {
 on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "input", "Target",
-		flagSet.StringVarP(&options.Target, "target", "u", "", "target URL/host to scan"),
-		flagSet.StringVarP(&options.Targets, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
+		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",
@@ -92,9 +92,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
 
+		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in var=value format"),
+
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "Enable environment variables support"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
@@ -109,6 +112,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
+		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 10, "maximum number of templates to be executed in parallel"),
 	)
