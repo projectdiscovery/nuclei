@@ -82,8 +82,8 @@ Usage:
 
 Flags:
 TARGET:
-   -u, -target string  target URL/host to scan
-   -l, -list string    path to file containing a list of target URLs/hosts to scan (one per line)
+   -u, -target string[]  target URLs/hosts to scan
+   -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
 
 TEMPLATES:
    -tl                      list all available templates
@@ -118,9 +118,11 @@ CONFIGURATIONS:
    -config string              path to the nuclei configuration file
    -rc, -report-config string  nuclei reporting module configuration file
    -H, -header string[]        custom headers in header:value format
+   -V, -var value              custom vars in var=value format
    -r, -resolvers string       file containing resolver list for nuclei
    -system-resolvers           use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
+   -env-vars                   Enable environment variables support
 
 INTERACTSH:
    -no-interactsh                     do not use interactsh server for blind interaction polling
@@ -131,9 +133,10 @@ INTERACTSH:
    -interactions-cooldown-period int  extra time for interaction polling before exiting (default 5)
 
 RATE-LIMIT:
-   -rl, -rate-limit int  maximum number of requests to send per second (default 150)
-   -bs, -bulk-size int   maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int  maximum number of templates to be executed in parallel (default 10)
+   -rl, -rate-limit int          maximum number of requests to send per second (default 150)
+   -rlm, -rate-limit-minute int  maximum number of requests to send per minute
+   -bs, -bulk-size int           maximum number of hosts to be analyzed in parallel per template (default 25)
+   -c, -concurrency int          maximum number of templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
    -timeout int               time to wait in seconds before timeout (default 5)
@@ -160,6 +163,7 @@ DEBUG:
 UPDATE:
    -update                        update nuclei to the latest released version
    -ut, -update-templates         update the community templates to latest released version
+   -nut, -no-update-templates     Do not check for nuclei-templates updates
    -ud, -update-directory string  overwrite the default nuclei-templates directory (default "$HOME/nuclei-templates")
 
 STATISTICS:
