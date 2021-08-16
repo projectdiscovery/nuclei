@@ -1,6 +1,8 @@
 package generators
 
-import "strings"
+import (
+	"strings"
+)
 
 // MergeMaps merges two maps into a new map
 func MergeMaps(m1, m2 map[string]interface{}) map[string]interface{} {

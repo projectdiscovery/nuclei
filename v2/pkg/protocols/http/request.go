@@ -351,7 +351,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		// Ignore body read due to server misconfiguration errors
 		if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
 			gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
-		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF") { // ignore EOF error
+		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
 			return errors.Wrap(err, "could not read http body")
 		}
 	}
