@@ -21,6 +21,8 @@ type Options struct {
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
+	// Vars is the list of custom global vars
+	Vars goflags.RuntimeMap
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
 	// Author filters templates based on their author and only run the matching ones.
@@ -146,4 +148,6 @@ type Options struct {
 	UpdateNuclei bool
 	// NoUpdateTemplates disables checking for nuclei templates updates
 	NoUpdateTemplates bool
+	// EnvironmentVariables enables support for environment variables
+	EnvironmentVariables bool
 }
