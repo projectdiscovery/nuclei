@@ -1,6 +1,7 @@
 package severity
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -70,4 +71,8 @@ func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) 
 
 	severityHolder.Severity = computedSeverity
 	return nil
+}
+
+func (severityHolder *SeverityHolder) MarshalJSON() ([]byte, error) {
+	return json.Marshal(severityHolder.Severity.String())
 }
