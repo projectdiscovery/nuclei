@@ -10,8 +10,11 @@ import (
 
 	"github.com/owenrumney/go-sarif/sarif"
 	"github.com/pkg/errors"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Exporter is an exporter for nuclei sarif output format.
@@ -59,8 +62,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	sarifSeverity := getSarifSeverity(event)
 
 	var ruleName string
-	if s, ok := event.Info["name"]; ok {
-		ruleName = s.(string)
+	if utils.IsNotBlank(event.Info.Name) {
+		ruleName = event.Info.Name
 	}
 
 	var templateURL string
@@ -71,8 +74,8 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	var ruleDescription string
-	if d, ok := event.Info["description"]; ok {
-		ruleDescription = d.(string)
+	if utils.IsNotBlank(event.Info.Description) {
+		ruleDescription = event.Info.Description
 	}
 
 	i.mutex.Lock()
@@ -108,17 +111,12 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 // getSarifSeverity returns the sarif severity
 func getSarifSeverity(event *output.ResultEvent) string {
-	var ruleSeverity string
-	if s, ok := event.Info["severity"]; ok {
-		ruleSeverity = s.(string)
-	}
-
-	switch ruleSeverity {
-	case "info":
+	switch event.Info.SeverityHolder.Severity {
+	case severity.Info:
 		return "note"
-	case "low", "medium":
+	case severity.Low, severity.Medium:
 		return "warning"
-	case "high", "critical":
+	case severity.High, severity.Critical:
 		return "error"
 	default:
 		return "note"

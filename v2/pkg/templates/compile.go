@@ -8,12 +8,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Parse parses a yaml request template file
@@ -42,10 +43,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		return nil, err
 	}
 
-	if _, ok := template.Info["name"]; !ok {
+	if utils.IsBlank(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
 	}
-	if _, ok := template.Info["author"]; !ok {
+	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
 	}
 
@@ -63,11 +64,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
 
-		loader, err := compile.NewLoader(&options)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create workflow loader")
-		}
-		compileWorkflow(preprocessor, &options, compiled, loader)
+		compileWorkflow(preprocessor, &options, compiled, options.WorkflowLoader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
