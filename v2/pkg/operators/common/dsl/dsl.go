@@ -220,10 +220,10 @@ var functions = map[string]govaluate.ExpressionFunction{
 		max := math.MaxInt32
 
 		if len(args) >= 1 {
-			min = args[0].(int)
+			min = int(args[0].(float64))
 		}
 		if len(args) >= withMaxRandArgsSize {
-			max = args[1].(int)
+			max = int(args[1].(float64))
 		}
 		return rand.Intn(max-min) + min, nil
 	},
