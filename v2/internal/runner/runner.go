@@ -293,7 +293,7 @@ func (r *Runner) RunEnumeration() error {
 
 	var cache *hosterrorscache.Cache
 	if r.options.HostMaxErrors > 0 {
-		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount)
+		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
 	executerOpts := protocols.ExecuterOptions{
