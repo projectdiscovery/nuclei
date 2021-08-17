@@ -2,6 +2,7 @@ package protocols
 
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -34,7 +35,7 @@ type ExecuterOptions struct {
 	// TemplatePath is the path of the template for the request
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
-	TemplateInfo map[string]interface{}
+	TemplateInfo model.Info
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.
@@ -55,6 +56,8 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 
 	Operators []*operators.Operators // only used by offlinehttp module
+
+	WorkflowLoader model.WorkflowLoader
 }
 
 // Request is an interface implemented any protocol based request generator.
