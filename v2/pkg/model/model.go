@@ -1,7 +1,9 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
@@ -9,12 +11,12 @@ import (
 )
 
 type Info struct {
-	Name           string
-	Authors        StringSlice `yaml:"author"`
-	Tags           StringSlice `yaml:"tags"`
-	Description    string
-	Reference      StringSlice             `yaml:"reference"`
-	SeverityHolder severity.SeverityHolder `yaml:"severity"`
+	Name           string                  `json:"name" yaml:"name"`
+	Authors        StringSlice             `json:"authors" yaml:"authors"`
+	Tags           StringSlice             `json:"tags" yaml:"tags"`
+	Description    string                  `json:"description" yaml:"description"`
+	Reference      StringSlice             `json:"reference" yaml:"reference"`
+	SeverityHolder severity.SeverityHolder `json:"severity" yaml:"severity"`
 }
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
@@ -80,12 +82,9 @@ func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
 }
 
 func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {
-	switch value := stringSlice.Value.(type) {
-	case string:
-		return value, nil
-	case []string:
-		return strings.Join(value, ", "), nil
-	default:
-		panic("Unsupported type")
-	}
+	return yaml.Marshal(stringSlice.Value)
+}
+
+func (stringSlice StringSlice) MarshalJSON() ([]byte, error) {
+	return json.Marshal(stringSlice.Value)
 }
