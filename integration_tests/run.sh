@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm integration-test nuclei
+rm integration-test nuclei 2>/dev/null
 cd ../v2/cmd/nuclei
 go build
 mv nuclei ../../../integration_tests/nuclei 
