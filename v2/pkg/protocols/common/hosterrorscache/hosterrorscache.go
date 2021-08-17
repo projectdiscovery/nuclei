@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bluele/gcache"
+	"github.com/projectdiscovery/gologger"
 )
 
 // Cache is a cache for host based errors. It allows skipping
@@ -16,6 +17,7 @@ import (
 // that remain so for a duration.
 type Cache struct {
 	hostMaxErrors int
+	verbose       bool
 	failedTargets gcache.Cache
 }
 
@@ -27,6 +29,12 @@ func New(hostMaxErrors, maxHostsCount int) *Cache {
 		ARC().
 		Build()
 	return &Cache{failedTargets: gc, hostMaxErrors: hostMaxErrors}
+}
+
+// SetVerbose sets the cache to log at verbose level
+func (c *Cache) SetVerbose(verbose bool) *Cache {
+	c.verbose = verbose
+	return c
 }
 
 // Close closes the host errors cache
@@ -76,7 +84,18 @@ func (c *Cache) Check(value string) bool {
 		return false
 	}
 	numberOfErrorsValue := numberOfErrors.(int)
-	return numberOfErrorsValue >= c.hostMaxErrors
+
+	if numberOfErrors == -1 {
+		return true
+	}
+	if numberOfErrorsValue >= c.hostMaxErrors {
+		_ = c.failedTargets.Set(finalValue, -1)
+		if c.verbose {
+			gologger.Verbose().Msgf("Skipping %s as it has failed %d times", finalValue, numberOfErrorsValue)
+		}
+		return true
+	}
+	return false
 }
 
 // MarkFailed marks a host as failed previously
