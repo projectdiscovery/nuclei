@@ -3,8 +3,10 @@ package format
 import (
 	"bytes"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -17,9 +19,9 @@ func Summary(event *output.ResultEvent) string {
 	builder.WriteString("[")
 	builder.WriteString(template)
 	builder.WriteString("] [")
-	builder.WriteString(types.ToString(event.Info["severity"]))
+	builder.WriteString(types.ToString(event.Info.SeverityHolder))
 	builder.WriteString("] ")
-	builder.WriteString(types.ToString(event.Info["name"]))
+	builder.WriteString(types.ToString(event.Info.Name))
 	builder.WriteString(" found on ")
 	builder.WriteString(event.Host)
 	data := builder.String()
@@ -28,27 +30,28 @@ func Summary(event *output.ResultEvent) string {
 
 // MarkdownDescription formats a short description of the generated
 // event by the nuclei scanner in Markdown format.
-func MarkdownDescription(event *output.ResultEvent) string {
+func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the code duplication: format.go <-> jira.go
 	template := GetMatchedTemplate(event)
 	builder := &bytes.Buffer{}
 	builder.WriteString("**Details**: **")
 	builder.WriteString(template)
 	builder.WriteString("** ")
+
 	builder.WriteString(" matched at ")
 	builder.WriteString(event.Host)
+
 	builder.WriteString("\n\n**Protocol**: ")
 	builder.WriteString(strings.ToUpper(event.Type))
+
 	builder.WriteString("\n\n**Full URL**: ")
 	builder.WriteString(event.Matched)
+
 	builder.WriteString("\n\n**Timestamp**: ")
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+
 	builder.WriteString("\n\n**Template Information**\n\n| Key | Value |\n|---|---|\n")
-	for k, v := range event.Info {
-		if k == "reference" {
-			continue
-		}
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
-	}
+	builder.WriteString(ToMarkdownTableString(&event.Info))
+
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
 		builder.WriteString(event.Request)
@@ -113,17 +116,29 @@ func MarkdownDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n```\n")
 		}
 	}
-	if d, ok := event.Info["reference"]; ok {
+
+	reference := event.Info.Reference
+	if !reference.IsEmpty() {
 		builder.WriteString("\nReference: \n")
 
-		switch v := d.(type) {
+		/*TODO couldn't the following code replace the logic below?
+		referenceSlice := reference.ToSlice()
+		for i, item := range referenceSlice {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			if len(referenceSlice)-1 != i {
+				builder.WriteString("\n")
+			}
+		}*/
+
+		switch value := reference.Value.(type) {
 		case string:
-			if !strings.HasPrefix(v, "-") {
+			if !strings.HasPrefix(value, "-") {
 				builder.WriteString("- ")
 			}
-			builder.WriteString(v)
+			builder.WriteString(value)
 		case []interface{}:
-			slice := types.ToStringSlice(v)
+			slice := types.ToStringSlice(value)
 			for i, item := range slice {
 				builder.WriteString("- ")
 				builder.WriteString(item)
@@ -153,4 +168,26 @@ func GetMatchedTemplate(event *output.ResultEvent) string {
 	}
 	template := builder.String()
 	return template
+}
+
+func ToMarkdownTableString(templateInfo *model.Info) string {
+	fields := map[string]string{
+		"Name":        templateInfo.Name,
+		"Authors":     sliceToString(templateInfo.Authors),
+		"Tags":        sliceToString(templateInfo.Tags),
+		"Description": templateInfo.Description,
+		"Severity":    templateInfo.SeverityHolder.Severity.String(),
+	}
+
+	builder := &bytes.Buffer{}
+	for k, v := range fields {
+		if utils.IsNotBlank(v) {
+			builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+		}
+	}
+	return builder.String()
+}
+
+func sliceToString(stringSlice model.StringSlice) string {
+	return strings.Join(stringSlice.ToSlice(), ", ")
 }

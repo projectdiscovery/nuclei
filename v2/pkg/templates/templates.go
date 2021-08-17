@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/code"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
@@ -16,7 +17,7 @@ type Template struct {
 	// ID is the unique id for the template
 	ID string `yaml:"id"`
 	// Info contains information about the template
-	Info map[string]interface{} `yaml:"info"`
+	Info model.Info `yaml:"info"`
 	// RequestsHTTP contains the http request to make in the template
 	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests"`
 	// RequestsDNS contains the dns request to make in the template

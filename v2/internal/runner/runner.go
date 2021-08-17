@@ -10,14 +10,22 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
+	"github.com/rs/xid"
+	"go.uber.org/atomic"
+	"go.uber.org/ratelimit"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -31,11 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
-	"github.com/rs/xid"
-	"go.uber.org/atomic"
-	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Runner is a client for running the enumeration process.
@@ -51,7 +55,7 @@ type Runner struct {
 	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *reporting.Client
-	severityColors  *colorizer.Colorizer
+	addColor        func(severity.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
 }
@@ -120,7 +124,7 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.severityColors = colorizer.New(runner.colorizer)
+	runner.addColor = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
@@ -139,7 +143,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.inputCount = 0
 	dupeCount := 0
 
-	// Handle multiple target
+	// Handle multiple targets
 	if len(options.Targets) != 0 {
 		for _, target := range options.Targets {
 			url := strings.TrimSpace(target)
@@ -228,7 +232,7 @@ func New(options *types.Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
@@ -308,6 +312,14 @@ func (r *Runner) RunEnumeration() error {
 		Browser:      r.browser,
 		Store:        s,
 	}
+
+	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	if err != nil {
+		return errors.Wrap(err, "Could not create loader.")
+	}
+
+	executerOpts.WorkflowLoader = workflowLoader
+
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
@@ -316,7 +328,7 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeTags:        r.options.ExcludeTags,
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
-		Severities:         r.options.Severity,
+		Severities:         r.options.Severities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
@@ -353,7 +365,7 @@ func (r *Runner) RunEnumeration() error {
 
 	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
 
-	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" {
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
 		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
@@ -384,7 +396,7 @@ func (r *Runner) RunEnumeration() error {
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
-		// it can't be know in advance which requests will be called
+		// it can't be known in advance which requests will be called
 		if len(template.Workflows) > 0 {
 			continue
 		}
@@ -452,6 +464,11 @@ func (r *Runner) RunEnumeration() error {
 	if templateCount == 0 {
 		return errors.New("no templates were found")
 	}
+
+	/*
+		TODO does it make sense to run the logic below if there are no targets specified?
+		Can we safely assume the user is just experimenting with the template/workflow filters before running them?
+	*/
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
