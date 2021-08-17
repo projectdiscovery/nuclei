@@ -6,8 +6,11 @@ import (
 	"path"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 )
 
 func TestFindInputPaths(t *testing.T) {
@@ -24,7 +27,7 @@ func TestFindInputPaths(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")

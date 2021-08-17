@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -41,6 +43,10 @@ func readConfig() {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
+	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
+	This can be very confusing and should be addressed
+	*/
+
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
@@ -64,7 +70,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
 		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
-		flagSet.NormalizedStringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
+		flagSet.VarP(&options.Severities, "impact", "severity", fmt.Sprintf("Templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.NormalizedStringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
 	)
 
