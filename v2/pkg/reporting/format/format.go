@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -180,7 +181,9 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 
 	builder := &bytes.Buffer{}
 	for k, v := range fields {
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+		if utils.IsNotBlank(v) {
+			builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
+		}
 	}
 	return builder.String()
 }
