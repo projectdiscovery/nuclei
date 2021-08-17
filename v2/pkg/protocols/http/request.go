@@ -216,6 +216,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			return err
 		}
 
+		// Check if hosts just keep erroring
+		if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.Check(reqURL) {
+			break
+		}
 		var gotOutput bool
 		r.options.RateLimiter.Take()
 		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
@@ -237,7 +241,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			}
 		}, requestCount)
 		if err != nil {
-			requestErr = multierr.Append(requestErr, err)
+			if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.CheckError(err) {
+				r.options.HostErrorsCache.MarkFailed(reqURL)
+			}
+			requestErr = err
 		}
 		requestCount++
 		r.options.Progress.IncrementRequests()
