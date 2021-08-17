@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/remeh/sizedwaitgroup"
@@ -22,6 +24,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		go func(URL string) {
 			defer wg.Done()
 
+			fmt.Printf("%v %v\n", URL, template.Info)
 			match, err := template.Executer.Execute(URL)
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
