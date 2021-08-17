@@ -91,7 +91,7 @@ func (c *Cache) Check(value string) bool {
 	if numberOfErrorsValue >= c.hostMaxErrors {
 		_ = c.failedTargets.Set(finalValue, -1)
 		if c.verbose {
-			gologger.Verbose().Msgf("Skipping %s as it has failed %d times", finalValue, numberOfErrorsValue)
+			gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, numberOfErrorsValue)
 		}
 		return true
 	}
