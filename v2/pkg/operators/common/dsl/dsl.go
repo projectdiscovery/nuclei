@@ -162,7 +162,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		base := letters + numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -179,7 +179,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := letters + numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -193,7 +193,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := letters
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -207,7 +207,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
