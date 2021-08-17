@@ -52,7 +52,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return compiled.ReplaceAllString(types.ToString(args[0]), types.ToString(args[2])), nil
 	},
 	"trim": func(args ...interface{}) (interface{}, error) {
-		return strings.Trim(types.ToString(args[0]), types.ToString(args[2])), nil
+		return strings.Trim(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimleft": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
