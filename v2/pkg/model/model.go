@@ -12,7 +12,7 @@ import (
 
 type Info struct {
 	Name           string                  `json:"name" yaml:"name"`
-	Authors        StringSlice             `json:"authors" yaml:"authors"`
+	Authors        StringSlice             `json:"author" yaml:"author"`
 	Tags           StringSlice             `json:"tags" yaml:"tags"`
 	Description    string                  `json:"description" yaml:"description"`
 	Reference      StringSlice             `json:"reference" yaml:"reference"`

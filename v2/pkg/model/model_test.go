@@ -21,6 +21,6 @@ func TestInfoJsonMarshal(t *testing.T) {
 	result, err := json.Marshal(&info)
 	assert.Nil(t, err)
 
-	expected := `{"name":"Test Template Name","authors":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"reference1","severity":"high"}`
+	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"reference1","severity":"high"}`
 	assert.Equal(t, expected, string(result))
 }
