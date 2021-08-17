@@ -2,6 +2,7 @@ package clusterer
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -23,7 +24,7 @@ type Executer struct {
 type clusteredOperator struct {
 	templateID   string
 	templatePath string
-	templateInfo map[string]interface{}
+	templateInfo model.Info
 	operator     *operators.Operators
 }
 
