@@ -25,6 +25,10 @@ type Extractor struct {
 	// KVal are the kval to be present in the response headers/cookies
 	KVal []string `yaml:"kval,omitempty"`
 
+	// XPath are the Xpath selectors for the extractor
+	XPath []string `yaml:"xpath"`
+	// Attribute is an optional attribute to extract from response XPath
+	Attribute string `yaml:"attribute"`
 	// JSON are the json pattern required to be present in the response
 	JSON []string `yaml:"json"`
 	// jsonCompiled is the compiled variant
@@ -46,6 +50,8 @@ const (
 	RegexExtractor ExtractorType = iota + 1
 	// KValExtractor extracts responses with key:value
 	KValExtractor
+	// XPathExtractor extracts responses with Xpath selectors
+	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
 )
@@ -54,6 +60,7 @@ const (
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
+	"xpath": XPathExtractor,
 	"json":  JSONExtractor,
 }
 
