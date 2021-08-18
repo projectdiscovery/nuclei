@@ -18,7 +18,7 @@ func TestToMarkdownTableString(t *testing.T) {
 		SeverityHolder: severity.SeverityHolder{Severity: severity.High},
 		Tags:           model.StringSlice{Value: []string{"cve", "misc"}},
 		Reference:      model.StringSlice{Value: "reference1"},
-		CustomAttributes: map[string]string{
+		CustomFields: map[string]string{
 			"customDynamicKey1": "customDynamicValue1",
 			"customDynamicKey2": "customDynamicValue2",
 		},
