@@ -52,7 +52,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return compiled.ReplaceAllString(types.ToString(args[0]), types.ToString(args[2])), nil
 	},
 	"trim": func(args ...interface{}) (interface{}, error) {
-		return strings.Trim(types.ToString(args[0]), types.ToString(args[2])), nil
+		return strings.Trim(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimleft": func(args ...interface{}) (interface{}, error) {
 		return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
@@ -162,7 +162,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		base := letters + numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -179,7 +179,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := letters + numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -193,7 +193,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := letters
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -207,7 +207,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		chars := numbers
 
 		if len(args) >= 1 {
-			l = args[0].(int)
+			l = int(args[0].(float64))
 		}
 		if len(args) >= withCutSetArgsSize {
 			bad = types.ToString(args[1])
@@ -220,10 +220,10 @@ var functions = map[string]govaluate.ExpressionFunction{
 		max := math.MaxInt32
 
 		if len(args) >= 1 {
-			min = args[0].(int)
+			min = int(args[0].(float64))
 		}
 		if len(args) >= withMaxRandArgsSize {
-			max = args[1].(int)
+			max = int(args[1].(float64))
 		}
 		return rand.Intn(max-min) + min, nil
 	},
