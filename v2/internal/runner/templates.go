@@ -2,39 +2,16 @@ package runner
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/karrick/godirwalk"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
-
-// parseTemplateFile returns the parsed template file
-func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	template := &templates.Template{}
-	err = yaml.Unmarshal(data, template)
-	if err != nil {
-		return nil, err
-	}
-	return template, nil
-}
 
 func (r *Runner) templateLogMsg(id, name, author string, templateSeverity severity.Severity) string {
 	// Display the message for the template
@@ -69,7 +46,7 @@ func appendAtSignToAuthors(author string) string {
 }
 
 func (r *Runner) logAvailableTemplate(tplPath string) {
-	t, err := r.parseTemplateFile(tplPath)
+	t, err := parsers.ParseTemplate(tplPath)
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {

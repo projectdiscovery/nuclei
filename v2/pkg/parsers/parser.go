@@ -33,7 +33,7 @@ func LoadWorkflow(templatePath string, isWorkflow bool, tagFilter *filter.TagFil
 }
 
 func load(path string, isWorkflow bool, workflowTags []string, tagFilter *filter.TagFilter) (bool, error) {
-	template, templateParseError := parseTemplate(path)
+	template, templateParseError := ParseTemplate(path)
 	if templateParseError != nil {
 		return false, templateParseError
 	}
@@ -91,7 +91,8 @@ func validateMandatoryInfoFields(info *model.Info) error {
 
 var fieldErrorRegexp = regexp.MustCompile(`not found in`)
 
-func parseTemplate(templatePath string) (*templates.Template, error) {
+// ParseTemplate parses a template and returns a *templates.Template structure
+func ParseTemplate(templatePath string) (*templates.Template, error) {
 	f, err := os.Open(templatePath)
 	if err != nil {
 		return nil, err
