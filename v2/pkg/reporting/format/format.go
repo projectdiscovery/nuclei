@@ -119,32 +119,14 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	reference := event.Info.Reference
 	if !reference.IsEmpty() {
-		builder.WriteString("\nReference: \n")
+		builder.WriteString("\nReferences: \n")
 
-		/*TODO couldn't the following code replace the logic below?
 		referenceSlice := reference.ToSlice()
 		for i, item := range referenceSlice {
 			builder.WriteString("- ")
 			builder.WriteString(item)
 			if len(referenceSlice)-1 != i {
 				builder.WriteString("\n")
-			}
-		}*/
-
-		switch value := reference.Value.(type) {
-		case string:
-			if !strings.HasPrefix(value, "-") {
-				builder.WriteString("- ")
-			}
-			builder.WriteString(value)
-		case []interface{}:
-			slice := types.ToStringSlice(value)
-			for i, item := range slice {
-				builder.WriteString("- ")
-				builder.WriteString(item)
-				if len(slice)-1 != i {
-					builder.WriteString("\n")
-				}
 			}
 		}
 	}
@@ -171,23 +153,25 @@ func GetMatchedTemplate(event *output.ResultEvent) string {
 }
 
 func ToMarkdownTableString(templateInfo *model.Info) string {
-	fields := map[string]string{
-		"Name":        templateInfo.Name,
-		"Authors":     sliceToString(templateInfo.Authors),
-		"Tags":        sliceToString(templateInfo.Tags),
-		"Description": templateInfo.Description,
-		"Severity":    templateInfo.SeverityHolder.Severity.String(),
-	}
+	fields := utils.NewEmptyInsertionOrderedStringMap(5)
+	fields.Set("Name", templateInfo.Name)
+	fields.Set("Authors", templateInfo.Authors.String())
+	fields.Set("Tags", templateInfo.Tags.String())
+	fields.Set("Severity", templateInfo.SeverityHolder.Severity.String())
+	fields.Set("Description", templateInfo.Description)
 
 	builder := &bytes.Buffer{}
-	for k, v := range fields {
-		if utils.IsNotBlank(v) {
-			builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
-		}
-	}
-	return builder.String()
-}
 
-func sliceToString(stringSlice model.StringSlice) string {
-	return strings.Join(stringSlice.ToSlice(), ", ")
+	toMarkDownTable := func(insertionOrderedStringMap *utils.InsertionOrderedStringMap) {
+		insertionOrderedStringMap.ForEach(func(key string, value string) {
+			if utils.IsNotBlank(value) {
+				builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+			}
+		})
+	}
+
+	toMarkDownTable(fields)
+	toMarkDownTable(utils.NewInsertionOrderedStringMap(templateInfo.CustomAttributes))
+
+	return builder.String()
 }
