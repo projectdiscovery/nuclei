@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,7 +29,7 @@ func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
 	}
 
 	template := &templates.Template{}
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	err = yaml.Unmarshal(data, template)
 	if err != nil {
 		return nil, err
 	}
