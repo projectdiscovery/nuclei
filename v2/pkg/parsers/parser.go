@@ -95,7 +95,8 @@ func parseTemplate(templatePath string) (*templates.Template, error) {
 	err = yaml.UnmarshalStrict(data, template)
 	if err != nil {
 		if fieldErrorRegexp.MatchString(err.Error()) {
-			gologger.Warning().Msgf("Could not load template %s: %s", templatePath, err)
+			gologger.Warning().Msgf("Unrecognized fields in template %s: %s", templatePath, err)
+			return template, nil
 		}
 		return nil, err
 	}
