@@ -16,8 +16,10 @@ type Generator struct {
 type Type int
 
 const (
-	// Sniper replaces each variables with values at a time.
+	// Sniper replaces each variables with values at a time
 	Sniper Type = iota + 1
+	// BatteringRam replaces all the variables per iteration with the same value
+	BatteringRam
 	// PitchFork replaces variables with positional value from multiple wordlists
 	PitchFork
 	// ClusterBomb replaces variables with all possible combinations of values
@@ -26,9 +28,10 @@ const (
 
 // StringToType is an table for conversion of attack type from string.
 var StringToType = map[string]Type{
-	"sniper":      Sniper,
-	"pitchfork":   PitchFork,
-	"clusterbomb": ClusterBomb,
+	"sniper":       Sniper,
+	"batteringram": BatteringRam,
+	"pitchfork":    PitchFork,
+	"clusterbomb":  ClusterBomb,
 }
 
 // New creates a new generator structure for payload generation
@@ -105,6 +108,10 @@ func (i *Iterator) Total() int {
 		for _, p := range i.payloads {
 			count += len(p.values)
 		}
+	case BatteringRam:
+		for _, p := range i.payloads {
+			count += len(p.values)
+		}
 	case PitchFork:
 		count = len(i.payloads[0].values)
 	case ClusterBomb:
@@ -120,6 +127,8 @@ func (i *Iterator) Total() int {
 func (i *Iterator) Value() (map[string]interface{}, bool) {
 	switch i.Type {
 	case Sniper:
+		return i.sniperValue()
+	case BatteringRam:
 		return i.sniperValue()
 	case PitchFork:
 		return i.pitchforkValue()

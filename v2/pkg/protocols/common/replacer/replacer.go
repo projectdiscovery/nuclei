@@ -37,3 +37,24 @@ func Replace(template string, values map[string]interface{}) string {
 	final := replacer.Replace(template)
 	return final
 }
+
+func ReplaceNth(template, key, value string, n int) string {
+	old := MarkerGeneral + key + MarkerGeneral
+	new := value
+	i := 0
+	for m := 1; i < len(template); m++ {
+		x := strings.Index(template[i:], old)
+		if x < 0 {
+			break
+		}
+		i += x
+		if m == n {
+			template = template[:i] + new + template[i+len(old):]
+			i += len(new)
+		} else {
+			template = template[:i] + key + template[i+len(old):]
+			i += len(key)
+		}
+	}
+	return template
+}

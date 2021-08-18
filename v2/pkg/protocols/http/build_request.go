@@ -38,11 +38,29 @@ type generatedRequest struct {
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
+	var data string
+	var payloads map[string]interface{}
+	var ok bool
+
+	
+	if r.sniperData.sniperPositionCount < r.sniperData.currentPosition {
+		// We get the next payload for the request.
+		data, payloads, ok = r.nextValue()
+		if !ok {
+			return nil, io.EOF
+		}
+
+		if r.request.attackType == generators.Sniper {
+			r.setPayloadPositionValues(data, payloads)
+		}
 	}
+
+	if r.request.attackType == generators.Sniper {
+		r.replaceSniperPositions()
+		data = r.sniperData.data
+		payloads = r.payloads
+	}
+
 	ctx := context.Background()
 
 	parsed, err := url.Parse(baseURL)
@@ -112,14 +130,18 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
 
-	// Evaulate the expressions for the request if any.
+	// Evaulate the expressions in data for the request if any.
 	var err error
 	data, err = expressions.Evaluate(data, finalValues)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
-	method, err := expressions.Evaluate(r.request.Method, finalValues)
+	method := r.request.Method
+	if r.request.attackType == generators.Sniper {
+		method = r.sniperData.method
+	}
+	method, err = expressions.Evaluate(method, finalValues)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
@@ -205,6 +227,9 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if interactURL != "" {
 			value = r.options.Interactsh.ReplaceMarkers(value, interactURL)
 		}
+		if r.request.attackType == generators.Sniper {
+			value = r.sniperData.headers[header]
+		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not evaluate helper expressions")
@@ -225,6 +250,9 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		body := r.request.Body
 		if interactURL != "" {
 			body = r.options.Interactsh.ReplaceMarkers(body, interactURL)
+		}
+		if r.request.attackType == generators.Sniper {
+			body = r.sniperData.body
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {
