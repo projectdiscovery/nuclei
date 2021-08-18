@@ -13,11 +13,11 @@ import (
 func TestToMarkdownTableString(t *testing.T) {
 	info := model.Info{
 		Name:           "Test Template Name",
-		Authors:        model.StringSlice{[]string{"forgedhallpass", "ice3man"}},
+		Authors:        model.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
 		SeverityHolder: severity.SeverityHolder{Severity: severity.High},
-		Tags:           model.StringSlice{[]string{"cve", "misc"}},
-		Reference:      model.StringSlice{"reference1"},
+		Tags:           model.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      model.StringSlice{Value: "reference1"},
 		CustomAttributes: map[string]string{
 			"customDynamicKey1": "customDynamicValue1",
 			"customDynamicKey2": "customDynamicValue2",
