@@ -17,11 +17,29 @@ import (
 
 const mandatoryFieldMissingTemplate = "mandatory '%s' field is missing"
 
-// Load loads a template by parsing metadata and running all tag and path based filters on the template.
-func Load(templatePath string, isWorkflow bool, workflowTags []string, tagFilter *filter.TagFilter) (bool, error) {
-	template, templateParseError := parseTemplate(templatePath)
+// LoadTemplate loads a template by parsing metadata and running all tag
+// and path based filters on the template.
+func LoadTemplate(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+	return load(templatePath, false, nil, tagFilter)
+}
+
+// LoadTemplate loads a template by parsing metadata and running all tag
+// based filters on the template.
+//
+// isWorkflow when false, means that the template itself is not a workflow
+// however options tags may have been passed in workflowTags slice.
+func LoadWorkflow(templatePath string, isWorkflow bool, tagFilter *filter.TagFilter, workflowTags []string) (bool, error) {
+	return load(templatePath, isWorkflow, workflowTags, tagFilter)
+}
+
+func load(path string, isWorkflow bool, workflowTags []string, tagFilter *filter.TagFilter) (bool, error) {
+	template, templateParseError := parseTemplate(path)
 	if templateParseError != nil {
 		return false, templateParseError
+	}
+	// If this is called for a workflow and we don't have a workflow, return
+	if isWorkflow && len(template.Workflows) == 0 {
+		return false, nil
 	}
 
 	templateInfo := template.Info
@@ -29,17 +47,12 @@ func Load(templatePath string, isWorkflow bool, workflowTags []string, tagFilter
 		return false, validationError
 	}
 
-	if len(template.Workflows) > 0 {
-		if isWorkflow {
-			return true, nil // if a workflow is declared and this template is a workflow, then load
-		} else { //nolint:indent-error-flow,revive // preferred: readability and extensibility
-			return false, nil // if a workflow is declared and this template is not a workflow then do not load
-		}
-	} else if isWorkflow {
-		return false, nil // if no workflows are declared and this template is a workflow then do not load
-	} else { // if workflows are not declared and the template is not a workflow then parse it
-		return isInfoMetadataMatch(tagFilter, &templateInfo, workflowTags)
+	// Validation of the metadata match happens in all scenarios.
+	templateMatch, matchErr := isInfoMetadataMatch(tagFilter, &templateInfo, []string{})
+	if matchErr != nil || !templateMatch {
+		return false, matchErr
 	}
+	return true, nil
 }
 
 func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, workflowTags []string) (bool, error) {
@@ -54,7 +67,6 @@ func isInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, 
 	} else {
 		match, err = tagFilter.MatchWithWorkflowTags(templateTags, templateAuthors, templateSeverity, workflowTags)
 	}
-
 	if err == filter.ErrExcluded {
 		return false, filter.ErrExcluded
 	}
