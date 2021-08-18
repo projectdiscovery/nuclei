@@ -1,13 +1,14 @@
 package parsers
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -76,6 +77,8 @@ func validateMandatoryInfoFields(info *model.Info) error {
 	return nil
 }
 
+var fieldErrorRegexp = regexp.MustCompile(`not found in`)
+
 func parseTemplate(templatePath string) (*templates.Template, error) {
 	f, err := os.Open(templatePath)
 	if err != nil {
@@ -89,8 +92,11 @@ func parseTemplate(templatePath string) (*templates.Template, error) {
 	}
 
 	template := &templates.Template{}
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	err = yaml.UnmarshalStrict(data, template)
 	if err != nil {
+		if fieldErrorRegexp.MatchString(err.Error()) {
+			gologger.Warning().Msgf("Could not load template %s: %s", templatePath, err)
+		}
 		return nil, err
 	}
 	return template, nil
