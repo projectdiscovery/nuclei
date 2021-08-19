@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -54,6 +55,8 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 		return extractor.ExtractRegex(item)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
+	case extractors.XPathExtractor:
+		return extractor.ExtractHTML(item)
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(item)
 	}
@@ -144,7 +147,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "http",
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),

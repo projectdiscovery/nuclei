@@ -2,6 +2,7 @@ package clusterer
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -23,7 +24,7 @@ type Executer struct {
 type clusteredOperator struct {
 	templateID   string
 	templatePath string
-	templateInfo map[string]interface{}
+	templateInfo model.Info
 	operator     *operators.Operators
 }
 
@@ -86,6 +87,9 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 		}
 	})
+	if err != nil && e.options.HostErrorsCache != nil && e.options.HostErrorsCache.CheckError(err) {
+		e.options.HostErrorsCache.MarkFailed(input)
+	}
 	return results, err
 }
 
@@ -105,5 +109,8 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			}
 		}
 	})
+	if err != nil && e.options.HostErrorsCache != nil && e.options.HostErrorsCache.CheckError(err) {
+		e.options.HostErrorsCache.MarkFailed(input)
+	}
 	return err
 }
