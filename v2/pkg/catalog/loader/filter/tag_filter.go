@@ -19,15 +19,12 @@ type TagFilter struct {
 // ErrExcluded is returned for excluded templates
 var ErrExcluded = errors.New("the template was excluded")
 
-// Match takes a tag and whether the template was matched from user
-// input and returns true or false using a tag filter.
-//
-// If the tag was specified in deny list, it will not return true
-// unless it is explicitly specified by user in includeTags which is the
-// matchAllows section.
-//
-// It returns true if the tag is specified, or false.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity) (bool, error) {
+// Match filters templates based on user provided tags, authors, extraTags and severity.
+// If the template contains tags specified in the deny list, it will not be matched
+// unless it is explicitly specified by user using the includeTags (matchAllows field).
+// Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
+// Returns true if the template matches the filter criteria, false otherwise.
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string) (bool, error) {
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -37,30 +34,45 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 		}
 	}
 
-	if !isTagMatch(templateTags, tagFilter) {
+	if !isExtraTagMatch(extraTags, templateTags) {
 		return false, nil
 	}
 
-	if !isAuthorMatch(templateAuthors, tagFilter) {
+	if !isTagMatch(tagFilter, templateTags) {
 		return false, nil
 	}
 
-	if len(tagFilter.severities) > 0 {
-		if _, ok := tagFilter.severities[templateSeverity]; !ok {
-			return false, nil
-		}
+	if !isAuthorMatch(tagFilter, templateAuthors) {
+		return false, nil
+	}
+
+	if !isSeverityMatch(tagFilter, templateSeverity) {
+		return false, nil
 	}
 
 	return true, nil
 }
 
-func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
+func isSeverityMatch(tagFilter *TagFilter, templateSeverity severity.Severity) bool {
+	if len(tagFilter.severities) == 0 {
+		return true
+	}
+
+	if _, ok := tagFilter.severities[templateSeverity]; ok {
+		return true
+	}
+
+	return false
+}
+
+func isAuthorMatch(tagFilter *TagFilter, templateAuthors []string) bool {
 	if len(tagFilter.authors) == 0 {
 		return true
 	}
 
-	for _, templateAuthor := range templateAuthors {
-		if _, ok := tagFilter.authors[templateAuthor]; ok {
+	templateAuthorMap := toMap(templateAuthors)
+	for requiredAuthor := range tagFilter.authors {
+		if _, ok := templateAuthorMap[requiredAuthor]; ok {
 			return true
 		}
 	}
@@ -68,7 +80,22 @@ func isAuthorMatch(templateAuthors []string, tagFilter *TagFilter) bool {
 	return false
 }
 
-func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
+func isExtraTagMatch(extraTags []string, templateTags []string) bool {
+	if len(extraTags) == 0 {
+		return true
+	}
+
+	templatesTagMap := toMap(templateTags)
+	for _, extraTag := range extraTags {
+		if _, ok := templatesTagMap[extraTag]; ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isTagMatch(tagFilter *TagFilter, templateTags []string) bool {
 	if len(tagFilter.allowedTags) == 0 {
 		return true
 	}
@@ -80,42 +107,6 @@ func isTagMatch(templateTags []string, tagFilter *TagFilter) bool {
 	}
 
 	return false
-}
-
-// MatchWithWorkflowTags takes an addition list of allowed tags and returns true if the match was successful.
-func (tagFilter *TagFilter) MatchWithWorkflowTags(templateTags, templateAuthors []string, templateSeverity severity.Severity, workflowTags []string) (bool, error) {
-	for _, templateTag := range templateTags {
-		_, blocked := tagFilter.block[templateTag]
-		_, allowed := tagFilter.matchAllows[templateTag]
-
-		if blocked && !allowed { // the whitelist has precedence over the blacklist
-			return false, ErrExcluded
-		}
-	}
-
-	templatesTagMap := toMap(templateTags)
-	for _, workflowTag := range workflowTags {
-		if _, ok := templatesTagMap[workflowTag]; !ok {
-			return false, nil
-		}
-	}
-
-	if len(tagFilter.authors) > 0 {
-		templateAuthorTagMap := toMap(templateAuthors)
-		for requiredAuthor := range tagFilter.authors {
-			if _, ok := templateAuthorTagMap[requiredAuthor]; !ok {
-				return false, nil
-			}
-		}
-	}
-
-	if len(tagFilter.severities) > 0 {
-		if _, ok := tagFilter.severities[templateSeverity]; !ok {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
 
 type Config struct {
@@ -193,7 +184,7 @@ func splitCommaTrim(value string) []string {
 }
 
 func toMap(slice []string) map[string]struct{} {
-	result := make(map[string]struct{})
+	result := make(map[string]struct{}, len(slice))
 	for _, value := range slice {
 		if _, ok := result[value]; !ok {
 			result[value] = struct{}{}

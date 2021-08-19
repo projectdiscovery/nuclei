@@ -3,8 +3,9 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
