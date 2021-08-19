@@ -216,6 +216,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			return err
 		}
 
+		// Check if hosts just keep erroring
+		if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.Check(reqURL) {
+			break
+		}
 		var gotOutput bool
 		r.options.RateLimiter.Take()
 		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
@@ -237,7 +241,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			}
 		}, requestCount)
 		if err != nil {
-			requestErr = multierr.Append(requestErr, err)
+			if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.CheckError(err) {
+				r.options.HostErrorsCache.MarkFailed(reqURL)
+			}
+			requestErr = err
 		}
 		requestCount++
 		r.options.Progress.IncrementRequests()
@@ -304,19 +311,16 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !request.original.Race {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
+		var dumpError error
+		dumpedRequest, dumpError = dump(request, reqURL)
+		if dumpError != nil {
+			return dumpError
 		}
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", string(dumpedRequest))
 		}
-	}
-
-	if resp == nil {
-		err = errors.New("no response got for request")
 	}
 	if err != nil {
 		// rawhttp doesn't supports draining response bodies.
@@ -354,7 +358,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		// Ignore body read due to server misconfiguration errors
 		if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
 			gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
-		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF") { // ignore EOF error
+		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
 			return errors.Wrap(err, "could not read http body")
 		}
 	}
