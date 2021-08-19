@@ -79,6 +79,22 @@ type Extractor struct {
 	//   - value: >
 	//       []string{".batters | .batter | .[] | .id"}
 	JSON []string `yaml:"json,omitempty"`
+	// description: |
+	//   XPath allows using xpath expressions to extract items from html response
+	//
+	// examples:
+	//   - value: >
+	//       []string{"/html/body/div/p[2]/a"}
+	//   - value: >
+	//       []string{".batters | .batter | .[] | .id"}
+	XPath []string `yaml:"xpath,omitempty"`
+	// description: |
+	//   Attribute is an optional attribute to extract from response XPath.
+	//
+	// examples:
+	//   - value: "\"href\""
+	Attribute string `yaml:"attribute,omitempty"`
+
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 
@@ -96,6 +112,8 @@ const (
 	RegexExtractor ExtractorType = iota + 1
 	// KValExtractor extracts responses with key:value
 	KValExtractor
+	// XPathExtractor extracts responses with Xpath selectors
+	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
 )
@@ -104,6 +122,7 @@ const (
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,
+	"xpath": XPathExtractor,
 	"json":  JSONExtractor,
 }
 

@@ -1,6 +1,9 @@
 package workflows
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+)
 
 // Workflow is a workflow to execute with chained requests, etc.
 type Workflow struct {
@@ -23,7 +26,7 @@ type WorkflowTemplate struct {
 	Template string `yaml:"template,omitempty"`
 	// description: |
 	//    Tags to run templates based on.
-	Tags string `yaml:"tags,omitempty"`
+	Tags model.StringSlice `yaml:"tags,omitempty"`
 	// description: |
 	//    Matchers perform name based matching to run subtemplates for a workflow.
 	Matchers []*Matcher `yaml:"matchers,omitempty"`
@@ -31,7 +34,7 @@ type WorkflowTemplate struct {
 	//    Subtemplates are ran if the `template` field Template matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty"`
 	// Executers perform the actual execution for the workflow template
-	Executers []*ProtocolExecuterPair
+	Executers []*ProtocolExecuterPair `yaml:"-"`
 }
 
 // ProtocolExecuterPair is a pair of protocol executer and its options

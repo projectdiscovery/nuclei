@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
@@ -29,12 +30,10 @@ type Template struct {
 	//     value: "\"cve-2021-19520\""
 	ID string `yaml:"id"`
 	// description: |
-	//   Info contains metadata information about the template. At minimum, it
-	//   should contain `name`, `author`, `severity`, `description`, `tags`. Optionally
-	//   you can also specify a list of `references` for the template.
+	//   Info contains metadata information about the template.
 	// examples:
 	//   - value: exampleInfoStructure
-	Info map[string]interface{} `yaml:"info"`
+	Info model.Info `yaml:"info"`
 	// description: |
 	//   Requests contains the http request to make in the template.
 	// examples:

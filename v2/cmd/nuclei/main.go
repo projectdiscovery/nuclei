@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -41,9 +43,13 @@ func readConfig() {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
+	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
+	This can be very confusing and should be addressed
+	*/
+
 	createGroup(flagSet, "input", "Target",
-		flagSet.StringVarP(&options.Target, "target", "u", "", "target URL/host to scan"),
-		flagSet.StringVarP(&options.Targets, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
+		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",
@@ -64,7 +70,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVar(&options.IncludeTemplates, "include-templates", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
 		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
-		flagSet.NormalizedStringSliceVarP(&options.Severity, "impact", "severity", []string{}, "execute templates that match the provided severities only"),
+		flagSet.VarP(&options.Severities, "impact", "severity", fmt.Sprintf("Templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.NormalizedStringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
 	)
 
@@ -92,9 +98,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom headers in header:value format"),
 
+		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in var=value format"),
+
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "Enable environment variables support"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
@@ -117,6 +126,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
+		flagSet.IntVar(&options.HostMaxErrors, "host-max-error", 30, "max errors for a host before skipping from scan"),
 
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),

@@ -4,9 +4,10 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/load"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 )
@@ -21,7 +22,7 @@ type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  []string
+	Severities  severity.Severities
 	IncludeTags []string
 
 	Catalog            *catalog.Catalog
@@ -176,7 +177,7 @@ func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
 
 // LoadWorkflows takes a list of workflows and returns paths for them
 func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
-	includedWorkflows := s.config.Catalog.GetTemplatesPath(s.config.Workflows)
+	includedWorkflows := s.config.Catalog.GetTemplatesPath(workflowsList)
 	workflowsMap := s.pathFilter.Match(includedWorkflows)
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowsMap))
@@ -197,6 +198,6 @@ func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
 	return loadedWorkflows
 }
 
-func (s *Store) loadTemplate(templatePath string, workflow bool) (bool, error) {
-	return load.Load(templatePath, workflow, nil, s.tagFilter)
+func (s *Store) loadTemplate(templatePath string, isWorkflow bool) (bool, error) {
+	return parsers.Load(templatePath, isWorkflow, nil, s.tagFilter) // TODO consider separating template and workflow loading logic
 }
