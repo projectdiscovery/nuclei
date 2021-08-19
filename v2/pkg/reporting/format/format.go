@@ -171,7 +171,7 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	}
 
 	toMarkDownTable(fields)
-	toMarkDownTable(utils.NewInsertionOrderedStringMap(templateInfo.CustomFields))
+	toMarkDownTable(utils.NewInsertionOrderedStringMap(templateInfo.AdditionalFields))
 
 	return builder.String()
 }

@@ -12,13 +12,13 @@ import (
 )
 
 type Info struct {
-	Name           string                  `json:"name" yaml:"name"`
-	Authors        StringSlice             `json:"author" yaml:"author"`
-	Tags           StringSlice             `json:"tags" yaml:"tags"`
-	Description    string                  `json:"description" yaml:"description"`
-	Reference      StringSlice             `json:"reference" yaml:"reference"`
-	SeverityHolder severity.SeverityHolder `json:"severity" yaml:"severity"`
-	CustomFields   map[string]string       `json:"custom-fields,omitempty" yaml:"custom-fields,omitempty"`
+	Name             string                  `json:"name" yaml:"name"`
+	Authors          StringSlice             `json:"author" yaml:"author"`
+	Tags             StringSlice             `json:"tags" yaml:"tags"`
+	Description      string                  `json:"description" yaml:"description"`
+	Reference        StringSlice             `json:"reference" yaml:"reference"`
+	SeverityHolder   severity.SeverityHolder `json:"severity" yaml:"severity"`
+	AdditionalFields map[string]string       `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty"`
 }
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
