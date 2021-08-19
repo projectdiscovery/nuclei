@@ -70,34 +70,35 @@ func New(config *Config) (*Store, error) {
 }
 
 // Templates returns all the templates in the store
-func (s *Store) Templates() []*templates.Template {
-	return s.templates
+func (store *Store) Templates() []*templates.Template {
+	return store.templates
 }
 
 // Workflows returns all the workflows in the store
-func (s *Store) Workflows() []*templates.Template {
-	return s.workflows
+func (store *Store) Workflows() []*templates.Template {
+	return store.workflows
 }
 
 // RegisterPreprocessor allows a custom preprocessor to be passed to the store to run against templates
-func (s *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
-	s.preprocessor = preprocessor
+func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
+	store.preprocessor = preprocessor
 }
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (s *Store) Load() {
-	s.templates = s.LoadTemplates(s.finalTemplates)
-	s.workflows = s.LoadWorkflows(s.config.Workflows)
+func (store *Store) Load() {
+	store.templates = store.LoadTemplates(store.finalTemplates)
+	store.workflows = store.LoadWorkflows(store.config.Workflows)
 }
 
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
-func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
-	includedWorkflows := s.config.Catalog.GetTemplatesPath(workflowsList)
-	templatesMap := s.pathFilter.Match(includedTemplates)
-	workflowsMap := s.pathFilter.Match(includedWorkflows)
+func (store *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
+	templatePaths := store.config.Catalog.GetTemplatesPath(templatesList)
+	workflowPaths := store.config.Catalog.GetTemplatesPath(workflowsList)
+
+	filteredTemplatePaths := store.pathFilter.Match(templatePaths)
+	filteredWorkflowPaths := store.pathFilter.Match(workflowPaths)
 
 	notErrored := true
 	errorValidationFunc := func(message string, template string, err error) {
@@ -110,27 +111,27 @@ func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 		notErrored = false
 		gologger.Error().Msgf(message, template, err)
 	}
-	for k := range templatesMap {
-		_, err := parsers.LoadTemplate(k, s.tagFilter)
+	for templatePath := range filteredTemplatePaths {
+		_, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
 		if err != nil {
-			errorValidationFunc("Error occurred loading template %s: %s\n", k, err)
+			errorValidationFunc("Error occurred loading template %s: %s\n", templatePath, err)
 			continue
 		}
-		_, err = templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
+		_, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 		if err != nil {
-			errorValidationFunc("Error occurred parsing template %s: %s\n", k, err)
+			errorValidationFunc("Error occurred parsing template %s: %s\n", templatePath, err)
 			continue
 		}
 	}
-	for k := range workflowsMap {
-		_, err := parsers.LoadWorkflow(k, true, s.tagFilter, nil)
+	for workflowPath := range filteredWorkflowPaths {
+		_, err := parsers.LoadWorkflow(workflowPath, store.tagFilter)
 		if err != nil {
-			errorValidationFunc("Error occurred loading workflow %s: %s\n", k, err)
+			errorValidationFunc("Error occurred loading workflow %s: %s\n", workflowPath, err)
 			continue
 		}
-		_, err = templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
+		_, err = templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 		if err != nil {
-			errorValidationFunc("Error occurred parsing workflow %s: %s\n", k, err)
+			errorValidationFunc("Error occurred parsing workflow %s: %s\n", workflowPath, err)
 			continue
 		}
 	}
@@ -138,20 +139,20 @@ func (s *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
-	includedTemplates := s.config.Catalog.GetTemplatesPath(templatesList)
-	templatesMap := s.pathFilter.Match(includedTemplates)
+func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+	includedTemplates := store.config.Catalog.GetTemplatesPath(templatesList)
+	templatePathMap := store.pathFilter.Match(includedTemplates)
 
-	loadedTemplates := make([]*templates.Template, 0, len(templatesMap))
-	for k := range templatesMap {
-		loaded, err := parsers.LoadTemplate(k, s.tagFilter)
+	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
+	for templatePath := range templatePathMap {
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
 		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", k, err)
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
+			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				gologger.Warning().Msgf("Could not parse template %s: %s\n", k, err)
+				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				loadedTemplates = append(loadedTemplates, parsed)
 			}
@@ -161,20 +162,20 @@ func (s *Store) LoadTemplates(templatesList []string) []*templates.Template {
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
-func (s *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
-	includedWorkflows := s.config.Catalog.GetTemplatesPath(workflowsList)
-	workflowsMap := s.pathFilter.Match(includedWorkflows)
+func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+	includedWorkflows := store.config.Catalog.GetTemplatesPath(workflowsList)
+	workflowPathMap := store.pathFilter.Match(includedWorkflows)
 
-	loadedWorkflows := make([]*templates.Template, 0, len(workflowsMap))
-	for k := range workflowsMap {
-		loaded, err := parsers.LoadWorkflow(k, true, s.tagFilter, nil)
+	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
+	for workflowPath := range workflowPathMap {
+		loaded, err := parsers.LoadWorkflow(workflowPath, store.tagFilter)
 		if err != nil {
-			gologger.Warning().Msgf("Could not load workflow %s: %s\n", k, err)
+			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(k, s.preprocessor, s.config.ExecutorOptions)
+			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", k, err)
+				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
 			} else if parsed != nil {
 				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
