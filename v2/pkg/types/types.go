@@ -65,6 +65,8 @@ type Options struct {
 	StatsInterval int
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
+	// HostMaxErrors is the maximum number of errors allowed for a host
+	HostMaxErrors int
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel

@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/runtime"
@@ -58,6 +59,7 @@ type Runner struct {
 	addColor        func(severity.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
+	hostErrors      *hosterrorscache.Cache
 }
 
 // New creates a new client for running enumeration process.
@@ -300,17 +302,24 @@ func (r *Runner) RunEnumeration() error {
 
 	dsl.AddGlobalCustomHelpers(&dsl.Options{Store: s})
 
+	var cache *hosterrorscache.Cache
+	if r.options.HostMaxErrors > 0 {
+		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
+	}
+	r.hostErrors = cache
+
 	executerOpts := protocols.ExecuterOptions{
-		Output:       r.output,
-		Options:      r.options,
-		Progress:     r.progress,
-		Catalog:      r.catalog,
-		IssuesClient: r.issuesClient,
-		RateLimiter:  r.ratelimiter,
-		Interactsh:   r.interactsh,
-		ProjectFile:  r.projectFile,
-		Browser:      r.browser,
-		Store:        s,
+		Output:          r.output,
+		Options:         r.options,
+		Progress:        r.progress,
+		Catalog:         r.catalog,
+		IssuesClient:    r.issuesClient,
+		RateLimiter:     r.ratelimiter,
+		Interactsh:      r.interactsh,
+		ProjectFile:     r.projectFile,
+		Browser:         r.browser,
+		Store:           s,
+		HostErrorsCache: cache,
 	}
 
 	workflowLoader, err := parsers.NewLoader(&executerOpts)
@@ -421,16 +430,17 @@ func (r *Runner) RunEnumeration() error {
 	for _, cluster := range clusters {
 		if len(cluster) > 1 && !r.options.OfflineHTTP {
 			executerOpts := protocols.ExecuterOptions{
-				Output:       r.output,
-				Options:      r.options,
-				Progress:     r.progress,
-				Catalog:      r.catalog,
-				RateLimiter:  r.ratelimiter,
-				IssuesClient: r.issuesClient,
-				Browser:      r.browser,
-				ProjectFile:  r.projectFile,
-				Interactsh:   r.interactsh,
-				Store:        s,
+				Output:          r.output,
+				Options:         r.options,
+				Progress:        r.progress,
+				Catalog:         r.catalog,
+				RateLimiter:     r.ratelimiter,
+				IssuesClient:    r.issuesClient,
+				Browser:         r.browser,
+				ProjectFile:     r.projectFile,
+				Interactsh:      r.interactsh,
+				Store:           s,
+				HostErrorsCache: cache,
 			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 

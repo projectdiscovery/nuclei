@@ -59,16 +59,17 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 	for _, path := range paths {
 		opts := protocols.ExecuterOptions{
-			Output:       options.Output,
-			Options:      options.Options,
-			Progress:     options.Progress,
-			Catalog:      options.Catalog,
-			Browser:      options.Browser,
-			RateLimiter:  options.RateLimiter,
-			IssuesClient: options.IssuesClient,
-			Interactsh:   options.Interactsh,
-			ProjectFile:  options.ProjectFile,
-			Store:        options.Store,
+			Output:          options.Output,
+			Options:         options.Options,
+			Progress:        options.Progress,
+			Catalog:         options.Catalog,
+			Browser:         options.Browser,
+			RateLimiter:     options.RateLimiter,
+			IssuesClient:    options.IssuesClient,
+			Interactsh:      options.Interactsh,
+			ProjectFile:     options.ProjectFile,
+			Store:           options.Store,
+			HostErrorsCache: options.HostErrorsCache,
 		}
 		template, err := Parse(path, preprocessor, opts)
 		if err != nil {
