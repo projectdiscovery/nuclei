@@ -32,17 +32,10 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f
 	github.com/projectdiscovery/interactsh v0.0.4
 	github.com/projectdiscovery/rawhttp v0.0.7
-<<<<<<< HEAD
 	github.com/projectdiscovery/retryabledns v1.0.12
-	github.com/projectdiscovery/retryablehttp-go v1.0.1
 	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe
 	github.com/projectdiscovery/yamldoc-go v1.0.2
-=======
-	github.com/projectdiscovery/retryabledns v1.0.10
 	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
-	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe
-	github.com/projectdiscovery/yamldoc-go v1.0.1
->>>>>>> a038889c213b2472f7e4106d8a989c00956dee8e
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0
 	github.com/segmentio/ksuid v1.0.4
