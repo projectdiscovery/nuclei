@@ -2,6 +2,8 @@
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -12,15 +14,13 @@ import (
 )
 
 var (
-	exampleInfoStructure = map[string]interface{}{
-		"name":      "Argument Injection in Ruby Dragonfly",
-		"author":    "0xsapra",
-		"severity":  "critical",
-		"reference": "https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/",
-		"tags":      "cve,cve2021,rce,ruby",
+	exampleInfoStructure = model.Info{
+		Name:           "Argument Injection in Ruby Dragonfly",
+		Authors:        model.StringSlice{[]string{"0xspara"}},
+		SeverityHolder: severity.SeverityHolder{severity.High},
+		Reference:      model.StringSlice{"https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"},
+		Tags:           model.StringSlice{[]string{"cve,cve2021,rce,ruby"}},
 	}
-	_ = exampleInfoStructure
-
 	exampleNormalHTTPRequest = &http.Request{
 		Method: "GET",
 		Path:   []string{"{{BaseURL}}/.git/config"},

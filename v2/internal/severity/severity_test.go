@@ -12,6 +12,14 @@ func TestYamlUnmarshal(t *testing.T) {
 	testUnmarshal(t, yaml.Unmarshal, func(value string) string { return value })
 }
 
+func TestYamlMarshal(t *testing.T) {
+	severity := SeverityHolder{Severity: High}
+
+	marshalled, err := severity.MarshalYAML()
+	assert.Nil(t, err, "could not marshal yaml")
+	assert.Equal(t, "high", marshalled, "could not marshal severity correctly")
+}
+
 func TestYamlUnmarshalFail(t *testing.T) {
 	testUnmarshalFail(t, yaml.Unmarshal, createYAML)
 }
