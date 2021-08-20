@@ -25,6 +25,7 @@ jobs:
           go-version: 1.16
 
       - name: Generate YAML Syntax Documentation
+        id: generate-docs
         run: |
           if ! which dstdocgen > /dev/null; then
             echo -e "Command dstdocgen not found! Installing\c"
@@ -34,11 +35,11 @@ jobs:
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
           ./cmd/docgen/docgen syntax-reference.md
-           echo "::set-output name=changes::$(git status -s | wc -l)"
+          echo "::set-output name=changes::$(git status -s | wc -l)"
         working-directory: v2
 
       - name: Commit files
-        if: steps.update-readme.outputs.changes > 0
+        if: steps.generate-docs.outputs.changes > 0
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -46,9 +47,9 @@ jobs:
           git commit -m "Auto Generate Syntax Docs [$(date)] :robot:" -a
           cat v2/syntax-reference.md
 
-      #- name: Push changes
-      #  if: steps.update-readme.outputs.changes > 0
-      #  uses: ad-m/github-push-action@master
-      #  with:
-      #    github_token: ${{ secrets.GITHUB_TOKEN }}
-      #    branch: ${{ github.ref }}
+      - name: Push changes
+        if: steps.generate-docs.outputs.changes > 0
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
