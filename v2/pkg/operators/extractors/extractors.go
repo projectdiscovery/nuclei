@@ -61,16 +61,6 @@ type Extractor struct {
 	KVal []string `yaml:"kval,omitempty"`
 
 	// description: |
-	//   Part is the part of the request response to extract data from.
-	//
-	//   Each protocol exposes a lot of different parts which are well
-	//   documented in docs for each request type.
-	// examples:
-	//   - value: "\"body\""
-	//   - value: "\"raw\""
-	Part string `yaml:"part,omitempty"`
-
-	// description: |
 	//   JSON allows using jq-style syntax to extract items from json response
 	//
 	// examples:
@@ -98,6 +88,15 @@ type Extractor struct {
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 
+	// description: |
+	//   Part is the part of the request response to extract data from.
+	//
+	//   Each protocol exposes a lot of different parts which are well
+	//   documented in docs for each request type.
+	// examples:
+	//   - value: "\"body\""
+	//   - value: "\"raw\""
+	Part string `yaml:"part,omitempty"`
 	// description: |
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
