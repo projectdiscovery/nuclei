@@ -10,6 +10,9 @@ import (
 
 var (
 	TemplateDoc                  encoder.Doc
+	MODELInfoDoc                 encoder.Doc
+	MODELStringSliceDoc          encoder.Doc
+	SEVERITYSeverityHolderDoc    encoder.Doc
 	HTTPRequestDoc               encoder.Doc
 	MATCHERSMatcherDoc           encoder.Doc
 	EXTRACTORSExtractorDoc       encoder.Doc
@@ -36,10 +39,10 @@ func init() {
 
 	TemplateDoc.Fields[0].AddExample("ID Example", "cve-2021-19520")
 	TemplateDoc.Fields[1].Name = "info"
-	TemplateDoc.Fields[1].Type = "map[string]interface{}"
+	TemplateDoc.Fields[1].Type = "model.Info"
 	TemplateDoc.Fields[1].Note = ""
-	TemplateDoc.Fields[1].Description = "Info contains metadata information about the template. At minimum, it\nshould contain `name`, `author`, `severity`, `description`, `tags`. Optionally\nyou can also specify a list of `references` for the template."
-	TemplateDoc.Fields[1].Comments[encoder.LineComment] = "Info contains metadata information about the template. At minimum, it"
+	TemplateDoc.Fields[1].Description = "Info contains metadata information about the template."
+	TemplateDoc.Fields[1].Comments[encoder.LineComment] = "Info contains metadata information about the template."
 
 	TemplateDoc.Fields[1].AddExample("", exampleInfoStructure)
 	TemplateDoc.Fields[2].Name = "requests"
@@ -80,6 +83,92 @@ func init() {
 	TemplateDoc.Fields[7].Note = ""
 	TemplateDoc.Fields[7].Description = "Workflows is a list of workflows to execute for a template."
 	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+
+	MODELInfoDoc.Type = "model.Info"
+	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
+	MODELInfoDoc.Description = "Info contains metadata information about a template"
+
+	MODELInfoDoc.AddExample("", exampleInfoStructure)
+	MODELInfoDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "info",
+		},
+	}
+	MODELInfoDoc.Fields = make([]encoder.Doc, 6)
+	MODELInfoDoc.Fields[0].Name = "name"
+	MODELInfoDoc.Fields[0].Type = "string"
+	MODELInfoDoc.Fields[0].Note = ""
+	MODELInfoDoc.Fields[0].Description = "Name should be good short summary that identifies what the template does."
+	MODELInfoDoc.Fields[0].Comments[encoder.LineComment] = "Name should be good short summary that identifies what the template does."
+
+	MODELInfoDoc.Fields[0].AddExample("", "bower.json file disclosure")
+
+	MODELInfoDoc.Fields[0].AddExample("", "Nagios Default Credentials Check")
+	MODELInfoDoc.Fields[1].Name = "author"
+	MODELInfoDoc.Fields[1].Type = "StringSlice"
+	MODELInfoDoc.Fields[1].Note = ""
+	MODELInfoDoc.Fields[1].Description = "Author of the template."
+	MODELInfoDoc.Fields[1].Comments[encoder.LineComment] = "Author of the template."
+
+	MODELInfoDoc.Fields[1].AddExample("", "<username>")
+	MODELInfoDoc.Fields[2].Name = "tags"
+	MODELInfoDoc.Fields[2].Type = "StringSlice"
+	MODELInfoDoc.Fields[2].Note = ""
+	MODELInfoDoc.Fields[2].Description = "Any tags for the template.\n\nMultiple values can also be specified separated by commas."
+	MODELInfoDoc.Fields[2].Comments[encoder.LineComment] = "Any tags for the template."
+
+	MODELInfoDoc.Fields[2].AddExample("Example tags", "cve,cve2019,grafana,auth-bypass,dos")
+	MODELInfoDoc.Fields[3].Name = "description"
+	MODELInfoDoc.Fields[3].Type = "string"
+	MODELInfoDoc.Fields[3].Note = ""
+	MODELInfoDoc.Fields[3].Description = "Description of the template.\n\nYou can go in-depth here on what the template actually does."
+	MODELInfoDoc.Fields[3].Comments[encoder.LineComment] = "Description of the template."
+
+	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores packages informations in bower.json file")
+
+	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
+	MODELInfoDoc.Fields[4].Name = "reference"
+	MODELInfoDoc.Fields[4].Type = "StringSlice"
+	MODELInfoDoc.Fields[4].Note = ""
+	MODELInfoDoc.Fields[4].Description = "References for the template.\n\nThis should contain links relevant to the template."
+	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "References for the template."
+
+	MODELInfoDoc.Fields[4].AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
+	MODELInfoDoc.Fields[5].Name = "severity"
+	MODELInfoDoc.Fields[5].Type = "severity.SeverityHolder"
+	MODELInfoDoc.Fields[5].Note = ""
+	MODELInfoDoc.Fields[5].Description = "Severity of the template."
+	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
+	MODELInfoDoc.Fields[5].Values = []string{
+		"info",
+		"low",
+		"medium",
+		"high",
+		"critical",
+	}
+
+	MODELStringSliceDoc.Type = "model.StringSlice"
+	MODELStringSliceDoc.Comments[encoder.LineComment] = ""
+	MODELStringSliceDoc.Description = ""
+	MODELStringSliceDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "workflows.WorkflowTemplate",
+			FieldName: "tags",
+		},
+	}
+	MODELStringSliceDoc.Fields = make([]encoder.Doc, 0)
+
+	SEVERITYSeverityHolderDoc.Type = "severity.SeverityHolder"
+	SEVERITYSeverityHolderDoc.Comments[encoder.LineComment] = ""
+	SEVERITYSeverityHolderDoc.Description = ""
+	SEVERITYSeverityHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "model.Info",
+			FieldName: "severity",
+		},
+	}
+	SEVERITYSeverityHolderDoc.Fields = make([]encoder.Doc, 0)
 
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
@@ -167,8 +256,8 @@ func init() {
 	HTTPRequestDoc.Fields[10].Name = "payloads"
 	HTTPRequestDoc.Fields[10].Type = "map[string]interface{}"
 	HTTPRequestDoc.Fields[10].Note = ""
-	HTTPRequestDoc.Fields[10].Description = "description: |\n   Payloads contains any payloads for the current request.\n\n   Payloads support both key-values combinations where a list\n   of payloads is provided, or optionally a single file can also\n   be provided as payload which will be read on run-time.\n examples:\n   - name: A payload list for Tomcat Bruteforce\n     value: >\n       map[string]interface{}{\n			\"username\": []string{\"tomcat\", \"admin\"},\n	        \"password\": []string{\"tomcat\", \"admin\", \"password\"},\n       }\n   - name: A payload example of reading from file\n     value: >\n       map[string]interface{}{\n	       \"data\": \"helpers/payloads/command-injection.txt\",\n       }"
-	HTTPRequestDoc.Fields[10].Comments[encoder.LineComment] = " description: |"
+	HTTPRequestDoc.Fields[10].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	HTTPRequestDoc.Fields[10].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
 	HTTPRequestDoc.Fields[11].Name = "headers"
 	HTTPRequestDoc.Fields[11].Type = "map[string]string"
 	HTTPRequestDoc.Fields[11].Note = ""
@@ -402,7 +491,7 @@ func init() {
 			FieldName: "extractors",
 		},
 	}
-	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 8)
+	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 10)
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
 	EXTRACTORSExtractorDoc.Fields[0].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[0].Note = ""
@@ -434,7 +523,7 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[3].Description = "Group specifies a numbered group to extract from the regex."
 	EXTRACTORSExtractorDoc.Fields[3].Comments[encoder.LineComment] = "Group specifies a numbered group to extract from the regex."
 
-	EXTRACTORSExtractorDoc.Fields[3].AddExample("", 1)
+	EXTRACTORSExtractorDoc.Fields[3].AddExample("Example Regex Group", 1)
 	EXTRACTORSExtractorDoc.Fields[4].Name = "kval"
 	EXTRACTORSExtractorDoc.Fields[4].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[4].Note = ""
@@ -462,11 +551,27 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".[] | .id"})
 
 	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".batters | .batter | .[] | .id"})
-	EXTRACTORSExtractorDoc.Fields[7].Name = "internal"
-	EXTRACTORSExtractorDoc.Fields[7].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[7].Name = "xpath"
+	EXTRACTORSExtractorDoc.Fields[7].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[7].Note = ""
-	EXTRACTORSExtractorDoc.Fields[7].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
-	EXTRACTORSExtractorDoc.Fields[7].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
+	EXTRACTORSExtractorDoc.Fields[7].Description = "XPath allows using xpath expressions to extract items from html response"
+	EXTRACTORSExtractorDoc.Fields[7].Comments[encoder.LineComment] = "XPath allows using xpath expressions to extract items from html response"
+
+	EXTRACTORSExtractorDoc.Fields[7].AddExample("", []string{"/html/body/div/p[2]/a"})
+
+	EXTRACTORSExtractorDoc.Fields[7].AddExample("", []string{".batters | .batter | .[] | .id"})
+	EXTRACTORSExtractorDoc.Fields[8].Name = "attribute"
+	EXTRACTORSExtractorDoc.Fields[8].Type = "string"
+	EXTRACTORSExtractorDoc.Fields[8].Note = ""
+	EXTRACTORSExtractorDoc.Fields[8].Description = "Attribute is an optional attribute to extract from response XPath."
+	EXTRACTORSExtractorDoc.Fields[8].Comments[encoder.LineComment] = "Attribute is an optional attribute to extract from response XPath."
+
+	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "href")
+	EXTRACTORSExtractorDoc.Fields[9].Name = "internal"
+	EXTRACTORSExtractorDoc.Fields[9].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[9].Note = ""
+	EXTRACTORSExtractorDoc.Fields[9].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
+	EXTRACTORSExtractorDoc.Fields[9].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
 
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
@@ -851,7 +956,7 @@ func init() {
 
 	WORKFLOWSWorkflowTemplateDoc.Fields[0].AddExample("A template directory", "misconfigurations/aem")
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Name = "tags"
-	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "string"
+	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "model.StringSlice"
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Note = ""
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Description = "Tags to run templates based on."
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Comments[encoder.LineComment] = "Tags to run templates based on."
@@ -895,6 +1000,9 @@ func GetTemplateDoc() *encoder.FileDoc {
 		Description: "",
 		Structs: []*encoder.Doc{
 			&TemplateDoc,
+			&MODELInfoDoc,
+			&MODELStringSliceDoc,
+			&SEVERITYSeverityHolderDoc,
 			&HTTPRequestDoc,
 			&MATCHERSMatcherDoc,
 			&EXTRACTORSExtractorDoc,

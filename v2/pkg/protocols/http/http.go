@@ -69,18 +69,6 @@ type Request struct {
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	// examples:
-	//   - name: A payload list for Tomcat Bruteforce
-	//     value: >
-	//       map[string]interface{}{
-	//			"username": []string{"tomcat", "admin"},
-	//	        "password": []string{"tomcat", "admin", "password"},
-	//       }
-	//   - name: A payload example of reading from file
-	//     value: >
-	//       map[string]interface{}{
-	//	       "data": "helpers/payloads/command-injection.txt",
-	//       }
 	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
