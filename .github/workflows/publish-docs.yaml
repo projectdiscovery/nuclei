@@ -1,10 +1,6 @@
 name: Publish Docs
 
 on:
-  #create:
-  #  tags:
-  #    - v*
-  push:
   workflow_dispatch:
 
 jobs:
@@ -31,7 +27,6 @@ jobs:
             echo -e "Command dstdocgen not found! Installing\c"
             go get -v github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen
           fi
-          dstdocgen -h
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
           ./cmd/docgen/docgen syntax-reference.md
