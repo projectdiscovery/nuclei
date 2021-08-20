@@ -60,6 +60,8 @@ Nuclei has had built-in support for automatic update/download templates since ve
 
 You may still use the `update-templates` flag to update the nuclei templates at any time; automatic updates happen every 24 hours. You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
+The YAML DSL reference syntax is available [here](v2/syntax-reference.md).
+
 </td>
 </tr>
 </table>
