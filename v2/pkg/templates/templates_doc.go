@@ -95,7 +95,7 @@ func init() {
 			FieldName: "info",
 		},
 	}
-	MODELInfoDoc.Fields = make([]encoder.Doc, 6)
+	MODELInfoDoc.Fields = make([]encoder.Doc, 7)
 	MODELInfoDoc.Fields[0].Name = "name"
 	MODELInfoDoc.Fields[0].Type = "string"
 	MODELInfoDoc.Fields[0].Note = ""
@@ -147,6 +147,13 @@ func init() {
 		"high",
 		"critical",
 	}
+	MODELInfoDoc.Fields[6].Name = "additional-fields"
+	MODELInfoDoc.Fields[6].Type = "map[string]string"
+	MODELInfoDoc.Fields[6].Note = ""
+	MODELInfoDoc.Fields[6].Description = "AdditionalFields regarding metadata of the template."
+	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "AdditionalFields regarding metadata of the template."
+
+	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
 
 	MODELStringSliceDoc.Type = "model.StringSlice"
 	MODELStringSliceDoc.Comments[encoder.LineComment] = ""
@@ -533,40 +540,40 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[4].AddExample("Extract Server Header From HTTP Response", []string{"Server"})
 
 	EXTRACTORSExtractorDoc.Fields[4].AddExample("Extracting value of PHPSESSID Cookie", []string{"PHPSESSID"})
-	EXTRACTORSExtractorDoc.Fields[5].Name = "part"
-	EXTRACTORSExtractorDoc.Fields[5].Type = "string"
+	EXTRACTORSExtractorDoc.Fields[5].Name = "json"
+	EXTRACTORSExtractorDoc.Fields[5].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[5].Note = ""
-	EXTRACTORSExtractorDoc.Fields[5].Description = "Part is the part of the request response to extract data from.\n\nEach protocol exposes a lot of different parts which are well\ndocumented in docs for each request type."
-	EXTRACTORSExtractorDoc.Fields[5].Comments[encoder.LineComment] = "Part is the part of the request response to extract data from."
+	EXTRACTORSExtractorDoc.Fields[5].Description = "JSON allows using jq-style syntax to extract items from json response"
+	EXTRACTORSExtractorDoc.Fields[5].Comments[encoder.LineComment] = "JSON allows using jq-style syntax to extract items from json response"
 
-	EXTRACTORSExtractorDoc.Fields[5].AddExample("", "body")
+	EXTRACTORSExtractorDoc.Fields[5].AddExample("", []string{".[] | .id"})
 
-	EXTRACTORSExtractorDoc.Fields[5].AddExample("", "raw")
-	EXTRACTORSExtractorDoc.Fields[6].Name = "json"
+	EXTRACTORSExtractorDoc.Fields[5].AddExample("", []string{".batters | .batter | .[] | .id"})
+	EXTRACTORSExtractorDoc.Fields[6].Name = "xpath"
 	EXTRACTORSExtractorDoc.Fields[6].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[6].Note = ""
-	EXTRACTORSExtractorDoc.Fields[6].Description = "JSON allows using jq-style syntax to extract items from json response"
-	EXTRACTORSExtractorDoc.Fields[6].Comments[encoder.LineComment] = "JSON allows using jq-style syntax to extract items from json response"
+	EXTRACTORSExtractorDoc.Fields[6].Description = "XPath allows using xpath expressions to extract items from html response"
+	EXTRACTORSExtractorDoc.Fields[6].Comments[encoder.LineComment] = "XPath allows using xpath expressions to extract items from html response"
 
-	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".[] | .id"})
+	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{"/html/body/div/p[2]/a"})
 
 	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".batters | .batter | .[] | .id"})
-	EXTRACTORSExtractorDoc.Fields[7].Name = "xpath"
-	EXTRACTORSExtractorDoc.Fields[7].Type = "[]string"
+	EXTRACTORSExtractorDoc.Fields[7].Name = "attribute"
+	EXTRACTORSExtractorDoc.Fields[7].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[7].Note = ""
-	EXTRACTORSExtractorDoc.Fields[7].Description = "XPath allows using xpath expressions to extract items from html response"
-	EXTRACTORSExtractorDoc.Fields[7].Comments[encoder.LineComment] = "XPath allows using xpath expressions to extract items from html response"
+	EXTRACTORSExtractorDoc.Fields[7].Description = "Attribute is an optional attribute to extract from response XPath."
+	EXTRACTORSExtractorDoc.Fields[7].Comments[encoder.LineComment] = "Attribute is an optional attribute to extract from response XPath."
 
-	EXTRACTORSExtractorDoc.Fields[7].AddExample("", []string{"/html/body/div/p[2]/a"})
-
-	EXTRACTORSExtractorDoc.Fields[7].AddExample("", []string{".batters | .batter | .[] | .id"})
-	EXTRACTORSExtractorDoc.Fields[8].Name = "attribute"
+	EXTRACTORSExtractorDoc.Fields[7].AddExample("", "href")
+	EXTRACTORSExtractorDoc.Fields[8].Name = "part"
 	EXTRACTORSExtractorDoc.Fields[8].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[8].Note = ""
-	EXTRACTORSExtractorDoc.Fields[8].Description = "Attribute is an optional attribute to extract from response XPath."
-	EXTRACTORSExtractorDoc.Fields[8].Comments[encoder.LineComment] = "Attribute is an optional attribute to extract from response XPath."
+	EXTRACTORSExtractorDoc.Fields[8].Description = "Part is the part of the request response to extract data from.\n\nEach protocol exposes a lot of different parts which are well\ndocumented in docs for each request type."
+	EXTRACTORSExtractorDoc.Fields[8].Comments[encoder.LineComment] = "Part is the part of the request response to extract data from."
 
-	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "href")
+	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "body")
+
+	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "raw")
 	EXTRACTORSExtractorDoc.Fields[9].Name = "internal"
 	EXTRACTORSExtractorDoc.Fields[9].Type = "bool"
 	EXTRACTORSExtractorDoc.Fields[9].Note = ""
