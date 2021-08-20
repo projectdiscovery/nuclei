@@ -15,11 +15,11 @@ func TestTagBasedFilter(t *testing.T) {
 	filter := New(config)
 
 	t.Run("true", func(t *testing.T) {
-		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low)
+		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low, nil)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("false", func(t *testing.T) {
-		matched, _ := filter.Match([]string{"consul"}, []string{"pdteam"}, severity.Low)
+		matched, _ := filter.Match([]string{"consul"}, []string{"pdteam"}, severity.Low, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("not-match-excludes", func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"dos"},
 		}
 		filter := New(config)
-		matched, err := filter.Match([]string{"dos"}, []string{"pdteam"}, severity.Low)
+		matched, err := filter.Match([]string{"dos"}, []string{"pdteam"}, severity.Low, nil)
 		require.False(t, matched, "could not get correct match")
 		require.Equal(t, ErrExcluded, err, "could not get correct error")
 	})
@@ -38,7 +38,7 @@ func TestTagBasedFilter(t *testing.T) {
 			IncludeTags: []string{"fuzz"},
 		}
 		filter := New(config)
-		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
+		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low, nil)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
 	})
@@ -48,7 +48,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"fuzz"},
 		}
 		filter := New(config)
-		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
+		matched, err := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low, nil)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
 	})
@@ -57,7 +57,7 @@ func TestTagBasedFilter(t *testing.T) {
 			Authors: []string{"pdteam"},
 		}
 		filter := New(config)
-		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low)
+		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.Low, nil)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-severity", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestTagBasedFilter(t *testing.T) {
 			Severities: severity.Severities{severity.High},
 		}
 		filter := New(config)
-		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.High)
+		matched, _ := filter.Match([]string{"fuzz"}, []string{"pdteam"}, severity.High, nil)
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-with-tags", func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"another"},
 		}
 		filter := New(config)
-		matched, _ := filter.Match([]string{"another"}, []string{"pdteam"}, severity.High)
+		matched, _ := filter.Match([]string{"another"}, []string{"pdteam"}, severity.High, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-conditions", func(t *testing.T) {
@@ -84,13 +84,13 @@ func TestTagBasedFilter(t *testing.T) {
 			Severities: severity.Severities{severity.High},
 		}
 		filter := New(config)
-		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.High)
+		matched, _ := filter.Match([]string{"jira"}, []string{"pdteam"}, severity.High, nil)
 		require.True(t, matched, "could not get correct match")
-		matched, _ = filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low)
+		matched, _ = filter.Match([]string{"jira"}, []string{"pdteam"}, severity.Low, nil)
 		require.False(t, matched, "could not get correct match")
-		matched, _ = filter.Match([]string{"jira"}, []string{"random"}, severity.Low)
+		matched, _ = filter.Match([]string{"jira"}, []string{"random"}, severity.Low, nil)
 		require.False(t, matched, "could not get correct match")
-		matched, _ = filter.Match([]string{"consul"}, []string{"random"}, severity.Low)
+		matched, _ = filter.Match([]string{"consul"}, []string{"random"}, severity.Low, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 }

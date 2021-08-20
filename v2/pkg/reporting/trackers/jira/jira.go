@@ -181,32 +181,14 @@ func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove th
 
 	reference := event.Info.Reference
 	if !reference.IsEmpty() {
-		builder.WriteString("\nReference: \n")
+		builder.WriteString("\nReferences: \n")
 
-		/*TODO couldn't the following code replace the logic below?
 		referenceSlice := reference.ToSlice()
 		for i, item := range referenceSlice {
 			builder.WriteString("- ")
 			builder.WriteString(item)
 			if len(referenceSlice)-1 != i {
 				builder.WriteString("\n")
-			}
-		}*/
-
-		switch v := reference.Value.(type) {
-		case string:
-			if !strings.HasPrefix(v, "-") {
-				builder.WriteString("- ")
-			}
-			builder.WriteString(v)
-		case []interface{}:
-			slice := types.ToStringSlice(v)
-			for i, item := range slice {
-				builder.WriteString("- ")
-				builder.WriteString(item)
-				if len(slice)-1 != i {
-					builder.WriteString("\n")
-				}
 			}
 		}
 	}
