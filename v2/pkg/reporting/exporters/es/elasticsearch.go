@@ -95,7 +95,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	d := data{
 		Event:     event,
-		Timestamp: time.Now().String(),
+		Timestamp: time.Now().UTC().String(),
 	}
 	b, err := json.Marshal(&d)
 	if err != nil {
@@ -105,6 +105,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	res, err := i.elasticsearch.Do(i.req)
 	b, _ = io.ReadAll(res.Body)
+	fmt.Println(string(b))
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}
