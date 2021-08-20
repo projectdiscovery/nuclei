@@ -61,6 +61,13 @@ type Info struct {
 	//   - high
 	//   - critical
 	SeverityHolder severity.SeverityHolder `json:"severity,omitempty" yaml:"severity,omitempty"`
+	// description: |
+	//   AdditionalFields regarding metadata of the template.
+	//
+	// examples:
+	//   - value: >
+	//       map[string]string{"customField1":"customValue1"}
+	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty"`
 }
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
@@ -86,13 +93,17 @@ func (stringSlice StringSlice) ToSlice() []string {
 	}
 }
 
+func (stringSlice StringSlice) String() string {
+	return strings.Join(stringSlice.ToSlice(), ", ")
+}
+
 func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	marshalledSlice, err := marshalStringToSlice(unmarshal)
 	if err != nil {
 		return err
 	}
 
-	result := make([]string, len(marshalledSlice))
+	result := make([]string, 0, len(marshalledSlice))
 	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
