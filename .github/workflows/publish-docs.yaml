@@ -1,0 +1,15 @@
+name: Publish Docs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@master
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: yamldoc # temporary
