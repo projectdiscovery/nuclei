@@ -43,7 +43,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add syntax-reference.md
+          git add v2/syntax-reference.md
           git commit -m "Auto Generate Syntax Docs [$(date)] :robot:" -a
           cat v2/syntax-reference.md
 
