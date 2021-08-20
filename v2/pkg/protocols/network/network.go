@@ -15,26 +15,52 @@ import (
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
-	ID string `yaml:"id"`
+	// ID is the ID of the request
+	ID string `yaml:"id,omitempty"`
 
-	// Address is the address to send requests to (host:port:tls combos generally)
-	Address   []string `yaml:"host"`
+	// description: |
+	//   Address is the address to send requests to.
+	//
+	//   Usually it's set to `{{Hostname}}`. If you want to enable TLS for
+	//   TCP Connection, you can use `tls://{{Hostname}}`.
+	// examples:
+	//   - value: |
+	//       []string{"{{Hostname}}"}
+	Address   []string `yaml:"host,omitempty"`
 	addresses []addressKV
 
-	// AttackType is the attack type
-	// Sniper, PitchFork and ClusterBomb. Default is Sniper
-	AttackType string `yaml:"attack"`
-	// Path contains the path/s for the request variables
-	Payloads map[string]interface{} `yaml:"payloads"`
+	// description: |
+	//   Attack is the type of payload combinations to perform.
+	//
+	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   permutations and combinations for all payloads.
+	// values:
+	//   - "sniper"
+	//   - "pitchfork"
+	//   - "clusterbomb"
+	AttackType string `yaml:"attack,omitempty"`
+	// description: |
+	//   Payloads contains any payloads for the current request.
+	//
+	//   Payloads support both key-values combinations where a list
+	//   of payloads is provided, or optionally a single file can also
+	//   be provided as payload which will be read on run-time.
+	Payloads map[string]interface{} `yaml:"payloads,omitempty"`
 
-	// Payload is the payload to send for the network request
-	Inputs []*Input `yaml:"inputs"`
-	// ReadSize is the size of response to read (1024 if not provided by default)
-	ReadSize int `yaml:"read-size"`
+	// description: |
+	//   Inputs contains inputs for the network socket
+	Inputs []*Input `yaml:"inputs,omitempty"`
+	// description: |
+	//   ReadSize is the size of response to read at the end
+	//
+	//   Default value for read-size is 1024.
+	// examples:
+	//   - value: "2048"
+	ReadSize int `yaml:"read-size,omitempty"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators
+	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	generator  *generators.Generator
 	attackType generators.Type
@@ -51,14 +77,38 @@ type addressKV struct {
 
 // Input is the input to send on the network
 type Input struct {
-	// Data is the data to send as the input
-	Data string `yaml:"data"`
-	// Type is the type of input - hex, text.
-	Type string `yaml:"type"`
-	// Read is the number of bytes to read from socket
-	Read int `yaml:"read"`
-	// Name is the optional name of the input to provide matching on
-	Name string `yaml:"name"`
+	// description: |
+	//   Data is the data to send as the input.
+	//
+	//   It supports DSL Helper Functions as well as normal expressions.
+	// examples:
+	//   - value: "\"TEST\""
+	//   - value: "\"hex_decode('50494e47')\""
+	Data string `yaml:"data,omitempty"`
+	// description: |
+	//   Type is the type of input specified in `data` field.
+	//
+	//   Default value is text, but hex can be used for hex formatted data.
+	// values:
+	//   - "hex"
+	//   - "text"
+	Type string `yaml:"type,omitempty"`
+	// description: |
+	//   Read is the number of bytes to read from socket.
+	//
+	//   This can be used for protcols which expected an immediate response. You can
+	//   read and write responses one after another and evetually perform matching
+	//   on every data captured with `name` attribute.
+	//
+	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
+	// examples:
+	//   - value: "1024"
+	Read int `yaml:"read,omitempty"`
+	// description: |
+	//   Name is the optional name of the data read to provide matching on.
+	// examples:
+	//   - value: "\"prefix\""
+	Name string `yaml:"name,omitempty"`
 }
 
 // GetID returns the unique ID of the request if any.
