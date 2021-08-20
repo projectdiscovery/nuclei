@@ -18,18 +18,48 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 
-	ID string `yaml:"id"`
+	// ID is the ID of the request
+	ID string `yaml:"id,omitempty"`
 
-	// Path contains the path/s for the request
-	Name string `yaml:"name"`
-	// Type is the type of DNS request to make
-	Type string `yaml:"type"`
-	// Class is the class of the DNS request
-	Class string `yaml:"class"`
-	// Retries is the number of retries for the DNS request
-	Retries int `yaml:"retries"`
+	// description: |
+	//   Name is the Hostname to make DNS request for.
+	//
+	//   Generally, it is set to {{FQDN}} which is the domain we get from input.
+	// examples:
+	//   - value: "\"{{FQDN}}\""
+	Name string `yaml:"name,omitempty"`
+	// description: |
+	//   Type is the type of DNS request to make.
+	// values:
+	//   - "A"
+	//   - "NS"
+	//   - "CNAME"
+	//   - "SOA"
+	//   - "PTR"
+	//   - "MX"
+	//   - "TXT"
+	//   - "AAAA"
+	Type string `yaml:"type,omitempty"`
+	// description: |
+	//   Class is the class of the DNS request.
+	//
+	//   Usually it's enough to just leave it as INET.
+	// values:
+	//   - "INET"
+	//   - "CSNET"
+	//   - "CHAOS"
+	//   - "HESIOD"
+	//   - "NONE"
+	//   - "ANY"
+	Class string `yaml:"class,omitempty"`
+	// description: |
+	//   Retries is the number of retries for the DNS request
+	// examples:
+	//   - name: Use a retry of 3 to 5 generally
+	//     value: 5
+	Retries int `yaml:"retries,omitempty"`
 
-	CompiledOperators *operators.Operators
+	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
 	options           *protocols.ExecuterOptions
 
@@ -37,8 +67,9 @@ type Request struct {
 	class    uint16
 	question uint16
 
-	// Recursion specifies whether to recurse all the answers.
-	Recursion bool `yaml:"recursion"`
+	// description: |
+	//   Recursion determines if resolver should recurse all records to get fresh results.
+	Recursion bool `yaml:"recursion,omitempty"`
 }
 
 // GetID returns the unique ID of the request if any.

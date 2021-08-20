@@ -109,10 +109,46 @@ var ActionToActionString = map[ActionType]string{
 // are discovered on the found page. We also keep track and only
 // scrape new navigation from pages we haven't crawled yet.
 type Action struct {
-	Data        map[string]string `yaml:"args,omitempty"`
-	Name        string            `yaml:"name,omitempty"`
-	Description string            `yaml:"description,omitempty"`
-	ActionType  string            `yaml:"action"`
+	// description:
+	//   Args contain arguments for the headless action.
+	//
+	//   Per action arguments are described in detail [here](https://nuclei.projectdiscovery.io/templating-guide/protocols/headless/).
+	Data map[string]string `yaml:"args,omitempty"`
+	// description: |
+	//   Name is the name assigned to the headless action.
+	//
+	//   This can be used to execute code, for instance in browser
+	//   DOM using script action, and get the result in a variable
+	//   which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml).
+	Name string `yaml:"name,omitempty"`
+	// description: |
+	//   Description is the optional description of the headless action
+	Description string `yaml:"description,omitempty"`
+	// description: |
+	//   Action is the type of the action to perform.
+	// values:
+	//   - "navigate"
+	//   - "script"
+	//   - "click"
+	//   - "rightclick"
+	//   - "text"
+	//   - "screenshot"
+	//   - "time"
+	//   - "select"
+	//   - "files"
+	//   - "waitload"
+	//   - "getresource"
+	//   - "extract"
+	//   - "setmethod"
+	//   - "addheader"
+	//   - "setheader"
+	//   - "deleteheader"
+	//   - "setbody"
+	//   - "waitevent"
+	//   - "keyboard"
+	//   - "debug"
+	//   - "sleep"
+	ActionType string `yaml:"action"`
 }
 
 // String returns the string representation of an action
