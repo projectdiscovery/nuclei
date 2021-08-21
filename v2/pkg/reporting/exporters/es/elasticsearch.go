@@ -62,7 +62,7 @@ func New(option *Options) (*Exporter, error) {
 	if option.ESSSL {
 		url = `https://`
 	}
-	url = fmt.Sprintf(url+"%s:%d/nuclei-export-%s/_doc", option.ESIP, option.ESPort, time.Now().Format("2006.01.02"))
+	url = fmt.Sprintf(url+"%s:%d/nuclei-export/_doc", option.ESIP, option.ESPort)
 
 	// creafting a request
 	req2, err := http.NewRequest(http.MethodPost, url, nil)
@@ -95,7 +95,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	d := data{
 		Event:     event,
-		Timestamp: time.Now().UTC().String(),
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 	b, err := json.Marshal(&d)
 	if err != nil {
@@ -105,7 +105,6 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	res, err := i.elasticsearch.Do(i.req)
 	b, _ = io.ReadAll(res.Body)
-	fmt.Println(string(b))
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}
