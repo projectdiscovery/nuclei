@@ -7,6 +7,7 @@ v2/cmd/integration-test/nuclei
 v2/cmd/functional-test/nuclei_dev
 v2/cmd/functional-test/nuclei_main
 v2/cmd/functional-test/functional-test
+v2/cmd/docgen/docgen
 v2/pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser

@@ -12,26 +12,41 @@ import (
 type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
-	// Extensions is the list of extensions to perform matching on.
-	Extensions []string `yaml:"extensions"`
-	// ExtensionDenylist is the list of file extensions to deny during matching.
-	ExtensionDenylist []string `yaml:"denylist"`
+	// description: |
+	//   Extensions is the list of extensions to perform matching on.
+	// examples:
+	//   - value: '[]string{".txt", ".go", ".json"}'
+	Extensions []string `yaml:"extensions,omitempty"`
+	// description: |
+	//   ExtensionDenylist is the list of file extensions to deny during matching.
+	//
+	//   By default, it contains some non-interesting extensions that are hardcoded
+	//   in nuclei.
+	// examples:
+	//   - value: '[]string{".avi", ".mov", ".mp3"}'
+	ExtensionDenylist []string `yaml:"denylist,omitempty"`
 
-	ID string `yaml:"id"`
+	// ID is the ID of the request
+	ID string `yaml:"id,omitempty"`
 
-	// MaxSize is the maximum size of the file to run request on.
-	// By default, nuclei will process 5MB files and not go more than that.
-	// It can be set to much lower or higher depending on use.
-	MaxSize           int `yaml:"max-size"`
-	CompiledOperators *operators.Operators
+	// description: |
+	//   MaxSize is the maximum size of the file to run request on.
+	//
+	//   By default, nuclei will process 5MB files and not go more than that.
+	//   It can be set to much lower or higher depending on use.
+	// examples:
+	//   - value: 2048
+	MaxSize           int                  `yaml:"max-size,omitempty"`
+	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
 	options           *protocols.ExecuterOptions
 	extensions        map[string]struct{}
 	extensionDenylist map[string]struct{}
 
-	// NoRecursive specifies whether to not do recursive checks if folders are provided.
-	NoRecursive bool `yaml:"no-recursive"`
+	// description: |
+	//   NoRecursive specifies whether to not do recursive checks if folders are provided.
+	NoRecursive bool `yaml:"no-recursive,omitempty"`
 
 	allExtensions bool
 }

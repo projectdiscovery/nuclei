@@ -3,20 +3,71 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
+// Info contains metadata information about a template
 type Info struct {
-	Name           string                  `json:"name" yaml:"name"`
-	Authors        StringSlice             `json:"author" yaml:"author"`
-	Tags           StringSlice             `json:"tags" yaml:"tags"`
-	Description    string                  `json:"description" yaml:"description"`
-	Reference      StringSlice             `json:"reference" yaml:"reference"`
-	SeverityHolder severity.SeverityHolder `json:"severity" yaml:"severity"`
+	// description: |
+	//   Name should be good short summary that identifies what the template does.
+	//
+	// examples:
+	//   - value: "\"bower.json file disclosure\""
+	//   - value: "\"Nagios Default Credentials Check\""
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	// description: |
+	//   Author of the template.
+	//
+	// examples:
+	//   - value: "\"<username>\""
+	Authors StringSlice `json:"author,omitempty" yaml:"author,omitempty"`
+	// description: |
+	//   Any tags for the template.
+	//
+	//   Multiple values can also be specified separated by commas.
+	//
+	// examples:
+	//   - name: Example tags
+	//     value: "\"cve,cve2019,grafana,auth-bypass,dos\""
+	Tags StringSlice `json:"tags,omitempty" yaml:"tags,omitempty"`
+	// description: |
+	//   Description of the template.
+	//
+	//   You can go in-depth here on what the template actually does.
+	//
+	// examples:
+	//   - value: "\"Bower is a package manager which stores packages informations in bower.json file\""
+	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// description: |
+	//   References for the template.
+	//
+	//   This should contain links relevant to the template.
+	//
+	// examples:
+	//   - value: >
+	//       []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"}
+	Reference StringSlice `json:"reference,omitempty" yaml:"reference,omitempty"`
+	// description: |
+	//   Severity of the template.
+	//
+	// values:
+	//   - info
+	//   - low
+	//   - medium
+	//   - high
+	//   - critical
+	SeverityHolder severity.SeverityHolder `json:"severity,omitempty" yaml:"severity,omitempty"`
+	// description: |
+	//   AdditionalFields regarding metadata of the template.
+	//
+	// examples:
+	//   - value: >
+	//       map[string]string{"customField1":"customValue1"}
+	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty"`
 }
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
@@ -42,13 +93,17 @@ func (stringSlice StringSlice) ToSlice() []string {
 	}
 }
 
+func (stringSlice StringSlice) String() string {
+	return strings.Join(stringSlice.ToSlice(), ", ")
+}
+
 func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	marshalledSlice, err := marshalStringToSlice(unmarshal)
 	if err != nil {
 		return err
 	}
 
-	result := make([]string, len(marshalledSlice))
+	result := make([]string, 0, len(marshalledSlice))
 	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
@@ -82,7 +137,7 @@ func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
 }
 
 func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {
-	return yaml.Marshal(stringSlice.Value)
+	return stringSlice.Value, nil
 }
 
 func (stringSlice StringSlice) MarshalJSON() ([]byte, error) {

@@ -53,7 +53,6 @@ func (severity Severity) String() string {
 }
 
 //nolint:exported,revive //prefer to be explicit about the name, and make it refactor-safe
-//goland:noinspection GoNameStartsWithPackageName
 type SeverityHolder struct {
 	Severity Severity
 }
@@ -75,4 +74,8 @@ func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) 
 
 func (severityHolder *SeverityHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(severityHolder.Severity.String())
+}
+
+func (severityHolder SeverityHolder) MarshalYAML() (interface{}, error) {
+	return severityHolder.Severity.String(), nil
 }

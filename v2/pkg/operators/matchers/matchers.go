@@ -6,35 +6,102 @@ import (
 
 // Matcher is used to match a part in the output from a protocol.
 type Matcher struct {
-	// Type is the type of the matcher
+	// description: |
+	//   Type is the type of the matcher.
+	// values:
+	//   - "status"
+	//   - "size"
+	//   - "word"
+	//   - "regex"
+	//   - "binary"
+	//   - "dsl"
 	Type string `yaml:"type"`
-	// Condition is the optional condition between two matcher variables
-	//
-	// By default, the condition is assumed to be OR.
+	// description: |
+	//   Condition is the optional condition between two matcher variables. By default,
+	//   the condition is assumed to be OR.
+	// values:
+	//   - "and"
+	//   - "or"
 	Condition string `yaml:"condition,omitempty"`
 
-	// Part is the part of the data to match
+	// description: |
+	//   Part is the part of the request response to match data from.
+	//
+	//   Each protocol exposes a lot of different parts which are well
+	//   documented in docs for each request type.
+	// examples:
+	//   - value: "\"body\""
+	//   - value: "\"raw\""
 	Part string `yaml:"part,omitempty"`
 
-	// Negative specifies if the match should be reversed
-	// It will only match if the condition is not true.
+	// description: |
+	//   Negative specifies if the match should be reversed
+	//   It will only match if the condition is not true.
 	Negative bool `yaml:"negative,omitempty"`
 
-	// Name is matcher Name
+	// description: |
+	//   Name of the matcher. Name should be lowercase and must not contain
+	//   spaces or dashes (-).
+	// examples:
+	//   - value: "\"cookie-matcher\""
 	Name string `yaml:"name,omitempty"`
-	// Status are the acceptable status codes for the response
+	// description: |
+	//   Status are the acceptable status codes for the response.
+	// examples:
+	//   - value: >
+	//       []int{200, 302}
 	Status []int `yaml:"status,omitempty"`
-	// Size is the acceptable size for the response
+	// description: |
+	//   Size is the acceptable size for the response
+	// examples:
+	//   - value: >
+	//       []int{3029, 2042}
 	Size []int `yaml:"size,omitempty"`
-	// Words are the words required to be present in the response
+	// description: |
+	//   Words contains word patterns required to be present in the response part.
+	// examples:
+	//   - name: Match for outlook mail protection domain
+	//     value: >
+	//       []string{"mail.protection.outlook.com"}
+	//   - name: Match for application/json in response headers
+	//     value: >
+	//       []string{"application/json"}
 	Words []string `yaml:"words,omitempty"`
-	// Regex are the regex pattern required to be present in the response
+	// description: |
+	//   Regex contains Regular Expression patterns required to be present in the response part.
+	// examples:
+	//   - name: Match for Linkerd Service via Regex
+	//     value: >
+	//       []string{`(?mi)^Via\\s*?:.*?linkerd.*$`}
+	//   - name: Match for Open Redirect via Location header
+	//     value: >
+	//       []string{`(?m)^(?:Location\\s*?:\\s*?)(?:https?://|//)?(?:[a-zA-Z0-9\\-_\\.@]*)example\\.com.*$`}
 	Regex []string `yaml:"regex,omitempty"`
-	// Binary are the binary characters required to be present in the response
+	// description: |
+	//   Binary are the binary patterns required to be present in the response part.
+	// examples:
+	//   - name: Match for Springboot Heapdump Actuator "JAVA PROFILE", "HPROF", "Gunzip magic byte"
+	//     value: >
+	//       []string{"4a4156412050524f46494c45", "4850524f46", "1f8b080000000000"}
+	//   - name: Match for 7zip files
+	//     value: >
+	//       []string{"377ABCAF271C"}
 	Binary []string `yaml:"binary,omitempty"`
-	// DSL are the dsl queries
+	// description: |
+	//   DSL are the dsl expressions that will be evaluated as part of nuclei matching rules.
+	//   A list of these helper functions are available [here](https://nuclei.projectdiscovery.io/templating-guide/helper-functions/).
+	// examples:
+	//   - name: DSL Matcher for package.json file
+	//     value: >
+	//       []string{"contains(body, 'packages') && contains(tolower(all_headers), 'application/octet-stream') && status_code == 200"}
+	//   - name: DSL Matcher for missing strict transport security header
+	//     value: >
+	//       []string{"!contains(tolower(all_headers), ''strict-transport-security'')"}
 	DSL []string `yaml:"dsl,omitempty"`
-	// Encoding specifies the encoding for the word content if any.
+	// description: |
+	//   Encoding specifies the encoding for the words field if any.
+	// values:
+	//   - "hex"
 	Encoding string `yaml:"encoding,omitempty"`
 
 	// cached data for the compiled matcher

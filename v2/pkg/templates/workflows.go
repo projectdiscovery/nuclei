@@ -48,11 +48,11 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecuterOptions, loader model.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
-	workflowTags := workflow.Tags
-	if !workflowTags.IsEmpty() {
-		paths = loader.ListTags(workflowTags.ToSlice())
+	subTemplateTags := workflow.Tags
+	if !subTemplateTags.IsEmpty() {
+		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice())
 	} else {
-		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
+		paths = loader.GetTemplatePaths([]string{workflow.Template}, noValidate)
 	}
 	if len(paths) == 0 {
 		return nil
