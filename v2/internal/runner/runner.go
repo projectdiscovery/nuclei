@@ -107,25 +107,19 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 	if options.ESExport != "" {
+		es_temp := &es.Options{
+			ESIP:              options.ESExport,
+			ESPort:            options.ESPort,
+			ESSSL:             options.ESSSL,
+			ESSSLVerificaiton: options.ESSSLVerificaiton,
+			ESUsername:        options.ESUsername,
+			ESPassword:        options.ESPassword,
+		}
 		if reportingOptions != nil {
-			reportingOptions.ElasticsearchExporter = &es.Options{
-				ESIP:              options.ESExport,
-				ESPort:            options.ESPort,
-				ESSSL:             options.ESSSL,
-				ESSSLVerificaiton: options.ESSSLVerificaiton,
-				ESUsername:        options.ESUsername,
-				ESPassword:        options.ESPassword,
-			}
+			reportingOptions.ElasticsearchExporter = es_temp
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.ElasticsearchExporter = &es.Options{
-				ESIP:              options.ESExport,
-				ESPort:            options.ESPort,
-				ESSSL:             options.ESSSL,
-				ESSSLVerificaiton: options.ESSSLVerificaiton,
-				ESUsername:        options.ESUsername,
-				ESPassword:        options.ESPassword,
-			}
+			reportingOptions.ElasticsearchExporter = es_temp
 		}
 	}
 	if options.SarifExport != "" {
