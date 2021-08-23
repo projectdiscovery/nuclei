@@ -6,7 +6,7 @@ on:
 
 
 jobs:  
-  build:
+  functional:
     name: Functional Test
     runs-on: ubuntu-latest
     steps:
