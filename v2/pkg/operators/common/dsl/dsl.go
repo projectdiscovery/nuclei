@@ -246,8 +246,8 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return data, nil
 	},
 	// for debug purposes
-	"print_stdout": func(args ...interface{}) (interface{}, error) {
-		fmt.Println(args)
+	"print_debug": func(args ...interface{}) (interface{}, error) {
+		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
 		return true, nil
 	},
 }
