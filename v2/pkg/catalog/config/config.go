@@ -35,7 +35,7 @@ func getConfigDetails() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not get home directory")
 	}
-	configDir := filepath.Join(homeDir, "/.config", "/nuclei")
+	configDir := filepath.Join(homeDir, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	return templatesConfigFile, nil
@@ -123,7 +123,7 @@ func getIgnoreFilePath() string {
 
 	home, err := os.UserHomeDir()
 	if err == nil {
-		configDir := filepath.Join(home, "/.config", "/nuclei")
+		configDir := filepath.Join(home, ".config", "nuclei")
 		_ = os.MkdirAll(configDir, os.ModePerm)
 
 		defIgnoreFilePath = filepath.Join(configDir, nucleiIgnoreFile)

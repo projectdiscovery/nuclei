@@ -56,7 +56,7 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
-	configDir := filepath.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
@@ -340,8 +340,8 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		if name == "" {
 			continue
 		}
-		paths := strings.Split(directory, "/")
-		finalPath := strings.Join(paths[1:], "/")
+		paths := strings.Split(directory, string(os.PathSeparator))
+		finalPath := filepath.Join(paths[1:]...)
 
 		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
@@ -397,7 +397,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		_, ok := results.checksums[k]
 		if !ok && v[0] == v[1] {
 			os.Remove(k)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.
@@ -13,7 +12,7 @@ import (
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
 func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
-	if strings.HasPrefix(templateName, "/") || strings.Contains(templateName, ":\\") {
+	if filepath.IsAbs(templateName) {
 		return templateName, nil
 	}
 
