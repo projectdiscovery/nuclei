@@ -10,11 +10,11 @@ import (
 // Request contains a Headless protocol request to be made from a template
 type Request struct {
 	// ID is the ID of the request
-	ID string `yaml:"id,omitempty"`
+	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=Optional ID of the headless request"`
 
 	// description: |
 	//   Steps is the list of actions to run for headless request
-	Steps []*engine.Action `yaml:"steps,omitempty"`
+	Steps []*engine.Action `yaml:"steps,omitempty" jsonschema:"title=list of actions for headless request,description=List of actions to run for headless request"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`

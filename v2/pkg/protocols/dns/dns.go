@@ -19,7 +19,7 @@ type Request struct {
 	operators.Operators `yaml:",inline"`
 
 	// ID is the ID of the request
-	ID string `yaml:"id,omitempty"`
+	ID string `yaml:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 
 	// description: |
 	//   Name is the Hostname to make DNS request for.
@@ -27,19 +27,20 @@ type Request struct {
 	//   Generally, it is set to {{FQDN}} which is the domain we get from input.
 	// examples:
 	//   - value: "\"{{FQDN}}\""
-	Name string `yaml:"name,omitempty"`
+	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   Type is the type of DNS request to make.
 	// values:
 	//   - "A"
 	//   - "NS"
+	//   - "DS"
 	//   - "CNAME"
 	//   - "SOA"
 	//   - "PTR"
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	Type string `yaml:"type,omitempty"`
+	Type string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -51,13 +52,13 @@ type Request struct {
 	//   - "HESIOD"
 	//   - "NONE"
 	//   - "ANY"
-	Class string `yaml:"class,omitempty"`
+	Class string `yaml:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=INET,enum=CSNET,enum=CHAOS,enum=HESIOD,enum=NONE,enum=ANY"`
 	// description: |
 	//   Retries is the number of retries for the DNS request
 	// examples:
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
-	Retries int `yaml:"retries,omitempty"`
+	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
@@ -69,7 +70,7 @@ type Request struct {
 
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
-	Recursion bool `yaml:"recursion,omitempty"`
+	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 }
 
 // GetID returns the unique ID of the request if any.
