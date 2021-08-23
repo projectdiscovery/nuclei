@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -37,7 +37,7 @@ func main() {
 
 func readConfig() {
 	home, _ := os.UserHomeDir()
-	templatesDirectory := path.Join(home, "nuclei-templates")
+	templatesDirectory := filepath.Join(home, "nuclei-templates")
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
