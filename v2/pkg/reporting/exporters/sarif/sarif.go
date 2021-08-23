@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -44,7 +44,7 @@ func New(options *Options) (*Exporter, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get home dir")
 	}
-	templatePath := path.Join(home, "nuclei-templates")
+	templatePath := filepath.Join(home, "nuclei-templates")
 
 	run := sarif.NewRun("nuclei", "https://github.com/projectdiscovery/nuclei")
 	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil

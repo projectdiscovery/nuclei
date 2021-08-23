@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -29,7 +29,7 @@ func (g *Generator) validate(payloads map[string]interface{}, templatePath strin
 			pathTokens := strings.Split(templatePath, "/")
 
 			for i := range pathTokens {
-				tpath := path.Join(strings.Join(pathTokens[:i], "/"), pt)
+				tpath := filepath.Join(strings.Join(pathTokens[:i], "/"), pt)
 				if fileExists(tpath) {
 					payloads[name] = tpath
 					changed = true

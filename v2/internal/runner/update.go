@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -57,10 +56,10 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
-	configDir := path.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, "/.config", "/nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
 		configuration, readErr := config.ReadConfiguration()
 		if err != nil {
@@ -72,7 +71,7 @@ func (r *Runner) updateTemplates() error {
 	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 			IgnoreURL:          ignoreURL,
 			NucleiVersion:      config.Version,
 		}
@@ -114,7 +113,7 @@ func (r *Runner) updateTemplates() error {
 				resp.Body.Close()
 
 				if len(data) > 0 {
-					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
+					_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
 				}
 				if r.templatesConfig != nil {
 					err = config.WriteConfiguration(r.templatesConfig, false, true)
@@ -133,9 +132,9 @@ func (r *Runner) updateTemplates() error {
 
 		// Use custom location if user has given a template directory
 		r.templatesConfig = &config.Config{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
+		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
 
@@ -294,14 +293,14 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	if r.options.Verbose {
 		r.printUpdateChangelog(results, version)
 	}
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	err = writeTemplatesChecksum(checksumFile, results.checksums)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
 	// Write the additions to a cached file for new runs.
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	buffer := &bytes.Buffer{}
 	for _, addition := range results.additions {
 		buffer.WriteString(addition)
@@ -334,7 +333,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
@@ -348,13 +347,13 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 			continue
 		}
 		results.totalCount++
-		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
+		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err := os.MkdirAll(templateDirectory, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
-		templatePath := path.Join(templateDirectory, name)
+		templatePath := filepath.Join(templateDirectory, name)
 
 		isAddition := false
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
@@ -385,9 +384,9 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
-			results.additions = append(results.additions, path.Join(finalPath, name))
+			results.additions = append(results.additions, filepath.Join(finalPath, name))
 		} else if checksumOK && oldChecksum[0] != checksum {
-			results.modifications = append(results.modifications, path.Join(finalPath, name))
+			results.modifications = append(results.modifications, filepath.Join(finalPath, name))
 		}
 		results.checksums[templatePath] = checksum
 	}

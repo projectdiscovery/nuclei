@@ -3,7 +3,6 @@ package catalog
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -19,7 +18,7 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 	}
 
 	if second != "" {
-		secondBasePath := path.Join(filepath.Dir(second), templateName)
+		secondBasePath := filepath.Join(filepath.Dir(second), templateName)
 		if _, err := os.Stat(secondBasePath); !os.IsNotExist(err) {
 			return secondBasePath, nil
 		}
@@ -30,13 +29,13 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 		return "", err
 	}
 
-	templatePath := path.Join(curDirectory, templateName)
+	templatePath := filepath.Join(curDirectory, templateName)
 	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
 		return templatePath, nil
 	}
 
 	if c.templatesDirectory != "" {
-		templatePath := path.Join(c.templatesDirectory, templateName)
+		templatePath := filepath.Join(c.templatesDirectory, templateName)
 		if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
 			return templatePath, nil
 		}
