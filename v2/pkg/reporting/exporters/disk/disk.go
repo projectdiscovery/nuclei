@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -55,7 +55,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	err := ioutil.WriteFile(path.Join(i.directory, finalFilename), data, 0644)
+	err := ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
 	return err
 }
 
