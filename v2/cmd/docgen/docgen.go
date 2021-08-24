@@ -37,7 +37,7 @@ func main() {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(jsonschemaData)
+	_ = encoder.Encode(jsonschemaData)
 
 	schema := buf.String()
 	for _, match := range pathRegex.FindAllStringSubmatch(schema, -1) {
