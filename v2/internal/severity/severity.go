@@ -63,7 +63,9 @@ func (severityHolder SeverityHolder) JSONSchemaType() *jsonschema.Type {
 		Type:        "string",
 		Title:       "severity of the template",
 		Description: "Seriousness of the implications of the template",
-		Enum:        []interface{}{Info.String(), Low.String(), Medium.String(), High.String(), Critical.String()},
+	}
+	for _, severity := range GetSupportedSeverities() {
+		gotType.Enum = append(gotType.Enum, severity.String())
 	}
 	return gotType
 }
