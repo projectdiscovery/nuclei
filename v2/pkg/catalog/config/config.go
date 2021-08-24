@@ -2,7 +2,7 @@ package config
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -35,9 +35,9 @@ func getConfigDetails() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not get home directory")
 	}
-	configDir := path.Join(homeDir, "/.config", "/nuclei")
+	configDir := filepath.Join(homeDir, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	return templatesConfigFile, nil
 }
 
@@ -123,16 +123,16 @@ func getIgnoreFilePath() string {
 
 	home, err := os.UserHomeDir()
 	if err == nil {
-		configDir := path.Join(home, "/.config", "/nuclei")
+		configDir := filepath.Join(home, ".config", "nuclei")
 		_ = os.MkdirAll(configDir, os.ModePerm)
 
-		defIgnoreFilePath = path.Join(configDir, nucleiIgnoreFile)
+		defIgnoreFilePath = filepath.Join(configDir, nucleiIgnoreFile)
 		return defIgnoreFilePath
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return defIgnoreFilePath
 	}
-	cwdIgnoreFilePath := path.Join(cwd, nucleiIgnoreFile)
+	cwdIgnoreFilePath := filepath.Join(cwd, nucleiIgnoreFile)
 	return cwdIgnoreFilePath
 }
