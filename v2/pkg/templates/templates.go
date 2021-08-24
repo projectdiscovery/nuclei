@@ -33,7 +33,7 @@ type Template struct {
 	//   Info contains metadata information about the template.
 	// examples:
 	//   - value: exampleInfoStructure
-	Info model.Info `yaml:"info" jsonschema:"title=info for the template,description=Info contains metadata for the tempplate"`
+	Info model.Info `yaml:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
 	// description: |
 	//   Requests contains the http request to make in the template.
 	// examples:
