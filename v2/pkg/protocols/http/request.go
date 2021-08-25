@@ -249,7 +249,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		requestCount++
 		r.options.Progress.IncrementRequests()
 
-		if request.original.options.Options.StopAtFirstMatch && gotOutput {
+		if (request.original.options.Options.StopAtFirstMatch || r.StopAtFirstMatch) && gotOutput {
 			r.options.Progress.IncrementErrorsBy(int64(generator.Total()))
 			break
 		}
