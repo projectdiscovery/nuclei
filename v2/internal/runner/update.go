@@ -34,14 +34,12 @@ import (
 )
 
 const (
-	userName = "projectdiscovery"
-	repoName = "nuclei-templates"
+	userName             = "projectdiscovery"
+	repoName             = "nuclei-templates"
+	nucleiIgnoreFile     = ".nuclei-ignore"
+	nucleiConfigFilename = ".templates-config.json"
+	defaultIgnoreURL     = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 )
-
-const nucleiIgnoreFile = ".nuclei-ignore"
-
-// nucleiConfigFilename is the filename of nuclei configuration file.
-const nucleiConfigFilename = ".templates-config.json"
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
@@ -59,20 +57,15 @@ func (r *Runner) updateTemplates() error {
 	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
-	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		configuration, readErr := config.ReadConfiguration()
-		if err != nil {
-			return readErr
-		}
-		r.templatesConfig = configuration
+	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
+		return errors.Wrap(err, "could not read configuration file")
 	}
 
-	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+	// If the config doesn't exist, write it now.
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
-			IgnoreURL:          ignoreURL,
+			IgnoreURL:          defaultIgnoreURL,
 			NucleiVersion:      config.Version,
 		}
 		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
@@ -84,50 +77,19 @@ func (r *Runner) updateTemplates() error {
 	if r.options.NoUpdateTemplates {
 		return nil
 	}
+
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
 	//
 	// Also at the same time fetch latest version from github to do outdated nuclei
 	// and templates check.
 	checkedIgnore := false
-	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
-		r.fetchLatestVersionsFromGithub()
-
-		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
-			ignoreURL = r.templatesConfig.IgnoreURL
-		}
-		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
-
-		checkedIgnore = true
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
-		if reqErr == nil {
-			resp, httpGet := http.DefaultClient.Do(req)
-			if httpGet != nil {
-				if resp != nil && resp.Body != nil {
-					resp.Body.Close()
-				}
-				gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-			} else {
-				data, _ := ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-
-				if len(data) > 0 {
-					_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
-				}
-				if r.templatesConfig != nil {
-					err = config.WriteConfiguration(r.templatesConfig, false, true)
-					if err != nil {
-						gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-					}
-				}
-			}
-		}
-		cancel()
+	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
+		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
 	}
 
 	ctx := context.Background()
-	if r.templatesConfig.CurrentVersion == "" {
+	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 		// Use custom location if user has given a template directory
@@ -135,7 +97,7 @@ func (r *Runner) updateTemplates() error {
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
-			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
+			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -212,6 +174,58 @@ func (r *Runner) updateTemplates() error {
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
 	}
 	return nil
+}
+
+// readInternalConfigurationFile reads the internal configuration file for nuclei
+func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
+	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
+		configuration, readErr := config.ReadConfiguration()
+		if readErr != nil {
+			return readErr
+		}
+		r.templatesConfig = configuration
+
+		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+			r.options.TemplatesDirectory = configuration.TemplatesDirectory
+		}
+	}
+	return nil
+}
+
+// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from github
+func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
+	ignoreURL := defaultIgnoreURL
+	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
+		ignoreURL = r.templatesConfig.IgnoreURL
+	}
+	gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
+	if reqErr == nil {
+		resp, httpGetErr := http.DefaultClient.Do(req)
+		if httpGetErr != nil {
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, httpGetErr)
+		} else {
+			data, _ := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+
+			if len(data) > 0 {
+				_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+			}
+			if r.templatesConfig != nil {
+				if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
+					gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+				}
+			}
+		}
+	}
+	cancel()
+	return true
 }
 
 // getLatestReleaseFromGithub returns the latest release from github
