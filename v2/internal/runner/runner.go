@@ -248,6 +248,7 @@ func New(options *types.Options) (*Runner, error) {
 			Output:         runner.output,
 			IssuesClient:   runner.issuesClient,
 			Progress:       runner.progress,
+			Debug:          runner.options.Debug,
 		})
 		if err != nil {
 			gologger.Error().Msgf("Could not create interactsh client: %s", err)
