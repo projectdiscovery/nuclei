@@ -35,7 +35,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -104,22 +103,6 @@ func New(options *types.Options) (*Runner, error) {
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
-		}
-	}
-	if options.ESExport != "" {
-		es_temp := &es.Options{
-			ESIP:              options.ESExport,
-			ESPort:            options.ESPort,
-			ESSSL:             options.ESSSL,
-			ESSSLVerificaiton: options.ESSSLVerificaiton,
-			ESUsername:        options.ESUsername,
-			ESPassword:        options.ESPassword,
-		}
-		if reportingOptions != nil {
-			reportingOptions.ElasticsearchExporter = es_temp
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.ElasticsearchExporter = es_temp
 		}
 	}
 	if options.SarifExport != "" {

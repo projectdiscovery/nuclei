@@ -33,8 +33,9 @@ type Options struct {
 	// DiskExporter contains configuration options for Disk Exporter Module
 	DiskExporter *disk.Options `yaml:"disk"`
 	// SarifExporter contains configuration options for Sarif Exporter Module
-	SarifExporter         *sarif.Options `yaml:"sarif"`
-	ElasticsearchExporter *es.Options    `yaml:"elasticsearch"`
+	SarifExporter *sarif.Options `yaml:"sarif"`
+	// ElasticsearchExporter contains configuration options for Elasticsearch Exporter Module
+	ElasticsearchExporter *es.Options `yaml:"elasticsearch"`
 }
 
 // Filter filters the received event and decides whether to perform
