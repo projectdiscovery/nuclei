@@ -1,4 +1,4 @@
-name: Publish Docs
+name: ⏰ Publish Docs
 
 on:
   workflow_dispatch:
@@ -38,8 +38,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add v2/syntax-reference.md v2/nuclei-jsonschema.json
-          git commit -m "Auto Generate Syntax Docs [$(date)] :robot:" -a
-          cat v2/syntax-reference.md
+          git commit -m "Auto Generate Syntax Docs + JSONSchema [$(date)] :robot:" -a
 
       - name: Push changes
         if: steps.generate-docs.outputs.changes > 0
