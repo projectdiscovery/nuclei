@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
@@ -32,7 +33,8 @@ type Options struct {
 	// DiskExporter contains configuration options for Disk Exporter Module
 	DiskExporter *disk.Options `yaml:"disk"`
 	// SarifExporter contains configuration options for Sarif Exporter Module
-	SarifExporter *sarif.Options `yaml:"sarif"`
+	SarifExporter         *sarif.Options `yaml:"sarif"`
+	ElasticsearchExporter *es.Options    `yaml:"elasticsearch"`
 }
 
 // Filter filters the received event and decides whether to perform
@@ -134,6 +136,13 @@ func New(options *Options, db string) (*Client, error) {
 	}
 	if options.SarifExporter != nil {
 		exporter, err := sarif.New(options.SarifExporter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create exporting client")
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
+	if options.ElasticsearchExporter != nil {
+		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create exporting client")
 		}
