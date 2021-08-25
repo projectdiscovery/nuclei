@@ -152,4 +152,16 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// Full url for elasticsearch
+	ESExport string
+	// Full url for elasticsearch
+	ESPort int
+	// Enable/Disable SSL
+	ESSSL bool
+	// Enable/DIsable SSL verificaiton
+	ESSSLVerificaiton bool
+	// Elasticsearch username
+	ESUsername string
+	// Elasticsearch password
+	ESPassword string
 }
