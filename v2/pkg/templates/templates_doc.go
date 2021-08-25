@@ -249,9 +249,14 @@ func init() {
 	HTTPRequestDoc.Fields[8].Comments[encoder.LineComment] = "Method is the HTTP Request Method."
 	HTTPRequestDoc.Fields[8].Values = []string{
 		"GET",
+		"HEAD",
 		"POST",
 		"PUT",
 		"DELETE",
+		"CONNECT",
+		"OPTIONS",
+		"TRACE",
+		"PATCH",
 	}
 	HTTPRequestDoc.Fields[9].Name = "body"
 	HTTPRequestDoc.Fields[9].Type = "string"
@@ -514,6 +519,8 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[1].Values = []string{
 		"regex",
 		"kval",
+		"json",
+		"xpath",
 	}
 	EXTRACTORSExtractorDoc.Fields[2].Name = "regex"
 	EXTRACTORSExtractorDoc.Fields[2].Type = "[]string"
@@ -631,6 +638,7 @@ func init() {
 	DNSRequestDoc.Fields[5].Values = []string{
 		"A",
 		"NS",
+		"DS",
 		"CNAME",
 		"SOA",
 		"PTR",
@@ -747,8 +755,8 @@ func init() {
 	NETWORKRequestDoc.Fields[1].Name = "host"
 	NETWORKRequestDoc.Fields[1].Type = "[]string"
 	NETWORKRequestDoc.Fields[1].Note = ""
-	NETWORKRequestDoc.Fields[1].Description = "Address is the address to send requests to.\n\nUsually it's set to `{{Hostname}}`. If you want to enable TLS for\nTCP Connection, you can use `tls://{{Hostname}}`."
-	NETWORKRequestDoc.Fields[1].Comments[encoder.LineComment] = "Address is the address to send requests to."
+	NETWORKRequestDoc.Fields[1].Description = "Host to send network requests to.\n\nUsually it's set to `{{Hostname}}`. If you want to enable TLS for\nTCP Connection, you can use `tls://{{Hostname}}`."
+	NETWORKRequestDoc.Fields[1].Comments[encoder.LineComment] = "Host to send network requests to."
 
 	NETWORKRequestDoc.Fields[1].AddExample("", []string{"{{Hostname}}"})
 	NETWORKRequestDoc.Fields[2].Name = "attack"
