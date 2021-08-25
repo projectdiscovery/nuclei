@@ -90,13 +90,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 		flagSet.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
-
-		flagSet.StringVar(&options.ESExport, "es-ip", "", "the ip address for elasticsearch . Ex: 127.0.0.1"),
-		flagSet.IntVar(&options.ESPort, "es-port", 9200, "the port number on which elasticsearch is running"),
-		flagSet.BoolVar(&options.ESSSL, "es-ssl", true, "false if http is to be used"),
-		flagSet.BoolVar(&options.ESSSLVerificaiton, "es-ssl-verify", true, "set to false if ssl verificaiton needs to be disabled"),
-		flagSet.StringVar(&options.ESUsername, "es-user", "", "the username for elasticsearch"),
-		flagSet.StringVar(&options.ESPassword, "es-password", "", "the password for elasticsearch"),
 	)
 
 	createGroup(flagSet, "configs", "Configurations",
