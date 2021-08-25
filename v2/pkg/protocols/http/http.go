@@ -161,6 +161,9 @@ type Request struct {
 	//
 	//   This allows matching on them later for multi-request conditions.
 	ReqCondition bool `yaml:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
+	// description: |
+	//   StopAtFirstMatch stops the execution of the requests as soon as a match is found.
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
 }
 
 // GetID returns the unique ID of the request if any.
