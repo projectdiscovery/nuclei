@@ -55,7 +55,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	templatePath := strings.TrimPrefix(event.TemplatePath, i.home)
 
 	h := sha1.New()
-	h.Write([]byte(event.Host))
+	_, _ = h.Write([]byte(event.Host))
 	templateID := event.TemplateID + "-" + hex.EncodeToString(h.Sum(nil))
 
 	fullDescription := format.MarkdownDescription(event)

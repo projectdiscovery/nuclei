@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/alecthomas/jsonschema"
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
@@ -17,13 +18,13 @@ type Info struct {
 	// examples:
 	//   - value: "\"bower.json file disclosure\""
 	//   - value: "\"Nagios Default Credentials Check\""
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty" jsonschema:"title=name of the template,description=Name is a short summary of what the template does,example=Nagios Default Credentials Check"`
 	// description: |
 	//   Author of the template.
 	//
 	// examples:
 	//   - value: "\"<username>\""
-	Authors StringSlice `json:"author,omitempty" yaml:"author,omitempty"`
+	Authors StringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,example=username"`
 	// description: |
 	//   Any tags for the template.
 	//
@@ -32,7 +33,7 @@ type Info struct {
 	// examples:
 	//   - name: Example tags
 	//     value: "\"cve,cve2019,grafana,auth-bypass,dos\""
-	Tags StringSlice `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Tags StringSlice `json:"tags,omitempty" yaml:"tags,omitempty" jsonschema:"title=tags of the template,description=Any tags for the template"`
 	// description: |
 	//   Description of the template.
 	//
@@ -41,7 +42,7 @@ type Info struct {
 	// examples:
 	//   - value: "\"Bower is a package manager which stores packages informations in bower.json file\""
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores packages informations in bower.json file"`
 	// description: |
 	//   References for the template.
 	//
@@ -50,7 +51,7 @@ type Info struct {
 	// examples:
 	//   - value: >
 	//       []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"}
-	Reference StringSlice `json:"reference,omitempty" yaml:"reference,omitempty"`
+	Reference StringSlice `json:"reference,omitempty" yaml:"reference,omitempty" jsonschema:"title=references for the template,description=Links relevant to the template"`
 	// description: |
 	//   Severity of the template.
 	//
@@ -67,13 +68,20 @@ type Info struct {
 	// examples:
 	//   - value: >
 	//       map[string]string{"customField1":"customValue1"}
-	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty"`
+	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
 }
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
 // The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
 type StringSlice struct {
 	Value interface{}
+}
+
+func (stringSlice StringSlice) JSONSchemaType() *jsonschema.Type {
+	gotType := &jsonschema.Type{
+		OneOf: []*jsonschema.Type{{Type: "string"}, {Type: "array"}},
+	}
+	return gotType
 }
 
 func (stringSlice *StringSlice) IsEmpty() bool {
