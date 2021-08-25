@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -101,10 +101,10 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	req.Body = io.NopCloser(bytes.NewReader(b))
+	req.Body = ioutil.NopCloser(bytes.NewReader(b))
 
 	res, err := i.elasticsearch.Do(req)
-	b, _ = io.ReadAll(res.Body)
+	b, _ = ioutil.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}
