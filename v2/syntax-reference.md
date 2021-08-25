@@ -682,11 +682,21 @@ Valid values:
 
   - <code>GET</code>
 
+  - <code>HEAD</code>
+
   - <code>POST</code>
 
   - <code>PUT</code>
 
   - <code>DELETE</code>
+
+  - <code>CONNECT</code>
+
+  - <code>OPTIONS</code>
+
+  - <code>TRACE</code>
+
+  - <code>PATCH</code>
 </div>
 
 <hr />
@@ -1395,6 +1405,10 @@ Valid values:
   - <code>regex</code>
 
   - <code>kval</code>
+
+  - <code>json</code>
+
+  - <code>xpath</code>
 </div>
 
 <hr />
@@ -1752,6 +1766,8 @@ Valid values:
 
   - <code>NS</code>
 
+  - <code>DS</code>
+
   - <code>CNAME</code>
 
   - <code>SOA</code>
@@ -2065,7 +2081,7 @@ ID is the ID of the request
 </div>
 <div class="dt">
 
-Address is the address to send requests to.
+Host to send network requests to.
 
 Usually it's set to `{{Hostname}}`. If you want to enable TLS for
 TCP Connection, you can use `tls://{{Hostname}}`.
