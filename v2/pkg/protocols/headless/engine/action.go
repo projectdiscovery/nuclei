@@ -113,17 +113,17 @@ type Action struct {
 	//   Args contain arguments for the headless action.
 	//
 	//   Per action arguments are described in detail [here](https://nuclei.projectdiscovery.io/templating-guide/protocols/headless/).
-	Data map[string]string `yaml:"args,omitempty"`
+	Data map[string]string `yaml:"args,omitempty" jsonschema:"title=arguments for headless action,description=Args contain arguments for the headless action"`
 	// description: |
 	//   Name is the name assigned to the headless action.
 	//
 	//   This can be used to execute code, for instance in browser
 	//   DOM using script action, and get the result in a variable
 	//   which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml).
-	Name string `yaml:"name,omitempty"`
+	Name string `yaml:"name,omitempty" jsonschema:"title=name for headless action,description=Name is the name assigned to the headless action"`
 	// description: |
 	//   Description is the optional description of the headless action
-	Description string `yaml:"description,omitempty"`
+	Description string `yaml:"description,omitempty" jsonschema:"title=description for headless action,description=Description of the headless action"`
 	// description: |
 	//   Action is the type of the action to perform.
 	// values:
@@ -148,7 +148,7 @@ type Action struct {
 	//   - "keyboard"
 	//   - "debug"
 	//   - "sleep"
-	ActionType string `yaml:"action"`
+	ActionType string `yaml:"action" jsonschema:"title=action to perform,description=Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"`
 }
 
 // String returns the string representation of an action

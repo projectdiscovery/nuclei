@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
 )
 
@@ -55,6 +56,18 @@ func (severity Severity) String() string {
 //nolint:exported,revive //prefer to be explicit about the name, and make it refactor-safe
 type SeverityHolder struct {
 	Severity Severity
+}
+
+func (severityHolder SeverityHolder) JSONSchemaType() *jsonschema.Type {
+	gotType := &jsonschema.Type{
+		Type:        "string",
+		Title:       "severity of the template",
+		Description: "Seriousness of the implications of the template",
+	}
+	for _, severity := range GetSupportedSeverities() {
+		gotType.Enum = append(gotType.Enum, severity.String())
+	}
+	return gotType
 }
 
 func (severityHolder *SeverityHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
