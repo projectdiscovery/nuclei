@@ -46,7 +46,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	filenameBuilder.WriteString("-")
 	filenameBuilder.WriteString(strings.ReplaceAll(strings.ReplaceAll(event.Matched, "/", "_"), ":", "_"))
 	filenameBuilder.WriteString(".md")
-	finalFilename := filenameBuilder.String()
+	finalFilename := sanitizeFilename(filenameBuilder.String())
 
 	dataBuilder := &bytes.Buffer{}
 	dataBuilder.WriteString("### ")
@@ -62,4 +62,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 // Close closes the exporter after operation
 func (i *Exporter) Close() error {
 	return nil
+}
+
+func sanitizeFilename(filename string) string {
+	if len(filename) > 256 {
+		filename = filename[0:255]
+	}
+	return filename
 }
