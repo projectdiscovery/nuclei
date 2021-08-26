@@ -3,6 +3,8 @@ module github.com/projectdiscovery/nuclei/v2
 go 1.16
 
 require (
+	github.com/akrylysov/pogreb v0.10.1 // indirect
+	github.com/alecthomas/jsonschema v0.0.0-20210818095345-1014919a589c
 	github.com/andygrunwald/go-jira v1.14.0
 	github.com/antchfx/htmlquery v1.2.3
 	github.com/apex/log v1.9.0

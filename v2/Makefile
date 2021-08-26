@@ -15,7 +15,7 @@ docs:
 		fi
 		$(GOCMD) generate pkg/templates/templates.go
 		$(GOBUILD) -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
-		./cmd/docgen/docgen docs.md
+		./cmd/docgen/docgen docs.md nuclei-jsonschema.json
 test: 
 		$(GOTEST) -v ./...
 tidy:

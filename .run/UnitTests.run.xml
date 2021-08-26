@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="UnitTests" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="nuclei" />
+    <working_directory value="$PROJECT_DIR$/v2" />
+    <go_parameters value="-i" />
+    <kind value="DIRECTORY" />
+    <directory value="$PROJECT_DIR$/v2/" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <method v="2" />
+  </configuration>
+</component>

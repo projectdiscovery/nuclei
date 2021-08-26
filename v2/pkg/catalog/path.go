@@ -3,9 +3,7 @@ package catalog
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.
@@ -14,12 +12,12 @@ import (
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
 func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
-	if strings.HasPrefix(templateName, "/") || strings.Contains(templateName, ":\\") {
+	if filepath.IsAbs(templateName) {
 		return templateName, nil
 	}
 
 	if second != "" {
-		secondBasePath := path.Join(filepath.Dir(second), templateName)
+		secondBasePath := filepath.Join(filepath.Dir(second), templateName)
 		if _, err := os.Stat(secondBasePath); !os.IsNotExist(err) {
 			return secondBasePath, nil
 		}
@@ -30,13 +28,13 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 		return "", err
 	}
 
-	templatePath := path.Join(curDirectory, templateName)
+	templatePath := filepath.Join(curDirectory, templateName)
 	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
 		return templatePath, nil
 	}
 
 	if c.templatesDirectory != "" {
-		templatePath := path.Join(c.templatesDirectory, templateName)
+		templatePath := filepath.Join(c.templatesDirectory, templateName)
 		if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
 			return templatePath, nil
 		}

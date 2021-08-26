@@ -16,7 +16,7 @@ type Request struct {
 	//   Extensions is the list of extensions to perform matching on.
 	// examples:
 	//   - value: '[]string{".txt", ".go", ".json"}'
-	Extensions []string `yaml:"extensions,omitempty"`
+	Extensions []string `yaml:"extensions,omitempty" jsonschema:"title=extensions to match,description=List of extensions to perform matching on"`
 	// description: |
 	//   ExtensionDenylist is the list of file extensions to deny during matching.
 	//
@@ -24,10 +24,10 @@ type Request struct {
 	//   in nuclei.
 	// examples:
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
-	ExtensionDenylist []string `yaml:"denylist,omitempty"`
+	ExtensionDenylist []string `yaml:"denylist,omitempty" jsonschema:"title=extensions to deny match,description=List of file extensions to deny during matching"`
 
 	// ID is the ID of the request
-	ID string `yaml:"id,omitempty"`
+	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID for the request"`
 
 	// description: |
 	//   MaxSize is the maximum size of the file to run request on.
@@ -36,7 +36,7 @@ type Request struct {
 	//   It can be set to much lower or higher depending on use.
 	// examples:
 	//   - value: 2048
-	MaxSize           int                  `yaml:"max-size,omitempty"`
+	MaxSize           int                  `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
@@ -46,7 +46,7 @@ type Request struct {
 
 	// description: |
 	//   NoRecursive specifies whether to not do recursive checks if folders are provided.
-	NoRecursive bool `yaml:"no-recursive,omitempty"`
+	NoRecursive bool `yaml:"no-recursive,omitempty" jsonschema:"title=do not perform recursion,description=Specifies whether to not do recursive checks if folders are provided"`
 
 	allExtensions bool
 }

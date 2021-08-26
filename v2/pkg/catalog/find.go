@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -83,12 +82,12 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 // before doing any operations on them regardless of them being blob, folders, files, etc.
 func (c *Catalog) convertPathToAbsolute(t string) (string, error) {
 	if strings.Contains(t, "*") {
-		file := path.Base(t)
-		absPath, err := c.ResolvePath(path.Dir(t), "")
+		file := filepath.Base(t)
+		absPath, err := c.ResolvePath(filepath.Dir(t), "")
 		if err != nil {
 			return "", err
 		}
-		return path.Join(absPath, file), nil // TODO this might rather be filepath.Join to make it OS agnostic. Search for other occurrences
+		return filepath.Join(absPath, file), nil
 	}
 	return c.ResolvePath(t, "")
 }
