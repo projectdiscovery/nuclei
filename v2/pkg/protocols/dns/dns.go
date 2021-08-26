@@ -46,13 +46,13 @@ type Request struct {
 	//
 	//   Usually it's enough to just leave it as INET.
 	// values:
-	//   - "INET"
-	//   - "CSNET"
-	//   - "CHAOS"
-	//   - "HESIOD"
-	//   - "NONE"
-	//   - "ANY"
-	Class string `yaml:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=INET,enum=CSNET,enum=CHAOS,enum=HESIOD,enum=NONE,enum=ANY"`
+	//   - "inet"
+	//   - "csnet"
+	//   - "chaos"
+	//   - "hesiod"
+	//   - "none"
+	//   - "any"
+	Class string `yaml:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=inet,enum=csnet,enum=chaos,enum=hesiod,enum=none,enum=any"`
 	// description: |
 	//   Retries is the number of retries for the DNS request
 	// examples:
