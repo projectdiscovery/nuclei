@@ -86,6 +86,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "don't display match metadata"),
+		flagSet.BoolVarP(&options.NoTimestamp, "no-timestamp", "ntime", false, "don't display timestamp metadata"),
 		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "local nuclei reporting database (always use this to persist report data)"),
 
 		flagSet.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
