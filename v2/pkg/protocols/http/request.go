@@ -67,7 +67,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
 			defer wg.Done()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -107,7 +107,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues output.Intern
 			r.options.RateLimiter.Take()
 
 			previous := make(map[string]interface{})
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -166,7 +166,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -222,7 +222,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		}
 		var gotOutput bool
 		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
+		err = r.executeRequest(reqURL, request, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotOutput = true
@@ -260,7 +260,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback, requestCount int) error {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	r.setCustomHeaders(request)
 
 	var (
@@ -330,6 +330,22 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
 		r.options.Progress.IncrementErrorsBy(1)
+
+		// If we have interactsh markers and request times out, still send
+		// a callback event so in case we recieve an interaction, correlation is possible.
+		if hasInteractMarkers {
+			outputEvent := r.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, request.meta)
+			if i := strings.LastIndex(hostname, ":"); i != -1 {
+				hostname = hostname[:i]
+			}
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+			if r.CompiledOperators != nil {
+				event.InternalEvent = outputEvent
+			}
+			callback(event)
+		}
 		return err
 	}
 	defer func() {
