@@ -21,9 +21,14 @@ import (
 
 var (
 	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
-	parsedTemplatesCache      = cache.New()
 	fieldErrorRegexp          = regexp.MustCompile(`not found in`)
 )
+
+var parsedTemplatesCache *cache.Templates
+
+func init() {
+	parsedTemplatesCache = cache.New()
+}
 
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
