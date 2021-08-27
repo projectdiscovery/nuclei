@@ -108,28 +108,21 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
-	areWorkflowsValid := true
-	for workflowPath := range filteredWorkflowPaths {
-		if _, err := parsers.LoadWorkflow(workflowPath, store.tagFilter); err != nil {
-			if isParsingError("Error occurred loading workflow %s: %s\n", workflowPath, err) {
-				areWorkflowsValid = false
-				continue
-			}
-		}
-
-		if _, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions); err != nil {
-			if isParsingError("Error occurred parsing workflow %s: %s\n", workflowPath, err) {
-				areWorkflowsValid = false
-			}
-		}
-	}
-	return areWorkflowsValid
+	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+		return parsers.LoadWorkflow(templatePath, store.tagFilter)
+	})
 }
 
 func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
+	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+		return parsers.LoadTemplate(templatePath, store.tagFilter, nil)
+	})
+}
+
+func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
 	for templatePath := range filteredTemplatePaths {
-		if _, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil); err != nil {
+		if _, err := load(templatePath, store.tagFilter); err != nil {
 			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
 				continue
