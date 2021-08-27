@@ -33,6 +33,7 @@ type Writer interface {
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
 	json           bool
+	noTimestamp    bool
 	noMetadata     bool
 	aurora         aurora.Aurora
 	outputFile     *fileWriter
@@ -93,7 +94,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json bool, file, traceFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile *fileWriter
@@ -115,6 +116,7 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 	writer := &StandardWriter{
 		json:           json,
 		noMetadata:     noMetadata,
+		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
 		outputMutex:    &sync.Mutex{},

@@ -140,6 +140,8 @@ type Options struct {
 	StopAtFirstMatch bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
+	// NoTimestamp disables display of timestamp for the matcher
+	NoTimestamp bool
 	// Project is used to avoid sending same HTTP request multiple times
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
