@@ -83,7 +83,11 @@ func validateMandatoryInfoFields(info *model.Info) error {
 	return nil
 }
 
-var parsedTemplatesCache = cache.New()
+var parsedTemplatesCache *cache.Templates
+
+func init() {
+	parsedTemplatesCache = cache.New()
+}
 
 // ParseTemplate parses a template and returns a *templates.Template structure
 func ParseTemplate(templatePath string) (*templates.Template, error) {
