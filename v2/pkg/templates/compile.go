@@ -17,9 +17,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
+const TemplateExecuterCreationErrorMessage = "cannot create template executer"
+
+var parsedTemplatesCache = make(map[string]*Template, 2500)
+
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
+// TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+	if value, found := parsedTemplatesCache[filePath]; found {
+		return value, nil
+	}
+
 	template := &Template{}
 
 	f, err := os.Open(filePath)
@@ -127,8 +136,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.TotalRequests += template.Executer.Requests()
 	}
 	if template.Executer == nil && template.CompiledWorkflow == nil {
-		return nil, errors.New("cannot create template executer")
+		return nil, errors.New(TemplateExecuterCreationErrorMessage)
 	}
 	template.Path = filePath
+
+	parsedTemplatesCache[filePath] = template
 	return template, nil
 }
