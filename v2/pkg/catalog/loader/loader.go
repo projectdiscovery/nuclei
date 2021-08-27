@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
@@ -93,49 +94,66 @@ func (store *Store) Load() {
 
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
-func (store *Store) ValidateTemplates(templatesList, workflowsList []string) bool {
+func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
 	templatePaths := store.config.Catalog.GetTemplatesPath(templatesList)
 	workflowPaths := store.config.Catalog.GetTemplatesPath(workflowsList)
 
 	filteredTemplatePaths := store.pathFilter.Match(templatePaths)
 	filteredWorkflowPaths := store.pathFilter.Match(workflowPaths)
 
-	notErrored := true
-	errorValidationFunc := func(message string, template string, err error) {
-		if strings.Contains(err.Error(), "cannot create template executer") {
-			return
-		}
-		if err == filter.ErrExcluded {
-			return
-		}
-		notErrored = false
-		gologger.Error().Msgf(message, template, err)
+	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
+		return nil
 	}
-	for templatePath := range filteredTemplatePaths {
-		_, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
-		if err != nil {
-			errorValidationFunc("Error occurred loading template %s: %s\n", templatePath, err)
-			continue
-		}
-		_, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
-		if err != nil {
-			errorValidationFunc("Error occurred parsing template %s: %s\n", templatePath, err)
-			continue
-		}
-	}
+	return errors.New("an error occurred during templates validation")
+}
+
+func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
+	areWorkflowsValid := true
 	for workflowPath := range filteredWorkflowPaths {
-		_, err := parsers.LoadWorkflow(workflowPath, store.tagFilter)
-		if err != nil {
-			errorValidationFunc("Error occurred loading workflow %s: %s\n", workflowPath, err)
-			continue
+		if _, err := parsers.LoadWorkflow(workflowPath, store.tagFilter); err != nil {
+			if isParsingError("Error occurred loading workflow %s: %s\n", workflowPath, err) {
+				areWorkflowsValid = false
+				continue
+			}
 		}
-		_, err = templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
-		if err != nil {
-			errorValidationFunc("Error occurred parsing workflow %s: %s\n", workflowPath, err)
-			continue
+
+		if _, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions); err != nil {
+			if isParsingError("Error occurred parsing workflow %s: %s\n", workflowPath, err) {
+				areWorkflowsValid = false
+			}
 		}
 	}
-	return notErrored
+	return areWorkflowsValid
+}
+
+func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
+	areTemplatesValid := true
+	for templatePath := range filteredTemplatePaths {
+		if _, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil); err != nil {
+			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
+				areTemplatesValid = false
+				continue
+			}
+		}
+
+		if _, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions); err != nil {
+			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
+				areTemplatesValid = false
+			}
+		}
+	}
+	return areTemplatesValid
+}
+
+func isParsingError(message string, template string, err error) bool {
+	if strings.Contains(err.Error(), templates.TemplateExecuterCreationErrorMessage) {
+		return false
+	}
+	if err == filter.ErrExcluded {
+		return false
+	}
+	gologger.Error().Msgf(message, template, err)
+	return true
 }
 
 // LoadTemplates takes a list of templates and returns paths for them

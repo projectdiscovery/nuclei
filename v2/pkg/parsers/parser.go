@@ -87,8 +87,19 @@ func validateMandatoryInfoFields(info *model.Info) error {
 
 var fieldErrorRegexp = regexp.MustCompile(`not found in`)
 
+var parsedTemplatesCache = make(map[string]*parsedTemplateErrHolder, 2500)
+
+type parsedTemplateErrHolder struct {
+	template *templates.Template
+	err      error
+}
+
 // ParseTemplate parses a template and returns a *templates.Template structure
 func ParseTemplate(templatePath string) (*templates.Template, error) {
+	if value, found := parsedTemplatesCache[templatePath]; found {
+		return value.template, value.err
+	}
+
 	f, err := os.Open(templatePath)
 	if err != nil {
 		return nil, err
@@ -102,12 +113,15 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 
 	template := &templates.Template{}
 	err = yaml.UnmarshalStrict(data, template)
+
 	if err != nil {
 		if fieldErrorRegexp.MatchString(err.Error()) {
 			gologger.Warning().Msgf("Unrecognized fields in template %s: %s", templatePath, err)
-			return template, nil
+			parsedTemplatesCache[templatePath] = &parsedTemplateErrHolder{template: template, err: err}
+			return template, err
 		}
 		return nil, err
 	}
+	parsedTemplatesCache[templatePath] = &parsedTemplateErrHolder{template: template, err: nil}
 	return template, nil
 }
