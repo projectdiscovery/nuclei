@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -31,7 +30,6 @@ func (t *Templates) Has(template string) (interface{}, error) {
 	if !ok {
 		return nil, nil
 	}
-	fmt.Printf("Cache hit: %v %v %v\n", template, templateError.template, templateError.err)
 	return templateError.template, templateError.err
 }
 
