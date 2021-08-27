@@ -2,7 +2,6 @@ package loader
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
@@ -139,7 +138,7 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 }
 
 func isParsingError(message string, template string, err error) bool {
-	if strings.Contains(err.Error(), templates.TemplateExecuterCreationErrorMessage) {
+	if err == templates.ErrCreateTemplateExecutor {
 		return false
 	}
 	if err == filter.ErrExcluded {
