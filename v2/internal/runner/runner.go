@@ -340,8 +340,8 @@ func (r *Runner) RunEnumeration() error {
 		return errors.Wrap(err, "could not load templates from config")
 	}
 	if r.options.Validate {
-		if !store.ValidateTemplates(r.options.Templates, r.options.Workflows) {
-			return errors.New("an error occurred during templates validation")
+		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+			return err
 		}
 		gologger.Info().Msgf("All templates validated successfully\n")
 		return nil // exit
