@@ -34,7 +34,7 @@ require (
 	github.com/projectdiscovery/interactsh v0.0.4
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.12
-	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
+	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe
 	github.com/projectdiscovery/yamldoc-go v1.0.2
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -48,6 +48,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/xanzy/go-gitlab v0.50.3
+	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/ysmood/got v0.14.1 // indirect
 	github.com/ysmood/gotrace v0.2.2 // indirect
 	github.com/ysmood/gson v0.6.4 // indirect
