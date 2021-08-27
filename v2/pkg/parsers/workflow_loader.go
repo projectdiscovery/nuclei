@@ -29,13 +29,21 @@ func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error)
 	return &workflowLoader{pathFilter: pathFilter, tagFilter: tagFilter, options: options}, nil
 }
 
+var loadedWorkflowTemplateCache = make(map[string]struct{})
+
 func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
 	includedTemplates := w.options.Catalog.GetTemplatesPath([]string{w.options.Options.TemplatesDirectory})
 	templatePathMap := w.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]string, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
+
+		if _, found := loadedWorkflowTemplateCache[templatePath]; found {
+			continue
+		}
+
 		loaded, err := LoadTemplate(templatePath, w.tagFilter, templateTags)
+		loadedWorkflowTemplateCache[templatePath] = struct{}{}
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		} else if loaded {
