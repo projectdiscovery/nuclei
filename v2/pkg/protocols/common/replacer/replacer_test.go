@@ -1,8 +1,6 @@
 package replacer
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestReplaceNth(t *testing.T) {
 	type args struct {
@@ -12,9 +10,10 @@ func TestReplaceNth(t *testing.T) {
 		n        int
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name  string
+		args  args
+		want  string
+		want1 int
 	}{
 
 		{
@@ -25,7 +24,8 @@ func TestReplaceNth(t *testing.T) {
 				value:    "foo",
 				n:        1,
 			},
-			want: "path/foo/path",
+			want:  "path/foo/path",
+			want1: 2,
 		},
 		{
 			name: "bar",
@@ -35,7 +35,8 @@ func TestReplaceNth(t *testing.T) {
 				value:    "bar",
 				n:        2,
 			},
-			want: "path/path/bar",
+			want:  "path/path/bar",
+			want1: 2,
 		},
 		{
 			name: "none",
@@ -45,23 +46,29 @@ func TestReplaceNth(t *testing.T) {
 				value:    "bar",
 				n:        3,
 			},
-			want: "path/path/path",
+			want:  "path/path/path",
+			want1: 2,
 		},
 		{
 			name: "none",
 			args: args{
-				template: "path/§path§/§path§",
+				template: "path/§path§/§path§/§path§",
 				key:      "path",
 				value:    "bar",
 				n:        0,
 			},
-			want: "path/path/path",
+			want:  "path/path/path/path",
+			want1: 3,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ReplaceNth(tt.args.template, tt.args.key, tt.args.value, tt.args.n); got != tt.want {
-				t.Errorf("ReplaceNth() = %v, want %v", got, tt.want)
+			got, got1 := ReplaceNth(tt.args.template, tt.args.key, tt.args.value, tt.args.n)
+			if got != tt.want {
+				t.Errorf("ReplaceNth() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("ReplaceNth() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

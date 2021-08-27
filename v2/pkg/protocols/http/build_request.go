@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,27 +39,10 @@ type generatedRequest struct {
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
-	var data string
-	var payloads map[string]interface{}
-	var ok bool
-
-	
-	if r.sniperData.sniperPositionCount < r.sniperData.currentPosition {
-		// We get the next payload for the request.
-		data, payloads, ok = r.nextValue()
-		if !ok {
-			return nil, io.EOF
-		}
-
-		if r.request.attackType == generators.Sniper {
-			r.setPayloadPositionValues(data, payloads)
-		}
-	}
-
-	if r.request.attackType == generators.Sniper {
-		r.replaceSniperPositions()
-		data = r.sniperData.data
-		payloads = r.payloads
+	// We get the next payload for the request.
+	data, payloads, ok := r.nextValue()
+	if !ok {
+		return nil, io.EOF
 	}
 
 	ctx := context.Background()
@@ -87,6 +71,9 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		values = generators.MergeMaps(generators.EnvVars(), values)
 	}
 
+	if r.request.attackType == generators.Sniper {
+		data = r.replaceSniperPositions(data, payloads)
+	}
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
@@ -139,7 +126,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 	method := r.request.Method
 	if r.request.attackType == generators.Sniper {
-		method = r.sniperData.method
+		method = r.replaceSniperPositions(method, generatorValues)
 	}
 	method, err = expressions.Evaluate(method, finalValues)
 	if err != nil {
@@ -152,7 +139,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 		return nil, err
 	}
 
-	request, err := r.fillRequest(req, finalValues, interactURL)
+	request, err := r.fillRequest(req, finalValues, generatorValues, interactURL)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +199,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 			req.Host = value
 		}
 	}
-	request, err := r.fillRequest(req, finalValues, "")
+	request, err := r.fillRequest(req, finalValues, generatorValues, "")
 	if err != nil {
 		return nil, err
 	}
@@ -221,14 +208,16 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 }
 
 // fillRequest fills various headers in the request with values
-func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}, interactURL string) (*retryablehttp.Request, error) {
+func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}, generatorValues map[string]interface{}, interactURL string) (*retryablehttp.Request, error) {
 	// Set the header values requested
-	for header, value := range r.request.Headers {
+	// getOrderedKeys returns the sorted keys to handle sniper usecase wherein the order of headers needs to be persisted over multiple requests
+	for _, header := range getOrderedKeys(r.request.Headers) {
+		value := r.request.Headers[header]
 		if interactURL != "" {
 			value = r.options.Interactsh.ReplaceMarkers(value, interactURL)
 		}
 		if r.request.attackType == generators.Sniper {
-			value = r.sniperData.headers[header]
+			value = r.replaceSniperPositions(value, generatorValues)
 		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
@@ -252,7 +241,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 			body = r.options.Interactsh.ReplaceMarkers(body, interactURL)
 		}
 		if r.request.attackType == generators.Sniper {
-			body = r.sniperData.body
+			body = r.replaceSniperPositions(body, generatorValues)
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {
@@ -309,4 +298,12 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"Path":     parsed.EscapedPath(),
 		"Scheme":   parsed.Scheme,
 	}
+}
+
+func getOrderedKeys(headers map[string]string) (keys []string) {
+	for k := range headers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return
 }

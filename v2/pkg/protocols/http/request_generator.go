@@ -1,7 +1,7 @@
 package http
 
 import (
-	"sort"
+	"reflect"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -20,37 +20,16 @@ type requestGenerator struct {
 	request         *Request
 	options         *protocols.ExecuterOptions
 	payloadIterator *generators.Iterator
-	sniperData      *sniperData
-	payloads        map[string]interface{}
-}
-
-type sniperData struct {
-	currentPosition     int
-	sniperPositionCount int
-	dataPositionCount   int
-	bodyPositionCount   int
-	methodPositionCount int
-	headerPositionCount int
-	originalData        string
-	data                string
-	originalHeaders     map[string]string
-	headers             map[string]string
-	method              string
-	body                string
+	currentPosition int
+	totalEvaluated  int
+	prevPayload     map[string]interface{}
 }
 
 // newGenerator creates a new request generator instance
 func (r *Request) newGenerator() *requestGenerator {
 	generator := &requestGenerator{request: r, options: r.options}
-	generator.sniperData = &sniperData{
-		currentPosition:     1,
-		sniperPositionCount: 0,
-		headers:             make(map[string]string),
-		originalHeaders:     r.Headers,
-		method:              r.Method,
-		body:                r.Body,
-	}
 	if len(r.Payloads) > 0 {
+		r.generator.TotalPositionCount = generator.payloadPositionCount()
 		generator.payloadIterator = r.generator.NewIterator()
 	}
 	return generator
@@ -58,120 +37,95 @@ func (r *Request) newGenerator() *requestGenerator {
 
 // nextValue returns the next path or the next raw request depending on user input
 // It returns false if all the inputs have been exhausted by the generator instance.
-func (r *requestGenerator) nextValue() (value string, payloads map[string]interface{}, result bool) {
-	// For both raw/path requests, start with the request at current index.
+func (r *requestGenerator) nextValue() (string, map[string]interface{}, bool) {
+
+	switch {
+	case len(r.request.Path) > 0 && r.currentIndex < len(r.request.Path):
+		return r.fetchValue(r.request.Path)
+	case len(r.request.Raw) > 0 && r.currentIndex < len(r.request.Raw):
+		return r.fetchValue(r.request.Raw)
+	default:
+		return "", nil, false
+	}
+}
+
+func (r *requestGenerator) fetchValue(data []string) (value string, payloads map[string]interface{}, ok bool) {
+	// Start with the request at current index.
 	// If we are not at the start, then check if the iterator for payloads
 	// has finished if there are any.
 	//
 	// If the iterator has finished for the current request
 	// then reset it and move on to the next value, otherwise use the last request.
-
-	if len(r.request.Path) > 0 && r.currentIndex < len(r.request.Path) {
-		if r.payloadIterator != nil {
-			payload, ok := r.payloadIterator.Value()
-			if !ok {
-				r.currentIndex++
-				r.payloadIterator.Reset()
-
-				// No more payloads request for us now.
-				if len(r.request.Path) == r.currentIndex {
-					return "", nil, false
-				}
-				if item := r.request.Path[r.currentIndex]; item != "" {
-					newPayload, ok := r.payloadIterator.Value()
-					return item, newPayload, ok
-				}
-				return "", nil, false
-			}
-			return r.request.Path[r.currentIndex], payload, true
-		}
-		if value := r.request.Path[r.currentIndex]; value != "" {
+	if r.payloadIterator == nil {
+		if value = data[r.currentIndex]; value != "" {
 			r.currentIndex++
 			return value, nil, true
 		}
-	}
+	} else {
+		payloads, ok = r.payloadIterator.Value()
+		if !ok {
+			r.currentIndex++
+			r.payloadIterator.Reset()
 
-	if len(r.request.Raw) > 0 && r.currentIndex < len(r.request.Raw) {
-		if r.payloadIterator != nil {
-			payload, ok := r.payloadIterator.Value()
-			if !ok {
-				r.currentIndex++
-				r.payloadIterator.Reset()
-
-				// No more payloads request for us now.
-				if len(r.request.Raw) == r.currentIndex {
-					return "", nil, false
-				}
-				if item := r.request.Raw[r.currentIndex]; item != "" {
-					newPayload, ok := r.payloadIterator.Value()
-					return item, newPayload, ok
-				}
+			// No more payloads request for us now.
+			if len(data) == r.currentIndex {
 				return "", nil, false
 			}
-			return r.request.Raw[r.currentIndex], payload, true
-		}
-		if item := r.request.Raw[r.currentIndex]; item != "" {
-			r.currentIndex++
-			return item, nil, true
+			if value = data[r.currentIndex]; value == "" {
+				return "", nil, false
+			} else {
+				payloads, ok = r.payloadIterator.Value()
+			}
+		} else {
+			value = data[r.currentIndex]
 		}
 	}
-	return "", nil, false
+	if r.request.attackType == generators.Sniper {
+		r.setCurrentPosition(r.prevPayload, payloads)
+	}
+	return
+}
+
+func (r *requestGenerator) setCurrentPosition(prevPayload, payload map[string]interface{}) {
+	r.totalEvaluated = 0
+	if reflect.DeepEqual(prevPayload, payload) {
+		r.currentPosition++
+	} else {
+		r.currentPosition = 1
+	}
+	r.prevPayload = payload
 }
 
 // setPayloadPositionValues calculates the position count and sets values to be used while parsing
-func (r *requestGenerator) setPayloadPositionValues(data string, payloads map[string]interface{}) {
-	r.sniperData.originalData = data
-	r.payloads = payloads
+func (r *requestGenerator) payloadPositionCount() int {
+	dataPositionCount := 0
+	for _, value := range r.request.Path {
+		dataPositionCount += strings.Count(value, "§") / 2
+	}
+	for _, value := range r.request.Raw {
+		dataPositionCount += strings.Count(value, "§") / 2
+	}
 
-	r.sniperData.currentPosition = 1
-
-	r.sniperData.dataPositionCount = strings.Count(r.sniperData.originalData, "§") / 2
-	r.sniperData.bodyPositionCount = strings.Count(r.request.Body, "§") / 2
-	r.sniperData.methodPositionCount = strings.Count(r.request.Method, "§") / 2
+	bodyPositionCount := strings.Count(r.request.Body, "§") / 2
+	methodPositionCount := strings.Count(r.request.Method, "§") / 2
 
 	headerPositionCount := 0
-	for _, v := range r.sniperData.originalHeaders {
+	for _, v := range r.request.Headers {
 		headerPositionCount += strings.Count(v, "§") / 2
 	}
-	r.sniperData.headerPositionCount = headerPositionCount
-
 	// total number of payload positions
-	r.sniperData.sniperPositionCount = r.sniperData.dataPositionCount +
-		r.sniperData.bodyPositionCount +
-		r.sniperData.methodPositionCount +
-		r.sniperData.headerPositionCount
+	return dataPositionCount +
+		bodyPositionCount +
+		methodPositionCount +
+		headerPositionCount
 }
-
 
 // replaceSniperPosition parses the payload positions for sniper attack type
-func (r *requestGenerator) replaceSniperPositions() {
-	position := r.sniperData.currentPosition
-
-	for key, value := range r.payloads {
-		r.sniperData.data = replacer.ReplaceNth(r.sniperData.originalData, key, value.(string), position)
-
-		position -= r.sniperData.dataPositionCount
-		r.sniperData.body = replacer.ReplaceNth(r.request.Body, key, value.(string), position)
-
-		position -= r.sniperData.bodyPositionCount
-		r.sniperData.method = replacer.ReplaceNth(r.request.Method, key, value.(string), position)
-
-		position -= r.sniperData.methodPositionCount
-		i := 0
-		// get ordered header keys to iterate over
-		for _, v := range getOrderedKeys(r.sniperData.originalHeaders) {
-			r.sniperData.headers[v] = replacer.ReplaceNth(r.sniperData.originalHeaders[v], key, value.(string), position-i)
-			i++
-		}
-		r.sniperData.currentPosition++
-		return
+func (r *requestGenerator) replaceSniperPositions(template string, payloads map[string]interface{}) string {
+	for key, value := range payloads {
+		result, count := replacer.ReplaceNth(template, key, value.(string), r.currentPosition-r.totalEvaluated)
+		r.totalEvaluated += count
+		return result
 	}
-}
-
-func getOrderedKeys(headers map[string]string) (keys []string) {
-	for k := range headers {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return
+	return ""
 }

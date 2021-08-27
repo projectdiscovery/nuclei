@@ -8,8 +8,9 @@ import (
 
 // Generator is the generator struct for generating payloads
 type Generator struct {
-	Type     Type
-	payloads map[string][]string
+	Type               Type
+	TotalPositionCount int
+	payloads           map[string][]string
 }
 
 // Type is type of attack
@@ -63,11 +64,12 @@ func New(payloads map[string]interface{}, payloadType Type, templatePath string)
 
 // Iterator is a single instance of an iterator for a generator structure
 type Iterator struct {
-	Type        Type
-	position    int
-	msbIterator int
-	total       int
-	payloads    []*payloadIterator
+	Type               Type
+	TotalPositionCount int
+	position           int
+	msbIterator        int
+	total              int
+	payloads           []*payloadIterator
 }
 
 // NewIterator creates a new iterator for the payloads generator
@@ -78,8 +80,9 @@ func (g *Generator) NewIterator() *Iterator {
 		payloads = append(payloads, &payloadIterator{name: name, values: values})
 	}
 	iterator := &Iterator{
-		Type:     g.Type,
-		payloads: payloads,
+		Type:               g.Type,
+		payloads:           payloads,
+		TotalPositionCount: g.TotalPositionCount,
 	}
 	iterator.total = iterator.Total()
 	return iterator
@@ -129,7 +132,7 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 	case Sniper:
 		return i.sniperValue()
 	case BatteringRam:
-		return i.sniperValue()
+		return i.batteringRamValue()
 	case PitchFork:
 		return i.pitchforkValue()
 	case ClusterBomb:
@@ -137,6 +140,25 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 	default:
 		return i.sniperValue()
 	}
+}
+
+// batteringRamValue returns a list of all payloads for the iterator
+func (i *Iterator) batteringRamValue() (map[string]interface{}, bool) {
+	values := make(map[string]interface{}, 1)
+
+	currentIndex := i.msbIterator
+	payload := i.payloads[currentIndex]
+	if !payload.next() {
+		i.msbIterator++
+		if i.msbIterator == len(i.payloads) {
+			return nil, false
+		}
+		return i.batteringRamValue()
+	}
+	values[payload.name] = payload.value()
+	payload.incrementPosition()
+	i.position++
+	return values, true
 }
 
 // sniperValue returns a list of all payloads for the iterator
@@ -153,8 +175,11 @@ func (i *Iterator) sniperValue() (map[string]interface{}, bool) {
 		return i.sniperValue()
 	}
 	values[payload.name] = payload.value()
-	payload.incrementPosition()
 	i.position++
+	if i.TotalPositionCount > 0 && i.position%i.TotalPositionCount != 0 {
+		return values, true
+	}
+	payload.incrementPosition()
 	return values, true
 }
 
