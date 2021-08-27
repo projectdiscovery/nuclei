@@ -11,7 +11,8 @@ import (
 type Severity int
 
 const (
-	Info Severity = iota
+	Undefined Severity = iota
+	Info
 	Low
 	Medium
 	High
@@ -39,7 +40,7 @@ func toSeverity(valueToMap string) (Severity, error) {
 
 func GetSupportedSeverities() Severities {
 	var result []Severity
-	for index := Severity(0); index < limit; index++ {
+	for index := Severity(1); index < limit; index++ {
 		result = append(result, index)
 	}
 	return result
