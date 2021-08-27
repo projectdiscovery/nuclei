@@ -48,8 +48,7 @@ func LoadWorkflow(templatePath string, tagFilter *filter.TagFilter) (bool, error
 		if validationError := validateMandatoryInfoFields(&templateInfo); validationError != nil {
 			return false, validationError
 		}
-
-		return isTemplateInfoMetadataMatch(tagFilter, &templateInfo, nil) // we don't want workflows to be loaded by tags
+		return true, nil
 	}
 
 	return false, nil
