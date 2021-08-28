@@ -6,12 +6,15 @@ import (
 	"testing"
 
 	"github.com/miekg/dns"
+	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/stretchr/testify/require"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -29,7 +32,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -61,7 +64,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -144,7 +147,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
@@ -214,7 +217,7 @@ func TestDNSMakeResult(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")

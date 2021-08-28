@@ -4,23 +4,32 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
+	"github.com/rs/xid"
+	"go.uber.org/atomic"
+	"go.uber.org/ratelimit"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
@@ -29,11 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
-	"github.com/rs/xid"
-	"go.uber.org/atomic"
-	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Runner is a client for running the enumeration process.
@@ -49,9 +54,10 @@ type Runner struct {
 	progress        progress.Progress
 	colorizer       aurora.Aurora
 	issuesClient    *reporting.Client
-	severityColors  *colorizer.Colorizer
+	addColor        func(severity.Severity) string
 	browser         *engine.Browser
 	ratelimiter     ratelimit.Limiter
+	hostErrors      *hosterrorscache.Cache
 }
 
 // New creates a new client for running enumeration process.
@@ -118,7 +124,7 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.severityColors = colorizer.New(runner.colorizer)
+	runner.addColor = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
@@ -137,7 +143,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.inputCount = 0
 	dupeCount := 0
 
-	// Handle multiple target
+	// Handle multiple targets
 	if len(options.Targets) != 0 {
 		for _, target := range options.Targets {
 			url := strings.TrimSpace(target)
@@ -204,7 +210,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.Output, options.TraceLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -226,7 +232,7 @@ func New(options *types.Options) (*Runner, error) {
 	// create project file if requested or load existing one
 	if options.Project {
 		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: options.ProjectPath == ""})
+		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
 		if projectFileErr != nil {
 			return nil, projectFileErr
 		}
@@ -242,6 +248,7 @@ func New(options *types.Options) (*Runner, error) {
 			Output:         runner.output,
 			IssuesClient:   runner.issuesClient,
 			Progress:       runner.progress,
+			Debug:          runner.options.Debug,
 		})
 		if err != nil {
 			gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -289,17 +296,31 @@ func (r *Runner) RunEnumeration() error {
 	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
-	executerOpts := protocols.ExecuterOptions{
-		Output:       r.output,
-		Options:      r.options,
-		Progress:     r.progress,
-		Catalog:      r.catalog,
-		IssuesClient: r.issuesClient,
-		RateLimiter:  r.ratelimiter,
-		Interactsh:   r.interactsh,
-		ProjectFile:  r.projectFile,
-		Browser:      r.browser,
+	var cache *hosterrorscache.Cache
+	if r.options.HostMaxErrors > 0 {
+		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
+	r.hostErrors = cache
+	executerOpts := protocols.ExecuterOptions{
+		Output:          r.output,
+		Options:         r.options,
+		Progress:        r.progress,
+		Catalog:         r.catalog,
+		IssuesClient:    r.issuesClient,
+		RateLimiter:     r.ratelimiter,
+		Interactsh:      r.interactsh,
+		ProjectFile:     r.projectFile,
+		Browser:         r.browser,
+		HostErrorsCache: cache,
+	}
+
+	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	if err != nil {
+		return errors.Wrap(err, "Could not create loader.")
+	}
+
+	executerOpts.WorkflowLoader = workflowLoader
+
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
 		Workflows:          r.options.Workflows,
@@ -308,7 +329,7 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeTags:        r.options.ExcludeTags,
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
-		Severities:         r.options.Severity,
+		Severities:         r.options.Severities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
@@ -345,7 +366,7 @@ func (r *Runner) RunEnumeration() error {
 
 	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
 
-	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" {
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
 		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
@@ -376,7 +397,7 @@ func (r *Runner) RunEnumeration() error {
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
-		// it can't be know in advance which requests will be called
+		// it can't be known in advance which requests will be called
 		if len(template.Workflows) > 0 {
 			continue
 		}
@@ -401,15 +422,16 @@ func (r *Runner) RunEnumeration() error {
 	for _, cluster := range clusters {
 		if len(cluster) > 1 && !r.options.OfflineHTTP {
 			executerOpts := protocols.ExecuterOptions{
-				Output:       r.output,
-				Options:      r.options,
-				Progress:     r.progress,
-				Catalog:      r.catalog,
-				RateLimiter:  r.ratelimiter,
-				IssuesClient: r.issuesClient,
-				Browser:      r.browser,
-				ProjectFile:  r.projectFile,
-				Interactsh:   r.interactsh,
+				Output:          r.output,
+				Options:         r.options,
+				Progress:        r.progress,
+				Catalog:         r.catalog,
+				RateLimiter:     r.ratelimiter,
+				IssuesClient:    r.issuesClient,
+				Browser:         r.browser,
+				ProjectFile:     r.projectFile,
+				Interactsh:      r.interactsh,
+				HostErrorsCache: cache,
 			}
 			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
 
@@ -443,6 +465,11 @@ func (r *Runner) RunEnumeration() error {
 	if templateCount == 0 {
 		return errors.New("no templates were found")
 	}
+
+	/*
+		TODO does it make sense to run the logic below if there are no targets specified?
+		Can we safely assume the user is just experimenting with the template/workflow filters before running them?
+	*/
 
 	results := &atomic.Bool{}
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
@@ -486,7 +513,7 @@ func (r *Runner) RunEnumeration() error {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) readNewTemplatesFile() ([]string, error) {
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return nil, err
@@ -507,7 +534,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) countNewTemplates() int {
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return 0

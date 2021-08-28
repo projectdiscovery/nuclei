@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -35,14 +34,12 @@ import (
 )
 
 const (
-	userName = "projectdiscovery"
-	repoName = "nuclei-templates"
+	userName             = "projectdiscovery"
+	repoName             = "nuclei-templates"
+	nucleiIgnoreFile     = ".nuclei-ignore"
+	nucleiConfigFilename = ".templates-config.json"
+	defaultIgnoreURL     = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 )
-
-const nucleiIgnoreFile = ".nuclei-ignore"
-
-// nucleiConfigFilename is the filename of nuclei configuration file.
-const nucleiConfigFilename = ".templates-config.json"
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
@@ -57,23 +54,18 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
-	configDir := path.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
-	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		configuration, readErr := config.ReadConfiguration()
-		if err != nil {
-			return readErr
-		}
-		r.templatesConfig = configuration
+	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
+		return errors.Wrap(err, "could not read configuration file")
 	}
 
-	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+	// If the config doesn't exist, write it now.
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
-			IgnoreURL:          ignoreURL,
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
+			IgnoreURL:          defaultIgnoreURL,
 			NucleiVersion:      config.Version,
 		}
 		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
@@ -85,46 +77,15 @@ func (r *Runner) updateTemplates() error {
 	if r.options.NoUpdateTemplates {
 		return nil
 	}
+
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
 	//
 	// Also at the same time fetch latest version from github to do outdated nuclei
 	// and templates check.
 	checkedIgnore := false
-	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
-		r.fetchLatestVersionsFromGithub()
-
-		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
-			ignoreURL = r.templatesConfig.IgnoreURL
-		}
-		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
-
-		checkedIgnore = true
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
-		if reqErr == nil {
-			resp, httpGet := http.DefaultClient.Do(req)
-			if httpGet != nil {
-				if resp != nil && resp.Body != nil {
-					resp.Body.Close()
-				}
-				gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-			} else {
-				data, _ := ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-
-				if len(data) > 0 {
-					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
-				}
-				if r.templatesConfig != nil {
-					err = config.WriteConfiguration(r.templatesConfig, false, true)
-					if err != nil {
-						gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-					}
-				}
-			}
-		}
-		cancel()
+	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
+		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
 	}
 
 	ctx := context.Background()
@@ -133,10 +94,10 @@ func (r *Runner) updateTemplates() error {
 
 		// Use custom location if user has given a template directory
 		r.templatesConfig = &config.Config{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
-			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
+		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -213,6 +174,58 @@ func (r *Runner) updateTemplates() error {
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
 	}
 	return nil
+}
+
+// readInternalConfigurationFile reads the internal configuration file for nuclei
+func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
+	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
+		configuration, readErr := config.ReadConfiguration()
+		if readErr != nil {
+			return readErr
+		}
+		r.templatesConfig = configuration
+
+		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+			r.options.TemplatesDirectory = configuration.TemplatesDirectory
+		}
+	}
+	return nil
+}
+
+// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from github
+func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
+	ignoreURL := defaultIgnoreURL
+	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
+		ignoreURL = r.templatesConfig.IgnoreURL
+	}
+	gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
+	if reqErr == nil {
+		resp, httpGetErr := http.DefaultClient.Do(req)
+		if httpGetErr != nil {
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, httpGetErr)
+		} else {
+			data, _ := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+
+			if len(data) > 0 {
+				_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+			}
+			if r.templatesConfig != nil {
+				if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
+					gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+				}
+			}
+		}
+	}
+	cancel()
+	return true
 }
 
 // getLatestReleaseFromGithub returns the latest release from github
@@ -294,14 +307,14 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	if r.options.Verbose {
 		r.printUpdateChangelog(results, version)
 	}
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	err = writeTemplatesChecksum(checksumFile, results.checksums)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
 	// Write the additions to a cached file for new runs.
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	buffer := &bytes.Buffer{}
 	for _, addition := range results.additions {
 		buffer.WriteString(addition)
@@ -334,27 +347,27 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
 		if name == "" {
 			continue
 		}
-		paths := strings.Split(directory, "/")
-		finalPath := strings.Join(paths[1:], "/")
+		paths := strings.Split(directory, string(os.PathSeparator))
+		finalPath := filepath.Join(paths[1:]...)
 
 		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
 		}
 		results.totalCount++
-		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
+		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err := os.MkdirAll(templateDirectory, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
-		templatePath := path.Join(templateDirectory, name)
+		templatePath := filepath.Join(templateDirectory, name)
 
 		isAddition := false
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
@@ -385,9 +398,9 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
-			results.additions = append(results.additions, path.Join(finalPath, name))
+			results.additions = append(results.additions, filepath.Join(finalPath, name))
 		} else if checksumOK && oldChecksum[0] != checksum {
-			results.modifications = append(results.modifications, path.Join(finalPath, name))
+			results.modifications = append(results.modifications, filepath.Join(finalPath, name))
 		}
 		results.checksums[templatePath] = checksum
 	}
@@ -398,7 +411,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		_, ok := results.checksums[k]
 		if !ok && v[0] == v[1] {
 			os.Remove(k)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil

@@ -2,21 +2,31 @@ package operators
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 )
 
 // Operators contains the operators that can be applied on protocols
 type Operators struct {
-	// Matchers contains the detection mechanism for the request to identify
-	// whether the request was successful
-	Matchers []*matchers.Matcher `yaml:"matchers,omitempty"`
-	// Extractors contains the extraction mechanism for the request to identify
-	// and extract parts of the response.
-	Extractors []*extractors.Extractor `yaml:"extractors,omitempty"`
-	// MatchersCondition is the condition of the matchers
-	// whether to use AND or OR. Default is OR.
-	MatchersCondition string `yaml:"matchers-condition,omitempty"`
+	// description: |
+	//   Matchers contains the detection mechanism for the request to identify
+	//   whether the request was successful by doing pattern matching
+	//   on request/responses.
+	//
+	//   Multiple matchers can be combined together with `matcher-condition` flag
+	//   which accepts either `and` or `or` as argument.
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty" jsonschema:"title=matchers to run on response,description=Detection mechanism to identify whether the request was successful by doing pattern matching"`
+	// description: |
+	//   Extractors contains the extraction mechanism for the request to identify
+	//   and extract parts of the response.
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty" jsonschema:"title=extractors to run on response,description=Extractors contains the extraction mechanism for the request to identify and extract parts of the response"`
+	// description: |
+	//   MatchersCondition is the condition between the matchers. Default is OR.
+	// values:
+	//   - "and"
+	//   - "or"
+	MatchersCondition string `yaml:"matchers-condition,omitempty" jsonschema:"title=condition between the matchers,description=Conditions between the matchers,enum=and,enum=or"`
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
 }

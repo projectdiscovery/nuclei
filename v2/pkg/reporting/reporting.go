@@ -4,15 +4,18 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/multierr"
 )
 
 // Options is a configuration file for nuclei reporting module
@@ -31,46 +34,51 @@ type Options struct {
 	DiskExporter *disk.Options `yaml:"disk"`
 	// SarifExporter contains configuration options for Sarif Exporter Module
 	SarifExporter *sarif.Options `yaml:"sarif"`
+	// ElasticsearchExporter contains configuration options for Elasticsearch Exporter Module
+	ElasticsearchExporter *es.Options `yaml:"elasticsearch"`
 }
 
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {
-	Severity string `yaml:"severity"`
-	severity []string
-	Tags     string `yaml:"tags"`
-	tags     []string
-}
-
-// Compile compiles the filter creating match structures.
-func (f *Filter) Compile() {
-	parts := strings.Split(f.Severity, ",")
-	for _, part := range parts {
-		f.severity = append(f.severity, strings.TrimSpace(part))
-	}
-	parts = strings.Split(f.Tags, ",")
-	for _, part := range parts {
-		f.tags = append(f.tags, strings.TrimSpace(part))
-	}
+	Severities severity.Severities `yaml:"severity"`
+	Tags       model.StringSlice   `yaml:"tags"`
 }
 
 // GetMatch returns true if a filter matches result event
-func (f *Filter) GetMatch(event *output.ResultEvent) bool {
-	severity := types.ToString(event.Info["severity"])
-	if len(f.severity) > 0 {
-		return stringSliceContains(f.severity, severity)
+func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
+	return isSeverityMatch(event, filter) && isTagMatch(event, filter) // TODO revisit this
+}
+
+func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
+	filterTags := filter.Tags
+	if filterTags.IsEmpty() {
+		return true
 	}
 
-	tags := event.Info["tags"]
-	tagParts := strings.Split(types.ToString(tags), ",")
-	for i, tag := range tagParts {
-		tagParts[i] = strings.TrimSpace(tag)
-	}
-	for _, tag := range f.tags {
-		if stringSliceContains(tagParts, tag) {
+	tags := event.Info.Tags.ToSlice()
+	for _, tag := range filterTags.ToSlice() {
+		if stringSliceContains(tags, tag) {
 			return true
 		}
 	}
+
+	return false
+}
+
+func isSeverityMatch(event *output.ResultEvent, filter *Filter) bool {
+	resultEventSeverity := event.Info.SeverityHolder.Severity // TODO review
+
+	if len(filter.Severities) == 0 {
+		return true
+	}
+
+	for _, current := range filter.Severities {
+		if current == resultEventSeverity {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -98,17 +106,6 @@ type Client struct {
 
 // New creates a new nuclei issue tracker reporting client
 func New(options *Options, db string) (*Client, error) {
-	if options == nil {
-		return nil, errors.New("no options passed")
-	}
-
-	if options.AllowList != nil {
-		options.AllowList.Compile()
-	}
-	if options.DenyList != nil {
-		options.DenyList.Compile()
-	}
-
 	client := &Client{options: options}
 	if options.Github != nil {
 		tracker, err := github.New(options.Github)
@@ -140,6 +137,13 @@ func New(options *Options, db string) (*Client, error) {
 	}
 	if options.SarifExporter != nil {
 		exporter, err := sarif.New(options.SarifExporter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create exporting client")
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
+	if options.ElasticsearchExporter != nil {
+		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create exporting client")
 		}
