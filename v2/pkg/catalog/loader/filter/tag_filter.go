@@ -54,7 +54,7 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 }
 
 func isSeverityMatch(tagFilter *TagFilter, templateSeverity severity.Severity) bool {
-	if len(tagFilter.severities) == 0 {
+	if len(tagFilter.severities) == 0 || templateSeverity == severity.Undefined {
 		return true
 	}
 

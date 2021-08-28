@@ -24,6 +24,11 @@ func TestYamlUnmarshalFail(t *testing.T) {
 	testUnmarshalFail(t, yaml.Unmarshal, createYAML)
 }
 
+func TestGetSupportedSeverities(t *testing.T) {
+	severities := GetSupportedSeverities()
+	assert.Equal(t, severities, Severities{Info, Low, Medium, High, Critical})
+}
+
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
 	payloads := [...]string{
 		payloadCreator("Info"),
