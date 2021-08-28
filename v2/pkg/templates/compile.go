@@ -1,25 +1,43 @@
 package templates
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
+var (
+	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
+	fieldErrorRegexp          = regexp.MustCompile(`not found in`)
+)
+
+var parsedTemplatesCache *cache.Templates
+
+func init() {
+	parsedTemplatesCache = cache.New()
+}
+
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
+// TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+		return value.(*Template), err
+	}
+
 	template := &Template{}
 
 	f, err := os.Open(filePath)
@@ -38,9 +56,12 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		data = preprocessor.Process(data)
 	}
 
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	err = yaml.UnmarshalStrict(data, template)
 	if err != nil {
-		return nil, err
+		if !fieldErrorRegexp.MatchString(err.Error()) {
+			return nil, err
+		}
+		gologger.Warning().Msgf("Unrecognized fields in template %s: %s", filePath, err)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -127,8 +148,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.TotalRequests += template.Executer.Requests()
 	}
 	if template.Executer == nil && template.CompiledWorkflow == nil {
-		return nil, errors.New("cannot create template executer")
+		return nil, ErrCreateTemplateExecutor
 	}
 	template.Path = filePath
+
+	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
 }
