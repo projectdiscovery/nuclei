@@ -59,6 +59,12 @@ func New(payloads map[string]interface{}, payloadType Type, templatePath string)
 			totalLength = len(compiled[v])
 		}
 	}
+	// Validate the sniper/batteringram payload set
+	if payloadType == Sniper || payloadType == BatteringRam {
+		if len(payloads) != 1 {
+			return nil, errors.New("sniper/batteringram must have single payload set")
+		}
+	}
 	return generator, nil
 }
 

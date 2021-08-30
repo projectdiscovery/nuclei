@@ -2,11 +2,11 @@ package http
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // requestGenerator generates requests sequentially based on various
@@ -29,7 +29,11 @@ type requestGenerator struct {
 func (r *Request) newGenerator() *requestGenerator {
 	generator := &requestGenerator{request: r, options: r.options}
 	if len(r.Payloads) > 0 {
-		r.generator.TotalPositionCount = generator.payloadPositionCount()
+		if r.attackType == generators.Sniper {
+			for k := range r.Payloads {
+				r.generator.TotalPositionCount += generator.payloadPositionCount(k)
+			}
+		}
 		generator.payloadIterator = r.generator.NewIterator()
 	}
 	return generator
@@ -97,21 +101,23 @@ func (r *requestGenerator) setCurrentPosition(prevPayload, payload map[string]in
 }
 
 // setPayloadPositionValues calculates the position count and sets values to be used while parsing
-func (r *requestGenerator) payloadPositionCount() int {
+func (r *requestGenerator) payloadPositionCount(key string) int {
+	regex := utils.PlaceholderRegex(key)
+
 	dataPositionCount := 0
 	for _, value := range r.request.Path {
-		dataPositionCount += strings.Count(value, "§") / 2
+		dataPositionCount += len(regex.FindAllStringIndex(value, -1))
 	}
 	for _, value := range r.request.Raw {
-		dataPositionCount += strings.Count(value, "§") / 2
+		dataPositionCount += len(regex.FindAllStringIndex(value, -1))
 	}
 
-	bodyPositionCount := strings.Count(r.request.Body, "§") / 2
-	methodPositionCount := strings.Count(r.request.Method, "§") / 2
+	bodyPositionCount := len(regex.FindAllStringIndex(r.request.Body, -1))
+	methodPositionCount := len(regex.FindAllStringIndex(r.request.Method, -1))
 
 	headerPositionCount := 0
 	for _, v := range r.request.Headers {
-		headerPositionCount += strings.Count(v, "§") / 2
+		headerPositionCount += len(regex.FindAllStringIndex(v, -1))
 	}
 	// total number of payload positions
 	return dataPositionCount +
@@ -127,5 +133,5 @@ func (r *requestGenerator) replaceSniperPositions(template string, payloads map[
 		r.totalEvaluated += count
 		return result
 	}
-	return ""
+	return template
 }

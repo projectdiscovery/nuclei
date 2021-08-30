@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Payload marker constants
@@ -38,23 +39,25 @@ func Replace(template string, values map[string]interface{}) string {
 	return final
 }
 
+// ReplaceNth replaces nth placeholder with value and other with key,
+// returning parsed template and the total number of placeholders encountered.
 func ReplaceNth(template, key, value string, n int) (string, int) {
-	old := MarkerGeneral + key + MarkerGeneral
-	new := value
-	i := 0
+	regex := utils.PlaceholderRegex(key)
+
 	totalCount := 0
+	i := 0
 	for m := 1; i < len(template); m++ {
-		x := strings.Index(template[i:], old)
-		if x < 0 {
+		loc := regex.FindStringIndex(template[i:])
+		if len(loc) < 2 {
 			break
 		}
 		totalCount++
-		i += x
+		i += loc[0]
 		if m == n {
-			template = template[:i] + new + template[i+len(old):]
-			i += len(new)
+			template = template[:i] + value + template[i+(loc[1]-loc[0]):]
+			i += len(value)
 		} else {
-			template = template[:i] + key + template[i+len(old):]
+			template = template[:i] + key + template[i+(loc[1]-loc[0]):]
 			i += len(key)
 		}
 	}

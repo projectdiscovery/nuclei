@@ -60,6 +60,50 @@ func TestReplaceNth(t *testing.T) {
 			want:  "path/path/path/path",
 			want1: 3,
 		},
+		{
+			name: "foo",
+			args: args{
+				template: "path/{{path}}/{{path}}",
+				key:      "path",
+				value:    "foo",
+				n:        1,
+			},
+			want:  "path/foo/path",
+			want1: 2,
+		},
+		{
+			name: "bar",
+			args: args{
+				template: "path/{{path}}/§path§",
+				key:      "path",
+				value:    "bar",
+				n:        2,
+			},
+			want:  "path/path/bar",
+			want1: 2,
+		},
+		{
+			name: "none",
+			args: args{
+				template: "path/{{path}}/§path§",
+				key:      "path",
+				value:    "bar",
+				n:        3,
+			},
+			want:  "path/path/path",
+			want1: 2,
+		},
+		{
+			name: "none",
+			args: args{
+				template: "path/{{path}}/§path§/§path§",
+				key:      "path",
+				value:    "bar",
+				n:        0,
+			},
+			want:  "path/path/path/path",
+			want1: 3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -10,4 +11,8 @@ func IsBlank(value string) bool {
 
 func IsNotBlank(value string) bool {
 	return !IsBlank(value)
+}
+
+func PlaceholderRegex(key string) *regexp.Regexp {
+	return regexp.MustCompile(`((\{\{)|§)` + key + `((\}\})|§)`)
 }
