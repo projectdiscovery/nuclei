@@ -349,7 +349,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		return err
 	}
 	defer func() {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		}
 		resp.Body.Close()
 	}()
 
