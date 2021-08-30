@@ -379,8 +379,9 @@ func (r *Runner) RunEnumeration() error {
 	messageStr = builder.String()
 	builder.Reset()
 
-	gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
-
+	if r.templatesConfig != nil {
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
@@ -513,6 +514,9 @@ func (r *Runner) RunEnumeration() error {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) readNewTemplatesFile() ([]string, error) {
+	if r.templatesConfig == nil {
+		return nil, nil
+	}
 	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
@@ -534,6 +538,9 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) countNewTemplates() int {
+	if r.templatesConfig == nil {
+		return 0
+	}
 	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
