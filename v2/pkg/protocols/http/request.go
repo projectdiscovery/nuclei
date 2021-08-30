@@ -389,6 +389,8 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		if err != nil {
 			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
+	} else {
+		redirectedResponse = dumpedResponseHeaders
 	}
 
 	// net/http doesn't automatically decompress the response body if an
