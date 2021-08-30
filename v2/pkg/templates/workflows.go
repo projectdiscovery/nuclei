@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -8,10 +9,10 @@ import (
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
+func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
 			continue
 		}
 	}
@@ -21,6 +22,9 @@ func compileWorkflow(preprocessor Preprocessor, options *protocols.ExecuterOptio
 func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader) error {
 	shouldNotValidate := false
 
+	if len(workflow.Template) == 0 && workflow.Tags.IsEmpty() {
+		return errors.New("invalid workflow with no templates or tags")
+	}
 	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
 		shouldNotValidate = true
 	}
