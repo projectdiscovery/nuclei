@@ -85,7 +85,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
 
-		compileWorkflow(preprocessor, &options, compiled, options.WorkflowLoader)
+		compileWorkflow(filePath, preprocessor, &options, compiled, options.WorkflowLoader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
