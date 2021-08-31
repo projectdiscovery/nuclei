@@ -36,7 +36,7 @@ require (
 	github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.12
-	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
+	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe
 	github.com/projectdiscovery/yamldoc-go v1.0.2
 	github.com/remeh/sizedwaitgroup v1.0.0

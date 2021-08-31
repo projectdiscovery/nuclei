@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
@@ -91,6 +92,11 @@ func validateOptions(options *types.Options) error {
 	if err != nil {
 		return err
 	}
+
+	if options.Validate {
+		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
+	}
+
 	return nil
 }
 
@@ -146,6 +152,24 @@ func loadResolvers(options *types.Options) {
 			options.InternalResolversList = append(options.InternalResolversList, part)
 		} else {
 			options.InternalResolversList = append(options.InternalResolversList, part+":53")
+		}
+	}
+}
+
+func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
+	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
+
+	for _, templatePath := range allGivenTemplatePaths {
+		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
+			fileInfo, err := os.Stat(templatePath)
+			if err == nil && fileInfo.IsDir() {
+				relativizedPath, err2 := filepath.Rel(templatesDirectory, templatePath)
+				if err2 != nil || (len(relativizedPath) >= 2 && relativizedPath[:2] == "..") {
+					gologger.Warning().Msgf("The given path (%s) is outside the default template directory path (%s)! "+
+						"Referenced sub-templates with relative paths in workflows will be resolved against the default template directory.", templatePath, templatesDirectory)
+					break
+				}
+			}
 		}
 	}
 }

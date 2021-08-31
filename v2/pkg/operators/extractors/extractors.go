@@ -26,9 +26,9 @@ type Extractor struct {
 	extractorType ExtractorType
 
 	// description: |
-	//   Regex contains the regular expression patterns to exract from a part.
+	//   Regex contains the regular expression patterns to extract from a part.
 	//
-	//   Go regex engine does not supports lookaheads or lookbehinds, so as a result
+	//   Go regex engine does not support lookaheads or lookbehinds, so as a result
 	//   they are also not supported in nuclei.
 	// examples:
 	//   - name: Braintree Access Token Regex

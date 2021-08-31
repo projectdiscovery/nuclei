@@ -350,7 +350,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		return err
 	}
 	defer func() {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		}
 		resp.Body.Close()
 	}()
 
@@ -364,26 +366,32 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		return errors.Wrap(err, "could not dump http response")
 	}
 
-	var bodyReader io.Reader
-	if r.MaxSize != 0 {
-		bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
-	} else {
-		bodyReader = resp.Body
-	}
-	data, err := ioutil.ReadAll(bodyReader)
-	if err != nil {
-		// Ignore body read due to server misconfiguration errors
-		if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
-			gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
-		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
-			return errors.Wrap(err, "could not read http body")
+	var data, redirectedResponse []byte
+	// If the status code is HTTP 101, we should not proceed with reading body.
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		var bodyReader io.Reader
+		if r.MaxSize != 0 {
+			bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
+		} else {
+			bodyReader = resp.Body
 		}
-	}
-	resp.Body.Close()
+		data, err = ioutil.ReadAll(bodyReader)
+		if err != nil {
+			// Ignore body read due to server misconfiguration errors
+			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
+				gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
+			} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
+				return errors.Wrap(err, "could not read http body")
+			}
+		}
+		resp.Body.Close()
 
-	redirectedResponse, err := dumpResponseWithRedirectChain(resp, data)
-	if err != nil {
-		return errors.Wrap(err, "could not read http response with redirect chain")
+		redirectedResponse, err = dumpResponseWithRedirectChain(resp, data)
+		if err != nil {
+			return errors.Wrap(err, "could not read http response with redirect chain")
+		}
+	} else {
+		redirectedResponse = dumpedResponseHeaders
 	}
 
 	// net/http doesn't automatically decompress the response body if an
