@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
 const mandatoryFieldMissingTemplate = "mandatory '%s' field is missing"
@@ -85,8 +88,21 @@ func validateMandatoryInfoFields(info *model.Info) error {
 
 var parsedTemplatesCache *cache.Templates
 
+var fieldErrorRegexp = regexp.MustCompile(`not found in`)
+
 func init() {
 	parsedTemplatesCache = cache.New()
+
+	stats.NewEntry("syntax-warnings", "Got %d syntax warnings for the loaded templates")
+	stats.NewEntry("syntax-errors", "Got %d syntax errors for the loaded templates")
+}
+
+type ErrValidationFailure struct {
+	Err error
+}
+
+func (e ErrValidationFailure) Error() string {
+	return fmt.Sprintf("validation error: %v\n", e.Err)
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
@@ -107,9 +123,15 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	}
 
 	template := &templates.Template{}
-	err = yaml.Unmarshal(data, template)
+	err = yaml.UnmarshalStrict(data, template)
 	if err != nil {
-		return nil, err
+		errString := err.Error()
+		if !fieldErrorRegexp.MatchString(errString) {
+			stats.Increment("syntax-errors")
+			return nil, err
+		}
+		stats.Increment("syntax-warnings")
+		gologger.Warning().Msgf("Syntax warnings for template %s: %s", templatePath, err)
 	}
 	parsedTemplatesCache.Store(templatePath, template, nil)
 	return template, nil
