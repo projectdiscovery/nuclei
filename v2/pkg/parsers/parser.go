@@ -86,11 +86,14 @@ func validateMandatoryInfoFields(info *model.Info) error {
 	return nil
 }
 
-var parsedTemplatesCache *cache.Templates
-
-var fieldErrorRegexp = regexp.MustCompile(`not found in`)
+var (
+	parsedTemplatesCache *cache.Templates
+	ShouldValidate       bool
+	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
+)
 
 func init() {
+
 	parsedTemplatesCache = cache.New()
 
 	stats.NewEntry("syntax-warnings", "Got %d syntax warnings for the loaded templates")
@@ -123,7 +126,11 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 			return nil, err
 		}
 		stats.Increment("syntax-warnings")
-		gologger.Warning().Msgf("Syntax warnings for template %s: %s", templatePath, err)
+		if ShouldValidate {
+			gologger.Error().Msgf("Syntax warnings for template %s: %s", templatePath, err)
+		} else {
+			gologger.Warning().Msgf("Syntax warnings for template %s: %s", templatePath, err)
+		}
 	}
 	parsedTemplatesCache.Store(templatePath, template, nil)
 	return template, nil
