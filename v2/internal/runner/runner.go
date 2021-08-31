@@ -297,8 +297,8 @@ func (r *Runner) RunEnumeration() error {
 	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
 	var cache *hosterrorscache.Cache
-	if r.options.HostMaxErrors > 0 {
-		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
+	if r.options.MaxHostError > 0 {
+		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
 	executerOpts := protocols.ExecuterOptions{
