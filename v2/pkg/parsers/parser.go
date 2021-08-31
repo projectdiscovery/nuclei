@@ -36,7 +36,7 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
-func LoadWorkflow(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+func LoadWorkflow(templatePath string) (bool, error) {
 	template, templateParseError := ParseTemplate(templatePath)
 	if templateParseError != nil {
 		return false, templateParseError
