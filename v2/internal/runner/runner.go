@@ -399,10 +399,11 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
+		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
+		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
+		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
