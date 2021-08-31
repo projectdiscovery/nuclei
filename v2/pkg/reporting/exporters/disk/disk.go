@@ -55,8 +55,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	err := ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
-	return err
+	return ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation

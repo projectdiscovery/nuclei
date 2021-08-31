@@ -418,8 +418,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 	// if nuclei-project is enabled store the response if not previously done
 	if r.options.ProjectFile != nil && !fromcache {
-		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
-		if err != nil {
+		if err := r.options.ProjectFile.Set(dumpedRequest, resp, data); err != nil {
 			return errors.Wrap(err, "could not store in project file")
 		}
 	}
