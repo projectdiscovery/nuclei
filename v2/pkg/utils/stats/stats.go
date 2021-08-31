@@ -84,7 +84,7 @@ func (s *Storage) Display(name string) {
 	if dataValue == 0 {
 		return // don't show for nil stats
 	}
-	gologger.Info().Msgf(data.description, dataValue)
+	gologger.Error().Label("WRN").Msgf(data.description, dataValue)
 }
 
 // GetValue returns the value for a set variable
