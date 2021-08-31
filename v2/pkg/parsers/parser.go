@@ -92,12 +92,17 @@ var (
 	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
 )
 
+const (
+	SyntaxWarningStats = "syntax-warnings"
+	SyntaxErrorStats   = "syntax-errors"
+)
+
 func init() {
 
 	parsedTemplatesCache = cache.New()
 
-	stats.NewEntry("syntax-warnings", "Got %d syntax warnings for the loaded templates")
-	stats.NewEntry("syntax-errors", "Got %d syntax errors for the loaded templates")
+	stats.NewEntry(SyntaxWarningStats, "Got %d syntax warnings for the loaded templates")
+	stats.NewEntry(SyntaxErrorStats, "Got %d syntax errors for the loaded templates")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
@@ -122,10 +127,10 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	if err != nil {
 		errString := err.Error()
 		if !fieldErrorRegexp.MatchString(errString) {
-			stats.Increment("syntax-errors")
+			stats.Increment(SyntaxErrorStats)
 			return nil, err
 		}
-		stats.Increment("syntax-warnings")
+		stats.Increment(SyntaxWarningStats)
 		if ShouldValidate {
 			gologger.Error().Msgf("Syntax warnings for template %s: %s", templatePath, err)
 		} else {
