@@ -97,14 +97,6 @@ func init() {
 	stats.NewEntry("syntax-errors", "Got %d syntax errors for the loaded templates")
 }
 
-type ErrValidationFailure struct {
-	Err error
-}
-
-func (e ErrValidationFailure) Error() string {
-	return fmt.Sprintf("validation error: %v\n", e.Err)
-}
-
 // ParseTemplate parses a template and returns a *templates.Template structure
 func ParseTemplate(templatePath string) (*templates.Template, error) {
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
