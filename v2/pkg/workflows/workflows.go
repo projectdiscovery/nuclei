@@ -9,9 +9,9 @@ import (
 type Workflow struct {
 	// description: |
 	//   Workflows is a list of workflows to execute for a template.
-	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty"`
+	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty" jsonschema:"title=list of workflows to execute,description=List of workflows to execute for template"`
 
-	Options *protocols.ExecuterOptions
+	Options *protocols.ExecuterOptions `yaml:"-"`
 }
 
 // WorkflowTemplate is a template to be ran as part of a workflow
@@ -23,16 +23,16 @@ type WorkflowTemplate struct {
 	//     value: "\"dns/worksites-detection.yaml\""
 	//   - name: A template directory
 	//     value: "\"misconfigurations/aem\""
-	Template string `yaml:"template,omitempty"`
+	Template string `yaml:"template,omitempty" jsonschema:"title=template/directory to execute,description=Template or directory to execute as part of workflow"`
 	// description: |
 	//    Tags to run templates based on.
-	Tags model.StringSlice `yaml:"tags,omitempty"`
+	Tags model.StringSlice `yaml:"tags,omitempty" jsonschema:"title=tags to execute,description=Tags to run template based on"`
 	// description: |
 	//    Matchers perform name based matching to run subtemplates for a workflow.
-	Matchers []*Matcher `yaml:"matchers,omitempty"`
+	Matchers []*Matcher `yaml:"matchers,omitempty" jsonschema:"title=name based template result matchers,description=Matchers perform name based matching to run subtemplates for a workflow"`
 	// description: |
 	//    Subtemplates are ran if the `template` field Template matches.
-	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=subtemplate based result matchers,description=Subtemplates are ran if the template field Template matches"`
 	// Executers perform the actual execution for the workflow template
 	Executers []*ProtocolExecuterPair `yaml:"-"`
 }
@@ -47,8 +47,8 @@ type ProtocolExecuterPair struct {
 type Matcher struct {
 	// description: |
 	//    Name is the name of the item to match.
-	Name string `yaml:"name,omitempty"`
+	Name string `yaml:"name,omitempty" jsonschema:"title=name of item to match,description=Name of item to match"`
 	// description: |
 	//    Subtemplates are ran if the name of matcher matches.
-	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty"`
+	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=templates to run after match,description=Templates to run after match"`
 }

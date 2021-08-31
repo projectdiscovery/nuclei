@@ -4,6 +4,8 @@ go 1.16
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/akrylysov/pogreb v0.10.1 // indirect
+	github.com/alecthomas/jsonschema v0.0.0-20210818095345-1014919a589c
 	github.com/andygrunwald/go-jira v1.14.0
 	github.com/antchfx/htmlquery v1.2.3
 	github.com/apex/log v1.9.0
@@ -33,9 +35,9 @@ require (
 	github.com/projectdiscovery/interactsh v0.0.4
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.12
+	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe
 	github.com/projectdiscovery/yamldoc-go v1.0.2
-	github.com/projectdiscovery/retryablehttp-go v1.0.2-0.20210524224054-9fbe1f2b0727
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0
 	github.com/segmentio/ksuid v1.0.4

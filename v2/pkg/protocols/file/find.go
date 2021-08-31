@@ -2,7 +2,6 @@ package file
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -110,7 +109,7 @@ func (r *Request) findDirectoryMatches(absPath string, processed map[string]stru
 
 // validatePath validates a file path for blacklist and whitelist options
 func (r *Request) validatePath(item string) bool {
-	extension := path.Ext(item)
+	extension := filepath.Ext(item)
 
 	if len(r.extensions) > 0 {
 		if _, ok := r.extensions[extension]; ok {

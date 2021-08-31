@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -210,7 +210,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.Output, options.TraceLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -248,6 +248,7 @@ func New(options *types.Options) (*Runner, error) {
 			Output:         runner.output,
 			IssuesClient:   runner.issuesClient,
 			Progress:       runner.progress,
+			Debug:          runner.options.Debug,
 		})
 		if err != nil {
 			gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -339,8 +340,8 @@ func (r *Runner) RunEnumeration() error {
 		return errors.Wrap(err, "could not load templates from config")
 	}
 	if r.options.Validate {
-		if !store.ValidateTemplates(r.options.Templates, r.options.Workflows) {
-			return errors.New("an error occurred during templates validation")
+		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+			return err
 		}
 		gologger.Info().Msgf("All templates validated successfully\n")
 		return nil // exit
@@ -378,8 +379,9 @@ func (r *Runner) RunEnumeration() error {
 	messageStr = builder.String()
 	builder.Reset()
 
-	gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
-
+	if r.templatesConfig != nil {
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
@@ -512,7 +514,10 @@ func (r *Runner) RunEnumeration() error {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) readNewTemplatesFile() ([]string, error) {
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	if r.templatesConfig == nil {
+		return nil, nil
+	}
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return nil, err
@@ -533,7 +538,10 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) countNewTemplates() int {
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	if r.templatesConfig == nil {
+		return 0
+	}
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return 0
