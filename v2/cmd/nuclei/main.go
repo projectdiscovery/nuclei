@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -37,7 +37,7 @@ func main() {
 
 func readConfig() {
 	home, _ := os.UserHomeDir()
-	templatesDirectory := path.Join(home, "nuclei-templates")
+	templatesDirectory := filepath.Join(home, "nuclei-templates")
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -86,6 +86,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "don't display match metadata"),
+		flagSet.BoolVarP(&options.NoTimestamp, "no-timestamp", "nts", false, "don't display timestamp metadata in CLI output"),
 		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "local nuclei reporting database (always use this to persist report data)"),
 
 		flagSet.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
@@ -103,7 +104,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
-		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "Enable environment variables support"),
+		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "enable environment variables support"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
@@ -159,7 +160,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "update", "Update",
 		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update the community templates to latest released version"),
-		flagSet.BoolVarP(&options.NoUpdateTemplates, "no-update-templates", "nut", false, "Do not check for nuclei-templates updates"),
+		flagSet.BoolVarP(&options.NoUpdateTemplates, "no-update-templates", "nut", false, "do not check for nuclei-templates updates"),
 		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "overwrite the default nuclei-templates directory"),
 	)
 
