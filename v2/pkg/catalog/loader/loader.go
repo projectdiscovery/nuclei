@@ -107,18 +107,18 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
-	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, true, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
 		return parsers.LoadWorkflow(templatePath, store.tagFilter)
 	})
 }
 
 func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
-	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
+	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, false, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
 		return parsers.LoadTemplate(templatePath, store.tagFilter, nil)
 	})
 }
 
-func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
+func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
@@ -128,9 +128,14 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 			}
 		}
 
-		if _, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions); err != nil {
+		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+		if err != nil {
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
+			}
+		} else {
+			if !isWorkflow && len(template.Workflows) > 0 {
+				return false
 			}
 		}
 	}
