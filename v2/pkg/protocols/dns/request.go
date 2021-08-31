@@ -71,8 +71,7 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 
 // isURL tests a string to determine if it is a well-structured url or not.
 func isURL(toTest string) bool {
-	_, err := url.ParseRequestURI(toTest)
-	if err != nil {
+	if _, err := url.ParseRequestURI(toTest); err != nil {
 		return false
 	}
 	u, err := url.Parse(toTest)

@@ -38,8 +38,7 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 			actualAddress = net.JoinHostPort(actualAddress, kv.port)
 		}
 
-		err = r.executeAddress(actualAddress, address, input, kv.tls, previous, callback)
-		if err != nil {
+		if err := r.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
@@ -138,8 +137,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		}
 		reqBuilder.Write(finalData)
 
-		_, err = conn.Write(finalData)
-		if err != nil {
+		if _, err := conn.Write(finalData); err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
