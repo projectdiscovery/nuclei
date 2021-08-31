@@ -248,7 +248,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 	return functions
 }
 
-// AddHelperFunction allows creation of additiona helper functions to be supported with templates
+// AddHelperFunction allows creation of additional helper functions to be supported with templates
 func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
 	if _, ok := functions[key]; !ok {
 		functions[key] = value
