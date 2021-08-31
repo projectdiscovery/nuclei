@@ -108,7 +108,7 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadWorkflow(templatePath, store.tagFilter)
+		return parsers.LoadWorkflow(templatePath)
 	})
 }
 
@@ -178,7 +178,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
 	for workflowPath := range workflowPathMap {
-		loaded, err := parsers.LoadWorkflow(workflowPath, store.tagFilter)
+		loaded, err := parsers.LoadWorkflow(workflowPath)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
