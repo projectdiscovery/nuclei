@@ -39,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
 // Runner is a client for running the enumeration process.
@@ -339,14 +340,23 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
+	store.Load()
+
 	if r.options.Validate {
 		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("All templates validated successfully\n")
+		if stats.GetValue("syntax-warnings") == 0 && stats.GetValue("syntax-errors") == 0 {
+			gologger.Info().Msgf("All templates validated successfully\n")
+		} else {
+			return errors.New("encountered errors while performing template validation")
+		}
 		return nil // exit
 	}
-	store.Load()
+
+	// Display stats for any loaded templates syntax warnings or errors
+	stats.Display("syntax-warnings")
+	stats.Display("syntax-errors")
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
