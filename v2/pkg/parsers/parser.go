@@ -107,8 +107,7 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	}
 
 	template := &templates.Template{}
-	err = yaml.Unmarshal(data, template)
-	if err != nil {
+	if err := yaml.Unmarshal(data, template); err != nil {
 		return nil, err
 	}
 	parsedTemplatesCache.Store(templatePath, template, nil)

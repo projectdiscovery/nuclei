@@ -44,8 +44,7 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 
 	var httprecord HTTPRecord
 	httprecord.Response = newInternalResponse()
-	err = unmarshal(data, &httprecord)
-	if err != nil {
+	if err := unmarshal(data, &httprecord); err != nil {
 		return nil, err
 	}
 

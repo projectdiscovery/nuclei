@@ -35,8 +35,7 @@ func main() {
 				if customTest != "" && !strings.Contains(file, customTest) {
 					continue // only run tests user asked
 				}
-				err := test.Execute(file)
-				if err != nil {
+				if err := test.Execute(file); err != nil {
 					fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, file, err)
 					errored = true
 				} else {

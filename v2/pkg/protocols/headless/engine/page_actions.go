@@ -176,8 +176,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.UR
 	values["BaseURL"] = parsedString
 
 	final := fasttemplate.ExecuteStringStd(URL, "{{", "}}", values)
-	err := p.page.Navigate(final)
-	if err != nil {
+	if err := p.page.Navigate(final); err != nil {
 		return errors.Wrap(err, "could not navigate")
 	}
 	return nil

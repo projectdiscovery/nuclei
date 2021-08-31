@@ -108,14 +108,12 @@ func (r *Runner) updateTemplates() error {
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 		r.fetchLatestVersionsFromGithub() // also fetch latest versions
-		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
-		if err != nil {
+		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
 		r.templatesConfig.CurrentVersion = version.String()
 
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
-		if err != nil {
+		if err := config.WriteConfiguration(r.templatesConfig, true, checkedIgnore); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
@@ -163,12 +161,11 @@ func (r *Runner) updateTemplates() error {
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 		r.fetchLatestVersionsFromGithub()
-		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
-		if err != nil {
+		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
-		if err != nil {
+
+		if err := config.WriteConfiguration(r.templatesConfig, true, checkedIgnore); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
@@ -294,8 +291,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	// Create the template folder if it doesn't exists
-	err = os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm)
-	if err != nil {
+	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
@@ -308,8 +304,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		r.printUpdateChangelog(results, version)
 	}
 	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
-	err = writeTemplatesChecksum(checksumFile, results.checksums)
-	if err != nil {
+	if err := writeTemplatesChecksum(checksumFile, results.checksums); err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
@@ -320,8 +315,8 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		buffer.WriteString(addition)
 		buffer.WriteString("\n")
 	}
-	err = ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm)
-	if err != nil {
+
+	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm); err != nil {
 		return nil, errors.Wrap(err, "could not write new additions file")
 	}
 	return results, err
@@ -362,8 +357,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		}
 		results.totalCount++
 		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
-		err := os.MkdirAll(templateDirectory, os.ModePerm)
-		if err != nil {
+		if err := os.MkdirAll(templateDirectory, os.ModePerm); err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
@@ -387,8 +381,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		hasher := md5.New()
 
 		// Save file and also read into hasher for md5
-		_, err = io.Copy(f, io.TeeReader(reader, hasher))
-		if err != nil {
+		if _, err := io.Copy(f, io.TeeReader(reader, hasher)); err != nil {
 			f.Close()
 			return nil, fmt.Errorf("could not write template file: %s", err)
 		}
@@ -545,8 +538,7 @@ func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 	}
 
 	var tags []githubTagData
-	err = json.Unmarshal(body, &tags)
-	if err != nil {
+	if err := json.Unmarshal(body, &tags); err != nil {
 		return "", err
 	}
 	if len(tags) == 0 {

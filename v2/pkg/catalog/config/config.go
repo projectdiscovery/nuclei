@@ -55,8 +55,7 @@ func ReadConfiguration() (*Config, error) {
 	defer file.Close()
 
 	config := &Config{}
-	err = jsoniter.NewDecoder(file).Decode(config)
-	if err != nil {
+	if err := jsoniter.NewDecoder(file).Decode(config); err != nil {
 		return nil, err
 	}
 	return config, nil
