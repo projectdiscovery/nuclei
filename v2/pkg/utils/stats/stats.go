@@ -61,11 +61,10 @@ func (s *Storage) NewEntry(name, description string) {
 func (s *Storage) Increment(name string) {
 	s.mutex.RLock()
 	data, ok := s.data[name]
+	s.mutex.RUnlock()
 	if !ok {
-		s.mutex.RUnlock()
 		return
 	}
-	s.mutex.RUnlock()
 
 	atomic.AddInt64(&data.value, 1)
 }
@@ -74,11 +73,10 @@ func (s *Storage) Increment(name string) {
 func (s *Storage) Display(name string) {
 	s.mutex.RLock()
 	data, ok := s.data[name]
+	s.mutex.RUnlock()
 	if !ok {
-		s.mutex.RUnlock()
 		return
 	}
-	s.mutex.RUnlock()
 
 	dataValue := atomic.LoadInt64(&data.value)
 	if dataValue == 0 {
@@ -91,11 +89,10 @@ func (s *Storage) Display(name string) {
 func (s *Storage) GetValue(name string) int64 {
 	s.mutex.RLock()
 	data, ok := s.data[name]
+	s.mutex.RUnlock()
 	if !ok {
-		s.mutex.RUnlock()
 		return 0
 	}
-	s.mutex.RUnlock()
 
 	dataValue := atomic.LoadInt64(&data.value)
 	return dataValue
