@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -44,7 +44,7 @@ func New(options *Options) (*Exporter, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get home dir")
 	}
-	templatePath := path.Join(home, "nuclei-templates")
+	templatePath := filepath.Join(home, "nuclei-templates")
 
 	run := sarif.NewRun("nuclei", "https://github.com/projectdiscovery/nuclei")
 	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil
@@ -55,7 +55,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	templatePath := strings.TrimPrefix(event.TemplatePath, i.home)
 
 	h := sha1.New()
-	h.Write([]byte(event.Host))
+	_, _ = h.Write([]byte(event.Host))
 	templateID := event.TemplateID + "-" + hex.EncodeToString(h.Sum(nil))
 
 	fullDescription := format.MarkdownDescription(event)

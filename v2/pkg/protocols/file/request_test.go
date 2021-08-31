@@ -3,7 +3,7 @@ package file
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
@@ -56,7 +56,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 		"config.yaml": "TEST\r\n1.1.1.1\r\n",
 	}
 	for k, v := range files {
-		err = ioutil.WriteFile(path.Join(tempDir, k), []byte(v), 0777)
+		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), 0777)
 		require.Nil(t, err, "could not write temporary file")
 	}
 

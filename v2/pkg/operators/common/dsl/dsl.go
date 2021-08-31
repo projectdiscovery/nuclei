@@ -87,10 +87,10 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return base64.StdEncoding.DecodeString(types.ToString(args[0]))
 	},
 	"url_encode": func(args ...interface{}) (interface{}, error) {
-		return url.PathEscape(types.ToString(args[0])), nil
+		return url.QueryEscape(types.ToString(args[0])), nil
 	},
 	"url_decode": func(args ...interface{}) (interface{}, error) {
-		return url.PathUnescape(types.ToString(args[0]))
+		return url.QueryUnescape(types.ToString(args[0]))
 	},
 	"hex_encode": func(args ...interface{}) (interface{}, error) {
 		return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
