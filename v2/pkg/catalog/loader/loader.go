@@ -135,7 +135,7 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 			}
 		} else {
 			if !isWorkflow && len(template.Workflows) > 0 {
-				return false
+				return true
 			}
 		}
 	}
