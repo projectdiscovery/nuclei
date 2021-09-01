@@ -31,7 +31,7 @@ type Request struct {
 	//     value: |
 	//       []string{"GET /etc/passwd HTTP/1.1\nHost:\nContent-Length: 4", "POST /.%0d./.%0d./.%0d./.%0d./bin/sh HTTP/1.1\nHost: {{Hostname}}\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0\nContent-Length: 1\nConnection: close\n\necho\necho\ncat /etc/passwd 2>&1"}
 	Raw []string `yaml:"raw,omitempty" jsonschema:"http requests in raw format,description=HTTP Requests in Raw Format"`
-	// ID is the ID of the request
+	// ID is the the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id for the http request,description=ID for the HTTP Request"`
 	// description: |
 	//  Name is the optional name of the request.
@@ -162,7 +162,7 @@ type Request struct {
 	//   This allows matching on them later for multi-request conditions.
 	ReqCondition bool `yaml:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
-	//   StopAtFirstMatch stops the execution of the requests as soon as a match is found.
+	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
 }
 
