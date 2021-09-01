@@ -29,7 +29,7 @@ func setSeverity(severities *Severities, value string) error {
 		return fmt.Errorf("'%s' is not a valid severity", value)
 	}
 
-	// TODO change the Severities type to map[Severity]interface{}, where the values are struct{}{}, to "simulates" a "set" data structure
+	// TODO change the Severities type to map[Severity]interface{}, where the values are struct{}{}, to "simulate" a "set" data structure
 	*severities = append(*severities, computedSeverity)
 	return nil
 }

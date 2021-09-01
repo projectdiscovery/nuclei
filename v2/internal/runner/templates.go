@@ -57,7 +57,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	}
 }
 
-// ListAvailableTemplates prints available templates to stdout
+// listAvailableTemplates prints available templates to stdout
 func (r *Runner) listAvailableTemplates() {
 	if r.templatesConfig == nil {
 		return

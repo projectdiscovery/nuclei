@@ -7,7 +7,7 @@ import (
 	"go.uber.org/atomic"
 )
 
-// processTemplateWithList process a template on the URL list
+// processTemplateWithList execute a template against the list of user provided targets
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
