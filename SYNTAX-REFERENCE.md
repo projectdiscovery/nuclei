@@ -34,7 +34,7 @@ Examples:
 
 ```yaml
 # ID Example
-id: cve-2021-19520
+id: CVE-2021-19520
 ```
 
 
