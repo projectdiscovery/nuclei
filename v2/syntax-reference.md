@@ -60,10 +60,8 @@ Examples:
 ```yaml
 info:
     name: Argument Injection in Ruby Dragonfly
-    author:
-        - 0xspara
-    tags:
-        - cve,cve2021,rce,ruby
+    author: 0xspara
+    tags: cve,cve2021,rce,ruby
     reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
     severity: high
 ```
@@ -248,10 +246,8 @@ Appears in:
 
 ```yaml
 name: Argument Injection in Ruby Dragonfly
-author:
-    - 0xspara
-tags:
-    - cve,cve2021,rce,ruby
+author: 0xspara
+tags: cve,cve2021,rce,ruby
 reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
