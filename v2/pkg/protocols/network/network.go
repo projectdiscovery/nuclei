@@ -15,7 +15,7 @@ import (
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
-	// ID is the ID of the request
+	// ID is the the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
 
 	// description: |
