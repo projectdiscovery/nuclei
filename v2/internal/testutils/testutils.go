@@ -3,7 +3,9 @@ package testutils
 import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -44,9 +46,9 @@ var DefaultOptions = &types.Options{
 	Retries:            1,
 	RateLimit:          150,
 	ProjectPath:        "",
-	Severity:           []string{},
-	Target:             "",
-	Targets:            "",
+	Severities:         severity.Severities{},
+	Targets:            []string{},
+	TargetsFilePath:    "",
 	Output:             "",
 	ProxyURL:           "",
 	ProxySocksURL:      "",
@@ -95,13 +97,13 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 // TemplateInfo contains info for a mock executed template.
 type TemplateInfo struct {
 	ID   string
-	Info map[string]interface{}
+	Info model.Info
 	Path string
 }
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecuterOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
