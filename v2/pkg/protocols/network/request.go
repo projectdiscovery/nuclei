@@ -14,8 +14,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 var _ protocols.Request = &Request{}
@@ -57,10 +59,15 @@ func (r *Request) executeAddress(actualAddress, address, input string, shouldUse
 	}
 
 	if r.generator != nil {
-		iterator := r.generator.NewIterator()
+		if r.attackType == generators.Sniper {
+			for k := range r.Payloads {
+				r.generator.TotalPositionCount += r.payloadPositionCount(k)
+			}
+		}
+		r.iterator = r.generator.NewIterator()
 
 		for {
-			value, ok := iterator.Value()
+			value, ok := r.iterator.Value()
 			if !ok {
 				break
 			}
@@ -129,6 +136,15 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
+
+		if r.attackType == generators.Sniper {
+			var evaluated string
+			n := r.iterator.Position()%r.iterator.TotalPositionCount + 1
+			for key, value := range payloads {
+				evaluated, _ = replacer.ReplaceNth(string(data), key, value.(string), n)
+			}
+			data = []byte(evaluated)
+		}
 
 		finalData, dataErr := expressions.EvaluateByte(data, payloads)
 		if dataErr != nil {
@@ -225,6 +241,19 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		})
 	}
 	return nil
+}
+
+// payloadPositionCount returns total number of payload positions.
+func (r *Request) payloadPositionCount(key string) int {
+	regex := utils.PlaceholderRegex(key)
+
+	payloadPositionCount := 0
+	for _, value := range r.Inputs {
+		payloadPositionCount += len(regex.FindAllStringIndex(value.Data, -1))
+	}
+
+	// total number of payload positions
+	return payloadPositionCount
 }
 
 // getAddress returns the address of the host to make request to

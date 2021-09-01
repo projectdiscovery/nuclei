@@ -109,6 +109,11 @@ func (i *Iterator) Remaining() int {
 	return i.total - i.position
 }
 
+// Position returns the current position of the iterator.
+func (i *Iterator) Position() int {
+	return i.position
+}
+
 // Total returns the amount of input combinations available
 func (i *Iterator) Total() int {
 	count := 0

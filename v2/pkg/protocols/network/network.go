@@ -32,10 +32,13 @@ type Request struct {
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
-	//   permutations and combinations for all payloads.
+	//   Sniper substitutes payload positions one by one with each payload,
+	//	 batteringram substitutes all the payload positions at once with each payload,
+	//   pitchfork combines multiple payload sets 
+	//	 and clusterbomb generates permutations and combinations for all payloads.
 	// values:
 	//   - "sniper"
+	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
 	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
@@ -63,6 +66,7 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	generator  *generators.Generator
+	iterator   *generators.Iterator
 	attackType generators.Type
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
