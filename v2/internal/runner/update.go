@@ -97,8 +97,8 @@ func (r *Runner) updateTemplates() error {
 			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 
-		// Download the repository and also write the revision to a HEAD file.
-		version, asset, getErr := r.getLatestReleaseFromGithub()
+		// Download the repository and write the revision to a HEAD file.
+		version, asset, getErr := r.getLatestTemplateReleaseFromGithub()
 		if getErr != nil {
 			return getErr
 		}
@@ -139,7 +139,7 @@ func (r *Runner) updateTemplates() error {
 		return err
 	}
 
-	version, asset, err := r.getLatestReleaseFromGithub()
+	version, asset, err := r.getLatestTemplateReleaseFromGithub()
 	if err != nil {
 		return err
 	}
@@ -223,8 +223,7 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 	return true
 }
 
-// getLatestReleaseFromGithub returns the latest release from github
-func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.RepositoryRelease, error) {
+func (r *Runner) getLatestTemplateReleaseFromGithub() (semver.Version, *github.RepositoryRelease, error) {
 	client := github.NewClient(nil)
 
 	rels, _, err := client.Repositories.ListReleases(context.Background(), userName, repoName, nil)
@@ -283,7 +282,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	reader := bytes.NewReader(buf)
-	z, err := zip.NewReader(reader, reader.Size())
+	zipReader, err := zip.NewReader(reader, reader.Size())
 	if err != nil {
 		return nil, fmt.Errorf("failed to uncompress zip file: %s", err)
 	}
@@ -293,7 +292,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
-	results, err := r.compareAndWriteTemplates(z)
+	results, err := r.compareAndWriteTemplates(zipReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write templates: %s", err)
 	}
@@ -328,9 +327,8 @@ type templateUpdateResults struct {
 	checksums     map[string]string
 }
 
-// compareAndWriteTemplates compares and returns the stats of a template
-// update operations.
-func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults, error) {
+// compareAndWriteTemplates compares and returns the stats of a template update operations.
+func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdateResults, error) {
 	results := &templateUpdateResults{
 		checksums: make(map[string]string),
 	}
@@ -341,9 +339,9 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
 	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
-	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
-	for _, file := range z.File {
-		directory, name := filepath.Split(file.Name)
+	templateChecksumsMap, _ := createTemplateChecksumsMap(checksumFile)
+	for _, zipTemplateFile := range zipReader.File {
+		directory, name := filepath.Split(zipTemplateFile.Name)
 		if name == "" {
 			continue
 		}
@@ -365,27 +363,27 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
 			isAddition = true
 		}
-		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
+		templateFile, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
-			f.Close()
+			templateFile.Close()
 			return nil, fmt.Errorf("could not create uncompressed file: %s", err)
 		}
 
-		reader, err := file.Open()
+		zipTemplateFileReader, err := zipTemplateFile.Open()
 		if err != nil {
-			f.Close()
+			templateFile.Close()
 			return nil, fmt.Errorf("could not open archive to extract file: %s", err)
 		}
 		hasher := md5.New()
 
 		// Save file and also read into hasher for md5
-		if _, err := io.Copy(f, io.TeeReader(reader, hasher)); err != nil {
-			f.Close()
+		if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, hasher)); err != nil {
+			templateFile.Close()
 			return nil, fmt.Errorf("could not write template file: %s", err)
 		}
-		f.Close()
+		templateFile.Close()
 
-		oldChecksum, checksumOK := previousChecksum[templatePath]
+		oldChecksum, checksumOK := templateChecksumsMap[templatePath]
 
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
@@ -396,57 +394,58 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		results.checksums[templatePath] = checksum
 	}
 
-	// If we don't find a previous file in new download and it hasn't been
-	// changed on the disk, delete it.
-	for k, v := range previousChecksum {
-		_, ok := results.checksums[k]
-		if !ok && v[0] == v[1] {
-			os.Remove(k)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
+	// If we don't find the previous file in the newly downloaded list,
+	// and it hasn't been changed on the disk, delete it.
+	for templatePath, templateChecksums := range templateChecksumsMap {
+		_, ok := results.checksums[templatePath]
+		if !ok && templateChecksums[0] == templateChecksums[1] {
+			os.Remove(templatePath)
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(templatePath, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil
 }
 
-// readPreviousTemplatesChecksum reads the previous checksum file from the disk.
-//
-// It reads two checksums, the first checksum is what we expect and the second is
-// the actual checksum of the file on disk currently.
-func readPreviousTemplatesChecksum(file string) (map[string][2]string, error) {
-	f, err := os.Open(file)
+// createTemplateChecksumsMap reads the previous checksum file from the disk.
+// Creates a map of template paths and their previous and currently calculated checksums as values.
+func createTemplateChecksumsMap(checksumsFilePath string) (map[string][2]string, error) {
+	checksumFile, err := os.Open(checksumsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	defer checksumFile.Close()
+	scanner := bufio.NewScanner(checksumFile)
 
-	checksum := make(map[string][2]string)
+	templatePathChecksumsMap := make(map[string][2]string)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
 			continue
 		}
+
 		parts := strings.Split(text, ",")
 		if len(parts) < 2 {
 			continue
 		}
-		values := [2]string{parts[1]}
+		templatePath := parts[0]
+		expectedTemplateChecksum := parts[1]
 
-		f, err := os.Open(parts[0])
+		templateFile, err := os.Open(templatePath)
 		if err != nil {
 			return nil, err
 		}
 
 		hasher := md5.New()
-		if _, err := io.Copy(hasher, f); err != nil {
+		if _, err := io.Copy(hasher, templateFile); err != nil {
 			return nil, err
 		}
-		f.Close()
+		templateFile.Close()
 
+		values := [2]string{expectedTemplateChecksum}
 		values[1] = hex.EncodeToString(hasher.Sum(nil))
-		checksum[parts[0]] = values
+		templatePathChecksumsMap[templatePath] = values
 	}
-	return checksum, nil
+	return templatePathChecksumsMap, nil
 }
 
 // writeTemplatesChecksum writes the nuclei-templates checksum data to disk.
@@ -493,7 +492,7 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 	table.Render()
 }
 
-// fetchLatestVersionsFromGithub fetches latest versions of nuclei repos from github
+// fetchLatestVersionsFromGithub fetches the latest versions of nuclei repos from GitHub
 func (r *Runner) fetchLatestVersionsFromGithub() {
 	nucleiLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei")
 	if err != nil {
@@ -513,8 +512,8 @@ type githubTagData struct {
 	Name string
 }
 
-// githubFetchLatestTagRepo fetches latest tag from github
-// This function was half written by github copilot AI :D.
+// githubFetchLatestTagRepo fetches the latest tag of the given repository from GitHub
+// This function was half written by the GitHub Copilot AI :D.
 func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -545,7 +544,7 @@ func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
 	return strings.TrimPrefix(tags[0].Name, "v"), nil
 }
 
-// updateNucleiVersionToLatest implements nuclei auto-updation using Github Releases.
+// updateNucleiVersionToLatest implements nuclei auto-update using GitHub Releases.
 func updateNucleiVersionToLatest(verbose bool) error {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
