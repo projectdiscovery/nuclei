@@ -188,7 +188,7 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 25)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 24)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -349,11 +349,6 @@ func init() {
 	HTTPRequestDoc.Fields[23].Note = ""
 	HTTPRequestDoc.Fields[23].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
 	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[24].Name = "stop-at-first-match"
-	HTTPRequestDoc.Fields[24].Type = "bool"
-	HTTPRequestDoc.Fields[24].Note = ""
-	HTTPRequestDoc.Fields[24].Description = "StopAtFirstMatch stops the execution of the requests as soon as a match is found."
-	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests as soon as a match is found."
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -530,8 +525,8 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[2].Name = "regex"
 	EXTRACTORSExtractorDoc.Fields[2].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[2].Note = ""
-	EXTRACTORSExtractorDoc.Fields[2].Description = "Regex contains the regular expression patterns to extract from a part.\n\nGo regex engine does not support lookaheads or lookbehinds, so as a result\nthey are also not supported in nuclei."
-	EXTRACTORSExtractorDoc.Fields[2].Comments[encoder.LineComment] = "Regex contains the regular expression patterns to extract from a part."
+	EXTRACTORSExtractorDoc.Fields[2].Description = "Regex contains the regular expression patterns to exract from a part.\n\nGo regex engine does not supports lookaheads or lookbehinds, so as a result\nthey are also not supported in nuclei."
+	EXTRACTORSExtractorDoc.Fields[2].Comments[encoder.LineComment] = "Regex contains the regular expression patterns to exract from a part."
 
 	EXTRACTORSExtractorDoc.Fields[2].AddExample("Braintree Access Token Regex", []string{"access_token\\$production\\$[0-9a-z]{16}\\$[0-9a-f]{32}"})
 
@@ -657,12 +652,12 @@ func init() {
 	DNSRequestDoc.Fields[6].Description = "Class is the class of the DNS request.\n\nUsually it's enough to just leave it as INET."
 	DNSRequestDoc.Fields[6].Comments[encoder.LineComment] = "Class is the class of the DNS request."
 	DNSRequestDoc.Fields[6].Values = []string{
-		"inet",
-		"csnet",
-		"chaos",
-		"hesiod",
-		"none",
-		"any",
+		"INET",
+		"CSNET",
+		"CHAOS",
+		"HESIOD",
+		"NONE",
+		"ANY",
 	}
 	DNSRequestDoc.Fields[7].Name = "retries"
 	DNSRequestDoc.Fields[7].Type = "int"

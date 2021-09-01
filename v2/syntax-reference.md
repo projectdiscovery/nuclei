@@ -60,8 +60,10 @@ Examples:
 ```yaml
 info:
     name: Argument Injection in Ruby Dragonfly
-    author: 0xspara
-    tags: cve,cve2021,rce,ruby
+    author:
+        - 0xspara
+    tags:
+        - cve,cve2021,rce,ruby
     reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
     severity: high
 ```
@@ -246,8 +248,10 @@ Appears in:
 
 ```yaml
 name: Argument Injection in Ruby Dragonfly
-author: 0xspara
-tags: cve,cve2021,rce,ruby
+author:
+    - 0xspara
+tags:
+    - cve,cve2021,rce,ruby
 reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
@@ -1001,19 +1005,6 @@ This allows matching on them later for multi-request conditions.
 
 <hr />
 
-<div class="dd">
-
-<code>stop-at-first-match</code>  <i>bool</i>
-
-</div>
-<div class="dt">
-
-StopAtFirstMatch stops the execution of the requests as soon as a match is found.
-
-</div>
-
-<hr />
-
 
 
 
@@ -1429,9 +1420,9 @@ Valid values:
 </div>
 <div class="dt">
 
-Regex contains the regular expression patterns to extract from a part.
+Regex contains the regular expression patterns to exract from a part.
 
-Go regex engine does not support lookaheads or lookbehinds, so as a result
+Go regex engine does not supports lookaheads or lookbehinds, so as a result
 they are also not supported in nuclei.
 
 
@@ -1807,17 +1798,17 @@ Usually it's enough to just leave it as INET.
 Valid values:
 
 
-  - <code>inet</code>
+  - <code>INET</code>
 
-  - <code>csnet</code>
+  - <code>CSNET</code>
 
-  - <code>chaos</code>
+  - <code>CHAOS</code>
 
-  - <code>hesiod</code>
+  - <code>HESIOD</code>
 
-  - <code>none</code>
+  - <code>NONE</code>
 
-  - <code>any</code>
+  - <code>ANY</code>
 </div>
 
 <hr />
