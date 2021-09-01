@@ -58,6 +58,8 @@ func gadgetEncodingHelper(returnData []byte, encoding string) string {
 			return ""
 		}
 		return urlsafeBase64Encode(buffer.Bytes())
+	case "base64":
+		return base64.StdEncoding.EncodeToString(returnData)
 	default:
 		return urlsafeBase64Encode(returnData)
 	}
