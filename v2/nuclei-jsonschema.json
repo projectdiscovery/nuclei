@@ -309,12 +309,12 @@
         },
         "class": {
           "enum": [
-            "inet",
-            "csnet",
-            "chaos",
-            "hesiod",
-            "none",
-            "any"
+            "INET",
+            "CSNET",
+            "CHAOS",
+            "HESIOD",
+            "NONE",
+            "ANY"
           ],
           "type": "string",
           "title": "class of DNS request",
@@ -662,11 +662,6 @@
           "type": "boolean",
           "title": "preserve request history",
           "description": "Automatically assigns numbers to requests and preserves their history"
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop the execution after a match is found"
         }
       },
       "additionalProperties": false,
