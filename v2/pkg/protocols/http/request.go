@@ -67,7 +67,7 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
 			defer wg.Done()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -107,7 +107,7 @@ func (r *Request) executeParallelHTTP(reqURL string, dynamicValues output.Intern
 			r.options.RateLimiter.Take()
 
 			previous := make(map[string]interface{})
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -166,7 +166,7 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := r.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
@@ -216,9 +216,13 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			return err
 		}
 
+		// Check if hosts just keep erroring
+		if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.Check(reqURL) {
+			break
+		}
 		var gotOutput bool
 		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
+		err = r.executeRequest(reqURL, request, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotOutput = true
@@ -237,12 +241,15 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			}
 		}, requestCount)
 		if err != nil {
-			requestErr = multierr.Append(requestErr, err)
+			if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.CheckError(err) {
+				r.options.HostErrorsCache.MarkFailed(reqURL)
+			}
+			requestErr = err
 		}
 		requestCount++
 		r.options.Progress.IncrementRequests()
 
-		if request.original.options.Options.StopAtFirstMatch && gotOutput {
+		if (request.original.options.Options.StopAtFirstMatch || r.StopAtFirstMatch) && gotOutput {
 			r.options.Progress.IncrementErrorsBy(int64(generator.Total()))
 			break
 		}
@@ -253,7 +260,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback, requestCount int) error {
+func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	r.setCustomHeaders(request)
 
 	var (
@@ -304,19 +311,16 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !request.original.Race {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
+		var dumpError error
+		dumpedRequest, dumpError = dump(request, reqURL)
+		if dumpError != nil {
+			return dumpError
 		}
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", string(dumpedRequest))
 		}
-	}
-
-	if resp == nil {
-		err = errors.New("no response got for request")
 	}
 	if err != nil {
 		// rawhttp doesn't supports draining response bodies.
@@ -326,10 +330,28 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
 		r.options.Progress.IncrementErrorsBy(1)
+
+		// If we have interactsh markers and request times out, still send
+		// a callback event so in case we recieve an interaction, correlation is possible.
+		if hasInteractMarkers {
+			outputEvent := r.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, request.meta)
+			if i := strings.LastIndex(hostname, ":"); i != -1 {
+				hostname = hostname[:i]
+			}
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+			if r.CompiledOperators != nil {
+				event.InternalEvent = outputEvent
+			}
+			callback(event)
+		}
 		return err
 	}
 	defer func() {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		}
 		resp.Body.Close()
 	}()
 
@@ -343,26 +365,32 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		return errors.Wrap(err, "could not dump http response")
 	}
 
-	var bodyReader io.Reader
-	if r.MaxSize != 0 {
-		bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
-	} else {
-		bodyReader = resp.Body
-	}
-	data, err := ioutil.ReadAll(bodyReader)
-	if err != nil {
-		// Ignore body read due to server misconfiguration errors
-		if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
-			gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
-		} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF") { // ignore EOF error
-			return errors.Wrap(err, "could not read http body")
+	var data, redirectedResponse []byte
+	// If the status code is HTTP 101, we should not proceed with reading body.
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		var bodyReader io.Reader
+		if r.MaxSize != 0 {
+			bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
+		} else {
+			bodyReader = resp.Body
 		}
-	}
-	resp.Body.Close()
+		data, err = ioutil.ReadAll(bodyReader)
+		if err != nil {
+			// Ignore body read due to server misconfiguration errors
+			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
+				gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", r.options.TemplateID, formedURL, err.Error())
+			} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
+				return errors.Wrap(err, "could not read http body")
+			}
+		}
+		resp.Body.Close()
 
-	redirectedResponse, err := dumpResponseWithRedirectChain(resp, data)
-	if err != nil {
-		return errors.Wrap(err, "could not read http response with redirect chain")
+		redirectedResponse, err = dumpResponseWithRedirectChain(resp, data)
+		if err != nil {
+			return errors.Wrap(err, "could not read http response with redirect chain")
+		}
+	} else {
+		redirectedResponse = dumpedResponseHeaders
 	}
 
 	// net/http doesn't automatically decompress the response body if an

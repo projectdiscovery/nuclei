@@ -3,114 +3,117 @@ package filter
 import (
 	"errors"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution
 type TagFilter struct {
 	allowedTags map[string]struct{}
-	severities  map[string]struct{}
+	severities  map[severity.Severity]struct{}
 	authors     map[string]struct{}
 	block       map[string]struct{}
 	matchAllows map[string]struct{}
 }
 
-// ErrExcluded is returned for execluded templates
+// ErrExcluded is returned for excluded templates
 var ErrExcluded = errors.New("the template was excluded")
 
-// Match takes a tag and whether the template was matched from user
-// input and returns true or false using a tag filter.
-//
-// If the tag was specified in deny list, it will not return true
-// unless it is explicitly specified by user in includeTags which is the
-// matchAllows section.
-//
-// It returns true if the tag is specified, or false.
-func (t *TagFilter) Match(tag, author, severity string) (bool, error) {
-	matchedAny := false
-	if len(t.allowedTags) > 0 {
-		_, ok := t.allowedTags[tag]
-		if ok {
-			matchedAny = true
+// Match filters templates based on user provided tags, authors, extraTags and severity.
+// If the template contains tags specified in the deny list, it will not be matched
+// unless it is explicitly specified by user using the includeTags (matchAllows field).
+// Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
+// Returns true if the template matches the filter criteria, false otherwise.
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string) (bool, error) {
+	for _, templateTag := range templateTags {
+		_, blocked := tagFilter.block[templateTag]
+		_, allowed := tagFilter.matchAllows[templateTag]
+
+		if blocked && !allowed { // the whitelist has precedence over the blacklist
+			return false, ErrExcluded
 		}
 	}
-	_, ok := t.block[tag]
-	if ok {
-		if _, allowOk := t.matchAllows[tag]; allowOk {
-			return true, nil
-		}
-		return false, ErrExcluded
+
+	if !isExtraTagMatch(extraTags, templateTags) {
+		return false, nil
 	}
-	if len(t.authors) > 0 {
-		_, ok = t.authors[author]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
+
+	if !isTagMatch(tagFilter, templateTags) {
+		return false, nil
 	}
-	if len(t.severities) > 0 {
-		_, ok = t.severities[severity]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
+
+	if !isAuthorMatch(tagFilter, templateAuthors) {
+		return false, nil
 	}
-	if len(t.allowedTags) == 0 && len(t.authors) == 0 && len(t.severities) == 0 {
-		return true, nil
+
+	if !isSeverityMatch(tagFilter, templateSeverity) {
+		return false, nil
 	}
-	return matchedAny, nil
+
+	return true, nil
 }
 
-// MatchWithAllowedTags takes an addition list of allowed tags
-// and returns true if the match was successful.
-func (t *TagFilter) MatchWithAllowedTags(allowed []string, tag, author, severity string) (bool, error) {
-	matchedAny := false
+func isSeverityMatch(tagFilter *TagFilter, templateSeverity severity.Severity) bool {
+	if len(tagFilter.severities) == 0 || templateSeverity == severity.Undefined {
+		return true
+	}
 
-	allowedMap := make(map[string]struct{})
-	for _, tag := range allowed {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := allowedMap[val]; !ok {
-				allowedMap[val] = struct{}{}
-			}
+	if _, ok := tagFilter.severities[templateSeverity]; ok {
+		return true
+	}
+
+	return false
+}
+
+func isAuthorMatch(tagFilter *TagFilter, templateAuthors []string) bool {
+	if len(tagFilter.authors) == 0 {
+		return true
+	}
+
+	templateAuthorMap := toMap(templateAuthors)
+	for requiredAuthor := range tagFilter.authors {
+		if _, ok := templateAuthorMap[requiredAuthor]; ok {
+			return true
 		}
 	}
-	if len(allowedMap) > 0 {
-		_, ok := allowedMap[tag]
-		if ok {
-			matchedAny = true
+
+	return false
+}
+
+func isExtraTagMatch(extraTags []string, templateTags []string) bool {
+	if len(extraTags) == 0 {
+		return true
+	}
+
+	templatesTagMap := toMap(templateTags)
+	for _, extraTag := range extraTags {
+		if _, ok := templatesTagMap[extraTag]; ok {
+			return true
 		}
 	}
-	_, ok := t.block[tag]
-	if ok && !matchedAny {
-		if _, allowOk := t.matchAllows[tag]; allowOk {
-			return true, nil
+
+	return false
+}
+
+func isTagMatch(tagFilter *TagFilter, templateTags []string) bool {
+	if len(tagFilter.allowedTags) == 0 {
+		return true
+	}
+
+	for _, templateTag := range templateTags {
+		if _, ok := tagFilter.allowedTags[templateTag]; ok {
+			return true
 		}
-		return false, ErrExcluded
 	}
-	if len(t.authors) > 0 {
-		_, ok = t.authors[author]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(t.severities) > 0 {
-		_, ok = t.severities[severity]
-		if !ok {
-			return false, nil
-		}
-		matchedAny = true
-	}
-	if len(allowedMap) == 0 && len(t.authors) == 0 && len(t.severities) == 0 {
-		return true, nil
-	}
-	return matchedAny, nil
+
+	return false
 }
 
 type Config struct {
 	Tags        []string
 	ExcludeTags []string
 	Authors     []string
-	Severities  []string
+	Severities  severity.Severities
 	IncludeTags []string
 }
 
@@ -121,7 +124,7 @@ func New(config *Config) *TagFilter {
 	filter := &TagFilter{
 		allowedTags: make(map[string]struct{}),
 		authors:     make(map[string]struct{}),
-		severities:  make(map[string]struct{}),
+		severities:  make(map[severity.Severity]struct{}),
 		block:       make(map[string]struct{}),
 		matchAllows: make(map[string]struct{}),
 	}
@@ -133,10 +136,8 @@ func New(config *Config) *TagFilter {
 		}
 	}
 	for _, tag := range config.Severities {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.severities[val]; !ok {
-				filter.severities[val] = struct{}{}
-			}
+		if _, ok := filter.severities[tag]; !ok {
+			filter.severities[tag] = struct{}{}
 		}
 	}
 	for _, tag := range config.Authors {
@@ -165,6 +166,11 @@ func New(config *Config) *TagFilter {
 	return filter
 }
 
+/*
+TODO similar logic is used over and over again. It should be extracted and reused
+Changing []string and string data types that hold string slices to StringSlice would be the preferred solution,
+which implicitly does the normalization before any other calls starting to use it.
+*/
 func splitCommaTrim(value string) []string {
 	if !strings.Contains(value, ",") {
 		return []string{strings.ToLower(value)}
@@ -175,4 +181,14 @@ func splitCommaTrim(value string) []string {
 		final[i] = strings.ToLower(strings.TrimSpace(value))
 	}
 	return final
+}
+
+func toMap(slice []string) map[string]struct{} {
+	result := make(map[string]struct{}, len(slice))
+	for _, value := range slice {
+		if _, ok := result[value]; !ok {
+			result[value] = struct{}{}
+		}
+	}
+	return result
 }

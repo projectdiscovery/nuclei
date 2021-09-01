@@ -1,24 +1,40 @@
 package templates
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
+
+var (
+	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
+)
+
+var parsedTemplatesCache *cache.Templates
+
+func init() {
+	parsedTemplatesCache = cache.New()
+}
 
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
+// TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+		return value.(*Template), err
+	}
+
 	template := &Template{}
 
 	f, err := os.Open(filePath)
@@ -37,15 +53,15 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		data = preprocessor.Process(data)
 	}
 
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
+	err = yaml.Unmarshal(data, template)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, ok := template.Info["name"]; !ok {
+	if utils.IsBlank(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
 	}
-	if _, ok := template.Info["author"]; !ok {
+	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
 	}
 
@@ -63,11 +79,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
 
-		loader, err := compile.NewLoader(&options)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create workflow loader")
-		}
-		compileWorkflow(preprocessor, &options, compiled, loader)
+		compileWorkflow(filePath, preprocessor, &options, compiled, options.WorkflowLoader)
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
@@ -130,8 +142,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.TotalRequests += template.Executer.Requests()
 	}
 	if template.Executer == nil && template.CompiledWorkflow == nil {
-		return nil, errors.New("cannot create template executer")
+		return nil, ErrCreateTemplateExecutor
 	}
 	template.Path = filePath
+
+	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
 }

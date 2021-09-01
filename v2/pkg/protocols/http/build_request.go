@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -15,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/rawhttp"
@@ -51,16 +52,13 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 
 	data, parsed = baseURLWithTemplatePrefs(data, parsed)
-	values := generators.MergeMaps(dynamicValues, map[string]interface{}{
-		"Hostname": parsed.Host,
-	})
 
+	trailingSlash := false
 	isRawRequest := len(r.request.Raw) > 0
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+		trailingSlash = true
 	}
-	parsedString := parsed.String()
-	values["BaseURL"] = parsedString
+	values := generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash))
 
 	// merge with vars
 	if !r.options.Options.Vars.IsEmpty() {
@@ -69,15 +67,15 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	// merge with env vars
 	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(values, generators.EnvVars())
+		values = generators.MergeMaps(generators.EnvVars(), values)
 	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
-		return r.makeHTTPRequestFromRaw(ctx, parsedString, data, values, payloads, interactURL)
+		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads, interactURL)
 	}
-	return r.makeHTTPRequestFromModel(ctx, data, values, interactURL)
+	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
 }
 
 // Total returns the total number of requests for the generator
@@ -106,23 +104,38 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values map[string]interface{}, interactURL string) (*generatedRequest, error) {
-	final := replacer.Replace(data, values)
+func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values, generatorValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
 	if interactURL != "" {
-		final = r.options.Interactsh.ReplaceMarkers(final, interactURL)
+		data = r.options.Interactsh.ReplaceMarkers(data, interactURL)
+	}
+
+	// Combine the template payloads along with base
+	// request values.
+	finalValues := generators.MergeMaps(generatorValues, values)
+
+	// Evaulate the expressions for the request if any.
+	var err error
+	data, err = expressions.Evaluate(data, finalValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+	}
+
+	method, err := expressions.Evaluate(r.request.Method, finalValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, r.request.Method, final, nil)
+	req, err := http.NewRequestWithContext(ctx, method, data, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	request, err := r.fillRequest(req, values, interactURL)
+	request, err := r.fillRequest(req, finalValues, interactURL)
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -178,7 +191,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 			req.Host = value
 		}
 	}
-	request, err := r.fillRequest(req, values, "")
+	request, err := r.fillRequest(req, finalValues, "")
 	if err != nil {
 		return nil, err
 	}
@@ -193,9 +206,13 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if interactURL != "" {
 			value = r.options.Interactsh.ReplaceMarkers(value, interactURL)
 		}
-		req.Header[header] = []string{replacer.Replace(value, values)}
+		value, err := expressions.Evaluate(value, values)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		}
+		req.Header[header] = []string{value}
 		if header == "Host" {
-			req.Host = replacer.Replace(value, values)
+			req.Host = value
 		}
 	}
 
@@ -209,6 +226,10 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		body := r.request.Body
 		if interactURL != "" {
 			body = r.options.Interactsh.ReplaceMarkers(body, interactURL)
+		}
+		body, err := expressions.Evaluate(body, values)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not evaluate helper expressions")
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}
@@ -229,5 +250,46 @@ func setHeader(req *http.Request, name, value string) {
 	}
 	if name == "Host" {
 		req.Host = value
+	}
+}
+
+// generateVariables will create default variables after parsing a url
+func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
+	domain := parsed.Host
+	if strings.Contains(parsed.Host, ":") {
+		domain = strings.Split(parsed.Host, ":")[0]
+	}
+
+	port := parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else if parsed.Scheme == "http" {
+			port = "80"
+		}
+	}
+
+	if trailingSlash {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+	}
+
+	escapedPath := parsed.EscapedPath()
+	directory := path.Dir(escapedPath)
+	if directory == "." {
+		directory = ""
+	}
+	base := path.Base(escapedPath)
+	if base == "." {
+		base = ""
+	}
+	return map[string]interface{}{
+		"BaseURL":  parsed.String(),
+		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
+		"Hostname": parsed.Host,
+		"Host":     domain,
+		"Port":     port,
+		"Path":     directory,
+		"File":     base,
+		"Scheme":   parsed.Scheme,
 	}
 }
