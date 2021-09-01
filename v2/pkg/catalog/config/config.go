@@ -28,7 +28,7 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.5.0`
+const Version = `2.5.1-dev`
 
 func getConfigDetails() (string, error) {
 	homeDir, err := os.UserHomeDir()
