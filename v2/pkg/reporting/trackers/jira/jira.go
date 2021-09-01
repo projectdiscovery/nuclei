@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
