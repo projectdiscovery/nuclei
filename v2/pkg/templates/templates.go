@@ -16,8 +16,7 @@ import (
 // other metadata for a template.
 type Template struct {
 	// description: |
-	//   ID is the unique id for the template. IDs must be lowercase
-	//   and must not contain spaces in it.
+	//   ID is the unique id for the template.
 	//
 	//   #### Good IDs
 	//
