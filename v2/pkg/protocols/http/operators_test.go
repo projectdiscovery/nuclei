@@ -5,12 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/stretchr/testify/require"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -26,7 +29,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -56,7 +59,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -126,7 +129,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -168,6 +171,47 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		require.Greater(t, len(data), 0, "could not extractor kval valid response")
 		require.Equal(t, map[string]struct{}{"Test-Response": {}}, data, "could not extract correct kval data")
 	})
+
+	t.Run("json", func(t *testing.T) {
+		event["body"] = exampleJSONResponseBody
+
+		t.Run("jq-simple", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".batters | .batter | .[] | .id"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"1001": {}, "1002": {}, "1003": {}, "1004": {}}, data, "could not extract correct json data")
+		})
+		t.Run("jq-array", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".array"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"[\"hello\",\"world\"]": {}}, data, "could not extract correct json data")
+		})
+		t.Run("jq-object", func(t *testing.T) {
+			extractor := &extractors.Extractor{
+				Type: "json",
+				JSON: []string{".batters"},
+			}
+			err = extractor.CompileExtractors()
+			require.Nil(t, err, "could not compile json extractor")
+
+			data := request.Extract(event, extractor)
+			require.Greater(t, len(data), 0, "could not extractor json valid response")
+			require.Equal(t, map[string]struct{}{"{\"batter\":[{\"id\":\"1001\",\"type\":\"Regular\"},{\"id\":\"1002\",\"type\":\"Chocolate\"},{\"id\":\"1003\",\"type\":\"Blueberry\"},{\"id\":\"1004\",\"type\":\"Devil's Food\"}]}": {}}, data, "could not extract correct json data")
+		})
+	})
 }
 
 func TestHTTPMakeResult(t *testing.T) {
@@ -196,7 +240,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -304,4 +348,64 @@ const exampleResponseBody = `
 </div>
 </body>
 </html>
+`
+
+const exampleJSONResponseBody = `
+{
+  "id": "0001",
+  "type": "donut",
+  "name": "Cake",
+  "ppu": 0.55,
+  "array": ["hello", "world"],
+  "batters": {
+    "batter": [
+      {
+        "id": "1001",
+        "type": "Regular"
+      },
+      {
+        "id": "1002",
+        "type": "Chocolate"
+      },
+      {
+        "id": "1003",
+        "type": "Blueberry"
+      },
+      {
+        "id": "1004",
+        "type": "Devil's Food"
+      }
+    ]
+  },
+  "topping": [
+    {
+      "id": "5001",
+      "type": "None"
+    },
+    {
+      "id": "5002",
+      "type": "Glazed"
+    },
+    {
+      "id": "5005",
+      "type": "Sugar"
+    },
+    {
+      "id": "5007",
+      "type": "Powdered Sugar"
+    },
+    {
+      "id": "5006",
+      "type": "Chocolate with Sprinkles"
+    },
+    {
+      "id": "5003",
+      "type": "Chocolate"
+    },
+    {
+      "id": "5004",
+      "type": "Maple"
+    }
+  ]
+}
 `

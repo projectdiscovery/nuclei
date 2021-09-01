@@ -49,10 +49,10 @@ func New(payloads map[string]interface{}, payloadType Type, templatePath string)
 	if payloadType == PitchFork {
 		var totalLength int
 		for v := range compiled {
-			if totalLength != 0 && totalLength != len(v) {
+			if totalLength != 0 && totalLength != len(compiled[v]) {
 				return nil, errors.New("pitchfork payloads must be of equal number")
 			}
-			totalLength = len(v)
+			totalLength = len(compiled[v])
 		}
 	}
 	return generator, nil

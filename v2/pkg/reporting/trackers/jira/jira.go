@@ -6,14 +6,13 @@ import (
 	"io/ioutil"
 	"strings"
 
-	jira "github.com/andygrunwald/go-jira"
-	"github.com/projectdiscovery/gologger"
+	"github.com/andygrunwald/go-jira"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// Integration is a client for a issue tracker integration
+// Integration is a client for an issue tracker integration
 type Integration struct {
 	jira    *jira.Client
 	options *Options
@@ -142,31 +141,34 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 
 // jiraFormatDescription formats a short description of the generated
 // event by the nuclei scanner in Jira format.
-func jiraFormatDescription(event *output.ResultEvent) string {
+func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove the code duplication: format.go <-> jira.go
 	template := format.GetMatchedTemplate(event)
 
 	builder := &bytes.Buffer{}
 	builder.WriteString("*Details*: *")
 	builder.WriteString(template)
 	builder.WriteString("* ")
+
 	builder.WriteString(" matched at ")
 	builder.WriteString(event.Host)
+
 	builder.WriteString("\n\n*Protocol*: ")
 	builder.WriteString(strings.ToUpper(event.Type))
+
 	builder.WriteString("\n\n*Full URL*: ")
 	builder.WriteString(event.Matched)
+
 	builder.WriteString("\n\n*Timestamp*: ")
 	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+
 	builder.WriteString("\n\n*Template Information*\n\n| Key | Value |\n")
-	for k, v := range event.Info {
-		if k == "reference" {
-			continue
-		}
-		builder.WriteString(fmt.Sprintf("| %s | %s |\n", k, v))
-	}
+	builder.WriteString(format.ToMarkdownTableString(&event.Info))
+
 	builder.WriteString("\n*Request*\n\n{code}\n")
 	builder.WriteString(event.Request)
-	builder.WriteString("\n{code}\n\n*Response*\n\n{code}\n")
+	builder.WriteString("\n{code}\n")
+
+	builder.WriteString("\n*Response*\n\n{code}\n")
 	// If the response is larger than 5 kb, truncate it before writing.
 	if len(event.Response) > 5*1024 {
 		builder.WriteString(event.Response[:5*1024])
@@ -223,23 +225,17 @@ func jiraFormatDescription(event *output.ResultEvent) string {
 			builder.WriteString("\n{code}\n")
 		}
 	}
-	if d, ok := event.Info["reference"]; ok {
-		builder.WriteString("\nReference: \n")
 
-		switch v := d.(type) {
-		case string:
-			if !strings.HasPrefix(v, "-") {
-				builder.WriteString("- ")
-			}
-			builder.WriteString(v)
-		case []interface{}:
-			slice := types.ToStringSlice(v)
-			for i, item := range slice {
-				builder.WriteString("- ")
-				builder.WriteString(item)
-				if len(slice)-1 != i {
-					builder.WriteString("\n")
-				}
+	reference := event.Info.Reference
+	if !reference.IsEmpty() {
+		builder.WriteString("\nReferences: \n")
+
+		referenceSlice := reference.ToSlice()
+		for i, item := range referenceSlice {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			if len(referenceSlice)-1 != i {
+				builder.WriteString("\n")
 			}
 		}
 	}
