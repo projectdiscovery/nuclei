@@ -16,7 +16,7 @@ import (
 // It uses an LRU cache internally for skipping unresponsive hosts
 // that remain so for a duration.
 type Cache struct {
-	hostMaxErrors int
+	MaxHostError int
 	verbose       bool
 	failedTargets gcache.Cache
 }
@@ -24,11 +24,11 @@ type Cache struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(hostMaxErrors, maxHostsCount int) *Cache {
+func New(MaxHostError, maxHostsCount int) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
-	return &Cache{failedTargets: gc, hostMaxErrors: hostMaxErrors}
+	return &Cache{failedTargets: gc, MaxHostError: MaxHostError}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -88,7 +88,7 @@ func (c *Cache) Check(value string) bool {
 	if numberOfErrors == -1 {
 		return true
 	}
-	if numberOfErrorsValue >= c.hostMaxErrors {
+	if numberOfErrorsValue >= c.MaxHostError {
 		_ = c.failedTargets.Set(finalValue, -1)
 		if c.verbose {
 			gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, numberOfErrorsValue)

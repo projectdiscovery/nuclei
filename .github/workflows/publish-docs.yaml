@@ -1,6 +1,8 @@
 name: ⏰ Publish Docs
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -17,7 +19,7 @@ jobs:
       - name: "Set up Go"
         uses: actions/setup-go@v2
         with: 
-          go-version: 1.16
+          go-version: 1.17
 
       - name: Generate YAML Syntax Documentation
         id: generate-docs
@@ -28,7 +30,7 @@ jobs:
           fi
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
-          ./cmd/docgen/docgen syntax-reference.md nuclei-jsonschema.json
+          ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
           echo "::set-output name=changes::$(git status -s | wc -l)"
         working-directory: v2
 
@@ -37,7 +39,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add v2/syntax-reference.md v2/nuclei-jsonschema.json
+          git add SYNTAX-REFERENCE.md nuclei-jsonschema.json
           git commit -m "Auto Generate Syntax Docs + JSONSchema [$(date)] :robot:" -a
 
       - name: Push changes
