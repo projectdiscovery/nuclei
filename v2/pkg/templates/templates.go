@@ -1,6 +1,8 @@
+//go:generate dstdocgen -path "" -structure Template -output templates_doc.go -package templates
 package templates
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
@@ -10,25 +12,55 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
-// Template is a request template parsed from a yaml file
+// Template is a YAML input file which defines all the requests and
+// other metadata for a template.
 type Template struct {
-	// ID is the unique id for the template
-	ID string `yaml:"id"`
-	// Info contains information about the template
-	Info map[string]interface{} `yaml:"info"`
-	// RequestsHTTP contains the http request to make in the template
-	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests"`
-	// RequestsDNS contains the dns request to make in the template
-	RequestsDNS []*dns.Request `yaml:"dns,omitempty" json:"dns"`
-	// RequestsFile contains the file request to make in the template
-	RequestsFile []*file.Request `yaml:"file,omitempty" json:"file"`
-	// RequestsNetwork contains the network request to make in the template
-	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network"`
-	// RequestsHeadless contains the headless request to make in the template.
-	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless"`
+	// description: |
+	//   ID is the unique id for the template. IDs must be lowercase
+	//   and must not contain spaces in it.
+	//
+	//   #### Good IDs
+	//
+	//   A good ID uniquely identifies what the requests in the template
+	//   are doing. Let's say you have a template that identifies a git-config
+	//   file on the webservers, a good name would be `git-config-exposure`. Another
+	//   example name is `azure-apps-nxdomain-takeover`.
+	// examples:
+	//   - name: ID Example
+	//     value: "\"cve-2021-19520\""
+	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520"`
+	// description: |
+	//   Info contains metadata information about the template.
+	// examples:
+	//   - value: exampleInfoStructure
+	Info model.Info `yaml:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
+	// description: |
+	//   Requests contains the http request to make in the template.
+	// examples:
+	//   - value: exampleNormalHTTPRequest
+	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
+	// description: |
+	//   DNS contains the dns request to make in the template
+	// examples:
+	//   - value: exampleNormalDNSRequest
+	RequestsDNS []*dns.Request `yaml:"dns,omitempty" json:"dns,omitempty" jsonschema:"title=dns requests to make,description=DNS requests to make for the template"`
+	// description: |
+	//   File contains the file request to make in the template
+	// examples:
+	//   - value: exampleNormalFileRequest
+	RequestsFile []*file.Request `yaml:"file,omitempty" json:"file,omitempty" jsonschema:"title=file requests to make,description=File requests to make for the template"`
+	// description: |
+	//   Network contains the network request to make in the template
+	// examples:
+	//   - value: exampleNormalNetworkRequest
+	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
+	// description: |
+	//   Headless contains the headless request to make in the template.
+	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless,omitempty" jsonschema:"title=headless requests to make,description=Headless requests to make for the template"`
 
-	// Workflows is a yaml based workflow declaration code.
-	workflows.Workflow `yaml:",inline,omitempty"`
+	// description: |
+	//   Workflows is a yaml based workflow declaration code.
+	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
 
 	// TotalRequests is the total number of requests for the template.

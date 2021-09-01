@@ -1,6 +1,9 @@
 package types
 
-import "github.com/projectdiscovery/goflags"
+import (
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+)
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
@@ -20,8 +23,8 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
-	// Severity filters templates based on their severity and only run the matching ones.
-	Severity goflags.NormalizedStringSlice
+	// Severities filters templates based on their severity and only run the matching ones.
+	Severities severity.Severities
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
@@ -62,6 +65,8 @@ type Options struct {
 	StatsInterval int
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
+	// MaxHostError is the maximum number of errors allowed for a host
+	MaxHostError int
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -135,6 +140,8 @@ type Options struct {
 	StopAtFirstMatch bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
+	// NoTimestamp disables display of timestamp for the matcher
+	NoTimestamp bool
 	// Project is used to avoid sending same HTTP request multiple times
 	Project bool
 	// NewTemplates only runs newly added templates from the repository

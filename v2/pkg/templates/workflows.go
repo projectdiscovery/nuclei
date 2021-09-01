@@ -1,26 +1,30 @@
 package templates
 
 import (
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	"github.com/projectdiscovery/nuclei/v2/pkg/workflows/compile"
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader compile.WorkflowLoader) {
+func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
 			continue
 		}
 	}
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader compile.WorkflowLoader) error {
+func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader) error {
 	shouldNotValidate := false
 
+	if len(workflow.Template) == 0 && workflow.Tags.IsEmpty() {
+		return errors.New("invalid workflow with no templates or tags")
+	}
 	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
 		shouldNotValidate = true
 	}
@@ -45,28 +49,30 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
-func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecuterOptions, loader compile.WorkflowLoader, noValidate bool) error {
+func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecuterOptions, loader model.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
-	if len(workflow.Tags) > 0 {
-		paths = loader.ListTags([]string{workflow.Tags})
+	subTemplateTags := workflow.Tags
+	if !subTemplateTags.IsEmpty() {
+		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice())
 	} else {
-		paths = loader.ListTemplates([]string{workflow.Template}, noValidate)
+		paths = loader.GetTemplatePaths([]string{workflow.Template}, noValidate)
 	}
 	if len(paths) == 0 {
 		return nil
 	}
 	for _, path := range paths {
 		opts := protocols.ExecuterOptions{
-			Output:       options.Output,
-			Options:      options.Options,
-			Progress:     options.Progress,
-			Catalog:      options.Catalog,
-			Browser:      options.Browser,
-			RateLimiter:  options.RateLimiter,
-			IssuesClient: options.IssuesClient,
-			Interactsh:   options.Interactsh,
-			ProjectFile:  options.ProjectFile,
+			Output:          options.Output,
+			Options:         options.Options,
+			Progress:        options.Progress,
+			Catalog:         options.Catalog,
+			Browser:         options.Browser,
+			RateLimiter:     options.RateLimiter,
+			IssuesClient:    options.IssuesClient,
+			Interactsh:      options.Interactsh,
+			ProjectFile:     options.ProjectFile,
+			HostErrorsCache: options.HostErrorsCache,
 		}
 		template, err := Parse(path, preprocessor, opts)
 		if err != nil {

@@ -6,11 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
 
@@ -29,13 +33,14 @@ type Writer interface {
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
 	json           bool
+	noTimestamp    bool
 	noMetadata     bool
 	aurora         aurora.Aurora
 	outputFile     *fileWriter
 	outputMutex    *sync.Mutex
 	traceFile      *fileWriter
 	traceMutex     *sync.Mutex
-	severityColors *colorizer.Colorizer
+	severityColors func(severity.Severity) string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -57,7 +62,7 @@ type ResultEvent struct {
 	// TemplatePath is the path of template
 	TemplatePath string `json:"-"`
 	// Info contains information block of the template for the result.
-	Info map[string]interface{} `json:"info,inline"`
+	Info model.Info `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
 	MatcherName string `json:"matcher_name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
@@ -89,7 +94,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json bool, file, traceFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile *fileWriter
@@ -111,6 +116,7 @@ func NewStandardWriter(colors, noMetadata, json bool, file, traceFile string) (*
 	writer := &StandardWriter{
 		json:           json,
 		noMetadata:     noMetadata,
+		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
 		outputMutex:    &sync.Mutex{},

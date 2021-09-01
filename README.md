@@ -30,7 +30,7 @@
 
 Nuclei is used to send requests across targets based on a template leading to zero false positives and providing fast scanning on large number of hosts. Nuclei offers scanning for a variety of protocols including TCP, DNS, HTTP, File, etc. With powerful and flexible templating, all kinds of security checks can be modelled with Nuclei.
 
-We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 100** security researchers and engineers. It is preloaded with ready to use templates using `-update-templates` flag.
+We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 200** security researchers and engineers.
 
 
 
@@ -60,6 +60,8 @@ Nuclei has had built-in support for automatic update/download templates since ve
 
 You may still use the `update-templates` flag to update the nuclei templates at any time; automatic updates happen every 24 hours. You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
+The YAML DSL reference syntax is available [here](v2/syntax-reference.md).
+
 </td>
 </tr>
 </table>
@@ -78,7 +80,7 @@ Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
 Usage:
-  ./nuclei [flags]
+  nuclei [flags]
 
 Flags:
 TARGET:
@@ -98,7 +100,7 @@ FILTERING:
    -etags, -exclude-tags string[]         exclude templates with the provided tags
    -include-templates string[]            templates to be executed even if they are excluded either by default or configuration
    -exclude-templates, -exclude string[]  template or template directory paths to exclude
-   -severity, -impact string[]            execute templates that match the provided severities only
+   -severity, -impact value[]             Templates to run based on severity. Possible values: info, low, medium, high, critical
    -author string[]                       execute templates that are (co-)created by the specified authors
 
 OUTPUT:
@@ -109,7 +111,8 @@ OUTPUT:
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
-   -nm, -no-meta                 don't display match metadata
+   -nm, -no-meta                 don't display match metadata in CLI output
+   -nts, -no-timestamp           don't display timestamp metadata in CLI output
    -rdb, -report-db string       local nuclei reporting database (always use this to persist report data)
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
@@ -122,7 +125,7 @@ CONFIGURATIONS:
    -r, -resolvers string       file containing resolver list for nuclei
    -system-resolvers           use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
-   -env-vars                   Enable environment variables support
+   -env-vars                   enable environment variables support
 
 INTERACTSH:
    -no-interactsh                     do not use interactsh server for blind interaction polling
@@ -141,8 +144,9 @@ RATE-LIMIT:
 OPTIMIZATIONS:
    -timeout int               time to wait in seconds before timeout (default 5)
    -retries int               number of times to retry a failed request (default 1)
+   -max-host-error int        max errors for a host before skipping from scan (default 30)
    -project                   use a project folder to avoid sending same request multiple times
-   -project-path string       set a specific project path (default "/var/folders/ml/m31ysb5x73l1s3kjlyn5g4180000gn/T/")
+   -project-path string       set a specific project path (default "$TMPDIR/")
    -spm, -stop-at-first-path  stop processing HTTP requests after the first match (may break template/workflow logic)
 
 HEADLESS:
@@ -163,7 +167,7 @@ DEBUG:
 UPDATE:
    -update                        update nuclei to the latest released version
    -ut, -update-templates         update the community templates to latest released version
-   -nut, -no-update-templates     Do not check for nuclei-templates updates
+   -nut, -no-update-templates     do not check for nuclei-templates updates
    -ud, -update-directory string  overwrite the default nuclei-templates directory (default "$HOME/nuclei-templates")
 
 STATISTICS:

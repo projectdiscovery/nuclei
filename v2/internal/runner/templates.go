@@ -1,50 +1,25 @@
 package runner
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/karrick/godirwalk"
+
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"gopkg.in/yaml.v2"
 )
 
-// parseTemplateFile returns the parsed template file
-func (r *Runner) parseTemplateFile(file string) (*templates.Template, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	template := &templates.Template{}
-	err = yaml.NewDecoder(bytes.NewReader(data)).Decode(template)
-	if err != nil {
-		return nil, err
-	}
-	return template, nil
-}
-
-func (r *Runner) templateLogMsg(id, name, author, severity string) string {
+func (r *Runner) templateLogMsg(id, name, author string, templateSeverity severity.Severity) string {
 	// Display the message for the template
-	message := fmt.Sprintf("[%s] %s (%s)",
+	return fmt.Sprintf("[%s] %s (%s) [%s]",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
-		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String())
-	if severity != "" {
-		message += " [" + r.severityColors.Data[severity] + "]"
-	}
-	return message
+		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String(),
+		r.addColor(templateSeverity))
 }
 
 // appendAtSignToAuthors appends @ before each author and returns final string
@@ -71,11 +46,14 @@ func appendAtSignToAuthors(author string) string {
 }
 
 func (r *Runner) logAvailableTemplate(tplPath string) {
-	t, err := r.parseTemplateFile(tplPath)
+	t, err := parsers.ParseTemplate(tplPath)
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Info().Msgf("%s\n", r.templateLogMsg(t.ID, types.ToString(t.Info["name"]), types.ToString(t.Info["author"]), types.ToString(t.Info["severity"])))
+		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID,
+			types.ToString(t.Info.Name),
+			types.ToString(t.Info.Authors),
+			t.Info.SeverityHolder.Severity))
 	}
 }
 

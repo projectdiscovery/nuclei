@@ -6,14 +6,14 @@ on:
 
 
 jobs:  
-  build:
+  functional:
     name: Functional Test
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code
         uses: actions/checkout@v2
