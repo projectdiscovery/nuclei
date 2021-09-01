@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
@@ -21,7 +19,6 @@ import (
 
 var (
 	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
-	fieldErrorRegexp          = regexp.MustCompile(`not found in`)
 )
 
 var parsedTemplatesCache *cache.Templates
@@ -56,11 +53,8 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		data = preprocessor.Process(data)
 	}
 
-	if err := yaml.UnmarshalStrict(data, template); err != nil {
-		if !fieldErrorRegexp.MatchString(err.Error()) {
-			return nil, err
-		}
-		gologger.Warning().Msgf("Unrecognized fields in template %s: %s", filePath, err)
+	if err := yaml.Unmarshal(data, template); err != nil {
+		return nil, err
 	}
 
 	if utils.IsBlank(template.Info.Name) {

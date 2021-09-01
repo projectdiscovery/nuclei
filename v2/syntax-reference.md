@@ -60,10 +60,8 @@ Examples:
 ```yaml
 info:
     name: Argument Injection in Ruby Dragonfly
-    author:
-        - 0xspara
-    tags:
-        - cve,cve2021,rce,ruby
+    author: 0xspara
+    tags: cve,cve2021,rce,ruby
     reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
     severity: high
 ```
@@ -248,10 +246,8 @@ Appears in:
 
 ```yaml
 name: Argument Injection in Ruby Dragonfly
-author:
-    - 0xspara
-tags:
-    - cve,cve2021,rce,ruby
+author: 0xspara
+tags: cve,cve2021,rce,ruby
 reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
@@ -293,6 +289,8 @@ name: Nagios Default Credentials Check
 <div class="dt">
 
 Author of the template.
+
+Multiple values can also be specified separated by commas.
 
 
 
@@ -620,7 +618,7 @@ raw:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -1005,6 +1003,19 @@ This allows matching on them later for multi-request conditions.
 
 <hr />
 
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
 
 
 
@@ -1130,7 +1141,7 @@ It will only match if the condition is not true.
 <div class="dt">
 
 Name of the matcher. Name should be lowercase and must not contain
-spaces or dashes (-).
+spaces or underscores (_).
 
 
 
@@ -1373,7 +1384,7 @@ Appears in:
 <div class="dt">
 
 Name of the extractor. Name should be lowercase and must not contain
-spaces or dashes (-).
+spaces or underscores (_).
 
 
 
@@ -1420,9 +1431,9 @@ Valid values:
 </div>
 <div class="dt">
 
-Regex contains the regular expression patterns to exract from a part.
+Regex contains the regular expression patterns to extract from a part.
 
-Go regex engine does not supports lookaheads or lookbehinds, so as a result
+Go regex engine does not support lookaheads or lookbehinds, so as a result
 they are also not supported in nuclei.
 
 
@@ -1478,29 +1489,23 @@ group: 1
 </div>
 <div class="dt">
 
-kval contains the key-value pairs required in the response.
+description: |
+   kval contains the key-value pairs present in the HTTP response header.
+   kval extractor can be used to extract HTTP response header and cookie key-value pairs.
+   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+ 	 For example, Content-Type should be replaced with content_type
 
-Each protocol exposes a lot of different data in response. The kval
-extractor can be used to extract those key-value pairs. A list of
-supported parts is available in docs for request types.
-
-
-
-Examples:
-
-
-```yaml
-# Extract Server Header From HTTP Response
-kval:
-    - Server
-```
-
-```yaml
-# Extracting value of PHPSESSID Cookie
-kval:
-    - PHPSESSID
-```
-
+   A list of supported parts is available in docs for request types.
+ examples:
+   - name: Extract Server Header From HTTP Response
+     value: >
+       []string{"server"}
+   - name: Extracting value of PHPSESSID Cookie
+     value: >
+       []string{"phpsessid"}
+   - name: Extracting value of Content-Type Cookie
+     value: >
+       []string{"content_type"}
 
 </div>
 
@@ -1552,11 +1557,6 @@ Examples:
 ```yaml
 xpath:
     - /html/body/div/p[2]/a
-```
-
-```yaml
-xpath:
-    - .batters | .batter | .[] | .id
 ```
 
 
@@ -1718,7 +1718,7 @@ Valid values:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -1798,17 +1798,17 @@ Usually it's enough to just leave it as INET.
 Valid values:
 
 
-  - <code>INET</code>
+  - <code>inet</code>
 
-  - <code>CSNET</code>
+  - <code>csnet</code>
 
-  - <code>CHAOS</code>
+  - <code>chaos</code>
 
-  - <code>HESIOD</code>
+  - <code>hesiod</code>
 
-  - <code>NONE</code>
+  - <code>none</code>
 
-  - <code>ANY</code>
+  - <code>any</code>
 </div>
 
 <hr />
@@ -1988,7 +1988,7 @@ denylist:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -2068,7 +2068,7 @@ matchers:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -2374,7 +2374,7 @@ Appears in:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 

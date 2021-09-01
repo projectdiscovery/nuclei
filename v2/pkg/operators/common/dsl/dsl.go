@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
@@ -240,6 +241,11 @@ var functions = map[string]govaluate.ExpressionFunction{
 		}
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
+	},
+	// for debug purposes
+	"print_debug": func(args ...interface{}) (interface{}, error) {
+		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+		return true, nil
 	},
 }
 

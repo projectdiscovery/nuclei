@@ -26,7 +26,7 @@ type Request struct {
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
 	ExtensionDenylist []string `yaml:"denylist,omitempty" jsonschema:"title=extensions to deny match,description=List of file extensions to deny during matching"`
 
-	// ID is the ID of the request
+	// ID is the the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID for the request"`
 
 	// description: |
