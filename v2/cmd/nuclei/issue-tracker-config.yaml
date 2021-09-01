@@ -33,8 +33,10 @@
 
 # jira contains configuration options for jira issue tracker
 #jira:
-#  # Cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+#  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
 #  cloud: true
+#  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
+#  update-existing: false
 #  # URL is the jira application url
 #  url: ""
 #  # account-id is the account-id of the jira user or username in case of on-prem Jira
@@ -47,3 +49,20 @@
 #  project-name: ""
 #  # issue-type is the name of the created issue type
 #  issue-type: ""
+
+# elasticsearch contains configuration options for elasticsearch exporter
+#elasticsearch:
+#  # IP for elasticsearch instance
+#  ip: 127.0.0.1
+#  # Port is the port of elasticsearch instance
+#  port: 9200
+#  # IndexName is the name of the elasticsearch index
+#  index-name: nuclei
+#  # SSL enables ssl for elasticsearch connection
+#  # ssl: false
+#  # SSLVerification disables SSL verification for elasticsearch
+#  # ssl-verification: false
+#  # Username for the elasticsearch instance
+#  # username: test
+#  # Pasword is the password for elasticsearch instance
+#  # password: test
