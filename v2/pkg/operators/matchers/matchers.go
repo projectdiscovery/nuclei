@@ -43,7 +43,7 @@ type Matcher struct {
 
 	// description: |
 	//   Name of the matcher. Name should be lowercase and must not contain
-	//   spaces or dashes (-).
+	//   spaces or underscores (_).
 	// examples:
 	//   - value: "\"cookie-matcher\""
 	Name string `yaml:"name,omitempty" jsonschema:"title=name of the matcher,description=Name of the matcher"`
