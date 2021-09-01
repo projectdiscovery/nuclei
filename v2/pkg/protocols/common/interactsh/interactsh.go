@@ -1,7 +1,10 @@
 package interactsh
 
 import (
+	"bytes"
+	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -15,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/valyala/fasttemplate"
 )
 
 // Client is a wrapped client for interactsh server.
@@ -63,6 +65,8 @@ type Options struct {
 	IssuesClient *reporting.Client
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
+	// Debug specifies whether debugging output should be shown for interactsh-client
+	Debug bool
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -101,6 +105,9 @@ func New(options *Options) (*Client, error) {
 	}
 
 	interactClient.interactsh.StartPolling(interactClient.pollDuration, func(interaction *server.Interaction) {
+		if options.Debug {
+			debugPrintInteraction(interaction)
+		}
 		item := interactClient.requests.Get(interaction.UniqueID)
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
@@ -183,9 +190,7 @@ func (c *Client) ReplaceMarkers(data, interactshURL string) string {
 	if !strings.Contains(data, interactshURLMarker) {
 		return data
 	}
-	replaced := fasttemplate.ExecuteStringStd(data, "{{", "}}", map[string]interface{}{
-		"interactsh-url": interactshURL,
-	})
+	replaced := strings.NewReplacer("{{interactsh-url}}", interactshURL).Replace(data)
 	return replaced
 }
 
@@ -254,4 +259,21 @@ func HasMatchers(op *operators.Operators) bool {
 		}
 	}
 	return false
+}
+
+func debugPrintInteraction(interaction *server.Interaction) {
+	builder := &bytes.Buffer{}
+
+	switch interaction.Protocol {
+	case "dns":
+		builder.WriteString(fmt.Sprintf("[%s] Received DNS interaction (%s) from %s at %s", interaction.FullId, interaction.QType, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(fmt.Sprintf("\n-----------\nDNS Request\n-----------\n\n%s\n\n------------\nDNS Response\n------------\n\n%s\n\n", interaction.RawRequest, interaction.RawResponse))
+	case "http":
+		builder.WriteString(fmt.Sprintf("[%s] Received HTTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(fmt.Sprintf("\n------------\nHTTP Request\n------------\n\n%s\n\n-------------\nHTTP Response\n-------------\n\n%s\n\n", interaction.RawRequest, interaction.RawResponse))
+	case "smtp":
+		builder.WriteString(fmt.Sprintf("[%s] Received SMTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(fmt.Sprintf("\n------------\nSMTP Interaction\n------------\n\n%s\n\n", interaction.RawRequest))
+	}
+	fmt.Fprint(os.Stderr, builder.String())
 }

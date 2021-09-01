@@ -7,28 +7,41 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/blang/semver"
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+
+	"github.com/tj/go-update"
+	"github.com/tj/go-update/progress"
+	githubUpdateStore "github.com/tj/go-update/stores/github"
 )
 
 const (
-	userName = "projectdiscovery"
-	repoName = "nuclei-templates"
+	userName             = "projectdiscovery"
+	repoName             = "nuclei-templates"
+	nucleiIgnoreFile     = ".nuclei-ignore"
+	nucleiConfigFilename = ".templates-config.json"
+	defaultIgnoreURL     = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 )
+
+var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // updateTemplates checks if the default list of nuclei-templates
 // exist in the users home directory, if not the latest revision
@@ -41,76 +54,50 @@ func (r *Runner) updateTemplates() error {
 	if err != nil {
 		return err
 	}
-	configDir := path.Join(home, "/.config", "/nuclei")
+	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, os.ModePerm)
 
-	templatesConfigFile := path.Join(configDir, nucleiConfigFilename)
-	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		config, readErr := readConfiguration()
-		if err != nil {
-			return readErr
-		}
-		r.templatesConfig = config
+	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
+		return errors.Wrap(err, "could not read configuration file")
 	}
 
-	ignoreURL := "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
+	// If the config doesn't exist, write it now.
 	if r.templatesConfig == nil {
-		currentConfig := &nucleiConfig{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
-			IgnoreURL:          ignoreURL,
-			NucleiVersion:      Version,
+		currentConfig := &config.Config{
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
+			IgnoreURL:          defaultIgnoreURL,
+			NucleiVersion:      config.Version,
 		}
-		if writeErr := r.writeConfiguration(currentConfig); writeErr != nil {
+		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
 	}
 
+	if r.options.NoUpdateTemplates {
+		return nil
+	}
+
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
-	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour || r.options.UpdateTemplates {
-		if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
-			ignoreURL = r.templatesConfig.IgnoreURL
-		}
-		gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
-		if reqErr == nil {
-			resp, httpGet := http.DefaultClient.Do(req)
-			if httpGet != nil {
-				if resp != nil && resp.Body != nil {
-					resp.Body.Close()
-				}
-				gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-			} else {
-				data, _ := ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-
-				if len(data) > 0 {
-					_ = ioutil.WriteFile(path.Join(configDir, nucleiIgnoreFile), data, 0644)
-				}
-				if r.templatesConfig != nil {
-					r.templatesConfig.LastCheckedIgnore = time.Now()
-				}
-			}
-		}
-		cancel()
+	//
+	// Also at the same time fetch latest version from github to do outdated nuclei
+	// and templates check.
+	checkedIgnore := false
+	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
+		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
 	}
 
 	ctx := context.Background()
 	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
-		if !r.options.UpdateTemplates {
-			gologger.Warning().Msgf("nuclei-templates are not installed (or indexed), use update-templates flag.\n")
-			return nil
-		}
+		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 		// Use custom location if user has given a template directory
-		r.templatesConfig = &nucleiConfig{
-			TemplatesDirectory: path.Join(home, "nuclei-templates"),
+		r.templatesConfig = &config.Config{
+			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != path.Join(home, "nuclei-templates") {
-			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
+		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 
 		// Download the repository and also write the revision to a HEAD file.
@@ -120,21 +107,22 @@ func (r *Runner) updateTemplates() error {
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
+		r.fetchLatestVersionsFromGithub() // also fetch latest versions
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
 		r.templatesConfig.CurrentVersion = version.String()
 
-		err = r.writeConfiguration(r.templatesConfig)
+		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
 		if err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). Enjoy!\n", version.String())
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
 		return nil
 	}
 
-	// Check if last checked is more than 24 hours.
+	// Check if last checked is more than 24 hours and we don't have updateTemplates flag.
 	// If not, return since we don't want to do anything now.
 	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
@@ -161,15 +149,12 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Info().Msgf("Your nuclei-templates are up to date: v%s\n", oldVersion.String())
-		return r.writeConfiguration(r.templatesConfig)
+		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
 	}
 
 	if version.GT(oldVersion) {
-		if !r.options.UpdateTemplates {
-			gologger.Warning().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
-			return r.writeConfiguration(r.templatesConfig)
-		}
+		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", oldVersion, version.String())
+		gologger.Info().Msgf("Downloading latest release...")
 
 		if r.options.TemplatesDirectory != "" {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
@@ -177,17 +162,70 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig.CurrentVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
+		r.fetchLatestVersionsFromGithub()
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
-		err = r.writeConfiguration(r.templatesConfig)
+		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
 		if err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). Enjoy!\n", version.String())
+		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
 	}
 	return nil
+}
+
+// readInternalConfigurationFile reads the internal configuration file for nuclei
+func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
+	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
+	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
+		configuration, readErr := config.ReadConfiguration()
+		if readErr != nil {
+			return readErr
+		}
+		r.templatesConfig = configuration
+
+		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+			r.options.TemplatesDirectory = configuration.TemplatesDirectory
+		}
+	}
+	return nil
+}
+
+// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from github
+func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
+	ignoreURL := defaultIgnoreURL
+	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
+		ignoreURL = r.templatesConfig.IgnoreURL
+	}
+	gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
+	if reqErr == nil {
+		resp, httpGetErr := http.DefaultClient.Do(req)
+		if httpGetErr != nil {
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, httpGetErr)
+		} else {
+			data, _ := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+
+			if len(data) > 0 {
+				_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+			}
+			if r.templatesConfig != nil {
+				if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
+					gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
+				}
+			}
+		}
+	}
+	cancel()
+	return true
 }
 
 // getLatestReleaseFromGithub returns the latest release from github
@@ -266,15 +304,17 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to write templates: %s", err)
 	}
 
-	r.printUpdateChangelog(results, version)
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	if r.options.Verbose {
+		r.printUpdateChangelog(results, version)
+	}
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	err = writeTemplatesChecksum(checksumFile, results.checksums)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
 	// Write the additions to a cached file for new runs.
-	additionsFile := path.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	buffer := &bytes.Buffer{}
 	for _, addition := range results.additions {
 		buffer.WriteString(addition)
@@ -307,27 +347,27 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	checksumFile := path.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
 	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
 	for _, file := range z.File {
 		directory, name := filepath.Split(file.Name)
 		if name == "" {
 			continue
 		}
-		paths := strings.Split(directory, "/")
-		finalPath := strings.Join(paths[1:], "/")
+		paths := strings.Split(directory, string(os.PathSeparator))
+		finalPath := filepath.Join(paths[1:]...)
 
 		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
 			continue
 		}
 		results.totalCount++
-		templateDirectory := path.Join(r.templatesConfig.TemplatesDirectory, finalPath)
+		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
 		err := os.MkdirAll(templateDirectory, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
-		templatePath := path.Join(templateDirectory, name)
+		templatePath := filepath.Join(templateDirectory, name)
 
 		isAddition := false
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
@@ -358,9 +398,9 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
-			results.additions = append(results.additions, path.Join(finalPath, name))
+			results.additions = append(results.additions, filepath.Join(finalPath, name))
 		} else if checksumOK && oldChecksum[0] != checksum {
-			results.modifications = append(results.modifications, path.Join(finalPath, name))
+			results.modifications = append(results.modifications, filepath.Join(finalPath, name))
 		}
 		results.checksums[templatePath] = checksum
 	}
@@ -371,7 +411,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		_, ok := results.checksums[k]
 		if !ok && v[0] == v[1] {
 			os.Remove(k)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), "/"))
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil
@@ -442,7 +482,7 @@ func writeTemplatesChecksum(file string, checksum map[string]string) error {
 }
 
 func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version string) {
-	if len(results.additions) > 0 {
+	if len(results.additions) > 0 && r.options.Verbose {
 		gologger.Print().Msgf("\nNewly added templates: \n\n")
 
 		for _, addition := range results.additions {
@@ -460,4 +500,109 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 		table.Append(v)
 	}
 	table.Render()
+}
+
+// fetchLatestVersionsFromGithub fetches latest versions of nuclei repos from github
+func (r *Runner) fetchLatestVersionsFromGithub() {
+	nucleiLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei")
+	if err != nil {
+		gologger.Warning().Msgf("Could not fetch latest nuclei release: %s", err)
+	}
+	templatesLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei-templates")
+	if err != nil {
+		gologger.Warning().Msgf("Could not fetch latest nuclei-templates release: %s", err)
+	}
+	if r.templatesConfig != nil {
+		r.templatesConfig.NucleiLatestVersion = nucleiLatest
+		r.templatesConfig.NucleiTemplatesLatestVersion = templatesLatest
+	}
+}
+
+type githubTagData struct {
+	Name string
+}
+
+// githubFetchLatestTagRepo fetches latest tag from github
+// This function was half written by github copilot AI :D.
+func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/tags", repo)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var tags []githubTagData
+	err = json.Unmarshal(body, &tags)
+	if err != nil {
+		return "", err
+	}
+	if len(tags) == 0 {
+		return "", fmt.Errorf("no tags found for %s", repo)
+	}
+	return strings.TrimPrefix(tags[0].Name, "v"), nil
+}
+
+// updateNucleiVersionToLatest implements nuclei auto-updation using Github Releases.
+func updateNucleiVersionToLatest(verbose bool) error {
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "nuclei.exe"
+	default:
+		command = "nuclei"
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "projectdiscovery",
+			Repo:    "nuclei",
+			Version: config.Version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return errors.Wrap(err, "could not fetch latest release")
+	}
+	if len(releases) == 0 {
+		gologger.Info().Msgf("No new updates found for nuclei engine!")
+		return nil
+	}
+
+	latest := releases[0]
+	var currentOS string
+	switch runtime.GOOS {
+	case "darwin":
+		currentOS = "macOS"
+	default:
+		currentOS = runtime.GOOS
+	}
+	final := latest.FindZip(currentOS, runtime.GOARCH)
+	if final == nil {
+		return fmt.Errorf("no compatible binary found for %s/%s", currentOS, runtime.GOARCH)
+	}
+	tarball, err := final.DownloadProxy(progress.Reader)
+	if err != nil {
+		return errors.Wrap(err, "could not download latest release")
+	}
+	if err := m.Install(tarball); err != nil {
+		return errors.Wrap(err, "could not install latest release")
+	}
+	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
+	return nil
 }

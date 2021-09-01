@@ -1,15 +1,17 @@
 package testutils
 
 import (
+	"errors"
 	"net"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
 // RunNucleiAndGetResults returns a list of results for a template
 func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	cmd := exec.Command("./nuclei", "-t", template, "-target", url)
+	cmd := exec.Command("./nuclei", "-t", template, "-target", url, "-silent")
 	if debug {
 		cmd = exec.Command("./nuclei", "-t", template, "-target", url, "-debug")
 		cmd.Stderr = os.Stderr
@@ -30,9 +32,26 @@ func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) (
 	return parts, nil
 }
 
+var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded: (\d+)`)
+
+// RunNucleiAndGetResults returns a list of results for a template
+func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, args []string) (string, error) {
+	cmd := exec.Command(nucleiBinary, args...)
+
+	data, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	matches := templateLoaded.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		return "", errors.New("no matches found")
+	}
+	return matches[0][1], nil
+}
+
 // RunNucleiWorkflowAndGetResults returns a list of results for a workflow
 func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	cmd := exec.Command("./nuclei", "-w", template, "-target", url)
+	cmd := exec.Command("./nuclei", "-w", template, "-target", url, "-silent")
 	if debug {
 		cmd = exec.Command("./nuclei", "-w", template, "-target", url, "-debug")
 		cmd.Stderr = os.Stderr

@@ -14,6 +14,10 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
 
+		// Skip if the host has had errors
+		if r.hostErrors != nil && r.hostErrors.Check(URL) {
+			return nil
+		}
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()
@@ -37,6 +41,11 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
+
+		// Skip if the host has had errors
+		if r.hostErrors != nil && r.hostErrors.Check(URL) {
+			return nil
+		}
 		wg.Add()
 		go func(URL string) {
 			defer wg.Done()

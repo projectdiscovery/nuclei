@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +11,7 @@ import (
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
-func (c *Catalog) GetTemplatesPath(definitions []string, noCheckIgnore bool) []string {
+func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
@@ -23,17 +22,11 @@ func (c *Catalog) GetTemplatesPath(definitions []string, noCheckIgnore bool) []s
 			gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
 		}
 		for _, path := range paths {
-			if !noCheckIgnore && c.checkIfInNucleiIgnore(path) {
-				continue
-			}
 			if _, ok := processed[path]; !ok {
 				processed[path] = true
 				allTemplates = append(allTemplates, path)
 			}
 		}
-	}
-	if len(allTemplates) > 0 {
-		gologger.Verbose().Msgf("Identified %d templates", len(allTemplates))
 	}
 	return allTemplates
 }
@@ -89,12 +82,12 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 // before doing any operations on them regardless of them being blob, folders, files, etc.
 func (c *Catalog) convertPathToAbsolute(t string) (string, error) {
 	if strings.Contains(t, "*") {
-		file := path.Base(t)
-		absPath, err := c.ResolvePath(path.Dir(t), "")
+		file := filepath.Base(t)
+		absPath, err := c.ResolvePath(filepath.Dir(t), "")
 		if err != nil {
 			return "", err
 		}
-		return path.Join(absPath, file), nil
+		return filepath.Join(absPath, file), nil
 	}
 	return c.ResolvePath(t, "")
 }

@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(path.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -41,8 +41,7 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
-	r := &Runner{templatesConfig: &nucleiConfig{TemplatesDirectory: templatesDirectory}}
-
+	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}, options: testutils.DefaultOptions}
 	results, err := r.downloadReleaseAndUnzip(context.Background(), "1.0.0", ts.URL)
 	require.Nil(t, err, "could not download release and unzip")
 	require.Equal(t, "base.yaml", results.additions[0], "could not get correct base addition")
@@ -51,9 +50,9 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(newTempDir)
 
-	err = ioutil.WriteFile(path.Join(newTempDir, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), 0777)
 	require.Nil(t, err, "could not create base file")
-	err = ioutil.WriteFile(path.Join(newTempDir, "new.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), 0777)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("new.zip", newTempDir)
@@ -78,7 +77,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(path.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -94,7 +93,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
-	r := &Runner{templatesConfig: &nucleiConfig{TemplatesDirectory: templatesDirectory}}
+	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}, options: testutils.DefaultOptions}
 
 	results, err := r.downloadReleaseAndUnzip(context.Background(), "1.0.0", ts.URL)
 	require.Nil(t, err, "could not download release and unzip")

@@ -18,18 +18,49 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 
-	ID string `yaml:"id"`
+	// ID is the ID of the request
+	ID string `yaml:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 
-	// Path contains the path/s for the request
-	Name string `yaml:"name"`
-	// Type is the type of DNS request to make
-	Type string `yaml:"type"`
-	// Class is the class of the DNS request
-	Class string `yaml:"class"`
-	// Retries is the number of retries for the DNS request
-	Retries int `yaml:"retries"`
+	// description: |
+	//   Name is the Hostname to make DNS request for.
+	//
+	//   Generally, it is set to {{FQDN}} which is the domain we get from input.
+	// examples:
+	//   - value: "\"{{FQDN}}\""
+	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
+	// description: |
+	//   Type is the type of DNS request to make.
+	// values:
+	//   - "A"
+	//   - "NS"
+	//   - "DS"
+	//   - "CNAME"
+	//   - "SOA"
+	//   - "PTR"
+	//   - "MX"
+	//   - "TXT"
+	//   - "AAAA"
+	Type string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	// description: |
+	//   Class is the class of the DNS request.
+	//
+	//   Usually it's enough to just leave it as INET.
+	// values:
+	//   - "inet"
+	//   - "csnet"
+	//   - "chaos"
+	//   - "hesiod"
+	//   - "none"
+	//   - "any"
+	Class string `yaml:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=inet,enum=csnet,enum=chaos,enum=hesiod,enum=none,enum=any"`
+	// description: |
+	//   Retries is the number of retries for the DNS request
+	// examples:
+	//   - name: Use a retry of 3 to 5 generally
+	//     value: 5
+	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
 
-	CompiledOperators *operators.Operators
+	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
 	options           *protocols.ExecuterOptions
 
@@ -37,8 +68,9 @@ type Request struct {
 	class    uint16
 	question uint16
 
-	// Recursion specifies whether to recurse all the answers.
-	Recursion bool `yaml:"recursion"`
+	// description: |
+	//   Recursion determines if resolver should recurse all records to get fresh results.
+	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 }
 
 // GetID returns the unique ID of the request if any.
@@ -118,6 +150,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeMX
 	case "TXT":
 		question = dns.TypeTXT
+	case "DS":
+		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
 	}

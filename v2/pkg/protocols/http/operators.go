@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -54,6 +55,10 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 		return extractor.ExtractRegex(item)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
+	case extractors.XPathExtractor:
+		return extractor.ExtractHTML(item)
+	case extractors.JSONExtractor:
+		return extractor.ExtractJSON(item)
 	}
 	return nil
 }
@@ -86,14 +91,6 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 	for k, v := range extra {
 		data[k] = v
 	}
-
-	data["host"] = host
-	data["matched"] = matched
-	data["request"] = rawReq
-	data["response"] = rawResp
-	data["content_length"] = resp.ContentLength
-	data["status_code"] = resp.StatusCode
-	data["body"] = body
 	for _, cookie := range resp.Cookies() {
 		data[strings.ToLower(cookie.Name)] = cookie.Value
 	}
@@ -101,6 +98,13 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 		k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
 		data[k] = strings.Join(v, " ")
 	}
+	data["host"] = host
+	data["matched"] = matched
+	data["request"] = rawReq
+	data["response"] = rawResp
+	data["status_code"] = resp.StatusCode
+	data["body"] = body
+	data["content_length"] = resp.ContentLength
 	data["all_headers"] = headers
 	data["duration"] = duration.Seconds()
 	data["template-id"] = r.options.TemplateID
@@ -111,9 +115,10 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
+	if len(wrapped.OperatorsResult.DynamicValues) > 0 && !wrapped.OperatorsResult.Matched {
 		return nil
 	}
+
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
 	// If we have multiple matchers with names, write each of them separately.
@@ -141,7 +146,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "http",
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
