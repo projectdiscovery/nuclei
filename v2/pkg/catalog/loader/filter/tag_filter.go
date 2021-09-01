@@ -20,7 +20,7 @@ type TagFilter struct {
 var ErrExcluded = errors.New("the template was excluded")
 
 // Match filters templates based on user provided tags, authors, extraTags and severity.
-// If the template contains tags specified in the deny list, it will not be matched
+// If the template contains tags specified in the deny-list, it will not be matched
 // unless it is explicitly specified by user using the includeTags (matchAllows field).
 // Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
 // Returns true if the template matches the filter criteria, false otherwise.

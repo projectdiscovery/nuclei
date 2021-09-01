@@ -229,7 +229,7 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, progressErr
 	}
 
-	// create project file if requested or load existing one
+	// create project file if requested or load the existing one
 	if options.Project {
 		var projectFileErr error
 		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
@@ -284,7 +284,7 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() error {
 	defer r.Close()
 
-	// If user asked for new templates to be executed, collect the list from template directory.
+	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
@@ -536,7 +536,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	return templatesList, nil
 }
 
-// readNewTemplatesFile reads newly added templates from directory if it exists
+// countNewTemplates returns the number of newly added templates
 func (r *Runner) countNewTemplates() int {
 	if r.templatesConfig == nil {
 		return 0

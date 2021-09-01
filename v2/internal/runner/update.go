@@ -44,11 +44,11 @@ const (
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // updateTemplates checks if the default list of nuclei-templates
-// exist in the users home directory, if not the latest revision
-// is downloaded from github.
+// exist in the user's home directory, if not the latest revision
+// is downloaded from GitHub.
 //
-// If the path exists but is not latest, the new version is downloaded
-// from github and replaced with the templates directory.
+// If the path exists but does not contain the latest version of public templates,
+// the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -61,7 +61,7 @@ func (r *Runner) updateTemplates() error {
 		return errors.Wrap(err, "could not read configuration file")
 	}
 
-	// If the config doesn't exist, write it now.
+	// If the config doesn't exist, create it now.
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
@@ -78,11 +78,8 @@ func (r *Runner) updateTemplates() error {
 		return nil
 	}
 
-	// Check if last checked for nuclei-ignore is more than 1 hours.
-	// and if true, run the check.
-	//
-	// Also at the same time fetch latest version from github to do outdated nuclei
-	// and templates check.
+	// Tests if last checked time for nuclei-ignore file was more than 1 hour ago, if yes, updates the local content.
+	// Retrieves the latest version number of nuclei and nuclei-templates from GitHub, to check if the current build is using outdated versions or not.
 	checkedIgnore := false
 	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
 		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
@@ -92,7 +89,7 @@ func (r *Runner) updateTemplates() error {
 	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
-		// Use custom location if user has given a template directory
+		// Use the custom location if the user has given a template directory
 		r.templatesConfig = &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
@@ -107,7 +104,7 @@ func (r *Runner) updateTemplates() error {
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
-		r.fetchLatestVersionsFromGithub() // also fetch latest versions
+		r.fetchLatestVersionsFromGithub() // also fetch the latest versions
 		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
@@ -120,13 +117,14 @@ func (r *Runner) updateTemplates() error {
 		return nil
 	}
 
-	// Check if last checked is more than 24 hours and we don't have updateTemplates flag.
-	// If not, return since we don't want to do anything now.
+	// If the template update was not requested explicitly by the user,
+	// and the last version check was less than 24 hours ago,
+	// then no further action is required.
 	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
 	}
 
-	// Get the configuration currently on disk.
+	// Get the current configuration from disk.
 	verText := r.templatesConfig.CurrentVersion
 	indices := reVersion.FindStringIndex(verText)
 	if indices == nil {
@@ -190,7 +188,7 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 	return nil
 }
 
-// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from github
+// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from GitHub
 func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 	ignoreURL := defaultIgnoreURL
 	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
@@ -290,7 +288,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to uncompress zip file: %s", err)
 	}
 
-	// Create the template folder if it doesn't exists
+	// Create the template folder if it doesn't exist
 	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
