@@ -18,8 +18,7 @@ Template is a YAML input file which defines all the requests and
 </div>
 <div class="dt">
 
-ID is the unique id for the template. IDs must be lowercase
-and must not contain spaces in it.
+ID is the unique id for the template.
 
 #### Good IDs
 
