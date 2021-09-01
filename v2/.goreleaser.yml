@@ -20,6 +20,8 @@ builds:
       goarch: '386'
     - goos: windows
       goarch: 'arm'
+    - goos: windows
+      goarch: 'arm64'
 
   binary: '{{ .ProjectName }}'
   main: cmd/nuclei/main.go
