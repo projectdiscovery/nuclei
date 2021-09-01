@@ -97,11 +97,11 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 // CreateIssue creates an issue in the tracker or updates the existing one
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	if i.options.UpdateExisting {
-		issue_id, err := i.FindExistingIssue(event)
+		issueID, err := i.FindExistingIssue(event)
 		if err != nil {
 			return err
-		} else if issue_id != "" {
-			_, _, err = i.jira.Issue.AddComment(issue_id, &jira.Comment{
+		} else if issueID != "" {
+			_, _, err = i.jira.Issue.AddComment(issueID, &jira.Comment{
 				Body: jiraFormatDescription(event),
 			})
 			return err
@@ -115,11 +115,11 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 	template := format.GetMatchedTemplate(event)
 	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status = \"Open\"", template, event.Host)
 
-	search_options := &jira.SearchOptions{
+	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
 	}
 
-	chunk, resp, err := i.jira.Issue.Search(jql, search_options)
+	chunk, resp, err := i.jira.Issue.Search(jql, searchOptions)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
