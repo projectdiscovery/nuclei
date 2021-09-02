@@ -16,8 +16,7 @@ import (
 // other metadata for a template.
 type Template struct {
 	// description: |
-	//   ID is the unique id for the template. IDs must be lowercase
-	//   and must not contain spaces in it.
+	//   ID is the unique id for the template.
 	//
 	//   #### Good IDs
 	//
@@ -27,7 +26,7 @@ type Template struct {
 	//   example name is `azure-apps-nxdomain-takeover`.
 	// examples:
 	//   - name: ID Example
-	//     value: "\"cve-2021-19520\""
+	//     value: "\"CVE-2021-19520\""
 	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520"`
 	// description: |
 	//   Info contains metadata information about the template.

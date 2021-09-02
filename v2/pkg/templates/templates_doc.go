@@ -34,10 +34,10 @@ func init() {
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
-	TemplateDoc.Fields[0].Description = "ID is the unique id for the template. IDs must be lowercase\nand must not contain spaces in it.\n\n#### Good IDs\n\nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`."
-	TemplateDoc.Fields[0].Comments[encoder.LineComment] = "ID is the unique id for the template. IDs must be lowercase"
+	TemplateDoc.Fields[0].Description = "ID is the unique id for the template.\n\n#### Good IDs\n\nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`."
+	TemplateDoc.Fields[0].Comments[encoder.LineComment] = "ID is the unique id for the template."
 
-	TemplateDoc.Fields[0].AddExample("ID Example", "cve-2021-19520")
+	TemplateDoc.Fields[0].AddExample("ID Example", "CVE-2021-19520")
 	TemplateDoc.Fields[1].Name = "info"
 	TemplateDoc.Fields[1].Type = "model.Info"
 	TemplateDoc.Fields[1].Note = ""
