@@ -11,6 +11,18 @@ func (severities Severities) String() string {
 	return strings.Join(severities.ToStringArray(), ", ")
 }
 
+func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var marshalledSeverities string
+	if err := unmarshal(&marshalledSeverities); err != nil {
+		return err
+	}
+
+	if err := severities.Set(marshalledSeverities); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (severities *Severities) Set(value string) error {
 	inputSeverities := toStringSlice(value)
 
