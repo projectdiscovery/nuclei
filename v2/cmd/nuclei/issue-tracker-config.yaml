@@ -5,11 +5,11 @@
 #   4) High
 #   5) Critical
 # to specify which severities should be reported
-allow-list:
-  severity: [4, 5]
+#allow-list:
+#  severity: [4, 5]
 # to specify which severities should be excluded from reporting
-deny-list:
-  severity: [1, 2, 3]
+#deny-list:
+#  severity: [1, 2, 3]
 #allow-list:
 #  severity: high,critical
 #deny-list:
