@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 )
 
@@ -43,7 +44,7 @@ func httpDebugRequestDump(r *http.Request) {
 
 type httpGetHeaders struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpGetHeaders) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -67,7 +68,7 @@ func (h *httpGetHeaders) Execute(filePath string) error {
 
 type httpGetQueryString struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpGetQueryString) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -91,7 +92,7 @@ func (h *httpGetQueryString) Execute(filePath string) error {
 
 type httpGetRedirects struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpGetRedirects) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -117,7 +118,7 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 
 type httpGet struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -139,7 +140,7 @@ func (h *httpGet) Execute(filePath string) error {
 
 type httpPostBody struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpPostBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -172,7 +173,7 @@ func (h *httpPostBody) Execute(filePath string) error {
 
 type httpPostJSONBody struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpPostJSONBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -211,7 +212,7 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 
 type httpPostMultipartBody struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpPostMultipartBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -254,7 +255,7 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 
 type httpRawDynamicExtractor struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -293,7 +294,7 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 
 type httpRawGetQuery struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawGetQuery) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -322,7 +323,7 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 
 type httpRawGet struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawGet) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -350,7 +351,7 @@ func (h *httpRawGet) Execute(filePath string) error {
 
 type httpRawPayload struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawPayload) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -386,7 +387,7 @@ func (h *httpRawPayload) Execute(filePath string) error {
 
 type httpRawPostBody struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawPostBody) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -419,7 +420,7 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 
 type httpRawCookieReuse struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawCookieReuse) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error
@@ -468,7 +469,7 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 
 type httpRawUnsafeRequest struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	var routerErr error
 
@@ -493,7 +494,7 @@ func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 
 type httpRequestCondition struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpRequestCondition) Execute(filePath string) error {
 	router := httprouter.New()
 	var routerErr error

@@ -34,7 +34,7 @@ func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) (
 
 var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded: (\d+)`)
 
-// RunNucleiAndGetResults returns a list of results for a template
+// RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
 

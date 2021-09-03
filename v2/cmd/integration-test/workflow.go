@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 )
 
@@ -18,7 +19,7 @@ var workflowTestcases = map[string]testutils.TestCase{
 
 type workflowBasic struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowBasic) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -40,7 +41,7 @@ func (h *workflowBasic) Execute(filePath string) error {
 
 type workflowConditionMatched struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowConditionMatched) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -62,7 +63,7 @@ func (h *workflowConditionMatched) Execute(filePath string) error {
 
 type workflowConditionUnmatch struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowConditionUnmatch) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
