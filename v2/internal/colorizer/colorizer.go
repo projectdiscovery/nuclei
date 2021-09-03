@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/logrusorgru/aurora"
+
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
 const (
