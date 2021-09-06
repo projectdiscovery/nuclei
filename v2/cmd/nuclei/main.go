@@ -110,7 +110,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "interactsh", "interactsh",
 		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "do not use interactsh server for blind interaction polling"),
 		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "self-hosted Interactsh Server URL"),
-
+		flagSet.StringVar(&options.InteractshAuth, "interactsh-auth", "", "authorization header for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
