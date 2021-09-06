@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -29,7 +29,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -59,7 +59,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -129,7 +129,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -240,7 +240,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: model.Info{SeverityHolder: severity.SeverityHolder{Severity: severity.Low}, Name: "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
