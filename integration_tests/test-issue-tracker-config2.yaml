@@ -1,9 +1,9 @@
-# to specify which severities should be reported
-#allow-list:
-#  severity: critical, high
-# to specify which severities should be excluded from reporting
-#deny-list:
-#  severity: info, low, medium
+allow-list:
+  severity:
+    - high
+    - critical
+deny-list:
+  severity: low
 
 # github contains configuration options for github issue tracker
 #github: 
