@@ -10,7 +10,7 @@ import (
 type Extractor struct {
 	// description: |
 	//   Name of the extractor. Name should be lowercase and must not contain
-	//   spaces or dashes (-).
+	//   spaces or underscores (_).
 	// examples:
 	//   - value: "\"cookie-extractor\""
 	Name string `yaml:"name,omitempty" jsonschema:"title=name of the extractor,description=Name of the extractor"`
@@ -26,9 +26,9 @@ type Extractor struct {
 	extractorType ExtractorType
 
 	// description: |
-	//   Regex contains the regular expression patterns to exract from a part.
+	//   Regex contains the regular expression patterns to extract from a part.
 	//
-	//   Go regex engine does not supports lookaheads or lookbehinds, so as a result
+	//   Go regex engine does not support lookaheads or lookbehinds, so as a result
 	//   they are also not supported in nuclei.
 	// examples:
 	//   - name: Braintree Access Token Regex
@@ -48,18 +48,22 @@ type Extractor struct {
 	regexCompiled []*regexp.Regexp
 
 	// description: |
-	//   kval contains the key-value pairs required in the response.
+	//   kval contains the key-value pairs present in the HTTP response header.
+	//   kval extractor can be used to extract HTTP response header and cookie key-value pairs.
+	//   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+	// 	 For example, Content-Type should be replaced with content_type
 	//
-	//   Each protocol exposes a lot of different data in response. The kval
-	//   extractor can be used to extract those key-value pairs. A list of
-	//   supported parts is available in docs for request types.
+	//   A list of supported parts is available in docs for request types.
 	// examples:
 	//   - name: Extract Server Header From HTTP Response
 	//     value: >
-	//       []string{"Server"}
+	//       []string{"server"}
 	//   - name: Extracting value of PHPSESSID Cookie
 	//     value: >
-	//       []string{"PHPSESSID"}
+	//       []string{"phpsessid"}
+	//   - name: Extracting value of Content-Type Cookie
+	//     value: >
+	//       []string{"content_type"}
 	KVal []string `yaml:"kval,omitempty" jsonschema:"title=kval pairs to extract from response,description=Kval pairs to extract from response"`
 
 	// description: |
@@ -77,8 +81,6 @@ type Extractor struct {
 	// examples:
 	//   - value: >
 	//       []string{"/html/body/div/p[2]/a"}
-	//   - value: >
-	//       []string{".batters | .batter | .[] | .id"}
 	XPath []string `yaml:"xpath,omitempty" jsonschema:"title=html xpath expressions to extract data,description=XPath allows using xpath expressions to extract items from html response"`
 	// description: |
 	//   Attribute is an optional attribute to extract from response XPath.

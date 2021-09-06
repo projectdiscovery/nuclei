@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -289,13 +290,23 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
 
+	escapedPath := parsed.EscapedPath()
+	directory := path.Dir(escapedPath)
+	if directory == "." {
+		directory = ""
+	}
+	base := path.Base(escapedPath)
+	if base == "." {
+		base = ""
+	}
 	return map[string]interface{}{
 		"BaseURL":  parsed.String(),
 		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
 		"Hostname": parsed.Host,
 		"Host":     domain,
 		"Port":     port,
-		"Path":     parsed.EscapedPath(),
+		"Path":     directory,
+		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
 }

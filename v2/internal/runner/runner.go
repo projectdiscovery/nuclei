@@ -39,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
 // Runner is a client for running the enumeration process.
@@ -70,6 +71,9 @@ func New(options *types.Options) (*Runner, error) {
 			return nil, err
 		}
 		return nil, nil
+	}
+	if options.Validate {
+		parsers.ShouldValidate = true
 	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
@@ -297,8 +301,8 @@ func (r *Runner) RunEnumeration() error {
 	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 
 	var cache *hosterrorscache.Cache
-	if r.options.HostMaxErrors > 0 {
-		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
+	if r.options.MaxHostError > 0 {
+		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
 	executerOpts := protocols.ExecuterOptions{
@@ -339,14 +343,23 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
+	store.Load()
+
 	if r.options.Validate {
-		if !store.ValidateTemplates(r.options.Templates, r.options.Workflows) {
-			return errors.New("an error occurred during templates validation")
+		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+			return err
 		}
-		gologger.Info().Msgf("All templates validated successfully\n")
+		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 {
+			gologger.Info().Msgf("All templates validated successfully\n")
+		} else {
+			return errors.New("encountered errors while performing template validation")
+		}
 		return nil // exit
 	}
-	store.Load()
+
+	// Display stats for any loaded templates syntax warnings or errors
+	stats.Display(parsers.SyntaxWarningStats)
+	stats.Display(parsers.SyntaxErrorStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
@@ -379,16 +392,18 @@ func (r *Runner) RunEnumeration() error {
 	messageStr = builder.String()
 	builder.Reset()
 
-	gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
-
+	if r.templatesConfig != nil {
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
+		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
+		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
+		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
@@ -513,6 +528,9 @@ func (r *Runner) RunEnumeration() error {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) readNewTemplatesFile() ([]string, error) {
+	if r.templatesConfig == nil {
+		return nil, nil
+	}
 	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
@@ -534,6 +552,9 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
 func (r *Runner) countNewTemplates() int {
+	if r.templatesConfig == nil {
+		return 0
+	}
 	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {

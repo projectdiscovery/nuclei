@@ -22,6 +22,7 @@ type Info struct {
 	// description: |
 	//   Author of the template.
 	//
+	//   Multiple values can also be specified separated by commas.
 	// examples:
 	//   - value: "\"<username>\""
 	Authors StringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,example=username"`
