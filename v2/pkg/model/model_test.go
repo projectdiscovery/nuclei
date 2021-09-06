@@ -5,20 +5,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInfoJsonMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",
-		Authors:        StringSlice{[]string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
-		SeverityHolder: severity.SeverityHolder{Severity: severity.High},
-		Tags:           StringSlice{[]string{"cve", "misc"}},
-		Reference:      StringSlice{"reference1"},
+		SeverityHolder: severity.Holder{Severity: severity.High},
+		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.StringSlice{Value: "reference1"},
 	}
 
 	result, err := json.Marshal(&info)
@@ -31,11 +33,11 @@ func TestInfoJsonMarshal(t *testing.T) {
 func TestInfoYamlMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",
-		Authors:        StringSlice{[]string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
-		SeverityHolder: severity.SeverityHolder{Severity: severity.High},
-		Tags:           StringSlice{[]string{"cve", "misc"}},
-		Reference:      StringSlice{"reference1"},
+		SeverityHolder: severity.Holder{Severity: severity.High},
+		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.StringSlice{Value: "reference1"},
 	}
 
 	result, err := yaml.Marshal(&info)

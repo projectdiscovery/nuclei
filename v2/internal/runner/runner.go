@@ -19,10 +19,10 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -87,35 +87,10 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	var reportingOptions *reporting.Options
-	if options.ReportingConfig != "" {
-		file, err := os.Open(options.ReportingConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not open reporting config file")
-		}
 
-		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
-			file.Close()
-			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
-		}
-		file.Close()
-	}
-	if options.DiskExportDirectory != "" {
-		if reportingOptions != nil {
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
-		}
-	}
-	if options.SarifExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		}
+	reportingOptions, err := createReportingOptions(options)
+	if err != nil {
+		return nil, err
 	}
 	if reportingOptions != nil {
 		client, err := reporting.New(reportingOptions, options.ReportingDB)
@@ -269,6 +244,40 @@ func New(options *types.Options) (*Runner, error) {
 		runner.ratelimiter = ratelimit.NewUnlimited()
 	}
 	return runner, nil
+}
+
+func createReportingOptions(options *types.Options) (*reporting.Options, error) {
+	var reportingOptions *reporting.Options
+	if options.ReportingConfig != "" {
+		file, err := os.Open(options.ReportingConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not open reporting config file")
+		}
+
+		reportingOptions = &reporting.Options{}
+		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
+			file.Close()
+			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
+		}
+		file.Close()
+	}
+	if options.DiskExportDirectory != "" {
+		if reportingOptions != nil {
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		}
+	}
+	if options.SarifExport != "" {
+		if reportingOptions != nil {
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		}
+	}
+	return reportingOptions, nil
 }
 
 // Close releases all the resources and cleans up

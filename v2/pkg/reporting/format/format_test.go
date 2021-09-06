@@ -6,18 +6,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 )
 
 func TestToMarkdownTableString(t *testing.T) {
 	info := model.Info{
 		Name:           "Test Template Name",
-		Authors:        model.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
-		SeverityHolder: severity.SeverityHolder{Severity: severity.High},
-		Tags:           model.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      model.StringSlice{Value: "reference1"},
+		SeverityHolder: severity.Holder{Severity: severity.High},
+		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.StringSlice{Value: "reference1"},
 		AdditionalFields: map[string]string{
 			"customDynamicKey1": "customDynamicValue1",
 			"customDynamicKey2": "customDynamicValue2",

@@ -13,7 +13,7 @@ func TestYamlUnmarshal(t *testing.T) {
 }
 
 func TestYamlMarshal(t *testing.T) {
-	severity := SeverityHolder{Severity: High}
+	severity := Holder{Severity: High}
 
 	marshalled, err := severity.MarshalYAML()
 	assert.Nil(t, err, "could not marshal yaml")
@@ -51,8 +51,8 @@ func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{
 	assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
 }
 
-func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error) SeverityHolder {
-	severityStruct := SeverityHolder{}
+func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error) Holder {
+	severityStruct := Holder{}
 	var err = unmarshaller([]byte(value), &severityStruct)
 	if err != nil {
 		panic(err)
