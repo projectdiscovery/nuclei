@@ -38,7 +38,7 @@ type Options struct {
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
-	InteractshAuth string
+	InteractshToken string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
