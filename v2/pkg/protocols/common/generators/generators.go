@@ -16,7 +16,7 @@ type Generator struct {
 type Type int
 
 const (
-	// Sniper replaces each variables with values at a time.
+	// Sniper replaces each variable with values at a time.
 	Sniper Type = iota + 1
 	// PitchFork replaces variables with positional value from multiple wordlists
 	PitchFork
@@ -24,7 +24,7 @@ const (
 	ClusterBomb
 )
 
-// StringToType is an table for conversion of attack type from string.
+// StringToType is a table for conversion of attack type from string.
 var StringToType = map[string]Type{
 	"sniper":      Sniper,
 	"pitchfork":   PitchFork,

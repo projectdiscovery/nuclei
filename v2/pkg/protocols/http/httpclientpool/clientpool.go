@@ -36,7 +36,7 @@ var (
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
-	// Don't create clients if already created in past.
+	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
 	}

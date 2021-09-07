@@ -16,7 +16,7 @@ type Exporter struct {
 	options   *Options
 }
 
-// Options contains the configuration options for github issue tracker client
+// Options contains the configuration options for GitHub issue tracker client
 type Options struct {
 	// Directory is the directory to export found results to
 	Directory string `yaml:"directory"`

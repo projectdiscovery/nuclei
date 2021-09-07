@@ -14,7 +14,7 @@ type Workflow struct {
 	Options *protocols.ExecuterOptions `yaml:"-"`
 }
 
-// WorkflowTemplate is a template to be ran as part of a workflow
+// WorkflowTemplate is a template to be run as part of a workflow
 type WorkflowTemplate struct {
 	// description: |
 	//   Template is a single template or directory to execute as part of workflow.
@@ -31,7 +31,7 @@ type WorkflowTemplate struct {
 	//    Matchers perform name based matching to run subtemplates for a workflow.
 	Matchers []*Matcher `yaml:"matchers,omitempty" jsonschema:"title=name based template result matchers,description=Matchers perform name based matching to run subtemplates for a workflow"`
 	// description: |
-	//    Subtemplates are ran if the `template` field Template matches.
+	//    Subtemplates are run if the `template` field Template matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=subtemplate based result matchers,description=Subtemplates are ran if the template field Template matches"`
 	// Executers perform the actual execution for the workflow template
 	Executers []*ProtocolExecuterPair `yaml:"-"`
@@ -49,6 +49,6 @@ type Matcher struct {
 	//    Name is the name of the item to match.
 	Name string `yaml:"name,omitempty" jsonschema:"title=name of item to match,description=Name of item to match"`
 	// description: |
-	//    Subtemplates are ran if the name of matcher matches.
+	//    Subtemplates are run if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=templates to run after match,description=Templates to run after match"`
 }

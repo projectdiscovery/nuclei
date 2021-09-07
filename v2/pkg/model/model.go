@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/jsonschema"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
@@ -41,7 +42,7 @@ type Info struct {
 	//   You can go in-depth here on what the template actually does.
 	//
 	// examples:
-	//   - value: "\"Bower is a package manager which stores packages informations in bower.json file\""
+	//   - value: "\"Bower is a package manager which stores packages information in bower.json file\""
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
 	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores packages informations in bower.json file"`
 	// description: |
