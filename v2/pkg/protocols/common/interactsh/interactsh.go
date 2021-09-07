@@ -49,6 +49,8 @@ var (
 type Options struct {
 	// ServerURL is the URL of the interactsh server.
 	ServerURL string
+	// Authorization is the Authorization header value
+	Authorization string
 	// CacheSize is the numbers of requests to keep track of at a time.
 	// Older items are discarded in LRU manner in favor of new requests.
 	CacheSize int64
@@ -81,6 +83,7 @@ func New(options *Options) (*Client, error) {
 
 	interactsh, err := client.New(&client.Options{
 		ServerURL:         options.ServerURL,
+		Token:             options.Authorization,
 		PersistentSession: false,
 	})
 	if err != nil {

@@ -32,7 +32,7 @@ func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) (
 	return parts, nil
 }
 
-var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded: (\d+)`)
+var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\d+)`)
 
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, args []string) (string, error) {

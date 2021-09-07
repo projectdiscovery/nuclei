@@ -1,7 +1,9 @@
+# to specify which severities should be reported
 #allow-list:
-#  severity: high,critical
+#  severity: critical, high
+# to specify which severities should be excluded from reporting
 #deny-list:
-#  severity: low
+#  severity: info, low, medium
 
 # github contains configuration options for github issue tracker
 #github: 
@@ -59,10 +61,10 @@
 #  # IndexName is the name of the elasticsearch index
 #  index-name: nuclei
 #  # SSL enables ssl for elasticsearch connection
-#  # ssl: false
+#  ssl: false
 #  # SSLVerification disables SSL verification for elasticsearch
-#  # ssl-verification: false
+#  ssl-verification: false
 #  # Username for the elasticsearch instance
-#  # username: test
-#  # Pasword is the password for elasticsearch instance
-#  # password: test
+#  username: test
+#  # Password is the password for elasticsearch instance
+#  password: test

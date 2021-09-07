@@ -1,7 +1,7 @@
 package workflows
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
 
@@ -26,7 +26,7 @@ type WorkflowTemplate struct {
 	Template string `yaml:"template,omitempty" jsonschema:"title=template/directory to execute,description=Template or directory to execute as part of workflow"`
 	// description: |
 	//    Tags to run templates based on.
-	Tags model.StringSlice `yaml:"tags,omitempty" jsonschema:"title=tags to execute,description=Tags to run template based on"`
+	Tags stringslice.StringSlice `yaml:"tags,omitempty" jsonschema:"title=tags to execute,description=Tags to run template based on"`
 	// description: |
 	//    Matchers perform name based matching to run subtemplates for a workflow.
 	Matchers []*Matcher `yaml:"matchers,omitempty" jsonschema:"title=name based template result matchers,description=Matchers perform name based matching to run subtemplates for a workflow"`
