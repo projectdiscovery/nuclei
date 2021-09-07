@@ -219,7 +219,7 @@ Nuclei offers great number of features that are helpful for security engineers t
 <tr>
 <td>  
 
-**For bugbounty hunters:**
+**For Bug Bounty hunters:**
 
 Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moreover, Nuclei can be easily integrated into any continuous scanning workflow.
 
@@ -237,9 +237,9 @@ Please check our other open-source projects that might fit into your bug bounty 
 <tr>
 <td>
   
-**For pentesters:**
+**For Penetration Testers:**
 
-Nuclei immensely improve how you approach security assessment by augmenting the manual repetitve processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
+Nuclei immensely improve how you approach security assessment by augmenting the manual, repetitive processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
 
 Pen-testers get the full power of our public templates and customization capabilities to speed-up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
@@ -254,7 +254,7 @@ Pen-testers get the full power of our public templates and customization capabil
 
 # For Developers and Organisations
 
-Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and  eliminate vulnerabilities from occuring in future.
+Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with the latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and eliminate vulnerabilities from occurring in the future.
 
 - **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
 - **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
