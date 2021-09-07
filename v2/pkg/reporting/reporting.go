@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
@@ -41,8 +41,8 @@ type Options struct {
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {
-	Severities severity.Severities `yaml:"severity"`
-	Tags       model.StringSlice   `yaml:"tags"`
+	Severities severity.Severities     `yaml:"severity"`
+	Tags       stringslice.StringSlice `yaml:"tags"`
 }
 
 // GetMatch returns true if a filter matches result event

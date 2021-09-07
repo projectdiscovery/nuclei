@@ -1,9 +1,11 @@
+// Package templates
 //nolint //do not lint as examples with no usage
 package templates
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -16,10 +18,10 @@ import (
 var (
 	exampleInfoStructure = model.Info{
 		Name:           "Argument Injection in Ruby Dragonfly",
-		Authors:        model.StringSlice{"0xspara"},
-		SeverityHolder: severity.SeverityHolder{severity.High},
-		Reference:      model.StringSlice{"https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"},
-		Tags:           model.StringSlice{"cve,cve2021,rce,ruby"},
+		Authors:        stringslice.StringSlice{Value: "0xspara"},
+		SeverityHolder: severity.Holder{Severity: severity.High},
+		Reference:      stringslice.StringSlice{Value: "https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"},
+		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
 		Method: "GET",
