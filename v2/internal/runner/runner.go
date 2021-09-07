@@ -357,7 +357,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 
-	// Display stats for any loaded templates syntax warnings or errors
+	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/karlseguin/ccache"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -111,7 +112,7 @@ func New(options *Options) (*Client, error) {
 		item := interactClient.requests.Get(interaction.UniqueID)
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
-			// lru cache so we can correlate when we get an add request.
+			// lru cache, so we can correlate when we get an add request.
 			gotItem := interactClient.interactions.Get(interaction.UniqueID)
 			if gotItem == nil {
 				interactClient.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
