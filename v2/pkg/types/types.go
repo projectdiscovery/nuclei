@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -37,6 +37,8 @@ type Options struct {
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
+	// Interactsh Authorization header value for self-hosted servers
+	InteractshToken string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
