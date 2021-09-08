@@ -3,8 +3,10 @@ package format
 import (
 	"bytes"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"strconv"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -159,6 +161,15 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	fields.Set("Tags", templateInfo.Tags.String())
 	fields.Set("Severity", templateInfo.SeverityHolder.Severity.String())
 	fields.Set("Description", templateInfo.Description)
+	fields.Set("Remediation", templateInfo.Remediation)
+
+	classification := templateInfo.Classification
+	if classification != nil {
+		fields.Set("CVSS-Metrics", classification.CVSSMetrics)
+		fields.Set("CVE-ID", classification.CVEID.String())
+		fields.Set("CWE-ID", classification.CWEID.String())
+		fields.Set("CVSS-Score", strconv.FormatFloat(classification.CVSSScore, 'f', 2, 64))
+	}
 
 	builder := &bytes.Buffer{}
 
