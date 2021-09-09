@@ -224,6 +224,6 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 		cveIDs = append(cveIDs, fmt.Sprintf("[%s](https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s)", strings.ToUpper(value), value))
 	}
 	if len(cveIDs) > 0 {
-		fields.Set("CVE-ID", strings.Join(cweIDs, ","))
+		fields.Set("CVE-ID", strings.Join(cveIDs, ","))
 	}
 }
