@@ -217,8 +217,13 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 		fields.Set("CWE-ID", strings.Join(cweIDs, ","))
 	}
 
-	if !classification.CVEID.IsEmpty() {
-		classificationString := classification.CVEID.String()
-		fields.Set("CVE-ID", fmt.Sprintf("[%s](https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s)", strings.ToUpper(classificationString), classificationString))
+	cves := classification.CVEID.ToSlice()
+
+	cveIDs := make([]string, 0, len(cves))
+	for _, value := range cves {
+		cveIDs = append(cveIDs, fmt.Sprintf("[%s](https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s)", strings.ToUpper(value), value))
+	}
+	if len(cveIDs) > 0 {
+		fields.Set("CVE-ID", strings.Join(cweIDs, ","))
 	}
 }
