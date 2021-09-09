@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v2
 
-go 1.16
+go 1.17
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
@@ -13,7 +13,6 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
-	github.com/davecgh/go-spew v1.1.1
 	github.com/go-rod/rod v0.91.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect
@@ -63,4 +62,60 @@ require (
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+)
+
+require (
+	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
+	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
+	github.com/antchfx/xpath v1.1.6 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgraph-io/badger v1.6.2 // indirect
+	github.com/dgraph-io/ristretto v0.0.3 // indirect
+	github.com/dimchansky/utfbom v1.1.1 // indirect
+	github.com/dsnet/compress v0.0.1 // indirect
+	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/eggsampler/acme/v3 v3.2.1 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
+	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/snappy v0.0.3 // indirect
+	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/uuid v1.2.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
+	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
+	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
+	github.com/itchyny/timefmt-go v0.1.3 // indirect
+	github.com/jasonlvhit/gocron v0.0.1 // indirect
+	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
+	github.com/klauspost/compress v1.4.1 // indirect
+	github.com/klauspost/cpuid v1.2.0 // indirect
+	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/mattn/go-isatty v0.0.13 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46 // indirect
+	github.com/projectdiscovery/mapcidr v0.0.6 // indirect
+	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.7 // indirect
+	github.com/tklauser/numcpus v0.2.3 // indirect
+	github.com/trivago/tgo v1.0.7 // indirect
+	github.com/ulikunitz/xz v0.5.10 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/yl2chen/cidranger v1.0.2 // indirect
+	github.com/ysmood/goob v0.3.0 // indirect
+	github.com/zclconf/go-cty v1.8.4 // indirect
+	go.etcd.io/bbolt v1.3.5 // indirect
+	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
+	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
