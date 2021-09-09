@@ -165,7 +165,9 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 
 	classification := templateInfo.Classification
 	if classification != nil {
-		fields.Set("CVSS-Metrics", classification.CVSSMetrics)
+		if classification.CVSSMetrics != "" {
+			generateCVSSMetricsFromClassification(classification, fields)
+		}
 		fields.Set("CVE-ID", classification.CVEID.String())
 		fields.Set("CWE-ID", classification.CWEID.String())
 		fields.Set("CVSS-Score", strconv.FormatFloat(classification.CVSSScore, 'f', 2, 64))
@@ -185,4 +187,19 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	toMarkDownTable(utils.NewInsertionOrderedStringMap(templateInfo.AdditionalFields))
 
 	return builder.String()
+}
+
+func generateCVSSMetricsFromClassification(classification *model.Classification, fields *utils.InsertionOrderedStringMap) {
+	// Generate cvss link
+	var cvssLinkPrefix string
+	if strings.Contains(classification.CVSSMetrics, "CVSS:3.0") {
+		cvssLinkPrefix = "https://www.first.org/cvss/calculator/3.0#"
+	} else if strings.Contains(classification.CVSSMetrics, "CVSS:3.1") {
+		cvssLinkPrefix = "https://www.first.org/cvss/calculator/3.1#"
+	}
+	if cvssLinkPrefix != "" {
+		fields.Set("CVSS-Metrics", fmt.Sprintf("[%s](%s%s)", classification.CVSSMetrics, cvssLinkPrefix, classification.CVSSMetrics))
+	} else {
+		fields.Set("CVSS-Metrics", classification.CVSSMetrics)
+	}
 }
