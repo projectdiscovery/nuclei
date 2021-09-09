@@ -13,7 +13,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
-	github.com/davecgh/go-spew v1.1.1
+	github.com/daehee/nvd v1.0.4
 	github.com/go-rod/rod v0.91.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect
