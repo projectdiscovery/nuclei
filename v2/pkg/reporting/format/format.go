@@ -73,6 +73,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
 		builder.WriteString("\n**Extra Information**\n\n")
+
 		if len(event.ExtractedResults) > 0 {
 			builder.WriteString("**Extracted results**:\n\n")
 			for _, v := range event.ExtractedResults {
@@ -168,8 +169,7 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 		if classification.CVSSMetrics != "" {
 			generateCVSSMetricsFromClassification(classification, fields)
 		}
-		fields.Set("CVE-ID", classification.CVEID.String())
-		fields.Set("CWE-ID", classification.CWEID.String())
+		generateCVECWEIDLinksFromClassification(classification, fields)
 		fields.Set("CVSS-Score", strconv.FormatFloat(classification.CVSSScore, 'f', 2, 64))
 	}
 
@@ -201,5 +201,26 @@ func generateCVSSMetricsFromClassification(classification *model.Classification,
 		fields.Set("CVSS-Metrics", fmt.Sprintf("[%s](%s%s)", classification.CVSSMetrics, cvssLinkPrefix, classification.CVSSMetrics))
 	} else {
 		fields.Set("CVSS-Metrics", classification.CVSSMetrics)
+	}
+}
+
+func generateCVECWEIDLinksFromClassification(classification *model.Classification, fields *utils.InsertionOrderedStringMap) {
+	cwes := classification.CWEID.ToSlice()
+
+	cweIDs := make([]string, 0, len(cwes))
+	for _, value := range cwes {
+		parts := strings.Split(value, "-")
+		if len(parts) != 2 {
+			continue
+		}
+		cweIDs = append(cweIDs, fmt.Sprintf("[%s](https://cwe.mitre.org/data/definitions/%s.html)", strings.ToUpper(value), parts[1]))
+	}
+	if len(cweIDs) > 0 {
+		fields.Set("CWE-ID", strings.Join(cweIDs, ","))
+	}
+
+	if !classification.CVEID.IsEmpty() {
+		classificationString := classification.CVEID.String()
+		fields.Set("CVE-ID", fmt.Sprintf("[%s](https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s)", strings.ToUpper(classificationString), classificationString))
 	}
 }
