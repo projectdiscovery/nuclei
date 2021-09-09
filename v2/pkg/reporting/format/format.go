@@ -18,13 +18,10 @@ func Summary(event *output.ResultEvent) string {
 	template := GetMatchedTemplate(event)
 
 	builder := &strings.Builder{}
-	builder.WriteString("[")
-	builder.WriteString(template)
-	builder.WriteString("] [")
-	builder.WriteString(types.ToString(event.Info.SeverityHolder))
-	builder.WriteString("] ")
 	builder.WriteString(types.ToString(event.Info.Name))
-	builder.WriteString(" found on ")
+	builder.WriteString(" (")
+	builder.WriteString(template)
+	builder.WriteString(") found on ")
 	builder.WriteString(event.Host)
 	data := builder.String()
 	return data
