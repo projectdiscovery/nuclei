@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,8 +36,9 @@ type Client struct {
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
-	generated uint32 // decide to wait if we have a generated url
-	matched   bool
+	firstTimeGroup sync.Once
+	generated      uint32 // decide to wait if we have a generated url
+	matched        bool
 }
 
 var (
@@ -80,14 +82,6 @@ func New(options *Options) (*Client, error) {
 		return nil, errors.Wrap(err, "could not parse server url")
 	}
 
-	interactsh, err := client.New(&client.Options{
-		ServerURL:         options.ServerURL,
-		Token:             options.Authorization,
-		PersistentSession: false,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create client")
-	}
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
 	cache := ccache.New(configure)
@@ -97,7 +91,6 @@ func New(options *Options) (*Client, error) {
 	interactionsCache := ccache.New(interactionsCfg)
 
 	interactClient := &Client{
-		interactsh:       interactsh,
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
 		dotHostname:      "." + parsed.Host,
@@ -106,21 +99,34 @@ func New(options *Options) (*Client, error) {
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.ColldownPeriod,
 	}
+	return interactClient, nil
+}
 
-	interactClient.interactsh.StartPolling(interactClient.pollDuration, func(interaction *server.Interaction) {
-		if options.Debug {
+func (c *Client) firstTimeInitializeClient() error {
+	interactsh, err := client.New(&client.Options{
+		ServerURL:         c.options.ServerURL,
+		Token:             c.options.Authorization,
+		PersistentSession: false,
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not create client")
+	}
+	c.interactsh = interactsh
+
+	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+		if c.options.Debug {
 			debugPrintInteraction(interaction)
 		}
-		item := interactClient.requests.Get(interaction.UniqueID)
+		item := c.requests.Get(interaction.UniqueID)
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache so we can correlate when we get an add request.
-			gotItem := interactClient.interactions.Get(interaction.UniqueID)
+			gotItem := c.interactions.Get(interaction.UniqueID)
 			if gotItem == nil {
-				interactClient.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+				c.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
 				items = append(items, interaction)
-				interactClient.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
+				c.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
 			}
 			return
 		}
@@ -128,9 +134,9 @@ func New(options *Options) (*Client, error) {
 		if !ok {
 			return
 		}
-		_ = interactClient.processInteractionForRequest(interaction, request)
+		_ = c.processInteractionForRequest(interaction, request)
 	})
-	return interactClient, nil
+	return nil
 }
 
 // processInteractionForRequest processes an interaction for a request
@@ -170,6 +176,11 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() string {
+	c.firstTimeGroup.Do(func() {
+		if err := c.firstTimeInitializeClient(); err != nil {
+			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
+		}
+	})
 	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
 	return c.interactsh.URL()
 }
@@ -179,8 +190,10 @@ func (c *Client) Close() bool {
 	if c.cooldownDuration > 0 && atomic.LoadUint32(&c.generated) == 1 {
 		time.Sleep(c.cooldownDuration)
 	}
-	c.interactsh.StopPolling()
-	c.interactsh.Close()
+	if c.interactsh != nil {
+		c.interactsh.StopPolling()
+		c.interactsh.Close()
+	}
 	return c.matched
 }
 

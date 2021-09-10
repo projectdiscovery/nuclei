@@ -2,18 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "$ref": "#/definitions/templates.Template",
   "definitions": {
-    "severity.SeverityHolder": {
-      "enum": [
-        "info",
-        "low",
-        "medium",
-        "high",
-        "critical"
-      ],
-      "type": "string",
-      "title": "severity of the template",
-      "description": "Seriousness of the implications of the template"
-    },
     "model.Info": {
       "properties": {
         "name": {
@@ -26,12 +14,12 @@
         },
         "author": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "author of the template",
           "description": "Author is the author of the template"
         },
         "tags": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "tags of the template",
           "description": "Any tags for the template"
         },
@@ -44,13 +32,13 @@
           ]
         },
         "reference": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "references for the template",
           "description": "Links relevant to the template"
         },
         "severity": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/severity.SeverityHolder"
+          "$ref": "#/definitions/severity.Holder"
         },
         "additional-fields": {
           "patternProperties": {
@@ -66,7 +54,19 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "model.StringSlice": {
+    "severity.Holder": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string",
+      "title": "severity of the template",
+      "description": "Seriousness of the implications of the template"
+    },
+    "stringslice.StringSlice": {
       "oneOf": [
         {
           "type": "string"
@@ -885,7 +885,7 @@
           "description": "Template or directory to execute as part of workflow"
         },
         "tags": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "tags to execute",
           "description": "Tags to run template based on"
         },
