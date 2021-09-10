@@ -3,6 +3,7 @@ module github.com/projectdiscovery/nuclei/v2
 go 1.16
 
 require (
+	github.com/Ice3man543/nvd v1.0.6
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/akrylysov/pogreb v0.10.1 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20210818095345-1014919a589c
@@ -13,7 +14,6 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
-	github.com/daehee/nvd v1.0.4
 	github.com/go-rod/rod v0.91.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect
