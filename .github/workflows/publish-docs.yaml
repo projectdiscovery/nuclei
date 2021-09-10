@@ -3,7 +3,6 @@ name: ⏰ Publish Docs
 on:
   push:
     branches:
-      - master
       - dev
   workflow_dispatch:
 
@@ -28,7 +27,7 @@ jobs:
         run: |
           if ! which dstdocgen > /dev/null; then
             echo -e "Command dstdocgen not found! Installing\c"
-            go get -v github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen
+            go install github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen@main
           fi
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
@@ -49,3 +48,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
