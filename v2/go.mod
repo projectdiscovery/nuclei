@@ -3,7 +3,7 @@ module github.com/projectdiscovery/nuclei/v2
 go 1.16
 
 require (
-	github.com/Ice3man543/nvd v1.0.6
+	github.com/Ice3man543/nvd v1.0.7
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/akrylysov/pogreb v0.10.1 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20210818095345-1014919a589c
