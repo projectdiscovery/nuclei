@@ -410,6 +410,18 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	dumpedResponse := dumpedResponseBuilder.Bytes()
 	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
+	// Decode gbk response content-types
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
+		dumpedResponse, err = decodegbk(dumpedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+		redirectedResponse, err = decodegbk(redirectedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+	}
+
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
@@ -432,14 +444,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		matchedURL = request.request.URL.String()
 	}
 	finalEvent := make(output.InternalEvent)
-
-	// Decode gbk response content-types
-	if contentType := resp.Header.Get("Content-Type"); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
-		dumpedResponse, err = decodegbk(dumpedResponse)
-		if err != nil {
-			return errors.Wrap(err, "could not gbk decode")
-		}
-	}
 
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 	if i := strings.LastIndex(hostname, ":"); i != -1 {
