@@ -13,6 +13,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
+	github.com/daehee/nvd v1.0.4
 	github.com/go-rod/rod v0.91.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect
@@ -67,8 +68,10 @@ require (
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
+	github.com/PuerkitoBio/goquery v1.6.0 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
+	github.com/andybalholm/cascadia v1.1.0 // indirect
 	github.com/antchfx/xpath v1.1.6 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
