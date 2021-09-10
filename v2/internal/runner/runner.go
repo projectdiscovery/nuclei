@@ -439,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	templatesMap := make(map[string]*templates.Template)
 	for _, v := range store.Templates() {
-		templatesMap[v.ID] = v
+		templatesMap[v.Path] = v
 	}
 	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
@@ -471,6 +471,7 @@ func (r *Runner) RunEnumeration() error {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
+
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
