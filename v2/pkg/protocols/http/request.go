@@ -433,6 +433,14 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}
 	finalEvent := make(output.InternalEvent)
 
+	// Decode gbk response content-types
+	if contentTypes, ok := resp.Header["Content-Type"]; ok && len(contentTypes) > 0 && strings.Contains(contentTypes[0], "gbk") && strings.Contains(contentTypes[0], "gb2312") {
+		dumpedResponse, err = decodegbk(dumpedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not store in project file")
+		}
+	}
+
 	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
 	if i := strings.LastIndex(hostname, ":"); i != -1 {
 		hostname = hostname[:i]
