@@ -1,4 +1,3 @@
-// Package templates
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -12,8 +11,9 @@ import (
 var (
 	TemplateDoc                  encoder.Doc
 	MODELInfoDoc                 encoder.Doc
-	MODELStringSliceDoc          encoder.Doc
-	SEVERITYSeverityHolderDoc    encoder.Doc
+	STRINGSLICEStringSliceDoc    encoder.Doc
+	SEVERITYHolderDoc            encoder.Doc
+	MODELClassificationDoc       encoder.Doc
 	HTTPRequestDoc               encoder.Doc
 	MATCHERSMatcherDoc           encoder.Doc
 	EXTRACTORSExtractorDoc       encoder.Doc
@@ -96,7 +96,7 @@ func init() {
 			FieldName: "info",
 		},
 	}
-	MODELInfoDoc.Fields = make([]encoder.Doc, 7)
+	MODELInfoDoc.Fields = make([]encoder.Doc, 9)
 	MODELInfoDoc.Fields[0].Name = "name"
 	MODELInfoDoc.Fields[0].Type = "string"
 	MODELInfoDoc.Fields[0].Note = ""
@@ -107,14 +107,14 @@ func init() {
 
 	MODELInfoDoc.Fields[0].AddExample("", "Nagios Default Credentials Check")
 	MODELInfoDoc.Fields[1].Name = "author"
-	MODELInfoDoc.Fields[1].Type = "StringSlice"
+	MODELInfoDoc.Fields[1].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[1].Note = ""
 	MODELInfoDoc.Fields[1].Description = "Author of the template.\n\nMultiple values can also be specified separated by commas."
 	MODELInfoDoc.Fields[1].Comments[encoder.LineComment] = "Author of the template."
 
 	MODELInfoDoc.Fields[1].AddExample("", "<username>")
 	MODELInfoDoc.Fields[2].Name = "tags"
-	MODELInfoDoc.Fields[2].Type = "StringSlice"
+	MODELInfoDoc.Fields[2].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[2].Note = ""
 	MODELInfoDoc.Fields[2].Description = "Any tags for the template.\n\nMultiple values can also be specified separated by commas."
 	MODELInfoDoc.Fields[2].Comments[encoder.LineComment] = "Any tags for the template."
@@ -130,14 +130,14 @@ func init() {
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
 	MODELInfoDoc.Fields[4].Name = "reference"
-	MODELInfoDoc.Fields[4].Type = "StringSlice"
+	MODELInfoDoc.Fields[4].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[4].Note = ""
 	MODELInfoDoc.Fields[4].Description = "References for the template.\n\nThis should contain links relevant to the template."
 	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "References for the template."
 
 	MODELInfoDoc.Fields[4].AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
 	MODELInfoDoc.Fields[5].Name = "severity"
-	MODELInfoDoc.Fields[5].Type = "severity.SeverityHolder"
+	MODELInfoDoc.Fields[5].Type = "severity.Holder"
 	MODELInfoDoc.Fields[5].Note = ""
 	MODELInfoDoc.Fields[5].Description = "Severity of the template."
 	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
@@ -155,28 +155,109 @@ func init() {
 	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "AdditionalFields regarding metadata of the template."
 
 	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
+	MODELInfoDoc.Fields[7].Name = "classification"
+	MODELInfoDoc.Fields[7].Type = "model.Classification"
+	MODELInfoDoc.Fields[7].Note = ""
+	MODELInfoDoc.Fields[7].Description = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[7].Comments[encoder.LineComment] = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[8].Name = "remediation"
+	MODELInfoDoc.Fields[8].Type = "string"
+	MODELInfoDoc.Fields[8].Note = ""
+	MODELInfoDoc.Fields[8].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template."
+	MODELInfoDoc.Fields[8].Comments[encoder.LineComment] = "Remediation steps for the template."
 
-	MODELStringSliceDoc.Type = "model.StringSlice"
-	MODELStringSliceDoc.Comments[encoder.LineComment] = ""
-	MODELStringSliceDoc.Description = ""
-	MODELStringSliceDoc.AppearsIn = []encoder.Appearance{
+	MODELInfoDoc.Fields[8].AddExample("", "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties")
+
+	STRINGSLICEStringSliceDoc.Type = "stringslice.StringSlice"
+	STRINGSLICEStringSliceDoc.Comments[encoder.LineComment] = " StringSlice represents a single (in-lined) or multiple string value(s)."
+	STRINGSLICEStringSliceDoc.Description = "StringSlice represents a single (in-lined) or multiple string value(s).\n The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required."
+
+	STRINGSLICEStringSliceDoc.AddExample("", "<username>")
+
+	STRINGSLICEStringSliceDoc.AddExample("Example tags", "cve,cve2019,grafana,auth-bypass,dos")
+
+	STRINGSLICEStringSliceDoc.AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
+
+	STRINGSLICEStringSliceDoc.AddExample("", "CVE-2020-14420")
+
+	STRINGSLICEStringSliceDoc.AddExample("", "CWE-22")
+	STRINGSLICEStringSliceDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "model.Info",
+			FieldName: "author",
+		},
+		{
+			TypeName:  "model.Info",
+			FieldName: "tags",
+		},
+		{
+			TypeName:  "model.Info",
+			FieldName: "reference",
+		},
+		{
+			TypeName:  "model.Classification",
+			FieldName: "cve-id",
+		},
+		{
+			TypeName:  "model.Classification",
+			FieldName: "cwe-id",
+		},
 		{
 			TypeName:  "workflows.WorkflowTemplate",
 			FieldName: "tags",
 		},
 	}
-	MODELStringSliceDoc.Fields = make([]encoder.Doc, 0)
+	STRINGSLICEStringSliceDoc.Fields = make([]encoder.Doc, 0)
 
-	SEVERITYSeverityHolderDoc.Type = "severity.SeverityHolder"
-	SEVERITYSeverityHolderDoc.Comments[encoder.LineComment] = ""
-	SEVERITYSeverityHolderDoc.Description = ""
-	SEVERITYSeverityHolderDoc.AppearsIn = []encoder.Appearance{
+	SEVERITYHolderDoc.Type = "severity.Holder"
+	SEVERITYHolderDoc.Comments[encoder.LineComment] = " Holder holds a Severity type. Required for un/marshalling purposes"
+	SEVERITYHolderDoc.Description = "Holder holds a Severity type. Required for un/marshalling purposes"
+	SEVERITYHolderDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "model.Info",
 			FieldName: "severity",
 		},
 	}
-	SEVERITYSeverityHolderDoc.Fields = make([]encoder.Doc, 0)
+	SEVERITYHolderDoc.Fields = make([]encoder.Doc, 0)
+
+	MODELClassificationDoc.Type = "model.Classification"
+	MODELClassificationDoc.Comments[encoder.LineComment] = ""
+	MODELClassificationDoc.Description = ""
+	MODELClassificationDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "model.Info",
+			FieldName: "classification",
+		},
+	}
+	MODELClassificationDoc.Fields = make([]encoder.Doc, 4)
+	MODELClassificationDoc.Fields[0].Name = "cve-id"
+	MODELClassificationDoc.Fields[0].Type = "stringslice.StringSlice"
+	MODELClassificationDoc.Fields[0].Note = ""
+	MODELClassificationDoc.Fields[0].Description = "CVE ID for the template"
+	MODELClassificationDoc.Fields[0].Comments[encoder.LineComment] = "CVE ID for the template"
+
+	MODELClassificationDoc.Fields[0].AddExample("", "CVE-2020-14420")
+	MODELClassificationDoc.Fields[1].Name = "cwe-id"
+	MODELClassificationDoc.Fields[1].Type = "stringslice.StringSlice"
+	MODELClassificationDoc.Fields[1].Note = ""
+	MODELClassificationDoc.Fields[1].Description = "CWE ID for the template."
+	MODELClassificationDoc.Fields[1].Comments[encoder.LineComment] = "CWE ID for the template."
+
+	MODELClassificationDoc.Fields[1].AddExample("", "CWE-22")
+	MODELClassificationDoc.Fields[2].Name = "cvss-metrics"
+	MODELClassificationDoc.Fields[2].Type = "string"
+	MODELClassificationDoc.Fields[2].Note = ""
+	MODELClassificationDoc.Fields[2].Description = "CVSS Metrics for the template."
+	MODELClassificationDoc.Fields[2].Comments[encoder.LineComment] = "CVSS Metrics for the template."
+
+	MODELClassificationDoc.Fields[2].AddExample("", "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
+	MODELClassificationDoc.Fields[3].Name = "cvss-score"
+	MODELClassificationDoc.Fields[3].Type = "float64"
+	MODELClassificationDoc.Fields[3].Note = ""
+	MODELClassificationDoc.Fields[3].Description = "CVSS Score for the template."
+	MODELClassificationDoc.Fields[3].Comments[encoder.LineComment] = "CVSS Score for the template."
+
+	MODELClassificationDoc.Fields[3].AddExample("", "9.8")
 
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
@@ -971,7 +1052,7 @@ func init() {
 
 	WORKFLOWSWorkflowTemplateDoc.Fields[0].AddExample("A template directory", "misconfigurations/aem")
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Name = "tags"
-	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "model.StringSlice"
+	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "stringslice.StringSlice"
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Note = ""
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Description = "Tags to run templates based on."
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Comments[encoder.LineComment] = "Tags to run templates based on."
@@ -1016,8 +1097,9 @@ func GetTemplateDoc() *encoder.FileDoc {
 		Structs: []*encoder.Doc{
 			&TemplateDoc,
 			&MODELInfoDoc,
-			&MODELStringSliceDoc,
-			&SEVERITYSeverityHolderDoc,
+			&STRINGSLICEStringSliceDoc,
+			&SEVERITYHolderDoc,
+			&MODELClassificationDoc,
 			&HTTPRequestDoc,
 			&MATCHERSMatcherDoc,
 			&EXTRACTORSExtractorDoc,
