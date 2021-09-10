@@ -7,7 +7,7 @@
 {{binary}} -tags 'cve','exposure' -tags 'token','logs'
 {{binary}} -tags cve -severity high
 {{binary}} -tags cve,exposure -severity high,critical
-{{binary}} -tags cve,exposure -severity "high,critical,medium"
+{{binary}} -tags cve,exposure -severity high,critical,medium
 {{binary}} -tags cve -author geeknik
 {{binary}} -tags cve -author geeknik,pdteam
 {{binary}} -tags cve -author geeknik -severity high
@@ -19,12 +19,12 @@
 {{binary}} -tags 'cve','exposure' -tags 'token','logs'
 {{binary}} -tags cve -severity high
 {{binary}} -tags cve,exposure -severity high,critical
-{{binary}} -tags cve,exposure -severity "high,critical,medium"
+{{binary}} -tags cve,exposure -severity high,critical,medium
 {{binary}} -tags cve -author geeknik
 {{binary}} -tags cve -author geeknik,pdteam
 {{binary}} -tags cve -author geeknik -severity high
 {{binary}} -tags cve,exposure -author geeknik,pdteam -severity high,critical
-{{binary}} -tags "cve,exposure" -author "geeknik,pdteam" -severity "high,critical"
+{{binary}} -tags "cve,exposure" -author "geeknik,pdteam" -severity high,critical
 {{binary}} -tags cve -etags ssrf
 {{binary}} -tags cve,exposure -etags ssrf,config
 {{binary}} -tags cve,exposure -etags ssrf,config -severity high
