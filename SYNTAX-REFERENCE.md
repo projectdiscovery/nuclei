@@ -437,6 +437,44 @@ additional-fields:
 
 <hr />
 
+<div class="dd">
+
+<code>classification</code>  <i><a href="#modelclassification">model.Classification</a></i>
+
+</div>
+<div class="dt">
+
+Classification contains classification information about the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>remediation</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Remediation steps for the template.
+
+You can go in-depth here on how to mitigate the problem found by this template.
+
+
+
+Examples:
+
+
+```yaml
+remediation: Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties
+```
+
+
+</div>
+
+<hr />
+
 
 
 
@@ -454,6 +492,10 @@ Appears in:
 
 - <code><a href="#modelinfo">model.Info</a>.reference</code>
 
+- <code><a href="#modelclassification">model.Classification</a>.cve-id</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cwe-id</code>
+
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.tags</code>
 
 
@@ -468,6 +510,12 @@ cve,cve2019,grafana,auth-bypass,dos
 - https://github.com/strapi/strapi
 - https://github.com/getgrav/grav
 ```
+```yaml
+CVE-2020-14420
+```
+```yaml
+CWE-22
+```
 
 
 
@@ -478,6 +526,113 @@ Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
+
+
+
+## model.Classification
+
+Appears in:
+
+
+- <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>cve-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CVE ID for the template
+
+
+
+Examples:
+
+
+```yaml
+cve-id: CVE-2020-14420
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cwe-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CWE ID for the template.
+
+
+
+Examples:
+
+
+```yaml
+cwe-id: CWE-22
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-metrics</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+CVSS Metrics for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-metrics: 3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-score</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+CVSS Score for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-score: "9.8"
+```
+
+
+</div>
+
+<hr />
 
 
 

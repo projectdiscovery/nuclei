@@ -189,7 +189,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -220,6 +220,7 @@ func New(options *types.Options) (*Runner, error) {
 	if !options.NoInteractsh {
 		interactshClient, err := interactsh.New(&interactsh.Options{
 			ServerURL:      options.InteractshURL,
+			Authorization:  options.InteractshToken,
 			CacheSize:      int64(options.InteractionsCacheSize),
 			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
 			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
@@ -438,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	templatesMap := make(map[string]*templates.Template)
 	for _, v := range store.Templates() {
-		templatesMap[v.ID] = v
+		templatesMap[v.Path] = v
 	}
 	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
@@ -470,6 +471,7 @@ func (r *Runner) RunEnumeration() error {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
+
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
