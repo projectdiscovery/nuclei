@@ -282,7 +282,7 @@ name: Nagios Default Credentials Check
 
 <div class="dd">
 
-<code>author</code>  <i>StringSlice</i>
+<code>author</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -307,7 +307,7 @@ author: <username>
 
 <div class="dd">
 
-<code>tags</code>  <i>StringSlice</i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -362,7 +362,7 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 
 <div class="dd">
 
-<code>reference</code>  <i>StringSlice</i>
+<code>reference</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -389,7 +389,7 @@ reference:
 
 <div class="dd">
 
-<code>severity</code>  <i><a href="#severityseverityholder">severity.SeverityHolder</a></i>
+<code>severity</code>  <i><a href="#severityholder">severity.Holder</a></i>
 
 </div>
 <div class="dt">
@@ -437,27 +437,202 @@ additional-fields:
 
 <hr />
 
+<div class="dd">
+
+<code>classification</code>  <i><a href="#modelclassification">model.Classification</a></i>
+
+</div>
+<div class="dt">
+
+Classification contains classification information about the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>remediation</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Remediation steps for the template.
+
+You can go in-depth here on how to mitigate the problem found by this template.
+
+
+
+Examples:
+
+
+```yaml
+remediation: Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties
+```
+
+
+</div>
+
+<hr />
 
 
 
 
-## model.StringSlice
+
+## stringslice.StringSlice
+StringSlice represents a single (in-lined) or multiple string value(s).
+ The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
 
 Appears in:
 
 
+- <code><a href="#modelinfo">model.Info</a>.author</code>
+
+- <code><a href="#modelinfo">model.Info</a>.tags</code>
+
+- <code><a href="#modelinfo">model.Info</a>.reference</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cve-id</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cwe-id</code>
+
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.tags</code>
 
 
+```yaml
+<username>
+```
+```yaml
+# Example tags
+cve,cve2019,grafana,auth-bypass,dos
+```
+```yaml
+- https://github.com/strapi/strapi
+- https://github.com/getgrav/grav
+```
+```yaml
+CVE-2020-14420
+```
+```yaml
+CWE-22
+```
 
 
 
-## severity.SeverityHolder
+## severity.Holder
+Holder holds a Severity type. Required for un/marshalling purposes
 
 Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
+
+
+
+## model.Classification
+
+Appears in:
+
+
+- <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>cve-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CVE ID for the template
+
+
+
+Examples:
+
+
+```yaml
+cve-id: CVE-2020-14420
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cwe-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CWE ID for the template.
+
+
+
+Examples:
+
+
+```yaml
+cwe-id: CWE-22
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-metrics</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+CVSS Metrics for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-metrics: 3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-score</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+CVSS Score for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-score: "9.8"
+```
+
+
+</div>
+
+<hr />
 
 
 
@@ -2617,7 +2792,7 @@ template: misconfigurations/aem
 
 <div class="dd">
 
-<code>tags</code>  <i><a href="#modelstringslice">model.StringSlice</a></i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
