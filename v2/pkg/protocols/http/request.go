@@ -434,10 +434,10 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	finalEvent := make(output.InternalEvent)
 
 	// Decode gbk response content-types
-	if contentType := resp.Header.Get("Content-Type"); contentType != "" && strings.Contains(contentType, "gbk") && strings.Contains(contentType, "gb2312") {
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
 		dumpedResponse, err = decodegbk(dumpedResponse)
 		if err != nil {
-			return errors.Wrap(err, "could not store in project file")
+			return errors.Wrap(err, "could not gbk decode")
 		}
 	}
 
