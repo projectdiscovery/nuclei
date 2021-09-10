@@ -434,10 +434,15 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	finalEvent := make(output.InternalEvent)
 
 	// Decode gbk response content-types
-	if contentTypes, ok := resp.Header["Content-Type"]; ok && len(contentTypes) > 0 && strings.Contains(contentTypes[0], "gbk") && strings.Contains(contentTypes[0], "gb2312") {
-		dumpedResponse, err = decodegbk(dumpedResponse)
-		if err != nil {
-			return errors.Wrap(err, "could not store in project file")
+	if contentTypes, ok := resp.Header["Content-Type"]; ok && len(contentTypes) > 0 {
+		for _, value := range contentTypes {
+			if strings.Contains(value, "gbk") && strings.Contains(value, "gb2312") {
+				dumpedResponse, err = decodegbk(dumpedResponse)
+				if err != nil {
+					return errors.Wrap(err, "could not store in project file")
+				}
+				break
+			}
 		}
 	}
 
