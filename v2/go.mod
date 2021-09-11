@@ -107,6 +107,7 @@ require (
 	github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.6 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
+	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210911130026-62ec404ee755 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.7 // indirect
 	github.com/tklauser/numcpus v0.2.3 // indirect

@@ -16,7 +16,6 @@ type Config struct {
 	TemplatesDirectory string    `json:"templates-directory,omitempty"`
 	CurrentVersion     string    `json:"current-version,omitempty"`
 	LastChecked        time.Time `json:"last-checked,omitempty"`
-	IgnoreURL          string    `json:"ignore-url,omitempty"`
 	NucleiVersion      string    `json:"nuclei-version,omitempty"`
 	LastCheckedIgnore  time.Time `json:"last-checked-ignore,omitempty"`
 
@@ -64,9 +63,6 @@ func ReadConfiguration() (*Config, error) {
 
 // WriteConfiguration writes the updated nuclei configuration to disk
 func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
-	if config.IgnoreURL == "" {
-		config.IgnoreURL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
-	}
 	if checked {
 		config.LastChecked = time.Now()
 	}
