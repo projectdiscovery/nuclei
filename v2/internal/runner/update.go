@@ -75,6 +75,7 @@ func (r *Runner) updateTemplates() error {
 	if r.options.NoUpdateTemplates {
 		return nil
 	}
+	client.InitNucleiVersion(config.Version)
 	r.fetchLatestVersionsFromGithub() // also fetch latest versions
 
 	// Check if last checked for nuclei-ignore is more than 1 hours.
@@ -467,6 +468,7 @@ func (r *Runner) fetchLatestVersionsFromGithub() {
 	versions, err := client.GetLatestNucleiTemplatesVersion()
 	if err != nil {
 		gologger.Warning().Msgf("Could not fetch latest releases: %s", err)
+		return
 	}
 	if r.templatesConfig != nil {
 		r.templatesConfig.NucleiLatestVersion = versions.Nuclei
