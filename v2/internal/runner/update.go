@@ -142,7 +142,7 @@ func (r *Runner) updateTemplates() error {
 		return err
 	}
 
-	version, asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiLatestVersion)
+	version, asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
 	if err != nil {
 		return err
 	}
