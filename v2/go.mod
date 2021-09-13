@@ -19,7 +19,7 @@ require (
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/itchyny/gojq v0.12.4
-	github.com/json-iterator/go v1.1.11
+	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
@@ -102,12 +102,12 @@ require (
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.6 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
-	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210911130026-62ec404ee755 // indirect
+	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913092931-4c5b147ce7b9 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.7 // indirect
 	github.com/tklauser/numcpus v0.2.3 // indirect
