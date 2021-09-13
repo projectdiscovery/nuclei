@@ -21,6 +21,11 @@ func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
 
+	// if VerboseVerbose is set, it implicitly enables the Verbose option as well
+	if options.VerboseVerbose {
+		options.Verbose = true
+	}
+
 	// Read the inputs and configure the logging
 	configureOutput(options)
 
@@ -116,7 +121,7 @@ func isValidURL(urlString string) bool {
 // configureOutput configures the output on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose {
+	if options.Verbose || options.VerboseVerbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {
