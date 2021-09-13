@@ -361,6 +361,8 @@ github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913092931-4c5b147
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913092931-4c5b147ce7b9/go.mod h1:pxWVDgq88t9dWv4+J2AIaWgY+EqOE1AyfHS0Tn23w4M=
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913094006-ee345cd25b9b h1:+T8IkdHy5D3NkrZjvqLVl/WgiRahli/QolyIxC+C6oU=
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913094006-ee345cd25b9b/go.mod h1:pxWVDgq88t9dWv4+J2AIaWgY+EqOE1AyfHS0Tn23w4M=
+github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913094946-d1ec15db5faf h1:cFUSV7HERosPKdHuPiV348eVxObVMBqNt0ydYVplsI0=
+github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210913094946-d1ec15db5faf/go.mod h1:pxWVDgq88t9dWv4+J2AIaWgY+EqOE1AyfHS0Tn23w4M=
 github.com/projectdiscovery/nuclei/v2 v2.5.1/go.mod h1:sU2qcY0MQFS0CqP1BgkR8ZnUyFhqK0BdnY6bvTKNjXY=
 github.com/projectdiscovery/rawhttp v0.0.7 h1:5m4peVgjbl7gqDcRYMTVEuX+Xs/nh76ohTkkvufucLg=
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
