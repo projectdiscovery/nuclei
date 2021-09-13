@@ -105,6 +105,8 @@ type Extractor struct {
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
 	Internal bool `yaml:"internal,omitempty" jsonschema:"title=mark extracted value for internal variable use,description=Internal when set to true will allow using the value extracted in the next request for some protocols"`
+	// Parametrizable defines if this should be available within a workflow
+	Parametrizable bool `yaml:"parametrizable,omitempty"`
 	// Global defines if this should be available globally
 	Global bool `yaml:"global,omitempty"`
 }

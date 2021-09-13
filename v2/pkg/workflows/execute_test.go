@@ -169,7 +169,7 @@ func (m *mockExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and  returns true or false if results were found.
-func (m *mockExecuter) Execute(input string) (bool, error) {
+func (m *mockExecuter) Execute(input string, params map[string]interface{}) (bool, error) {
 	if m.executeHook != nil {
 		m.executeHook(input)
 	}
@@ -177,7 +177,7 @@ func (m *mockExecuter) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (m *mockExecuter) ExecuteWithResults(input string, params map[string]interface{}, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
 		m.executeHook(input)
 	}

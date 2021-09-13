@@ -2,6 +2,7 @@ package clusterer
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapsutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -60,11 +61,12 @@ func (e *Executer) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input string) (bool, error) {
+func (e *Executer) Execute(input string, params map[string]interface{}) (bool, error) {
 	var results bool
 
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
+	dynamicValues = mapsutil.MergeMaps(dynamicValues, params)
 	err := e.requests.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract)
@@ -94,7 +96,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (e *Executer) ExecuteWithResults(input string, params map[string]interface{}, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {

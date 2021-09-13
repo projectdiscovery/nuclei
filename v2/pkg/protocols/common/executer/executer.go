@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapsutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -42,10 +43,11 @@ func (e *Executer) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input string) (bool, error) {
+func (e *Executer) Execute(input string, params map[string]interface{}) (bool, error) {
 	var results bool
 
 	dynamicValues := make(map[string]interface{})
+	dynamicValues = mapsutil.MergeMaps(dynamicValues, params)
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		req := req
@@ -89,8 +91,9 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (e *Executer) ExecuteWithResults(input string, params map[string]interface{}, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
+	dynamicValues = mapsutil.MergeMaps(dynamicValues, params)
 	previous := make(map[string]interface{})
 
 	for _, req := range e.requests {

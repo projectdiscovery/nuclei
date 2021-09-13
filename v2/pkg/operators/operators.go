@@ -51,6 +51,7 @@ func (r *Operators) Compile() error {
 			return errors.Wrap(err, "could not compile extractor")
 		}
 	}
+
 	return nil
 }
 
@@ -77,6 +78,8 @@ type Result struct {
 	PayloadValues map[string]interface{}
 	// GlobalValues contains values to be exported to other templates (Optional)
 	GlobalValues map[string]interface{}
+	// ParametrizedValues contains values to be exported to other workflow templates (Optional)
+	ParametrizedValues map[string]interface{}
 }
 
 // Merge merges a result structure into the other.
@@ -115,10 +118,11 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 
 	var matches bool
 	result := &Result{
-		Matches:       make(map[string]struct{}),
-		Extracts:      make(map[string][]string),
-		DynamicValues: make(map[string]interface{}),
-		GlobalValues:  make(map[string]interface{}),
+		Matches:            make(map[string]struct{}),
+		Extracts:           make(map[string][]string),
+		DynamicValues:      make(map[string]interface{}),
+		GlobalValues:       make(map[string]interface{}),
+		ParametrizedValues: make(map[string]interface{}),
 	}
 
 	// Start with the extractors first and evaluate them.
@@ -140,6 +144,9 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 			result.Extracts[extractor.Name] = extractorResults
 			if extractor.Global {
 				result.GlobalValues[extractor.Name] = extractorResults
+			}
+			if extractor.Parametrizable {
+				result.ParametrizedValues[extractor.Name] = extractorResults
 			}
 		}
 	}
@@ -184,7 +191,6 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 // ExecuteInternalExtractors executes internal dynamic extractors
 func (r *Operators) ExecuteInternalExtractors(data map[string]interface{}, extract ExtractFunc) map[string]interface{} {
 	dynamicValues := make(map[string]interface{})
-
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range r.Extractors {
 		if !extractor.Internal {
