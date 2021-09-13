@@ -2,17 +2,34 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "$ref": "#/definitions/templates.Template",
   "definitions": {
-    "severity.SeverityHolder": {
-      "enum": [
-        "info",
-        "low",
-        "medium",
-        "high",
-        "critical"
-      ],
-      "type": "string",
-      "title": "severity of the template",
-      "description": "Seriousness of the implications of the template"
+    "model.Classification": {
+      "properties": {
+        "cve-id": {
+          "$ref": "#/definitions/stringslice.StringSlice",
+          "title": "cve ids for the template",
+          "description": "CVE IDs for the template"
+        },
+        "cwe-id": {
+          "$ref": "#/definitions/stringslice.StringSlice",
+          "title": "cwe ids for the template",
+          "description": "CWE IDs for the template"
+        },
+        "cvss-metrics": {
+          "type": "string",
+          "title": "cvss metrics for the template",
+          "description": "CVSS Metrics for the template",
+          "examples": [
+            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          ]
+        },
+        "cvss-score": {
+          "type": "number",
+          "title": "cvss score for the template",
+          "description": "CVSS Score for the template"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "model.Info": {
       "properties": {
@@ -26,12 +43,12 @@
         },
         "author": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "author of the template",
           "description": "Author is the author of the template"
         },
         "tags": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "tags of the template",
           "description": "Any tags for the template"
         },
@@ -44,13 +61,13 @@
           ]
         },
         "reference": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "references for the template",
           "description": "Links relevant to the template"
         },
         "severity": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/severity.SeverityHolder"
+          "$ref": "#/definitions/severity.Holder"
         },
         "additional-fields": {
           "patternProperties": {
@@ -61,12 +78,38 @@
           "type": "object",
           "title": "additional metadata for the template",
           "description": "Additional metadata fields for the template"
+        },
+        "classification": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/model.Classification",
+          "title": "classification info for the template",
+          "description": "Classification information for the template"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "remediation steps for the template",
+          "description": "In-depth explanation on how to fix the issues found by the template",
+          "examples": [
+            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
+          ]
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
-    "model.StringSlice": {
+    "severity.Holder": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string",
+      "title": "severity of the template",
+      "description": "Seriousness of the implications of the template"
+    },
+    "stringslice.StringSlice": {
       "oneOf": [
         {
           "type": "string"
@@ -309,12 +352,12 @@
         },
         "class": {
           "enum": [
-            "INET",
-            "CSNET",
-            "CHAOS",
-            "HESIOD",
-            "NONE",
-            "ANY"
+            "inet",
+            "csnet",
+            "chaos",
+            "hesiod",
+            "none",
+            "any"
           ],
           "type": "string",
           "title": "class of DNS request",
@@ -662,6 +705,11 @@
           "type": "boolean",
           "title": "preserve request history",
           "description": "Automatically assigns numbers to requests and preserves their history"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
         }
       },
       "additionalProperties": false,
@@ -880,7 +928,7 @@
           "description": "Template or directory to execute as part of workflow"
         },
         "tags": {
-          "$ref": "#/definitions/model.StringSlice",
+          "$ref": "#/definitions/stringslice.StringSlice",
           "title": "tags to execute",
           "description": "Tags to run template based on"
         },

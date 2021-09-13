@@ -18,7 +18,7 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 
-	// ID is the ID of the request
+	// ID is the the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 
 	// description: |

@@ -18,8 +18,7 @@ Template is a YAML input file which defines all the requests and
 </div>
 <div class="dt">
 
-ID is the unique id for the template. IDs must be lowercase
-and must not contain spaces in it.
+ID is the unique id for the template.
 
 #### Good IDs
 
@@ -35,7 +34,7 @@ Examples:
 
 ```yaml
 # ID Example
-id: cve-2021-19520
+id: CVE-2021-19520
 ```
 
 
@@ -60,10 +59,8 @@ Examples:
 ```yaml
 info:
     name: Argument Injection in Ruby Dragonfly
-    author:
-        - 0xspara
-    tags:
-        - cve,cve2021,rce,ruby
+    author: 0xspara
+    tags: cve,cve2021,rce,ruby
     reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
     severity: high
 ```
@@ -248,10 +245,8 @@ Appears in:
 
 ```yaml
 name: Argument Injection in Ruby Dragonfly
-author:
-    - 0xspara
-tags:
-    - cve,cve2021,rce,ruby
+author: 0xspara
+tags: cve,cve2021,rce,ruby
 reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
@@ -287,12 +282,14 @@ name: Nagios Default Credentials Check
 
 <div class="dd">
 
-<code>author</code>  <i>StringSlice</i>
+<code>author</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
 
 Author of the template.
+
+Multiple values can also be specified separated by commas.
 
 
 
@@ -310,7 +307,7 @@ author: <username>
 
 <div class="dd">
 
-<code>tags</code>  <i>StringSlice</i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -365,7 +362,7 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 
 <div class="dd">
 
-<code>reference</code>  <i>StringSlice</i>
+<code>reference</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -392,7 +389,7 @@ reference:
 
 <div class="dd">
 
-<code>severity</code>  <i><a href="#severityseverityholder">severity.SeverityHolder</a></i>
+<code>severity</code>  <i><a href="#severityholder">severity.Holder</a></i>
 
 </div>
 <div class="dt">
@@ -440,27 +437,202 @@ additional-fields:
 
 <hr />
 
+<div class="dd">
+
+<code>classification</code>  <i><a href="#modelclassification">model.Classification</a></i>
+
+</div>
+<div class="dt">
+
+Classification contains classification information about the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>remediation</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Remediation steps for the template.
+
+You can go in-depth here on how to mitigate the problem found by this template.
+
+
+
+Examples:
+
+
+```yaml
+remediation: Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties
+```
+
+
+</div>
+
+<hr />
 
 
 
 
-## model.StringSlice
+
+## stringslice.StringSlice
+StringSlice represents a single (in-lined) or multiple string value(s).
+ The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
 
 Appears in:
 
 
+- <code><a href="#modelinfo">model.Info</a>.author</code>
+
+- <code><a href="#modelinfo">model.Info</a>.tags</code>
+
+- <code><a href="#modelinfo">model.Info</a>.reference</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cve-id</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cwe-id</code>
+
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.tags</code>
 
 
+```yaml
+<username>
+```
+```yaml
+# Example tags
+cve,cve2019,grafana,auth-bypass,dos
+```
+```yaml
+- https://github.com/strapi/strapi
+- https://github.com/getgrav/grav
+```
+```yaml
+CVE-2020-14420
+```
+```yaml
+CWE-22
+```
 
 
 
-## severity.SeverityHolder
+## severity.Holder
+Holder holds a Severity type. Required for un/marshalling purposes
 
 Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
+
+
+
+## model.Classification
+
+Appears in:
+
+
+- <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>cve-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CVE ID for the template
+
+
+
+Examples:
+
+
+```yaml
+cve-id: CVE-2020-14420
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cwe-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CWE ID for the template.
+
+
+
+Examples:
+
+
+```yaml
+cwe-id: CWE-22
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-metrics</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+CVSS Metrics for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-metrics: 3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-score</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+CVSS Score for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-score: "9.8"
+```
+
+
+</div>
+
+<hr />
 
 
 
@@ -620,7 +792,7 @@ raw:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -1005,6 +1177,19 @@ This allows matching on them later for multi-request conditions.
 
 <hr />
 
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
 
 
 
@@ -1130,7 +1315,7 @@ It will only match if the condition is not true.
 <div class="dt">
 
 Name of the matcher. Name should be lowercase and must not contain
-spaces or dashes (-).
+spaces or underscores (_).
 
 
 
@@ -1373,7 +1558,7 @@ Appears in:
 <div class="dt">
 
 Name of the extractor. Name should be lowercase and must not contain
-spaces or dashes (-).
+spaces or underscores (_).
 
 
 
@@ -1420,9 +1605,9 @@ Valid values:
 </div>
 <div class="dt">
 
-Regex contains the regular expression patterns to exract from a part.
+Regex contains the regular expression patterns to extract from a part.
 
-Go regex engine does not supports lookaheads or lookbehinds, so as a result
+Go regex engine does not support lookaheads or lookbehinds, so as a result
 they are also not supported in nuclei.
 
 
@@ -1478,29 +1663,23 @@ group: 1
 </div>
 <div class="dt">
 
-kval contains the key-value pairs required in the response.
+description: |
+   kval contains the key-value pairs present in the HTTP response header.
+   kval extractor can be used to extract HTTP response header and cookie key-value pairs.
+   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+ 	 For example, Content-Type should be replaced with content_type
 
-Each protocol exposes a lot of different data in response. The kval
-extractor can be used to extract those key-value pairs. A list of
-supported parts is available in docs for request types.
-
-
-
-Examples:
-
-
-```yaml
-# Extract Server Header From HTTP Response
-kval:
-    - Server
-```
-
-```yaml
-# Extracting value of PHPSESSID Cookie
-kval:
-    - PHPSESSID
-```
-
+   A list of supported parts is available in docs for request types.
+ examples:
+   - name: Extract Server Header From HTTP Response
+     value: >
+       []string{"server"}
+   - name: Extracting value of PHPSESSID Cookie
+     value: >
+       []string{"phpsessid"}
+   - name: Extracting value of Content-Type Cookie
+     value: >
+       []string{"content_type"}
 
 </div>
 
@@ -1552,11 +1731,6 @@ Examples:
 ```yaml
 xpath:
     - /html/body/div/p[2]/a
-```
-
-```yaml
-xpath:
-    - .batters | .batter | .[] | .id
 ```
 
 
@@ -1718,7 +1892,7 @@ Valid values:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -1798,17 +1972,17 @@ Usually it's enough to just leave it as INET.
 Valid values:
 
 
-  - <code>INET</code>
+  - <code>inet</code>
 
-  - <code>CSNET</code>
+  - <code>csnet</code>
 
-  - <code>CHAOS</code>
+  - <code>chaos</code>
 
-  - <code>HESIOD</code>
+  - <code>hesiod</code>
 
-  - <code>NONE</code>
+  - <code>none</code>
 
-  - <code>ANY</code>
+  - <code>any</code>
 </div>
 
 <hr />
@@ -1988,7 +2162,7 @@ denylist:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -2068,7 +2242,7 @@ matchers:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -2374,7 +2548,7 @@ Appears in:
 </div>
 <div class="dt">
 
-ID is the ID of the request
+ID is the the optional id of the request
 
 </div>
 
@@ -2618,7 +2792,7 @@ template: misconfigurations/aem
 
 <div class="dd">
 
-<code>tags</code>  <i><a href="#modelstringslice">model.StringSlice</a></i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">

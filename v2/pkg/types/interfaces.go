@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
 // JSONScalarToString converts an interface coming from json to string
@@ -62,7 +62,7 @@ func ToString(data interface{}) string {
 		return strconv.FormatUint(uint64(s), 10)
 	case []byte:
 		return string(s)
-	case severity.SeverityHolder:
+	case severity.Holder:
 		return s.Severity.String()
 	case severity.Severity:
 		return s.String()

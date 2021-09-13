@@ -1,7 +1,11 @@
 package dsl
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/nebula"
+
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/runtime"
 )
@@ -21,6 +25,7 @@ func AddGlobalCustomHelpers(options *Options) error {
 		}
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
+
 	})
 
 	_ = nebula.AddFunc("nuclei_vars_set", func(key string, value interface{}) {
@@ -41,6 +46,12 @@ func AddGlobalCustomHelpers(options *Options) error {
 
 	_ = nebula.AddFunc("nuclei_vars_has", func(key string) bool {
 		return options.Store.Has(key)
+	})
+
+	// for debug purposes - TODO: remove as nebula has implicit "print" operation
+	_ = nebula.AddFunc("print_debug", func(args ...interface{}) (interface{}, error) {
+		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+		return true, nil
 	})
 
 	return nil

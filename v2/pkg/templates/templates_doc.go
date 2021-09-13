@@ -11,8 +11,9 @@ import (
 var (
 	TemplateDoc                  encoder.Doc
 	MODELInfoDoc                 encoder.Doc
-	MODELStringSliceDoc          encoder.Doc
-	SEVERITYSeverityHolderDoc    encoder.Doc
+	STRINGSLICEStringSliceDoc    encoder.Doc
+	SEVERITYHolderDoc            encoder.Doc
+	MODELClassificationDoc       encoder.Doc
 	HTTPRequestDoc               encoder.Doc
 	MATCHERSMatcherDoc           encoder.Doc
 	EXTRACTORSExtractorDoc       encoder.Doc
@@ -34,10 +35,10 @@ func init() {
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
-	TemplateDoc.Fields[0].Description = "ID is the unique id for the template. IDs must be lowercase\nand must not contain spaces in it.\n\n#### Good IDs\n\nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`."
-	TemplateDoc.Fields[0].Comments[encoder.LineComment] = "ID is the unique id for the template. IDs must be lowercase"
+	TemplateDoc.Fields[0].Description = "ID is the unique id for the template.\n\n#### Good IDs\n\nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`."
+	TemplateDoc.Fields[0].Comments[encoder.LineComment] = "ID is the unique id for the template."
 
-	TemplateDoc.Fields[0].AddExample("ID Example", "cve-2021-19520")
+	TemplateDoc.Fields[0].AddExample("ID Example", "CVE-2021-19520")
 	TemplateDoc.Fields[1].Name = "info"
 	TemplateDoc.Fields[1].Type = "model.Info"
 	TemplateDoc.Fields[1].Note = ""
@@ -95,7 +96,7 @@ func init() {
 			FieldName: "info",
 		},
 	}
-	MODELInfoDoc.Fields = make([]encoder.Doc, 7)
+	MODELInfoDoc.Fields = make([]encoder.Doc, 9)
 	MODELInfoDoc.Fields[0].Name = "name"
 	MODELInfoDoc.Fields[0].Type = "string"
 	MODELInfoDoc.Fields[0].Note = ""
@@ -106,14 +107,14 @@ func init() {
 
 	MODELInfoDoc.Fields[0].AddExample("", "Nagios Default Credentials Check")
 	MODELInfoDoc.Fields[1].Name = "author"
-	MODELInfoDoc.Fields[1].Type = "StringSlice"
+	MODELInfoDoc.Fields[1].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[1].Note = ""
-	MODELInfoDoc.Fields[1].Description = "Author of the template."
+	MODELInfoDoc.Fields[1].Description = "Author of the template.\n\nMultiple values can also be specified separated by commas."
 	MODELInfoDoc.Fields[1].Comments[encoder.LineComment] = "Author of the template."
 
 	MODELInfoDoc.Fields[1].AddExample("", "<username>")
 	MODELInfoDoc.Fields[2].Name = "tags"
-	MODELInfoDoc.Fields[2].Type = "StringSlice"
+	MODELInfoDoc.Fields[2].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[2].Note = ""
 	MODELInfoDoc.Fields[2].Description = "Any tags for the template.\n\nMultiple values can also be specified separated by commas."
 	MODELInfoDoc.Fields[2].Comments[encoder.LineComment] = "Any tags for the template."
@@ -129,14 +130,14 @@ func init() {
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
 	MODELInfoDoc.Fields[4].Name = "reference"
-	MODELInfoDoc.Fields[4].Type = "StringSlice"
+	MODELInfoDoc.Fields[4].Type = "stringslice.StringSlice"
 	MODELInfoDoc.Fields[4].Note = ""
 	MODELInfoDoc.Fields[4].Description = "References for the template.\n\nThis should contain links relevant to the template."
 	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "References for the template."
 
 	MODELInfoDoc.Fields[4].AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
 	MODELInfoDoc.Fields[5].Name = "severity"
-	MODELInfoDoc.Fields[5].Type = "severity.SeverityHolder"
+	MODELInfoDoc.Fields[5].Type = "severity.Holder"
 	MODELInfoDoc.Fields[5].Note = ""
 	MODELInfoDoc.Fields[5].Description = "Severity of the template."
 	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
@@ -154,28 +155,109 @@ func init() {
 	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "AdditionalFields regarding metadata of the template."
 
 	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
+	MODELInfoDoc.Fields[7].Name = "classification"
+	MODELInfoDoc.Fields[7].Type = "model.Classification"
+	MODELInfoDoc.Fields[7].Note = ""
+	MODELInfoDoc.Fields[7].Description = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[7].Comments[encoder.LineComment] = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[8].Name = "remediation"
+	MODELInfoDoc.Fields[8].Type = "string"
+	MODELInfoDoc.Fields[8].Note = ""
+	MODELInfoDoc.Fields[8].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template."
+	MODELInfoDoc.Fields[8].Comments[encoder.LineComment] = "Remediation steps for the template."
 
-	MODELStringSliceDoc.Type = "model.StringSlice"
-	MODELStringSliceDoc.Comments[encoder.LineComment] = ""
-	MODELStringSliceDoc.Description = ""
-	MODELStringSliceDoc.AppearsIn = []encoder.Appearance{
+	MODELInfoDoc.Fields[8].AddExample("", "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties")
+
+	STRINGSLICEStringSliceDoc.Type = "stringslice.StringSlice"
+	STRINGSLICEStringSliceDoc.Comments[encoder.LineComment] = " StringSlice represents a single (in-lined) or multiple string value(s)."
+	STRINGSLICEStringSliceDoc.Description = "StringSlice represents a single (in-lined) or multiple string value(s).\n The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required."
+
+	STRINGSLICEStringSliceDoc.AddExample("", "<username>")
+
+	STRINGSLICEStringSliceDoc.AddExample("Example tags", "cve,cve2019,grafana,auth-bypass,dos")
+
+	STRINGSLICEStringSliceDoc.AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
+
+	STRINGSLICEStringSliceDoc.AddExample("", "CVE-2020-14420")
+
+	STRINGSLICEStringSliceDoc.AddExample("", "CWE-22")
+	STRINGSLICEStringSliceDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "model.Info",
+			FieldName: "author",
+		},
+		{
+			TypeName:  "model.Info",
+			FieldName: "tags",
+		},
+		{
+			TypeName:  "model.Info",
+			FieldName: "reference",
+		},
+		{
+			TypeName:  "model.Classification",
+			FieldName: "cve-id",
+		},
+		{
+			TypeName:  "model.Classification",
+			FieldName: "cwe-id",
+		},
 		{
 			TypeName:  "workflows.WorkflowTemplate",
 			FieldName: "tags",
 		},
 	}
-	MODELStringSliceDoc.Fields = make([]encoder.Doc, 0)
+	STRINGSLICEStringSliceDoc.Fields = make([]encoder.Doc, 0)
 
-	SEVERITYSeverityHolderDoc.Type = "severity.SeverityHolder"
-	SEVERITYSeverityHolderDoc.Comments[encoder.LineComment] = ""
-	SEVERITYSeverityHolderDoc.Description = ""
-	SEVERITYSeverityHolderDoc.AppearsIn = []encoder.Appearance{
+	SEVERITYHolderDoc.Type = "severity.Holder"
+	SEVERITYHolderDoc.Comments[encoder.LineComment] = " Holder holds a Severity type. Required for un/marshalling purposes"
+	SEVERITYHolderDoc.Description = "Holder holds a Severity type. Required for un/marshalling purposes"
+	SEVERITYHolderDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "model.Info",
 			FieldName: "severity",
 		},
 	}
-	SEVERITYSeverityHolderDoc.Fields = make([]encoder.Doc, 0)
+	SEVERITYHolderDoc.Fields = make([]encoder.Doc, 0)
+
+	MODELClassificationDoc.Type = "model.Classification"
+	MODELClassificationDoc.Comments[encoder.LineComment] = ""
+	MODELClassificationDoc.Description = ""
+	MODELClassificationDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "model.Info",
+			FieldName: "classification",
+		},
+	}
+	MODELClassificationDoc.Fields = make([]encoder.Doc, 4)
+	MODELClassificationDoc.Fields[0].Name = "cve-id"
+	MODELClassificationDoc.Fields[0].Type = "stringslice.StringSlice"
+	MODELClassificationDoc.Fields[0].Note = ""
+	MODELClassificationDoc.Fields[0].Description = "CVE ID for the template"
+	MODELClassificationDoc.Fields[0].Comments[encoder.LineComment] = "CVE ID for the template"
+
+	MODELClassificationDoc.Fields[0].AddExample("", "CVE-2020-14420")
+	MODELClassificationDoc.Fields[1].Name = "cwe-id"
+	MODELClassificationDoc.Fields[1].Type = "stringslice.StringSlice"
+	MODELClassificationDoc.Fields[1].Note = ""
+	MODELClassificationDoc.Fields[1].Description = "CWE ID for the template."
+	MODELClassificationDoc.Fields[1].Comments[encoder.LineComment] = "CWE ID for the template."
+
+	MODELClassificationDoc.Fields[1].AddExample("", "CWE-22")
+	MODELClassificationDoc.Fields[2].Name = "cvss-metrics"
+	MODELClassificationDoc.Fields[2].Type = "string"
+	MODELClassificationDoc.Fields[2].Note = ""
+	MODELClassificationDoc.Fields[2].Description = "CVSS Metrics for the template."
+	MODELClassificationDoc.Fields[2].Comments[encoder.LineComment] = "CVSS Metrics for the template."
+
+	MODELClassificationDoc.Fields[2].AddExample("", "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
+	MODELClassificationDoc.Fields[3].Name = "cvss-score"
+	MODELClassificationDoc.Fields[3].Type = "float64"
+	MODELClassificationDoc.Fields[3].Note = ""
+	MODELClassificationDoc.Fields[3].Description = "CVSS Score for the template."
+	MODELClassificationDoc.Fields[3].Comments[encoder.LineComment] = "CVSS Score for the template."
+
+	MODELClassificationDoc.Fields[3].AddExample("", "9.8")
 
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
@@ -188,7 +270,7 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 24)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 25)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -225,8 +307,8 @@ func init() {
 	HTTPRequestDoc.Fields[5].Name = "id"
 	HTTPRequestDoc.Fields[5].Type = "string"
 	HTTPRequestDoc.Fields[5].Note = ""
-	HTTPRequestDoc.Fields[5].Description = "ID is the ID of the request"
-	HTTPRequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the ID of the request"
+	HTTPRequestDoc.Fields[5].Description = "ID is the the optional id of the request"
+	HTTPRequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the the optional id of the request"
 	HTTPRequestDoc.Fields[6].Name = "name"
 	HTTPRequestDoc.Fields[6].Type = "string"
 	HTTPRequestDoc.Fields[6].Note = ""
@@ -349,6 +431,11 @@ func init() {
 	HTTPRequestDoc.Fields[23].Note = ""
 	HTTPRequestDoc.Fields[23].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
 	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[24].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[24].Type = "bool"
+	HTTPRequestDoc.Fields[24].Note = ""
+	HTTPRequestDoc.Fields[24].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -415,7 +502,7 @@ func init() {
 	MATCHERSMatcherDoc.Fields[4].Name = "name"
 	MATCHERSMatcherDoc.Fields[4].Type = "string"
 	MATCHERSMatcherDoc.Fields[4].Note = ""
-	MATCHERSMatcherDoc.Fields[4].Description = "Name of the matcher. Name should be lowercase and must not contain\nspaces or dashes (-)."
+	MATCHERSMatcherDoc.Fields[4].Description = "Name of the matcher. Name should be lowercase and must not contain\nspaces or underscores (_)."
 	MATCHERSMatcherDoc.Fields[4].Comments[encoder.LineComment] = "Name of the matcher. Name should be lowercase and must not contain"
 
 	MATCHERSMatcherDoc.Fields[4].AddExample("", "cookie-matcher")
@@ -507,7 +594,7 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
 	EXTRACTORSExtractorDoc.Fields[0].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[0].Note = ""
-	EXTRACTORSExtractorDoc.Fields[0].Description = "Name of the extractor. Name should be lowercase and must not contain\nspaces or dashes (-)."
+	EXTRACTORSExtractorDoc.Fields[0].Description = "Name of the extractor. Name should be lowercase and must not contain\nspaces or underscores (_)."
 	EXTRACTORSExtractorDoc.Fields[0].Comments[encoder.LineComment] = "Name of the extractor. Name should be lowercase and must not contain"
 
 	EXTRACTORSExtractorDoc.Fields[0].AddExample("", "cookie-extractor")
@@ -525,8 +612,8 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[2].Name = "regex"
 	EXTRACTORSExtractorDoc.Fields[2].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[2].Note = ""
-	EXTRACTORSExtractorDoc.Fields[2].Description = "Regex contains the regular expression patterns to exract from a part.\n\nGo regex engine does not supports lookaheads or lookbehinds, so as a result\nthey are also not supported in nuclei."
-	EXTRACTORSExtractorDoc.Fields[2].Comments[encoder.LineComment] = "Regex contains the regular expression patterns to exract from a part."
+	EXTRACTORSExtractorDoc.Fields[2].Description = "Regex contains the regular expression patterns to extract from a part.\n\nGo regex engine does not support lookaheads or lookbehinds, so as a result\nthey are also not supported in nuclei."
+	EXTRACTORSExtractorDoc.Fields[2].Comments[encoder.LineComment] = "Regex contains the regular expression patterns to extract from a part."
 
 	EXTRACTORSExtractorDoc.Fields[2].AddExample("Braintree Access Token Regex", []string{"access_token\\$production\\$[0-9a-z]{16}\\$[0-9a-f]{32}"})
 
@@ -541,12 +628,8 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[4].Name = "kval"
 	EXTRACTORSExtractorDoc.Fields[4].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[4].Note = ""
-	EXTRACTORSExtractorDoc.Fields[4].Description = "kval contains the key-value pairs required in the response.\n\nEach protocol exposes a lot of different data in response. The kval\nextractor can be used to extract those key-value pairs. A list of\nsupported parts is available in docs for request types."
-	EXTRACTORSExtractorDoc.Fields[4].Comments[encoder.LineComment] = "kval contains the key-value pairs required in the response."
-
-	EXTRACTORSExtractorDoc.Fields[4].AddExample("Extract Server Header From HTTP Response", []string{"Server"})
-
-	EXTRACTORSExtractorDoc.Fields[4].AddExample("Extracting value of PHPSESSID Cookie", []string{"PHPSESSID"})
+	EXTRACTORSExtractorDoc.Fields[4].Description = "description: |\n   kval contains the key-value pairs present in the HTTP response header.\n   kval extractor can be used to extract HTTP response header and cookie key-value pairs.\n   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)\n 	 For example, Content-Type should be replaced with content_type\n\n   A list of supported parts is available in docs for request types.\n examples:\n   - name: Extract Server Header From HTTP Response\n     value: >\n       []string{\"server\"}\n   - name: Extracting value of PHPSESSID Cookie\n     value: >\n       []string{\"phpsessid\"}\n   - name: Extracting value of Content-Type Cookie\n     value: >\n       []string{\"content_type\"}"
+	EXTRACTORSExtractorDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
 	EXTRACTORSExtractorDoc.Fields[5].Name = "json"
 	EXTRACTORSExtractorDoc.Fields[5].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[5].Note = ""
@@ -563,8 +646,6 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[6].Comments[encoder.LineComment] = "XPath allows using xpath expressions to extract items from html response"
 
 	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{"/html/body/div/p[2]/a"})
-
-	EXTRACTORSExtractorDoc.Fields[6].AddExample("", []string{".batters | .batter | .[] | .id"})
 	EXTRACTORSExtractorDoc.Fields[7].Name = "attribute"
 	EXTRACTORSExtractorDoc.Fields[7].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[7].Note = ""
@@ -621,8 +702,8 @@ func init() {
 	DNSRequestDoc.Fields[3].Name = "id"
 	DNSRequestDoc.Fields[3].Type = "string"
 	DNSRequestDoc.Fields[3].Note = ""
-	DNSRequestDoc.Fields[3].Description = "ID is the ID of the request"
-	DNSRequestDoc.Fields[3].Comments[encoder.LineComment] = " ID is the ID of the request"
+	DNSRequestDoc.Fields[3].Description = "ID is the the optional id of the request"
+	DNSRequestDoc.Fields[3].Comments[encoder.LineComment] = " ID is the the optional id of the request"
 	DNSRequestDoc.Fields[4].Name = "name"
 	DNSRequestDoc.Fields[4].Type = "string"
 	DNSRequestDoc.Fields[4].Note = ""
@@ -652,12 +733,12 @@ func init() {
 	DNSRequestDoc.Fields[6].Description = "Class is the class of the DNS request.\n\nUsually it's enough to just leave it as INET."
 	DNSRequestDoc.Fields[6].Comments[encoder.LineComment] = "Class is the class of the DNS request."
 	DNSRequestDoc.Fields[6].Values = []string{
-		"INET",
-		"CSNET",
-		"CHAOS",
-		"HESIOD",
-		"NONE",
-		"ANY",
+		"inet",
+		"csnet",
+		"chaos",
+		"hesiod",
+		"none",
+		"any",
 	}
 	DNSRequestDoc.Fields[7].Name = "retries"
 	DNSRequestDoc.Fields[7].Type = "int"
@@ -720,8 +801,8 @@ func init() {
 	FILERequestDoc.Fields[5].Name = "id"
 	FILERequestDoc.Fields[5].Type = "string"
 	FILERequestDoc.Fields[5].Note = ""
-	FILERequestDoc.Fields[5].Description = "ID is the ID of the request"
-	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the ID of the request"
+	FILERequestDoc.Fields[5].Description = "ID is the the optional id of the request"
+	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the the optional id of the request"
 	FILERequestDoc.Fields[6].Name = "max-size"
 	FILERequestDoc.Fields[6].Type = "int"
 	FILERequestDoc.Fields[6].Note = ""
@@ -750,8 +831,8 @@ func init() {
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
-	NETWORKRequestDoc.Fields[0].Description = "ID is the ID of the request"
-	NETWORKRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the ID of the request"
+	NETWORKRequestDoc.Fields[0].Description = "ID is the the optional id of the request"
+	NETWORKRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the the optional id of the request"
 	NETWORKRequestDoc.Fields[1].Name = "host"
 	NETWORKRequestDoc.Fields[1].Type = "[]string"
 	NETWORKRequestDoc.Fields[1].Note = ""
@@ -862,8 +943,8 @@ func init() {
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
-	HEADLESSRequestDoc.Fields[0].Description = "ID is the ID of the request"
-	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the ID of the request"
+	HEADLESSRequestDoc.Fields[0].Description = "ID is the the optional id of the request"
+	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the the optional id of the request"
 	HEADLESSRequestDoc.Fields[1].Name = "steps"
 	HEADLESSRequestDoc.Fields[1].Type = "[]engine.Action"
 	HEADLESSRequestDoc.Fields[1].Note = ""
@@ -971,7 +1052,7 @@ func init() {
 
 	WORKFLOWSWorkflowTemplateDoc.Fields[0].AddExample("A template directory", "misconfigurations/aem")
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Name = "tags"
-	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "model.StringSlice"
+	WORKFLOWSWorkflowTemplateDoc.Fields[1].Type = "stringslice.StringSlice"
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Note = ""
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Description = "Tags to run templates based on."
 	WORKFLOWSWorkflowTemplateDoc.Fields[1].Comments[encoder.LineComment] = "Tags to run templates based on."
@@ -1016,8 +1097,9 @@ func GetTemplateDoc() *encoder.FileDoc {
 		Structs: []*encoder.Doc{
 			&TemplateDoc,
 			&MODELInfoDoc,
-			&MODELStringSliceDoc,
-			&SEVERITYSeverityHolderDoc,
+			&STRINGSLICEStringSliceDoc,
+			&SEVERITYHolderDoc,
+			&MODELClassificationDoc,
 			&HTTPRequestDoc,
 			&MATCHERSMatcherDoc,
 			&EXTRACTORSExtractorDoc,

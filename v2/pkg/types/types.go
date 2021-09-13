@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -37,6 +37,8 @@ type Options struct {
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
+	// Interactsh Authorization header value for self-hosted servers
+	InteractshToken string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
@@ -65,8 +67,8 @@ type Options struct {
 	StatsInterval int
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
-	// HostMaxErrors is the maximum number of errors allowed for a host
-	HostMaxErrors int
+	// MaxHostError is the maximum number of errors allowed for a host
+	MaxHostError int
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel

@@ -19,10 +19,10 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
 // Runner is a client for running the enumeration process.
@@ -73,6 +74,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 		return nil, nil
 	}
+	if options.Validate {
+		parsers.ShouldValidate = true
+	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
@@ -85,35 +89,10 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
-	var reportingOptions *reporting.Options
-	if options.ReportingConfig != "" {
-		file, err := os.Open(options.ReportingConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not open reporting config file")
-		}
 
-		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
-			file.Close()
-			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
-		}
-		file.Close()
-	}
-	if options.DiskExportDirectory != "" {
-		if reportingOptions != nil {
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
-		}
-	}
-	if options.SarifExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		}
+	reportingOptions, err := createReportingOptions(options)
+	if err != nil {
+		return nil, err
 	}
 	if reportingOptions != nil {
 		client, err := reporting.New(reportingOptions, options.ReportingDB)
@@ -212,7 +191,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -243,6 +222,7 @@ func New(options *types.Options) (*Runner, error) {
 	if !options.NoInteractsh {
 		interactshClient, err := interactsh.New(&interactsh.Options{
 			ServerURL:      options.InteractshURL,
+			Authorization:  options.InteractshToken,
 			CacheSize:      int64(options.InteractionsCacheSize),
 			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
 			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
@@ -268,6 +248,40 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	return runner, nil
+}
+
+func createReportingOptions(options *types.Options) (*reporting.Options, error) {
+	var reportingOptions *reporting.Options
+	if options.ReportingConfig != "" {
+		file, err := os.Open(options.ReportingConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not open reporting config file")
+		}
+
+		reportingOptions = &reporting.Options{}
+		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
+			file.Close()
+			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
+		}
+		file.Close()
+	}
+	if options.DiskExportDirectory != "" {
+		if reportingOptions != nil {
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+		}
+	}
+	if options.SarifExport != "" {
+		if reportingOptions != nil {
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		}
+	}
+	return reportingOptions, nil
 }
 
 // Close releases all the resources and cleans up
@@ -304,8 +318,8 @@ func (r *Runner) RunEnumeration() error {
 	dsl.AddGlobalCustomHelpers(&dsl.Options{Store: s})
 
 	var cache *hosterrorscache.Cache
-	if r.options.HostMaxErrors > 0 {
-		cache = hosterrorscache.New(r.options.HostMaxErrors, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
+	if r.options.MaxHostError > 0 {
+		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
 
@@ -348,14 +362,23 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
+	store.Load()
+
 	if r.options.Validate {
 		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("All templates validated successfully\n")
+		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 {
+			gologger.Info().Msgf("All templates validated successfully\n")
+		} else {
+			return errors.New("encountered errors while performing template validation")
+		}
 		return nil // exit
 	}
-	store.Load()
+
+	// Display stats for any loaded templates syntax warnings or errors
+	stats.Display(parsers.SyntaxWarningStats)
+	stats.Display(parsers.SyntaxErrorStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
@@ -395,10 +418,11 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates loaded: %d (New: %d)", len(store.Templates()), r.countNewTemplates())
+		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
+		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Workflows loaded: %d", len(store.Workflows()))
+		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
 	// pre-parse all the templates, apply filters
@@ -424,7 +448,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	templatesMap := make(map[string]*templates.Template)
 	for _, v := range store.Templates() {
-		templatesMap[v.ID] = v
+		templatesMap[v.Path] = v
 	}
 	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
@@ -457,6 +481,7 @@ func (r *Runner) RunEnumeration() error {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
+
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64

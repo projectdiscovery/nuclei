@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
-	"github.com/projectdiscovery/nuclei/v2/internal/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -108,9 +108,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
-		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "do not use interactsh server for blind interaction polling"),
-		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "self-hosted Interactsh Server URL"),
-
+		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "disable interactsh server for OOB testing"),
+		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "interactsh server url for self-hosted instance"),
+		flagSet.StringVar(&options.InteractshToken, "interactsh-token", "", "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
@@ -127,7 +127,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
-		flagSet.IntVar(&options.HostMaxErrors, "host-max-error", 30, "max errors for a host before skipping from scan"),
+		flagSet.IntVar(&options.MaxHostError, "max-host-error", 30, "max errors for a host before skipping from scan"),
 
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),

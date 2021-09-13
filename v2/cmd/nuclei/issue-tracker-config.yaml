@@ -1,7 +1,9 @@
+# to specify which severities should be reported
 #allow-list:
-#  severity: high,critical
+#  severity: critical, high
+# to specify which severities should be excluded from reporting
 #deny-list:
-#  severity: low
+#  severity: info, low, medium
 
 # github contains configuration options for github issue tracker
 #github: 
@@ -33,8 +35,10 @@
 
 # jira contains configuration options for jira issue tracker
 #jira:
-#  # Cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+#  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
 #  cloud: true
+#  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
+#  update-existing: false
 #  # URL is the jira application url
 #  url: ""
 #  # account-id is the account-id of the jira user or username in case of on-prem Jira
@@ -57,10 +61,10 @@
 #  # IndexName is the name of the elasticsearch index
 #  index-name: nuclei
 #  # SSL enables ssl for elasticsearch connection
-#  # ssl: false
+#  ssl: false
 #  # SSLVerification disables SSL verification for elasticsearch
-#  # ssl-verification: false
+#  ssl-verification: false
 #  # Username for the elasticsearch instance
-#  # username: test
-#  # Pasword is the password for elasticsearch instance
-#  # password: test
+#  username: test
+#  # Password is the password for elasticsearch instance
+#  password: test
