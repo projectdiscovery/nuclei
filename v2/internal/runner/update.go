@@ -75,6 +75,7 @@ func (r *Runner) updateTemplates() error {
 	if r.options.NoUpdateTemplates {
 		return nil
 	}
+	r.fetchLatestVersionsFromGithub() // also fetch latest versions
 
 	// Check if last checked for nuclei-ignore is more than 1 hours.
 	// and if true, run the check.
@@ -125,7 +126,6 @@ func (r *Runner) updateTemplates() error {
 	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
 	}
-	r.fetchLatestVersionsFromGithub() // also fetch latest versions
 
 	// Get the configuration currently on disk.
 	verText := r.templatesConfig.CurrentVersion
@@ -161,7 +161,6 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig.CurrentVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
-		r.fetchLatestVersionsFromGithub()
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
