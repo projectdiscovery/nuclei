@@ -148,7 +148,9 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	if version.EQ(oldVersion) {
-		gologger.Info().Msgf("No new updates found for nuclei templates")
+		if r.options.UpdateTemplates {
+			gologger.Info().Msgf("No new updates found for nuclei templates")
+		}
 		return config.WriteConfiguration(r.templatesConfig, checkedIgnore)
 	}
 
