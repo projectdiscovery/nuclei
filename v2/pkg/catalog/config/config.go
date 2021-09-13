@@ -15,7 +15,6 @@ import (
 type Config struct {
 	TemplatesDirectory string    `json:"templates-directory,omitempty"`
 	CurrentVersion     string    `json:"current-version,omitempty"`
-	LastChecked        time.Time `json:"last-checked,omitempty"`
 	NucleiVersion      string    `json:"nuclei-version,omitempty"`
 	LastCheckedIgnore  time.Time `json:"last-checked-ignore,omitempty"`
 
@@ -62,10 +61,7 @@ func ReadConfiguration() (*Config, error) {
 }
 
 // WriteConfiguration writes the updated nuclei configuration to disk
-func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
-	if checked {
-		config.LastChecked = time.Now()
-	}
+func WriteConfiguration(config *Config, checkedIgnore bool) error {
 	if checkedIgnore {
 		config.LastCheckedIgnore = time.Now()
 	}
