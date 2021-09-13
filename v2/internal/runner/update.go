@@ -66,13 +66,13 @@ func (r *Runner) updateTemplates() error {
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 			NucleiVersion:      config.Version,
 		}
-		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
+		if writeErr := config.WriteConfiguration(currentConfig, false); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
 	}
 
-	if r.options.NoUpdateTemplates {
+	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
 		return nil
 	}
 	client.InitNucleiVersion(config.Version)
@@ -101,8 +101,13 @@ func (r *Runner) updateTemplates() error {
 		}
 		r.fetchLatestVersionsFromGithub() // also fetch latest versions
 
+		version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
+		if err != nil {
+			return err
+		}
+
 		// Download the repository and also write the revision to a HEAD file.
-		version, asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
+		asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
 		if getErr != nil {
 			return getErr
 		}
@@ -114,17 +119,11 @@ func (r *Runner) updateTemplates() error {
 		}
 		r.templatesConfig.CurrentVersion = version.String()
 
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
+		err = config.WriteConfiguration(r.templatesConfig, checkedIgnore)
 		if err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
-		return nil
-	}
-
-	// Check if last checked is more than 24 hours and we don't have updateTemplates flag.
-	// If not, return since we don't want to do anything now.
-	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
 		return nil
 	}
 
@@ -143,14 +142,14 @@ func (r *Runner) updateTemplates() error {
 		return err
 	}
 
-	version, asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
+	version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
 	if err != nil {
 		return err
 	}
 
 	if version.EQ(oldVersion) {
 		gologger.Info().Msgf("No new updates found for nuclei templates")
-		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
+		return config.WriteConfiguration(r.templatesConfig, checkedIgnore)
 	}
 
 	if version.GT(oldVersion) {
@@ -163,11 +162,16 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig.CurrentVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
+
+		asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
+		if err != nil {
+			return err
+		}
 		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
 		if err != nil {
 			return err
 		}
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
+		err = config.WriteConfiguration(r.templatesConfig, checkedIgnore)
 		if err != nil {
 			return err
 		}
@@ -203,7 +207,7 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 		_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
 	}
 	if r.templatesConfig != nil {
-		if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
+		if err := config.WriteConfiguration(r.templatesConfig, true); err != nil {
 			gologger.Warning().Msgf("Could not get ignore-file from server: %s", err)
 		}
 	}
@@ -211,21 +215,17 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 }
 
 // getLatestReleaseFromGithub returns the latest release from github
-func (r *Runner) getLatestReleaseFromGithub(latestTag string) (semver.Version, *github.RepositoryRelease, error) {
+func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
 	client := github.NewClient(nil)
 
-	parsed, err := semver.Parse(latestTag)
-	if err != nil {
-		return semver.Version{}, nil, err
-	}
 	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
-		return semver.Version{}, nil, err
+		return nil, err
 	}
 	if release == nil {
-		return semver.Version{}, nil, errors.New("no version found for the templates")
+		return nil, errors.New("no version found for the templates")
 	}
-	return parsed, release, nil
+	return release, nil
 }
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
