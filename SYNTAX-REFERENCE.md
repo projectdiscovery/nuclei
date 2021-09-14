@@ -869,6 +869,8 @@ Valid values:
   - <code>TRACE</code>
 
   - <code>PATCH</code>
+
+  - <code>PURGE</code>
 </div>
 
 <hr />

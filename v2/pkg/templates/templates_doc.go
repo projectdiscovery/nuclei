@@ -339,6 +339,7 @@ func init() {
 		"OPTIONS",
 		"TRACE",
 		"PATCH",
+		"PURGE",
 	}
 	HTTPRequestDoc.Fields[9].Name = "body"
 	HTTPRequestDoc.Fields[9].Type = "string"
