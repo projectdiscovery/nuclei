@@ -89,7 +89,13 @@ func (r *Runner) updateTemplates() error {
 	}
 
 	ctx := context.Background()
-	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
+
+	var noTemplatesFound bool
+	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+		noTemplatesFound = true
+	}
+
+	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 		// Use custom location if user has given a template directory
