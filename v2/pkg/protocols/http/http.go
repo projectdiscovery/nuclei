@@ -130,6 +130,7 @@ type Request struct {
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
+	dynamicValues map[string]interface{}
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
