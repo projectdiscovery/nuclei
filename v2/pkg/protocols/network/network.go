@@ -65,8 +65,9 @@ type Request struct {
 	generator  *generators.Generator
 	attackType generators.Type
 	// cache any variables that may be needed for operation.
-	dialer  *fastdialer.Dialer
-	options *protocols.ExecuterOptions
+	dialer        *fastdialer.Dialer
+	options       *protocols.ExecuterOptions
+	dynamicValues map[string]interface{}
 }
 
 type addressKV struct {

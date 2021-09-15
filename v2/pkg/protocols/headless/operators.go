@@ -28,7 +28,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr)))
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(itemStr))
+		return matcher.Result(matcher.MatchWords(itemStr, nil))
 	case matchers.RegexMatcher:
 		return matcher.Result(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
