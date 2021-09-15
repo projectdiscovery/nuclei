@@ -12,8 +12,8 @@ import (
 
 // Config contains the internal nuclei engine configuration
 type Config struct {
-	TemplatesDirectory string `json:"templates-directory,omitempty"`
-	TemplateVersion    string `json:"template-version,omitempty"`
+	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
+	TemplateVersion    string `json:"nuclei-templates-version,omitempty"`
 	NucleiVersion      string `json:"nuclei-version,omitempty"`
 	NucleiIgnoreHash   string `json:"nuclei-ignore-hash,omitempty"`
 
