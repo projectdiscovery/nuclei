@@ -420,7 +420,7 @@ Valid values:
 </div>
 <div class="dt">
 
-Metadata regarding metadata of the template.
+Metadata of the template.
 
 
 
