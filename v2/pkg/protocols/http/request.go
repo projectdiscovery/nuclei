@@ -332,7 +332,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		r.options.Progress.IncrementErrorsBy(1)
 
 		// If we have interactsh markers and request times out, still send
-		// a callback event so in case we recieve an interaction, correlation is possible.
+		// a callback event so in case we receive an interaction, correlation is possible.
 		if hasInteractMarkers {
 			outputEvent := r.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, request.meta)
 			if i := strings.LastIndex(hostname, ":"); i != -1 {
