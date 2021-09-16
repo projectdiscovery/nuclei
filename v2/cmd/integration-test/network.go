@@ -14,7 +14,7 @@ var networkTestcases = map[string]testutils.TestCase{
 
 type networkBasic struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *networkBasic) Execute(filePath string) error {
 	var routerErr error
 
@@ -47,7 +47,7 @@ func (h *networkBasic) Execute(filePath string) error {
 
 type networkMultiStep struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *networkMultiStep) Execute(filePath string) error {
 	var routerErr error
 
