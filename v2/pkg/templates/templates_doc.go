@@ -414,7 +414,7 @@ func init() {
 	HTTPRequestDoc.Fields[20].Name = "pipeline"
 	HTTPRequestDoc.Fields[20].Type = "bool"
 	HTTPRequestDoc.Fields[20].Note = ""
-	HTTPRequestDoc.Fields[20].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be indempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[20].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
 	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
 	HTTPRequestDoc.Fields[21].Name = "unsafe"
 	HTTPRequestDoc.Fields[21].Type = "bool"
