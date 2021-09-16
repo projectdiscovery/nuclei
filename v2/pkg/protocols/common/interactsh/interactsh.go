@@ -181,6 +181,9 @@ func (c *Client) URL() string {
 			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
 		}
 	})
+	if c.interactsh == nil {
+		return ""
+	}
 	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
 	return c.interactsh.URL()
 }

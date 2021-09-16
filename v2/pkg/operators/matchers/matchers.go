@@ -15,7 +15,7 @@ type Matcher struct {
 	//   - "regex"
 	//   - "binary"
 	//   - "dsl"
-	Type string `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=dsl"`
+	Type string `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"`
 	// description: |
 	//   Condition is the optional condition between two matcher variables. By default,
 	//   the condition is assumed to be OR.

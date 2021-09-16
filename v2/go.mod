@@ -18,7 +18,7 @@ require (
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/itchyny/gojq v0.12.4
-	github.com/json-iterator/go v1.1.11
+	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
@@ -36,6 +36,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f
 	github.com/projectdiscovery/interactsh v0.0.4
 	github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8
+	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210914222811-0a072d262f77
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.12
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
@@ -51,8 +52,6 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/xanzy/go-gitlab v0.50.3
-	github.com/ysmood/got v0.14.1 // indirect
-	github.com/ysmood/gotrace v0.2.2 // indirect
 	github.com/ysmood/gson v0.6.4 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -130,8 +129,8 @@ require (
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mewpkg/hashutil v1.0.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.6 // indirect

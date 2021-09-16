@@ -401,7 +401,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
-		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -412,7 +412,7 @@ func (r *Runner) RunEnumeration() error {
 	builder.Reset()
 
 	if r.templatesConfig != nil {
-		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
@@ -499,7 +499,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no templates were found")
+		return errors.New("no valid templates were found")
 	}
 
 	/*
