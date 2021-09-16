@@ -57,7 +57,7 @@
           "title": "description of the template",
           "description": "In-depth explanation on what the template does",
           "examples": [
-            "Bower is a package manager which stores packages informations in bower.json file"
+            "Bower is a package manager which stores package information in the bower.json file"
           ]
         },
         "reference": {
