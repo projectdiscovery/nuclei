@@ -154,10 +154,8 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
-	}
-	if r.options.Options.JSONRequests {
-		data.Request = types.ToString(wrapped.InternalEvent["request"])
-		data.Response = types.ToString(wrapped.InternalEvent["response"])
+		Request:          types.ToString(wrapped.InternalEvent["request"]),
+		Response:         types.ToString(wrapped.InternalEvent["response"]),
 	}
 	return data
 }
