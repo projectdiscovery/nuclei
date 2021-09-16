@@ -41,7 +41,7 @@ func ParseOptions(options *types.Options) {
 		if err != nil {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
-		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.CurrentVersion, configuration.TemplatesDirectory)
+		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
 
