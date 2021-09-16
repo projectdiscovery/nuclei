@@ -329,9 +329,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/projectdiscovery/clistats v0.0.8 h1:tjmWb15mqsPf/yrQXVHLe2ThZX/5+mgKSfZBKWWLh20=
 github.com/projectdiscovery/clistats v0.0.8/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
+github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 h1:jT6f/cdOpLkp9GAfRrxk57BUjYfIrR8E+AjMv5H5U4U=
 github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod h1:clhQmPnt35ziJW1AhJRKyu8aygXCSoyWj6dtmZBRjjc=
-github.com/projectdiscovery/fastdialer v0.0.12 h1:TjvM41UfR+A7YsxQZoTvI6C5nVe1d+fvRqtcDNbSwz8=
-github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
 github.com/projectdiscovery/fastdialer v0.0.13-0.20210915163209-ad12f3236bc4 h1:UIH1QwHT5Ln7r5aLsQChYpf+AUHigf8FIPiXbswDMoc=
 github.com/projectdiscovery/fastdialer v0.0.13-0.20210915163209-ad12f3236bc4/go.mod h1:TuapmLiqtunJOxpM7g0tpTy/TUF/0S+XFyx0B0Wx0DQ=
 github.com/projectdiscovery/goflags v0.0.7 h1:aykmRkrOgDyRwcvGrK3qp+9aqcjGfAMs/+LtRmtyxwk=
@@ -340,8 +339,7 @@ github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLY
 github.com/projectdiscovery/gologger v1.1.4 h1:qWxGUq7ukHWT849uGPkagPKF3yBPYAsTtMKunQ8O2VI=
 github.com/projectdiscovery/gologger v1.1.4/go.mod h1:Bhb6Bdx2PV1nMaFLoXNBmHIU85iROS9y1tBuv7T5pMY=
 github.com/projectdiscovery/hmap v0.0.1/go.mod h1:VDEfgzkKQdq7iGTKz8Ooul0NuYHQ8qiDs6r8bPD1Sb0=
-github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f h1:r0t4/voYErvcK/WBNZkvjZf6aQK0FOnc/sQKjlMS1AA=
-github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f/go.mod h1:FH+MS/WNKTXJQtdRn+/Zg5WlKCiMN0Z1QUedUIuM5n8=
+github.com/projectdiscovery/hmap v0.0.2-0.20210727180307-d63d35146e97 h1:8a/aroegMrIidq4KSmkndacurmJ8RxwKXd+Qi0NNp2Q=
 github.com/projectdiscovery/hmap v0.0.2-0.20210727180307-d63d35146e97/go.mod h1:FH+MS/WNKTXJQtdRn+/Zg5WlKCiMN0Z1QUedUIuM5n8=
 github.com/projectdiscovery/interactsh v0.0.4 h1:3BtCZrrTovGYiqdFktXJ4NxKAQFvUvzcEI5pJIuShM8=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
