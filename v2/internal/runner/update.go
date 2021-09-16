@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,7 +17,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/blang/semver"
@@ -27,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 
 	"github.com/tj/go-update"
@@ -39,7 +38,6 @@ const (
 	repoName             = "nuclei-templates"
 	nucleiIgnoreFile     = ".nuclei-ignore"
 	nucleiConfigFilename = ".templates-config.json"
-	defaultIgnoreURL     = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 )
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -66,28 +64,28 @@ func (r *Runner) updateTemplates() error {
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
-			IgnoreURL:          defaultIgnoreURL,
 			NucleiVersion:      config.Version,
 		}
-		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
+		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
 	}
 
-	if r.options.NoUpdateTemplates {
+	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
 		return nil
 	}
-
-	// Tests if last checked time for nuclei-ignore file was more than 1 hour ago, if yes, updates the local content.
-	// Retrieves the latest version number of nuclei and nuclei-templates from GitHub, to check if the current build is using outdated versions or not.
-	checkedIgnore := false
-	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
-		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
-	}
+	client.InitNucleiVersion(config.Version)
+	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
 	ctx := context.Background()
-	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
+
+	var noTemplatesFound bool
+	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+		noTemplatesFound = true
+	}
+
+	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 		// Use the custom location if the user has given a template directory
@@ -97,36 +95,34 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
 			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
+		r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
+
+		version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
+		if err != nil {
+			return err
+		}
 
 		// Download the repository and write the revision to a HEAD file.
-		version, asset, getErr := r.getLatestTemplateReleaseFromGithub()
+		asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
 		if getErr != nil {
 			return getErr
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
-		r.fetchLatestVersionsFromGithub() // also fetch the latest versions
 		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
-		r.templatesConfig.CurrentVersion = version.String()
+		r.templatesConfig.TemplateVersion = version.String()
 
-		if err := config.WriteConfiguration(r.templatesConfig, true, checkedIgnore); err != nil {
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
 		return nil
 	}
 
-	// If the template update was not requested explicitly by the user,
-	// and the last version check was less than 24 hours ago,
-	// then no further action is required.
-	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
-		return nil
-	}
-
-	// Get the current configuration from disk.
-	verText := r.templatesConfig.CurrentVersion
+	// Get the configuration currently on disk.
+	verText := r.templatesConfig.TemplateVersion
 	indices := reVersion.FindStringIndex(verText)
 	if indices == nil {
 		return fmt.Errorf("invalid release found with tag %s", err)
@@ -140,13 +136,16 @@ func (r *Runner) updateTemplates() error {
 		return err
 	}
 
-	version, asset, err := r.getLatestTemplateReleaseFromGithub()
+	version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
 	if err != nil {
 		return err
 	}
 
 	if version.EQ(oldVersion) {
-		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
+		if r.options.UpdateTemplates {
+			gologger.Info().Msgf("No new updates found for nuclei templates")
+		}
+		return config.WriteConfiguration(r.templatesConfig)
 	}
 
 	if version.GT(oldVersion) {
@@ -156,15 +155,18 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
-		r.templatesConfig.CurrentVersion = version.String()
+		r.templatesConfig.TemplateVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
-		r.fetchLatestVersionsFromGithub()
+
+		asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
+		if err != nil {
+			return err
+		}
 		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
-
-		if err := config.WriteConfiguration(r.templatesConfig, true, checkedIgnore); err != nil {
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
@@ -191,74 +193,33 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 
 // checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from GitHub
 func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
-	ignoreURL := defaultIgnoreURL
-	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
-		ignoreURL = r.templatesConfig.IgnoreURL
+	data, err := client.GetLatestIgnoreFile()
+	if err != nil {
+		return false
 	}
-	gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
-	if reqErr == nil {
-		resp, httpGetErr := http.DefaultClient.Do(req)
-		if httpGetErr != nil {
-			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
-			}
-			gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, httpGetErr)
-		} else {
-			data, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-
-			if len(data) > 0 {
-				_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
-			}
-			if r.templatesConfig != nil {
-				if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
-					gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-				}
-			}
+	if len(data) > 0 {
+		_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+	}
+	if r.templatesConfig != nil {
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
+			gologger.Warning().Msgf("Could not get ignore-file from server: %s", err)
 		}
 	}
-	cancel()
 	return true
 }
 
-func (r *Runner) getLatestTemplateReleaseFromGithub() (semver.Version, *github.RepositoryRelease, error) {
+// getLatestReleaseFromGithub returns the latest release from GitHub
+func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
 	client := github.NewClient(nil)
 
-	rels, _, err := client.Repositories.ListReleases(context.Background(), userName, repoName, nil)
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
-		return semver.Version{}, nil, err
+		return nil, err
 	}
-
-	// Find the most recent version based on semantic versioning.
-	var latestRelease semver.Version
-	var latestPublish *github.RepositoryRelease
-	for _, release := range rels {
-		verText := release.GetTagName()
-		indices := reVersion.FindStringIndex(verText)
-		if indices == nil {
-			return semver.Version{}, nil, fmt.Errorf("invalid release found with tag %s", err)
-		}
-		if indices[0] > 0 {
-			verText = verText[indices[0]:]
-		}
-
-		ver, err := semver.Make(verText)
-		if err != nil {
-			return semver.Version{}, nil, err
-		}
-
-		if latestPublish == nil || ver.GTE(latestRelease) {
-			latestRelease = ver
-			latestPublish = release
-		}
+	if release == nil {
+		return nil, errors.New("no version found for the templates")
 	}
-	if latestPublish == nil {
-		return semver.Version{}, nil, errors.New("no version found for the templates")
-	}
-	return latestRelease, latestPublish, nil
+	return release, nil
 }
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
@@ -494,55 +455,25 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 }
 
 // fetchLatestVersionsFromGithub fetches the latest versions of nuclei repos from GitHub
-func (r *Runner) fetchLatestVersionsFromGithub() {
-	nucleiLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei")
+//
+// This fetches latest nuclei/templates/ignore from https://version-check.nuclei.sh/versions
+// If you want to disable this automatic update check, use -nut flag.
+func (r *Runner) fetchLatestVersionsFromGithub(configDir string) {
+	versions, err := client.GetLatestNucleiTemplatesVersion()
 	if err != nil {
-		gologger.Warning().Msgf("Could not fetch latest nuclei release: %s", err)
-	}
-	templatesLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei-templates")
-	if err != nil {
-		gologger.Warning().Msgf("Could not fetch latest nuclei-templates release: %s", err)
+		gologger.Warning().Msgf("Could not fetch latest releases: %s", err)
+		return
 	}
 	if r.templatesConfig != nil {
-		r.templatesConfig.NucleiLatestVersion = nucleiLatest
-		r.templatesConfig.NucleiTemplatesLatestVersion = templatesLatest
-	}
-}
+		r.templatesConfig.NucleiLatestVersion = versions.Nuclei
+		r.templatesConfig.NucleiTemplatesLatestVersion = versions.Templates
 
-type githubTagData struct {
-	Name string
-}
-
-// githubFetchLatestTagRepo fetches the latest tag of the given repository from GitHub
-// This function was half written by the GitHub Copilot AI :D.
-func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/tags", repo)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
+		// If the fetch has resulted in new version of ignore file, update.
+		if r.templatesConfig.NucleiIgnoreHash == "" || r.templatesConfig.NucleiIgnoreHash != versions.IgnoreHash {
+			r.templatesConfig.NucleiIgnoreHash = versions.IgnoreHash
+			r.checkNucleiIgnoreFileUpdates(configDir)
+		}
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var tags []githubTagData
-	if err := json.Unmarshal(body, &tags); err != nil {
-		return "", err
-	}
-	if len(tags) == 0 {
-		return "", fmt.Errorf("no tags found for %s", repo)
-	}
-	return strings.TrimPrefix(tags[0].Name, "v"), nil
 }
 
 // updateNucleiVersionToLatest implements nuclei auto-update using GitHub Releases.
