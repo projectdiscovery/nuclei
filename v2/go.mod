@@ -104,6 +104,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.6 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
