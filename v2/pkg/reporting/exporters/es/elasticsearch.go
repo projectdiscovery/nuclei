@@ -28,7 +28,7 @@ type Options struct {
 	SSLVerification bool `yaml:"ssl-verification"`
 	// Username for the elasticsearch instance
 	Username string `yaml:"username"`
-	// Pasword is the password for elasticsearch instance
+	// Password is the password for elasticsearch instance
 	Password string `yaml:"password"`
 	// IndexName is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"`
