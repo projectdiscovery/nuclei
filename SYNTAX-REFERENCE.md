@@ -2485,7 +2485,7 @@ Valid values:
 Read is the number of bytes to read from socket.
 
 This can be used for protocols which expect an immediate response. You can
-read and write responses one after another and eventually perform matching
+read and write responses one after another and evetually perform matching
 on every data captured with `name` attribute.
 
 The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
