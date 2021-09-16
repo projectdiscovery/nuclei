@@ -161,7 +161,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	if len(result.DynamicValues) > 0 {
 		return result, true
 	}
-	// Don't print if we have matchers and they have not matched, irregardless of extractor
+	// Don't print if we have matchers and they have not matched, regardless of extractor
 	if len(r.Matchers) > 0 && !matches {
 		return nil, false
 	}
