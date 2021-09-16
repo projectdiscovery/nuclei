@@ -463,8 +463,8 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 
 // fetchLatestVersionsFromGithub fetches latest versions of nuclei repos from github
 //
-// This fetches latest nuclei/templates/ignore from https://version-check.nuclei.sh/version.
-// If you want to disable this automatic update check, use -nut.
+// This fetches latest nuclei/templates/ignore from https://version-check.nuclei.sh/versions
+// If you want to disable this automatic update check, use -nut flag.
 func (r *Runner) fetchLatestVersionsFromGithub(configDir string) {
 	versions, err := client.GetLatestNucleiTemplatesVersion()
 	if err != nil {
