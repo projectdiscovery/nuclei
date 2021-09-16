@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -13,12 +12,10 @@ import (
 
 // Config contains the internal nuclei engine configuration
 type Config struct {
-	TemplatesDirectory string    `json:"templates-directory,omitempty"`
-	CurrentVersion     string    `json:"current-version,omitempty"`
-	LastChecked        time.Time `json:"last-checked,omitempty"`
-	IgnoreURL          string    `json:"ignore-url,omitempty"`
-	NucleiVersion      string    `json:"nuclei-version,omitempty"`
-	LastCheckedIgnore  time.Time `json:"last-checked-ignore,omitempty"`
+	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
+	TemplateVersion    string `json:"nuclei-templates-version,omitempty"`
+	NucleiVersion      string `json:"nuclei-version,omitempty"`
+	NucleiIgnoreHash   string `json:"nuclei-ignore-hash,omitempty"`
 
 	NucleiLatestVersion          string `json:"nuclei-latest-version"`
 	NucleiTemplatesLatestVersion string `json:"nuclei-templates-latest-version"`
@@ -62,16 +59,7 @@ func ReadConfiguration() (*Config, error) {
 }
 
 // WriteConfiguration writes the updated nuclei configuration to disk
-func WriteConfiguration(config *Config, checked, checkedIgnore bool) error {
-	if config.IgnoreURL == "" {
-		config.IgnoreURL = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
-	}
-	if checked {
-		config.LastChecked = time.Now()
-	}
-	if checkedIgnore {
-		config.LastCheckedIgnore = time.Now()
-	}
+func WriteConfiguration(config *Config) error {
 	config.NucleiVersion = Version
 
 	templatesConfigFile, err := getConfigDetails()
