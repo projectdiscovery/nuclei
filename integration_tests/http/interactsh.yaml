@@ -1,0 +1,19 @@
+id: interactsh-integration-test
+
+info:
+  name: Interactsh Integration Test
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      url: 'http://{{interactsh-url}}'
+
+    matchers:
+      - type: word
+        part: interactsh_protocol # Confirms the HTTP Interaction
+        words:
+          - "http"
