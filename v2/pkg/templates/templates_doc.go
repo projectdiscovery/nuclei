@@ -126,7 +126,7 @@ func init() {
 	MODELInfoDoc.Fields[3].Description = "Description of the template.\n\nYou can go in-depth here on what the template actually does."
 	MODELInfoDoc.Fields[3].Comments[encoder.LineComment] = "Description of the template."
 
-	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores packages information in bower.json file")
+	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores package information in the bower.json file")
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
 	MODELInfoDoc.Fields[4].Name = "reference"
