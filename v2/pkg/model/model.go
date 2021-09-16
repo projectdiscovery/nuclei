@@ -59,12 +59,12 @@ type Info struct {
 	//   - critical
 	SeverityHolder severity.Holder `json:"severity,omitempty" yaml:"severity,omitempty"`
 	// description: |
-	//   AdditionalFields regarding metadata of the template.
+	//   Metadata of the template.
 	//
 	// examples:
 	//   - value: >
 	//       map[string]string{"customField1":"customValue1"}
-	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
 
 	// description: |
 	//   Classification contains classification information about the template.
