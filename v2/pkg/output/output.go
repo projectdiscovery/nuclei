@@ -78,9 +78,9 @@ type ResultEvent struct {
 	Matched string `json:"matched,omitempty"`
 	// ExtractedResults contains the extraction result from the inputs.
 	ExtractedResults []string `json:"extracted_results,omitempty"`
-	// Request is the optional dumped request for the match.
+	// Request is the optional, dumped request for the match.
 	Request string `json:"request,omitempty"`
-	// Response is the optional dumped response for the match.
+	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`

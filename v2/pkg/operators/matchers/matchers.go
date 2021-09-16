@@ -17,7 +17,7 @@ type Matcher struct {
 	//   - "regex"
 	//   - "binary"
 	//   - "dsl"
-	Type string `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=dsl"`
+	Type string `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"`
 	// description: |
 	//   Condition is the optional condition between two matcher variables. By default,
 	//   the condition is assumed to be OR.
@@ -131,7 +131,7 @@ const (
 	DSLMatcher
 )
 
-// MatcherTypes is an table for conversion of matcher type from string.
+// MatcherTypes is a table for conversion of matcher type from string.
 var MatcherTypes = map[string]MatcherType{
 	"status": StatusMatcher,
 	"size":   SizeMatcher,
@@ -151,7 +151,7 @@ const (
 	ORCondition
 )
 
-// ConditionTypes is an table for conversion of condition type from string.
+// ConditionTypes is a table for conversion of condition type from string.
 var ConditionTypes = map[string]ConditionType{
 	"and": ANDCondition,
 	"or":  ORCondition,

@@ -8,11 +8,12 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 )
 
-// Integration is a client for a issue tracker integration
+// Integration is a client for an issue tracker integration
 type Integration struct {
 	client  *github.Client
 	options *Options
