@@ -69,7 +69,7 @@
           "$schema": "http://json-schema.org/draft-04/schema#",
           "$ref": "#/definitions/severity.Holder"
         },
-        "additional-fields": {
+        "metadata": {
           "patternProperties": {
             ".*": {
               "type": "string"
@@ -207,6 +207,7 @@
             "size",
             "word",
             "regex",
+            "binary",
             "dsl"
           ],
           "type": "string",
@@ -615,7 +616,8 @@
             "CONNECT",
             "OPTIONS",
             "TRACE",
-            "PATCH"
+            "PATCH",
+            "PURGE"
           ],
           "type": "string",
           "title": "method is the http request method",
