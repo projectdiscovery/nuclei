@@ -97,7 +97,7 @@ type Input struct {
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
-	//   This can be used for protcols which expected an immediate response. You can
+	//   This can be used for protocols which expect an immediate response. You can
 	//   read and write responses one after another and evetually perform matching
 	//   on every data captured with `name` attribute.
 	//
