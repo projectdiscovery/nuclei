@@ -18,8 +18,7 @@ func (r *Request) getInputPaths(target string, callback func(string)) error {
 
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") && !r.NoRecursive {
-		err := r.findGlobPathMatches(target, processed, callback)
-		if err != nil {
+		if err := r.findGlobPathMatches(target, processed, callback); err != nil {
 			return errors.Wrap(err, "could not find glob matches")
 		}
 		return nil
@@ -38,8 +37,7 @@ func (r *Request) getInputPaths(target string, callback func(string)) error {
 	}
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
-	err = r.findDirectoryMatches(target, processed, callback)
-	if err != nil {
+	if err := r.findDirectoryMatches(target, processed, callback); err != nil {
 		return errors.Wrap(err, "could not find directory matches")
 	}
 	return nil
