@@ -70,7 +70,7 @@ func (r *Runner) listAvailableTemplates() {
 
 	gologger.Print().Msgf(
 		"\nListing available v.%s nuclei templates for %s",
-		r.templatesConfig.CurrentVersion,
+		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
 	err := directoryWalker(
