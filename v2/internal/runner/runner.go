@@ -489,7 +489,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no templates were found")
+		return errors.New("no valid templates were found")
 	}
 
 	/*
