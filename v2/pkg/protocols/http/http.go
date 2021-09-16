@@ -90,7 +90,7 @@ type Request struct {
 	// description: |
 	//   MaxRedirects is the maximum number of redirects that should be followed.
 	// examples:
-	//   - name: Follow upto 5 redirects
+	//   - name: Follow up to 5 redirects
 	//     value: "5"
 	MaxRedirects int `yaml:"max-redirects,omitempty" jsonschema:"title=maximum number of redirects to follow,description=Maximum number of redirects that should be followed"`
 	// description: |
@@ -143,7 +143,7 @@ type Request struct {
 	// description: |
 	//   Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 	//
-	//   All requests must be indempotent (GET/POST). This can be used for race conditions/billions requests.
+	//   All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
 	Pipeline bool `yaml:"pipeline,omitempty" jsonschema:"title=perform HTTP 1.1 pipelining,description=Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"`
 	// description: |
 	//   Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.
