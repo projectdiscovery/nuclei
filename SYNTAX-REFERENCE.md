@@ -348,7 +348,7 @@ Examples:
 
 
 ```yaml
-description: Bower is a package manager which stores packages informations in bower.json file
+description: Bower is a package manager which stores packages information in bower.json file
 ```
 
 ```yaml
@@ -679,7 +679,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -792,7 +792,7 @@ raw:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -1668,7 +1668,7 @@ group: 1
 description: |
    kval contains the key-value pairs present in the HTTP response header.
    kval extractor can be used to extract HTTP response header and cookie key-value pairs.
-   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+   kval extractor inputs are case-insensitive, and does not support dash (-) in input which can replaced with underscores (_)
  	 For example, Content-Type should be replaced with content_type
 
    A list of supported parts is available in docs for request types.
@@ -1846,7 +1846,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -1894,7 +1894,7 @@ Valid values:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2061,7 +2061,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2164,7 +2164,7 @@ denylist:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2179,7 +2179,7 @@ ID is the the optional id of the request
 
 MaxSize is the maximum size of the file to run request on.
 
-By default, nuclei will process 5MB files and not go more than that.
+By default, nuclei will process 5 MB files and not go more than that.
 It can be set to much lower or higher depending on use.
 
 
@@ -2244,7 +2244,7 @@ matchers:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2368,7 +2368,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2550,7 +2550,7 @@ Appears in:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2580,7 +2580,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2825,7 +2825,7 @@ Matchers perform name based matching to run subtemplates for a workflow.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the `template` field Template matches.
+Subtemplates are run if the `template` field Template matches.
 
 </div>
 
@@ -2866,7 +2866,7 @@ Name is the name of the item to match.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the name of matcher matches.
+Subtemplates are run if the name of matcher matches.
 
 </div>
 
