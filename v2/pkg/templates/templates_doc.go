@@ -148,11 +148,11 @@ func init() {
 		"high",
 		"critical",
 	}
-	MODELInfoDoc.Fields[6].Name = "additional-fields"
+	MODELInfoDoc.Fields[6].Name = "metadata"
 	MODELInfoDoc.Fields[6].Type = "map[string]string"
 	MODELInfoDoc.Fields[6].Note = ""
-	MODELInfoDoc.Fields[6].Description = "AdditionalFields regarding metadata of the template."
-	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "AdditionalFields regarding metadata of the template."
+	MODELInfoDoc.Fields[6].Description = "Metadata of the template."
+	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "Metadata of the template."
 
 	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
 	MODELInfoDoc.Fields[7].Name = "classification"

@@ -415,12 +415,12 @@ Valid values:
 
 <div class="dd">
 
-<code>additional-fields</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]string</i>
 
 </div>
 <div class="dt">
 
-AdditionalFields regarding metadata of the template.
+Metadata regarding metadata of the template.
 
 
 
@@ -428,7 +428,7 @@ Examples:
 
 
 ```yaml
-additional-fields:
+metadata:
     customField1: customValue1
 ```
 
