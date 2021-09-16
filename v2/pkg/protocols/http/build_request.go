@@ -114,7 +114,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
 
-	// Evaulate the expressions for the request if any.
+	// Evaluate the expressions for the request if any.
 	var err error
 	data, err = expressions.Evaluate(data, finalValues)
 	if err != nil {
@@ -153,7 +153,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
 
-	// Evaulate the expressions for raw request if any.
+	// Evaluate the expressions for raw request if any.
 	var err error
 	rawRequest, err = expressions.Evaluate(rawRequest, finalValues)
 	if err != nil {

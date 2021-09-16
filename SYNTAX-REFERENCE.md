@@ -348,7 +348,7 @@ Examples:
 
 
 ```yaml
-description: Bower is a package manager which stores packages information in bower.json file
+description: Bower is a package manager which stores package information in the bower.json file
 ```
 
 ```yaml
@@ -981,7 +981,7 @@ Examples:
 
 
 ```yaml
-# Follow upto 5 redirects
+# Follow up to 5 redirects
 max-redirects: 5
 ```
 
@@ -1127,7 +1127,7 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 
-All requests must be indempotent (GET/POST). This can be used for race conditions/billions requests.
+All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
 
 </div>
 
@@ -2484,8 +2484,8 @@ Valid values:
 
 Read is the number of bytes to read from socket.
 
-This can be used for protcols which expected an immediate response. You can
-read and write responses one after another and evetually perform matching
+This can be used for protocols which expect an immediate response. You can
+read and write responses one after another and eventually perform matching
 on every data captured with `name` attribute.
 
 The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
