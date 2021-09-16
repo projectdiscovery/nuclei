@@ -372,7 +372,7 @@ func init() {
 	HTTPRequestDoc.Fields[13].Description = "MaxRedirects is the maximum number of redirects that should be followed."
 	HTTPRequestDoc.Fields[13].Comments[encoder.LineComment] = "MaxRedirects is the maximum number of redirects that should be followed."
 
-	HTTPRequestDoc.Fields[13].AddExample("Follow upto 5 redirects", 5)
+	HTTPRequestDoc.Fields[13].AddExample("Follow up to 5 redirects", 5)
 	HTTPRequestDoc.Fields[14].Name = "pipeline-concurrent-connections"
 	HTTPRequestDoc.Fields[14].Type = "int"
 	HTTPRequestDoc.Fields[14].Note = ""
@@ -918,7 +918,7 @@ func init() {
 	NETWORKInputDoc.Fields[2].Name = "read"
 	NETWORKInputDoc.Fields[2].Type = "int"
 	NETWORKInputDoc.Fields[2].Note = ""
-	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protcols which expected an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
+	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
 	NETWORKInputDoc.Fields[2].Comments[encoder.LineComment] = "Read is the number of bytes to read from socket."
 
 	NETWORKInputDoc.Fields[2].AddExample("", 1024)
