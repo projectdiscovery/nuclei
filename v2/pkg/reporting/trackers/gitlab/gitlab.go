@@ -1,6 +1,8 @@
 package gitlab
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/xanzy/go-gitlab"
@@ -48,12 +50,14 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
 
 	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
-		Labels:      gitlab.Labels{i.options.IssueLabel},
+		Labels:      gitlab.Labels{i.options.IssueLabel, severityLabel},
 		AssigneeIDs: []int{i.userID},
 	})
+
 	return err
 }
