@@ -10,6 +10,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 )
 
@@ -75,5 +76,5 @@ func runIndividualTestCase(testcase string) error {
 	if mainOutput == devOutput {
 		return nil
 	}
-	return fmt.Errorf("%s main is not equal to %s dev", mainOutput, devOutput)
+	return fmt.Errorf("%s main is not equal to %s dev", mainOutput, devOutput)
 }

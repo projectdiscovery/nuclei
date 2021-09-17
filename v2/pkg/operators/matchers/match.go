@@ -48,7 +48,7 @@ func (m *Matcher) MatchWords(corpus string) bool {
 			if m.condition == ANDCondition {
 				return false
 			}
-			// Continue with the flow since its an OR Condition.
+			// Continue with the flow since it's an OR Condition.
 			continue
 		}
 
@@ -76,7 +76,7 @@ func (m *Matcher) MatchRegex(corpus string) bool {
 			if m.condition == ANDCondition {
 				return false
 			}
-			// Continue with the flow since its an OR Condition.
+			// Continue with the flow since it's an OR Condition.
 			continue
 		}
 
@@ -105,7 +105,7 @@ func (m *Matcher) MatchBinary(corpus string) bool {
 			if m.condition == ANDCondition {
 				return false
 			}
-			// Continue with the flow since its an OR Condition.
+			// Continue with the flow since it's an OR Condition.
 			continue
 		}
 
@@ -141,7 +141,7 @@ func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 			if m.condition == ANDCondition {
 				return false
 			}
-			// Continue with the flow since its an OR Condition.
+			// Continue with the flow since it's an OR Condition.
 			continue
 		}
 

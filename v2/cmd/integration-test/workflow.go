@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 )
 
@@ -18,13 +19,13 @@ var workflowTestcases = map[string]testutils.TestCase{
 
 type workflowBasic struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowBasic) Execute(filePath string) error {
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -40,13 +41,13 @@ func (h *workflowBasic) Execute(filePath string) error {
 
 type workflowConditionMatched struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowConditionMatched) Execute(filePath string) error {
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -62,13 +63,13 @@ func (h *workflowConditionMatched) Execute(filePath string) error {
 
 type workflowConditionUnmatch struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowConditionUnmatch) Execute(filePath string) error {
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -84,13 +85,13 @@ func (h *workflowConditionUnmatch) Execute(filePath string) error {
 
 type workflowMatcherName struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *workflowMatcherName) Execute(filePath string) error {
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

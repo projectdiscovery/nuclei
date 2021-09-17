@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,14 +17,15 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/blang/semver"
 	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 
 	"github.com/tj/go-update"
@@ -38,17 +38,16 @@ const (
 	repoName             = "nuclei-templates"
 	nucleiIgnoreFile     = ".nuclei-ignore"
 	nucleiConfigFilename = ".templates-config.json"
-	defaultIgnoreURL     = "https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/.nuclei-ignore"
 )
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // updateTemplates checks if the default list of nuclei-templates
-// exist in the users home directory, if not the latest revision
-// is downloaded from github.
+// exist in the user's home directory, if not the latest revision
+// is downloaded from GitHub.
 //
-// If the path exists but is not latest, the new version is downloaded
-// from github and replaced with the templates directory.
+// If the path exists but does not contain the latest version of public templates,
+// the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -61,75 +60,69 @@ func (r *Runner) updateTemplates() error {
 		return errors.Wrap(err, "could not read configuration file")
 	}
 
-	// If the config doesn't exist, write it now.
+	// If the config doesn't exist, create it now.
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
-			IgnoreURL:          defaultIgnoreURL,
 			NucleiVersion:      config.Version,
 		}
-		if writeErr := config.WriteConfiguration(currentConfig, false, false); writeErr != nil {
+		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
 	}
 
-	if r.options.NoUpdateTemplates {
+	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
 		return nil
 	}
-
-	// Check if last checked for nuclei-ignore is more than 1 hours.
-	// and if true, run the check.
-	//
-	// Also at the same time fetch latest version from github to do outdated nuclei
-	// and templates check.
-	checkedIgnore := false
-	if r.templatesConfig == nil || time.Since(r.templatesConfig.LastCheckedIgnore) > 1*time.Hour {
-		checkedIgnore = r.checkNucleiIgnoreFileUpdates(configDir)
-	}
+	client.InitNucleiVersion(config.Version)
+	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
 	ctx := context.Background()
-	if r.templatesConfig.CurrentVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) {
+
+	var noTemplatesFound bool
+	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+		noTemplatesFound = true
+	}
+
+	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
-		// Use custom location if user has given a template directory
+		// Use the custom location if the user has given a template directory
 		r.templatesConfig = &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 		}
 		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
 			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
+		r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
-		// Download the repository and also write the revision to a HEAD file.
-		version, asset, getErr := r.getLatestReleaseFromGithub()
+		version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
+		if err != nil {
+			return err
+		}
+
+		// Download the repository and write the revision to a HEAD file.
+		asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
 		if getErr != nil {
 			return getErr
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
-		r.fetchLatestVersionsFromGithub() // also fetch latest versions
-		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
-		if err != nil {
+		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
-		r.templatesConfig.CurrentVersion = version.String()
+		r.templatesConfig.TemplateVersion = version.String()
 
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
-		if err != nil {
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
 		return nil
 	}
 
-	// Check if last checked is more than 24 hours and we don't have updateTemplates flag.
-	// If not, return since we don't want to do anything now.
-	if time.Since(r.templatesConfig.LastChecked) < 24*time.Hour && !r.options.UpdateTemplates {
-		return nil
-	}
-
 	// Get the configuration currently on disk.
-	verText := r.templatesConfig.CurrentVersion
+	verText := r.templatesConfig.TemplateVersion
 	indices := reVersion.FindStringIndex(verText)
 	if indices == nil {
 		return fmt.Errorf("invalid release found with tag %s", err)
@@ -143,13 +136,16 @@ func (r *Runner) updateTemplates() error {
 		return err
 	}
 
-	version, asset, err := r.getLatestReleaseFromGithub()
+	version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
 	if err != nil {
 		return err
 	}
 
 	if version.EQ(oldVersion) {
-		return config.WriteConfiguration(r.templatesConfig, false, checkedIgnore)
+		if r.options.UpdateTemplates {
+			gologger.Info().Msgf("No new updates found for nuclei templates")
+		}
+		return config.WriteConfiguration(r.templatesConfig)
 	}
 
 	if version.GT(oldVersion) {
@@ -159,16 +155,18 @@ func (r *Runner) updateTemplates() error {
 		if r.options.TemplatesDirectory != "" {
 			r.templatesConfig.TemplatesDirectory = r.options.TemplatesDirectory
 		}
-		r.templatesConfig.CurrentVersion = version.String()
+		r.templatesConfig.TemplateVersion = version.String()
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
-		r.fetchLatestVersionsFromGithub()
-		_, err = r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL())
+
+		asset, err := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
 		if err != nil {
 			return err
 		}
-		err = config.WriteConfiguration(r.templatesConfig, true, checkedIgnore)
-		if err != nil {
+		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
+			return err
+		}
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", version.String())
@@ -193,77 +191,35 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 	return nil
 }
 
-// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from github
+// checkNucleiIgnoreFileUpdates checks .nuclei-ignore file for updates from GitHub
 func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
-	ignoreURL := defaultIgnoreURL
-	if r.templatesConfig != nil && r.templatesConfig.IgnoreURL != "" {
-		ignoreURL = r.templatesConfig.IgnoreURL
+	data, err := client.GetLatestIgnoreFile()
+	if err != nil {
+		return false
 	}
-	gologger.Verbose().Msgf("Downloading config file from %s", ignoreURL)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, ignoreURL, nil)
-	if reqErr == nil {
-		resp, httpGetErr := http.DefaultClient.Do(req)
-		if httpGetErr != nil {
-			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
-			}
-			gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, httpGetErr)
-		} else {
-			data, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-
-			if len(data) > 0 {
-				_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
-			}
-			if r.templatesConfig != nil {
-				if err := config.WriteConfiguration(r.templatesConfig, false, true); err != nil {
-					gologger.Warning().Msgf("Could not get ignore-file from %s: %s", ignoreURL, err)
-				}
-			}
+	if len(data) > 0 {
+		_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+	}
+	if r.templatesConfig != nil {
+		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
+			gologger.Warning().Msgf("Could not get ignore-file from server: %s", err)
 		}
 	}
-	cancel()
 	return true
 }
 
-// getLatestReleaseFromGithub returns the latest release from github
-func (r *Runner) getLatestReleaseFromGithub() (semver.Version, *github.RepositoryRelease, error) {
+// getLatestReleaseFromGithub returns the latest release from GitHub
+func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
 	client := github.NewClient(nil)
 
-	rels, _, err := client.Repositories.ListReleases(context.Background(), userName, repoName, nil)
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
-		return semver.Version{}, nil, err
+		return nil, err
 	}
-
-	// Find the most recent version based on semantic versioning.
-	var latestRelease semver.Version
-	var latestPublish *github.RepositoryRelease
-	for _, release := range rels {
-		verText := release.GetTagName()
-		indices := reVersion.FindStringIndex(verText)
-		if indices == nil {
-			return semver.Version{}, nil, fmt.Errorf("invalid release found with tag %s", err)
-		}
-		if indices[0] > 0 {
-			verText = verText[indices[0]:]
-		}
-
-		ver, err := semver.Make(verText)
-		if err != nil {
-			return semver.Version{}, nil, err
-		}
-
-		if latestPublish == nil || ver.GTE(latestRelease) {
-			latestRelease = ver
-			latestPublish = release
-		}
+	if release == nil {
+		return nil, errors.New("no version found for the templates")
 	}
-	if latestPublish == nil {
-		return semver.Version{}, nil, errors.New("no version found for the templates")
-	}
-	return latestRelease, latestPublish, nil
+	return release, nil
 }
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
@@ -288,18 +244,17 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	reader := bytes.NewReader(buf)
-	z, err := zip.NewReader(reader, reader.Size())
+	zipReader, err := zip.NewReader(reader, reader.Size())
 	if err != nil {
 		return nil, fmt.Errorf("failed to uncompress zip file: %s", err)
 	}
 
-	// Create the template folder if it doesn't exists
-	err = os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm)
-	if err != nil {
+	// Create the template folder if it doesn't exist
+	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
-	results, err := r.compareAndWriteTemplates(z)
+	results, err := r.compareAndWriteTemplates(zipReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write templates: %s", err)
 	}
@@ -308,8 +263,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		r.printUpdateChangelog(results, version)
 	}
 	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
-	err = writeTemplatesChecksum(checksumFile, results.checksums)
-	if err != nil {
+	if err := writeTemplatesChecksum(checksumFile, results.checksums); err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
@@ -320,8 +274,8 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		buffer.WriteString(addition)
 		buffer.WriteString("\n")
 	}
-	err = ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm)
-	if err != nil {
+
+	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm); err != nil {
 		return nil, errors.Wrap(err, "could not write new additions file")
 	}
 	return results, err
@@ -335,9 +289,8 @@ type templateUpdateResults struct {
 	checksums     map[string]string
 }
 
-// compareAndWriteTemplates compares and returns the stats of a template
-// update operations.
-func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults, error) {
+// compareAndWriteTemplates compares and returns the stats of a template update operations.
+func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdateResults, error) {
 	results := &templateUpdateResults{
 		checksums: make(map[string]string),
 	}
@@ -348,9 +301,9 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
 	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
-	previousChecksum, _ := readPreviousTemplatesChecksum(checksumFile)
-	for _, file := range z.File {
-		directory, name := filepath.Split(file.Name)
+	templateChecksumsMap, _ := createTemplateChecksumsMap(checksumFile)
+	for _, zipTemplateFile := range zipReader.File {
+		directory, name := filepath.Split(zipTemplateFile.Name)
 		if name == "" {
 			continue
 		}
@@ -362,8 +315,7 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		}
 		results.totalCount++
 		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
-		err := os.MkdirAll(templateDirectory, os.ModePerm)
-		if err != nil {
+		if err := os.MkdirAll(templateDirectory, os.ModePerm); err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
@@ -373,28 +325,27 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
 			isAddition = true
 		}
-		f, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
+		templateFile, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
-			f.Close()
+			templateFile.Close()
 			return nil, fmt.Errorf("could not create uncompressed file: %s", err)
 		}
 
-		reader, err := file.Open()
+		zipTemplateFileReader, err := zipTemplateFile.Open()
 		if err != nil {
-			f.Close()
+			templateFile.Close()
 			return nil, fmt.Errorf("could not open archive to extract file: %s", err)
 		}
 		hasher := md5.New()
 
 		// Save file and also read into hasher for md5
-		_, err = io.Copy(f, io.TeeReader(reader, hasher))
-		if err != nil {
-			f.Close()
+		if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, hasher)); err != nil {
+			templateFile.Close()
 			return nil, fmt.Errorf("could not write template file: %s", err)
 		}
-		f.Close()
+		templateFile.Close()
 
-		oldChecksum, checksumOK := previousChecksum[templatePath]
+		oldChecksum, checksumOK := templateChecksumsMap[templatePath]
 
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
@@ -405,57 +356,58 @@ func (r *Runner) compareAndWriteTemplates(z *zip.Reader) (*templateUpdateResults
 		results.checksums[templatePath] = checksum
 	}
 
-	// If we don't find a previous file in new download and it hasn't been
-	// changed on the disk, delete it.
-	for k, v := range previousChecksum {
-		_, ok := results.checksums[k]
-		if !ok && v[0] == v[1] {
-			os.Remove(k)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(k, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
+	// If we don't find the previous file in the newly downloaded list,
+	// and it hasn't been changed on the disk, delete it.
+	for templatePath, templateChecksums := range templateChecksumsMap {
+		_, ok := results.checksums[templatePath]
+		if !ok && templateChecksums[0] == templateChecksums[1] {
+			os.Remove(templatePath)
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(templatePath, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil
 }
 
-// readPreviousTemplatesChecksum reads the previous checksum file from the disk.
-//
-// It reads two checksums, the first checksum is what we expect and the second is
-// the actual checksum of the file on disk currently.
-func readPreviousTemplatesChecksum(file string) (map[string][2]string, error) {
-	f, err := os.Open(file)
+// createTemplateChecksumsMap reads the previous checksum file from the disk.
+// Creates a map of template paths and their previous and currently calculated checksums as values.
+func createTemplateChecksumsMap(checksumsFilePath string) (map[string][2]string, error) {
+	checksumFile, err := os.Open(checksumsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	defer checksumFile.Close()
+	scanner := bufio.NewScanner(checksumFile)
 
-	checksum := make(map[string][2]string)
+	templatePathChecksumsMap := make(map[string][2]string)
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "" {
 			continue
 		}
+
 		parts := strings.Split(text, ",")
 		if len(parts) < 2 {
 			continue
 		}
-		values := [2]string{parts[1]}
+		templatePath := parts[0]
+		expectedTemplateChecksum := parts[1]
 
-		f, err := os.Open(parts[0])
+		templateFile, err := os.Open(templatePath)
 		if err != nil {
 			return nil, err
 		}
 
 		hasher := md5.New()
-		if _, err := io.Copy(hasher, f); err != nil {
+		if _, err := io.Copy(hasher, templateFile); err != nil {
 			return nil, err
 		}
-		f.Close()
+		templateFile.Close()
 
+		values := [2]string{expectedTemplateChecksum}
 		values[1] = hex.EncodeToString(hasher.Sum(nil))
-		checksum[parts[0]] = values
+		templatePathChecksumsMap[templatePath] = values
 	}
-	return checksum, nil
+	return templatePathChecksumsMap, nil
 }
 
 // writeTemplatesChecksum writes the nuclei-templates checksum data to disk.
@@ -502,60 +454,29 @@ func (r *Runner) printUpdateChangelog(results *templateUpdateResults, version st
 	table.Render()
 }
 
-// fetchLatestVersionsFromGithub fetches latest versions of nuclei repos from github
-func (r *Runner) fetchLatestVersionsFromGithub() {
-	nucleiLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei")
+// fetchLatestVersionsFromGithub fetches the latest versions of nuclei repos from GitHub
+//
+// This fetches latest nuclei/templates/ignore from https://version-check.nuclei.sh/versions
+// If you want to disable this automatic update check, use -nut flag.
+func (r *Runner) fetchLatestVersionsFromGithub(configDir string) {
+	versions, err := client.GetLatestNucleiTemplatesVersion()
 	if err != nil {
-		gologger.Warning().Msgf("Could not fetch latest nuclei release: %s", err)
-	}
-	templatesLatest, err := r.githubFetchLatestTagRepo("projectdiscovery/nuclei-templates")
-	if err != nil {
-		gologger.Warning().Msgf("Could not fetch latest nuclei-templates release: %s", err)
+		gologger.Warning().Msgf("Could not fetch latest releases: %s", err)
+		return
 	}
 	if r.templatesConfig != nil {
-		r.templatesConfig.NucleiLatestVersion = nucleiLatest
-		r.templatesConfig.NucleiTemplatesLatestVersion = templatesLatest
+		r.templatesConfig.NucleiLatestVersion = versions.Nuclei
+		r.templatesConfig.NucleiTemplatesLatestVersion = versions.Templates
+
+		// If the fetch has resulted in new version of ignore file, update.
+		if r.templatesConfig.NucleiIgnoreHash == "" || r.templatesConfig.NucleiIgnoreHash != versions.IgnoreHash {
+			r.templatesConfig.NucleiIgnoreHash = versions.IgnoreHash
+			r.checkNucleiIgnoreFileUpdates(configDir)
+		}
 	}
 }
 
-type githubTagData struct {
-	Name string
-}
-
-// githubFetchLatestTagRepo fetches latest tag from github
-// This function was half written by github copilot AI :D.
-func (r *Runner) githubFetchLatestTagRepo(repo string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	url := fmt.Sprintf("https://api.github.com/repos/%s/tags", repo)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var tags []githubTagData
-	err = json.Unmarshal(body, &tags)
-	if err != nil {
-		return "", err
-	}
-	if len(tags) == 0 {
-		return "", fmt.Errorf("no tags found for %s", repo)
-	}
-	return strings.TrimPrefix(tags[0].Name, "v"), nil
-}
-
-// updateNucleiVersionToLatest implements nuclei auto-updation using Github Releases.
+// updateNucleiVersionToLatest implements nuclei auto-update using GitHub Releases.
 func updateNucleiVersionToLatest(verbose bool) error {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
