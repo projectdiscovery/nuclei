@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/Knetic/govaluate"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 )
 
@@ -22,7 +23,7 @@ func (m *Matcher) CompileMatchers() error {
 		}
 	}
 
-	// Setup the matcher type
+	// Set up the matcher type
 	m.matcherType, ok = MatcherTypes[m.Type]
 	if !ok {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
@@ -50,7 +51,7 @@ func (m *Matcher) CompileMatchers() error {
 		m.dslCompiled = append(m.dslCompiled, compiled)
 	}
 
-	// Setup the condition type, if any.
+	// Set up the condition type, if any.
 	if m.Condition != "" {
 		m.condition, ok = ConditionTypes[m.Condition]
 		if !ok {

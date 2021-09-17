@@ -5,10 +5,10 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/xanzy/go-gitlab"
+  "github.com/xanzy/go-gitlab"
 )
 
-// Integration is a client for a issue tracker integration
+// Integration is a client for an issue tracker integration
 type Integration struct {
 	client  *gitlab.Client
 	userID  int

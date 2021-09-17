@@ -10,7 +10,7 @@ var dnsTestCases = map[string]testutils.TestCase{
 
 type dnsBasic struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *dnsBasic) Execute(filePath string) error {
 	var routerErr error
 

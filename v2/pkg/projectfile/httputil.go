@@ -18,8 +18,7 @@ func hash(v interface{}) (string, error) {
 
 	sh := sha256.New()
 
-	_, err = io.WriteString(sh, string(data))
-	if err != nil {
+	if _, err = io.WriteString(sh, string(data)); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(sh.Sum(nil)), nil
@@ -28,8 +27,7 @@ func hash(v interface{}) (string, error) {
 func marshal(data interface{}) ([]byte, error) {
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
-	err := enc.Encode(data)
-	if err != nil {
+	if err := enc.Encode(data); err != nil {
 		return nil, err
 	}
 
@@ -38,8 +36,7 @@ func marshal(data interface{}) ([]byte, error) {
 
 func unmarshal(data []byte, obj interface{}) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	err := dec.Decode(obj)
-	if err != nil {
+	if err := dec.Decode(obj); err != nil {
 		return err
 	}
 

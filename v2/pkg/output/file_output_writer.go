@@ -20,11 +20,10 @@ func newFileOutputWriter(file string) (*fileWriter, error) {
 
 // WriteString writes an output to the underlying file
 func (w *fileWriter) Write(data []byte) error {
-	_, err := w.file.Write(data)
-	if err != nil {
+	if _, err := w.file.Write(data); err != nil {
 		return err
 	}
-	_, err = w.file.Write([]byte("\n"))
+	_, err := w.file.Write([]byte("\n"))
 	return err
 }
 
