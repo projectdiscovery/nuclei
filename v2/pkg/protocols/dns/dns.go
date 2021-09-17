@@ -6,6 +6,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -18,7 +19,7 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline"`
 
-	// ID is the the optional id of the request
+	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 
 	// description: |
@@ -158,7 +159,7 @@ func questionTypeToInt(questionType string) uint16 {
 	return question
 }
 
-// classToInt converts a dns class name to it's internal representation
+// classToInt converts a dns class name to its internal representation
 func classToInt(class string) uint16 {
 	class = strings.TrimSpace(strings.ToUpper(class))
 	result := dns.ClassINET
