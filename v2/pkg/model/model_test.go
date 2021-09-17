@@ -80,7 +80,7 @@ func TestUnmarshal(t *testing.T) {
 		assert.Equal(t, info.Tags.ToSlice(), tags)
 		assert.Equal(t, info.SeverityHolder.Severity, severity.Critical)
 		assert.Equal(t, info.Reference.ToSlice(), references)
-		assert.Equal(t, info.AdditionalFields, dynamicKeysMap)
+		assert.Equal(t, info.Metadata, dynamicKeysMap)
 		return info
 	}
 
@@ -90,7 +90,7 @@ func TestUnmarshal(t *testing.T) {
   tags: ` + strings.Join(tags, ", ") + `
   severity: critical
   reference: ` + strings.Join(references, ", ") + `
-  additional-fields:
+  metadata:
      ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1] + `
      ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2] + `
 `
@@ -106,7 +106,7 @@ func TestUnmarshal(t *testing.T) {
   reference:
     - ` + references[0] + ` # comments are not unmarshalled
     - ` + references[1] + `
-  additional-fields:
+  metadata:
      ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1] + `
      ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2] + `
 `
