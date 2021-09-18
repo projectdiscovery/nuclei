@@ -140,8 +140,9 @@ github.com/go-logfmt/logfmt v0.4.0/go.mod h1:3RMwSq7FuexP4Kalkev3ejPJsZTpXXBr9+V
 github.com/go-ole/go-ole v1.2.5 h1:t4MGB5xEDZvXI+0rMjjsfBsD7yAgp/s9ZDkL1JndXwY=
 github.com/go-ole/go-ole v1.2.5/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
 github.com/go-redis/redis v6.15.5+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
-github.com/go-rod/rod v0.91.1 h1:7xIlC/bXCXosZqZUl2x6GVB8tv4yMQ4W/ZVdGVa1qYI=
 github.com/go-rod/rod v0.91.1/go.mod h1:/W4lcZiCALPD603MnJGIvhtywP3R6yRB9EDfFfsHiiI=
+github.com/go-rod/rod v0.101.7 h1:kbI5CNvcRhf7feybBln4xDutsM0mbsF0ENNZfKcF6WA=
+github.com/go-rod/rod v0.101.7/go.mod h1:N/zlT53CfSpq74nb6rOR0K8UF0SPUPBmzBnArrms+mY=
 github.com/golang-jwt/jwt v3.2.1+incompatible h1:73Z+4BJcrTC+KczS6WvTPvRGOp1WmfEP4Q1lOd9Z/+c=
 github.com/golang-jwt/jwt v3.2.1+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
@@ -462,8 +463,9 @@ github.com/yl2chen/cidranger v1.0.2/go.mod h1:9U1yz7WPYDwf0vpNWFaeRh0bjwz5RVgRy/
 github.com/ysmood/goob v0.3.0 h1:XZ51cZJ4W3WCoCiUktixzMIQF86W7G5VFL4QQ/Q2uS0=
 github.com/ysmood/goob v0.3.0/go.mod h1:S3lq113Y91y1UBf1wj1pFOxeahvfKkCk6mTWTWbDdWs=
 github.com/ysmood/got v0.9.3/go.mod h1:pE1l4LOwOBhQg6A/8IAatkGp7uZjnalzrZolnlhhMgY=
-github.com/ysmood/got v0.14.1 h1:lTtBNVF2nxLs/jcV7leNUWVYO9jgjOUpClXbu3ihIPA=
 github.com/ysmood/got v0.14.1/go.mod h1:pE1l4LOwOBhQg6A/8IAatkGp7uZjnalzrZolnlhhMgY=
+github.com/ysmood/got v0.15.1 h1:X5jAbMyBf5yeezuFMp9HaMGXZWMSqIQcUlAHI+kJmUs=
+github.com/ysmood/got v0.15.1/go.mod h1:pE1l4LOwOBhQg6A/8IAatkGp7uZjnalzrZolnlhhMgY=
 github.com/ysmood/gotrace v0.2.0/go.mod h1:TzhIG7nHDry5//eYZDYcTzuJLYQIkykJzCRIo4/dzQM=
 github.com/ysmood/gotrace v0.2.2 h1:006KHGRThSRf8lwh4EyhNmuuq/l+Ygs+JqojkhEG1/E=
 github.com/ysmood/gotrace v0.2.2/go.mod h1:TzhIG7nHDry5//eYZDYcTzuJLYQIkykJzCRIo4/dzQM=
