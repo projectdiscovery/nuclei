@@ -315,7 +315,7 @@ func (r *Runner) RunEnumeration() error {
 
 	s, _ := runtime.New()
 
-	dsl.AddGlobalCustomHelpers(&dsl.Options{Store: s})
+	_ = dsl.AddGlobalCustomHelpers(&dsl.Options{Store: s})
 
 	var cache *hosterrorscache.Cache
 	if r.options.MaxHostError > 0 {

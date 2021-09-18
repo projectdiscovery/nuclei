@@ -501,6 +501,6 @@ func (r *Request) setCustomHeaders(req *generatedRequest) {
 
 func (r *Request) Set(data map[string]interface{}) {
 	for _, set := range r.Sets {
-		nebula.Eval(set.Code, data)
+		_, _ = nebula.Eval(set.Code, data)
 	}
 }
