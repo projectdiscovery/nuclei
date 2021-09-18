@@ -104,7 +104,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	req.Body = ioutil.NopCloser(bytes.NewReader(b))
 
 	res, err := i.elasticsearch.Do(req)
-	b, _ = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err	
+	}
+	
+	b, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}
