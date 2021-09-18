@@ -16,7 +16,7 @@ type Exporter struct {
 	options   *Options
 }
 
-// Options contains the configuration options for github issue tracker client
+// Options contains the configuration options for GitHub issue tracker client
 type Options struct {
 	// Directory is the directory to export found results to
 	Directory string `yaml:"directory"`
@@ -55,8 +55,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	err := ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
-	return err
+	return ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation
