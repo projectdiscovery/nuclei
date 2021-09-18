@@ -56,9 +56,9 @@ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 
 ### Nuclei Templates
 
-Nuclei has had built-in support for automatic update/download templates since version [v2.4.0](https://github.com/projectdiscovery/nuclei/releases/tag/v2.4.0). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
+Nuclei has had built-in support for automatic template download/update as default since version [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
 
-You may still use the `update-templates` flag to update the nuclei templates at any time; automatic updates happen every 24 hours. You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
+You may still use the `update-templates` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
 The YAML DSL reference syntax is available [here](SYNTAX-REFERENCE.md).
 
@@ -128,8 +128,9 @@ CONFIGURATIONS:
    -env-vars                   enable environment variables support
 
 INTERACTSH:
-   -no-interactsh                     do not use interactsh server for blind interaction polling
-   -interactsh-url string             self-hosted Interactsh Server URL (default "https://interact.sh")
+   -no-interactsh                     disable interactsh server for OOB testing
+   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interact.sh")
+   -interactsh-token string           authentication token for self-hosted interactsh server
    -interactions-cache-size int       number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int         number of seconds to wait before evicting requests from cache (default 60)
    -interactions-poll-duration int    number of seconds to wait before each interaction poll request (default 5)
