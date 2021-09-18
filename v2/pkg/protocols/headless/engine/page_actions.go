@@ -465,12 +465,13 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	case "js":
 		return page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
 	case "search":
-		elms, err := page.Search(0, 1, data["query"])
+		elms, err := page.Search(data["query"])
 		if err != nil {
 			return nil, err
 		}
-		if len(elms) > 0 {
-			return elms[0], nil
+
+		if elms.First != nil {
+			return elms.First, nil
 		}
 		return nil, errors.New("no such element")
 	default:

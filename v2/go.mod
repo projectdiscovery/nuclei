@@ -14,7 +14,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/corpix/uarand v0.1.1
-	github.com/go-rod/rod v0.91.1
+	github.com/go-rod/rod v0.101.7
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
