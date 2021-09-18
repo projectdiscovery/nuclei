@@ -56,3 +56,8 @@ func AddGlobalCustomHelpers(options *Options) error {
 
 	return nil
 }
+
+// AddHelperFunction allows creation of additional helper functions to be supported with templates
+func AddHelperFunction(key string, f interface{}) error {
+	return nebula.AddFunc(key, f)
+}

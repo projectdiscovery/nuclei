@@ -25,8 +25,7 @@ func NewExecuter(requests []protocols.Request, options *protocols.ExecuterOption
 // Compile compiles the execution generators preparing any requests possible.
 func (e *Executer) Compile() error {
 	for _, request := range e.requests {
-		err := request.Compile(e.options)
-		if err != nil {
+		if err := request.Compile(e.options); err != nil {
 			return err
 		}
 	}

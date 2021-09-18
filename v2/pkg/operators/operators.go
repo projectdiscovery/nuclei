@@ -15,7 +15,7 @@ type Operators struct {
 	//   whether the request was successful by doing pattern matching
 	//   on request/responses.
 	//
-	//   Multiple matchers can be combined together with `matcher-condition` flag
+	//   Multiple matchers can be combined with `matcher-condition` flag
 	//   which accepts either `and` or `or` as argument.
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty" jsonschema:"title=matchers to run on response,description=Detection mechanism to identify whether the request was successful by doing pattern matching"`
 	// description: |
@@ -109,7 +109,7 @@ func (r *Result) Merge(result *Result) {
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
 type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
 
-// ExtractFunc performs extracting operation for a extractor on model and returns true or false.
+// ExtractFunc performs extracting operation for an extractor on model and returns true or false.
 type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 
 // Execute executes the operators on data and returns a result structure
@@ -162,7 +162,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 				return nil, false
 			}
 		} else {
-			// If the matcher has matched, and its an OR
+			// If the matcher has matched, and it's an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
 				result.Matches[matcher.Name] = struct{}{}
@@ -176,7 +176,8 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	if len(result.DynamicValues) > 0 {
 		return result, true
 	}
-	// Don't print if we have matchers and they have not matched, irregardless of extractor
+
+	// Don't print if we have matchers and they have not matched, regardless of extractor
 	if len(r.Matchers) > 0 && !matches {
 		return nil, false
 	}

@@ -11,9 +11,10 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/pkg/errors"
+	ps "github.com/shirou/gopsutil/v3/process"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
-	ps "github.com/shirou/gopsutil/v3/process"
 )
 
 // Browser is a browser structure for nuclei headless module
@@ -103,7 +104,7 @@ func (b *Browser) killChromeProcesses() {
 	processes, _ := ps.Processes()
 
 	for _, process := range processes {
-		// skip non chrome processes
+		// skip non-chrome processes
 		if !isChromeProcess(process) {
 			continue
 		}

@@ -1,6 +1,8 @@
 package protocols
 
 import (
+	"go.uber.org/ratelimit"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -15,7 +17,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/ratelimit"
 )
 
 // Executer is an interface implemented any protocol based request executer.
@@ -77,7 +78,7 @@ type Request interface {
 	GetID() string
 	// Match performs matching operation for a matcher on model and returns true or false.
 	Match(data map[string]interface{}, matcher *matchers.Matcher) bool
-	// Extract performs extracting operation for a extractor on model and returns true or false.
+	// Extract performs extracting operation for an extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error

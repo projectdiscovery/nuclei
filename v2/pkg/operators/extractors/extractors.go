@@ -50,7 +50,7 @@ type Extractor struct {
 	// description: |
 	//   kval contains the key-value pairs present in the HTTP response header.
 	//   kval extractor can be used to extract HTTP response header and cookie key-value pairs.
-	//   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+	//   kval extractor inputs are case-insensitive, and does not support dash (-) in input which can replaced with underscores (_)
 	// 	 For example, Content-Type should be replaced with content_type
 	//
 	//   A list of supported parts is available in docs for request types.
@@ -125,7 +125,7 @@ const (
 	JSONExtractor
 )
 
-// ExtractorTypes is an table for conversion of extractor type from string.
+// ExtractorTypes is a table for conversion of extractor type from string.
 var ExtractorTypes = map[string]ExtractorType{
 	"regex": RegexExtractor,
 	"kval":  KValExtractor,

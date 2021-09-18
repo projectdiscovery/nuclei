@@ -19,7 +19,7 @@ func (m *Matcher) CompileMatchers() error {
 		}
 	}
 
-	// Setup the matcher type
+	// Set up the matcher type
 	m.matcherType, ok = MatcherTypes[m.Type]
 	if !ok {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)

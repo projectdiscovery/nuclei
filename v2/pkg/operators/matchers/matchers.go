@@ -128,7 +128,7 @@ const (
 	DSLMatcher
 )
 
-// MatcherTypes is an table for conversion of matcher type from string.
+// MatcherTypes is a table for conversion of matcher type from string.
 var MatcherTypes = map[string]MatcherType{
 	"status": StatusMatcher,
 	"size":   SizeMatcher,
@@ -148,7 +148,7 @@ const (
 	ORCondition
 )
 
-// ConditionTypes is an table for conversion of condition type from string.
+// ConditionTypes is a table for conversion of condition type from string.
 var ConditionTypes = map[string]ConditionType{
 	"and": ANDCondition,
 	"or":  ORCondition,
