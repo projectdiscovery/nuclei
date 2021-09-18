@@ -15,8 +15,7 @@ func (w *Workflow) RunWorkflow(input string) bool {
 	for _, template := range w.Workflows {
 		swg.Add()
 		func(template *WorkflowTemplate) {
-			err := w.runWorkflowStep(template, input, results, &swg)
-			if err != nil {
+			if err := w.runWorkflowStep(template, input, results, &swg); err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
 			}
 			swg.Done()
@@ -116,8 +115,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 			swg.Add()
 
 			go func(template *WorkflowTemplate) {
-				err := w.runWorkflowStep(template, input, results, swg)
-				if err != nil {
+				if err := w.runWorkflowStep(template, input, results, swg); err != nil {
 					gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
 				}
 				swg.Done()

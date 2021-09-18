@@ -36,9 +36,9 @@ type Info struct {
 	//   You can go in-depth here on what the template actually does.
 	//
 	// examples:
-	//   - value: "\"Bower is a package manager which stores packages informations in bower.json file\""
+	//   - value: "\"Bower is a package manager which stores package information in the bower.json file\""
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
-	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores packages informations in bower.json file"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores package information in the bower.json file"`
 	// description: |
 	//   References for the template.
 	//
@@ -59,12 +59,12 @@ type Info struct {
 	//   - critical
 	SeverityHolder severity.Holder `json:"severity,omitempty" yaml:"severity,omitempty"`
 	// description: |
-	//   AdditionalFields regarding metadata of the template.
+	//   Metadata of the template.
 	//
 	// examples:
 	//   - value: >
 	//       map[string]string{"customField1":"customValue1"}
-	AdditionalFields map[string]string `json:"additional-fields,omitempty" yaml:"additional-fields,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
 
 	// description: |
 	//   Classification contains classification information about the template.
