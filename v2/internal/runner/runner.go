@@ -34,7 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -262,12 +262,12 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		file.Close()
 	}
-	if options.DiskExportDirectory != "" {
+	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
 		}
 	}
 	if options.SarifExport != "" {

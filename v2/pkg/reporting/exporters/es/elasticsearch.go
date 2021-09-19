@@ -81,7 +81,7 @@ func New(option *Options) (*Exporter, error) {
 	return ei, nil
 }
 
-// Export exports a passed result event to disk
+// Export exports a passed result event to elasticsearch
 func (i *Exporter) Export(event *output.ResultEvent) error {
 	// creating a request
 	req, err := http.NewRequest(http.MethodPost, i.url, nil)
