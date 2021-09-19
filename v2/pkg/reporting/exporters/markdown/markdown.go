@@ -1,4 +1,4 @@
-package disk
+package markdown
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ type Options struct {
 	Directory string `yaml:"directory"`
 }
 
-// New creates a new disk exporter integration client based on options.
+// New creates a new markdown exporter integration client based on options.
 func New(options *Options) (*Exporter, error) {
 	directory := options.Directory
 	if options.Directory == "" {
@@ -36,7 +36,7 @@ func New(options *Options) (*Exporter, error) {
 	return &Exporter{options: options, directory: directory}, nil
 }
 
-// Export exports a passed result event to disk
+// Export exports a passed result event to markdown
 func (i *Exporter) Export(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
