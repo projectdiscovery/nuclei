@@ -529,7 +529,7 @@ func (r *Runner) RunEnumeration() error {
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
 			} else if depsFound {
-				results.CAS(false, r.processTemplateWithListAndDeps(template, deps, dependentTemplatesMap))
+				results.CAS(false, r.processTemplateWithListAndDeps(template, references, deps, dependentTemplatesMap))
 			} else {
 				results.CAS(false, r.processTemplateWithList(template))
 			}
