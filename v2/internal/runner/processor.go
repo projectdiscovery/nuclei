@@ -44,6 +44,10 @@ func (r *Runner) processTemplateWithListAndDeps(template *templates.Template, re
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 
+	depsMap := make(map[string]struct{})
+	for _, value := range deps {
+		depsMap[value.FullReference] = struct{}{}
+	}
 	r.hostMap.Scan(func(k, _ []byte) error {
 		URL := string(k)
 
@@ -56,20 +60,20 @@ func (r *Runner) processTemplateWithListAndDeps(template *templates.Template, re
 		go func(URL string) {
 			defer wg.Done()
 
-			r.executeDependenciesRecursive(URL, template, deps, results, references, templatesMap)
+			r.executeDependenciesRecursive(URL, template, deps, results, references, templatesMap, depsMap)
 		}(URL)
 		return nil
 	})
 	wg.Wait()
 
 	// Delete all the dependencies for the template.
-	for _, value := range deps {
-		kb.Global.Delete(value.FullReference)
+	for value := range depsMap {
+		kb.Global.Delete(value)
 	}
 	return results.Load()
 }
 
-func (r *Runner) executeDependenciesRecursive(URL string, template *templates.Template, deps []references.ValueDependency, results *atomic.Bool, references *references.ReferenceAnalysis, templatesMap map[string]*templates.Template) {
+func (r *Runner) executeDependenciesRecursive(URL string, template *templates.Template, deps []references.ValueDependency, results *atomic.Bool, references *references.ReferenceAnalysis, templatesMap map[string]*templates.Template, depsMap map[string]struct{}) {
 	var foundValues bool
 	resultCallback := func(result *output.InternalWrappedEvent) {
 		if result.OperatorsResult != nil {
@@ -97,7 +101,14 @@ func (r *Runner) executeDependenciesRecursive(URL string, template *templates.Te
 	for _, value := range deps {
 		if depTemplate, ok := templatesMap[value.Path]; ok {
 			depTemplateDeps := references.Dependencies[depTemplate.ID]
-			r.executeDependenciesRecursive(URL, depTemplate, depTemplateDeps, results, references, templatesMap)
+
+			// Add all unique new deps to the deps map for tracking and later deletion
+			for _, value := range depTemplateDeps {
+				if _, depsOk := depsMap[value.FullReference]; depsOk {
+					depsMap[value.FullReference] = struct{}{}
+				}
+			}
+			r.executeDependenciesRecursive(URL, depTemplate, depTemplateDeps, results, references, templatesMap, depsMap)
 		}
 	}
 }
