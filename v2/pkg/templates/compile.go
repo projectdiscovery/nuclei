@@ -47,6 +47,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	if err != nil {
 		return nil, err
 	}
+	template.Data = string(data)
 
 	data = template.expandPreprocessors(data)
 	if preprocessor != nil {

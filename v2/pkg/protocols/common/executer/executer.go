@@ -50,76 +50,82 @@ func (e *Executer) Execute(input string) (bool, error) {
 		req := req
 
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
-			ID := req.GetID()
-			if ID != "" {
-				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
-					builder.WriteString(ID)
-					builder.WriteString("_")
-					builder.WriteString(k)
-					previous[builder.String()] = v
-					builder.Reset()
-				}
-			}
+			e.createNumericRequests(req, event, previous)
+
 			if event.OperatorsResult == nil {
 				return
 			}
-			for _, result := range event.Results {
-				if e.options.IssuesClient != nil {
-					if err := e.options.IssuesClient.CreateIssue(result); err != nil {
-						gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-					}
-				}
-				results = true
-				_ = e.options.Output.Write(result)
-				e.options.Progress.IncrementMatched()
+			matched := e.WriteOutput(event)
+			if matched {
+				results = matched
 			}
 		})
-		if err != nil {
-			if e.options.HostErrorsCache != nil {
-				if e.options.HostErrorsCache.CheckError(err) {
-					e.options.HostErrorsCache.MarkFailed(input)
-				}
-			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
-		}
+		e.handleExecuterErrors(input, err)
 	}
 	return results, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
-	dynamicValues := make(map[string]interface{})
+func (e *Executer) ExecuteWithResults(input string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+	if dynamicValues == nil {
+		dynamicValues = make(map[string]interface{})
+	}
 	previous := make(map[string]interface{})
 
 	for _, req := range e.requests {
 		req := req
 
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
-			ID := req.GetID()
-			if ID != "" {
-				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
-					builder.WriteString(ID)
-					builder.WriteString("_")
-					builder.WriteString(k)
-					previous[builder.String()] = v
-					builder.Reset()
-				}
-			}
+			e.createNumericRequests(req, event, previous)
+
 			if event.OperatorsResult == nil {
 				return
 			}
 			callback(event)
 		})
-		if err != nil {
-			if e.options.HostErrorsCache != nil {
-				if e.options.HostErrorsCache.CheckError(err) {
-					e.options.HostErrorsCache.MarkFailed(input)
-				}
-			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
-		}
+		e.handleExecuterErrors(input, err)
 	}
 	return nil
+}
+
+func (e *Executer) createNumericRequests(req protocols.Request, event *output.InternalWrappedEvent, previous map[string]interface{}) {
+	ID := req.GetID()
+	if ID != "" {
+		builder := &strings.Builder{}
+		for k, v := range event.InternalEvent {
+			builder.WriteString(ID)
+			builder.WriteString("_")
+			builder.WriteString(k)
+			previous[builder.String()] = v
+			builder.Reset()
+		}
+	}
+}
+
+func (e *Executer) handleExecuterErrors(input string, err error) {
+	if err != nil {
+		if e.options.HostErrorsCache != nil {
+			if e.options.HostErrorsCache.CheckError(err) {
+				e.options.HostErrorsCache.MarkFailed(input)
+			}
+		}
+		gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
+	}
+}
+
+// WriteOutput writes output to nuclei output sinks
+func (e *Executer) WriteOutput(event *output.InternalWrappedEvent) bool {
+	var results bool
+
+	for _, result := range event.Results {
+		if e.options.IssuesClient != nil {
+			if err := e.options.IssuesClient.CreateIssue(result); err != nil {
+				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+			}
+		}
+		results = true
+		_ = e.options.Output.Write(result)
+		e.options.Progress.IncrementMatched()
+	}
+	return results
 }

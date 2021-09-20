@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/kb/references"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
@@ -416,6 +417,9 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
+	// Analyze the dependencies between the templates available.
+	references := references.AnalyzeReferences(store.Templates())
+
 	// pre-parse all the templates, apply filters
 	finalTemplates := []*templates.Template{}
 
@@ -438,9 +442,18 @@ func (r *Runner) RunEnumeration() error {
 		}
 	}
 	templatesMap := make(map[string]*templates.Template)
+	dependentTemplatesMap := make(map[string]*templates.Template)
 	for _, v := range store.Templates() {
+		// Do not cluster requests if there are dependencies between them.
+		// This is inferred by doing context analysis.
+		if _, ok := references.References[v.ID]; ok {
+			finalTemplates = append(finalTemplates, v)
+			dependentTemplatesMap[v.Path] = v
+			continue
+		}
 		templatesMap[v.Path] = v
 	}
+
 	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
 	clusters := clusterer.Cluster(templatesMap)
@@ -504,12 +517,19 @@ func (r *Runner) RunEnumeration() error {
 	r.progress.Init(r.inputCount, templateCount, totalRequests)
 
 	for _, t := range finalTemplates {
+		// If this template is listed as a dependency, use a separate process function.
+		deps, depsFound := references.Dependencies[t.ID]
+		if _, ok := references.References[t.ID]; ok && !depsFound {
+			continue
+		}
 		wgtemplates.Add()
 		go func(template *templates.Template) {
 			defer wgtemplates.Done()
 
 			if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
+			} else if depsFound {
+				results.CAS(false, r.processTemplateWithListAndDeps(template, deps, dependentTemplatesMap))
 			} else {
 				results.CAS(false, r.processTemplateWithList(template))
 			}

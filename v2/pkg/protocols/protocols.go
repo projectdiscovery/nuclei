@@ -27,7 +27,9 @@ type Executer interface {
 	// Execute executes the protocol group and returns true or false if results were found.
 	Execute(input string) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, callback OutputEventCallback) error
+	ExecuteWithResults(input string, dynamicValues map[string]interface{}, callback OutputEventCallback) error
+	// WriteOutput writes output to nuclei output sinks
+	WriteOutput(event *output.InternalWrappedEvent) bool
 }
 
 // ExecuterOptions contains the configuration options for executer clients

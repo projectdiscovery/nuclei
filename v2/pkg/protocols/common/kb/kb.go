@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+var Global = New()
+
 // Knowledgebase is a shared kb used by nuclei engine internally
 // during request-making/sharing target data.
 //
@@ -27,14 +29,14 @@ func (k *Knowledgebase) Set(host, key, value string) {
 	k.mutex.RLock()
 	kbKey, ok := k.items[key]
 	k.mutex.RUnlock()
+
 	if !ok {
 		kbKey := newKBKey()
+		kbKey.Set(host, value)
 
 		k.mutex.Lock()
 		k.items[key] = kbKey
-		k.mutex.Lock()
-
-		kbKey.Set(host, value)
+		k.mutex.Unlock()
 		return
 	}
 	kbKey.Set(host, value)
@@ -47,17 +49,15 @@ func (k *Knowledgebase) Set(host, key, value string) {
 //
 // The key is template-id:name specified in the template.
 // This function appends the host the key is asked for as well before the loookup.
-func (k *Knowledgebase) Get(host, key, defaultValue string) []string {
+func (k *Knowledgebase) Get(host, key string) []string {
 	k.mutex.RLock()
 	kbKey, ok := k.items[key]
 	k.mutex.RUnlock()
+
 	if !ok {
-		return []string{defaultValue}
+		return nil
 	}
 	values := kbKey.Get(host)
-	if len(values) > 0 {
-		return []string{defaultValue}
-	}
 	return values
 }
 
@@ -92,10 +92,10 @@ func (k *kbKey) Set(host, value string) {
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
 
-	_, ok := k.hosts[host]
+	values, ok := k.hosts[host]
 	if !ok {
 		k.hosts[host] = []string{value}
 		return
 	}
-	k.hosts[host] = append(k.hosts[host], value)
+	k.hosts[host] = append(values, value)
 }

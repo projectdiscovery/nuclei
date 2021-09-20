@@ -94,8 +94,10 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
-	dynamicValues := make(map[string]interface{})
+func (e *Executer) ExecuteWithResults(input string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
+	if dynamicValues == nil {
+		dynamicValues = make(map[string]interface{})
+	}
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract)
@@ -113,4 +115,9 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 		e.options.HostErrorsCache.MarkFailed(input)
 	}
 	return err
+}
+
+// WriteOutput writes output to nuclei output sinks
+func (e *Executer) WriteOutput(event *output.InternalWrappedEvent) bool {
+	return false
 }

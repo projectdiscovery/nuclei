@@ -38,7 +38,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 
 			// Don't print results with subtemplates, only print results on template.
 			if len(template.Subtemplates) > 0 {
-				err = executer.Executer.ExecuteWithResults(input, func(result *output.InternalWrappedEvent) {
+				err = executer.Executer.ExecuteWithResults(input, nil, func(result *output.InternalWrappedEvent) {
 					if result.OperatorsResult == nil {
 						return
 					}
@@ -75,7 +75,7 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
-			err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
+			err := executer.Executer.ExecuteWithResults(input, nil, func(event *output.InternalWrappedEvent) {
 				if event.OperatorsResult == nil {
 					return
 				}

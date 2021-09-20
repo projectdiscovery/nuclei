@@ -177,7 +177,7 @@ func (m *mockExecuter) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (m *mockExecuter) ExecuteWithResults(input string, dynamicValues map[string]interface{}, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
 		m.executeHook(input)
 	}
@@ -185,4 +185,9 @@ func (m *mockExecuter) ExecuteWithResults(input string, callback protocols.Outpu
 		callback(output)
 	}
 	return nil
+}
+
+// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
+func (m *mockExecuter) WriteOutput(event *output.InternalWrappedEvent) bool {
+	return false
 }

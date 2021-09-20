@@ -68,4 +68,5 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+	Data string `yaml:"-" json:"-"`
 }

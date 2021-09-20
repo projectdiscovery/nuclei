@@ -19,6 +19,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/kb"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spaolacci/murmur3"
 )
@@ -246,6 +247,16 @@ var functions = map[string]govaluate.ExpressionFunction{
 	"print_debug": func(args ...interface{}) (interface{}, error) {
 		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
 		return true, nil
+	},
+	"kb_get": func(args ...interface{}) (interface{}, error) {
+		value := args[0].(string)
+		host := args[1].(string)
+
+		values := kb.Global.Get(host, value)
+		if len(values) > 0 {
+			return values[0], nil
+		}
+		return "", nil
 	},
 }
 
