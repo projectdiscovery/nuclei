@@ -43,7 +43,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	return false
 }
 
-// Extract performs extracting operation for a extractor on model and returns true or false.
+// Extract performs extracting operation for an extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	part := extractor.Part
 	switch part {
@@ -147,10 +147,8 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
-	}
-	if r.options.Options.JSONRequests {
-		data.Request = types.ToString(wrapped.InternalEvent["request"])
-		data.Response = types.ToString(wrapped.InternalEvent["raw"])
+		Request:          types.ToString(wrapped.InternalEvent["request"]),
+		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 	}
 	return data
 }

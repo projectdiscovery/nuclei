@@ -282,7 +282,7 @@ name: Nagios Default Credentials Check
 
 <div class="dd">
 
-<code>author</code>  <i>StringSlice</i>
+<code>author</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -307,7 +307,7 @@ author: <username>
 
 <div class="dd">
 
-<code>tags</code>  <i>StringSlice</i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -348,7 +348,7 @@ Examples:
 
 
 ```yaml
-description: Bower is a package manager which stores packages informations in bower.json file
+description: Bower is a package manager which stores package information in the bower.json file
 ```
 
 ```yaml
@@ -362,7 +362,7 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 
 <div class="dd">
 
-<code>reference</code>  <i>StringSlice</i>
+<code>reference</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -389,7 +389,7 @@ reference:
 
 <div class="dd">
 
-<code>severity</code>  <i><a href="#severityseverityholder">severity.SeverityHolder</a></i>
+<code>severity</code>  <i><a href="#severityholder">severity.Holder</a></i>
 
 </div>
 <div class="dt">
@@ -415,12 +415,12 @@ Valid values:
 
 <div class="dd">
 
-<code>additional-fields</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]string</i>
 
 </div>
 <div class="dt">
 
-AdditionalFields regarding metadata of the template.
+Metadata of the template.
 
 
 
@@ -428,8 +428,46 @@ Examples:
 
 
 ```yaml
-additional-fields:
+metadata:
     customField1: customValue1
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>classification</code>  <i><a href="#modelclassification">model.Classification</a></i>
+
+</div>
+<div class="dt">
+
+Classification contains classification information about the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>remediation</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Remediation steps for the template.
+
+You can go in-depth here on how to mitigate the problem found by this template.
+
+
+
+Examples:
+
+
+```yaml
+remediation: Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties
 ```
 
 
@@ -441,23 +479,160 @@ additional-fields:
 
 
 
-## model.StringSlice
+## stringslice.StringSlice
+StringSlice represents a single (in-lined) or multiple string value(s).
+ The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
 
 Appears in:
 
 
+- <code><a href="#modelinfo">model.Info</a>.author</code>
+
+- <code><a href="#modelinfo">model.Info</a>.tags</code>
+
+- <code><a href="#modelinfo">model.Info</a>.reference</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cve-id</code>
+
+- <code><a href="#modelclassification">model.Classification</a>.cwe-id</code>
+
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.tags</code>
 
 
+```yaml
+<username>
+```
+```yaml
+# Example tags
+cve,cve2019,grafana,auth-bypass,dos
+```
+```yaml
+- https://github.com/strapi/strapi
+- https://github.com/getgrav/grav
+```
+```yaml
+CVE-2020-14420
+```
+```yaml
+CWE-22
+```
 
 
 
-## severity.SeverityHolder
+## severity.Holder
+Holder holds a Severity type. Required for un/marshalling purposes
 
 Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
+
+
+
+## model.Classification
+
+Appears in:
+
+
+- <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>cve-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CVE ID for the template
+
+
+
+Examples:
+
+
+```yaml
+cve-id: CVE-2020-14420
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cwe-id</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
+
+</div>
+<div class="dt">
+
+CWE ID for the template.
+
+
+
+Examples:
+
+
+```yaml
+cwe-id: CWE-22
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-metrics</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+CVSS Metrics for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-metrics: 3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cvss-score</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+CVSS Score for the template.
+
+
+
+Examples:
+
+
+```yaml
+cvss-score: "9.8"
+```
+
+
+</div>
+
+<hr />
 
 
 
@@ -504,7 +679,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -617,7 +792,7 @@ raw:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -694,6 +869,8 @@ Valid values:
   - <code>TRACE</code>
 
   - <code>PATCH</code>
+
+  - <code>PURGE</code>
 </div>
 
 <hr />
@@ -804,7 +981,7 @@ Examples:
 
 
 ```yaml
-# Follow upto 5 redirects
+# Follow up to 5 redirects
 max-redirects: 5
 ```
 
@@ -950,7 +1127,7 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 
-All requests must be indempotent (GET/POST). This can be used for race conditions/billions requests.
+All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
 
 </div>
 
@@ -1491,7 +1668,7 @@ group: 1
 description: |
    kval contains the key-value pairs present in the HTTP response header.
    kval extractor can be used to extract HTTP response header and cookie key-value pairs.
-   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+   kval extractor inputs are case-insensitive, and does not support dash (-) in input which can replaced with underscores (_)
  	 For example, Content-Type should be replaced with content_type
 
    A list of supported parts is available in docs for request types.
@@ -1669,7 +1846,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -1717,7 +1894,7 @@ Valid values:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -1884,7 +2061,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -1987,7 +2164,7 @@ denylist:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2002,7 +2179,7 @@ ID is the the optional id of the request
 
 MaxSize is the maximum size of the file to run request on.
 
-By default, nuclei will process 5MB files and not go more than that.
+By default, nuclei will process 5 MB files and not go more than that.
 It can be set to much lower or higher depending on use.
 
 
@@ -2067,7 +2244,7 @@ matchers:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2191,7 +2368,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2307,7 +2484,7 @@ Valid values:
 
 Read is the number of bytes to read from socket.
 
-This can be used for protcols which expected an immediate response. You can
+This can be used for protocols which expect an immediate response. You can
 read and write responses one after another and evetually perform matching
 on every data captured with `name` attribute.
 
@@ -2373,7 +2550,7 @@ Appears in:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2403,7 +2580,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2617,7 +2794,7 @@ template: misconfigurations/aem
 
 <div class="dd">
 
-<code>tags</code>  <i><a href="#modelstringslice">model.StringSlice</a></i>
+<code>tags</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
@@ -2648,7 +2825,7 @@ Matchers perform name based matching to run subtemplates for a workflow.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the `template` field Template matches.
+Subtemplates are run if the `template` field Template matches.
 
 </div>
 
@@ -2689,7 +2866,7 @@ Name is the name of the item to match.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the name of matcher matches.
+Subtemplates are run if the name of matcher matches.
 
 </div>
 
