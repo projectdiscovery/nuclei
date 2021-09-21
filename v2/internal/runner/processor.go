@@ -104,7 +104,7 @@ func (r *Runner) executeDependenciesRecursive(URL string, template *templates.Te
 
 			// Add all unique new deps to the deps map for tracking and later deletion
 			for _, value := range depTemplateDeps {
-				if _, depsOk := depsMap[value.FullReference]; depsOk {
+				if _, depsOk := depsMap[value.FullReference]; !depsOk {
 					depsMap[value.FullReference] = struct{}{}
 				}
 			}
