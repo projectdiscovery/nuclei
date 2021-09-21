@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -15,7 +16,7 @@ import (
 
 // Request contains a Network protocol request to be made from a template
 type Request struct {
-	// ID is the the optional id of the request
+	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
 
 	// description: |
@@ -97,7 +98,7 @@ type Input struct {
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
-	//   This can be used for protcols which expected an immediate response. You can
+	//   This can be used for protocols which expect an immediate response. You can
 	//   read and write responses one after another and evetually perform matching
 	//   on every data captured with `name` attribute.
 	//

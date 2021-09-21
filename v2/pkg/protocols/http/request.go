@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/multierr"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -22,8 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/multierr"
 )
 
 const defaultMaxWorkers = 150
@@ -324,7 +325,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 	}
 	if err != nil {
-		// rawhttp doesn't supports draining response bodies.
+		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && request.rawRequest == nil {
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
@@ -333,7 +334,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		r.options.Progress.IncrementErrorsBy(1)
 
 		// If we have interactsh markers and request times out, still send
-		// a callback event so in case we recieve an interaction, correlation is possible.
+		// a callback event so in case we receive an interaction, correlation is possible.
 		if hasInteractMarkers {
 			outputEvent := r.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, request.meta)
 			if i := strings.LastIndex(hostname, ":"); i != -1 {
@@ -411,6 +412,18 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	dumpedResponse := dumpedResponseBuilder.Bytes()
 	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
+	// Decode gbk response content-types
+	if contentType := strings.ToLower(resp.Header.Get("Content-Type")); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
+		dumpedResponse, err = decodegbk(dumpedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+		redirectedResponse, err = decodegbk(redirectedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+	}
+
 	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
@@ -419,8 +432,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 	// if nuclei-project is enabled store the response if not previously done
 	if r.options.ProjectFile != nil && !fromcache {
-		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
-		if err != nil {
+		if err := r.options.ProjectFile.Set(dumpedRequest, resp, data); err != nil {
 			return errors.Wrap(err, "could not store in project file")
 		}
 	}
