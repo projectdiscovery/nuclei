@@ -40,7 +40,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	return false
 }
 
-// Extract performs extracting operation for a extractor on model and returns true or false.
+// Extract performs extracting operation for an extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	item, ok := getMatchPart(extractor.Part, data)
 	if !ok {
@@ -77,7 +77,7 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 	return itemStr, true
 }
 
-// responseToDSLMap converts a HTTP response to a map for use in DSL matching
+// responseToDSLMap converts an HTTP response to a map for use in DSL matching
 func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
 	data := make(map[string]interface{}, len(extra)+8+len(resp.Header)+len(resp.Cookies()))
 	for k, v := range extra {
@@ -145,10 +145,8 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
-	}
-	if r.options.Options.JSONRequests {
-		data.Request = types.ToString(wrapped.InternalEvent["request"])
-		data.Response = types.ToString(wrapped.InternalEvent["raw"])
+		Request:          types.ToString(wrapped.InternalEvent["request"]),
+		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 	}
 	return data
 }

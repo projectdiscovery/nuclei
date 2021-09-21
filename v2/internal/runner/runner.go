@@ -189,7 +189,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -208,7 +208,7 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, progressErr
 	}
 
-	// create project file if requested or load existing one
+	// create project file if requested or load the existing one
 	if options.Project {
 		var projectFileErr error
 		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
@@ -298,7 +298,7 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() error {
 	defer r.Close()
 
-	// If user asked for new templates to be executed, collect the list from template directory.
+	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
@@ -367,7 +367,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 
-	// Display stats for any loaded templates syntax warnings or errors
+	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 
@@ -392,7 +392,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
-		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -403,7 +403,7 @@ func (r *Runner) RunEnumeration() error {
 	builder.Reset()
 
 	if r.templatesConfig != nil {
-		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
@@ -439,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	templatesMap := make(map[string]*templates.Template)
 	for _, v := range store.Templates() {
-		templatesMap[v.ID] = v
+		templatesMap[v.Path] = v
 	}
 	originalTemplatesCount := len(store.Templates())
 	clusterCount := 0
@@ -471,6 +471,7 @@ func (r *Runner) RunEnumeration() error {
 			finalTemplates = append(finalTemplates, cluster...)
 		}
 	}
+
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
@@ -488,7 +489,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no templates were found")
+		return errors.New("no valid templates were found")
 	}
 
 	/*
@@ -560,7 +561,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	return templatesList, nil
 }
 
-// readNewTemplatesFile reads newly added templates from directory if it exists
+// countNewTemplates returns the number of newly added templates
 func (r *Runner) countNewTemplates() int {
 	if r.templatesConfig == nil {
 		return 0

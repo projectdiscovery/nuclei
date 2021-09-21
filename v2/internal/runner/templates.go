@@ -13,30 +13,24 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-func (r *Runner) templateLogMsg(id, name, author string, templateSeverity severity.Severity) string {
+func (r *Runner) templateLogMsg(id, name string, authors []string, templateSeverity severity.Severity) string {
 	// Display the message for the template
 	return fmt.Sprintf("[%s] %s (%s) [%s]",
 		r.colorizer.BrightBlue(id).String(),
 		r.colorizer.Bold(name).String(),
-		r.colorizer.BrightYellow(appendAtSignToAuthors(author)).String(),
+		r.colorizer.BrightYellow(appendAtSignToAuthors(authors)).String(),
 		r.addColor(templateSeverity))
 }
 
-// appendAtSignToAuthors appends @ before each author and returns final string
-func appendAtSignToAuthors(author string) string {
-	authors := strings.Split(author, ",")
+// appendAtSignToAuthors appends @ before each author and returns the final string
+func appendAtSignToAuthors(authors []string) string {
 	if len(authors) == 0 {
 		return "@none"
 	}
-	if len(authors) == 1 {
-		if !strings.HasPrefix(authors[0], "@") {
-			return fmt.Sprintf("@%s", authors[0])
-		}
-		return authors[0]
-	}
+
 	values := make([]string, 0, len(authors))
 	for _, k := range authors {
-		if !strings.HasPrefix(authors[0], "@") {
+		if !strings.HasPrefix(k, "@") {
 			values = append(values, fmt.Sprintf("@%s", k))
 		} else {
 			values = append(values, k)
@@ -52,12 +46,12 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	} else {
 		gologger.Print().Msgf("%s\n", r.templateLogMsg(t.ID,
 			types.ToString(t.Info.Name),
-			types.ToString(t.Info.Authors),
+			t.Info.Authors.ToSlice(),
 			t.Info.SeverityHolder.Severity))
 	}
 }
 
-// ListAvailableTemplates prints available templates to stdout
+// listAvailableTemplates prints available templates to stdout
 func (r *Runner) listAvailableTemplates() {
 	if r.templatesConfig == nil {
 		return
@@ -70,7 +64,7 @@ func (r *Runner) listAvailableTemplates() {
 
 	gologger.Print().Msgf(
 		"\nListing available v.%s nuclei templates for %s",
-		r.templatesConfig.CurrentVersion,
+		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
 	err := directoryWalker(

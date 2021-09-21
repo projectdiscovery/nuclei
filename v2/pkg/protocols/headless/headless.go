@@ -2,6 +2,7 @@ package headless
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
@@ -9,7 +10,7 @@ import (
 
 // Request contains a Headless protocol request to be made from a template
 type Request struct {
-	// ID is the the optional id of the request
+	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=Optional ID of the headless request"`
 
 	// description: |
