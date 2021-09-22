@@ -70,7 +70,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	options.TemplatePath = filePath
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows) == 0 {
+	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows)+len(template.RequestsSSL) == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
@@ -85,12 +85,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	// Compile the requests found
 	requests := []protocols.Request{}
-	if len(template.RequestsDNS) > 0 && !options.Options.OfflineHTTP {
-		for _, req := range template.RequestsDNS {
-			requests = append(requests, req)
-		}
-		template.Executer = executer.NewExecuter(requests, &options)
-	}
+
 	if len(template.RequestsHTTP) > 0 {
 		if options.Options.OfflineHTTP {
 			operatorsList := []*operators.Operators{}
@@ -115,24 +110,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 			template.Executer = executer.NewExecuter(requests, &options)
 		}
 	}
-	if len(template.RequestsFile) > 0 && !options.Options.OfflineHTTP {
-		for _, req := range template.RequestsFile {
-			requests = append(requests, req)
-		}
-		template.Executer = executer.NewExecuter(requests, &options)
+	if !options.Options.OfflineHTTP {
+		makeRequestsForTemplate(template, options)
 	}
-	if len(template.RequestsNetwork) > 0 && !options.Options.OfflineHTTP {
-		for _, req := range template.RequestsNetwork {
-			requests = append(requests, req)
-		}
-		template.Executer = executer.NewExecuter(requests, &options)
-	}
-	if len(template.RequestsHeadless) > 0 && !options.Options.OfflineHTTP && options.Options.Headless {
-		for _, req := range template.RequestsHeadless {
-			requests = append(requests, req)
-		}
-		template.Executer = executer.NewExecuter(requests, &options)
-	}
+
 	if template.Executer != nil {
 		if err := template.Executer.Compile(); err != nil {
 			return nil, errors.Wrap(err, "could not compile request")
@@ -146,4 +127,39 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
+}
+
+func makeRequestsForTemplate(template *Template, options protocols.ExecuterOptions) {
+	requests := []protocols.Request{}
+
+	if len(template.RequestsDNS) > 0 {
+		for _, req := range template.RequestsDNS {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
+	if len(template.RequestsFile) > 0 {
+		for _, req := range template.RequestsFile {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
+	if len(template.RequestsNetwork) > 0 {
+		for _, req := range template.RequestsNetwork {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
+	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
+		for _, req := range template.RequestsHeadless {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
+	if len(template.RequestsSSL) > 0 {
+		for _, req := range template.RequestsSSL {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
 }
