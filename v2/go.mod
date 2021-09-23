@@ -30,7 +30,7 @@ require (
 	github.com/owenrumney/go-sarif v1.0.11
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
-	github.com/projectdiscovery/fastdialer v0.0.13-0.20210917073912-cad93d88e69e
+	github.com/projectdiscovery/fastdialer v0.0.13-0.20210923125921-675fa1873feb
 	github.com/projectdiscovery/goflags v0.0.7
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa

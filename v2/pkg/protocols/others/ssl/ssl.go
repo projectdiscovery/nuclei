@@ -3,7 +3,6 @@ package ssl
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -12,11 +11,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -61,53 +59,12 @@ func (r *Request) GetID() string {
 	return ""
 }
 
-// Match performs matching operation for a matcher on model and returns true or false.
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
-	partItem, ok := data[matcher.Part]
-	if !ok {
-		return false
-	}
-	item := types.ToString(partItem)
-
-	switch matcher.GetType() {
-	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(item)))
-	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(item))
-	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(item))
-	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(item))
-	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
-	}
-	return false
-}
-
-// Extract performs extracting operation for an extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	item, ok := data[extractor.Part]
-	if !ok {
-		return nil
-	}
-	itemStr := types.ToString(item)
-
-	switch extractor.GetType() {
-	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(itemStr)
-	case extractors.KValExtractor:
-		return extractor.ExtractKval(data)
-	}
-	return nil
-}
-
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	address, err := getAddress(input)
 	if err != nil {
 		return nil
 	}
-	fmt.Printf("address: %v\n", address)
 	hostname, _, _ := net.SplitHostPort(input)
 
 	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
@@ -136,9 +93,9 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	event := &output.InternalWrappedEvent{InternalEvent: data}
 	if r.CompiledOperators != nil {
 		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(data, r.Match, r.Extract)
+		event.OperatorsResult, ok = r.CompiledOperators.Execute(data, utils.MatchFunc, utils.ExtractFunc)
 		if ok && event.OperatorsResult != nil {
-			event.Results = r.makeResultEvent(event)
+			event.Results = utils.MakeResultEvent(event, r.makeResultEventItem)
 		}
 		callback(event)
 	}
@@ -161,34 +118,6 @@ func getAddress(toTest string) (string, error) {
 		}
 	}
 	return toTest, nil
-}
-
-// makeResultEvent creates a result event from internal wrapped event
-func (r *Request) makeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
-		return nil
-	}
-	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data := r.makeResultEventItem(wrapped)
-			data.MatcherName = k
-			results = append(results, data)
-		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
-		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := r.makeResultEventItem(wrapped)
-			data.ExtractedResults = v
-			data.ExtractorName = k
-			results = append(results, data)
-		}
-	} else {
-		data := r.makeResultEventItem(wrapped)
-		results = append(results, data)
-	}
-	return results
 }
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {

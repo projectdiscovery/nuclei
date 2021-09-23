@@ -70,7 +70,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	options.TemplatePath = filePath
 
 	// If no requests, and it is also not a workflow, return error.
-	if len(template.RequestsDNS)+len(template.RequestsHTTP)+len(template.RequestsFile)+len(template.RequestsNetwork)+len(template.RequestsHeadless)+len(template.Workflows)+len(template.RequestsSSL) == 0 {
+	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
@@ -129,6 +129,19 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	return template, nil
 }
 
+// Requests returns the total number of requests for the template.
+func (t *Template) Requests() int {
+	sum := len(t.RequestsDNS) +
+		len(t.RequestsHTTP) +
+		len(t.RequestsFile) +
+		len(t.RequestsNetwork) +
+		len(t.RequestsHeadless) +
+		len(t.Workflows) +
+		len(t.RequestsSSL)
+	return sum
+}
+
+// makeRequestsForTemplate compiles all the requests for the template.
 func makeRequestsForTemplate(template *Template, options protocols.ExecuterOptions) {
 	requests := []protocols.Request{}
 
