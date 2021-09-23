@@ -6,8 +6,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -74,10 +72,6 @@ type Request interface {
 	// condition matching. So, two requests can be sent and their match can
 	// be evaluated from the third request by using the IDs for both requests.
 	GetID() string
-	// Match performs matching operation for a matcher on model and returns true or false.
-	Match(data map[string]interface{}, matcher *matchers.Matcher) bool
-	// Extract performs extracting operation for an extractor on model and returns true or false.
-	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
 }
