@@ -26,3 +26,8 @@ func TestSSLProtocol(t *testing.T) {
 	err = request.ExecuteWithResults("google.com:443", nil, nil, func(event *output.InternalWrappedEvent) {})
 	require.Nil(t, err, "could not run ssl request")
 }
+
+func TestGetAddress(t *testing.T) {
+	address, _ := getAddress("https://google.com")
+	require.Equal(t, "google.com:443", address, "could not get correct address")
+}
