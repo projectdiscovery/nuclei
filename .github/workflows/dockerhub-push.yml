@@ -15,7 +15,7 @@ jobs:
       - name: Get Github tag
         id: meta
         run: |
-          echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
+          echo "::set-output name=tag::$(curl --silent "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" | jq -r .tag_name)"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
