@@ -62,7 +62,7 @@ func ExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) m
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
 func MatchFunc(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partItem, ok := data[matcher.Part]
-	if !ok {
+	if !ok && len(matcher.DSL) == 0 {
 		return false
 	}
 	item := types.ToString(partItem)

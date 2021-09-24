@@ -356,12 +356,8 @@ var functions = map[string]govaluate.ExpressionFunction{
 	},
 	// is_before_now compares a timestamp and returns true if the first
 	// passed argument is a time.Time that has already passed.
-	"is_time_before_now": func(args ...interface{}) (interface{}, error) {
-		if len(args) != 1 {
-			return nil, ErrDSLArguments
-		}
-		isBefore := time.Since(args[0].(time.Time)) > 0
-		return isBefore, nil
+	"time_now": func(args ...interface{}) (interface{}, error) {
+		return float64(time.Now().Unix()), nil
 	},
 }
 
