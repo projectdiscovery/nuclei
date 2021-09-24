@@ -2,7 +2,9 @@ package dsl
 
 import (
 	"testing"
+	"time"
 
+	"github.com/Knetic/govaluate"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,4 +18,13 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 	decoded, err := functions["url_decode"]("%26test%22")
 	require.Nil(t, err, "could not url encode")
 	require.Equal(t, "&test\"", decoded, "could not get url decoded data")
+}
+
+func TestDSLTimeComparison(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("time_now() > not_after", HelperFunctions())
+	require.Nil(t, err, "could not compare time")
+
+	result, err := compiled.Evaluate(map[string]interface{}{"not_after": float64(time.Now().Unix() - 1000)})
+	require.Nil(t, err, "could not evaluate compare time")
+	require.Equal(t, true, result, "could not get url encoded data")
 }

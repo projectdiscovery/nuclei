@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -65,7 +66,7 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	if err != nil {
 		return nil
 	}
-	hostname, _, _ := net.SplitHostPort(input)
+	hostname, _, _ := net.SplitHostPort(address)
 
 	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
 	conn, err := r.dialer.DialTLSWithConfig(context.Background(), "tcp", address, config)
@@ -81,13 +82,16 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	if !ok {
 		return nil
 	}
+	r.options.Output.Request(r.options.TemplateID, address, "ssl", err)
+	gologger.Verbose().Msgf("Sent SSL request to %s", address)
+
 	if len(connTLS.ConnectionState().PeerCertificates) == 0 {
 		return nil
 	}
 	data := make(map[string]interface{})
 	cert := connTLS.ConnectionState().PeerCertificates[0]
 	data["host"] = input
-	data["not_after"] = cert.NotAfter
+	data["not_after"] = float64(cert.NotAfter.Unix())
 	data["ip"] = r.dialer.GetDialedIP(hostname)
 
 	event := &output.InternalWrappedEvent{InternalEvent: data}
@@ -116,6 +120,7 @@ func getAddress(toTest string) (string, error) {
 		} else {
 			toTest = parsed.Host
 		}
+		return toTest, nil
 	}
 	return toTest, nil
 }
