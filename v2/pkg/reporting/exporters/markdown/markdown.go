@@ -45,10 +45,16 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
 	filenameBuilder.WriteString(strings.ReplaceAll(strings.ReplaceAll(event.Matched, "/", "_"), ":", "_"))
+
+	var suffix string
 	if event.MatcherName != "" {
-		filenameBuilder.WriteString(event.MatcherName)
+		suffix = event.MatcherName
 	} else if event.ExtractorName != "" {
-		filenameBuilder.WriteString(event.ExtractorName)
+		suffix = event.ExtractorName
+	}
+	if suffix != "" {
+		filenameBuilder.WriteRune('-')
+		filenameBuilder.WriteString(event.MatcherName)
 	}
 	filenameBuilder.WriteString(".md")
 	finalFilename := sanitizeFilename(filenameBuilder.String())
