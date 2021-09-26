@@ -45,7 +45,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 # Install Nuclei
 
 ```sh
-GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
