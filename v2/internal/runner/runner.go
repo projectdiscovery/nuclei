@@ -156,7 +156,7 @@ func New(options *types.Options) (*Runner, error) {
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
 			if options.Stream {
-				runner.hostMapStream.Set([]byte(url), nil)
+				_ = runner.hostMapStream.Set([]byte(url), nil)
 			}
 		}
 	}
@@ -179,7 +179,7 @@ func New(options *types.Options) (*Runner, error) {
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
 			if options.Stream {
-				runner.hostMapStream.Set([]byte(url), nil)
+				_ = runner.hostMapStream.Set([]byte(url), nil)
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func New(options *types.Options) (*Runner, error) {
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
 			if options.Stream {
-				runner.hostMapStream.Set([]byte(url), nil)
+				_ = runner.hostMapStream.Set([]byte(url), nil)
 			}
 		}
 		input.Close()
