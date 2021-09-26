@@ -31,7 +31,7 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 		return nil
 	}
 	if r.options.Stream {
-		r.hostMapStream.Scan(processItem)
+		_ = r.hostMapStream.Scan(processItem)
 	} else {
 		r.hostMap.Scan(processItem)
 	}
@@ -62,7 +62,7 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 	}
 
 	if r.options.Stream {
-		r.hostMapStream.Scan(processItem)
+		_ = r.hostMapStream.Scan(processItem)
 	} else {
 		r.hostMap.Scan(processItem)
 	}
