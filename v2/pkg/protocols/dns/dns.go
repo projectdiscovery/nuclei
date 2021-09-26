@@ -128,6 +128,14 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 	q.Qclass = r.class
 	q.Qtype = r.question
 	req.Question = append(req.Question, q)
+
+	req.SetEdns0(4096, false)
+
+	switch r.question {
+	case dns.TypeTXT:
+		req.AuthenticatedData = true
+	}
+
 	return req, nil
 }
 
