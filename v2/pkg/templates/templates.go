@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/ssl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/websocket"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -60,6 +61,9 @@ type Template struct {
 	// description: |
 	//   SSL contains the SSL request to make in the template.
 	RequestsSSL []*ssl.Request `yaml:"ssl,omitempty" json:"ssl,omitempty" jsonschema:"title=ssl requests to make,description=SSL requests to make for the template"`
+	// description: |
+	//   Websocket contains the Websocket request to make in the template.
+	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
 
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
