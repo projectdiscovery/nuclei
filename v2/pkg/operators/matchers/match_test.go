@@ -9,23 +9,23 @@ import (
 func TestANDCondition(t *testing.T) {
 	m := &Matcher{condition: ANDCondition, Words: []string{"a", "b"}}
 
-	matched := m.MatchWords("a b")
+	matched := m.MatchWords("a b", nil)
 	require.True(t, matched, "Could not match valid AND condition")
 
-	matched = m.MatchWords("b")
+	matched = m.MatchWords("b", nil)
 	require.False(t, matched, "Could match invalid AND condition")
 }
 
 func TestORCondition(t *testing.T) {
 	m := &Matcher{condition: ORCondition, Words: []string{"a", "b"}}
 
-	matched := m.MatchWords("a b")
+	matched := m.MatchWords("a b", nil)
 	require.True(t, matched, "Could not match valid OR condition")
 
-	matched = m.MatchWords("b")
+	matched = m.MatchWords("b", nil)
 	require.True(t, matched, "Could not match valid OR condition")
 
-	matched = m.MatchWords("c")
+	matched = m.MatchWords("c", nil)
 	require.False(t, matched, "Could match invalid OR condition")
 }
 
@@ -34,6 +34,6 @@ func TestHexEncoding(t *testing.T) {
 	err := m.CompileMatchers()
 	require.Nil(t, err, "could not compile matcher")
 
-	matched := m.MatchWords("PING")
+	matched := m.MatchWords("PING", nil)
 	require.True(t, matched, "Could not match valid Hex condition")
 }
