@@ -137,7 +137,8 @@ func (t *Template) Requests() int {
 		len(t.RequestsNetwork) +
 		len(t.RequestsHeadless) +
 		len(t.Workflows) +
-		len(t.RequestsSSL)
+		len(t.RequestsSSL) +
+		len(t.RequestsWebsocket)
 	return sum
 }
 
@@ -171,6 +172,12 @@ func makeRequestsForTemplate(template *Template, options protocols.ExecuterOptio
 	}
 	if len(template.RequestsSSL) > 0 {
 		for _, req := range template.RequestsSSL {
+			requests = append(requests, req)
+		}
+		template.Executer = executer.NewExecuter(requests, &options)
+	}
+	if len(template.RequestsWebsocket) > 0 {
+		for _, req := range template.RequestsWebsocket {
 			requests = append(requests, req)
 		}
 		template.Executer = executer.NewExecuter(requests, &options)
