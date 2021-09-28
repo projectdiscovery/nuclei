@@ -31,11 +31,14 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	// description: |
+	//   Address contains address for the request
+	Address string `yaml:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
+	// description: |
 	//   Inputs contains inputs for the websocket protocol
 	Inputs []*Input `yaml:"inputs,omitempty" jsonschema:"title=inputs for the websocket request,description=Inputs contains any input/output for the current request"`
 	// description: |
-	//   Origin is the websocket request origin.
-	Origin string `yaml:"origin,omitempty" jsonschema:"title=origin is the request origin,description=Origin is the websocket request origin"`
+	//   Headers contains headers for the request.
+	Headers map[string]string `yaml:"headers,omitempty" jsonschema:"title=headers contains the request headers,description=Headers contains headers for the request"`
 
 	// description: |
 	//   Attack is the type of payload combinations to perform.
@@ -167,21 +170,45 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	var header ws.HandshakeHeader
+	header := http.Header{}
 
-	if r.Origin != "" {
-		header = ws.HandshakeHeaderHTTP(http.Header{
-			"Origin": []string{r.Origin},
-		})
+	payloadValues := make(map[string]interface{})
+	for k, v := range dynamicValues {
+		payloadValues[k] = v
+	}
+	parsed, err := url.Parse(input)
+	if err != nil {
+		return errors.Wrap(err, "could not parse input url")
+	}
+	payloadValues["Address"] = parsed.Host
+	payloadValues["Scheme"] = parsed.Scheme
+	payloadValues["Path"] = parsed.Path
+	payloadValues["hostname"] = parsed.Hostname()
+
+	for key, value := range r.Headers {
+		finalData, dataErr := expressions.EvaluateByte([]byte(value), payloadValues)
+		if dataErr != nil {
+			r.options.Output.Request(r.options.TemplateID, input, "websocket", dataErr)
+			r.options.Progress.IncrementFailedRequestsBy(1)
+			return errors.Wrap(dataErr, "could not evaluate template expressions")
+		}
+		header.Set(key, string(finalData))
 	}
 	websocketDialer := ws.Dialer{
-		Header:    header,
+		Header:    ws.HandshakeHeaderHTTP(header),
 		Timeout:   time.Duration(r.options.Options.Timeout) * time.Second,
 		NetDial:   r.dialer.Dial,
 		TLSConfig: &tls.Config{InsecureSkipVerify: true, ServerName: hostname},
 	}
 
-	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), input)
+	finalAddress, dataErr := expressions.EvaluateByte([]byte(r.Address), payloadValues)
+	if dataErr != nil {
+		r.options.Output.Request(r.options.TemplateID, input, "websocket", dataErr)
+		r.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(dataErr, "could not evaluate template expressions")
+	}
+
+	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), string(finalAddress))
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "ssl", err)
 		r.options.Progress.IncrementFailedRequestsBy(1)
@@ -200,7 +227,7 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	for _, req := range r.Inputs {
 		reqBuilder.Grow(len(req.Data))
 
-		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), dynamicValues)
+		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
 		if dataErr != nil {
 			r.options.Output.Request(r.options.TemplateID, input, "websocket", dataErr)
 			r.options.Progress.IncrementFailedRequestsBy(1)
