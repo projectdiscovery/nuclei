@@ -40,7 +40,8 @@ func (m *Matcher) MatchSize(length int) bool {
 }
 
 // MatchWords matches a word check against a corpus.
-func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) bool {
+func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) (bool, []string) {
+	var matchedWords []string
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
 		if dynamicValues == nil {
@@ -57,7 +58,7 @@ func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
@@ -65,19 +66,21 @@ func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, []string{word}
 		}
+
+		matchedWords = append(matchedWords, word)
 
 		// If we are at the end of the words, return with true
 		if len(m.Words)-1 == i {
-			return true
+			return true, matchedWords
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchRegex matches a regex check against a corpus
-func (m *Matcher) MatchRegex(corpus string) bool {
+func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range m.regexCompiled {
 		// Continue if the regex doesn't match
@@ -85,7 +88,7 @@ func (m *Matcher) MatchRegex(corpus string) bool {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
@@ -93,19 +96,19 @@ func (m *Matcher) MatchRegex(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, regex.FindAllString(corpus, -1)
 		}
 
 		// If we are at the end of the regex, return with true
 		if len(m.regexCompiled)-1 == i {
-			return true
+			return true, []string{corpus}
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchBinary matches a binary check against a corpus
-func (m *Matcher) MatchBinary(corpus string) bool {
+func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
@@ -114,7 +117,7 @@ func (m *Matcher) MatchBinary(corpus string) bool {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
@@ -122,15 +125,15 @@ func (m *Matcher) MatchBinary(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, []string{string(hexa)}
 		}
 
 		// If we are at the end of the words, return with true
 		if len(m.Binary)-1 == i {
-			return true
+			return true, []string{string(hexa)}
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchDSL matches on a generic map result

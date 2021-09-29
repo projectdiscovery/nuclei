@@ -1,6 +1,7 @@
 package offlinehttp
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -13,31 +14,31 @@ import (
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
+func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := getMatchPart(matcher.Part, data)
 	if !ok {
-		return false
+		return false, []string{}
 	}
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
 		statusCode, ok := data["status_code"]
 		if !ok {
-			return false
+			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
+		return matcher.Result(matcher.MatchStatusCode(statusCode.(int))), []string{fmt.Sprintf("HTTP/1.0 %d", statusCode), fmt.Sprintf("HTTP/1.1 %d", statusCode)}
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(item)))
+		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(item, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
+		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
-	return false
+	return false, []string{}
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.

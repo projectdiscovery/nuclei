@@ -11,7 +11,7 @@ import (
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
+func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	partString := matcher.Part
 	switch partString {
 	case "body", "resp", "":
@@ -20,23 +20,23 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 	item, ok := data[partString]
 	if !ok {
-		return false
+		return false, []string{}
 	}
 	itemStr := types.ToString(item)
 
 	switch matcher.GetType() {
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(itemStr)))
+		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(itemStr, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, nil))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(itemStr))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
+		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
-	return false
+	return false, []string{}
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.

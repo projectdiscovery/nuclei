@@ -12,11 +12,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -424,12 +426,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 	}
 
-	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", string(redirectedResponse))
-	}
-
 	// if nuclei-project is enabled store the response if not previously done
 	if r.options.ProjectFile != nil && !fromcache {
 		if err := r.options.ProjectFile.Set(dumpedRequest, resp, data); err != nil {
@@ -467,18 +463,53 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 	}
 
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
-		if ok && event.OperatorsResult != nil {
-			event.OperatorsResult.PayloadValues = request.meta
-			event.Results = r.MakeResultEvent(event)
-		}
-		event.InternalEvent = outputEvent
-	}
+	event := createEvent(r, formedURL, outputEvent, string(redirectedResponse), finalEvent, request)
+
 	callback(event)
 	return nil
+}
+
+// TODO extract duplicated code
+func createEvent(request *Request, formedURL string, outputEvent output.InternalEvent, response string, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
+	debugResponse := func(data string) {
+		// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
+		if request.options.Options.Debug || request.options.Options.DebugResponse {
+			gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
+			gologger.Print().Msgf("%s", data)
+		}
+	}
+
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+	if request.CompiledOperators != nil {
+
+		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			isMatch, matched := request.Match(data, matcher)
+			//var result = data["response"].(string)
+			var result = response
+
+			if len(matched) != 0 {
+				if !request.options.Options.NoColor {
+					colorizer := aurora.NewAurora(true)
+					for _, currentMatch := range matched {
+						result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+					}
+				}
+				debugResponse(result)
+			}
+
+			return isMatch, matched
+		}
+
+		result, ok := request.CompiledOperators.Execute(finalEvent, matcher, request.Extract)
+		if ok && result != nil {
+			event.OperatorsResult = result
+			event.OperatorsResult.PayloadValues = generatedRequest.meta
+			event.Results = request.MakeResultEvent(event)
+		}
+	} else {
+		debugResponse(response)
+	}
+	return event
 }
 
 // setCustomHeaders sets the custom headers for generated request
