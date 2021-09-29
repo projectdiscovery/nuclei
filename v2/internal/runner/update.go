@@ -49,6 +49,10 @@ var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // If the path exists but does not contain the latest version of public templates,
 // the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error {
+	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
+		return nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -72,9 +76,6 @@ func (r *Runner) updateTemplates() error {
 		r.templatesConfig = currentConfig
 	}
 
-	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
-		return nil
-	}
 	client.InitNucleiVersion(config.Version)
 	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
