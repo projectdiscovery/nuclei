@@ -100,7 +100,7 @@ func (r *Result) Merge(result *Result) {
 }
 
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
-type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
+type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string)
 
 // ExtractFunc performs extracting operation for an extractor on model and returns true or false.
 type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
@@ -138,21 +138,19 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 
 	for _, matcher := range r.Matchers {
 		// Check if the matcher matched
-		if !match(data, matcher) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				if len(result.DynamicValues) > 0 {
-					return result, true
-				}
-				return nil, false
-			}
-		} else {
+		if isMatch, _ := match(data, matcher); isMatch {
 			// If the matcher has matched, and it's an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
 				result.Matches[matcher.Name] = struct{}{}
 			}
+
 			matches = true
+		} else if matcherCondition == matchers.ANDCondition {
+			if len(result.DynamicValues) > 0 {
+				return result, true
+			}
+			return nil, false
 		}
 	}
 
@@ -162,7 +160,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		return result, true
 	}
 
-	// Don't print if we have matchers and they have not matched, regardless of extractor
+	// Don't print if we have matchers, and they have not matched, regardless of extractor
 	if len(r.Matchers) > 0 && !matches {
 		return nil, false
 	}

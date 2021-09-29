@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -187,11 +190,6 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 	}
 	responseBuilder.Write(final[:n])
 
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		responseOutput := responseBuilder.String()
-		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHex: %s", responseOutput, hex.EncodeToString([]byte(responseOutput)))
-	}
 	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), responseBuilder.String(), input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
@@ -206,14 +204,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if interactURL == "" {
-		if r.CompiledOperators != nil {
-			result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
-			if ok && result != nil {
-				event.OperatorsResult = result
-				event.OperatorsResult.PayloadValues = payloads
-				event.Results = r.MakeResultEvent(event)
-			}
-		}
+		event := createEvent(r, actualAddress, responseBuilder.String(), outputEvent, event, payloads)
 		callback(event)
 	} else if r.options.Interactsh != nil {
 		r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
@@ -225,6 +216,47 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		})
 	}
 	return nil
+}
+
+// TODO extract duplicated code
+func createEvent(request *Request, actualAddress string, response string, outputEvent output.InternalEvent, event *output.InternalWrappedEvent, payloads map[string]interface{}) *output.InternalWrappedEvent {
+	debugResponse := func(data string) {
+		if request.options.Options.Debug || request.options.Options.DebugResponse {
+			gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
+			gologger.Print().Msgf("%s\nHex: %s", response, hex.EncodeToString([]byte(response)))
+		}
+	}
+
+	if request.CompiledOperators != nil {
+
+		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			isMatch, matched := request.Match(data, matcher)
+			//var result = data["response"].(string)
+			var result = response
+
+			if len(matched) != 0 {
+				if !request.options.Options.NoColor {
+					colorizer := aurora.NewAurora(true)
+					for _, currentMatch := range matched {
+						result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+					}
+				}
+				debugResponse(result)
+			}
+
+			return isMatch, matched
+		}
+
+		result, ok := request.CompiledOperators.Execute(outputEvent, matcher, request.Extract)
+		if ok && result != nil {
+			event.OperatorsResult = result
+			event.OperatorsResult.PayloadValues = payloads
+			event.Results = request.MakeResultEvent(event)
+		}
+	} else {
+		debugResponse(response)
+	}
+	return event
 }
 
 // getAddress returns the address of the host to make request to

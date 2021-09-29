@@ -72,8 +72,9 @@ func TestFileOperatorMatch(t *testing.T) {
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid response")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, matcher.Words, matched)
 	})
 
 	t.Run("negative", func(t *testing.T) {
@@ -86,8 +87,9 @@ func TestFileOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile negative matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid negative response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid negative response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -99,8 +101,9 @@ func TestFileOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.False(t, matched, "could match invalid response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.False(t, isMatched, "could match invalid response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 }
 
