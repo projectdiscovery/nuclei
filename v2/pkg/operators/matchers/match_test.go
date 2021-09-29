@@ -9,24 +9,29 @@ import (
 func TestANDCondition(t *testing.T) {
 	m := &Matcher{condition: ANDCondition, Words: []string{"a", "b"}}
 
-	matched := m.MatchWords("a b", nil)
-	require.True(t, matched, "Could not match valid AND condition")
+	isMatched, matched := m.MatchWords("a b", nil)
+	require.True(t, isMatched, "Could not match valid AND condition")
+	require.Equal(t, m.Words, matched)
 
-	matched = m.MatchWords("b", nil)
-	require.False(t, matched, "Could match invalid AND condition")
+	isMatched, matched = m.MatchWords("b", nil)
+	require.False(t, isMatched, "Could match invalid AND condition")
+	require.Equal(t, []string{}, matched)
 }
 
 func TestORCondition(t *testing.T) {
 	m := &Matcher{condition: ORCondition, Words: []string{"a", "b"}}
 
-	matched := m.MatchWords("a b", nil)
-	require.True(t, matched, "Could not match valid OR condition")
+	isMatched, matched := m.MatchWords("a b", nil)
+	require.True(t, isMatched, "Could not match valid OR condition")
+	require.Equal(t, []string{"a"}, matched)
 
-	matched = m.MatchWords("b", nil)
-	require.True(t, matched, "Could not match valid OR condition")
+	isMatched, matched = m.MatchWords("b", nil)
+	require.True(t, isMatched, "Could not match valid OR condition")
+	require.Equal(t, []string{"b"}, matched)
 
-	matched = m.MatchWords("c", nil)
-	require.False(t, matched, "Could match invalid OR condition")
+	isMatched, matched = m.MatchWords("c", nil)
+	require.False(t, isMatched, "Could match invalid OR condition")
+	require.Equal(t, []string{}, matched)
 }
 
 func TestHexEncoding(t *testing.T) {
@@ -34,6 +39,7 @@ func TestHexEncoding(t *testing.T) {
 	err := m.CompileMatchers()
 	require.Nil(t, err, "could not compile matcher")
 
-	matched := m.MatchWords("PING", nil)
-	require.True(t, matched, "Could not match valid Hex condition")
+	isMatched, matched := m.MatchWords("PING", nil)
+	require.True(t, isMatched, "Could not match valid Hex condition")
+	require.Equal(t, m.Words, matched)
 }

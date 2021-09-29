@@ -5,8 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -62,19 +65,48 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 		outputEvent[k] = v
 	}
 
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Headless response for %s", r.options.TemplateID, input)
-		gologger.Print().Msgf("%s", respBody)
+	event := createEvent(r, input, respBody, outputEvent)
+
+	callback(event)
+	return nil
+}
+
+// TODO extract duplicated code
+func createEvent(request *Request, input string, response string, outputEvent output.InternalEvent) *output.InternalWrappedEvent {
+	debugResponse := func(data string) {
+		if request.options.Options.Debug || request.options.Options.DebugResponse {
+			gologger.Debug().Msgf("[%s] Dumped Headless response for %s", request.options.TemplateID, input)
+			gologger.Print().Msgf("%s", data)
+		}
 	}
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
+	if request.CompiledOperators != nil {
+
+		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			isMatch, matched := request.Match(data, matcher)
+			var result = response
+
+			if len(matched) != 0 {
+				if !request.options.Options.NoColor {
+					colorizer := aurora.NewAurora(true)
+					for _, currentMatch := range matched {
+						result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+					}
+				}
+				debugResponse(result)
+			}
+
+			return isMatch, matched
+		}
+
+		result, ok := request.CompiledOperators.Execute(outputEvent, matcher, request.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
-			event.Results = r.MakeResultEvent(event)
+			event.Results = request.MakeResultEvent(event)
 		}
+	} else {
+		debugResponse(response)
 	}
-	callback(event)
-	return nil
+	return event
 }
