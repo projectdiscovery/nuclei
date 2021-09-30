@@ -220,28 +220,18 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 
 // TODO extract duplicated code
 func createEvent(request *Request, actualAddress string, response string, outputEvent output.InternalEvent, event *output.InternalWrappedEvent, payloads map[string]interface{}) *output.InternalWrappedEvent {
-	debugResponse := func(data string) {
-		if request.options.Options.Debug || request.options.Options.DebugResponse {
-			gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
-			gologger.Print().Msgf("%s\nHex: %s", response, hex.EncodeToString([]byte(response)))
-		}
-	}
+	var responseToDump = response
 
 	if request.CompiledOperators != nil {
-
 		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 			isMatch, matched := request.Match(data, matcher)
-			//var result = data["response"].(string)
-			var result = response
-
 			if len(matched) != 0 {
 				if !request.options.Options.NoColor {
 					colorizer := aurora.NewAurora(true)
 					for _, currentMatch := range matched {
-						result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+						responseToDump = strings.ReplaceAll(responseToDump, currentMatch, colorizer.Green(currentMatch).String())
 					}
 				}
-				debugResponse(result)
 			}
 
 			return isMatch, matched
@@ -253,9 +243,13 @@ func createEvent(request *Request, actualAddress string, response string, output
 			event.OperatorsResult.PayloadValues = payloads
 			event.Results = request.MakeResultEvent(event)
 		}
-	} else {
-		debugResponse(response)
 	}
+
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
+		gologger.Print().Msgf("%s\nHex: %s", response, hex.EncodeToString([]byte(responseToDump)))
+	}
+
 	return event
 }
 

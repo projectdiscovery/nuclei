@@ -471,30 +471,19 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 // TODO extract duplicated code
 func createEvent(request *Request, formedURL string, outputEvent output.InternalEvent, response string, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
-	debugResponse := func(data string) {
-		// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-		if request.options.Options.Debug || request.options.Options.DebugResponse {
-			gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
-			gologger.Print().Msgf("%s", data)
-		}
-	}
-
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if request.CompiledOperators != nil {
+	var responseToDump = response
 
+	if request.CompiledOperators != nil {
 		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 			isMatch, matched := request.Match(data, matcher)
-			//var result = data["response"].(string)
-			var result = response
-
 			if len(matched) != 0 {
 				if !request.options.Options.NoColor {
 					colorizer := aurora.NewAurora(true)
 					for _, currentMatch := range matched {
-						result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+						responseToDump = strings.ReplaceAll(responseToDump, currentMatch, colorizer.Green(currentMatch).String())
 					}
 				}
-				debugResponse(result)
 			}
 
 			return isMatch, matched
@@ -506,9 +495,14 @@ func createEvent(request *Request, formedURL string, outputEvent output.Internal
 			event.OperatorsResult.PayloadValues = generatedRequest.meta
 			event.Results = request.MakeResultEvent(event)
 		}
-	} else {
-		debugResponse(response)
 	}
+
+	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
+		gologger.Print().Msgf("%s", responseToDump)
+	}
+
 	return event
 }
 
