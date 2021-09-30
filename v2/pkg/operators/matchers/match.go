@@ -81,6 +81,7 @@ func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}
 
 // MatchRegex matches a regex check against a corpus
 func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
+	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range m.regexCompiled {
 		// Continue if the regex doesn't match
@@ -94,14 +95,17 @@ func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 			continue
 		}
 
+		currentMatches := regex.FindAllString(corpus, -1)
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true, regex.FindAllString(corpus, -1)
+			return true, currentMatches
 		}
+
+		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
 		if len(m.regexCompiled)-1 == i {
-			return true, []string{corpus}
+			return true, matchedRegexes
 		}
 	}
 	return false, []string{}
@@ -109,6 +113,7 @@ func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 
 // MatchBinary matches a binary check against a corpus
 func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
+	var matchedBinary []string
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
@@ -128,9 +133,11 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 			return true, []string{string(hexa)}
 		}
 
+		matchedBinary = append(matchedBinary, string(hexa))
+
 		// If we are at the end of the words, return with true
 		if len(m.Binary)-1 == i {
-			return true, []string{string(hexa)}
+			return true, matchedBinary
 		}
 	}
 	return false, []string{}
