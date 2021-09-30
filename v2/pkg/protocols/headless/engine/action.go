@@ -46,7 +46,7 @@ const (
 	ActionWaitEvent
 	// ActionKeyboard performs a keyboard action event on a page.
 	ActionKeyboard
-	// Action debug slows down headless and adds a sleep to each page.
+	// ActionDebug debug slows down headless and adds a sleep to each page.
 	ActionDebug
 	// ActionSleep executes a sleep for a specified duration
 	ActionSleep

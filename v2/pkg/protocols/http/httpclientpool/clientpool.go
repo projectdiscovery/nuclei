@@ -36,7 +36,7 @@ var (
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
-	// Don't create clients if already created in past.
+	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
 	}
@@ -51,7 +51,7 @@ func Init(options *types.Options) error {
 	return nil
 }
 
-// // Configuration contains the custom configuration options for a connection
+// ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
 	DisableKeepAlive bool
@@ -89,7 +89,7 @@ func (c *Configuration) Hash() string {
 	return hash
 }
 
-// HasCustomOptions checks whether the configuration requires custom settings
+// HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
 	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil
 }

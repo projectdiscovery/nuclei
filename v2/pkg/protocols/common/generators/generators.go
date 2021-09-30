@@ -25,7 +25,7 @@ const (
 	ClusterBomb
 )
 
-// StringToType is an table for conversion of attack type from string.
+// StringToType is a table for conversion of attack type from string.
 var StringToType = map[string]Type{
 	"sniper":       Sniper,
 	"batteringram": BatteringRam,

@@ -25,7 +25,7 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.5.2-dev`
+const Version = `2.5.3-dev`
 
 func getConfigDetails() (string, error) {
 	homeDir, err := os.UserHomeDir()
@@ -52,8 +52,7 @@ func ReadConfiguration() (*Config, error) {
 	defer file.Close()
 
 	config := &Config{}
-	err = jsoniter.NewDecoder(file).Decode(config)
-	if err != nil {
+	if err := jsoniter.NewDecoder(file).Decode(config); err != nil {
 		return nil, err
 	}
 	return config, nil
