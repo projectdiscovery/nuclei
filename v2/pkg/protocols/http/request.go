@@ -12,16 +12,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -463,44 +462,25 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 	}
 
-	event := createEvent(r, formedURL, outputEvent, string(redirectedResponse), finalEvent, request)
+	event := createEvent(r, outputEvent, finalEvent, request)
+
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, string(redirectedResponse), r.options.Options.NoColor))
+	}
 
 	callback(event)
 	return nil
 }
 
-// TODO extract duplicated code
-func createEvent(request *Request, formedURL string, outputEvent output.InternalEvent, response string, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
+func createEvent(request *Request, outputEvent output.InternalEvent, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	var responseToDump = response
 
-	if request.CompiledOperators != nil {
-		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-			isMatch, matched := request.Match(data, matcher)
-			if len(matched) != 0 {
-				if !request.options.Options.NoColor {
-					colorizer := aurora.NewAurora(true)
-					for _, currentMatch := range matched {
-						responseToDump = strings.ReplaceAll(responseToDump, currentMatch, colorizer.Green(currentMatch).String())
-					}
-				}
-			}
-
-			return isMatch, matched
-		}
-
-		result, ok := request.CompiledOperators.Execute(finalEvent, matcher, request.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.OperatorsResult.PayloadValues = generatedRequest.meta
-			event.Results = request.MakeResultEvent(event)
-		}
-	}
-
-	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", responseToDump)
+	result, ok := request.CompiledOperators.Execute(finalEvent, request.Match, request.Extract)
+	if ok && result != nil {
+		event.OperatorsResult = result
+		event.OperatorsResult.PayloadValues = generatedRequest.meta
+		event.Results = request.MakeResultEvent(event)
 	}
 
 	return event

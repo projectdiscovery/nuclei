@@ -3,16 +3,14 @@ package file
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 )
 
@@ -58,7 +56,13 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 				outputEvent[k] = v
 			}
 
-			event := createEvent(r, filePath, dataStr, outputEvent)
+			event := createEvent(r, outputEvent)
+
+			if r.options.Options.Debug || r.options.Options.DebugResponse {
+				gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, filePath)
+				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, r.options.Options.NoColor))
+			}
+
 			callback(event)
 		}(data)
 	})
@@ -72,37 +76,15 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 	return nil
 }
 
-// TODO extract duplicated code
-func createEvent(request *Request, filePath string, response string, outputEvent output.InternalEvent) *output.InternalWrappedEvent {
+func createEvent(request *Request, outputEvent output.InternalEvent) *output.InternalWrappedEvent {
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	var responseToDump = response
 
 	if request.CompiledOperators != nil {
-		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-			isMatch, matched := request.Match(data, matcher)
-
-			if len(matched) != 0 {
-				if !request.options.Options.NoColor {
-					colorizer := aurora.NewAurora(true)
-					for _, currentMatch := range matched {
-						responseToDump = strings.ReplaceAll(responseToDump, currentMatch, colorizer.Green(currentMatch).String())
-					}
-				}
-			}
-
-			return isMatch, matched
-		}
-
-		result, ok := request.CompiledOperators.Execute(outputEvent, matcher, request.Extract)
+		result, ok := request.CompiledOperators.Execute(outputEvent, request.Match, request.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
 			event.Results = request.MakeResultEvent(event)
 		}
-	}
-
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped file request for %s", request.options.TemplateID, filePath)
-		gologger.Print().Msgf("%s", responseToDump)
 	}
 
 	return event

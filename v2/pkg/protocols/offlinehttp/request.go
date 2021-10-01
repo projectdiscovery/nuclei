@@ -11,6 +11,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
@@ -85,13 +86,7 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 			}
 
 			for _, operator := range r.compiledOperators {
-				event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-				var ok bool
-
-				event.OperatorsResult, ok = operator.Execute(outputEvent, r.Match, r.Extract)
-				if ok && event.OperatorsResult != nil {
-					event.Results = r.MakeResultEvent(event)
-				}
+				event := createEvent(outputEvent, operator, r)
 				callback(event)
 			}
 		}(data)
@@ -104,6 +99,18 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 	}
 	r.options.Progress.IncrementRequests()
 	return nil
+}
+
+func createEvent(outputEvent map[string]interface{}, operator *operators.Operators, r *Request) *output.InternalWrappedEvent {
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+
+	result, ok := operator.Execute(outputEvent, r.Match, r.Extract)
+	if ok && event.OperatorsResult != nil {
+		event.OperatorsResult = result
+		event.Results = r.MakeResultEvent(event)
+	}
+
+	return event
 }
 
 // headersToString converts http headers to string

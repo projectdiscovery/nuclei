@@ -64,7 +64,7 @@ type Result struct {
 	// Extracted is true if any result type values were extracted
 	Extracted bool
 	// Matches is a map of matcher names that we matched
-	Matches map[string]struct{}
+	Matches map[string][]string
 	// Extracts contains all the data extracted from inputs
 	Extracts map[string][]string
 	// OutputExtracts is the list of extracts to be displayed on screen.
@@ -111,7 +111,7 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 
 	var matches bool
 	result := &Result{
-		Matches:       make(map[string]struct{}),
+		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string]interface{}),
 	}
@@ -138,11 +138,11 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 
 	for _, matcher := range r.Matchers {
 		// Check if the matcher matched
-		if isMatch, _ := match(data, matcher); isMatch {
+		if isMatch, matched := match(data, matcher); isMatch {
 			// If the matcher has matched, and it's an OR
 			// write the first output then move to next matcher.
 			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
-				result.Matches[matcher.Name] = struct{}{}
+				result.Matches[matcher.Name] = matched
 			}
 
 			matches = true
