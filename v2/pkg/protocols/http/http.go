@@ -170,21 +170,21 @@ type Request struct {
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         r.Threads,
-		MaxRedirects:    r.MaxRedirects,
-		FollowRedirects: r.Redirects,
-		CookieReuse:     r.CookieReuse,
+		Threads:         request.Threads,
+		MaxRedirects:    request.MaxRedirects,
+		FollowRedirects: request.Redirects,
+		CookieReuse:     request.CookieReuse,
 	}
 
 	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
-	if _, hasConnectionHeader := r.Headers["Connection"]; hasConnectionHeader {
+	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
 		connectionConfiguration.Connection = &httpclientpool.ConnectionConfiguration{DisableKeepAlive: false}
 	}
 
@@ -192,76 +192,76 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
-	r.customHeaders = make(map[string]string)
-	r.httpClient = client
-	r.options = options
-	for _, option := range r.options.Options.CustomHeaders {
+	request.customHeaders = make(map[string]string)
+	request.httpClient = client
+	request.options = options
+	for _, option := range request.options.Options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
+		request.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
-	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
-		r.Body = strings.ReplaceAll(r.Body, "\n", "\r\n")
+	if request.Body != "" && !strings.Contains(request.Body, "\r\n") {
+		request.Body = strings.ReplaceAll(request.Body, "\n", "\r\n")
 	}
-	if len(r.Raw) > 0 {
-		for i, raw := range r.Raw {
+	if len(request.Raw) > 0 {
+		for i, raw := range request.Raw {
 			if !strings.Contains(raw, "\r\n") {
-				r.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
+				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		r.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
 	}
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
 
-	if len(r.Payloads) > 0 {
-		attackType := r.AttackType
+	if len(request.Payloads) > 0 {
+		attackType := request.AttackType
 		if attackType == "" {
 			attackType = "sniper"
 		}
-		r.attackType = generators.StringToType[attackType]
+		request.attackType = generators.StringToType[attackType]
 
 		// Resolve payload paths if they are files.
-		for name, payload := range r.Payloads {
+		for name, payload := range request.Payloads {
 			payloadStr, ok := payload.(string)
 			if ok {
 				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
 				if resolveErr != nil {
 					return errors.Wrap(resolveErr, "could not read payload file")
 				}
-				r.Payloads[name] = final
+				request.Payloads[name] = final
 			}
 		}
-		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 	}
-	r.options = options
-	r.totalRequests = r.Requests()
+	request.options = options
+	request.totalRequests = request.Requests()
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
-	if r.generator != nil {
-		payloadRequests := r.generator.NewIterator().Total() * len(r.Raw)
+func (request *Request) Requests() int {
+	if request.generator != nil {
+		payloadRequests := request.generator.NewIterator().Total() * len(request.Raw)
 		return payloadRequests
 	}
-	if len(r.Raw) > 0 {
-		requests := len(r.Raw)
-		if requests == 1 && r.RaceNumberRequests != 0 {
-			requests *= r.RaceNumberRequests
+	if len(request.Raw) > 0 {
+		requests := len(request.Raw)
+		if requests == 1 && request.RaceNumberRequests != 0 {
+			requests *= request.RaceNumberRequests
 		}
 		return requests
 	}
-	return len(r.Path)
+	return len(request.Path)
 }

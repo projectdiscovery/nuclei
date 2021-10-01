@@ -11,7 +11,7 @@ import (
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	partString := matcher.Part
 	switch partString {
 	case "body", "all", "":
@@ -28,7 +28,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, r.dynamicValues))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, request.dynamicValues))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
@@ -40,7 +40,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	partString := extractor.Part
 	switch partString {
 	case "body", "all", "":
@@ -63,7 +63,7 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(req, resp, raw, host, matched string) output.InternalEvent {
+func (request *Request) responseToDSLMap(req, resp, raw, host, matched string) output.InternalEvent {
 	data := make(output.InternalEvent, 6)
 
 	// Some data regarding the request metadata
@@ -72,14 +72,14 @@ func (r *Request) responseToDSLMap(req, resp, raw, host, matched string) output.
 	data["request"] = req
 	data["data"] = resp // Data is the last bytes read
 	data["raw"] = raw   // Raw is the full transaction data for network
-	data["template-id"] = r.options.TemplateID
-	data["template-info"] = r.options.TemplateInfo
-	data["template-path"] = r.options.TemplatePath
+	data["template-id"] = request.options.TemplateID
+	data["template-info"] = request.options.TemplateInfo
+	data["template-path"] = request.options.TemplatePath
 	return data
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
-func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
 	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
 		return nil
 	}
@@ -88,25 +88,25 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 	// If we have multiple matchers with names, write each of them separately.
 	if len(wrapped.OperatorsResult.Matches) > 0 {
 		for k := range wrapped.OperatorsResult.Matches {
-			data := r.makeResultEventItem(wrapped)
+			data := request.makeResultEventItem(wrapped)
 			data.MatcherName = k
 			results = append(results, data)
 		}
 	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
 		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := r.makeResultEventItem(wrapped)
+			data := request.makeResultEventItem(wrapped)
 			data.ExtractedResults = v
 			data.ExtractorName = k
 			results = append(results, data)
 		}
 	} else {
-		data := r.makeResultEventItem(wrapped)
+		data := request.makeResultEventItem(wrapped)
 		results = append(results, data)
 	}
 	return results
 }
 
-func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (request *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),

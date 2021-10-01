@@ -75,42 +75,42 @@ type Request struct {
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	// Create a dns client for the class
 	client, err := dnsclientpool.Get(options.Options, &dnsclientpool.Configuration{
-		Retries: r.Retries,
+		Retries: request.Retries,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
-	r.dnsClient = client
+	request.dnsClient = client
 
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
-	r.class = classToInt(r.Class)
-	r.options = options
-	r.question = questionTypeToInt(r.Type)
+	request.class = classToInt(request.Class)
+	request.options = options
+	request.question = questionTypeToInt(request.Type)
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
+func (request *Request) Requests() int {
 	return 1
 }
 
 // Make returns the request to be sent for the protocol
-func (r *Request) Make(domain string) (*dns.Msg, error) {
-	if r.question != dns.TypePTR && net.ParseIP(domain) != nil {
+func (request *Request) Make(domain string) (*dns.Msg, error) {
+	if request.question != dns.TypePTR && net.ParseIP(domain) != nil {
 		return nil, errors.New("cannot use IP address as DNS input")
 	}
 	domain = dns.Fqdn(domain)
@@ -118,20 +118,20 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
-	req.RecursionDesired = r.Recursion
+	req.RecursionDesired = request.Recursion
 
 	var q dns.Question
 
-	final := replacer.Replace(r.Name, map[string]interface{}{"FQDN": domain})
+	final := replacer.Replace(request.Name, map[string]interface{}{"FQDN": domain})
 
 	q.Name = dns.Fqdn(final)
-	q.Qclass = r.class
-	q.Qtype = r.question
+	q.Qclass = request.class
+	q.Qtype = request.question
 	req.Question = append(req.Question, q)
 
 	req.SetEdns0(4096, false)
 
-	switch r.question {
+	switch request.question {
 	case dns.TypeTXT:
 		req.AuthenticatedData = true
 	}
