@@ -74,6 +74,10 @@ type Request struct {
 	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 }
 
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{request.CompiledOperators}
+}
+
 // GetID returns the unique ID of the request if any.
 func (request *Request) GetID() string {
 	return request.ID

@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 )
 
@@ -55,7 +56,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		outputEvent[k] = v
 	}
 
-	event := createEvent(request, outputEvent)
+	event := eventcreator.CreateEvent(request, outputEvent)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", request.options.TemplateID, domain)
@@ -64,20 +65,6 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 	callback(event)
 	return nil
-}
-
-func createEvent(request *Request, outputEvent output.InternalEvent) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-
-	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(outputEvent, request.Match, request.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.Results = request.MakeResultEvent(event)
-		}
-	}
-
-	return event
 }
 
 // isURL tests a string to determine if it is a well-structured url or not.
