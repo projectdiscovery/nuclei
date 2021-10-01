@@ -114,17 +114,17 @@ type Input struct {
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	var shouldUseTLS bool
 	var err error
 
-	r.options = options
-	for _, address := range r.Address {
+	request.options = options
+	for _, address := range request.Address {
 		// check if the connection should be encrypted
 		if strings.HasPrefix(address, "tls://") {
 			shouldUseTLS = true
@@ -135,13 +135,13 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			if portErr != nil {
 				return errors.Wrap(portErr, "could not parse address")
 			}
-			r.addresses = append(r.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
+			request.addresses = append(request.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
 		} else {
-			r.addresses = append(r.addresses, addressKV{ip: address, tls: shouldUseTLS})
+			request.addresses = append(request.addresses, addressKV{ip: address, tls: shouldUseTLS})
 		}
 	}
 	// Pre-compile any input dsl functions before executing the request.
-	for _, input := range r.Inputs {
+	for _, input := range request.Inputs {
 		if input.Type != "" {
 			continue
 		}
@@ -150,25 +150,25 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 
-	if len(r.Payloads) > 0 {
-		attackType := r.AttackType
+	if len(request.Payloads) > 0 {
+		attackType := request.AttackType
 		if attackType == "" {
 			attackType = "sniper"
 		}
-		r.attackType = generators.StringToType[attackType]
+		request.attackType = generators.StringToType[attackType]
 
 		// Resolve payload paths if they are files.
-		for name, payload := range r.Payloads {
+		for name, payload := range request.Payloads {
 			payloadStr, ok := payload.(string)
 			if ok {
 				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
 				if resolveErr != nil {
 					return errors.Wrap(resolveErr, "could not read payload file")
 				}
-				r.Payloads[name] = final
+				request.Payloads[name] = final
 			}
 		}
-		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -179,19 +179,19 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
-	r.dialer = client
+	request.dialer = client
 
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
-	return len(r.Address)
+func (request *Request) Requests() int {
+	return len(request.Address)
 }

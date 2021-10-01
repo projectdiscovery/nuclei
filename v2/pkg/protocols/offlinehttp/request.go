@@ -22,10 +22,10 @@ var _ protocols.Request = &Request{}
 const maxSize = 5 * 1024 * 1024
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(r.options.Options.BulkSize)
+func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 
-	err := r.getInputPaths(input, func(data string) {
+	err := request.getInputPaths(input, func(data string) {
 		wg.Add()
 
 		go func(data string) {
@@ -61,11 +61,11 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 				return
 			}
 
-			if r.options.Options.Debug || r.options.Options.DebugRequests {
-				gologger.Info().Msgf("[%s] Dumped offline-http request for %s", r.options.TemplateID, data)
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
 				gologger.Print().Msgf("%s", dataStr)
 			}
-			gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", r.options.TemplateID, data)
+			gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
 
 			dumpedResponse, err := httputil.DumpResponse(resp, true)
 			if err != nil {
@@ -79,25 +79,25 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 				return
 			}
 
-			outputEvent := r.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), headersToString(resp.Header), 0, nil)
+			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), headersToString(resp.Header), 0, nil)
 			outputEvent["ip"] = ""
 			for k, v := range previous {
 				outputEvent[k] = v
 			}
 
-			for _, operator := range r.compiledOperators {
-				event := createEvent(outputEvent, operator, r)
+			for _, operator := range request.compiledOperators {
+				event := createEvent(outputEvent, operator, request)
 				callback(event)
 			}
 		}(data)
 	})
 	wg.Wait()
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, input, "file", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
+		request.options.Output.Request(request.options.TemplateID, input, "file", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
-	r.options.Progress.IncrementRequests()
+	request.options.Progress.IncrementRequests()
 	return nil
 }
 
