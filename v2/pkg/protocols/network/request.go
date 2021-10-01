@@ -9,15 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
@@ -190,7 +189,8 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 	}
 	responseBuilder.Write(final[:n])
 
-	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), responseBuilder.String(), input, actualAddress)
+	response := responseBuilder.String()
+	outputEvent := r.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
 	outputEvent["ip"] = r.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
 		outputEvent[k] = v
@@ -204,7 +204,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	if interactURL == "" {
-		event := createEvent(r, actualAddress, responseBuilder.String(), outputEvent, event, payloads)
+		event := createEvent(r, outputEvent, event, payloads)
 		callback(event)
 	} else if r.options.Interactsh != nil {
 		r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
@@ -215,39 +215,23 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 			ExtractFunc:    r.Extract,
 		})
 	}
+
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		gologger.Debug().Msgf("[%s] Dumped Network response for %s", r.options.TemplateID, actualAddress)
+		gologger.Print().Msgf("%s\nHex: %s", response, responsehighlighter.Highlight(event.OperatorsResult, hex.EncodeToString([]byte(response)), r.options.Options.NoColor))
+	}
+
 	return nil
 }
 
-// TODO extract duplicated code
-func createEvent(request *Request, actualAddress string, response string, outputEvent output.InternalEvent, event *output.InternalWrappedEvent, payloads map[string]interface{}) *output.InternalWrappedEvent {
-	var responseToDump = response
-
+func createEvent(request *Request, outputEvent output.InternalEvent, event *output.InternalWrappedEvent, payloads map[string]interface{}) *output.InternalWrappedEvent {
 	if request.CompiledOperators != nil {
-		matcher := func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-			isMatch, matched := request.Match(data, matcher)
-			if len(matched) != 0 {
-				if !request.options.Options.NoColor {
-					colorizer := aurora.NewAurora(true)
-					for _, currentMatch := range matched {
-						responseToDump = strings.ReplaceAll(responseToDump, currentMatch, colorizer.Green(currentMatch).String())
-					}
-				}
-			}
-
-			return isMatch, matched
-		}
-
-		result, ok := request.CompiledOperators.Execute(outputEvent, matcher, request.Extract)
+		result, ok := request.CompiledOperators.Execute(outputEvent, request.Match, request.Extract)
 		if ok && result != nil {
 			event.OperatorsResult = result
 			event.OperatorsResult.PayloadValues = payloads
 			event.Results = request.MakeResultEvent(event)
 		}
-	}
-
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHex: %s", response, hex.EncodeToString([]byte(responseToDump)))
 	}
 
 	return event

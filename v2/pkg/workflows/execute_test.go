@@ -3,12 +3,13 @@ package workflows
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWorkflowsSimple(t *testing.T) {
@@ -106,7 +107,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 				firstInput = input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
-					Matches:  map[string]struct{}{"tomcat": {}},
+					Matches:  map[string][]string{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
@@ -134,7 +135,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 				firstInput = input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
-					Matches:  map[string]struct{}{"tomcat": {}},
+					Matches:  map[string][]string{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
