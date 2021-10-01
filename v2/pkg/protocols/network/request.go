@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -202,11 +203,14 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		outputEvent[k] = v
 	}
 
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+	var event *output.InternalWrappedEvent
 	if interactURL == "" {
-		event := createEvent(request, outputEvent, event, payloads)
+		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, func(wrappedEvent *output.InternalWrappedEvent) {
+			wrappedEvent.OperatorsResult.PayloadValues = payloads
+		})
 		callback(event)
 	} else if request.options.Interactsh != nil {
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
 		request.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
@@ -222,19 +226,6 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	}
 
 	return nil
-}
-
-func createEvent(request *Request, outputEvent output.InternalEvent, event *output.InternalWrappedEvent, payloads map[string]interface{}) *output.InternalWrappedEvent {
-	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(outputEvent, request.Match, request.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.OperatorsResult.PayloadValues = payloads
-			event.Results = request.MakeResultEvent(event)
-		}
-	}
-
-	return event
 }
 
 // getAddress returns the address of the host to make request to
