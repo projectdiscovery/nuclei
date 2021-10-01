@@ -32,7 +32,7 @@ func (h *networkBasic) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ type dnsBasic struct{}
 func (h *dnsBasic) Execute(filePath string) error {
 	var routerErr error
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, "one.one.one.one", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "one.one.one.one", debug)
 	if err != nil {
 		return err
 	}
