@@ -476,11 +476,13 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 func createEvent(request *Request, outputEvent output.InternalEvent, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 
-	result, ok := request.CompiledOperators.Execute(finalEvent, request.Match, request.Extract)
-	if ok && result != nil {
-		event.OperatorsResult = result
-		event.OperatorsResult.PayloadValues = generatedRequest.meta
-		event.Results = request.MakeResultEvent(event)
+	if request.CompiledOperators != nil {
+		result, ok := request.CompiledOperators.Execute(finalEvent, request.Match, request.Extract)
+		if ok && result != nil {
+			event.OperatorsResult = result
+			event.OperatorsResult.PayloadValues = generatedRequest.meta
+			event.Results = request.MakeResultEvent(event)
+		}
 	}
 
 	return event

@@ -101,13 +101,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	return nil
 }
 
-func createEvent(outputEvent map[string]interface{}, operator *operators.Operators, r *Request) *output.InternalWrappedEvent {
+func createEvent(outputEvent map[string]interface{}, operator *operators.Operators, request *Request) *output.InternalWrappedEvent {
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 
-	result, ok := operator.Execute(outputEvent, r.Match, r.Extract)
-	if ok && event.OperatorsResult != nil {
-		event.OperatorsResult = result
-		event.Results = r.MakeResultEvent(event)
+	if request.compiledOperators != nil {
+		result, ok := operator.Execute(outputEvent, request.Match, request.Extract)
+		if ok && event.OperatorsResult != nil {
+			event.OperatorsResult = result
+			event.Results = request.MakeResultEvent(event)
+		}
 	}
 
 	return event
