@@ -17,10 +17,10 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(r.options.Options.BulkSize)
+func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 
-	err := r.getInputPaths(input, func(data string) {
+	err := request.getInputPaths(input, func(data string) {
 		wg.Add()
 
 		go func(filePath string) {
@@ -38,7 +38,7 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 				gologger.Error().Msgf("Could not stat file path %s: %s\n", filePath, err)
 				return
 			}
-			if stat.Size() >= int64(r.MaxSize) {
+			if stat.Size() >= int64(request.MaxSize) {
 				gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", filePath)
 				return
 			}
@@ -50,17 +50,17 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 			}
 			dataStr := tostring.UnsafeToString(buffer)
 
-			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", r.options.TemplateID, filePath)
-			outputEvent := r.responseToDSLMap(dataStr, input, filePath)
+			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", request.options.TemplateID, filePath)
+			outputEvent := request.responseToDSLMap(dataStr, input, filePath)
 			for k, v := range previous {
 				outputEvent[k] = v
 			}
 
-			event := createEvent(r, outputEvent)
+			event := createEvent(request, outputEvent)
 
-			if r.options.Options.Debug || r.options.Options.DebugResponse {
-				gologger.Info().Msgf("[%s] Dumped file request for %s", r.options.TemplateID, filePath)
-				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, r.options.Options.NoColor))
+			if request.options.Options.Debug || request.options.Options.DebugResponse {
+				gologger.Info().Msgf("[%s] Dumped file request for %s", request.options.TemplateID, filePath)
+				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, request.options.Options.NoColor))
 			}
 
 			callback(event)
@@ -68,11 +68,11 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 	})
 	wg.Wait()
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, input, "file", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
+		request.options.Output.Request(request.options.TemplateID, input, "file", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
-	r.options.Progress.IncrementRequests()
+	request.options.Progress.IncrementRequests()
 	return nil
 }
 
