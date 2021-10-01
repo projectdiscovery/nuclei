@@ -82,6 +82,10 @@ type Request interface {
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
+	// MakeResultEvent creates a result event from internal wrapped event
+	MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
+	// GetCompiledOperators returns a list of the compiled operators
+	GetCompiledOperators() []*operators.Operators
 }
 
 // OutputEventCallback is a callback event for any results found during scanning.

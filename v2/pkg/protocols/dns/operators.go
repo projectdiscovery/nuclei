@@ -27,7 +27,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	}
 
 	switch matcher.GetType() {
-	case matchers.StatusMatcher: // TODO is this correct?
+	case matchers.StatusMatcher:
 		return matcher.Result(matcher.MatchStatusCode(item.(int))), []string{}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(types.ToString(item)))), []string{}

@@ -11,9 +11,9 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 )
 
@@ -85,10 +85,8 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				outputEvent[k] = v
 			}
 
-			for _, operator := range request.compiledOperators {
-				event := createEvent(outputEvent, operator, request)
-				callback(event)
-			}
+			event := eventcreator.CreateEvent(request, outputEvent)
+			callback(event)
 		}(data)
 	})
 	wg.Wait()
@@ -99,20 +97,6 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	}
 	request.options.Progress.IncrementRequests()
 	return nil
-}
-
-func createEvent(outputEvent map[string]interface{}, operator *operators.Operators, request *Request) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-
-	if request.compiledOperators != nil {
-		result, ok := operator.Execute(outputEvent, request.Match, request.Extract)
-		if ok && event.OperatorsResult != nil {
-			event.OperatorsResult = result
-			event.Results = request.MakeResultEvent(event)
-		}
-	}
-
-	return event
 }
 
 // headersToString converts http headers to string

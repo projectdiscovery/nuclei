@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -103,6 +104,10 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 		results = append(results, data)
 	}
 	return results
+}
+
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{request.CompiledOperators}
 }
 
 func (request *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {

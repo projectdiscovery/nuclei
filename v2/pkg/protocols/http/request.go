@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
@@ -263,7 +264,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previous output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
+func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	request.setCustomHeaders(generatedRequest)
 
 	var (
@@ -447,7 +448,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
-	for k, v := range previous {
+	for k, v := range previousEvent {
 		finalEvent[k] = v
 	}
 	for k, v := range outputEvent {
@@ -457,12 +458,14 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	if request.ReqCondition {
 		for k, v := range outputEvent {
 			key := fmt.Sprintf("%s_%d", k, requestCount)
-			previous[key] = v
+			previousEvent[key] = v
 			finalEvent[key] = v
 		}
 	}
 
-	event := createEvent(request, outputEvent, finalEvent, generatedRequest)
+	event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+	})
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
@@ -471,21 +474,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 	callback(event)
 	return nil
-}
-
-func createEvent(request *Request, outputEvent output.InternalEvent, finalEvent output.InternalEvent, generatedRequest *generatedRequest) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-
-	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(finalEvent, request.Match, request.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.OperatorsResult.PayloadValues = generatedRequest.meta
-			event.Results = request.MakeResultEvent(event)
-		}
-	}
-
-	return event
 }
 
 // setCustomHeaders sets the custom headers for generated request
