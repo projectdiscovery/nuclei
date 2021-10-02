@@ -2,7 +2,10 @@ package offlinehttp
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/http/httputil"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -149,4 +152,26 @@ Server: Google Frontend
 			require.Equal(t, "Google Frontend", resp.Header.Get("Server"), "could not get correct headers")
 		})
 	}
+
+	t.Run("test-live-response-with-content-length", func(t *testing.T) {
+		client := &http.Client{
+			Timeout: 3 * time.Second,
+		}
+
+		data, err := client.Get("https://golang.org/doc/install")
+		require.Nil(t, err, "could not dial url")
+		defer data.Body.Close()
+
+		b, err := httputil.DumpResponse(data, true)
+		require.Nil(t, err, "could not dump response")
+
+		respData, err := readResponseFromString(string(b))
+		require.Nil(t, err, "could not read response from string")
+
+		_, err = ioutil.ReadAll(respData.Body)
+		require.Nil(t, err, "could not read response body")
+
+		require.Equal(t, "Google Frontend", respData.Header.Get("Server"), "could not get correct headers")
+
+	})
 }
