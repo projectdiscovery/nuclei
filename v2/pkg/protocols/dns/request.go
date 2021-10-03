@@ -12,7 +12,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
@@ -71,8 +71,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 
 // isURL tests a string to determine if it is a well-structured url or not.
 func isURL(toTest string) bool {
-	_, err := url.ParseRequestURI(toTest)
-	if err != nil {
+	if _, err := url.ParseRequestURI(toTest); err != nil {
 		return false
 	}
 	u, err := url.Parse(toTest)

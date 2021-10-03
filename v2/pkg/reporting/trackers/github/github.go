@@ -2,17 +2,19 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 )
 
-// Integration is a client for a issue tracker integration
+// Integration is a client for an issue tracker integration
 type Integration struct {
 	client  *github.Client
 	options *Options
@@ -57,11 +59,12 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
 
 	req := &github.IssueRequest{
 		Title:     &summary,
 		Body:      &description,
-		Labels:    &[]string{i.options.IssueLabel},
+		Labels:    &[]string{i.options.IssueLabel, severityLabel},
 		Assignees: &[]string{i.options.Username},
 	}
 	_, _, err := i.client.Issues.Create(context.Background(), i.options.Owner, i.options.ProjectName, req)
