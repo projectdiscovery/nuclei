@@ -33,7 +33,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item)))
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(item))
+		return matcher.Result(matcher.MatchWords(item, r.dynamicValues))
 	case matchers.RegexMatcher:
 		return matcher.Result(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:

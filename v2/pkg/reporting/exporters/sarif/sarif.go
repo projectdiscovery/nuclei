@@ -33,7 +33,7 @@ type Options struct {
 	File string `yaml:"file"`
 }
 
-// New creates a new disk exporter integration client based on options.
+// New creates a new sarif exporter integration client based on options.
 func New(options *Options) (*Exporter, error) {
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
