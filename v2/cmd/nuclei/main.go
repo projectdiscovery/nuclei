@@ -89,7 +89,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoTimestamp, "no-timestamp", "nts", false, "don't display timestamp metadata in CLI output"),
 		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "local nuclei reporting database (always use this to persist report data)"),
 
-		flagSet.StringVarP(&options.DiskExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
+		flagSet.StringVarP(&options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 	)
 
@@ -109,7 +109,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "interactsh", "interactsh",
 		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "disable interactsh server for OOB testing"),
-		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "interactsh server url for self-hosted instance"),
+		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interactsh.com", "interactsh server url for self-hosted instance"),
 		flagSet.StringVar(&options.InteractshToken, "interactsh-token", "", "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
@@ -189,3 +189,10 @@ func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags 
 		currentFlag.Group(groupName)
 	}
 }
+
+/*
+HacktoberFest update: Below, you can find our ticket recommendations. Tasks with the "good first issue" label are suitable for first time contributors. If you have other ideas, or need help with getting started, join our Discord channel or reach out to @forgedhallpass.
+
+https://github.com/issues?q=is%3Aopen+is%3Aissue+user%3Aprojectdiscovery+label%3AHacktoberfest
+
+*/
