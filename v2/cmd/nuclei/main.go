@@ -139,6 +139,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support"),
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVar(&options.ShowBrowser, "show-browser", false, "show the browser on the screen when running templates with headless mode"),
+		flagSet.BoolVar(&options.UseInstalledChrome, "system-chrome", false, "Use local installed chrome browser instead of nuclei installed"),
 	)
 
 	createGroup(flagSet, "debug", "Debug",
