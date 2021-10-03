@@ -348,7 +348,7 @@ Examples:
 
 
 ```yaml
-description: Bower is a package manager which stores packages informations in bower.json file
+description: Bower is a package manager which stores package information in the bower.json file
 ```
 
 ```yaml
@@ -415,12 +415,12 @@ Valid values:
 
 <div class="dd">
 
-<code>additional-fields</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]string</i>
 
 </div>
 <div class="dt">
 
-AdditionalFields regarding metadata of the template.
+Metadata of the template.
 
 
 
@@ -428,7 +428,7 @@ Examples:
 
 
 ```yaml
-additional-fields:
+metadata:
     customField1: customValue1
 ```
 
@@ -679,7 +679,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -792,7 +792,7 @@ raw:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -981,7 +981,7 @@ Examples:
 
 
 ```yaml
-# Follow upto 5 redirects
+# Follow up to 5 redirects
 max-redirects: 5
 ```
 
@@ -1127,7 +1127,7 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 
-All requests must be indempotent (GET/POST). This can be used for race conditions/billions requests.
+All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
 
 </div>
 
@@ -1668,7 +1668,7 @@ group: 1
 description: |
    kval contains the key-value pairs present in the HTTP response header.
    kval extractor can be used to extract HTTP response header and cookie key-value pairs.
-   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)
+   kval extractor inputs are case-insensitive, and does not support dash (-) in input which can replaced with underscores (_)
  	 For example, Content-Type should be replaced with content_type
 
    A list of supported parts is available in docs for request types.
@@ -1846,7 +1846,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -1894,7 +1894,7 @@ Valid values:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2061,7 +2061,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2164,7 +2164,7 @@ denylist:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2179,7 +2179,7 @@ ID is the the optional id of the request
 
 MaxSize is the maximum size of the file to run request on.
 
-By default, nuclei will process 5MB files and not go more than that.
+By default, nuclei will process 5 MB files and not go more than that.
 It can be set to much lower or higher depending on use.
 
 
@@ -2244,7 +2244,7 @@ matchers:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2368,7 +2368,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2484,7 +2484,7 @@ Valid values:
 
 Read is the number of bytes to read from socket.
 
-This can be used for protcols which expected an immediate response. You can
+This can be used for protocols which expect an immediate response. You can
 read and write responses one after another and evetually perform matching
 on every data captured with `name` attribute.
 
@@ -2550,7 +2550,7 @@ Appears in:
 </div>
 <div class="dt">
 
-ID is the the optional id of the request
+ID is the optional id of the request
 
 </div>
 
@@ -2580,7 +2580,7 @@ Matchers contains the detection mechanism for the request to identify
 whether the request was successful by doing pattern matching
 on request/responses.
 
-Multiple matchers can be combined together with `matcher-condition` flag
+Multiple matchers can be combined with `matcher-condition` flag
 which accepts either `and` or `or` as argument.
 
 </div>
@@ -2825,7 +2825,7 @@ Matchers perform name based matching to run subtemplates for a workflow.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the `template` field Template matches.
+Subtemplates are run if the `template` field Template matches.
 
 </div>
 
@@ -2866,7 +2866,7 @@ Name is the name of the item to match.
 </div>
 <div class="dt">
 
-Subtemplates are ran if the name of matcher matches.
+Subtemplates are run if the name of matcher matches.
 
 </div>
 

@@ -28,7 +28,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr)))
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(itemStr))
+		return matcher.Result(matcher.MatchWords(itemStr, nil))
 	case matchers.RegexMatcher:
 		return matcher.Result(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
@@ -39,7 +39,7 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 	return false
 }
 
-// Extract performs extracting operation for a extractor on model and returns true or false.
+// Extract performs extracting operation for an extractor on model and returns true or false.
 func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	partString := extractor.Part
 	switch partString {

@@ -84,7 +84,7 @@ type requestRule struct {
 }
 
 // ActionAddHeader executes a AddHeader action.
-func (p *Page) ActionAddHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionAddHeader(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	in := act.GetArg("part")
 
 	args := make(map[string]string)
@@ -100,7 +100,7 @@ func (p *Page) ActionAddHeader(act *Action, out map[string]string) error {
 }
 
 // ActionSetHeader executes a SetHeader action.
-func (p *Page) ActionSetHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionSetHeader(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	in := act.GetArg("part")
 
 	args := make(map[string]string)
@@ -116,7 +116,7 @@ func (p *Page) ActionSetHeader(act *Action, out map[string]string) error {
 }
 
 // ActionDeleteHeader executes a DeleteHeader action.
-func (p *Page) ActionDeleteHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionDeleteHeader(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	in := act.GetArg("part")
 
 	args := make(map[string]string)
@@ -131,7 +131,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out map[string]string) error {
 }
 
 // ActionSetBody executes a SetBody action.
-func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
+func (p *Page) ActionSetBody(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	in := act.GetArg("part")
 
 	args := make(map[string]string)
@@ -146,7 +146,7 @@ func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
 }
 
 // ActionSetMethod executes an SetMethod action.
-func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
+func (p *Page) ActionSetMethod(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	in := act.GetArg("part")
 
 	args := make(map[string]string)
@@ -161,7 +161,7 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL) error {
+func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL /*TODO review unused parameter*/) error {
 	URL := action.GetArg("url")
 	if URL == "" {
 		return errors.New("invalid arguments provided")
@@ -176,8 +176,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.UR
 	values["BaseURL"] = parsedString
 
 	final := fasttemplate.ExecuteStringStd(URL, "{{", "}}", values)
-	err := p.page.Navigate(final)
-	if err != nil {
+	if err := p.page.Navigate(final); err != nil {
 		return errors.Wrap(err, "could not navigate")
 	}
 	return nil
@@ -205,7 +204,7 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 }
 
 // ClickElement executes click actions for an element.
-func (p *Page) ClickElement(act *Action, out map[string]string) error {
+func (p *Page) ClickElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, "could not get element")
@@ -220,12 +219,12 @@ func (p *Page) ClickElement(act *Action, out map[string]string) error {
 }
 
 // KeyboardAction executes a keyboard action on the page.
-func (p *Page) KeyboardAction(act *Action, out map[string]string) error {
+func (p *Page) KeyboardAction(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	return p.page.Keyboard.Press([]rune(act.GetArg("keys"))...)
 }
 
 // RightClickElement executes right click actions for an element.
-func (p *Page) RightClickElement(act *Action, out map[string]string) error {
+func (p *Page) RightClickElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, "could not get element")
@@ -266,7 +265,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 }
 
 // InputElement executes input element actions for an element.
-func (p *Page) InputElement(act *Action, out map[string]string) error {
+func (p *Page) InputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := act.GetArg("value")
 	if value == "" {
 		return errors.New("invalid arguments provided")
@@ -285,7 +284,7 @@ func (p *Page) InputElement(act *Action, out map[string]string) error {
 }
 
 // TimeInputElement executes time input on an element
-func (p *Page) TimeInputElement(act *Action, out map[string]string) error {
+func (p *Page) TimeInputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := act.GetArg("value")
 	if value == "" {
 		return errors.New("invalid arguments provided")
@@ -308,7 +307,7 @@ func (p *Page) TimeInputElement(act *Action, out map[string]string) error {
 }
 
 // SelectInputElement executes select input statement action on a element
-func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
+func (p *Page) SelectInputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := act.GetArg("value")
 	if value == "" {
 		return errors.New("invalid arguments provided")
@@ -333,7 +332,7 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
 }
 
 // WaitLoad waits for the page to load
-func (p *Page) WaitLoad(act *Action, out map[string]string) error {
+func (p *Page) WaitLoad(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	p.page.Timeout(1 * time.Second).WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)()
 
 	// Wait for the window.onload event and also wait for the network requests
@@ -363,7 +362,7 @@ func (p *Page) GetResource(act *Action, out map[string]string) error {
 }
 
 // FilesInput acts with a file input element on page
-func (p *Page) FilesInput(act *Action, out map[string]string) error {
+func (p *Page) FilesInput(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, "could not get element")
@@ -423,7 +422,7 @@ func (p *protoEvent) ProtoEvent() string {
 }
 
 // WaitEvent waits for an event to happen on the page.
-func (p *Page) WaitEvent(act *Action, out map[string]string) error {
+func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	event := act.GetArg("event")
 	if event == "" {
 		return errors.New("event not recognized")
@@ -466,12 +465,13 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 	case "js":
 		return page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
 	case "search":
-		elms, err := page.Search(0, 1, data["query"])
+		elms, err := page.Search(data["query"])
 		if err != nil {
 			return nil, err
 		}
-		if len(elms) > 0 {
-			return elms[0], nil
+
+		if elms.First != nil {
+			return elms.First, nil
 		}
 		return nil, errors.New("no such element")
 	default:
@@ -480,14 +480,14 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 }
 
 // DebugAction enables debug action on a page.
-func (p *Page) DebugAction(act *Action, out map[string]string) error {
+func (p *Page) DebugAction(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	p.instance.browser.engine.SlowMotion(5 * time.Second)
 	p.instance.browser.engine.Trace(true)
 	return nil
 }
 
 // SleepAction sleeps on the page for a specified duration
-func (p *Page) SleepAction(act *Action, out map[string]string) error {
+func (p *Page) SleepAction(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	seconds := act.Data["duration"]
 	if seconds == "" {
 		seconds = "5"

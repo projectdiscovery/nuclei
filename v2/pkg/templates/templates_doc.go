@@ -126,7 +126,7 @@ func init() {
 	MODELInfoDoc.Fields[3].Description = "Description of the template.\n\nYou can go in-depth here on what the template actually does."
 	MODELInfoDoc.Fields[3].Comments[encoder.LineComment] = "Description of the template."
 
-	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores packages informations in bower.json file")
+	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores package information in the bower.json file")
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
 	MODELInfoDoc.Fields[4].Name = "reference"
@@ -148,11 +148,11 @@ func init() {
 		"high",
 		"critical",
 	}
-	MODELInfoDoc.Fields[6].Name = "additional-fields"
+	MODELInfoDoc.Fields[6].Name = "metadata"
 	MODELInfoDoc.Fields[6].Type = "map[string]string"
 	MODELInfoDoc.Fields[6].Note = ""
-	MODELInfoDoc.Fields[6].Description = "AdditionalFields regarding metadata of the template."
-	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "AdditionalFields regarding metadata of the template."
+	MODELInfoDoc.Fields[6].Description = "Metadata of the template."
+	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "Metadata of the template."
 
 	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
 	MODELInfoDoc.Fields[7].Name = "classification"
@@ -274,7 +274,7 @@ func init() {
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
-	HTTPRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined together with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HTTPRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
 	HTTPRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
 	HTTPRequestDoc.Fields[1].Name = "extractors"
 	HTTPRequestDoc.Fields[1].Type = "[]extractors.Extractor"
@@ -307,8 +307,8 @@ func init() {
 	HTTPRequestDoc.Fields[5].Name = "id"
 	HTTPRequestDoc.Fields[5].Type = "string"
 	HTTPRequestDoc.Fields[5].Note = ""
-	HTTPRequestDoc.Fields[5].Description = "ID is the the optional id of the request"
-	HTTPRequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the the optional id of the request"
+	HTTPRequestDoc.Fields[5].Description = "ID is the optional id of the request"
+	HTTPRequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	HTTPRequestDoc.Fields[6].Name = "name"
 	HTTPRequestDoc.Fields[6].Type = "string"
 	HTTPRequestDoc.Fields[6].Note = ""
@@ -373,7 +373,7 @@ func init() {
 	HTTPRequestDoc.Fields[13].Description = "MaxRedirects is the maximum number of redirects that should be followed."
 	HTTPRequestDoc.Fields[13].Comments[encoder.LineComment] = "MaxRedirects is the maximum number of redirects that should be followed."
 
-	HTTPRequestDoc.Fields[13].AddExample("Follow upto 5 redirects", 5)
+	HTTPRequestDoc.Fields[13].AddExample("Follow up to 5 redirects", 5)
 	HTTPRequestDoc.Fields[14].Name = "pipeline-concurrent-connections"
 	HTTPRequestDoc.Fields[14].Type = "int"
 	HTTPRequestDoc.Fields[14].Note = ""
@@ -415,7 +415,7 @@ func init() {
 	HTTPRequestDoc.Fields[20].Name = "pipeline"
 	HTTPRequestDoc.Fields[20].Type = "bool"
 	HTTPRequestDoc.Fields[20].Note = ""
-	HTTPRequestDoc.Fields[20].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be indempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[20].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
 	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
 	HTTPRequestDoc.Fields[21].Name = "unsafe"
 	HTTPRequestDoc.Fields[21].Type = "bool"
@@ -629,7 +629,7 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[4].Name = "kval"
 	EXTRACTORSExtractorDoc.Fields[4].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[4].Note = ""
-	EXTRACTORSExtractorDoc.Fields[4].Description = "description: |\n   kval contains the key-value pairs present in the HTTP response header.\n   kval extractor can be used to extract HTTP response header and cookie key-value pairs.\n   kval extractor inputs are case insensitive, and does not support dash (-) in input which can replaced with underscores (_)\n 	 For example, Content-Type should be replaced with content_type\n\n   A list of supported parts is available in docs for request types.\n examples:\n   - name: Extract Server Header From HTTP Response\n     value: >\n       []string{\"server\"}\n   - name: Extracting value of PHPSESSID Cookie\n     value: >\n       []string{\"phpsessid\"}\n   - name: Extracting value of Content-Type Cookie\n     value: >\n       []string{\"content_type\"}"
+	EXTRACTORSExtractorDoc.Fields[4].Description = "description: |\n   kval contains the key-value pairs present in the HTTP response header.\n   kval extractor can be used to extract HTTP response header and cookie key-value pairs.\n   kval extractor inputs are case-insensitive, and does not support dash (-) in input which can replaced with underscores (_)\n 	 For example, Content-Type should be replaced with content_type\n\n   A list of supported parts is available in docs for request types.\n examples:\n   - name: Extract Server Header From HTTP Response\n     value: >\n       []string{\"server\"}\n   - name: Extracting value of PHPSESSID Cookie\n     value: >\n       []string{\"phpsessid\"}\n   - name: Extracting value of Content-Type Cookie\n     value: >\n       []string{\"content_type\"}"
 	EXTRACTORSExtractorDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
 	EXTRACTORSExtractorDoc.Fields[5].Name = "json"
 	EXTRACTORSExtractorDoc.Fields[5].Type = "[]string"
@@ -684,7 +684,7 @@ func init() {
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	DNSRequestDoc.Fields[0].Note = ""
-	DNSRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined together with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	DNSRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
 	DNSRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
 	DNSRequestDoc.Fields[1].Name = "extractors"
 	DNSRequestDoc.Fields[1].Type = "[]extractors.Extractor"
@@ -703,8 +703,8 @@ func init() {
 	DNSRequestDoc.Fields[3].Name = "id"
 	DNSRequestDoc.Fields[3].Type = "string"
 	DNSRequestDoc.Fields[3].Note = ""
-	DNSRequestDoc.Fields[3].Description = "ID is the the optional id of the request"
-	DNSRequestDoc.Fields[3].Comments[encoder.LineComment] = " ID is the the optional id of the request"
+	DNSRequestDoc.Fields[3].Description = "ID is the optional id of the request"
+	DNSRequestDoc.Fields[3].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	DNSRequestDoc.Fields[4].Name = "name"
 	DNSRequestDoc.Fields[4].Type = "string"
 	DNSRequestDoc.Fields[4].Note = ""
@@ -769,7 +769,7 @@ func init() {
 	FILERequestDoc.Fields[0].Name = "matchers"
 	FILERequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	FILERequestDoc.Fields[0].Note = ""
-	FILERequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined together with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	FILERequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
 	FILERequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
 	FILERequestDoc.Fields[1].Name = "extractors"
 	FILERequestDoc.Fields[1].Type = "[]extractors.Extractor"
@@ -802,12 +802,12 @@ func init() {
 	FILERequestDoc.Fields[5].Name = "id"
 	FILERequestDoc.Fields[5].Type = "string"
 	FILERequestDoc.Fields[5].Note = ""
-	FILERequestDoc.Fields[5].Description = "ID is the the optional id of the request"
-	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the the optional id of the request"
+	FILERequestDoc.Fields[5].Description = "ID is the optional id of the request"
+	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	FILERequestDoc.Fields[6].Name = "max-size"
 	FILERequestDoc.Fields[6].Type = "int"
 	FILERequestDoc.Fields[6].Note = ""
-	FILERequestDoc.Fields[6].Description = "MaxSize is the maximum size of the file to run request on.\n\nBy default, nuclei will process 5MB files and not go more than that.\nIt can be set to much lower or higher depending on use."
+	FILERequestDoc.Fields[6].Description = "MaxSize is the maximum size of the file to run request on.\n\nBy default, nuclei will process 5 MB files and not go more than that.\nIt can be set to much lower or higher depending on use."
 	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "MaxSize is the maximum size of the file to run request on."
 
 	FILERequestDoc.Fields[6].AddExample("", 2048)
@@ -832,8 +832,8 @@ func init() {
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
-	NETWORKRequestDoc.Fields[0].Description = "ID is the the optional id of the request"
-	NETWORKRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the the optional id of the request"
+	NETWORKRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	NETWORKRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	NETWORKRequestDoc.Fields[1].Name = "host"
 	NETWORKRequestDoc.Fields[1].Type = "[]string"
 	NETWORKRequestDoc.Fields[1].Note = ""
@@ -871,7 +871,7 @@ func init() {
 	NETWORKRequestDoc.Fields[6].Name = "matchers"
 	NETWORKRequestDoc.Fields[6].Type = "[]matchers.Matcher"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined together with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	NETWORKRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
 	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
 	NETWORKRequestDoc.Fields[7].Name = "extractors"
 	NETWORKRequestDoc.Fields[7].Type = "[]extractors.Extractor"
@@ -919,7 +919,7 @@ func init() {
 	NETWORKInputDoc.Fields[2].Name = "read"
 	NETWORKInputDoc.Fields[2].Type = "int"
 	NETWORKInputDoc.Fields[2].Note = ""
-	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protcols which expected an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
+	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
 	NETWORKInputDoc.Fields[2].Comments[encoder.LineComment] = "Read is the number of bytes to read from socket."
 
 	NETWORKInputDoc.Fields[2].AddExample("", 1024)
@@ -944,8 +944,8 @@ func init() {
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
-	HEADLESSRequestDoc.Fields[0].Description = "ID is the the optional id of the request"
-	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the the optional id of the request"
+	HEADLESSRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	HEADLESSRequestDoc.Fields[1].Name = "steps"
 	HEADLESSRequestDoc.Fields[1].Type = "[]engine.Action"
 	HEADLESSRequestDoc.Fields[1].Note = ""
@@ -954,7 +954,7 @@ func init() {
 	HEADLESSRequestDoc.Fields[2].Name = "matchers"
 	HEADLESSRequestDoc.Fields[2].Type = "[]matchers.Matcher"
 	HEADLESSRequestDoc.Fields[2].Note = ""
-	HEADLESSRequestDoc.Fields[2].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined together with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HEADLESSRequestDoc.Fields[2].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
 	HEADLESSRequestDoc.Fields[2].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
 	HEADLESSRequestDoc.Fields[3].Name = "extractors"
 	HEADLESSRequestDoc.Fields[3].Type = "[]extractors.Extractor"
@@ -1065,8 +1065,8 @@ func init() {
 	WORKFLOWSWorkflowTemplateDoc.Fields[3].Name = "subtemplates"
 	WORKFLOWSWorkflowTemplateDoc.Fields[3].Type = "[]workflows.WorkflowTemplate"
 	WORKFLOWSWorkflowTemplateDoc.Fields[3].Note = ""
-	WORKFLOWSWorkflowTemplateDoc.Fields[3].Description = "Subtemplates are ran if the `template` field Template matches."
-	WORKFLOWSWorkflowTemplateDoc.Fields[3].Comments[encoder.LineComment] = "Subtemplates are ran if the `template` field Template matches."
+	WORKFLOWSWorkflowTemplateDoc.Fields[3].Description = "Subtemplates are run if the `template` field Template matches."
+	WORKFLOWSWorkflowTemplateDoc.Fields[3].Comments[encoder.LineComment] = "Subtemplates are run if the `template` field Template matches."
 
 	WORKFLOWSMatcherDoc.Type = "workflows.Matcher"
 	WORKFLOWSMatcherDoc.Comments[encoder.LineComment] = ""
@@ -1086,8 +1086,8 @@ func init() {
 	WORKFLOWSMatcherDoc.Fields[1].Name = "subtemplates"
 	WORKFLOWSMatcherDoc.Fields[1].Type = "[]workflows.WorkflowTemplate"
 	WORKFLOWSMatcherDoc.Fields[1].Note = ""
-	WORKFLOWSMatcherDoc.Fields[1].Description = "Subtemplates are ran if the name of matcher matches."
-	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Subtemplates are ran if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[1].Description = "Subtemplates are run if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
 }
 
 // GetTemplateDoc returns documentation for the file templates_doc.go.

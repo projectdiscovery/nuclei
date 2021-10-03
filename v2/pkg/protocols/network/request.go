@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
@@ -21,7 +22,7 @@ import (
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	address, err := getAddress(input)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "network", err)
@@ -38,8 +39,7 @@ func (r *Request) ExecuteWithResults(input string, metadata, previous output.Int
 			actualAddress = net.JoinHostPort(actualAddress, kv.port)
 		}
 
-		err = r.executeAddress(actualAddress, address, input, kv.tls, previous, callback)
-		if err != nil {
+		if err := r.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
@@ -83,6 +83,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		conn     net.Conn
 		err      error
 	)
+	r.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
@@ -138,8 +139,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		}
 		reqBuilder.Write(finalData)
 
-		_, err = conn.Write(finalData)
-		if err != nil {
+		if _, err := conn.Write(finalData); err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")

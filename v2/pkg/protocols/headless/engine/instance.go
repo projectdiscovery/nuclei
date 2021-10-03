@@ -18,7 +18,7 @@ type Instance struct {
 // NewInstance creates a new instance for the current browser.
 //
 // The login process is repeated only once for a browser, and the created
-// isolated browser instance is used for entire navigation ony be one.
+// isolated browser instance is used for entire navigation one by one.
 //
 // Users can also choose to run the login->actions process again
 // which uses a new incognito browser instance to run actions.

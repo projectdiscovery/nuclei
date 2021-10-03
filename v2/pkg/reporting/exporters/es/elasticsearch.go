@@ -28,7 +28,7 @@ type Options struct {
 	SSLVerification bool `yaml:"ssl-verification"`
 	// Username for the elasticsearch instance
 	Username string `yaml:"username"`
-	// Pasword is the password for elasticsearch instance
+	// Password is the password for elasticsearch instance
 	Password string `yaml:"password"`
 	// IndexName is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"`
@@ -81,7 +81,7 @@ func New(option *Options) (*Exporter, error) {
 	return ei, nil
 }
 
-// Export exports a passed result event to disk
+// Export exports a passed result event to elasticsearch
 func (i *Exporter) Export(event *output.ResultEvent) error {
 	// creating a request
 	req, err := http.NewRequest(http.MethodPost, i.url, nil)
@@ -104,7 +104,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	req.Body = ioutil.NopCloser(bytes.NewReader(b))
 
 	res, err := i.elasticsearch.Do(req)
-	b, _ = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err	
+	}
+	
+	b, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -26,13 +27,13 @@ type Request struct {
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
 	ExtensionDenylist []string `yaml:"denylist,omitempty" jsonschema:"title=extensions to deny match,description=List of file extensions to deny during matching"`
 
-	// ID is the the optional id of the request
+	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID for the request"`
 
 	// description: |
 	//   MaxSize is the maximum size of the file to run request on.
 	//
-	//   By default, nuclei will process 5MB files and not go more than that.
+	//   By default, nuclei will process 5 MB files and not go more than that.
 	//   It can be set to much lower or higher depending on use.
 	// examples:
 	//   - value: 2048
@@ -68,7 +69,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		r.CompiledOperators = compiled
 	}
-	// By default use 5mb as max size to read.
+	// By default, use 5 MB as max size to read.
 	if r.MaxSize == 0 {
 		r.MaxSize = 5 * 1024 * 1024
 	}

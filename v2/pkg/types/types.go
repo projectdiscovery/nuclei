@@ -57,8 +57,8 @@ type Options struct {
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
 	ReportingConfig string
-	// DiskExportDirectory is the directory to export reports in markdown on disk to
-	DiskExportDirectory string
+	// MarkdownExportDirectory is the directory to export reports in markdown format
+	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
 	// ResolversFile is a file containing resolvers for nuclei.
@@ -103,7 +103,7 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
-	// SytemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
+	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
 	// Metrics enables display of metrics via an http endpoint
 	Metrics bool

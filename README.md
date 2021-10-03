@@ -45,7 +45,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 # Install Nuclei
 
 ```sh
-GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
@@ -56,9 +56,9 @@ GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 
 ### Nuclei Templates
 
-Nuclei has had built-in support for automatic update/download templates since version [v2.4.0](https://github.com/projectdiscovery/nuclei/releases/tag/v2.4.0). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
+Nuclei has had built-in support for automatic template download/update as default since version [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
 
-You may still use the `update-templates` flag to update the nuclei templates at any time; automatic updates happen every 24 hours. You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
+You may still use the `update-templates` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
 The YAML DSL reference syntax is available [here](SYNTAX-REFERENCE.md).
 
@@ -128,8 +128,9 @@ CONFIGURATIONS:
    -env-vars                   enable environment variables support
 
 INTERACTSH:
-   -no-interactsh                     do not use interactsh server for blind interaction polling
-   -interactsh-url string             self-hosted Interactsh Server URL (default "https://interact.sh")
+   -no-interactsh                     disable interactsh server for OOB testing
+   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interactsh.com")
+   -interactsh-token string           authentication token for self-hosted interactsh server
    -interactions-cache-size int       number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int         number of seconds to wait before evicting requests from cache (default 60)
    -interactions-poll-duration int    number of seconds to wait before each interaction poll request (default 5)
@@ -219,7 +220,7 @@ Nuclei offers great number of features that are helpful for security engineers t
 <tr>
 <td>  
 
-**For bugbounty hunters:**
+**For Bug Bounty hunters:**
 
 Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moreover, Nuclei can be easily integrated into any continuous scanning workflow.
 
@@ -237,9 +238,9 @@ Please check our other open-source projects that might fit into your bug bounty 
 <tr>
 <td>
   
-**For pentesters:**
+**For Penetration Testers:**
 
-Nuclei immensely improve how you approach security assessment by augmenting the manual repetitve processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
+Nuclei immensely improve how you approach security assessment by augmenting the manual, repetitive processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
 
 Pen-testers get the full power of our public templates and customization capabilities to speed-up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
@@ -254,7 +255,7 @@ Pen-testers get the full power of our public templates and customization capabil
 
 # For Developers and Organisations
 
-Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and  eliminate vulnerabilities from occuring in future.
+Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with the latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and eliminate vulnerabilities from occurring in the future.
 
 - **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
 - **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
