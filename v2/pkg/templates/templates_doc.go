@@ -680,7 +680,7 @@ func init() {
 			FieldName: "dns",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 9)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 10)
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -753,6 +753,11 @@ func init() {
 	DNSRequestDoc.Fields[8].Note = ""
 	DNSRequestDoc.Fields[8].Description = "Recursion determines if resolver should recurse all records to get fresh results."
 	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[9].Name = "resolvers"
+	DNSRequestDoc.Fields[9].Type = "[]string"
+	DNSRequestDoc.Fields[9].Note = ""
+	DNSRequestDoc.Fields[9].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	FILERequestDoc.Type = "file.Request"
 	FILERequestDoc.Comments[encoder.LineComment] = " Request contains a File matching mechanism for local disk operations."

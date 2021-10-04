@@ -373,6 +373,14 @@
           "type": "boolean",
           "title": "recurse all servers",
           "description": "Recursion determines if resolver should recurse all records to get fresh results"
+        },
+        "resolvers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Resolvers",
+          "description": "Define resolvers to use within the template"
         }
       },
       "additionalProperties": false,
