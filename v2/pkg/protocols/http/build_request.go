@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
@@ -64,7 +66,19 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	// merge with vars
 	if !r.options.Options.Vars.IsEmpty() {
-		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
+		// check if the value is an existing file
+		varsMap := r.options.Options.Vars.AsMap()
+		for varName, varValue := range varsMap {
+			varValueStr := fmt.Sprint(varValue)
+			if fileutil.FileExists(varValueStr) {
+				varData, err := os.ReadFile(varValueStr)
+				if err != nil {
+					return nil, errors.Wrap(err, fmt.Sprintf("couldn't read variable \"%s\" from file \"%s\"", varName, varValueStr))
+				}
+				varsMap[varName] = varData
+			}
+		}
+		values = generators.MergeMaps(values, varsMap)
 	}
 
 	// merge with env vars
