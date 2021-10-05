@@ -1,6 +1,8 @@
 package operators
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -136,14 +138,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		}
 	}
 
-	for _, matcher := range operators.Matchers {
-		// Check if the matcher matched
+	for matcherIndex, matcher := range operators.Matchers {
 		if isMatch, matched := match(data, matcher); isMatch {
-			// If the matcher has matched, and it's an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
-				result.Matches[matcher.Name] = matched
-			}
+			matcherName := getMatcherName(matcher, matcherIndex)
+			result.Matches[matcherName] = matched
 
 			matches = true
 		} else if matcherCondition == matchers.ANDCondition {
@@ -170,6 +168,14 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		return result, true
 	}
 	return nil, false
+}
+
+func getMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
+	if matcher.Name != "" {
+		return matcher.Name
+	} else {
+		return matcher.Type + "-" + strconv.Itoa(matcherIndex)
+	}
 }
 
 // ExecuteInternalExtractors executes internal dynamic extractors
