@@ -120,7 +120,7 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 		// Continue if the word doesn't match
 		hexa, err := hex.DecodeString(binary)
 		if err != nil {
-			gologger.Error().Msgf("Could not hex encode the given binary matcher value: '%s'", binary)
+			gologger.Warning().Msgf("Could not hex encode the given binary matcher value: '%s'", binary)
 			if m.condition == ANDCondition {
 				return false, []string{}
 			}
