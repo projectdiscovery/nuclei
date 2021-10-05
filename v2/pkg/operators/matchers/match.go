@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
@@ -117,7 +118,14 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
-		hexa, _ := hex.DecodeString(binary)
+		hexa, err := hex.DecodeString(binary)
+		if err != nil {
+			gologger.Error().Msgf("Could not hex encode the given binary matcher value: '%s'", binary)
+			if m.condition == ANDCondition {
+				return false, []string{}
+			}
+			continue
+		}
 		if !strings.Contains(corpus, string(hexa)) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
