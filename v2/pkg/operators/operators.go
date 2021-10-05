@@ -144,6 +144,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 			result.Matches[matcherName] = matched
 
 			matches = true
+
+			if matcherCondition == matchers.ORCondition {
+				break
+			}
 		} else if matcherCondition == matchers.ANDCondition {
 			if len(result.DynamicValues) > 0 {
 				return result, true
