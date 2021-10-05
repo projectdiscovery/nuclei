@@ -95,6 +95,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	if options.Validate {
+		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
