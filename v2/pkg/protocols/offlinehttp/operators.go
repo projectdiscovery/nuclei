@@ -1,7 +1,6 @@
 package offlinehttp
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -23,11 +23,11 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
-		statusCode, ok := data["status_code"]
+		statusCode, ok := getStatusCode(data)
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int))), []string{fmt.Sprintf("HTTP/1.0 %d", statusCode), fmt.Sprintf("HTTP/1.1 %d", statusCode)}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), responsehighlighter.CreateHTTPStatusMatcherSnippets(statusCode)
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -40,6 +40,18 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
 	return false, []string{}
+}
+
+func getStatusCode(data map[string]interface{}) (int, bool) {
+	statusCodeValue, ok := data["status_code"]
+	if !ok {
+		return 0, false
+	}
+	statusCode, ok := statusCodeValue.(int)
+	if !ok {
+		return 0, false
+	}
+	return statusCode, true
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.

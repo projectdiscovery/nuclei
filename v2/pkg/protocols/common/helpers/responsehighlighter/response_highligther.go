@@ -1,6 +1,7 @@
 package responsehighlighter
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -22,4 +23,15 @@ func Highlight(operatorResult *operators.Result, response string, noColor bool) 
 	}
 
 	return result
+}
+
+func CreateHTTPStatusMatcherSnippets(statusCode int) []string {
+	httpVersions := []string{"0.9", "1.0", "1.1", "2", "2.0", "3", "3.0"}
+	var matcherValues = make([]string, 0, len(httpVersions))
+
+	for _, httpVersion := range httpVersions {
+		matcherValues = append(matcherValues, fmt.Sprintf("HTTP/%s %d", httpVersion, statusCode))
+	}
+
+	return matcherValues
 }
