@@ -72,6 +72,8 @@ type Request struct {
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
 	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	// Resolvers to use for the dns requests
+	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -85,10 +87,14 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
-	// Create a dns client for the class
-	client, err := dnsclientpool.Get(options.Options, &dnsclientpool.Configuration{
+	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
-	})
+	}
+	if len(request.Resolvers) > 0 {
+		dnsClientOptions.Resolvers = request.Resolvers
+	}
+	// Create a dns client for the class
+	client, err := dnsclientpool.Get(options.Options, dnsClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}

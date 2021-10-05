@@ -110,9 +110,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
-	// If raw request doesn't have a Host header
-	// this will be generated from the parsed baseURL
-	if rawRequest.Headers["Host"] == "" {
+	// If raw request doesn't have a Host header and isn't marked unsafe,
+	// this will generate the Host header from the parsed baseURL
+	if !unsafe && rawRequest.Headers["Host"] == "" {
 		rawRequest.Headers["Host"] = hostURL
 	}
 

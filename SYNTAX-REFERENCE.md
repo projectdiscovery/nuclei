@@ -2026,6 +2026,19 @@ Recursion determines if resolver should recurse all records to get fresh results
 
 <hr />
 
+<div class="dd">
+
+<code>resolvers</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Resolvers to use for the dns requests
+
+</div>
+
+<hr />
+
 
 
 
