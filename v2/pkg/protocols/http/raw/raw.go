@@ -82,29 +82,35 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		}
 	}
 
+	var parsedURL *url.URL
 	// Handle case with the full http url in path. In that case,
 	// ignore any host header that we encounter and use the path as request URL
 	if !unsafe && strings.HasPrefix(parts[1], "http") {
-		parsed, parseErr := url.Parse(parts[1])
+		var parseErr error
+		parsedURL, parseErr = url.Parse(parts[1])
 		if parseErr != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
 		}
 
-		rawRequest.Path = parts[1]
-		rawRequest.Headers["Host"] = parsed.Host
+		rawRequest.Path = parsedURL.Path
+		rawRequest.Headers["Host"] = parsedURL.Host
 	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
 	}
 
-	parsedURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %s", err)
+	if parsedURL == nil && baseURL != "null" {
+		parsedURL, err = url.Parse(baseURL)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse request URL: %s", err)
+		}
 	}
 	hostURL := parsedURL.Host
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	if parsedURL.Path != rawRequest.Path {
+		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	}
 	if strings.HasSuffix(rawRequest.Path, "//") {
 		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 	}
