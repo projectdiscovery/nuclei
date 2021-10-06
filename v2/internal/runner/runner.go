@@ -186,7 +186,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// No input supplied, in which case we set it to null.
 	if runner.hostMap.Size() == 0 {
-		runner.hostMap.Set("null", nil)
+		_ = runner.hostMap.Set("null", nil)
 	}
 	if dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", dupeCount)

@@ -98,7 +98,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.Path = parts[1]
 	}
 
-	if parsedURL == nil && baseURL != "null" {
+	if parsedURL == nil {
 		parsedURL, err = url.Parse(baseURL)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", err)
