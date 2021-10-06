@@ -284,7 +284,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !r.SkipVariablesCheck {
-			gologger.Warning().Msgf("Could not make http request for %s: %v\n", reqURL, varErr)
+			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", r.options.TemplateID, reqURL, varErr)
 			return nil
 		}
 

@@ -140,7 +140,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		reqBuilder.Write(finalData)
 
 		if varErr := expressions.ContainsUnresolvedVariables(string(finalData)); varErr != nil {
-			gologger.Warning().Msgf("Could not make network request for %s: %v\n", actualAddress, varErr)
+			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", r.options.TemplateID, actualAddress, varErr)
 			return nil
 		}
 		if _, err := conn.Write(finalData); err != nil {
