@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -81,37 +82,14 @@ func (request *Request) responseToDSLMap(req, resp, raw, host, matched string) o
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
-		return nil
-	}
-	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data := request.makeResultEventItem(wrapped)
-			data.MatcherName = k
-			results = append(results, data)
-		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
-		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := request.makeResultEventItem(wrapped)
-			data.ExtractedResults = v
-			data.ExtractorName = k
-			results = append(results, data)
-		}
-	} else {
-		data := request.makeResultEventItem(wrapped)
-		results = append(results, data)
-	}
-	return results
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
 	return []*operators.Operators{request.CompiledOperators}
 }
 
-func (request *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),

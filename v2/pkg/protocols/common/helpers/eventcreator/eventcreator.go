@@ -17,7 +17,7 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 			if ok && result != nil {
 				event.OperatorsResult = result
 				addAdditionalOptions(event)
-				event.Results = request.MakeResultEvent(event)
+				event.Results = append(event.Results, request.MakeResultEvent(event)...)
 			}
 		}
 	}
