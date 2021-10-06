@@ -290,7 +290,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s")
+			gologger.Print().Msgf("%s", dumpedRequestString)
 		}
 	}
 
