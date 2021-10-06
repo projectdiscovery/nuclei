@@ -167,6 +167,9 @@ type Request struct {
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+	// description: |
+	//   SkipVariablesCheck skips the check for unresolved variables in request
+	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
 }
 
 // GetID returns the unique ID of the request if any.

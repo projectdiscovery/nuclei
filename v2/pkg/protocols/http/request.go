@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
@@ -272,6 +273,27 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		err           error
 	)
 
+	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
+	if !request.original.Race {
+		var dumpError error
+		dumpedRequest, dumpError = dump(request, reqURL)
+		if dumpError != nil {
+			return dumpError
+		}
+		dumpedRequestString := string(dumpedRequest)
+
+		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !r.SkipVariablesCheck {
+			gologger.Warning().Msgf("Could not make http request for %s: %v\n", reqURL, varErr)
+			return nil
+		}
+
+		if r.options.Options.Debug || r.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
+			gologger.Print().Msgf("%s")
+		}
+	}
+
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
@@ -308,20 +330,6 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		}
 		if resp == nil {
 			resp, err = r.httpClient.Do(request.request)
-		}
-	}
-
-	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
-	if !request.original.Race {
-		var dumpError error
-		dumpedRequest, dumpError = dump(request, reqURL)
-		if dumpError != nil {
-			return dumpError
-		}
-
-		if r.options.Options.Debug || r.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
 		}
 	}
 	if err != nil {
