@@ -243,6 +243,10 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 				callback(event)
 			}
 		}, requestCount)
+		// If a variable is unresolved, skip all further requests
+		if err == errStopExecution {
+			break
+		}
 		if err != nil {
 			if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.CheckError(err) {
 				r.options.HostErrorsCache.MarkFailed(reqURL)
@@ -252,8 +256,8 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 		requestCount++
 		r.options.Progress.IncrementRequests()
 
+		// If this was a match and we want to stop at first match, skip all further requests.
 		if (request.original.options.Options.StopAtFirstMatch || r.StopAtFirstMatch) && gotOutput {
-			r.options.Progress.IncrementErrorsBy(int64(generator.Total()))
 			break
 		}
 	}
@@ -261,6 +265,8 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 }
 
 const drainReqSize = int64(8 * 1024)
+
+var errStopExecution = errors.New("stop execution due to unresolved variables")
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
@@ -285,7 +291,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !r.SkipVariablesCheck {
 			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", r.options.TemplateID, reqURL, varErr)
-			return nil
+			return errStopExecution
 		}
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
