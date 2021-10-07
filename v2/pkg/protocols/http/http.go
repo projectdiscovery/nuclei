@@ -1,12 +1,15 @@
 package http
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
@@ -223,6 +226,36 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
 		r.CompiledOperators = compiled
+	}
+
+	// Resolve payload paths from vars if they exists
+	for name, payload := range r.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		// search for markers in all request parts
+		var inputs []string
+		inputs = append(inputs, r.Method, r.Body)
+		inputs = append(inputs, r.Raw...)
+		for k, v := range r.customHeaders {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
+		}
+		for k, v := range r.Headers {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
+		}
+
+		for _, input := range inputs {
+			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+				hasPayloadName = true
+				break
+			}
+		}
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if r.Payloads == nil {
+				r.Payloads = make(map[string]interface{})
+			}
+			r.Payloads[name] = payloadStr
+		}
 	}
 
 	if len(r.Payloads) > 0 {
