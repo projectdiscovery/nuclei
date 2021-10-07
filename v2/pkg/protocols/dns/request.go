@@ -31,7 +31,7 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 	}
 
 	requestString := compiledRequest.String()
-	if varErr := expressions.ContainsUnresolvedVariables(string(requestString)); varErr != nil {
+	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", r.options.TemplateID, domain, varErr)
 		return nil
 	}
