@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -147,6 +148,28 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
 			input.Data = compiled
+		}
+	}
+
+	// Resolve payload paths from vars if they exists
+	for name, payload := range r.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		for _, input := range r.Inputs {
+			if input.Type != "" {
+				continue
+			}
+			if expressions.ContainsVariablesWithNames(input.Data, map[string]interface{}{name: payload}) == nil {
+				hasPayloadName = true
+				break
+			}
+		}
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if r.Payloads == nil {
+				r.Payloads = make(map[string]interface{})
+			}
+			r.Payloads[name] = payloadStr
 		}
 	}
 
