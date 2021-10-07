@@ -12,9 +12,9 @@ import (
 func Highlight(operatorResult *operators.Result, response string, noColor bool) string {
 	result := response
 	if operatorResult != nil && !noColor {
+		colorizer := aurora.NewAurora(true)
 		for _, matches := range operatorResult.Matches {
 			if len(matches) > 0 {
-				colorizer := aurora.NewAurora(true)
 				for _, currentMatch := range matches {
 					result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
 				}
