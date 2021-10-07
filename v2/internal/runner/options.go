@@ -65,7 +65,7 @@ func ParseOptions(options *types.Options) {
 	// removes all cli variables containing payloads and add them to the internal struct
 	for key, value := range options.Vars.AsMap() {
 		if fileutil.FileExists(value.(string)) {
-			options.Vars.Del(key)
+			_ = options.Vars.Del(key)
 			options.AddVarPayload(key, value)
 		}
 	}
