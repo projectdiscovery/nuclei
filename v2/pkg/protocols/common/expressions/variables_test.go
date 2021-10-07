@@ -15,6 +15,7 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 		{"{{test}}", errors.New("unresolved variables found: test")},
 		{"{{test}}/{{another}}", errors.New("unresolved variables found: test,another")},
 		{"test", nil},
+		{"%7b%7btest%7d%7d", errors.New("unresolved variables found: test")},
 	}
 	for _, test := range tests {
 		err := ContainsUnresolvedVariables(test.data)
