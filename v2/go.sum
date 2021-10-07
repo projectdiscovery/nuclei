@@ -562,13 +562,9 @@ github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/i
 github.com/projectdiscovery/fastdialer v0.0.13-0.20210824195254-0113c1406542/go.mod h1:TuapmLiqtunJOxpM7g0tpTy/TUF/0S+XFyx0B0Wx0DQ=
 github.com/projectdiscovery/fastdialer v0.0.13-0.20210917073912-cad93d88e69e h1:xMAFYJgRxopAwKrj7HDwMBKJGCGDbHqopS8f959xges=
 github.com/projectdiscovery/fastdialer v0.0.13-0.20210917073912-cad93d88e69e/go.mod h1:O1l6+vAQy1QRo9FqyuyJ57W3CwpIXXg7oGo14Le6ZYQ=
+github.com/projectdiscovery/fileutil v0.0.0-20210804142714-ebba15fa53ca/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5 h1:2dbm7UhrAKnccZttr78CAmG768sSCd+MBn4ayLVDeqA=
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
-github.com/projectdiscovery/goflags v0.0.7-0.20211007101748-dd9c32bab303 h1:5ownIWK6jZYdg/pM+H5wfC4zF0rOvDeHtejbpScZt8I=
-github.com/projectdiscovery/goflags v0.0.7-0.20211007101748-dd9c32bab303/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
-github.com/projectdiscovery/fileutil v0.0.0-20210804142714-ebba15fa53ca h1:xT//ApxoeQRbt9GgL/122688bhGy9hur8YG0Qh69k5I=
-github.com/projectdiscovery/fileutil v0.0.0-20210804142714-ebba15fa53ca/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
-github.com/projectdiscovery/goflags v0.0.7 h1:aykmRkrOgDyRwcvGrK3qp+9aqcjGfAMs/+LtRmtyxwk=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/goflags v0.0.8-0.20211007103353-9b9229e8a240 h1:b7zDUSsgN5f4/IlhKF6RVGsp/NkHIuty0o1YjzAMKUs=
 github.com/projectdiscovery/goflags v0.0.8-0.20211007103353-9b9229e8a240/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
