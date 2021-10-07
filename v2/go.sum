@@ -579,8 +579,8 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210917073634-bfb0e9c03800/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v0.0.5 h1:7NtFTbbn1Aty3RnB95DXaGw445mSXXbCAPOX5RXWTSU=
-github.com/projectdiscovery/interactsh v0.0.5/go.mod h1:dB/c1A9I2trIHfMbU/wNzxQkGara0UE33zDtGcdBh+U=
+github.com/projectdiscovery/interactsh v0.0.6 h1:z2nVuc2FDRtOVjoYySiG0by/JA1Dwmgzb2rBFJEFR/c=
+github.com/projectdiscovery/interactsh v0.0.6/go.mod h1:dB/c1A9I2trIHfMbU/wNzxQkGara0UE33zDtGcdBh+U=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
 github.com/projectdiscovery/iputil v0.0.0-20210414194613-4b4d2517acf0/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
 github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
