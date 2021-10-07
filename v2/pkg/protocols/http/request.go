@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
@@ -286,6 +287,12 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 			return dumpError
 		}
 		dumpedRequestString := string(dumpedRequest)
+
+		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !r.SkipVariablesCheck {
+			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", r.options.TemplateID, reqURL, varErr)
+			return errStopExecution
+		}
 
 		if r.options.Options.Debug || r.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
