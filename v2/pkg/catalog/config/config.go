@@ -6,8 +6,9 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"gopkg.in/yaml.v2"
+
+	"github.com/projectdiscovery/gologger"
 )
 
 // Config contains the internal nuclei engine configuration
