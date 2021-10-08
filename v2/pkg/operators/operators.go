@@ -178,7 +178,7 @@ func getMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
 	if matcher.Name != "" {
 		return matcher.Name
 	} else {
-		return matcher.Type + "-" + strconv.Itoa(matcherIndex)
+		return matcher.Type + "-" + strconv.Itoa(matcherIndex+1) // making the index start from 1 to be more readable
 	}
 }
 
