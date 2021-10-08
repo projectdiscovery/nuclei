@@ -10,7 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
@@ -30,8 +30,8 @@ type Options struct {
 	Gitlab *gitlab.Options `yaml:"gitlab"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
-	// DiskExporter contains configuration options for Disk Exporter Module
-	DiskExporter *disk.Options `yaml:"disk"`
+	// MarkdownExporter contains configuration options for Markdown Exporter Module
+	MarkdownExporter *markdown.Options `yaml:"markdown"`
 	// SarifExporter contains configuration options for Sarif Exporter Module
 	SarifExporter *sarif.Options `yaml:"sarif"`
 	// ElasticsearchExporter contains configuration options for Elasticsearch Exporter Module
@@ -128,8 +128,8 @@ func New(options *Options, db string) (*Client, error) {
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
-	if options.DiskExporter != nil {
-		exporter, err := disk.New(options.DiskExporter)
+	if options.MarkdownExporter != nil {
+		exporter, err := markdown.New(options.MarkdownExporter)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create exporting client")
 		}

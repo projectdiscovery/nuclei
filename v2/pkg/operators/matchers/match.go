@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nebula"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
 // MatchStatusCode matches a status code check against a corpus
@@ -40,9 +41,18 @@ func (m *Matcher) MatchSize(length int) bool {
 }
 
 // MatchWords matches a word check against a corpus.
-func (m *Matcher) MatchWords(corpus string) bool {
+func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) bool {
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
+		if dynamicValues == nil {
+			dynamicValues = make(map[string]interface{})
+		}
+
+		var err error
+		word, err = expressions.Evaluate(word, dynamicValues)
+		if err != nil {
+			continue
+		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
 			// If we are in an AND request and a match failed,

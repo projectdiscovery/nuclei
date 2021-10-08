@@ -34,7 +34,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.7
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v0.0.4
+	github.com/projectdiscovery/interactsh v0.0.6
 	github.com/projectdiscovery/mapsutil v0.0.1
 	github.com/projectdiscovery/nebula v0.0.0-20210812224441-37b4e61899e8
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210914222811-0a072d262f77
@@ -99,7 +99,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/howeyc/crc16 v0.0.0-20171223171357-2b2a61e366a6 // indirect
@@ -113,7 +113,7 @@ require (
 	github.com/jzelinskie/whirlpool v0.0.0-20201016144138-0675e54bb004 // indirect
 	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
 	github.com/kisielk/og-rek v1.1.0 // indirect
-	github.com/klauspost/compress v1.13.4 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/martinlindhe/base36 v1.1.0 // indirect
@@ -130,6 +130,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e // indirect
 	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect
+	github.com/projectdiscovery/fileutil v0.0.0-20210804142714-ebba15fa53ca // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.8 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect

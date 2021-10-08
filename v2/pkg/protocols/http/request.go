@@ -218,6 +218,7 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 			return err
 		}
 
+		r.dynamicValues = request.dynamicValues
 		// Check if hosts just keep erroring
 		if r.options.HostErrorsCache != nil && r.options.HostErrorsCache.Check(reqURL) {
 			break
