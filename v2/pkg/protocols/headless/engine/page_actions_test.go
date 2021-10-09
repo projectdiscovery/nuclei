@@ -314,5 +314,5 @@ func TestActionWaitVisible(t *testing.T) {
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
-	page.Page().MustElement("button").MustWaitVisible()
+	page.Page().MustElement("button").MustVisible()
 }
