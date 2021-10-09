@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -290,12 +291,89 @@ func TestActionSetMethod(t *testing.T) {
 }
 
 func TestActionAddHeader(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Test") == "Hello" {
+			fmt.Fprintln(w, `found`)
+		}
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "found", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not set header correctly")
 }
 
 func TestActionDeleteHeader(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Test1") == "Hello" && r.Header.Get("Test2") == "" {
+			fmt.Println(r.Header)
+			fmt.Fprintln(w, `header deleted`)
+		}
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test1", "value": "Hello"}},
+		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test2", "value": "World"}},
+		{ActionType: "deleteheader", Data: map[string]string{"part": "request", "key": "Test2"}},
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "header deleted", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not delete header correctly")
 }
 
 func TestActionSetBody(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := ioutil.ReadAll(r.Body)
+		fmt.Fprintln(w, string(body))
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "setbody", Data: map[string]string{"part": "request", "body": "hello"}},
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "hello", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not set header correctly")
 }
 
 func TestActionWaitEvent(t *testing.T) {
@@ -308,4 +386,77 @@ func TestActionDebug(t *testing.T) {
 }
 
 func TestActionSleep(t *testing.T) {
+}
+
+func TestActionWaitVisible(t *testing.T) {
+	t.Run("wait for an element being visible", func(t *testing.T) {
+		_ = protocolstate.Init(&types.Options{})
+
+		browser, err := New(&types.Options{ShowBrowser: false})
+		require.Nil(t, err, "could not create browser")
+		defer browser.Close()
+
+		instance, err := browser.NewInstance()
+		require.Nil(t, err, "could not create browser instance")
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<button style="display:none" id="test">Wait for me!</button>
+			<script>
+				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+			</script>
+		</html>`)
+		}))
+		defer ts.Close()
+
+		parsed, err := url.Parse(ts.URL)
+		require.Nil(t, err, "could not parse URL")
+
+		actions := []*Action{
+			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: "waitvisible", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+		}
+		_, page, err := instance.Run(parsed, actions, 20*time.Second)
+		require.Nil(t, err, "could not run page actions")
+		defer page.Close()
+
+		page.Page().MustElement("button").MustVisible()
+	})
+
+	t.Run("timeout because of element not visible", func(t *testing.T) {
+		_ = protocolstate.Init(&types.Options{})
+
+		browser, err := New(&types.Options{ShowBrowser: false})
+		require.Nil(t, err, "could not create browser")
+		defer browser.Close()
+
+		instance, err := browser.NewInstance()
+		require.Nil(t, err, "could not create browser instance")
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<button style="display:none" id="test">Wait for me!</button>
+		</html>`)
+		}))
+		defer ts.Close()
+
+		parsed, err := url.Parse(ts.URL)
+		require.Nil(t, err, "could not parse URL")
+
+		actions := []*Action{
+			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: "waitvisible", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+		}
+		_, _, err = instance.Run(parsed, actions, 2*time.Second)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not wait element")
+	})
 }

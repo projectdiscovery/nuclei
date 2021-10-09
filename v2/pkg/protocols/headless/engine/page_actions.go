@@ -67,6 +67,8 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 			err = p.DebugAction(act, outData)
 		case ActionSleep:
 			err = p.SleepAction(act, outData)
+		case ActionWaitVisible:
+			err = p.WaitVisible(act, outData)
 		default:
 			continue
 		}
@@ -81,6 +83,18 @@ type requestRule struct {
 	Action ActionType
 	Part   string
 	Args   map[string]string
+}
+
+// WaitVisible waits until an element appears.
+func (p *Page) WaitVisible(act *Action, out map[string]string) error {
+	element, err := p.pageElementBy(act.Data)
+	if err != nil {
+		return errors.Wrap(err, "could not find element")
+	}
+	if err = element.WaitVisible(); err != nil {
+		return errors.Wrap(err, "could not wait element")
+	}
+	return nil
 }
 
 // ActionAddHeader executes a AddHeader action.
