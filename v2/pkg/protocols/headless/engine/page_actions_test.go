@@ -278,3 +278,67 @@ func TestActionHeadersChange(t *testing.T) {
 
 	require.Equal(t, "found", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not set header correctly")
 }
+
+func TestActionScreenshot(t *testing.T) {
+
+}
+
+func TestActionTimeInput(t *testing.T) {
+
+}
+
+func TestActionSelectInput(t *testing.T) {
+
+}
+
+func TestActionFilesInput(t *testing.T) {
+
+}
+
+func TestActionWaitLoad(t *testing.T) {
+
+}
+
+func TestActionGetResource(t *testing.T) {
+
+}
+
+func TestActionExtract(t *testing.T) {
+
+}
+
+func TestActionSetMethod(t *testing.T) {
+
+}
+
+func TestActionAddHeader(t *testing.T) {
+
+}
+
+func TestActionSetHeader(t *testing.T) {
+
+}
+
+func TestActionDeleteHeader(t *testing.T) {
+
+}
+
+func TestActionSetBody(t *testing.T) {
+
+}
+
+func TestActionWaitEvent(t *testing.T) {
+
+}
+
+func TestActionKeyboard(t *testing.T) {
+
+}
+
+func TestActionDebug(t *testing.T) {
+
+}
+
+func TestActionSleep(t *testing.T) {
+
+}
