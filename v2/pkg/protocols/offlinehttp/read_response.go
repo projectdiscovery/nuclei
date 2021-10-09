@@ -8,19 +8,14 @@ import (
 	"strings"
 )
 
+var noMinor = regexp.MustCompile(`HTTP\/([0-9]) `)
+
 // readResponseFromString reads a raw http response from a string.
 func readResponseFromString(data string) (*http.Response, error) {
 	var final string
-	noMinor := regexp.MustCompile(`HTTP\/[0-9] `)
 
 	if strings.HasPrefix(data, "HTTP/") {
-		// Go could not parse http version with no minor version
-		if noMinor.MatchString(data) {
-			// add minor version
-			data = strings.Replace(data, "HTTP/2", "HTTP/2.0", 1)
-			data = strings.Replace(data, "HTTP/3", "HTTP/3.0", 1)
-		}
-		final = data
+		final = addMinorVersionToHTTP(data)
 	} else {
 		lastIndex := strings.LastIndex(data, "HTTP/")
 		if lastIndex == -1 {
@@ -28,10 +23,22 @@ func readResponseFromString(data string) (*http.Response, error) {
 		}
 		final = data[lastIndex:] // choose last http/ in case of it being later.
 
-		if noMinor.MatchString(final) {
-			final = strings.ReplaceAll(final, "HTTP/2", "HTTP/2.0")
-			final = strings.ReplaceAll(final, "HTTP/3", "HTTP/3.0")
-		}
+		final = addMinorVersionToHTTP(final)
 	}
 	return http.ReadResponse(bufio.NewReader(strings.NewReader(final)), nil)
+}
+
+// addMinorVersionToHTTP tries to add a minor version to http status header
+// fixing the compatibility issue with go standard library.
+func addMinorVersionToHTTP(data string) string {
+	matches := noMinor.FindAllStringSubmatch(data, 1)
+	if len(matches) == 0 {
+		return data
+	}
+	if len(matches[0]) < 2 {
+		return data
+	}
+	replacedVersion := strings.Replace(matches[0][0], matches[0][1], matches[0][1]+".0", 1)
+	data = strings.Replace(data, matches[0][0], replacedVersion, 1)
+	return data
 }
