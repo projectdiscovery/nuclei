@@ -6,11 +6,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSniperGenerator(t *testing.T) {
+func TestBatteringRamGenerator(t *testing.T) {
 	usernames := []string{"admin", "password"}
-	moreUsernames := []string{"login", "test"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "aliases": moreUsernames}, Sniper, "")
+	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRam, "")
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -22,7 +21,7 @@ func TestSniperGenerator(t *testing.T) {
 		}
 		count++
 	}
-	require.Equal(t, len(usernames)+len(moreUsernames), count, "could not get correct sniper counts")
+	require.Equal(t, len(usernames), count, "could not get correct batteringram counts")
 }
 
 func TestPitchforkGenerator(t *testing.T) {
