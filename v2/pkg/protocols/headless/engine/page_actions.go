@@ -91,7 +91,10 @@ func (p *Page) WaitVisible(act *Action, out map[string]string) error {
 	if err != nil {
 		return err
 	}
-	return element.WaitVisible()
+	if err = element.WaitVisible(); err != nil {
+		return errors.Wrap(err, "could not wait element")
+	}
+	return nil
 }
 
 // ActionAddHeader executes a AddHeader action.
