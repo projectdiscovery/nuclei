@@ -23,6 +23,8 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
+	// vars to use as iterative payload
+	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
@@ -160,4 +162,16 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+}
+
+func (options *Options) AddVarPayload(key string, value interface{}) {
+	if options.varsPayload == nil {
+		options.varsPayload = make(map[string]interface{})
+	}
+
+	options.varsPayload[key] = value
+}
+
+func (options *Options) VarsPayload() map[string]interface{} {
+	return options.varsPayload
 }
