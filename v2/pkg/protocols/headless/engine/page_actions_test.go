@@ -14,16 +14,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestActionNavigate(t *testing.T) {
+func setUp(t *testing.T) (*Browser, *Instance, error) {
+	t.Helper()
 	_ = protocolstate.Init(&types.Options{})
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
-	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	require.Nil(t, err, "could not create browser instance")
+	return browser, instance, err
+}
+
+func TestActionNavigate(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
 	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -50,13 +56,9 @@ func TestActionNavigate(t *testing.T) {
 }
 
 func TestActionScript(t *testing.T) {
-	_ = protocolstate.Init(&types.Options{})
-
-	browser, err := New(&types.Options{ShowBrowser: false})
-	require.Nil(t, err, "could not create browser")
+	browser, instance, err := setUp(t)
 	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	t.Run("run-and-results", func(t *testing.T) {
@@ -119,13 +121,9 @@ func TestActionScript(t *testing.T) {
 }
 
 func TestActionClick(t *testing.T) {
-	_ = protocolstate.Init(&types.Options{})
-
-	browser, err := New(&types.Options{ShowBrowser: false})
-	require.Nil(t, err, "could not create browser")
+	browser, instance, err := setUp(t)
 	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -159,13 +157,9 @@ func TestActionClick(t *testing.T) {
 }
 
 func TestActionRightClick(t *testing.T) {
-	_ = protocolstate.Init(&types.Options{})
-
-	browser, err := New(&types.Options{ShowBrowser: false})
-	require.Nil(t, err, "could not create browser")
+	browser, instance, err := setUp(t)
 	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -207,13 +201,9 @@ func TestActionRightClick(t *testing.T) {
 }
 
 func TestActionTextInput(t *testing.T) {
-	_ = protocolstate.Init(&types.Options{})
-
-	browser, err := New(&types.Options{ShowBrowser: false})
-	require.Nil(t, err, "could not create browser")
+	browser, instance, err := setUp(t)
 	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -248,13 +238,9 @@ func TestActionTextInput(t *testing.T) {
 }
 
 func TestActionHeadersChange(t *testing.T) {
-	_ = protocolstate.Init(&types.Options{})
-
-	browser, err := New(&types.Options{ShowBrowser: false})
-	require.Nil(t, err, "could not create browser")
+	browser, instance, err := setUp(t)
 	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -280,65 +266,46 @@ func TestActionHeadersChange(t *testing.T) {
 }
 
 func TestActionScreenshot(t *testing.T) {
-
 }
 
 func TestActionTimeInput(t *testing.T) {
-
 }
 
 func TestActionSelectInput(t *testing.T) {
-
 }
 
 func TestActionFilesInput(t *testing.T) {
-
 }
 
 func TestActionWaitLoad(t *testing.T) {
-
 }
 
 func TestActionGetResource(t *testing.T) {
-
 }
 
 func TestActionExtract(t *testing.T) {
-
 }
 
 func TestActionSetMethod(t *testing.T) {
-
 }
 
 func TestActionAddHeader(t *testing.T) {
-
-}
-
-func TestActionSetHeader(t *testing.T) {
-
 }
 
 func TestActionDeleteHeader(t *testing.T) {
-
 }
 
 func TestActionSetBody(t *testing.T) {
-
 }
 
 func TestActionWaitEvent(t *testing.T) {
-
 }
 
 func TestActionKeyboard(t *testing.T) {
-
 }
 
 func TestActionDebug(t *testing.T) {
-
 }
 
 func TestActionSleep(t *testing.T) {
-
 }
