@@ -154,7 +154,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if len(r.Payloads) > 0 {
 		attackType := r.AttackType
 		if attackType == "" {
-			attackType = "sniper"
+			attackType = "batteringram"
 		}
 		var ok bool
 		r.attackType, ok = generators.StringToType[attackType]
