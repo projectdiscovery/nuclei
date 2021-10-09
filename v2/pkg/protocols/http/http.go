@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -225,9 +226,13 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if len(r.Payloads) > 0 {
 		attackType := r.AttackType
 		if attackType == "" {
-			attackType = "sniper"
+			attackType = "batteringram"
 		}
-		r.attackType = generators.StringToType[attackType]
+		var ok bool
+		r.attackType, ok = generators.StringToType[attackType]
+		if !ok {
+			return fmt.Errorf("invalid attack type provided: %s", attackType)
+		}
 
 		// Resolve payload paths if they are files.
 		for name, payload := range r.Payloads {
