@@ -297,7 +297,7 @@ func TestActionWaitVisible(t *testing.T) {
 		</head>
 		<button style="display:none" id="test">Wait for me!</button>
 		<script>
-			setTimeout(() => document.querySelector('#test').style.display = 'block', 1000);
+			setTimeout(() => document.querySelector('#test').style.display = '', 1000);
 		</script>
 	</html>`)
 	}))
