@@ -273,6 +273,41 @@ func TestActionTimeInput(t *testing.T) {
 }
 
 func TestActionSelectInput(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<body>
+				<select name="test" id="test">
+				  <option value="test1">Test1</option>
+				  <option value="test2">Test2</option>
+				</select>
+			</body>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+		{ActionType: "select", Data: map[string]string{"by": "x", "xpath": "//select[@id='test']", "value": "Test2", "selected": "true"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	el := page.Page().MustElement("select")
+	require.Equal(t, "Test2", el.MustText(), "could not get input change value")
 }
 
 func TestActionFilesInput(t *testing.T) {
@@ -380,6 +415,43 @@ func TestActionWaitEvent(t *testing.T) {
 }
 
 func TestActionKeyboard(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<body>
+				<select name="test" id="test">
+				  <option value="test1">Test1</option>
+				  <option value="test2">Test2</option>
+				</select>
+			</body>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+		{ActionType: "click", Data: map[string]string{"selector": "select"}},
+		{ActionType: "keyboard", Data: map[string]string{"keys": "Test 2"}},
+		{ActionType: "keyboard", Data: map[string]string{"keys": "enter"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	el := page.Page().MustElement("select")
+	require.Equal(t, "Test2", el.MustText(), "could not get input change value")
 }
 
 func TestActionDebug(t *testing.T) {
