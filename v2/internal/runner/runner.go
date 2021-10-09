@@ -344,6 +344,7 @@ func (r *Runner) RunEnumeration() error {
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
 		Severities:         r.options.Severities,
+		ExcludeSeverities:  r.options.ExcludeSeverities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
