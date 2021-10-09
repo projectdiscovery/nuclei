@@ -9,11 +9,12 @@ import (
 
 // TagFilter is used to filter nuclei templates for tag based execution
 type TagFilter struct {
-	allowedTags map[string]struct{}
-	severities  map[severity.Severity]struct{}
-	authors     map[string]struct{}
-	block       map[string]struct{}
-	matchAllows map[string]struct{}
+	allowedTags       map[string]struct{}
+	severities        map[severity.Severity]struct{}
+	excludeSeverities map[severity.Severity]struct{}
+	authors           map[string]struct{}
+	block             map[string]struct{}
+	matchAllows       map[string]struct{}
 }
 
 // ErrExcluded is returned for excluded templates
@@ -54,15 +55,21 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 }
 
 func isSeverityMatch(tagFilter *TagFilter, templateSeverity severity.Severity) bool {
-	if len(tagFilter.severities) == 0 || templateSeverity == severity.Undefined {
+	if (len(tagFilter.excludeSeverities) == 0 && len(tagFilter.severities) == 0) || templateSeverity == severity.Undefined {
 		return true
 	}
 
-	if _, ok := tagFilter.severities[templateSeverity]; ok {
-		return true
+	included := true
+	if len(tagFilter.severities) > 0 {
+		_, included = tagFilter.severities[templateSeverity]
 	}
 
-	return false
+	excluded := false
+	if len(tagFilter.excludeSeverities) > 0 {
+		_, excluded = tagFilter.excludeSeverities[templateSeverity]
+	}
+
+	return included && !excluded
 }
 
 func isAuthorMatch(tagFilter *TagFilter, templateAuthors []string) bool {
@@ -110,23 +117,25 @@ func isTagMatch(tagFilter *TagFilter, templateTags []string) bool {
 }
 
 type Config struct {
-	Tags        []string
-	ExcludeTags []string
-	Authors     []string
-	Severities  severity.Severities
-	IncludeTags []string
+	Tags              []string
+	ExcludeTags       []string
+	Authors           []string
+	Severities        severity.Severities
+	ExcludeSeverities severity.Severities
+	IncludeTags       []string
 }
 
 // New returns a tag filter for nuclei tag based execution
 //
-// It takes into account Tags, Severities, Authors, IncludeTags, ExcludeTags.
+// It takes into account Tags, Severities, ExcludeSeverities, Authors, IncludeTags, ExcludeTags.
 func New(config *Config) *TagFilter {
 	filter := &TagFilter{
-		allowedTags: make(map[string]struct{}),
-		authors:     make(map[string]struct{}),
-		severities:  make(map[severity.Severity]struct{}),
-		block:       make(map[string]struct{}),
-		matchAllows: make(map[string]struct{}),
+		allowedTags:       make(map[string]struct{}),
+		authors:           make(map[string]struct{}),
+		severities:        make(map[severity.Severity]struct{}),
+		excludeSeverities: make(map[severity.Severity]struct{}),
+		block:             make(map[string]struct{}),
+		matchAllows:       make(map[string]struct{}),
 	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
@@ -138,6 +147,11 @@ func New(config *Config) *TagFilter {
 	for _, tag := range config.Severities {
 		if _, ok := filter.severities[tag]; !ok {
 			filter.severities[tag] = struct{}{}
+		}
+	}
+	for _, tag := range config.ExcludeSeverities {
+		if _, ok := filter.excludeSeverities[tag]; !ok {
+			filter.excludeSeverities[tag] = struct{}{}
 		}
 	}
 	for _, tag := range config.Authors {
