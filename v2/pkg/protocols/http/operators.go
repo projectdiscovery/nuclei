@@ -156,6 +156,7 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),
+		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 	}
 	return data
 }

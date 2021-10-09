@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
+	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -371,6 +372,14 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		resp.Body.Close()
 	}()
 
+	var curlCommand string
+	if !r.Unsafe && resp != nil {
+		command, _ := http2curl.GetCurlCommand(resp.Request)
+		if err == nil && command != nil {
+			curlCommand = command.String()
+		}
+	}
+
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
 	r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
 
@@ -464,6 +473,7 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	if i := strings.LastIndex(hostname, ":"); i != -1 {
 		hostname = hostname[:i]
 	}
+	outputEvent["curl-command"] = curlCommand
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
 	for k, v := range previous {
