@@ -25,6 +25,8 @@ type Options struct {
 	Vars goflags.RuntimeMap
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
+	// ExcludeSeverities specifies severities to exclude
+	ExcludeSeverities severity.Severities
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
