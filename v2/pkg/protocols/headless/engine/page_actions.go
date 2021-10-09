@@ -89,7 +89,7 @@ type requestRule struct {
 func (p *Page) WaitVisible(act *Action, out map[string]string) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not find element")
 	}
 	if err = element.WaitVisible(); err != nil {
 		return errors.Wrap(err, "could not wait element")
