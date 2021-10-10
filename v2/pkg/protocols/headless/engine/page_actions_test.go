@@ -16,19 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setUp(t *testing.T) (*Browser, *Instance, error) {
-	t.Helper()
+func TestActionNavigate(t *testing.T) {
 	_ = protocolstate.Init(&types.Options{})
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
 
 	instance, err := browser.NewInstance()
-	return browser, instance, err
-}
-
-func TestActionNavigate(t *testing.T) {
-	browser, instance, err := setUp(t)
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -58,7 +52,12 @@ func TestActionNavigate(t *testing.T) {
 }
 
 func TestActionScript(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -123,7 +122,12 @@ func TestActionScript(t *testing.T) {
 }
 
 func TestActionClick(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -159,7 +163,12 @@ func TestActionClick(t *testing.T) {
 }
 
 func TestActionRightClick(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -203,7 +212,12 @@ func TestActionRightClick(t *testing.T) {
 }
 
 func TestActionTextInput(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -240,7 +254,12 @@ func TestActionTextInput(t *testing.T) {
 }
 
 func TestActionHeadersChange(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -268,7 +287,12 @@ func TestActionHeadersChange(t *testing.T) {
 }
 
 func TestActionScreenshot(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -303,7 +327,12 @@ func TestActionScreenshot(t *testing.T) {
 }
 
 func TestActionTimeInput(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -338,7 +367,12 @@ func TestActionTimeInput(t *testing.T) {
 }
 
 func TestActionSelectInput(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -376,7 +410,12 @@ func TestActionSelectInput(t *testing.T) {
 }
 
 func TestActionFilesInput(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -557,7 +596,12 @@ func TestActionSetMethod(t *testing.T) {
 }
 
 func TestActionAddHeader(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -585,14 +629,18 @@ func TestActionAddHeader(t *testing.T) {
 }
 
 func TestActionDeleteHeader(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Test1") == "Hello" && r.Header.Get("Test2") == "" {
-			fmt.Println(r.Header)
 			fmt.Fprintln(w, `header deleted`)
 		}
 	}))
@@ -616,7 +664,12 @@ func TestActionDeleteHeader(t *testing.T) {
 }
 
 func TestActionSetBody(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -642,11 +695,13 @@ func TestActionSetBody(t *testing.T) {
 	require.Equal(t, "hello", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not set header correctly")
 }
 
-func TestActionWaitEvent(t *testing.T) {
-}
-
 func TestActionKeyboard(t *testing.T) {
-	browser, instance, err := setUp(t)
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+
+	instance, err := browser.NewInstance()
 	defer browser.Close()
 	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
@@ -685,10 +740,42 @@ func TestActionKeyboard(t *testing.T) {
 	require.Equal(t, "Test2", el.MustText(), "could not get input change value")
 }
 
-func TestActionDebug(t *testing.T) {
-}
-
 func TestActionSleep(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+	<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<button style="display:none" id="test">Wait for me!</button>
+		<script>
+			setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+		</script>
+	</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "sleep", Data: map[string]string{"duration": "2"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	defer page.Close()
+
+	require.Nil(t, err, "could not run page actions")
+	require.True(t, page.Page().MustElement("button").MustVisible(), "could not get button")
 }
 
 func TestActionWaitVisible(t *testing.T) {
