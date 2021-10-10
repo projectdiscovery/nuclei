@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -267,9 +268,73 @@ func TestActionHeadersChange(t *testing.T) {
 }
 
 func TestActionScreenshot(t *testing.T) {
+	os.Remove("/tmp/test1.png")
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<body>Nuclei Test Page</body>
+	</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+		{ActionType: "screenshot", Data: map[string]string{"to": "/tmp/test1"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+	el := page.Page()
+	require.FileExists(t, "/tmp/test1.png", el, "could not get screenshot file")
 }
 
 func TestActionTimeInput(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<body>Nuclei Test Page</body>
+		<input type="date">
+	</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+		{ActionType: "time", Data: map[string]string{"selector": "input", "value": "2006-01-02T15:04:05Z"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+	el := page.Page().MustElement("input")
+	require.Equal(t, "2006-01-02", el.MustText(), "could not get input time value")
 }
 
 func TestActionSelectInput(t *testing.T) {
@@ -311,6 +376,38 @@ func TestActionSelectInput(t *testing.T) {
 }
 
 func TestActionFilesInput(t *testing.T) {
+	browser, instance, err := setUp(t)
+	defer browser.Close()
+	defer instance.Close()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<body>Nuclei Test Page</body>
+		<input type="file">
+	</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+		{ActionType: "files", Data: map[string]string{"selector": "input", "value": "test1.pdf"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+	el := page.Page().MustElement("input")
+	require.Equal(t, "C:\\fakepath\\test1.pdf", el.MustText(), "could not get input file")
 }
 
 func TestActionWaitLoad(t *testing.T) {
