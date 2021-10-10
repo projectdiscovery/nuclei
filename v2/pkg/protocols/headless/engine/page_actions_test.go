@@ -21,11 +21,11 @@ func TestActionNavigate(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -56,11 +56,11 @@ func TestActionScript(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	t.Run("run-and-results", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -126,11 +126,11 @@ func TestActionClick(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -167,11 +167,11 @@ func TestActionRightClick(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -216,11 +216,11 @@ func TestActionTextInput(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -258,11 +258,11 @@ func TestActionHeadersChange(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Test") == "Hello" {
@@ -291,11 +291,11 @@ func TestActionScreenshot(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -331,11 +331,11 @@ func TestActionTimeInput(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -371,11 +371,11 @@ func TestActionSelectInput(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -414,11 +414,11 @@ func TestActionFilesInput(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -458,6 +458,7 @@ func TestActionWaitLoad(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -498,6 +499,7 @@ func TestActionGetResource(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -535,6 +537,7 @@ func TestActionExtract(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -570,6 +573,7 @@ func TestActionSetMethod(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -600,11 +604,11 @@ func TestActionAddHeader(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Test") == "Hello" {
@@ -633,11 +637,11 @@ func TestActionDeleteHeader(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Test1") == "Hello" && r.Header.Get("Test2") == "" {
@@ -668,11 +672,11 @@ func TestActionSetBody(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := ioutil.ReadAll(r.Body)
@@ -700,11 +704,11 @@ func TestActionKeyboard(t *testing.T) {
 
 	browser, err := New(&types.Options{ShowBrowser: false})
 	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
 	instance, err := browser.NewInstance()
-	defer browser.Close()
-	defer instance.Close()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -749,6 +753,7 @@ func TestActionSleep(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `
@@ -788,6 +793,7 @@ func TestActionWaitVisible(t *testing.T) {
 
 		instance, err := browser.NewInstance()
 		require.Nil(t, err, "could not create browser instance")
+		defer instance.Close()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, `
@@ -826,6 +832,7 @@ func TestActionWaitVisible(t *testing.T) {
 
 		instance, err := browser.NewInstance()
 		require.Nil(t, err, "could not create browser instance")
+		defer instance.Close()
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, `
