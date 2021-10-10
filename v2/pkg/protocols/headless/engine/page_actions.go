@@ -46,7 +46,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 		case ActionGetResource:
 			err = p.GetResource(act, outData)
 		case ActionExtract:
-			err = p.SelectInputElement(act, outData)
+			err = p.ExtractElement(act, outData)
 		case ActionWaitEvent:
 			err = p.WaitEvent(act, outData)
 		case ActionFilesInput:
