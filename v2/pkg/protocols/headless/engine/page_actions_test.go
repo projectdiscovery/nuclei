@@ -411,15 +411,149 @@ func TestActionFilesInput(t *testing.T) {
 }
 
 func TestActionWaitLoad(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<button id="test">Wait for me!</button>
+			<script>
+				window.onload = () => document.querySelector('#test').style.color = 'red';
+			</script>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitload"},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	el := page.Page().MustElement("button")
+	style, err := el.Attribute("style")
+	require.Equal(t, "color: red;", string(*style), "could not get color")
 }
 
 func TestActionGetResource(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<body>
+				<img id="test" src="https://nuclei.projectdiscovery.io/static/logo.png">
+			</body>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "getresource", Data: map[string]string{"by": "x", "xpath": "//img[@id='test']"}, Name: "src"},
+	}
+	out, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, len(out["src"]), 3159, "could not find resource")
 }
 
 func TestActionExtract(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<button id="test">Wait for me!</button>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "extract", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}, Name: "extract"},
+	}
+	out, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "Wait for me!", out["extract"], "could not extract text")
 }
 
 func TestActionSetMethod(t *testing.T) {
+	_ = protocolstate.Init(&types.Options{})
+
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+		</html>`)
+	}))
+	defer ts.Close()
+
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
+
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "setmethod", Data: map[string]string{"part": "x", "method": "SET"}},
+	}
+	_, page, err := instance.Run(parsed, actions, 20*time.Second)
+	require.Nil(t, err, "could not run page actions")
+	defer page.Close()
+
+	require.Equal(t, "SET", page.rules[0].Args["method"], "could not find resource")
 }
 
 func TestActionAddHeader(t *testing.T) {
