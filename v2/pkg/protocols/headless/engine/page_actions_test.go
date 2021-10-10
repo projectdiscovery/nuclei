@@ -268,7 +268,6 @@ func TestActionHeadersChange(t *testing.T) {
 }
 
 func TestActionScreenshot(t *testing.T) {
-	os.Remove("/tmp/test1.png")
 	browser, instance, err := setUp(t)
 	defer browser.Close()
 	defer instance.Close()
@@ -291,7 +290,7 @@ func TestActionScreenshot(t *testing.T) {
 	actions := []*Action{
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: "waitload"},
-		{ActionType: "screenshot", Data: map[string]string{"to": "/tmp/test1"}},
+		{ActionType: "screenshot", Data: map[string]string{"to": "test"}},
 	}
 	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
@@ -299,7 +298,8 @@ func TestActionScreenshot(t *testing.T) {
 
 	require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
 	el := page.Page()
-	require.FileExists(t, "/tmp/test1.png", el, "could not get screenshot file")
+	require.FileExists(t, "test.png", el, "could not get screenshot file")
+	os.Remove("test.png")
 }
 
 func TestActionTimeInput(t *testing.T) {
