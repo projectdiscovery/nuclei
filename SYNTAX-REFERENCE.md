@@ -1192,6 +1192,19 @@ StopAtFirstMatch stops the execution of the requests and template as soon as a m
 
 <hr />
 
+<div class="dd">
+
+<code>skip-variables-check</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipVariablesCheck skips the check for unresolved variables in request
+
+</div>
+
+<hr />
+
 
 
 

@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
@@ -244,6 +245,10 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				callback(event)
 			}
 		}, requestCount)
+		// If a variable is unresolved, skip all further requests
+		if err == errStopExecution {
+			break
+		}
 		if err != nil {
 			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.CheckError(err) {
 				request.options.HostErrorsCache.MarkFailed(reqURL)
@@ -253,8 +258,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		requestCount++
 		request.options.Progress.IncrementRequests()
 
+		// If this was a match and we want to stop at first match, skip all further requests.
 		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
-			request.options.Progress.IncrementErrorsBy(int64(generator.Total()))
 			break
 		}
 	}
@@ -262,6 +267,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 }
 
 const drainReqSize = int64(8 * 1024)
+
+var errStopExecution = errors.New("stop execution due to unresolved variables")
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
@@ -273,6 +280,27 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpedRequest []byte
 		err           error
 	)
+
+	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
+	if !generatedRequest.original.Race {
+		var dumpError error
+		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
+		if dumpError != nil {
+			return dumpError
+		}
+		dumpedRequestString := string(dumpedRequest)
+
+		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+			return errStopExecution
+		}
+
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			gologger.Print().Msgf("%s", dumpedRequestString)
+		}
+	}
 
 	var formedURL string
 	var hostname string
@@ -310,20 +338,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		if resp == nil {
 			resp, err = request.httpClient.Do(generatedRequest.request)
-		}
-	}
-
-	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
-	if !generatedRequest.original.Race {
-		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
-		if dumpError != nil {
-			return dumpError
-		}
-
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
 		}
 	}
 	if err != nil {
