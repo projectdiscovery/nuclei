@@ -373,7 +373,9 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 	}()
 
 	var curlCommand string
-	if !r.Unsafe && resp != nil {
+	if !r.Unsafe && resp != nil && request.request != nil {
+		bodyBytes, _ := request.request.BodyBytes()
+		resp.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		command, _ := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()

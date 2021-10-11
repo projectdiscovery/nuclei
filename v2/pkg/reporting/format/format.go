@@ -131,6 +131,8 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 			}
 		}
 	}
+	builder.WriteString("\n")
+
 	if event.CURLCommand != "" {
 		builder.WriteString("\n**CURL Command**\n```\n")
 		builder.WriteString(event.CURLCommand)

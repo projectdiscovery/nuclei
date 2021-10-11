@@ -244,6 +244,7 @@ func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove th
 			}
 		}
 	}
+	builder.WriteString("\n")
 
 	if event.CURLCommand != "" {
 		builder.WriteString("\n*CURL Command*\n{code}\n")
