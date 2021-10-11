@@ -1,12 +1,15 @@
 package http
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
@@ -167,6 +170,9 @@ type Request struct {
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+	// description: |
+	//   SkipVariablesCheck skips the check for unresolved variables in request
+	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
 }
 
 // GetID returns the unique ID of the request if any.
@@ -222,12 +228,46 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		request.CompiledOperators = compiled
 	}
 
+	// Resolve payload paths from vars if they exists
+	for name, payload := range request.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		// search for markers in all request parts
+		var inputs []string
+		inputs = append(inputs, request.Method, request.Body)
+		inputs = append(inputs, request.Raw...)
+		for k, v := range request.customHeaders {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
+		}
+		for k, v := range request.Headers {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
+		}
+
+		for _, input := range inputs {
+			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+				hasPayloadName = true
+				break
+			}
+		}
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if request.Payloads == nil {
+				request.Payloads = make(map[string]interface{})
+			}
+			request.Payloads[name] = payloadStr
+		}
+	}
+
 	if len(request.Payloads) > 0 {
 		attackType := request.AttackType
 		if attackType == "" {
-			attackType = "sniper"
+			attackType = "batteringram"
 		}
-		request.attackType = generators.StringToType[attackType]
+		var ok bool
+		request.attackType, ok = generators.StringToType[attackType]
+		if !ok {
+			return fmt.Errorf("invalid attack type provided: %s", attackType)
+		}
 
 		// Resolve payload paths if they are files.
 		for name, payload := range request.Payloads {

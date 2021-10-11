@@ -270,7 +270,7 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 25)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 26)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -437,6 +437,11 @@ func init() {
 	HTTPRequestDoc.Fields[24].Note = ""
 	HTTPRequestDoc.Fields[24].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
 	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[25].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[25].Type = "bool"
+	HTTPRequestDoc.Fields[25].Note = ""
+	HTTPRequestDoc.Fields[25].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
