@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
 var _ protocols.Request = &Request{}
@@ -32,9 +33,14 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		return errors.Wrap(err, "could not build request")
 	}
 
+	requestString := compiledRequest.String()
+	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
+		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+		return nil
+	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
-		gologger.Print().Msgf("%s", compiledRequest.String())
+		gologger.Print().Msgf("%s", requestString)
 	}
 
 	// Send the request to the target servers
