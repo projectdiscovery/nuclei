@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -183,13 +184,40 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 	if r.ReadSize != 0 {
 		bufferSize = r.ReadSize
 	}
-	final := make([]byte, bufferSize)
-	n, err := conn.Read(final)
-	if err != nil && err != io.EOF {
-		r.options.Output.Request(r.options.TemplateID, address, "network", err)
-		return errors.Wrap(err, "could not read from server")
+
+	var (
+		final []byte
+		n     int
+	)
+
+	if r.ReadAll {
+		readInterval := time.After(time.Second * 1)
+	read_socket:
+		for {
+			select {
+			case <-readInterval:
+				break read_socket
+			default:
+				buf := make([]byte, bufferSize)
+				nBuf, err := conn.Read(buf)
+				if err != nil && !os.IsTimeout(err) {
+					r.options.Output.Request(r.options.TemplateID, address, "network", err)
+					return errors.Wrap(err, "could not read from server")
+				}
+				responseBuilder.Write(buf[:nBuf])
+				final = append(final, buf...)
+				n += nBuf
+			}
+		}
+	} else {
+		final = make([]byte, bufferSize)
+		n, err = conn.Read(final)
+		if err != nil && err != io.EOF {
+			r.options.Output.Request(r.options.TemplateID, address, "network", err)
+			return errors.Wrap(err, "could not read from server")
+		}
+		responseBuilder.Write(final[:n])
 	}
-	responseBuilder.Write(final[:n])
 
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
