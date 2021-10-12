@@ -108,7 +108,7 @@ type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) (boo
 type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 
 // Execute executes the operators on data and returns a result structure
-func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc) (*Result, bool) {
+func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc, isDebug bool) (*Result, bool) {
 	matcherCondition := operators.GetMatchersCondition()
 
 	var matches bool
@@ -140,9 +140,14 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 
 	for matcherIndex, matcher := range operators.Matchers {
 		if isMatch, matched := match(data, matcher); isMatch {
-			matcherName := getMatcherName(matcher, matcherIndex)
-			result.Matches[matcherName] = matched
-
+			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
+				matcherName := getMatcherName(matcher, matcherIndex)
+				result.Matches[matcherName] = matched
+			} else { // if it's a "named" matcher with OR condition, then display it
+				if matcherCondition == matchers.ORCondition && matcher.Name != "" {
+					result.Matches[matcher.Name] = matched
+				}
+			}
 			matches = true
 		} else if matcherCondition == matchers.ANDCondition {
 			if len(result.DynamicValues) > 0 {

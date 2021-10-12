@@ -159,7 +159,62 @@ func TestFileOperatorExtract(t *testing.T) {
 	})
 }
 
-func TestFileMakeResult(t *testing.T) {
+func TestFileMakeResultWithOrMatcher(t *testing.T) {
+	expectedValue := []string{"1.1.1.1"}
+	namedMatcherName := "test"
+
+	finalEvent := testFileMakeResultOperators(t, "or")
+	require.Equal(t, namedMatcherName, finalEvent.Results[0].MatcherName)
+	require.Equal(t, expectedValue, finalEvent.OperatorsResult.Matches[namedMatcherName], "could not get matched value")
+}
+
+func TestFileMakeResultWithAndMatcher(t *testing.T) {
+	finalEvent := testFileMakeResultOperators(t, "and")
+	require.Equal(t, "", finalEvent.Results[0].MatcherName)
+	require.Empty(t, finalEvent.OperatorsResult.Matches)
+}
+
+func testFileMakeResultOperators(t *testing.T, matcherCondition string) *output.InternalWrappedEvent {
+	expectedValue := []string{"1.1.1.1"}
+	namedMatcherName := "test"
+	matcher := []*matchers.Matcher{
+		{
+			Part:  "raw",
+			Type:  "word",
+			Words: expectedValue,
+		},
+		{
+			Name:  namedMatcherName,
+			Part:  "raw",
+			Type:  "word",
+			Words: expectedValue,
+		},
+	}
+
+	expectedValues := map[string][]string{
+		"word-1":         expectedValue,
+		namedMatcherName: expectedValue,
+	}
+
+	finalEvent := testFileMakeResult(t, matcher, matcherCondition, true)
+	for matcherName, matchedValues := range expectedValues {
+		var matchesOne = false
+		for i := 0; i <= len(expectedValue); i++ {
+			resultEvent := finalEvent.Results[i]
+			if matcherName == resultEvent.MatcherName {
+				matchesOne = true
+			}
+		}
+		require.True(t, matchesOne)
+		require.Equal(t, matchedValues, finalEvent.OperatorsResult.Matches[matcherName], "could not get matched value")
+	}
+
+	finalEvent = testFileMakeResult(t, matcher, matcherCondition, false)
+	require.Equal(t, 1, len(finalEvent.Results))
+	return finalEvent
+}
+
+func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondition string, isDebug bool) *output.InternalWrappedEvent {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
@@ -171,12 +226,8 @@ func TestFileMakeResult(t *testing.T) {
 		Extensions:        []string{"*", ".lock"},
 		ExtensionDenylist: []string{".go"},
 		Operators: operators.Operators{
-			Matchers: []*matchers.Matcher{{
-				Name:  "test",
-				Part:  "raw",
-				Type:  "word",
-				Words: []string{"1.1.1.1"},
-			}},
+			MatchersCondition: matcherCondition,
+			Matchers:          matchers,
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
 				Type:  "regex",
@@ -191,20 +242,24 @@ func TestFileMakeResult(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
-	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+	matchedFileName := "test.txt"
+	fileContent := "test-data\r\n1.1.1.1\r\n"
+
+	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName)
 	require.Len(t, event, 6, "could not get correct number of items in dsl map")
-	require.Equal(t, resp, event["raw"], "could not get correct resp")
+	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, isDebug)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)
 		}
 	}
-	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
-	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	resultEvent := finalEvent.Results[0]
+	require.Equal(t, "1.1.1.1", resultEvent.ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, matchedFileName, resultEvent.Matched, "could not get matched value")
+
+	return finalEvent
 }

@@ -209,7 +209,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 
 	var event *output.InternalWrappedEvent
 	if interactURL == "" {
-		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, func(wrappedEvent *output.InternalWrappedEvent) {
+		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
 		callback(event)
