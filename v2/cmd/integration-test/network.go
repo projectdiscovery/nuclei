@@ -82,7 +82,14 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 3 {
+
+	var expectedResultsSize int
+	if debug {
+		expectedResultsSize = 3
+	} else {
+		expectedResultsSize = 1
+	}
+	if len(results) != expectedResultsSize {
 		return errIncorrectResultsCount(results)
 	}
 	return nil
