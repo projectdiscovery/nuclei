@@ -71,6 +71,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude", "exclude-templates", []string{}, "template or template directory paths to exclude"),
 
 		flagSet.VarP(&options.Severities, "impact", "severity", fmt.Sprintf("Templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
+		flagSet.VarP(&options.ExcludeSeverities, "exclude-impact", "exclude-severity", fmt.Sprintf("Templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.NormalizedStringSliceVar(&options.Author, "author", []string{}, "execute templates that are (co-)created by the specified authors"),
 	)
 
@@ -109,7 +110,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "interactsh", "interactsh",
 		flagSet.BoolVar(&options.NoInteractsh, "no-interactsh", false, "disable interactsh server for OOB testing"),
-		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interact.sh", "interactsh server url for self-hosted instance"),
+		flagSet.StringVar(&options.InteractshURL, "interactsh-url", "https://interactsh.com", "interactsh server url for self-hosted instance"),
 		flagSet.StringVar(&options.InteractshToken, "interactsh-token", "", "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
@@ -140,6 +141,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support"),
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVar(&options.ShowBrowser, "show-browser", false, "show the browser on the screen when running templates with headless mode"),
+		flagSet.BoolVar(&options.UseInstalledChrome, "system-chrome", false, "Use local installed chrome browser instead of nuclei installed"),
 	)
 
 	createGroup(flagSet, "debug", "Debug",
@@ -189,3 +191,10 @@ func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags 
 		currentFlag.Group(groupName)
 	}
 }
+
+/*
+HacktoberFest update: Below, you can find our ticket recommendations. Tasks with the "good first issue" label are suitable for first time contributors. If you have other ideas, or need help with getting started, join our Discord channel or reach out to @forgedhallpass.
+
+https://github.com/issues?q=is%3Aopen+is%3Aissue+user%3Aprojectdiscovery+label%3AHacktoberfest
+
+*/
