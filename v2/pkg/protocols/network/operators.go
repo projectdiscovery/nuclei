@@ -64,20 +64,18 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	return nil
 }
 
-// responseToDSLMap converts a DNS response to a map for use in DSL matching
+// responseToDSLMap converts a network response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(req, resp, raw, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 6)
-
-	// Some data regarding the request metadata
-	data["host"] = host
-	data["matched"] = matched
-	data["request"] = req
-	data["data"] = resp // Data is the last bytes read
-	data["raw"] = raw   // Raw is the full transaction data for network
-	data["template-id"] = request.options.TemplateID
-	data["template-info"] = request.options.TemplateInfo
-	data["template-path"] = request.options.TemplatePath
-	return data
+	return output.InternalEvent{
+		"host":          host,
+		"matched":       matched,
+		"request":       req,
+		"data":          resp, // Data is the last bytes read
+		"raw":           raw,  // Raw is the full transaction data for network
+		"template-id":   request.options.TemplateID,
+		"template-info": request.options.TemplateInfo,
+		"template-path": request.options.TemplatePath,
+	}
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

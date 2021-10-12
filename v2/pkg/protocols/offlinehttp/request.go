@@ -85,7 +85,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				outputEvent[k] = v
 			}
 
-			event := eventcreator.CreateEvent(request, outputEvent)
+			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 			callback(event)
 		}(data)
 	})

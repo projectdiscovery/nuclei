@@ -192,7 +192,7 @@ func TestNetworkMakeResult(t *testing.T) {
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	event["ip"] = "192.168.1.1"
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)

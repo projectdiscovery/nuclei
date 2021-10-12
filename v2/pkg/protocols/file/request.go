@@ -57,7 +57,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				outputEvent[k] = v
 			}
 
-			event := eventcreator.CreateEvent(request, outputEvent)
+			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 			if request.options.Options.Debug || request.options.Options.DebugResponse {
 				gologger.Info().Msgf("[%s] Dumped file request for %s", request.options.TemplateID, filePath)

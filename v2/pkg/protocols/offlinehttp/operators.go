@@ -93,8 +93,8 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 }
 
 // responseToDSLMap converts an HTTP response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
-	data := make(map[string]interface{}, len(extra)+8+len(resp.Header)+len(resp.Cookies()))
+func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
+	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
 	for k, v := range extra {
 		data[k] = v
 	}
