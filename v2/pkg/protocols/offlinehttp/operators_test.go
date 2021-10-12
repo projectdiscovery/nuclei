@@ -204,7 +204,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	event["ip"] = "192.169.1.1"
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	for _, operator := range request.compiledOperators {
-		result, ok := operator.Execute(event, request.Match, request.Extract)
+		result, ok := operator.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)

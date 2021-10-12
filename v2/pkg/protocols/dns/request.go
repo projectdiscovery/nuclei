@@ -8,9 +8,9 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
 var _ protocols.Request = &Request{}
@@ -62,7 +62,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		outputEvent[k] = v
 	}
 
-	event := eventcreator.CreateEvent(request, outputEvent)
+	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", request.options.TemplateID, domain)

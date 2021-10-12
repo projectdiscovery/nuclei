@@ -236,13 +236,15 @@ func TestDNSMakeResult(t *testing.T) {
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)
 		}
 	}
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
-	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	resultEvent := finalEvent.Results[0]
+	require.Equal(t, "test", resultEvent.MatcherName, "could not get correct matcher name of results")
+	require.Equal(t, "1.1.1.1", resultEvent.ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, "one.one.one.one", resultEvent.Matched, "could not get matched value")
 }

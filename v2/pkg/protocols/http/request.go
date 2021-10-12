@@ -477,7 +477,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 	}
 
-	event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, func(internalWrappedEvent *output.InternalWrappedEvent) {
+	event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 	})
 

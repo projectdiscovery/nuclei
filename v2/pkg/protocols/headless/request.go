@@ -65,7 +65,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 		outputEvent[k] = v
 	}
 
-	event := eventcreator.CreateEvent(request, outputEvent)
+	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Headless response for %s", request.options.TemplateID, input)
