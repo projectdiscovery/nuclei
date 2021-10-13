@@ -317,10 +317,10 @@ func init() {
 	HTTPRequestDoc.Fields[7].Name = "attack"
 	HTTPRequestDoc.Fields[7].Type = "string"
 	HTTPRequestDoc.Fields[7].Note = ""
-	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	HTTPRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	HTTPRequestDoc.Fields[7].Values = []string{
-		"sniper",
+		"batteringram",
 		"pitchfork",
 		"clusterbomb",
 	}
@@ -854,10 +854,10 @@ func init() {
 	NETWORKRequestDoc.Fields[2].Name = "attack"
 	NETWORKRequestDoc.Fields[2].Type = "string"
 	NETWORKRequestDoc.Fields[2].Note = ""
-	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	NETWORKRequestDoc.Fields[2].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	NETWORKRequestDoc.Fields[2].Values = []string{
-		"sniper",
+		"batteringram",
 		"pitchfork",
 		"clusterbomb",
 	}
