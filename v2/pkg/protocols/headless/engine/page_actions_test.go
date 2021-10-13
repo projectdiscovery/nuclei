@@ -53,6 +53,42 @@ func TestActionNavigate(t *testing.T) {
 }
 
 func TestActionScript(t *testing.T) {
+	t.Run("run-and-results", func(t *testing.T) {
+		actions := []*Action{
+			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: "waitload"},
+			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
+		}
+		testActionScript(t, actions, func(page *Page, out map[string]string, err error) {
+			require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+			require.Equal(t, "some-data", out["test"], "could not run js and get results correctly")
+		})
+	})
+
+	t.Run("hook", func(t *testing.T) {
+		actions := []*Action{
+			{ActionType: "script", Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
+			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: "waitload"},
+			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
+		}
+		testActionScript(t, actions, func(page *Page, out map[string]string, err error) {
+			require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+			require.Equal(t, "some-data", out["test"], "could not run js and get results correctly with js hook")
+		})
+	})
+}
+
+func testActionScript(t *testing.T, actions []*Action, assert func(page *Page, out map[string]string, err error)) {
+	response := `
+		<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<body>Nuclei Test Page</body>
+		<script>window.test = 'some-data';</script>
+	</html>`
+
 	_ = protocolstate.Init(&types.Options{})
 
 	browser, err := New(&types.Options{ShowBrowser: false})
@@ -61,65 +97,17 @@ func TestActionScript(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
-	defer instance.Close()
 
-	t.Run("run-and-results", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, `
-			<html>
-			<head>
-				<title>Nuclei Test Page</title>
-			</head>
-			<body>Nuclei Test Page</body>
-			<script>window.test = 'some-data';</script>
-		</html>`)
-		}))
-		defer ts.Close()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, response)
+	}))
+	defer ts.Close()
 
-		parsed, err := url.Parse(ts.URL)
-		require.Nil(t, err, "could not parse URL")
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
 
-		actions := []*Action{
-			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: "waitload"},
-			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
-		}
-		out, page, err := instance.Run(parsed, actions, 20*time.Second)
-		require.Nil(t, err, "could not run page actions")
-		defer page.Close()
-
-		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
-		require.Equal(t, "some-data", out["test"], "could not run js and get results correctly")
-	})
-
-	t.Run("hook", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, `
-			<html>
-			<head>
-				<title>Nuclei Test Page</title>
-			</head>
-			<body>Nuclei Test Page</body>
-		</html>`)
-		}))
-		defer ts.Close()
-
-		parsed, err := url.Parse(ts.URL)
-		require.Nil(t, err, "could not parse URL")
-
-		actions := []*Action{
-			{ActionType: "script", Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
-			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: "waitload"},
-			{ActionType: "script", Name: "test", Data: map[string]string{"code": "window.test"}},
-		}
-		out, page, err := instance.Run(parsed, actions, 20*time.Second)
-		require.Nil(t, err, "could not run page actions")
-		defer page.Close()
-
-		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
-		require.Equal(t, "some-data", out["test"], "could not run js and get results correctly with js hook")
-	})
+	out, page, err := instance.Run(parsed, actions, 2*time.Second)
+	assert(page, out, err)
 }
 
 func TestActionClick(t *testing.T) {
