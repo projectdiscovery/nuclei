@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	"github.com/valyala/fasttemplate"
@@ -85,16 +87,81 @@ type requestRule struct {
 	Args   map[string]string
 }
 
+const elementDidNotAppearMessage = "Element did not appear in the given amount of time"
+
 // WaitVisible waits until an element appears.
 func (p *Page) WaitVisible(act *Action, out map[string]string) error {
-	element, err := p.pageElementBy(act.Data)
+	timeout, err := getTimeout(act)
 	if err != nil {
-		return errors.Wrap(err, "could not find element")
+		return errors.Wrap(err, "Wrong timeout given")
 	}
-	if err = element.WaitVisible(); err != nil {
-		return errors.Wrap(err, "could not wait element")
+
+	pollTime, err := getPollTime(act)
+	if err != nil {
+		return errors.Wrap(err, "Wrong polling time given")
 	}
+
+	element, _ := p.Sleeper(pollTime, timeout).
+		Timeout(timeout).
+		pageElementBy(act.Data)
+
+	if element != nil {
+		if err := element.WaitVisible(); err != nil {
+			return errors.Wrap(err, elementDidNotAppearMessage)
+		}
+	} else {
+		return errors.New(elementDidNotAppearMessage)
+	}
+
 	return nil
+}
+
+func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
+	page := *p
+	page.page = page.Page().Sleeper(func() utils.Sleeper {
+		return createBackOffSleeper(pollTimeout, timeout)
+	})
+	return &page
+}
+
+func (p *Page) Timeout(timeout time.Duration) *Page {
+	page := *p
+	page.page = page.Page().Timeout(timeout)
+	return &page
+}
+
+func createBackOffSleeper(pollTimeout, timeout time.Duration) utils.Sleeper {
+	backoffSleeper := utils.BackoffSleeper(pollTimeout, timeout, func(duration time.Duration) time.Duration {
+		return duration
+	})
+
+	return func(ctx context.Context) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		return backoffSleeper(ctx)
+	}
+}
+
+func getTimeout(act *Action) (time.Duration, error) {
+	return geTimeParameter(act, "timeout", 3, time.Second)
+}
+
+func getPollTime(act *Action) (time.Duration, error) {
+	return geTimeParameter(act, "pollTime", 100, time.Millisecond)
+}
+
+func geTimeParameter(act *Action, parameterName string, defaultValue time.Duration, duration time.Duration) (time.Duration, error) {
+	pollTimeString := act.GetArg(parameterName)
+	if pollTimeString == "" {
+		return defaultValue * duration, nil
+	}
+	timeout, err := strconv.Atoi(pollTimeString)
+	if err != nil {
+		return time.Duration(0), err
+	}
+	return time.Duration(timeout) * duration, nil
 }
 
 // ActionAddHeader executes a AddHeader action.

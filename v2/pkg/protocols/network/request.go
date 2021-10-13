@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
@@ -82,6 +83,7 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		conn     net.Conn
 		err      error
 	)
+	r.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
@@ -137,6 +139,10 @@ func (r *Request) executeRequestWithPayloads(actualAddress, address, input strin
 		}
 		reqBuilder.Write(finalData)
 
+		if varErr := expressions.ContainsUnresolvedVariables(string(finalData)); varErr != nil {
+			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", r.options.TemplateID, actualAddress, varErr)
+			return nil
+		}
 		if _, err := conn.Write(finalData); err != nil {
 			r.options.Output.Request(r.options.TemplateID, address, "network", err)
 			r.options.Progress.IncrementFailedRequestsBy(1)

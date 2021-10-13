@@ -1,12 +1,14 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -66,8 +68,9 @@ type Request struct {
 	generator  *generators.Generator
 	attackType generators.Type
 	// cache any variables that may be needed for operation.
-	dialer  *fastdialer.Dialer
-	options *protocols.ExecuterOptions
+	dialer        *fastdialer.Dialer
+	options       *protocols.ExecuterOptions
+	dynamicValues map[string]interface{}
 }
 
 type addressKV struct {
@@ -149,12 +152,38 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 
+	// Resolve payload paths from vars if they exists
+	for name, payload := range r.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		for _, input := range r.Inputs {
+			if input.Type != "" {
+				continue
+			}
+			if expressions.ContainsVariablesWithNames(input.Data, map[string]interface{}{name: payload}) == nil {
+				hasPayloadName = true
+				break
+			}
+		}
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if r.Payloads == nil {
+				r.Payloads = make(map[string]interface{})
+			}
+			r.Payloads[name] = payloadStr
+		}
+	}
+
 	if len(r.Payloads) > 0 {
 		attackType := r.AttackType
 		if attackType == "" {
-			attackType = "sniper"
+			attackType = "batteringram"
 		}
-		r.attackType = generators.StringToType[attackType]
+		var ok bool
+		r.attackType, ok = generators.StringToType[attackType]
+		if !ok {
+			return fmt.Errorf("invalid attack type provided: %s", attackType)
+		}
 
 		// Resolve payload paths if they are files.
 		for name, payload := range r.Payloads {
