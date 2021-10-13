@@ -823,7 +823,7 @@ in a combined manner allowing multirequest based matchers.
 
 Attack is the type of payload combinations to perform.
 
-Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
