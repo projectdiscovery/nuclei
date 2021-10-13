@@ -19,11 +19,12 @@ type Config struct {
 	ExcludeTemplates []string
 	IncludeTemplates []string
 
-	Tags        []string
-	ExcludeTags []string
-	Authors     []string
-	Severities  severity.Severities
-	IncludeTags []string
+	Tags              []string
+	ExcludeTags       []string
+	Authors           []string
+	Severities        severity.Severities
+	ExcludeSeverities severity.Severities
+	IncludeTags       []string
 
 	Catalog            *catalog.Catalog
 	ExecutorOptions    protocols.ExecuterOptions
@@ -49,11 +50,12 @@ func New(config *Config) (*Store, error) {
 	store := &Store{
 		config: config,
 		tagFilter: filter.New(&filter.Config{
-			Tags:        config.Tags,
-			ExcludeTags: config.ExcludeTags,
-			Authors:     config.Authors,
-			Severities:  config.Severities,
-			IncludeTags: config.IncludeTags,
+			Tags:              config.Tags,
+			ExcludeTags:       config.ExcludeTags,
+			Authors:           config.Authors,
+			Severities:        config.Severities,
+			ExcludeSeverities: config.ExcludeSeverities,
+			IncludeTags:       config.IncludeTags,
 		}),
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,

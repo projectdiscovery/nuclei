@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestActionNavigate(t *testing.T) {
@@ -487,7 +488,8 @@ func TestActionWaitLoad(t *testing.T) {
 
 	el := page.Page().MustElement("button")
 	style, err := el.Attribute("style")
-	require.Equal(t, "color: red;", string(*style), "could not get color")
+	require.Nil(t, err)
+	require.Equal(t, "color: red;", *style, "could not get color")
 }
 
 func TestActionGetResource(t *testing.T) {
@@ -785,18 +787,24 @@ func TestActionSleep(t *testing.T) {
 
 func TestActionWaitVisible(t *testing.T) {
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		_ = protocolstate.Init(&types.Options{})
+		testWaitVisible(t, 2*time.Second, func(page *Page, err error) {
+			require.Nil(t, err, "could not run page actions")
 
-		browser, err := New(&types.Options{ShowBrowser: false})
-		require.Nil(t, err, "could not create browser")
-		defer browser.Close()
+			page.Page().MustElement("button").MustVisible()
+			page.Close()
+		})
+	})
 
-		instance, err := browser.NewInstance()
-		require.Nil(t, err, "could not create browser instance")
-		defer instance.Close()
+	t.Run("timeout because of element not visible", func(t *testing.T) {
+		testWaitVisible(t, time.Second/2, func(page *Page, err error) {
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
+		})
+	})
+}
 
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, `
+func testWaitVisible(t *testing.T, timeout time.Duration, assert func(page *Page, err error)) {
+	response := `
 		<html>
 			<head>
 				<title>Nuclei Test Page</title>
@@ -805,55 +813,29 @@ func TestActionWaitVisible(t *testing.T) {
 			<script>
 				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
 			</script>
-		</html>`)
-		}))
-		defer ts.Close()
+		</html>`
 
-		parsed, err := url.Parse(ts.URL)
-		require.Nil(t, err, "could not parse URL")
+	_ = protocolstate.Init(&types.Options{})
 
-		actions := []*Action{
-			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: "waitvisible", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
-		}
-		_, page, err := instance.Run(parsed, actions, 20*time.Second)
-		require.Nil(t, err, "could not run page actions")
-		defer page.Close()
+	browser, err := New(&types.Options{ShowBrowser: false})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
 
-		page.Page().MustElement("button").MustVisible()
-	})
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
 
-	t.Run("timeout because of element not visible", func(t *testing.T) {
-		_ = protocolstate.Init(&types.Options{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, response)
+	}))
+	defer ts.Close()
 
-		browser, err := New(&types.Options{ShowBrowser: false})
-		require.Nil(t, err, "could not create browser")
-		defer browser.Close()
+	parsed, err := url.Parse(ts.URL)
+	require.Nil(t, err, "could not parse URL")
 
-		instance, err := browser.NewInstance()
-		require.Nil(t, err, "could not create browser instance")
-		defer instance.Close()
-
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, `
-		<html>
-			<head>
-				<title>Nuclei Test Page</title>
-			</head>
-			<button style="display:none" id="test">Wait for me!</button>
-		</html>`)
-		}))
-		defer ts.Close()
-
-		parsed, err := url.Parse(ts.URL)
-		require.Nil(t, err, "could not parse URL")
-
-		actions := []*Action{
-			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: "waitvisible", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
-		}
-		_, _, err = instance.Run(parsed, actions, 2*time.Second)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "could not wait element")
-	})
+	actions := []*Action{
+		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: "waitvisible", Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+	}
+	_, page, err := instance.Run(parsed, actions, timeout)
+	assert(page, err)
 }

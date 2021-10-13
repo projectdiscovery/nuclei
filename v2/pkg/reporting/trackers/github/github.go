@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"golang.org/x/oauth2"
@@ -58,11 +59,12 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
 
 	req := &github.IssueRequest{
 		Title:     &summary,
 		Body:      &description,
-		Labels:    &[]string{i.options.IssueLabel},
+		Labels:    &[]string{i.options.IssueLabel, severityLabel},
 		Assignees: &[]string{i.options.Username},
 	}
 	_, _, err := i.client.Issues.Create(context.Background(), i.options.Owner, i.options.ProjectName, req)

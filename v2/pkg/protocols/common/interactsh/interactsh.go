@@ -256,7 +256,7 @@ func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
 // HasMatchers returns true if an operator has interactsh part
 // matchers or extractors.
 //
-// Used by requests to show result or not depending on presence of interact.sh
+// Used by requests to show result or not depending on presence of interactsh.com
 // data part matchers.
 func HasMatchers(op *operators.Operators) bool {
 	if op == nil {
