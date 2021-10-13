@@ -1192,6 +1192,19 @@ StopAtFirstMatch stops the execution of the requests and template as soon as a m
 
 <hr />
 
+<div class="dd">
+
+<code>skip-variables-check</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipVariablesCheck skips the check for unresolved variables in request
+
+</div>
+
+<hr />
+
 
 
 
@@ -2021,6 +2034,19 @@ retries: 5
 <div class="dt">
 
 Recursion determines if resolver should recurse all records to get fresh results.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>resolvers</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Resolvers to use for the dns requests
 
 </div>
 

@@ -72,6 +72,8 @@ type Request struct {
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
 	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	// Resolvers to use for the dns requests
+	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
 
 // GetID returns the unique ID of the request if any.
@@ -81,10 +83,14 @@ func (r *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	// Create a dns client for the class
-	client, err := dnsclientpool.Get(options.Options, &dnsclientpool.Configuration{
+	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: r.Retries,
-	})
+	}
+	if len(r.Resolvers) > 0 {
+		dnsClientOptions.Resolvers = r.Resolvers
+	}
+	// Create a dns client for the class
+	client, err := dnsclientpool.Get(options.Options, dnsClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
@@ -128,6 +134,14 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 	q.Qclass = r.class
 	q.Qtype = r.question
 	req.Question = append(req.Question, q)
+
+	req.SetEdns0(4096, false)
+
+	switch r.question {
+	case dns.TypeTXT:
+		req.AuthenticatedData = true
+	}
+
 	return req, nil
 }
 

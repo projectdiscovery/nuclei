@@ -34,6 +34,7 @@ func New(options *types.Options) (*Browser, error) {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
 	previouspids := findChromeProcesses()
+
 	chromeLauncher := launcher.New().
 		Leakless(false).
 		Set("disable-gpu", "true").
@@ -48,6 +49,14 @@ func New(options *types.Options) (*Browser, error) {
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
+
+	if options.UseInstalledChrome {
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
+		} else {
+			return nil, errors.New("the chrome browser is not installed")
+		}
+	}
 
 	if options.ShowBrowser {
 		chromeLauncher = chromeLauncher.Headless(false)
