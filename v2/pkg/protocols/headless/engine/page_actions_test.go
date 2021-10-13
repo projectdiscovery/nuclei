@@ -719,10 +719,7 @@ func TestActionKeyboard(t *testing.T) {
 				<title>Nuclei Test Page</title>
 			</head>
 			<body>
-				<select name="test" id="test">
-				  <option value="test1">Test1</option>
-				  <option value="test2">Test2</option>
-				</select>
+				<input type="text" name="test" id="test">
 			</body>
 		</html>`)
 	}))
@@ -734,15 +731,14 @@ func TestActionKeyboard(t *testing.T) {
 	actions := []*Action{
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: "waitload"},
-		{ActionType: "click", Data: map[string]string{"selector": "select"}},
-		{ActionType: "keyboard", Data: map[string]string{"keys": "Test 2"}},
-		{ActionType: "keyboard", Data: map[string]string{"keys": "enter"}},
+		{ActionType: "click", Data: map[string]string{"selector": "input"}},
+		{ActionType: "keyboard", Data: map[string]string{"keys": "Test2"}},
 	}
 	_, page, err := instance.Run(parsed, actions, 20*time.Second)
 	require.Nil(t, err, "could not run page actions")
 	defer page.Close()
 
-	el := page.Page().MustElement("select")
+	el := page.Page().MustElement("input")
 	require.Equal(t, "Test2", el.MustText(), "could not get input change value")
 }
 
