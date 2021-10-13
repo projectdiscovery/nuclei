@@ -429,7 +429,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
 	// Decode gbk response content-types
-	if contentType := strings.ToLower(resp.Header.Get("Content-Type")); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
+	// gb18030 supersedes gb2312
+	if contentType := strings.ToLower(resp.Header.Get("Content-Type")); stringsutil.ContainsAny(contentType, "gbk", "gb2312", "gb18030") {
 		dumpedResponse, err = decodegbk(dumpedResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
