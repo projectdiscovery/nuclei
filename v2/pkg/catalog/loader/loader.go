@@ -15,7 +15,9 @@ import (
 // Config contains the configuration options for the loader
 type Config struct {
 	Templates        []string
+	TemplateURLs     []string
 	Workflows        []string
+	WorkflowURLs     []string
 	ExcludeTemplates []string
 	IncludeTemplates []string
 
@@ -37,6 +39,7 @@ type Store struct {
 	pathFilter     *filter.PathFilter
 	config         *Config
 	finalTemplates []string
+	finalWorkflows []string
 
 	templates []*templates.Template
 	workflows []*templates.Template
@@ -61,13 +64,24 @@ func New(config *Config) (*Store, error) {
 			IncludedTemplates: config.IncludeTemplates,
 			ExcludedTemplates: config.ExcludeTemplates,
 		}, config.Catalog),
+		finalTemplates: config.Templates,
+		finalWorkflows: config.Workflows,
+	}
+
+	if len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0 {
+		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
+		if err != nil {
+			return store, err
+		}
+		store.finalTemplates = append(store.finalTemplates, remoteTemplates...)
+		store.finalWorkflows = append(store.finalWorkflows, remoteWorkflows...)
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(config.Templates) == 0 && len(config.Workflows) == 0 {
-		config.Templates = append(config.Templates, config.TemplatesDirectory)
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 {
+		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
-	store.finalTemplates = append(store.finalTemplates, config.Templates...)
+
 	return store, nil
 }
 
@@ -90,7 +104,7 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() {
 	store.templates = store.LoadTemplates(store.finalTemplates)
-	store.workflows = store.LoadWorkflows(store.config.Workflows)
+	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
 // ValidateTemplates takes a list of templates and validates them
