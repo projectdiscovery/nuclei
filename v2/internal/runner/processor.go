@@ -7,6 +7,27 @@ import (
 	"go.uber.org/atomic"
 )
 
+// processSelfContainedTemplates execute a self-contained template.
+func (r *Runner) processSelfContainedTemplates(template *templates.Template) bool {
+	match, err := template.Executer.Execute("")
+	if err != nil {
+		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
+	}
+	return match
+}
+
+func httpRequestIsSelfContained(template *templates.Template) bool {
+	if len(template.RequestsHTTP) == 0 {
+		return false
+	}
+	for _, request := range template.RequestsHTTP {
+		if request.SelfContained {
+			return true
+		}
+	}
+	return false
+}
+
 // processTemplateWithList execute a template against the list of user provided targets
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
