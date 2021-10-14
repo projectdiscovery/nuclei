@@ -18,7 +18,6 @@ import (
 )
 
 func TestActionNavigate(t *testing.T) {
-	t.Parallel()
 	response := `
 		<html>
 		<head>
@@ -38,8 +37,6 @@ func TestActionNavigate(t *testing.T) {
 }
 
 func TestActionScript(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 		<head>
@@ -82,8 +79,6 @@ func TestActionScript(t *testing.T) {
 }
 
 func TestActionClick(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -109,8 +104,6 @@ func TestActionClick(t *testing.T) {
 }
 
 func TestActionRightClick(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -144,8 +137,6 @@ func TestActionRightClick(t *testing.T) {
 }
 
 func TestActionTextInput(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -172,8 +163,6 @@ func TestActionTextInput(t *testing.T) {
 }
 
 func TestActionHeadersChange(t *testing.T) {
-	t.Parallel()
-
 	actions := []*Action{
 		{ActionType: "setheader", Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -193,8 +182,6 @@ func TestActionHeadersChange(t *testing.T) {
 }
 
 func TestActionScreenshot(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -219,8 +206,6 @@ func TestActionScreenshot(t *testing.T) {
 }
 
 func TestActionTimeInput(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -245,8 +230,6 @@ func TestActionTimeInput(t *testing.T) {
 }
 
 func TestActionSelectInput(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -274,8 +257,6 @@ func TestActionSelectInput(t *testing.T) {
 }
 
 func TestActionFilesInput(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -300,8 +281,6 @@ func TestActionFilesInput(t *testing.T) {
 }
 
 func TestActionWaitLoad(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -328,8 +307,6 @@ func TestActionWaitLoad(t *testing.T) {
 }
 
 func TestActionGetResource(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -352,8 +329,6 @@ func TestActionGetResource(t *testing.T) {
 }
 
 func TestActionExtract(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -374,8 +349,6 @@ func TestActionExtract(t *testing.T) {
 }
 
 func TestActionSetMethod(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -395,8 +368,6 @@ func TestActionSetMethod(t *testing.T) {
 }
 
 func TestActionAddHeader(t *testing.T) {
-	t.Parallel()
-
 	actions := []*Action{
 		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -416,8 +387,6 @@ func TestActionAddHeader(t *testing.T) {
 }
 
 func TestActionDeleteHeader(t *testing.T) {
-	t.Parallel()
-
 	actions := []*Action{
 		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test1", "value": "Hello"}},
 		{ActionType: "addheader", Data: map[string]string{"part": "request", "key": "Test2", "value": "World"}},
@@ -439,8 +408,6 @@ func TestActionDeleteHeader(t *testing.T) {
 }
 
 func TestActionSetBody(t *testing.T) {
-	t.Parallel()
-
 	actions := []*Action{
 		{ActionType: "setbody", Data: map[string]string{"part": "request", "body": "hello"}},
 		{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -459,8 +426,6 @@ func TestActionSetBody(t *testing.T) {
 }
 
 func TestActionKeyboard(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -486,8 +451,6 @@ func TestActionKeyboard(t *testing.T) {
 }
 
 func TestActionSleep(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
@@ -511,8 +474,6 @@ func TestActionSleep(t *testing.T) {
 }
 
 func TestActionWaitVisible(t *testing.T) {
-	t.Parallel()
-
 	response := `
 		<html>
 			<head>
