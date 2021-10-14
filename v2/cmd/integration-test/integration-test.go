@@ -26,6 +26,7 @@ func main() {
 		"network":  networkTestcases,
 		"dns":      dnsTestCases,
 		"workflow": workflowTestcases,
+		"loader":   loaderTestcases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {
