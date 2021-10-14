@@ -56,7 +56,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 
 		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
+		flagSet.StringSliceVarP(&options.TemplateURLs, "template-urls", "tu", []string{}, "URL to a list of templates"),
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflows to run"),
+		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-urls", "wu", []string{}, "URL to a list of workflows to run"),
 
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run newly added templates only"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
