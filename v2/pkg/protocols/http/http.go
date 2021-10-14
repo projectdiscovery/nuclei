@@ -138,6 +138,9 @@ type Request struct {
 	dynamicValues map[string]interface{}
 
 	// description: |
+	//   Self Contained marks HTTP Requests for the template as self-contained
+	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark http requests as self-contained,description=Mark HTTP Requests for the template as self-contained"`
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
