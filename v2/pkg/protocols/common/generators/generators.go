@@ -14,7 +14,7 @@ type Generator struct {
 type Type int
 
 const (
-	// Sniper replaces one iteration of the payload with a value.
+	// Batteringram replaces same payload into all of the defined payload positions at once.
 	BatteringRam Type = iota + 1
 	// PitchFork replaces variables with positional value from multiple wordlists
 	PitchFork
@@ -43,10 +43,10 @@ func New(payloads map[string]interface{}, payloadType Type, templatePath string)
 	generator.Type = payloadType
 	generator.payloads = compiled
 
-	// Validate the sniper/batteringram payload set
+	// Validate the batteringram payload set
 	if payloadType == BatteringRam {
 		if len(payloads) != 1 {
-			return nil, errors.New("sniper/batteringram must have single payload set")
+			return nil, errors.New("batteringram must have single payload set")
 		}
 	}
 	return generator, nil
