@@ -90,7 +90,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
 		}
 
-		rawRequest.Path = parts[1]
+		rawRequest.Path = parsed.Path
 		rawRequest.Headers["Host"] = parsed.Host
 	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
@@ -104,7 +104,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	if parsedURL.Path != rawRequest.Path {
+		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	}
 	if strings.HasSuffix(rawRequest.Path, "//") {
 		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 	}

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -41,6 +42,9 @@ type generatedRequest struct {
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
+	if r.request.SelfContained {
+		return r.makeSelfContainedRequest(dynamicValues, interactURL)
+	}
 	// We get the next payload for the request.
 	data, payloads, ok := r.nextValue()
 	if !ok {
@@ -55,8 +59,8 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 
 	data, parsed = baseURLWithTemplatePrefs(data, parsed)
 
-	trailingSlash := false
 	isRawRequest := len(r.request.Raw) > 0
+	trailingSlash := false
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
 	}
@@ -75,6 +79,47 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
+		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads, interactURL)
+	}
+	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
+}
+
+func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
+	// We get the next payload for the request.
+	data, payloads, ok := r.nextValue()
+	if !ok {
+		return nil, io.EOF
+	}
+	ctx := context.Background()
+
+	values := generators.CopyMap(dynamicValues)
+	if !r.options.Options.Vars.IsEmpty() {
+		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
+	}
+	if r.options.Options.EnvironmentVariables {
+		values = generators.MergeMaps(generators.EnvVars(), values)
+	}
+
+	isRawRequest := len(r.request.Raw) > 0
+
+	// If data contains \n it's a raw request, process it like raw. Else
+	// continue with the template based request flow.
+	if isRawRequest {
+		// Get the hostname from the URL section to build the request.
+		reader := bufio.NewReader(strings.NewReader(data))
+		s, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, fmt.Errorf("could not read request: %s", err)
+		}
+
+		parts := strings.Split(s, " ")
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("malformed request supplied")
+		}
+		parsed, err := url.Parse(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse request URL: %s", err)
+		}
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads, interactURL)
 	}
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
