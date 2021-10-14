@@ -49,7 +49,6 @@ func TestActionScript(t *testing.T) {
 	timeout := 2 * time.Second
 
 	t.Run("run-and-results", func(t *testing.T) {
-		t.Parallel()
 		actions := []*Action{
 			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
 			{ActionType: "waitload"},
@@ -63,7 +62,6 @@ func TestActionScript(t *testing.T) {
 	})
 
 	t.Run("hook", func(t *testing.T) {
-		t.Parallel()
 		actions := []*Action{
 			{ActionType: "script", Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
 			{ActionType: "navigate", Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -491,7 +489,6 @@ func TestActionWaitVisible(t *testing.T) {
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		t.Parallel()
 		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out map[string]string) {
 			require.Nil(t, err, "could not run page actions")
 
@@ -500,7 +497,6 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		t.Parallel()
 		testHeadlessSimpleResponse(t, response, actions, time.Second/2, func(page *Page, err error, out map[string]string) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
