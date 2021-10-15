@@ -36,6 +36,10 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	err := validateOptions(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse config")
+	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
@@ -51,6 +55,25 @@ func New(options *Options) (*Integration, error) {
 		client.BaseURL = parsed
 	}
 	return &Integration{client: client, options: options}, nil
+}
+
+func validateOptions(options *Options) error {
+	if options.Username == "" {
+		return errors.New("Username name is mandatory")
+	}
+	if options.Owner == "" {
+		return errors.New("Owner name is mandatory")
+	}
+	if options.Token == "" {
+		return errors.New("Token name is mandatory")
+	}
+	if options.ProjectName == "" {
+		return errors.New("ProjectName name is mandatory")
+	}
+	if options.IssueLabel == "" {
+		return errors.New("IssueLabel name is mandatory")
+	}
+	return nil
 }
 
 // CreateIssue creates an issue in the tracker

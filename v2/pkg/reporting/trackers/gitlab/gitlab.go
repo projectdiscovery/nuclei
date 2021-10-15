@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/xanzy/go-gitlab"
@@ -29,6 +30,10 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	err := validateOptions(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not parse config")
+	}
 	gitlabOpts := []gitlab.ClientOptionFunc{}
 	if options.BaseURL != "" {
 		gitlabOpts = append(gitlabOpts, gitlab.WithBaseURL(options.BaseURL))
@@ -42,6 +47,22 @@ func New(options *Options) (*Integration, error) {
 		return nil, err
 	}
 	return &Integration{client: git, userID: user.ID, options: options}, nil
+}
+
+func validateOptions(options *Options) error {
+	if options.Username == "" {
+		return errors.New("Username name is mandatory")
+	}
+	if options.Token == "" {
+		return errors.New("Token name is mandatory")
+	}
+	if options.ProjectName == "" {
+		return errors.New("ProjectName name is mandatory")
+	}
+	if options.IssueLabel == "" {
+		return errors.New("IssueLabel name is mandatory")
+	}
+	return nil
 }
 
 // CreateIssue creates an issue in the tracker
