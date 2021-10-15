@@ -11,9 +11,10 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/pkg/errors"
+	ps "github.com/shirou/gopsutil/v3/process"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
-	ps "github.com/shirou/gopsutil/v3/process"
 )
 
 // Browser is a browser structure for nuclei headless module
@@ -33,6 +34,7 @@ func New(options *types.Options) (*Browser, error) {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
 	previouspids := findChromeProcesses()
+
 	chromeLauncher := launcher.New().
 		Leakless(false).
 		Set("disable-gpu", "true").
@@ -47,6 +49,14 @@ func New(options *types.Options) (*Browser, error) {
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
+
+	if options.UseInstalledChrome {
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
+		} else {
+			return nil, errors.New("the chrome browser is not installed")
+		}
+	}
 
 	if options.ShowBrowser {
 		chromeLauncher = chromeLauncher.Headless(false)
@@ -103,7 +113,7 @@ func (b *Browser) killChromeProcesses() {
 	processes, _ := ps.Processes()
 
 	for _, process := range processes {
-		// skip non chrome processes
+		// skip non-chrome processes
 		if !isChromeProcess(process) {
 			continue
 		}

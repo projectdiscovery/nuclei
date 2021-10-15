@@ -8,10 +8,10 @@ import (
 	"github.com/itchyny/gojq"
 )
 
-// CompileExtractors performs the initial setup operation on a extractor
+// CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
 	var ok bool
-	// Setup the extractor type
+	// Set up the extractor type
 	e.extractorType, ok = ExtractorTypes[e.Type]
 	if !ok {
 		return fmt.Errorf("unknown extractor type specified: %s", e.Type)
@@ -42,7 +42,7 @@ func (e *Extractor) CompileExtractors() error {
 		e.jsonCompiled = append(e.jsonCompiled, compiled)
 	}
 
-	// Setup the part of the request to match, if any.
+	// Set up the part of the request to match, if any.
 	if e.Part == "" {
 		e.Part = "body"
 	}

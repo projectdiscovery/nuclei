@@ -37,18 +37,18 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 	}
 	createdPage.router = router
 
-	err = page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{Viewport: &proto.PageViewport{
+	if err := page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{Viewport: &proto.PageViewport{
 		Scale:  1,
 		Width:  float64(1920),
 		Height: float64(1080),
-	}})
-	if err != nil {
+	}}); err != nil {
 		return nil, nil, err
 	}
-	_, err = page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"})
-	if err != nil {
+
+	if _, err := page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"}); err != nil {
 		return nil, nil, err
 	}
+
 	go router.Run()
 	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {
