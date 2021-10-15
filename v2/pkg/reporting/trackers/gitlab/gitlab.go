@@ -21,13 +21,13 @@ type Integration struct {
 type Options struct {
 	// BaseURL is the optional self-hosted gitlab application url
 	BaseURL string `yaml:"base-url"`
-	// Username is the username of the gitlab user
+	// Username is the mandatory username of the gitlab user
 	Username string `yaml:"username"`
-	// Token is the token for gitlab account.
+	// Token is the mandatory token for gitlab account.
 	Token string `yaml:"token"`
-	// ProjectName is the name of the repository.
+	// ProjectName is the mandatory name of the repository.
 	ProjectName string `yaml:"project-name"`
-	// IssueLabel is the label of the created issue type
+	// IssueLabel is the mandatory label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
 }
 
