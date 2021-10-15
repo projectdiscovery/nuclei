@@ -439,6 +439,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
+
+		// the uncompressed body needs to be decoded to standard utf8
+		data, err = decodegbk(data)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
