@@ -15,6 +15,7 @@ import (
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
@@ -27,13 +28,14 @@ var (
 	urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 )
 
-// generatedRequest is a single wrapped generated request for a template request
+// generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
 	original        *Request
 	rawRequest      *raw.Request
 	meta            map[string]interface{}
 	pipelinedClient *rawhttp.PipelineClient
 	request         *retryablehttp.Request
+	dynamicValues   map[string]interface{}
 }
 
 // Make creates a http request for the provided input.
@@ -113,7 +115,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
 
-	// Evaulate the expressions for the request if any.
+	// Evaluate the expressions for the request if any.
 	var err error
 	data, err = expressions.Evaluate(data, finalValues)
 	if err != nil {
@@ -135,7 +137,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -152,7 +154,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	// request values.
 	finalValues := generators.MergeMaps(generatorValues, values)
 
-	// Evaulate the expressions for raw request if any.
+	// Evaluate the expressions for raw request if any.
 	var err error
 	rawRequest, err = expressions.Evaluate(rawRequest, finalValues)
 	if err != nil {
@@ -196,7 +198,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues}, nil
 }
 
 // fillRequest fills various headers in the request with values
@@ -235,7 +237,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 	}
 	setHeader(req, "User-Agent", uarand.GetRandom())
 
-	// Only set these headers on non raw requests
+	// Only set these headers on non-raw requests
 	if len(r.request.Raw) == 0 {
 		setHeader(req, "Accept", "*/*")
 		setHeader(req, "Accept-Language", "en")

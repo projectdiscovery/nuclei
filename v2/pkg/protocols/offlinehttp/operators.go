@@ -6,42 +6,57 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
+func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := getMatchPart(matcher.Part, data)
 	if !ok {
-		return false
+		return false, []string{}
 	}
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
-		statusCode, ok := data["status_code"]
+		statusCode, ok := getStatusCode(data)
 		if !ok {
-			return false
+			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode.(int)))
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(item)))
+		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
+		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
-	return false
+	return false, []string{}
 }
 
-// Extract performs extracting operation for a extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+func getStatusCode(data map[string]interface{}) (int, bool) {
+	statusCodeValue, ok := data["status_code"]
+	if !ok {
+		return 0, false
+	}
+	statusCode, ok := statusCodeValue.(int)
+	if !ok {
+		return 0, false
+	}
+	return statusCode, true
+}
+
+// Extract performs extracting operation for an extractor on model and returns true or false.
+func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	item, ok := getMatchPart(extractor.Part, data)
 	if !ok {
 		return nil
@@ -77,9 +92,9 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 	return itemStr, true
 }
 
-// responseToDSLMap converts a HTTP response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) map[string]interface{} {
-	data := make(map[string]interface{}, len(extra)+8+len(resp.Header)+len(resp.Cookies()))
+// responseToDSLMap converts an HTTP response to a map for use in DSL matching
+func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
+	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
 	for k, v := range extra {
 		data[k] = v
 	}
@@ -100,41 +115,22 @@ func (r *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, r
 	}
 	data["all_headers"] = headers
 	data["duration"] = duration.Seconds()
-	data["template-id"] = r.options.TemplateID
-	data["template-info"] = r.options.TemplateInfo
-	data["template-path"] = r.options.TemplatePath
+	data["template-id"] = request.options.TemplateID
+	data["template-info"] = request.options.TemplateInfo
+	data["template-path"] = request.options.TemplatePath
 	return data
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
-func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
-		return nil
-	}
-	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data := r.makeResultEventItem(wrapped)
-			data.MatcherName = k
-			results = append(results, data)
-		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
-		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := r.makeResultEventItem(wrapped)
-			data.ExtractedResults = v
-			data.ExtractorName = k
-			results = append(results, data)
-		}
-	} else {
-		data := r.makeResultEventItem(wrapped)
-		results = append(results, data)
-	}
-	return results
+func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
-func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return request.compiledOperators
+}
+
+func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),

@@ -11,8 +11,8 @@ var (
 )
 
 // Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	// Don't create clients if already created in past.
+func Init(options *types.Options /*TODO review unused parameter*/) error {
+	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
 	}
@@ -29,6 +29,6 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*fastdialer.Dialer, error) {
+func Get(options *types.Options, configuration *Configuration /*TODO review unused parameters*/) (*fastdialer.Dialer, error) {
 	return normalClient, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/karlseguin/ccache"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -120,7 +121,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		item := c.requests.Get(interaction.UniqueID)
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
-			// lru cache so we can correlate when we get an add request.
+			// lru cache, so we can correlate when we get an add request.
 			gotItem := c.interactions.Get(interaction.UniqueID)
 			if gotItem == nil {
 				c.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
@@ -144,7 +145,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
-	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
+	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, false)
 	if !matched || result == nil {
 		return false // if we don't match, return
 	}
@@ -181,6 +182,9 @@ func (c *Client) URL() string {
 			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
 		}
 	})
+	if c.interactsh == nil {
+		return ""
+	}
 	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
 	return c.interactsh.URL()
 }
@@ -252,7 +256,7 @@ func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
 // HasMatchers returns true if an operator has interactsh part
 // matchers or extractors.
 //
-// Used by requests to show result or not depending on presence of interact.sh
+// Used by requests to show result or not depending on presence of interactsh.com
 // data part matchers.
 func HasMatchers(op *operators.Operators) bool {
 	if op == nil {
