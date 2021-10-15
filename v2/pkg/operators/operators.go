@@ -1,6 +1,8 @@
 package operators
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -14,7 +16,7 @@ type Operators struct {
 	//   whether the request was successful by doing pattern matching
 	//   on request/responses.
 	//
-	//   Multiple matchers can be combined together with `matcher-condition` flag
+	//   Multiple matchers can be combined with `matcher-condition` flag
 	//   which accepts either `and` or `or` as argument.
 	Matchers []*matchers.Matcher `yaml:"matchers,omitempty" jsonschema:"title=matchers to run on response,description=Detection mechanism to identify whether the request was successful by doing pattern matching"`
 	// description: |
@@ -32,19 +34,19 @@ type Operators struct {
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors
-func (r *Operators) Compile() error {
-	if r.MatchersCondition != "" {
-		r.matchersCondition = matchers.ConditionTypes[r.MatchersCondition]
+func (operators *Operators) Compile() error {
+	if operators.MatchersCondition != "" {
+		operators.matchersCondition = matchers.ConditionTypes[operators.MatchersCondition]
 	} else {
-		r.matchersCondition = matchers.ORCondition
+		operators.matchersCondition = matchers.ORCondition
 	}
 
-	for _, matcher := range r.Matchers {
+	for _, matcher := range operators.Matchers {
 		if err := matcher.CompileMatchers(); err != nil {
 			return errors.Wrap(err, "could not compile matcher")
 		}
 	}
-	for _, extractor := range r.Extractors {
+	for _, extractor := range operators.Extractors {
 		if err := extractor.CompileExtractors(); err != nil {
 			return errors.Wrap(err, "could not compile extractor")
 		}
@@ -53,8 +55,8 @@ func (r *Operators) Compile() error {
 }
 
 // GetMatchersCondition returns the condition for the matchers
-func (r *Operators) GetMatchersCondition() matchers.ConditionType {
-	return r.matchersCondition
+func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
+	return operators.matchersCondition
 }
 
 // Result is a result structure created from operators running on data.
@@ -64,7 +66,7 @@ type Result struct {
 	// Extracted is true if any result type values were extracted
 	Extracted bool
 	// Matches is a map of matcher names that we matched
-	Matches map[string]struct{}
+	Matches map[string][]string
 	// Extracts contains all the data extracted from inputs
 	Extracts map[string][]string
 	// OutputExtracts is the list of extracts to be displayed on screen.
@@ -100,24 +102,24 @@ func (r *Result) Merge(result *Result) {
 }
 
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
-type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) bool
+type MatchFunc func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string)
 
-// ExtractFunc performs extracting operation for a extractor on model and returns true or false.
+// ExtractFunc performs extracting operation for an extractor on model and returns true or false.
 type ExtractFunc func(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 
 // Execute executes the operators on data and returns a result structure
-func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc) (*Result, bool) {
-	matcherCondition := r.GetMatchersCondition()
+func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc, extract ExtractFunc, isDebug bool) (*Result, bool) {
+	matcherCondition := operators.GetMatchersCondition()
 
 	var matches bool
 	result := &Result{
-		Matches:       make(map[string]struct{}),
+		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string]interface{}),
 	}
 
 	// Start with the extractors first and evaluate them.
-	for _, extractor := range r.Extractors {
+	for _, extractor := range operators.Extractors {
 		var extractorResults []string
 
 		for match := range extract(data, extractor) {
@@ -136,23 +138,22 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 		}
 	}
 
-	for _, matcher := range r.Matchers {
-		// Check if the matcher matched
-		if !match(data, matcher) {
-			// If the condition is AND we haven't matched, try next request.
-			if matcherCondition == matchers.ANDCondition {
-				if len(result.DynamicValues) > 0 {
-					return result, true
+	for matcherIndex, matcher := range operators.Matchers {
+		if isMatch, matched := match(data, matcher); isMatch {
+			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
+				matcherName := getMatcherName(matcher, matcherIndex)
+				result.Matches[matcherName] = matched
+			} else { // if it's a "named" matcher with OR condition, then display it
+				if matcherCondition == matchers.ORCondition && matcher.Name != "" {
+					result.Matches[matcher.Name] = matched
 				}
-				return nil, false
-			}
-		} else {
-			// If the matcher has matched, and its an OR
-			// write the first output then move to next matcher.
-			if matcherCondition == matchers.ORCondition && matcher.Name != "" {
-				result.Matches[matcher.Name] = struct{}{}
 			}
 			matches = true
+		} else if matcherCondition == matchers.ANDCondition {
+			if len(result.DynamicValues) > 0 {
+				return result, true
+			}
+			return nil, false
 		}
 	}
 
@@ -161,8 +162,9 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	if len(result.DynamicValues) > 0 {
 		return result, true
 	}
-	// Don't print if we have matchers and they have not matched, irregardless of extractor
-	if len(r.Matchers) > 0 && !matches {
+
+	// Don't print if we have matchers, and they have not matched, regardless of extractor
+	if len(operators.Matchers) > 0 && !matches {
 		return nil, false
 	}
 	// Write a final string of output if matcher type is
@@ -173,12 +175,20 @@ func (r *Operators) Execute(data map[string]interface{}, match MatchFunc, extrac
 	return nil, false
 }
 
+func getMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
+	if matcher.Name != "" {
+		return matcher.Name
+	} else {
+		return matcher.Type + "-" + strconv.Itoa(matcherIndex+1) // making the index start from 1 to be more readable
+	}
+}
+
 // ExecuteInternalExtractors executes internal dynamic extractors
-func (r *Operators) ExecuteInternalExtractors(data map[string]interface{}, extract ExtractFunc) map[string]interface{} {
+func (operators *Operators) ExecuteInternalExtractors(data map[string]interface{}, extract ExtractFunc) map[string]interface{} {
 	dynamicValues := make(map[string]interface{})
 
 	// Start with the extractors first and evaluate them.
-	for _, extractor := range r.Extractors {
+	for _, extractor := range operators.Extractors {
 		if !extractor.Internal {
 			continue
 		}

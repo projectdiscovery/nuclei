@@ -78,9 +78,9 @@ type ResultEvent struct {
 	Matched string `json:"matched,omitempty"`
 	// ExtractedResults contains the extraction result from the inputs.
 	ExtractedResults []string `json:"extracted_results,omitempty"`
-	// Request is the optional dumped request for the match.
+	// Request is the optional, dumped request for the match.
 	Request string `json:"request,omitempty"`
-	// Response is the optional dumped response for the match.
+	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
@@ -90,7 +90,9 @@ type ResultEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Interaction is the full details of interactsh interaction.
 	Interaction *server.Interaction `json:"interaction,omitempty"`
-
+	// CURLCommand is an optional curl command to reproduce the request
+	// Only applicable if the report is for HTTP.
+	CURLCommand         string         `json:"curl_command,omitempty"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 

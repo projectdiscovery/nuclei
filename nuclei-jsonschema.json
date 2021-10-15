@@ -57,7 +57,7 @@
           "title": "description of the template",
           "description": "In-depth explanation on what the template does",
           "examples": [
-            "Bower is a package manager which stores packages informations in bower.json file"
+            "Bower is a package manager which stores package information in the bower.json file"
           ]
         },
         "reference": {
@@ -69,7 +69,7 @@
           "$schema": "http://json-schema.org/draft-04/schema#",
           "$ref": "#/definitions/severity.Holder"
         },
-        "additional-fields": {
+        "metadata": {
           "patternProperties": {
             ".*": {
               "type": "string"
@@ -207,6 +207,7 @@
             "size",
             "word",
             "regex",
+            "binary",
             "dsl"
           ],
           "type": "string",
@@ -372,6 +373,14 @@
           "type": "boolean",
           "title": "recurse all servers",
           "description": "Recursion determines if resolver should recurse all records to get fresh results"
+        },
+        "resolvers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Resolvers",
+          "description": "Define resolvers to use within the template"
         }
       },
       "additionalProperties": false,
@@ -597,7 +606,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],
@@ -615,7 +624,8 @@
             "CONNECT",
             "OPTIONS",
             "TRACE",
-            "PATCH"
+            "PATCH",
+            "PURGE"
           ],
           "type": "string",
           "title": "method is the http request method",
@@ -710,6 +720,11 @@
           "type": "boolean",
           "title": "stop at first match",
           "description": "Stop the execution after a match is found"
+        },
+        "skip-variables-check": {
+          "type": "boolean",
+          "title": "skip variable checks",
+          "description": "Skips the check for unresolved variables in request"
         }
       },
       "additionalProperties": false,
@@ -762,7 +777,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],

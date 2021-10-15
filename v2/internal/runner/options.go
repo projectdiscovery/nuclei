@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
@@ -20,6 +21,11 @@ import (
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
+
+	// if VerboseVerbose is set, it implicitly enables the Verbose option as well
+	if options.VerboseVerbose {
+		options.Verbose = true
+	}
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -36,7 +42,7 @@ func ParseOptions(options *types.Options) {
 		if err != nil {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
-		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.CurrentVersion, configuration.TemplatesDirectory)
+		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
 
@@ -55,6 +61,14 @@ func ParseOptions(options *types.Options) {
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
+
+	// removes all cli variables containing payloads and add them to the internal struct
+	for key, value := range options.Vars.AsMap() {
+		if fileutil.FileExists(value.(string)) {
+			_ = options.Vars.Del(key)
+			options.AddVarPayload(key, value)
+		}
+	}
 
 	err := protocolinit.Init(options)
 	if err != nil {
@@ -77,23 +91,20 @@ func hasStdin() bool {
 
 // validateOptions validates the configuration options passed
 func validateOptions(options *types.Options) error {
-	// Both verbose and silent flags were used
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
 
-	// Validate proxy options if provided
-	err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)")
-	if err != nil {
+	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
 		return err
 	}
 
-	err = validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)")
-	if err != nil {
+	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
 		return err
 	}
 
 	if options.Validate {
+		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
@@ -113,10 +124,10 @@ func isValidURL(urlString string) bool {
 	return err == nil
 }
 
-// configureOutput configures the output on the screen
+// configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose {
+	if options.Verbose || options.VerboseVerbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {

@@ -84,9 +84,7 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 
 	var jsonObj interface{}
 
-	err := json.Unmarshal([]byte(corpus), &jsonObj)
-
-	if err != nil {
+	if err := json.Unmarshal([]byte(corpus), &jsonObj); err != nil {
 		return results
 	}
 

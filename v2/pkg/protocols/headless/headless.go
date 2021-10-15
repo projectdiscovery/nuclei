@@ -2,6 +2,7 @@ package headless
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
@@ -9,7 +10,7 @@ import (
 
 // Request contains a Headless protocol request to be made from a template
 type Request struct {
-	// ID is the the optional id of the request
+	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=Optional ID of the headless request"`
 
 	// description: |
@@ -31,24 +32,24 @@ type Step struct {
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
-	r.options = options
+	request.options = options
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
+func (request *Request) Requests() int {
 	return 1
 }

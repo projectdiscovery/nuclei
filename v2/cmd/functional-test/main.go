@@ -10,10 +10,12 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 )
 
 var (
+	debug   = os.Getenv("DEBUG") == "true"
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
 	errored = false
@@ -64,16 +66,16 @@ func runIndividualTestCase(testcase string) error {
 	if len(parts) > 1 {
 		finalArgs = parts[1:]
 	}
-	mainOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*mainNucleiBinary, finalArgs)
+	mainOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*mainNucleiBinary, debug, finalArgs)
 	if err != nil {
 		return errors.Wrap(err, "could not run nuclei main test")
 	}
-	devOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*devNucleiBinary, finalArgs)
+	devOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*devNucleiBinary, debug, finalArgs)
 	if err != nil {
 		return errors.Wrap(err, "could not run nuclei dev test")
 	}
 	if mainOutput == devOutput {
 		return nil
 	}
-	return fmt.Errorf("%s main is not equal to %s dev", mainOutput, devOutput)
+	return fmt.Errorf("%s main is not equal to %s dev", mainOutput, devOutput)
 }

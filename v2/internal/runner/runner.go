@@ -34,7 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -208,7 +208,7 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, progressErr
 	}
 
-	// create project file if requested or load existing one
+	// create project file if requested or load the existing one
 	if options.Project {
 		var projectFileErr error
 		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
@@ -262,12 +262,12 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		file.Close()
 	}
-	if options.DiskExportDirectory != "" {
+	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.DiskExporter = &disk.Options{Directory: options.DiskExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
 		}
 	}
 	if options.SarifExport != "" {
@@ -298,7 +298,7 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() error {
 	defer r.Close()
 
-	// If user asked for new templates to be executed, collect the list from template directory.
+	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
 		if err != nil {
@@ -344,6 +344,7 @@ func (r *Runner) RunEnumeration() error {
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
 		Severities:         r.options.Severities,
+		ExcludeSeverities:  r.options.ExcludeSeverities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
@@ -367,7 +368,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 
-	// Display stats for any loaded templates syntax warnings or errors
+	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 
@@ -392,7 +393,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
-		if r.templatesConfig.CurrentVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -403,7 +404,7 @@ func (r *Runner) RunEnumeration() error {
 	builder.Reset()
 
 	if r.templatesConfig != nil {
-		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.CurrentVersion, messageStr)
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
 	if r.interactsh != nil {
 		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
@@ -489,7 +490,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no templates were found")
+		return errors.New("no valid templates were found")
 	}
 
 	/*
@@ -561,7 +562,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	return templatesList, nil
 }
 
-// readNewTemplatesFile reads newly added templates from directory if it exists
+// countNewTemplates returns the number of newly added templates
 func (r *Runner) countNewTemplates() int {
 	if r.templatesConfig == nil {
 		return 0
