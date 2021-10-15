@@ -24,15 +24,15 @@ type Integration struct {
 type Options struct {
 	// BaseURL is the optional self-hosted github application url
 	BaseURL string `yaml:"base-url"`
-	// Username is the username of the github user
+	// Username is the mandatory username of the github user
 	Username string `yaml:"username"`
-	// Owner is the owner name of the repository for issues.
+	// Owner is the mandatory owner name of the repository for issues.
 	Owner string `yaml:"owner"`
-	// Token is the token for github account.
+	// Token is the mandatory token for github account.
 	Token string `yaml:"token"`
-	// ProjectName is the name of the repository.
+	// ProjectName is the mandatory name of the repository.
 	ProjectName string `yaml:"project-name"`
-	// IssueLabel is the label of the created issue type
+	// IssueLabel is the mandatory label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
 }
 
