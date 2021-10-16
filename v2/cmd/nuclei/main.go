@@ -49,7 +49,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "u", "target", []string{}, "input url/host to scan"),
-		flagSet.StringVarP(&options.TargetsFilePath, "l", "list", "", "input file containing list of target urls/hosts to scan (one per line)"),
+		flagSet.StringVarP(&options.TargetsFilePath, "l", "list", "", "input file containing list of urls/hosts to scan (one per line)"),
 	)
 
 	createGroup(flagSet, "template", "Template",
