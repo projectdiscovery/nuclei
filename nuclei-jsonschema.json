@@ -606,7 +606,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],
@@ -777,7 +777,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],
