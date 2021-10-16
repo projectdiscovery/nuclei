@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/stringsutil"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
@@ -134,4 +135,10 @@ func decodegbk(s []byte) ([]byte, error) {
 		return nil, e
 	}
 	return d, nil
+}
+
+// isContentTypeGbk checks if the content-type header is gbk
+func isContentTypeGbk(contentType string) bool {
+	contentType = strings.ToLower(contentType)
+	return stringsutil.ContainsAny(contentType, "gbk", "gb2312", "gb18030")
 }

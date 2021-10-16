@@ -440,12 +440,19 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
 	// Decode gbk response content-types
-	if contentType := strings.ToLower(resp.Header.Get("Content-Type")); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
+	// gb18030 supersedes gb2312
+	if isContentTypeGbk(resp.Header.Get("Content-Type")) {
 		dumpedResponse, err = decodegbk(dumpedResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
 		redirectedResponse, err = decodegbk(redirectedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+
+		// the uncompressed body needs to be decoded to standard utf8
+		data, err = decodegbk(data)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
