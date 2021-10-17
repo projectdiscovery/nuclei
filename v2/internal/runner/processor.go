@@ -32,7 +32,7 @@ func httpRequestIsSelfContained(template *templates.Template) bool {
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
-	r.hostMap.Scan(func(k, _ []byte) error {
+	processItem := func(k, _ []byte) error {
 		URL := string(k)
 
 		// Skip if the host has had errors
@@ -50,7 +50,13 @@ func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 			results.CAS(false, match)
 		}(URL)
 		return nil
-	})
+	}
+	if r.options.Stream {
+		_ = r.hostMapStream.Scan(processItem)
+	} else {
+		r.hostMap.Scan(processItem)
+	}
+
 	wg.Wait()
 	return results.Load()
 }
@@ -60,7 +66,7 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
 	wg := sizedwaitgroup.New(r.options.BulkSize)
 
-	r.hostMap.Scan(func(k, _ []byte) error {
+	processItem := func(k, _ []byte) error {
 		URL := string(k)
 
 		// Skip if the host has had errors
@@ -74,7 +80,14 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 			results.CAS(false, match)
 		}(URL)
 		return nil
-	})
+	}
+
+	if r.options.Stream {
+		_ = r.hostMapStream.Scan(processItem)
+	} else {
+		r.hostMap.Scan(processItem)
+	}
+
 	wg.Wait()
 	return results.Load()
 }
