@@ -26,7 +26,14 @@ var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	address, err := getAddress(input)
+	var address string
+	var err error
+
+	if !request.SelfContained {
+		address, err = getAddress(input)
+	} else {
+		address = ""
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplateID, input, "network", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
