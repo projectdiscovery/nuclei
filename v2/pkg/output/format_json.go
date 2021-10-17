@@ -10,5 +10,10 @@ func (w *StandardWriter) formatJSON(output *ResultEvent) ([]byte, error) {
 		output.Request = ""
 		output.Response = ""
 	}
+
+	if !w.matcherStatus { // don't show matcher status in response if not asked.
+		output.MatcherStatus = ""
+	}
+
 	return jsoniter.Marshal(output)
 }

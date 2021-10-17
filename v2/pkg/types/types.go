@@ -128,6 +128,8 @@ type Options struct {
 	UpdateTemplates bool
 	// JSON writes json output to files
 	JSON bool
+	// MatcherStatus writes the matched status in JSON output
+	MatcherStatus bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
 	// EnableProgressBar enables progress bar

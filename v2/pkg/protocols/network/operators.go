@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Match matches a generic data response again a given matcher
@@ -107,13 +108,17 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 }
 
 func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	templateFile, templateURL := utils.TemplatePath(types.ToString(wrapped.InternalEvent["template-path"]))
 	data := &output.ResultEvent{
+		Template:         templateFile,
+		TemplateURL:      templateURL,
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             "network",
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
+		MatcherStatus:    types.ToString(wrapped.OperatorsResult.Matched),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		Timestamp:        time.Now(),

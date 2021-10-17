@@ -189,7 +189,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.MatcherStatus, options.JSONRequests, options.Output, options.TraceLogFile)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}

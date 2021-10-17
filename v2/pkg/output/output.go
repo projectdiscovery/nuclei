@@ -33,6 +33,7 @@ type Writer interface {
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
 	json           bool
+	matcherStatus  bool
 	jsonReqResp    bool
 	noTimestamp    bool
 	noMetadata     bool
@@ -58,6 +59,11 @@ type InternalWrappedEvent struct {
 
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
+	// Template is the filename with extension of the template for the result.
+	Template string `json:"template"`
+	// TemplateURL is the URL of the template for the result inside the nuclei
+	// templates repository.
+	TemplateURL string `json:"templateURL"`
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"templateID"`
 	// TemplatePath is the path of template
@@ -76,6 +82,8 @@ type ResultEvent struct {
 	Path string `json:"path,omitempty"`
 	// Matched contains the matched input in its transformed form.
 	Matched string `json:"matched,omitempty"`
+	// MatcherStatus indicates if the result is matched.
+	MatcherStatus string `json:"matched_status,omitempty"`
 	// ExtractedResults contains the extraction result from the inputs.
 	ExtractedResults []string `json:"extracted_results,omitempty"`
 	// Request is the optional, dumped request for the match.
@@ -95,7 +103,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, matcherStatus, jsonReqResp bool, file, traceFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile *fileWriter
@@ -116,6 +124,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 	}
 	writer := &StandardWriter{
 		json:           json,
+		matcherStatus:  matcherStatus,
 		jsonReqResp:    jsonReqResp,
 		noMetadata:     noMetadata,
 		noTimestamp:    noTimestamp,

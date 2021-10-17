@@ -22,6 +22,10 @@ func main() {
 
 	runner.ParseOptions(options)
 
+	if options.MatcherStatus && !options.JSON {
+		gologger.Fatal().Msgf("Invalid config, matcher status requires JSON.")
+	}
+
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
@@ -83,6 +87,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 
 		flagSet.BoolVar(&options.JSON, "json", false, "write output in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.MatcherStatus, "matcher-status", "ms", false, "show matched status"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "don't display match metadata"),
