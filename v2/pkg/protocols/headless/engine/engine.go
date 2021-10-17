@@ -44,7 +44,7 @@ func New(options *types.Options) (*Browser, error) {
 		Set("disable-notifications", "true").
 		Set("hide-scrollbars", "true").
 		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-		Set("no-sandbox", "true").
+		Set("no-sandbox", "false").
 		Set("mute-audio", "true").
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
