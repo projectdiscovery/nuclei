@@ -66,6 +66,8 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 		return err
 	}
 
+	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 
@@ -74,12 +76,13 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 			if !ok {
 				break
 			}
+			value = generators.MergeMaps(value, payloads)
 			if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
-		value := make(map[string]interface{})
+		value := generators.MergeMaps(map[string]interface{}{}, payloads)
 		if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 			return err
 		}
@@ -93,6 +96,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		conn     net.Conn
 		err      error
 	)
+
 	request.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {

@@ -64,17 +64,10 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
 	}
-	values := generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash))
-
-	// merge with vars
-	if !r.options.Options.Vars.IsEmpty() {
-		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
-	}
-
-	// merge with env vars
-	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(generators.EnvVars(), values)
-	}
+	values := generators.MergeMaps(
+		generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash)),
+		generators.BuildPayloadFromOptions(r.request.options.Options),
+	)
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
