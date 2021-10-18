@@ -48,6 +48,9 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 			}
 			actualAddress = net.JoinHostPort(actualAddress, kv.port)
 		}
+		if input != "" {
+			input = actualAddress
+		}
 
 		if err := request.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)

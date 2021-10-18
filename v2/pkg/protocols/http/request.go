@@ -101,6 +101,9 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 		if err == io.EOF {
 			break
 		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
