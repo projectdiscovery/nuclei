@@ -23,8 +23,12 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
+	// vars to use as iterative payload
+	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
+	// ExcludeSeverities specifies severities to exclude
+	ExcludeSeverities severity.Severities
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
@@ -57,8 +61,8 @@ type Options struct {
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
 	ReportingConfig string
-	// DiskExportDirectory is the directory to export reports in markdown on disk to
-	DiskExportDirectory string
+	// MarkdownExportDirectory is the directory to export reports in markdown format
+	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
 	// ResolversFile is a file containing resolvers for nuclei.
@@ -103,7 +107,9 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
-	// SytemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
+	// UseInstalledChrome skips chrome install and use local instance
+	UseInstalledChrome bool
+	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
 	// Metrics enables display of metrics via an http endpoint
 	Metrics bool
@@ -142,6 +148,8 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+	// Stream the input without sorting
+	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
 	// NoTimestamp disables display of timestamp for the matcher
@@ -158,4 +166,16 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+}
+
+func (options *Options) AddVarPayload(key string, value interface{}) {
+	if options.varsPayload == nil {
+		options.varsPayload = make(map[string]interface{})
+	}
+
+	options.varsPayload[key] = value
+}
+
+func (options *Options) VarsPayload() map[string]interface{} {
+	return options.varsPayload
 }

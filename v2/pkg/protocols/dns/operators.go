@@ -10,12 +10,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
+func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	partString := matcher.Part
 	switch partString {
 	case "body", "all", "":
@@ -24,28 +25,32 @@ func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) 
 
 	item, ok := data[partString]
 	if !ok {
-		return false
+		return false, []string{}
 	}
 
 	switch matcher.GetType() {
 	case matchers.StatusMatcher:
-		return matcher.Result(matcher.MatchStatusCode(item.(int)))
+		statusCode, ok := item.(int)
+		if !ok {
+			return false, []string{}
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{}
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(types.ToString(item))))
+		return matcher.Result(matcher.MatchSize(len(types.ToString(item)))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(types.ToString(item)))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), nil))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(types.ToString(item)))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(types.ToString(item)))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(types.ToString(item)))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(types.ToString(item)))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
+		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
-	return false
+	return false, []string{}
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	part := extractor.Part
 	switch part {
 	case "body", "all":
@@ -68,79 +73,30 @@ func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Ext
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 11)
-
-	// Some data regarding the request metadata
-	data["host"] = host
-	data["matched"] = matched
-	data["request"] = req.String()
-
-	data["rcode"] = resp.Rcode
-	buffer := &bytes.Buffer{}
-	for _, question := range resp.Question {
-		buffer.WriteString(question.String())
+func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
+	return output.InternalEvent{
+		"host":          host,
+		"matched":       matched,
+		"request":       req.String(),
+		"rcode":         resp.Rcode,
+		"question":      questionToString(resp.Question),
+		"extra":         rrToString(resp.Extra),
+		"answer":        rrToString(resp.Answer),
+		"ns":            rrToString(resp.Ns),
+		"raw":           resp.String(),
+		"template-id":   request.options.TemplateID,
+		"template-info": request.options.TemplateInfo,
+		"template-path": request.options.TemplatePath,
 	}
-	data["question"] = buffer.String()
-	buffer.Reset()
-
-	for _, extra := range resp.Extra {
-		buffer.WriteString(extra.String())
-	}
-	data["extra"] = buffer.String()
-	buffer.Reset()
-
-	for _, answer := range resp.Answer {
-		buffer.WriteString(answer.String())
-	}
-	data["answer"] = buffer.String()
-	buffer.Reset()
-
-	for _, ns := range resp.Ns {
-		buffer.WriteString(ns.String())
-	}
-	data["ns"] = buffer.String()
-	buffer.Reset()
-
-	rawData := resp.String()
-	data["raw"] = rawData
-	data["template-id"] = r.options.TemplateID
-	data["template-info"] = r.options.TemplateInfo
-	data["template-path"] = r.options.TemplatePath
-	return data
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
-func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
-		return nil
-	}
-	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data := r.makeResultEventItem(wrapped)
-			data.MatcherName = k
-			results = append(results, data)
-		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
-		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := r.makeResultEventItem(wrapped)
-			data.ExtractedResults = v
-			data.ExtractorName = k
-			results = append(results, data)
-		}
-	} else {
-		data := r.makeResultEventItem(wrapped)
-		results = append(results, data)
-	}
-	return results
+func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
-func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (r *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	templateFile, templateURL := utils.TemplatePath(types.ToString(wrapped.InternalEvent["template-path"]))
-
 	data := &output.ResultEvent{
 		Template:         templateFile,
 		TemplateURL:      templateURL,
@@ -157,4 +113,20 @@ func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *out
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 	}
 	return data
+}
+
+func rrToString(resourceRecords []dns.RR) string { // TODO rewrite with generics when available
+	buffer := &bytes.Buffer{}
+	for _, resourceRecord := range resourceRecords {
+		buffer.WriteString(resourceRecord.String())
+	}
+	return buffer.String()
+}
+
+func questionToString(resourceRecords []dns.Question) string {
+	buffer := &bytes.Buffer{}
+	for _, resourceRecord := range resourceRecords {
+		buffer.WriteString(resourceRecord.String())
+	}
+	return buffer.String()
 }

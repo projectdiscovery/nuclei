@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -9,20 +10,36 @@ import (
 	"strings"
 )
 
-// RunNucleiAndGetResults returns a list of results for a template
-func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	cmd := exec.Command("./nuclei", "-t", template, "-target", url, "-silent")
+// RunNucleiTemplateAndGetResults returns a list of results for a template
+func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
+	return runNucleiAndGetResults(true, template, url, debug, extra...)
+}
+
+// RunNucleiWorkflowAndGetResults returns a list of results for a workflow
+func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
+	return runNucleiAndGetResults(false, template, url, debug, extra...)
+}
+
+func runNucleiAndGetResults(isTemplate bool, template, url string, debug bool, extra ...string) ([]string, error) {
+	var templateOrWorkflowFlag string
+	if isTemplate {
+		templateOrWorkflowFlag = "-t"
+	} else {
+		templateOrWorkflowFlag = "-w"
+	}
+
+	cmd := exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-silent")
 	if debug {
-		cmd = exec.Command("./nuclei", "-t", template, "-target", url, "-debug")
+		cmd = exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-debug")
 		cmd.Stderr = os.Stderr
+		fmt.Println(cmd.String())
 	}
 	cmd.Args = append(cmd.Args, extra...)
-
 	data, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
-	parts := []string{}
+	var parts []string
 	items := strings.Split(string(data), "\n")
 	for _, i := range items {
 		if i != "" {
@@ -35,9 +52,11 @@ func RunNucleiAndGetResults(template, url string, debug bool, extra ...string) (
 var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\d+)`)
 
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
-func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, args []string) (string, error) {
+func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
-
+	if debug {
+		fmt.Println(cmd.String())
+	}
 	data, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
@@ -47,29 +66,6 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, args []string) (s
 		return "", errors.New("no matches found")
 	}
 	return matches[0][1], nil
-}
-
-// RunNucleiWorkflowAndGetResults returns a list of results for a workflow
-func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	cmd := exec.Command("./nuclei", "-w", template, "-target", url, "-silent")
-	if debug {
-		cmd = exec.Command("./nuclei", "-w", template, "-target", url, "-debug")
-		cmd.Stderr = os.Stderr
-	}
-	cmd.Args = append(cmd.Args, extra...)
-
-	data, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	parts := []string{}
-	items := strings.Split(string(data), "\n")
-	for _, i := range items {
-		if i != "" {
-			parts = append(parts, i)
-		}
-	}
-	return parts, nil
 }
 
 // TestCase is a single integration test case

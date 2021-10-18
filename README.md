@@ -131,7 +131,7 @@ CONFIGURATIONS:
 
 INTERACTSH:
    -no-interactsh                     disable interactsh server for OOB testing
-   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interact.sh")
+   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interactsh.com")
    -interactsh-token string           authentication token for self-hosted interactsh server
    -interactions-cache-size int       number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int         number of seconds to wait before evicting requests from cache (default 60)

@@ -35,6 +35,7 @@ type generatedRequest struct {
 	meta            map[string]interface{}
 	pipelinedClient *rawhttp.PipelineClient
 	request         *retryablehttp.Request
+	dynamicValues   map[string]interface{}
 }
 
 // Make creates a http request for the provided input.
@@ -59,17 +60,10 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
 	}
-	values := generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash))
-
-	// merge with vars
-	if !r.options.Options.Vars.IsEmpty() {
-		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
-	}
-
-	// merge with env vars
-	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(generators.EnvVars(), values)
-	}
+	values := generators.MergeMaps(
+		generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash)),
+		generators.BuildPayloadFromOptions(r.request.options.Options),
+	)
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
@@ -136,7 +130,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
@@ -197,7 +191,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request}, nil
+	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues}, nil
 }
 
 // fillRequest fills various headers in the request with values

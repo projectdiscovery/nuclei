@@ -98,7 +98,9 @@ type ResultEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// Interaction is the full details of interactsh interaction.
 	Interaction *server.Interaction `json:"interaction,omitempty"`
-
+	// CURLCommand is an optional curl command to reproduce the request
+	// Only applicable if the report is for HTTP.
+	CURLCommand         string         `json:"curl_command,omitempty"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
