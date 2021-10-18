@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	NUCLEI_TEMPLATES_REPO_URL = "https://github.com/projectdiscovery/nuclei-templates/blob/master"
+	NUCLEI_TEMPLATES_REPO_URL = "https://github.com/projectdiscovery/nuclei-templates/blob/master/"
 )
 
 func IsBlank(value string) bool {
