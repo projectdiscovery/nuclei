@@ -39,6 +39,16 @@ type generatedRequest struct {
 	dynamicValues   map[string]interface{}
 }
 
+func (g *generatedRequest) URL() string {
+	if g.request != nil {
+		return g.request.URL.String()
+	}
+	if g.rawRequest != nil {
+		return g.rawRequest.FullURL
+	}
+	return ""
+}
+
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}, interactURL string) (*generatedRequest, error) {
@@ -85,14 +95,6 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 	}
 	ctx := context.Background()
 
-	values := generators.CopyMap(dynamicValues)
-	if !r.options.Options.Vars.IsEmpty() {
-		values = generators.MergeMaps(values, r.options.Options.Vars.AsMap())
-	}
-	if r.options.Options.EnvironmentVariables {
-		values = generators.MergeMaps(generators.EnvVars(), values)
-	}
-
 	isRawRequest := len(r.request.Raw) > 0
 
 	// If data contains \n it's a raw request, process it like raw. Else
@@ -113,8 +115,18 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", err)
 		}
+		values := generators.MergeMaps(
+			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
+			generators.BuildPayloadFromOptions(r.request.options.Options),
+		)
+
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads, interactURL)
 	}
+	values := generators.MergeMaps(
+		dynamicValues,
+		generators.BuildPayloadFromOptions(r.request.options.Options),
+	)
+
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
 }
 
