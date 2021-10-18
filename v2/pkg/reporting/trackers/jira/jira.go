@@ -23,21 +23,21 @@ type Integration struct {
 
 // Options contains the configuration options for jira client
 type Options struct {
-	// Cloud value is set to true when Jira cloud is used
+	// Cloud value (optional) is set to true when Jira cloud is used
 	Cloud bool `yaml:"cloud"`
-	// UpdateExisting value if true, the existing opened issue is updated
+	// UpdateExisting value (optional) if true, the existing opened issue is updated
 	UpdateExisting bool `yaml:"update-existing"`
-	// URL is the URL of the jira server
+	// URL (mandatory) is the URL of the jira server
 	URL string `yaml:"url"`
-	// AccountID is the accountID of the jira user.
+	// AccountID (mandatory) is the accountID of the jira user.
 	AccountID string `yaml:"account-id"`
-	// Email is the email of the user for jira instance
+	// Email (mandatory) is the email of the user for jira instance
 	Email string `yaml:"email"`
-	// Token is the token for jira instance.
+	// Token (mandatory) is the token for jira instance.
 	Token string `yaml:"token"`
-	// ProjectName is the name of the project.
+	// ProjectName (mandatory) is the name of the project.
 	ProjectName string `yaml:"project-name"`
-	// IssueType is the name of the created issue type
+	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type"`
 }
 
@@ -71,6 +71,9 @@ func validateOptions(options *Options) error {
 	}
 	if options.Email == "" {
 		return errors.New("Email name is mandatory")
+	}
+	if options.Token == "" {
+		return errors.New("Token name is mandatory")
 	}
 	if options.ProjectName == "" {
 		return errors.New("ProjectName name is mandatory")
