@@ -72,7 +72,6 @@ func New(options *types.Options) (*Browser, error) {
 	}
 
 	browser := rod.New().ControlURL(launcherURL)
-	browser = browser.MustIgnoreCertErrors(true)
 	if browserErr := browser.Connect(); browserErr != nil {
 		return nil, browserErr
 	}
