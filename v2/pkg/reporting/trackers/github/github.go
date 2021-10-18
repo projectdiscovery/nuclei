@@ -26,15 +26,15 @@ type Options struct {
 	BaseURL string `yaml:"base-url"`
 	// Username (mandatory) is the username of the github user
 	Username string `yaml:"username"`
-	// Owner (manadatory)is the owner name of the repository for issues.
+	// Owner (manadatory) is the owner name of the repository for issues.
 	Owner string `yaml:"owner"`
 	// Token (mandatory) is the token for github account.
 	Token string `yaml:"token"`
-	// ProjectName (mandatory) name of the repository.
+	// ProjectName (mandatory) is the name of the repository.
 	ProjectName string `yaml:"project-name"`
-	// IssueLabel (optional) it the label of the created issue type
+	// IssueLabel (optional) is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
-	// SeverityAsLabel (optional) send the severity as the label of the created
+	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
