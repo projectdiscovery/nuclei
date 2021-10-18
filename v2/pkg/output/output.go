@@ -60,20 +60,20 @@ type InternalWrappedEvent struct {
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
 	// Template is the filename with extension of the template for the result.
-	Template string `json:"template"`
+	Template string `json:"template,omitempty"`
 	// TemplateURL is the URL of the template for the result inside the nuclei
 	// templates repository.
-	TemplateURL string `json:"templateURL"`
+	TemplateURL string `json:"template-url,omitempty"`
 	// TemplateID is the ID of the template for the result.
-	TemplateID string `json:"templateID"`
+	TemplateID string `json:"template-id"`
 	// TemplatePath is the path of template
 	TemplatePath string `json:"-"`
 	// Info contains information block of the template for the result.
 	Info model.Info `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
-	MatcherName string `json:"matcher_name,omitempty"`
+	MatcherName string `json:"matcher-name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
-	ExtractorName string `json:"extractor_name,omitempty"`
+	ExtractorName string `json:"extractor-name,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
@@ -81,11 +81,11 @@ type ResultEvent struct {
 	// Path is the path input on which match was found.
 	Path string `json:"path,omitempty"`
 	// Matched contains the matched input in its transformed form.
-	Matched string `json:"matched,omitempty"`
+	Matched string `json:"matched-at,omitempty"`
 	// MatcherStatus indicates if the result is matched.
-	MatcherStatus string `json:"matched_status,omitempty"`
+	MatcherStatus string `json:"matched-status,omitempty"`
 	// ExtractedResults contains the extraction result from the inputs.
-	ExtractedResults []string `json:"extracted_results,omitempty"`
+	ExtractedResults []string `json:"extracted-results,omitempty"`
 	// Request is the optional, dumped request for the match.
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
@@ -100,7 +100,7 @@ type ResultEvent struct {
 	Interaction *server.Interaction `json:"interaction,omitempty"`
 	// CURLCommand is an optional curl command to reproduce the request
 	// Only applicable if the report is for HTTP.
-	CURLCommand         string         `json:"curl_command,omitempty"`
+	CURLCommand         string         `json:"curl-command,omitempty"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
