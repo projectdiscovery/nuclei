@@ -18,19 +18,19 @@ import (
 
 // Options contains necessary options required for elasticsearch communicaiton
 type Options struct {
-	// IP for elasticsearch instance
+	// IP (mandatory) for elasticsearch instance
 	IP string `yaml:"ip"`
-	// Port is the port of elasticsearch instance
+	// Port (mandatory) is the port of elasticsearch instance
 	Port int `yaml:"port"`
-	// SSL enables ssl for elasticsearch connection
+	// SSL (optional) enables ssl for elasticsearch connection
 	SSL bool `yaml:"ssl"`
-	// SSLVerification disables SSL verification for elasticsearch
+	// SSLVerification (optional) disables SSL verification for elasticsearch
 	SSLVerification bool `yaml:"ssl-verification"`
-	// Username for the elasticsearch instance
+	// Username (mandatory) for the elasticsearch instance
 	Username string `yaml:"username"`
-	// Password is the password for elasticsearch instance
+	// Password (mandatory) is the password for elasticsearch instance
 	Password string `yaml:"password"`
-	// IndexName is the name of the elasticsearch index
+	// IndexName (mandatory) is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"`
 }
 
