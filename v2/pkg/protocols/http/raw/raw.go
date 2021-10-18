@@ -91,7 +91,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		}
 
 		rawRequest.Path = parsed.Path
-		rawRequest.Headers["Host"] = parsed.Host
+		if _, ok := rawRequest.Headers["Host"]; !ok {
+			rawRequest.Headers["Host"] = parsed.Host
+		}
 	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
 	}
