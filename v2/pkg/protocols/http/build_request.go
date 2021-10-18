@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -47,6 +48,14 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 		return nil, io.EOF
 	}
 	ctx := context.Background()
+
+	if interactURL != "" {
+		data = r.options.Interactsh.ReplaceMarkers(data, interactURL)
+
+		for payloadName, payloadValue := range payloads {
+			payloads[payloadName] = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), interactURL)
+		}
+	}
 
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
