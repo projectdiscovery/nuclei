@@ -18,6 +18,9 @@ func IsNotBlank(value string) bool {
 
 func TemplatePath(fullPath string) (string, string) {
 	parts := strings.Split(fullPath, "/nuclei-templates/")
+	if len(parts) < 2 {
+		return "", ""
+	}
 	templateFile := parts[1]
 	templateFileURL := NUCLEI_TEMPLATES_REPO_URL + templateFile
 	return templateFile, templateFileURL
