@@ -27,7 +27,7 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520"`
+	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^(?:[a-zA-Z0-9][a-zA-Z0-9]*-?[a-zA-Z0-9]+?)+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
