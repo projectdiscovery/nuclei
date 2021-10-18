@@ -29,7 +29,7 @@ type Options struct {
 	ProjectName string `yaml:"project-name"`
 	// IssueLabel (mandatory) is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
-	// SeverityAsLabel (optional) send the severity as the label of the created
+	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
