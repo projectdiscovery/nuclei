@@ -19,6 +19,8 @@
 #  project-name: ""
 #  # issue-label is the label of the created issue type
 #  issue-label: ""
+#  # severity-as-label set the sevetiry as the label of the created issue type
+#  severity-as-label: false
 
 # gitlab contains configuration options for gitlab issue tracker
 #gitlab: 
@@ -32,6 +34,8 @@
 #  project-id: ""
 #  # issue-label is the label of the created issue type
 #  issue-label: ""
+#  # severity-as-label set the sevetiry as the label of the created issue type
+#  severity-as-label: false
 
 # jira contains configuration options for jira issue tracker
 #jira:

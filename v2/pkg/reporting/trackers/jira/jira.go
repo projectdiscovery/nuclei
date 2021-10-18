@@ -2,6 +2,7 @@ package jira
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -42,6 +43,10 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	err := validateOptions(options)
+	if err != nil {
+		return nil, errors.New("could not parse config")
+	}
 	username := options.Email
 	if !options.Cloud {
 		username = options.AccountID
@@ -57,10 +62,33 @@ func New(options *Options) (*Integration, error) {
 	return &Integration{jira: jiraClient, options: options}, nil
 }
 
+func validateOptions(options *Options) error {
+	if options.URL == "" {
+		return errors.New("URL name is mandatory")
+	}
+	if options.AccountID == "" {
+		return errors.New("AccountID name is mandatory")
+	}
+	if options.Email == "" {
+		return errors.New("Email name is mandatory")
+	}
+	if options.ProjectName == "" {
+		return errors.New("ProjectName name is mandatory")
+	}
+	return nil
+}
+
 // CreateNewIssue creates a new issue in the tracker
 func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
-	severityLabel := fmt.Sprintf("Severity:%s", event.Info.SeverityHolder.Severity.String())
+	labels := []string{}
+	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
+	if severityLabel != "" {
+		labels = append(labels, severityLabel)
+	}
+	if label := i.options.IssueType; label != "" {
+		labels = append(labels, label)
+	}
 
 	fields := &jira.IssueFields{
 		Assignee:    &jira.User{AccountID: i.options.AccountID},
@@ -69,7 +97,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		Type:        jira.IssueType{Name: i.options.IssueType},
 		Project:     jira.Project{Key: i.options.ProjectName},
 		Summary:     summary,
-		Labels:      []string{severityLabel},
+		Labels:      labels,
 	}
 	// On-prem version of Jira server does not use AccountID
 	if !i.options.Cloud {
