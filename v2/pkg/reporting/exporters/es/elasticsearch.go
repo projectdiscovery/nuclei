@@ -49,6 +49,10 @@ type Exporter struct {
 // New creates and returns a new exporter for elasticsearch
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
+	err := validateOptions(options)
+	if err != nil {
+		return nil, errors.New("could not parse config")
+	}
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -81,6 +85,25 @@ func New(option *Options) (*Exporter, error) {
 	return ei, nil
 }
 
+func validateOptions(options *Options) error {
+	if options.IP == "" {
+		return errors.New("IP name is mandatory")
+	}
+	if options.Port == 0 {
+		return errors.New("Port name is mandatory")
+	}
+	if options.Username == "" {
+		return errors.New("Username name is mandatory")
+	}
+	if options.Password == "" {
+		return errors.New("Password name is mandatory")
+	}
+	if options.IndexName == "" {
+		return errors.New("IndexName name is mandatory")
+	}
+	return nil
+}
+
 // Export exports a passed result event to elasticsearch
 func (i *Exporter) Export(event *output.ResultEvent) error {
 	// creating a request
@@ -105,9 +128,9 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 
 	res, err := i.elasticsearch.Do(req)
 	if err != nil {
-		return err	
+		return err
 	}
-	
+
 	b, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))

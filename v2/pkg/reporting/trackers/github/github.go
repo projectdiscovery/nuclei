@@ -22,18 +22,21 @@ type Integration struct {
 
 // Options contains the configuration options for github issue tracker client
 type Options struct {
-	// BaseURL is the optional self-hosted github application url
+	// BaseURL (optional) is the self-hosted github application url
 	BaseURL string `yaml:"base-url"`
-	// Username is the mandatory username of the github user
+	// Username (mandatory) is the username of the github user
 	Username string `yaml:"username"`
-	// Owner is the mandatory owner name of the repository for issues.
+	// Owner (manadatory)is the owner name of the repository for issues.
 	Owner string `yaml:"owner"`
-	// Token is the mandatory token for github account.
+	// Token (mandatory) is the token for github account.
 	Token string `yaml:"token"`
-	// ProjectName is the mandatory name of the repository.
+	// ProjectName (mandatory) name of the repository.
 	ProjectName string `yaml:"project-name"`
-	// IssueLabel is the mandatory label of the created issue type
+	// IssueLabel (optional) it the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
+	// SeverityAsLabel (optional) send the severity as the label of the created
+	// issue.
+	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -72,9 +75,6 @@ func validateOptions(options *Options) error {
 	if options.ProjectName == "" {
 		return errors.New("ProjectName name is mandatory")
 	}
-	if options.IssueLabel == "" {
-		return errors.New("IssueLabel name is mandatory")
-	}
 	return nil
 }
 
@@ -82,12 +82,19 @@ func validateOptions(options *Options) error {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
+	if i.options.SeverityAsLabel && severityLabel != "" {
+		labels = append(labels, severityLabel)
+	}
+	if label := i.options.IssueLabel; label != "" {
+		labels = append(labels, label)
+	}
 
 	req := &github.IssueRequest{
 		Title:     &summary,
 		Body:      &description,
-		Labels:    &[]string{i.options.IssueLabel, severityLabel},
+		Labels:    &labels,
 		Assignees: &[]string{i.options.Username},
 	}
 	_, _, err := i.client.Issues.Create(context.Background(), i.options.Owner, i.options.ProjectName, req)
