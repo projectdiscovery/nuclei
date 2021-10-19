@@ -2,6 +2,7 @@ package gitlab
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -21,13 +22,13 @@ type Integration struct {
 type Options struct {
 	// BaseURL (optional) is the self-hosted gitlab application url
 	BaseURL string `yaml:"base-url"`
-	// Username (mandatory) is the username of the gitlab user
+	// Username is the username of the gitlab user
 	Username string `yaml:"username"`
-	// Token (mandatory) is the token for gitlab account.
+	// Token is the token for gitlab account.
 	Token string `yaml:"token"`
-	// ProjectName (mandatory) is the name of the repository.
+	// ProjectName is the name of the repository.
 	ProjectName string `yaml:"project-name"`
-	// IssueLabel (mandatory) is the label of the created issue type
+	// IssueLabel is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
@@ -56,15 +57,21 @@ func New(options *Options) (*Integration, error) {
 }
 
 func validateOptions(options *Options) error {
+	errs := []string{}
 	if options.Username == "" {
-		return errors.New("Username name is mandatory")
+		errs = append(errs, "Username")
 	}
 	if options.Token == "" {
-		return errors.New("Token name is mandatory")
+		errs = append(errs, "Token")
 	}
 	if options.ProjectName == "" {
-		return errors.New("ProjectName name is mandatory")
+		errs = append(errs, "ProjectName")
 	}
+
+	if len(errs) > 0 {
+		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
+	}
+
 	return nil
 }
 
