@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"encoding/base64"
@@ -18,19 +19,19 @@ import (
 
 // Options contains necessary options required for elasticsearch communicaiton
 type Options struct {
-	// IP (mandatory) for elasticsearch instance
+	// IP for elasticsearch instance
 	IP string `yaml:"ip"`
-	// Port (mandatory) is the port of elasticsearch instance
+	// Port is the port of elasticsearch instance
 	Port int `yaml:"port"`
 	// SSL (optional) enables ssl for elasticsearch connection
 	SSL bool `yaml:"ssl"`
 	// SSLVerification (optional) disables SSL verification for elasticsearch
 	SSLVerification bool `yaml:"ssl-verification"`
-	// Username (mandatory) for the elasticsearch instance
+	// Username for the elasticsearch instance
 	Username string `yaml:"username"`
-	// Password (mandatory) is the password for elasticsearch instance
+	// Password is the password for elasticsearch instance
 	Password string `yaml:"password"`
-	// IndexName (mandatory) is the name of the elasticsearch index
+	// IndexName is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"`
 }
 
@@ -49,7 +50,7 @@ type Exporter struct {
 // New creates and returns a new exporter for elasticsearch
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
-	err := validateOptions(options)
+	err := validateOptions(option)
 	if err != nil {
 		return nil, errors.New("could not parse config")
 	}
@@ -86,21 +87,27 @@ func New(option *Options) (*Exporter, error) {
 }
 
 func validateOptions(options *Options) error {
+	errs := []string{}
 	if options.IP == "" {
-		return errors.New("IP name is mandatory")
+		errs = append(errs, "IP")
 	}
 	if options.Port == 0 {
-		return errors.New("Port name is mandatory")
+		errs = append(errs, "Port")
 	}
 	if options.Username == "" {
-		return errors.New("Username name is mandatory")
+		errs = append(errs, "Username")
 	}
 	if options.Password == "" {
-		return errors.New("Password name is mandatory")
+		errs = append(errs, "Password")
 	}
 	if options.IndexName == "" {
-		return errors.New("IndexName name is mandatory")
+		errs = append(errs, "IndexName")
 	}
+
+	if len(errs) > 0 {
+		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
+	}
+
 	return nil
 }
 

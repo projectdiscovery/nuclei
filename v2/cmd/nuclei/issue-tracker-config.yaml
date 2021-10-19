@@ -7,7 +7,7 @@
 
 # github contains configuration options for github issue tracker
 #github: 
-#  # base-url (optional) is the  self-hosted github application url
+#  # base-url (optional) is the self-hosted github application url
 #  base-url: ""
 #  # username is the username of the github user
 #  username: ""

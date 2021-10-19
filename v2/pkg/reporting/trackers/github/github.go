@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"golang.org/x/oauth2"
 
@@ -24,13 +25,13 @@ type Integration struct {
 type Options struct {
 	// BaseURL (optional) is the self-hosted github application url
 	BaseURL string `yaml:"base-url"`
-	// Username (mandatory) is the username of the github user
+	// Username is the username of the github user
 	Username string `yaml:"username"`
 	// Owner (manadatory) is the owner name of the repository for issues.
 	Owner string `yaml:"owner"`
-	// Token (mandatory) is the token for github account.
+	// Token is the token for github account.
 	Token string `yaml:"token"`
-	// ProjectName (mandatory) is the name of the repository.
+	// ProjectName is the name of the repository.
 	ProjectName string `yaml:"project-name"`
 	// IssueLabel (optional) is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
@@ -63,18 +64,24 @@ func New(options *Options) (*Integration, error) {
 }
 
 func validateOptions(options *Options) error {
+	errs := []string{}
 	if options.Username == "" {
-		return errors.New("Username name is mandatory")
+		errs = append(errs, "Username")
 	}
 	if options.Owner == "" {
-		return errors.New("Owner name is mandatory")
+		errs = append(errs, "Owner")
 	}
 	if options.Token == "" {
-		return errors.New("Token name is mandatory")
+		errs = append(errs, "Token")
 	}
 	if options.ProjectName == "" {
-		return errors.New("ProjectName name is mandatory")
+		errs = append(errs, "ProjectName")
 	}
+
+	if len(errs) > 0 {
+		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
+	}
+
 	return nil
 }
 
