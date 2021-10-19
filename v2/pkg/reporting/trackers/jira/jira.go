@@ -48,7 +48,7 @@ type Options struct {
 func New(options *Options) (*Integration, error) {
 	err := validateOptions(options)
 	if err != nil {
-		return nil, errors.New("could not parse config")
+		return nil, err
 	}
 	username := options.Email
 	if !options.Cloud {
