@@ -6,24 +6,22 @@ labels: 'Type: Bug'
 ---
 
 <!-- Please make sure you are posting an issue pertaining to the Nuclei engine -->
-<!-- Please do not submit support requests or "How to" questions here. Instead, please use GitHub Discussion: https://github.com/projectdiscovery/nuclei/discussions  -->
-<!-- or Join our discord server at https://discord.gg/projectdiscovery and post the question in #nuclei channel -->
+<!-- For support requests, FAQs or "How to" questions, please use the GitHub Discussions section instead - https://github.com/projectdiscovery/nuclei/discussions  -->
+<!-- or Join our discord server at https://discord.gg/projectdiscovery and post the question on the #nuclei channel -->
 
 <!-- ISSUES MISSING IMPORTANT INFORMATION MAY BE CLOSED WITHOUT INVESTIGATION. -->
 
 **Nuclei version:**
 <!-- You can find current version of nuclei with "nuclei -version" -->
-<!-- Make sure you are running latest version of nuclei to ensure you are not reporting an issue for the outdated version of the project -->
+<!-- We only accept issues that are reproducible on the latest version of nuclei. -->
 <!-- You can find the latest version of project at https://github.com/projectdiscovery/nuclei/releases/ -->
 
 **Current behavior:**
-<!-- Describe how the bug manifests. -->
 
 **Expected behavior:**
-<!-- Describe what the behavior would be without the bug. -->
 
 **Steps to reproduce:**
-<!--  Please explain the steps required to replicate the issue inclduing example command to run -->
+<!-- Please explain the steps required to replicate the issue, including the command line arguments used. -->
 
 
 **Other information:**
