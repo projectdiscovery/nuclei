@@ -503,7 +503,7 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Write([]byte("This is self-contained response"))
+		_, _ = w.Write([]byte("This is self-contained response"))
 	})
 	server := &http.Server{
 		Addr:    "localhost:5431",
