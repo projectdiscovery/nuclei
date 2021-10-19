@@ -44,7 +44,7 @@ type Options struct {
 func New(options *Options) (*Integration, error) {
 	err := validateOptions(options)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not parse config")
+		return nil, err
 	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(

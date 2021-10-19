@@ -52,7 +52,7 @@ func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 	err := validateOptions(option)
 	if err != nil {
-		return nil, errors.New("could not parse config")
+		return nil, err
 	}
 
 	client := &http.Client{
