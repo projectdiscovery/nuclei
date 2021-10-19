@@ -63,7 +63,7 @@ type Template struct {
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
 
 	// description: |
-	//   Self Contained marks Network Requests for the template as self-contained
+	//   Self Contained marks Requests for the template as self-contained
 	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
 
 	// TotalRequests is the total number of requests for the template.
