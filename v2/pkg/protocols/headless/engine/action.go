@@ -50,6 +50,8 @@ const (
 	ActionDebug
 	// ActionSleep executes a sleep for a specified duration
 	ActionSleep
+	// ActionWaitVisible waits until an element appears.
+	ActionWaitVisible
 )
 
 // ActionStringToAction converts an action from string to internal representation
@@ -75,6 +77,7 @@ var ActionStringToAction = map[string]ActionType{
 	"keyboard":     ActionKeyboard,
 	"debug":        ActionDebug,
 	"sleep":        ActionSleep,
+	"waitvisible":  ActionWaitVisible,
 }
 
 // ActionToActionString converts an action from  internal representation to string
@@ -100,6 +103,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionKeyboard:     "keyboard",
 	ActionDebug:        "debug",
 	ActionSleep:        "sleep",
+	ActionWaitVisible:  "waitvisible",
 }
 
 // Action is an action taken by the browser to reach a navigation
