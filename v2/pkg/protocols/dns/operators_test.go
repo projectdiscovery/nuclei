@@ -87,8 +87,9 @@ func TestDNSOperatorMatch(t *testing.T) {
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid response")
+		isMatch, matched := request.Match(event, matcher)
+		require.True(t, isMatch, "could not match valid response")
+		require.Equal(t, matcher.Words, matched)
 	})
 
 	t.Run("rcode", func(t *testing.T) {
@@ -100,8 +101,9 @@ func TestDNSOperatorMatch(t *testing.T) {
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile rcode matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid rcode response")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid rcode response")
+		require.Equal(t, []string{}, matched)
 	})
 
 	t.Run("negative", func(t *testing.T) {
@@ -114,8 +116,9 @@ func TestDNSOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile negative matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid negative response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid negative response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -127,8 +130,9 @@ func TestDNSOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.False(t, matched, "could match invalid response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.False(t, isMatched, "could match invalid response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 }
 
@@ -232,13 +236,15 @@ func TestDNSMakeResult(t *testing.T) {
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one")
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)
 		}
 	}
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
-	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	resultEvent := finalEvent.Results[0]
+	require.Equal(t, "test", resultEvent.MatcherName, "could not get correct matcher name of results")
+	require.Equal(t, "1.1.1.1", resultEvent.ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, "one.one.one.one", resultEvent.Matched, "could not get matched value")
 }
