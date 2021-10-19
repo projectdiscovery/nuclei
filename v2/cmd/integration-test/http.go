@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/http/httputil"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -34,21 +33,12 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/request-condition-new.yaml": &httpRequestCondition{},
 }
 
-func httpDebugRequestDump(r *http.Request) {
-	if debug {
-		if dump, err := httputil.DumpRequest(r, true); err == nil {
-			fmt.Printf("\nRequest dump: \n%s\n\n", string(dump))
-		}
-	}
-}
-
 type httpGetHeaders struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *httpGetHeaders) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test headers matcher text")
 		}
@@ -72,7 +62,6 @@ type httpGetQueryString struct{}
 func (h *httpGetQueryString) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test querystring matcher text")
 		}
@@ -96,11 +85,9 @@ type httpGetRedirects struct{}
 func (h *httpGetRedirects) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		http.Redirect(w, r, "/redirected", http.StatusFound)
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test redirects matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -122,7 +109,6 @@ type httpGet struct{}
 func (h *httpGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -146,7 +132,6 @@ func (h *httpPostBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -179,8 +164,6 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
-
 		type doc struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
@@ -218,7 +201,6 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseMultipartForm(1 * 1024); err != nil {
 			routerErr = err
 			return
@@ -261,7 +243,6 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -271,7 +252,6 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 		}
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("username"), "nuclei") {
 			fmt.Fprintf(w, "Test is test-dynamic-extractor-raw matcher text")
 		}
@@ -300,7 +280,6 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
 			fmt.Fprintf(w, "Test is test raw-get-query-matcher text")
 		}
@@ -329,8 +308,6 @@ func (h *httpRawGet) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
-
 		fmt.Fprintf(w, "Test is test raw-get-matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -357,7 +334,6 @@ func (h *httpRawPayload) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -393,7 +369,6 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -426,7 +401,6 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -436,7 +410,6 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 		}
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -500,11 +473,9 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		w.WriteHeader(200)
 	})
 	router.GET("/400", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		w.WriteHeader(400)
 	})
 	ts := httptest.NewServer(router)
