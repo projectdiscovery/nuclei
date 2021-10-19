@@ -49,10 +49,14 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
+	// Proxy is the file to list of proxy server
+	Proxy string
 	// ProxyURL is the URL for the proxy server
 	ProxyURL string
 	// ProxySocksURL is the URL for the proxy socks server
 	ProxySocksURL string
+	// ProxyURLList is a list of URL for the proxy servers
+	ProxyURLList []string
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests

@@ -3,10 +3,13 @@ package runner
 import (
 	"bufio"
 	"errors"
+	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
@@ -29,7 +32,6 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
-
 	// Show the user the banner
 	showBanner()
 
@@ -94,20 +96,22 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-
-	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
-		return err
-	}
-
-	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
-		return err
-	}
-
+	//loading the proxy server list and test the connectivity
+	loadProxies(options)
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
+	return nil
+}
+func validateProxy(proxy string) error {
+	if err := validateProxyURL(proxy, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
+		return err
+	}
+	if err := validateProxyURL(proxy, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -167,6 +171,70 @@ func loadResolvers(options *types.Options) {
 	}
 }
 
+// loadProxies load list of proxy servers from file
+func loadProxies(options *types.Options) {
+	if options.Proxy == "" {
+		return
+	}
+	file, err := os.Open(options.Proxy)
+	if err != nil {
+		gologger.Fatal().Msgf("Could not open proxy file: %s\n", err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		proxy := scanner.Text()
+		if proxy == "" {
+			continue
+		}
+		if err := validateProxy(proxy); err != nil {
+			gologger.Fatal().Msgf("%s\n", err)
+		}
+		options.ProxyURLList = append(options.ProxyURLList, proxy)
+	}
+	if len(options.ProxyURLList) == 0 {
+		gologger.Fatal().Msgf("Could not find any proxy in the file\n")
+	} else {
+		done := make(chan bool)
+		for _, ip := range options.ProxyURLList {
+			go runProxyConnectivity(ip, options, done)
+		}
+		<-done
+		close(done)
+	}
+}
+func runProxyConnectivity(ip string, options *types.Options, done chan bool) {
+	if proxy, err := testProxyConnection(ip); err == nil {
+		if options.ProxyURL == "" && options.ProxySocksURL == "" {
+			if valid := assignProxy(proxy, options); valid {
+				done <- true
+			}
+		}
+	}
+}
+func testProxyConnection(proxy string) (string, error) {
+	ip, _ := url.Parse(proxy)
+	timeout := time.Duration(1 * time.Second)
+	_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", ip.Hostname(), ip.Port()), timeout)
+	if err != nil {
+		return "", err
+	}
+	return proxy, nil
+}
+func assignProxy(proxy string, options *types.Options) bool {
+	var validConfig bool = true
+	if strings.HasPrefix(proxy, "http") || strings.HasPrefix(proxy, "https") {
+		options.ProxyURL = proxy
+		options.ProxySocksURL = ""
+	} else if strings.HasPrefix(proxy, "socks5") || strings.HasPrefix(proxy, "socks4") {
+		options.ProxyURL = ""
+		options.ProxySocksURL = proxy
+	} else {
+		validConfig = false
+	}
+	return validConfig
+
+}
 func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
 

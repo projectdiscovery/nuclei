@@ -150,9 +150,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 		/* TODO why the separation? http://proxy:port vs socks5://proxy:port etc
 		   TODO should auto-set the HTTP_PROXY variable for the process? */
-		flagSet.StringVarP(&options.ProxyURL, "proxy-url", "proxy", "", "URL of the HTTP proxy server"),
-		flagSet.StringVar(&options.ProxySocksURL, "proxy-socks-url", "", "URL of the SOCKS proxy server"),
-
+		flagSet.StringVar(&options.Proxy, "proxy", "", "path to file containing a list of HTTP proxy server"),
 		flagSet.StringVar(&options.TraceLogFile, "trace-log", "", "file to write sent requests trace log"),
 
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),

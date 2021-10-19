@@ -159,8 +159,7 @@ DEBUG:
    -debug                     show all requests and responses
    -debug-req                 show all sent requests
    -debug-resp                show all received responses
-   -proxy, -proxy-url string  URL of the HTTP proxy server
-   -proxy-socks-url string    URL of the SOCKS proxy server
+   -proxy string              load list of proxy servers from file
    -trace-log string          file to write sent requests trace log
    -version                   show nuclei version
    -tv, -templates-version    shows the version of the installed nuclei-templates
