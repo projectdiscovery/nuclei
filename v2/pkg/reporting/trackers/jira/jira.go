@@ -27,18 +27,21 @@ type Options struct {
 	Cloud bool `yaml:"cloud"`
 	// UpdateExisting value (optional) if true, the existing opened issue is updated
 	UpdateExisting bool `yaml:"update-existing"`
-	// URL (mandatory) is the URL of the jira server
+	// URL is the URL of the jira server
 	URL string `yaml:"url"`
-	// AccountID (mandatory) is the accountID of the jira user.
+	// AccountID is the accountID of the jira user.
 	AccountID string `yaml:"account-id"`
-	// Email (mandatory) is the email of the user for jira instance
+	// Email is the email of the user for jira instance
 	Email string `yaml:"email"`
-	// Token (mandatory) is the token for jira instance.
+	// Token is the token for jira instance.
 	Token string `yaml:"token"`
-	// ProjectName (mandatory) is the name of the project.
+	// ProjectName is the name of the project.
 	ProjectName string `yaml:"project-name"`
 	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type"`
+	// SeverityAsLabel (optional) sends the severity as the label of the created
+	// issue.
+	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -63,21 +66,27 @@ func New(options *Options) (*Integration, error) {
 }
 
 func validateOptions(options *Options) error {
+	errs := []string{}
 	if options.URL == "" {
-		return errors.New("URL name is mandatory")
+		errs = append(errs, "URL")
 	}
 	if options.AccountID == "" {
-		return errors.New("AccountID name is mandatory")
+		errs = append(errs, "AccountID")
 	}
 	if options.Email == "" {
-		return errors.New("Email name is mandatory")
+		errs = append(errs, "Email")
 	}
 	if options.Token == "" {
-		return errors.New("Token name is mandatory")
+		errs = append(errs, "Token")
 	}
 	if options.ProjectName == "" {
-		return errors.New("ProjectName name is mandatory")
+		errs = append(errs, "ProjectName")
 	}
+
+	if len(errs) > 0 {
+		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
+	}
+
 	return nil
 }
 
@@ -86,7 +95,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
-	if severityLabel != "" {
+	if i.options.SeverityAsLabel && severityLabel != "" {
 		labels = append(labels, severityLabel)
 	}
 	if label := i.options.IssueType; label != "" {
