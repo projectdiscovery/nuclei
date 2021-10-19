@@ -29,10 +29,10 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	var address string
 	var err error
 
-	if !request.SelfContained {
-		address, err = getAddress(input)
-	} else {
+	if request.SelfContained {
 		address = ""
+	} else {
+		address, err = getAddress(input)
 	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplateID, input, "network", err)
