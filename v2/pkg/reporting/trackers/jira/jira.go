@@ -2,6 +2,7 @@ package jira
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -22,9 +23,9 @@ type Integration struct {
 
 // Options contains the configuration options for jira client
 type Options struct {
-	// Cloud value is set to true when Jira cloud is used
+	// Cloud value (optional) is set to true when Jira cloud is used
 	Cloud bool `yaml:"cloud"`
-	// UpdateExisting value if true, the existing opened issue is updated
+	// UpdateExisting value (optional) if true, the existing opened issue is updated
 	UpdateExisting bool `yaml:"update-existing"`
 	// URL is the URL of the jira server
 	URL string `yaml:"url"`
@@ -36,12 +37,19 @@ type Options struct {
 	Token string `yaml:"token"`
 	// ProjectName is the name of the project.
 	ProjectName string `yaml:"project-name"`
-	// IssueType is the name of the created issue type
+	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type"`
+	// SeverityAsLabel (optional) sends the severity as the label of the created
+	// issue.
+	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	err := validateOptions(options)
+	if err != nil {
+		return nil, err
+	}
 	username := options.Email
 	if !options.Cloud {
 		username = options.AccountID
@@ -57,10 +65,42 @@ func New(options *Options) (*Integration, error) {
 	return &Integration{jira: jiraClient, options: options}, nil
 }
 
+func validateOptions(options *Options) error {
+	errs := []string{}
+	if options.URL == "" {
+		errs = append(errs, "URL")
+	}
+	if options.AccountID == "" {
+		errs = append(errs, "AccountID")
+	}
+	if options.Email == "" {
+		errs = append(errs, "Email")
+	}
+	if options.Token == "" {
+		errs = append(errs, "Token")
+	}
+	if options.ProjectName == "" {
+		errs = append(errs, "ProjectName")
+	}
+
+	if len(errs) > 0 {
+		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
+	}
+
+	return nil
+}
+
 // CreateNewIssue creates a new issue in the tracker
 func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
-	severityLabel := fmt.Sprintf("Severity:%s", event.Info.SeverityHolder.Severity.String())
+	labels := []string{}
+	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
+	if i.options.SeverityAsLabel && severityLabel != "" {
+		labels = append(labels, severityLabel)
+	}
+	if label := i.options.IssueType; label != "" {
+		labels = append(labels, label)
+	}
 
 	fields := &jira.IssueFields{
 		Assignee:    &jira.User{AccountID: i.options.AccountID},
@@ -69,7 +109,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		Type:        jira.IssueType{Name: i.options.IssueType},
 		Project:     jira.Project{Key: i.options.ProjectName},
 		Summary:     summary,
-		Labels:      []string{severityLabel},
+		Labels:      labels,
 	}
 	// On-prem version of Jira server does not use AccountID
 	if !i.options.Cloud {
