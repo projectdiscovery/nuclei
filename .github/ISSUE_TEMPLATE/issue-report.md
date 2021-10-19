@@ -6,7 +6,6 @@ labels: 'Type: Bug'
 ---
 
 <!-- 
-Note:
 1. Please search to see if an issue already exists for the bug you encountered.
 2. For support requests, FAQs or "How to" questions, please use the GitHub Discussions section instead - https://github.com/projectdiscovery/nuclei/discussions or
 3. Join our discord server at https://discord.gg/projectdiscovery and post the question on the #nuclei channel.
