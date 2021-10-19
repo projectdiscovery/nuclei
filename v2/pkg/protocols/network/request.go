@@ -191,13 +191,13 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	if request.ReadSize != 0 {
 		bufferSize = request.ReadSize
 	}
-  
-  var (
+
+	var (
 		final []byte
 		n     int
 	)
 
-	if r.ReadAll {
+	if request.ReadAll {
 		readInterval := time.After(time.Second * 1)
 	read_socket:
 		for {
@@ -208,7 +208,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
 				if err != nil && !os.IsTimeout(err) {
-					r.options.Output.Request(r.options.TemplateID, address, "network", err)
+					request.options.Output.Request(request.options.TemplateID, address, "network", err)
 					return errors.Wrap(err, "could not read from server")
 				}
 				responseBuilder.Write(buf[:nBuf])
