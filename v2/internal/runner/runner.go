@@ -538,7 +538,7 @@ func (r *Runner) RunEnumeration() error {
 		go func(template *templates.Template) {
 			defer wgtemplates.Done()
 
-			if isRequestSelfContained(template) {
+			if template.SelfContained {
 				results.CAS(false, r.processSelfContainedTemplates(template))
 			} else if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
