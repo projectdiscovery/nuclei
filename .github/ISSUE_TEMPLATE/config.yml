@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask an question / advise on using nuclei
+    url: https://github.com/projectdiscovery/nuclei/discussions/categories/q-a
+    about: Ask a question or request support for using nuclei
+
+  - name: Share idea / feature to discuss for nuclei
+    url: https://github.com/projectdiscovery/nuclei/discussions/categories/ideas
+    about: Share idea / feature to discuss for nuclei
