@@ -198,17 +198,25 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	)
 
 	if request.ReadAll {
-		readInterval := time.After(time.Second * 1)
+		readInterval := time.NewTimer(time.Second * 1)
+		// stop the timer and drain the channel
+		closeTimer := func(t *time.Timer) {
+			if !t.Stop() {
+				<-t.C
+			}
+		}
 	read_socket:
 		for {
 			select {
-			case <-readInterval:
+			case <-readInterval.C:
+				closeTimer(readInterval)
 				break read_socket
 			default:
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
 				if err != nil && !os.IsTimeout(err) {
 					request.options.Output.Request(request.options.TemplateID, address, "network", err)
+					closeTimer(readInterval)
 					return errors.Wrap(err, "could not read from server")
 				}
 				responseBuilder.Write(buf[:nBuf])
