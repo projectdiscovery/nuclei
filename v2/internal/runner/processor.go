@@ -16,23 +16,6 @@ func (r *Runner) processSelfContainedTemplates(template *templates.Template) boo
 	return match
 }
 
-func isRequestSelfContained(template *templates.Template) bool {
-	if len(template.RequestsNetwork) == 0 && len(template.RequestsHTTP) == 0 {
-		return false
-	}
-	for _, request := range template.RequestsHTTP {
-		if request.SelfContained {
-			return true
-		}
-	}
-	for _, request := range template.RequestsNetwork {
-		if request.SelfContained {
-			return true
-		}
-	}
-	return false
-}
-
 // processTemplateWithList execute a template against the list of user provided targets
 func (r *Runner) processTemplateWithList(template *templates.Template) bool {
 	results := &atomic.Bool{}
