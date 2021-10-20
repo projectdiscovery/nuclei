@@ -105,9 +105,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.SystemResolvers, "system-resolvers", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
 		flagSet.BoolVar(&options.EnvironmentVariables, "env-vars", false, "enable environment variables support"),
-		flagSet.StringVar(&options.ClientCertFile, "client-cert", "cc", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
-		flagSet.StringVar(&options.ClientKeyFile, "client-key", "ck", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
-		flagSet.StringVar(&options.ClientCAFile, "client-ca", "ca", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.StringVarP(&options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
