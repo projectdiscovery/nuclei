@@ -101,6 +101,9 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 		if err == io.EOF {
 			break
 		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -161,6 +164,9 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 		if err == io.EOF {
 			break
 		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -215,6 +221,9 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues, interactURL)
 		if err == io.EOF {
 			break
+		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
 		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))

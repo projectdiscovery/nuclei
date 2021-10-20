@@ -61,6 +61,10 @@ type Request struct {
 	//   - value: "2048"
 	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
 
+	// description: |
+	//   SelfContained specifies if the request is self contained.
+	SelfContained bool `yaml:"-" json:"-"`
+
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`

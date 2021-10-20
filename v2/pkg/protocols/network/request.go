@@ -26,7 +26,14 @@ var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	address, err := getAddress(input)
+	var address string
+	var err error
+
+	if request.SelfContained {
+		address = ""
+	} else {
+		address, err = getAddress(input)
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplateID, input, "network", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -40,6 +47,9 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				actualAddress, _, _ = net.SplitHostPort(actualAddress)
 			}
 			actualAddress = net.JoinHostPort(actualAddress, kv.port)
+		}
+		if input != "" {
+			input = actualAddress
 		}
 
 		if err := request.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {

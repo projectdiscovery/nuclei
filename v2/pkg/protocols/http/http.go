@@ -138,6 +138,10 @@ type Request struct {
 	dynamicValues map[string]interface{}
 
 	// description: |
+	//   SelfContained specifies if the request is self contained.
+	SelfContained bool `yaml:"-" json:"-"`
+
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
@@ -178,6 +182,10 @@ type Request struct {
 // GetID returns the unique ID of the request if any.
 func (request *Request) GetID() string {
 	return request.ID
+}
+
+func (request *Request) isRaw() bool {
+	return len(request.Raw) > 0
 }
 
 // Compile compiles the protocol request for further execution.
