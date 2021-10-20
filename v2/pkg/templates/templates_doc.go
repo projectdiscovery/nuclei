@@ -31,7 +31,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 8)
+	TemplateDoc.Fields = make([]encoder.Doc, 9)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -84,6 +84,11 @@ func init() {
 	TemplateDoc.Fields[7].Note = ""
 	TemplateDoc.Fields[7].Description = "Workflows is a list of workflows to execute for a template."
 	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[8].Name = "self-contained"
+	TemplateDoc.Fields[8].Type = "bool"
+	TemplateDoc.Fields[8].Note = ""
+	TemplateDoc.Fields[8].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"

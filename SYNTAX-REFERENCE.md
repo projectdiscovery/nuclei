@@ -230,6 +230,19 @@ Workflows is a list of workflows to execute for a template.
 
 <hr />
 
+<div class="dd">
+
+<code>self-contained</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Self Contained marks Requests for the template as self-contained
+
+</div>
+
+<hr />
+
 
 
 
