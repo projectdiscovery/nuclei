@@ -75,10 +75,12 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	// a trailing slash, and our Input URL is also suffixed with a trailing slash,
 	// mark trailingSlash bool as true which will be later used during variable generation
 	// to generate correct path removed slash which would otherwise generate // invalid sequence.
+	// TODO: Figure out a cleaner way to do this sanitization.
 	trailingSlash := false
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
 	}
+
 	values := generators.MergeMaps(
 		generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
