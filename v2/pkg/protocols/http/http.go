@@ -184,6 +184,10 @@ func (request *Request) GetID() string {
 	return request.ID
 }
 
+func (request *Request) isRaw() bool {
+	return len(request.Raw) > 0
+}
+
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	connectionConfiguration := &httpclientpool.Configuration{
