@@ -911,6 +911,11 @@
           "type": "array",
           "title": "list of workflows to execute",
           "description": "List of workflows to execute for template"
+        },
+        "self-contained": {
+          "type": "boolean",
+          "title": "mark requests as self-contained",
+          "description": "Mark Requests for the template as self-contained"
         }
       },
       "additionalProperties": false,
