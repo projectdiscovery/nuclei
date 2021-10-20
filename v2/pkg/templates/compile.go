@@ -182,4 +182,24 @@ func makeRequestsForTemplate(template *Template, options protocols.ExecuterOptio
 		}
 		template.Executer = executer.NewExecuter(requests, &options)
 	}
+  
+	template.Path = filePath
+
+	template.parseSelfContainedRequests()
+
+	parsedTemplatesCache.Store(filePath, template, err)
+	return template, nil
+}
+
+// parseSelfContainedRequests parses the self contained template requests.
+func (t *Template) parseSelfContainedRequests() {
+	if !t.SelfContained {
+		return
+	}
+	for _, request := range t.RequestsHTTP {
+		request.SelfContained = true
+	}
+	for _, request := range t.RequestsNetwork {
+		request.SelfContained = true
+	}
 }
