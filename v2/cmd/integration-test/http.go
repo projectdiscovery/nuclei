@@ -506,7 +506,7 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 		_, _ = w.Write([]byte("This is self-contained response"))
 	})
 	server := &http.Server{
-		Addr:    "localhost:5431",
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
 		Handler: router,
 	}
 	go func() {
