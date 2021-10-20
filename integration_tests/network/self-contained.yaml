@@ -1,0 +1,16 @@
+id: example-self-contained-input
+
+info:
+  name: example-self-contained
+  author: pd-team
+  severity: info
+
+self-contained: true
+network:
+  - host:
+      - "localhost:5431"
+
+    matchers:
+      - type: word
+        words:
+          - "Authentication successful"
