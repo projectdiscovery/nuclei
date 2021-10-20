@@ -3,6 +3,9 @@ package matchers
 import (
 	"encoding/hex"
 	"strings"
+
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
 // MatchStatusCode matches a status code check against a corpus
@@ -38,15 +41,25 @@ func (m *Matcher) MatchSize(length int) bool {
 }
 
 // MatchWords matches a word check against a corpus.
-func (m *Matcher) MatchWords(corpus string) bool {
+func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) (bool, []string) {
+	var matchedWords []string
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
+		if dynamicValues == nil {
+			dynamicValues = make(map[string]interface{})
+		}
+
+		var err error
+		word, err = expressions.Evaluate(word, dynamicValues)
+		if err != nil {
+			continue
+		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
@@ -54,19 +67,22 @@ func (m *Matcher) MatchWords(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, []string{word}
 		}
+
+		matchedWords = append(matchedWords, word)
 
 		// If we are at the end of the words, return with true
 		if len(m.Words)-1 == i {
-			return true
+			return true, matchedWords
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchRegex matches a regex check against a corpus
-func (m *Matcher) MatchRegex(corpus string) bool {
+func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
+	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range m.regexCompiled {
 		// Continue if the regex doesn't match
@@ -74,36 +90,47 @@ func (m *Matcher) MatchRegex(corpus string) bool {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
 		}
 
+		currentMatches := regex.FindAllString(corpus, -1)
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, currentMatches
 		}
+
+		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
 		if len(m.regexCompiled)-1 == i {
-			return true
+			return true, matchedRegexes
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchBinary matches a binary check against a corpus
-func (m *Matcher) MatchBinary(corpus string) bool {
+func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
+	var matchedBinary []string
 	// Iterate over all the words accepted as valid
 	for i, binary := range m.Binary {
 		// Continue if the word doesn't match
-		hexa, _ := hex.DecodeString(binary)
+		hexa, err := hex.DecodeString(binary)
+		if err != nil {
+			gologger.Warning().Msgf("Could not hex encode the given binary matcher value: '%s'", binary)
+			if m.condition == ANDCondition {
+				return false, []string{}
+			}
+			continue
+		}
 		if !strings.Contains(corpus, string(hexa)) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
-				return false
+				return false, []string{}
 			}
 			// Continue with the flow since it's an OR Condition.
 			continue
@@ -111,15 +138,17 @@ func (m *Matcher) MatchBinary(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true
+			return true, []string{string(hexa)}
 		}
+
+		matchedBinary = append(matchedBinary, string(hexa))
 
 		// If we are at the end of the words, return with true
 		if len(m.Binary)-1 == i {
-			return true
+			return true, matchedBinary
 		}
 	}
-	return false
+	return false, []string{}
 }
 
 // MatchDSL matches on a generic map result

@@ -325,6 +325,15 @@ var functions = map[string]govaluate.ExpressionFunction{
 		}
 		return rand.Intn(max-min) + min, nil
 	},
+	"unixtime": func(args ...interface{}) (interface{}, error) {
+		seconds := 0
+		if len(args) >= 1 {
+			seconds = int(args[0].(float64))
+		}
+		now := time.Now()
+		offset := now.Add(time.Duration(seconds) * time.Second)
+		return offset.Unix(), nil
+	},
 	// Time Functions
 	"waitfor": func(args ...interface{}) (interface{}, error) {
 		if len(args) != 1 {

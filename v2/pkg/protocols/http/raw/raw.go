@@ -28,9 +28,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		Headers: make(map[string]string),
 	}
 	if unsafe {
-		request = strings.ReplaceAll(request, "\\0", "\x00")
-		request = strings.ReplaceAll(request, "\\r", "\r")
-		request = strings.ReplaceAll(request, "\\n", "\n")
 		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 	reader := bufio.NewReader(strings.NewReader(request))
@@ -93,8 +90,10 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
 		}
 
-		rawRequest.Path = parts[1]
-		rawRequest.Headers["Host"] = parsed.Host
+		rawRequest.Path = parsed.Path
+		if _, ok := rawRequest.Headers["Host"]; !ok {
+			rawRequest.Headers["Host"] = parsed.Host
+		}
 	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
 	}
@@ -107,15 +106,17 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	if parsedURL.Path != rawRequest.Path {
+		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+	}
 	if strings.HasSuffix(rawRequest.Path, "//") {
 		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 	}
 	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
-	// If raw request doesn't have a Host header
-	// this will be generated from the parsed baseURL
-	if rawRequest.Headers["Host"] == "" {
+	// If raw request doesn't have a Host header and isn't marked unsafe,
+	// this will generate the Host header from the parsed baseURL
+	if !unsafe && rawRequest.Headers["Host"] == "" {
 		rawRequest.Headers["Host"] = hostURL
 	}
 
