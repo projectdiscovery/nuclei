@@ -70,6 +70,11 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	data, parsed = baseURLWithTemplatePrefs(data, parsed)
 
 	isRawRequest := len(r.request.Raw) > 0
+
+	// If the request is not a raw request, and the URL input path is suffixed with
+	// a trailing slash, and  out Input URL is also suffixed with a trailing slash,
+	// mark trailingSlash bool as true which will be later used during variable generation
+	// to generate correct path removed slash which would otherwise generate // invalid sequence.
 	trailingSlash := false
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
