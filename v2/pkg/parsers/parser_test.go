@@ -46,7 +46,7 @@ func TestLoadTemplate(t *testing.T) {
 					Authors: stringslice.StringSlice{Value: "Author"},
 				},
 			},
-			expectedErr: errors.New("invalid field format for 'id' (allowed format is ^[A-Za-z0-9-_]+$)"),
+			expectedErr: errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
 		},
 	}
 

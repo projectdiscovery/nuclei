@@ -97,7 +97,7 @@ var (
 	parsedTemplatesCache *cache.Templates
 	ShouldValidate       bool
 	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
-	templateIDRegexp     = regexp.MustCompile(`^[A-Za-z0-9-_]+$`)
+	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
 )
 
 const (
