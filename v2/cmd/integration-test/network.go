@@ -13,6 +13,8 @@ var networkTestcases = map[string]testutils.TestCase{
 	"network/self-contained.yaml": &networkRequestSelContained{},
 }
 
+const defaultStaticPort = 5431
+
 type networkBasic struct{}
 
 // Execute executes a test case and returns an error if occurred
@@ -106,7 +108,7 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 		defer conn.Close()
 
 		_, _ = conn.Write([]byte("Authentication successful"))
-	}, 5431)
+	}, defaultStaticPort)
 	defer ts.Close()
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
