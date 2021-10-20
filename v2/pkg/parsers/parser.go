@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -74,20 +75,24 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *mode
 func validateTemplateFields(template *templates.Template) error {
 	info := template.Info
 
+	var errors []string
+
 	if utils.IsBlank(info.Name) {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "name")
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "name"))
 	}
 
 	if info.Authors.IsEmpty() {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "author")
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "author"))
 	}
 
 	if template.ID == "" {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "id")
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "id"))
+	} else if !templateIDRegexp.MatchString(template.ID) {
+		errors = append(errors, fmt.Sprintf(invalidFieldFormatTemplate, "id", templateIDRegexp.String()))
 	}
 
-	if !templateIDRegexp.MatchString(template.ID) {
-		return fmt.Errorf(invalidFieldFormatTemplate, "id", templateIDRegexp.String())
+	if len(errors) > 0 {
+		return fmt.Errorf(strings.Join(errors, ", "))
 	}
 
 	return nil

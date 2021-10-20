@@ -34,9 +34,19 @@ func TestLoadTemplate(t *testing.T) {
 			},
 		},
 		{
-			name:        "missingName",
+			name:        "emptyTemplate",
 			template:    &templates.Template{},
-			expectedErr: errors.New("mandatory 'name' field is missing"),
+			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing"),
+		},
+		{
+			name: "emptyNameWithInvalidID",
+			template: &templates.Template{
+				ID: "invalid id",
+				Info: model.Info{
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
 		},
 	}
 
