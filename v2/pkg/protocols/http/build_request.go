@@ -95,10 +95,10 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 	}
 	ctx := context.Background()
 
-	isRawRequest := len(r.request.Raw) > 0
+	isRawRequest := r.request.isRaw()
 
-	// If data contains \n it's a raw request, process it like raw. Else
-	// continue with the template based request flow.
+	// If the request is a raw request, get the URL from the request
+	// header and use it to make the request.
 	if isRawRequest {
 		// Get the hostname from the URL section to build the request.
 		reader := bufio.NewReader(strings.NewReader(data))
@@ -126,7 +126,6 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		dynamicValues,
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
-
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads, interactURL)
 }
 
