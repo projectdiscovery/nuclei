@@ -44,8 +44,10 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
+Nuclei requires **go1.17** to install successfully. Run the following command to install the latest version -
+
 ```sh
-GO111MODULE=on go get -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
+go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
@@ -129,7 +131,7 @@ CONFIGURATIONS:
 
 INTERACTSH:
    -no-interactsh                     disable interactsh server for OOB testing
-   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interact.sh")
+   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interactsh.com")
    -interactsh-token string           authentication token for self-hosted interactsh server
    -interactions-cache-size int       number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int         number of seconds to wait before evicting requests from cache (default 60)

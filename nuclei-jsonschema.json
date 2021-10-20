@@ -373,6 +373,14 @@
           "type": "boolean",
           "title": "recurse all servers",
           "description": "Recursion determines if resolver should recurse all records to get fresh results"
+        },
+        "resolvers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Resolvers",
+          "description": "Define resolvers to use within the template"
         }
       },
       "additionalProperties": false,
@@ -598,7 +606,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],
@@ -712,6 +720,11 @@
           "type": "boolean",
           "title": "stop at first match",
           "description": "Stop the execution after a match is found"
+        },
+        "skip-variables-check": {
+          "type": "boolean",
+          "title": "skip variable checks",
+          "description": "Skips the check for unresolved variables in request"
         }
       },
       "additionalProperties": false,
@@ -764,7 +777,7 @@
         },
         "attack": {
           "enum": [
-            "sniper",
+            "batteringram",
             "pitchfork",
             "clusterbomb"
           ],
@@ -898,6 +911,11 @@
           "type": "array",
           "title": "list of workflows to execute",
           "description": "List of workflows to execute for template"
+        },
+        "self-contained": {
+          "type": "boolean",
+          "title": "mark requests as self-contained",
+          "description": "Mark Requests for the template as self-contained"
         }
       },
       "additionalProperties": false,

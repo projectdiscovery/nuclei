@@ -6,8 +6,9 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"gopkg.in/yaml.v2"
+
+	"github.com/projectdiscovery/gologger"
 )
 
 // Config contains the internal nuclei engine configuration
@@ -25,7 +26,7 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.5.2`
+const Version = `2.5.3-dev`
 
 func getConfigDetails() (string, error) {
 	homeDir, err := os.UserHomeDir()

@@ -7,10 +7,13 @@ import (
 )
 
 var networkTestcases = map[string]testutils.TestCase{
-	"network/basic.yaml":      &networkBasic{},
-	"network/hex.yaml":        &networkBasic{},
-	"network/multi-step.yaml": &networkMultiStep{},
+	"network/basic.yaml":          &networkBasic{},
+	"network/hex.yaml":            &networkBasic{},
+	"network/multi-step.yaml":     &networkMultiStep{},
+	"network/self-contained.yaml": &networkRequestSelContained{},
 }
+
+const defaultStaticPort = 5431
 
 type networkBasic struct{}
 
@@ -32,7 +35,7 @@ func (h *networkBasic) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -75,7 +78,39 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return routerErr
+	}
+
+	var expectedResultsSize int
+	if debug {
+		expectedResultsSize = 3
+	} else {
+		expectedResultsSize = 1
+	}
+	if len(results) != expectedResultsSize {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type networkRequestSelContained struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *networkRequestSelContained) Execute(filePath string) error {
+	var routerErr error
+
+	ts := testutils.NewTCPServer(func(conn net.Conn) {
+		defer conn.Close()
+
+		_, _ = conn.Write([]byte("Authentication successful"))
+	}, defaultStaticPort)
+	defer ts.Close()
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
 		return err
 	}
