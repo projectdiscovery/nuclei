@@ -183,7 +183,7 @@ func loadProxies(options *types.Options) error {
 			return fmt.Errorf("%s", err)
 		}
 		if valid := assignProxy(options.Proxy, options); !valid {
-			return errors.New("nvalid proxy format (It should be [http/socks]://username:password@host:port)")
+			return errors.New("invalid proxy format (It should be [http/socks]://username:password@host:port)")
 
 		}
 	} else if options.ProxyFile != "" {
