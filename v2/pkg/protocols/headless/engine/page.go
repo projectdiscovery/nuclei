@@ -8,7 +8,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 )
 
-// Page is a single page in an isolated browser instanace
+// Page is a single page in an isolated browser instance
 type Page struct {
 	page     *rod.Page
 	rules    []requestRule

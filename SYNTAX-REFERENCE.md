@@ -230,6 +230,19 @@ Workflows is a list of workflows to execute for a template.
 
 <hr />
 
+<div class="dd">
+
+<code>self-contained</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Self Contained marks Requests for the template as self-contained
+
+</div>
+
+<hr />
+
 
 
 
@@ -823,14 +836,14 @@ in a combined manner allowing multirequest based matchers.
 
 Attack is the type of payload combinations to perform.
 
-Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
 Valid values:
 
 
-  - <code>sniper</code>
+  - <code>batteringram</code>
 
   - <code>pitchfork</code>
 
@@ -1187,6 +1200,19 @@ This allows matching on them later for multi-request conditions.
 <div class="dt">
 
 StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>skip-variables-check</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipVariablesCheck skips the check for unresolved variables in request
 
 </div>
 
@@ -2026,6 +2052,19 @@ Recursion determines if resolver should recurse all records to get fresh results
 
 <hr />
 
+<div class="dd">
+
+<code>resolvers</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Resolvers to use for the dns requests
+
+</div>
+
+<hr />
+
 
 
 
@@ -2286,14 +2325,14 @@ host:
 
 Attack is the type of payload combinations to perform.
 
-Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
 Valid values:
 
 
-  - <code>sniper</code>
+  - <code>batteringram</code>
 
   - <code>pitchfork</code>
 

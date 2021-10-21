@@ -44,21 +44,24 @@ func Init(options *types.Options) error {
 type Configuration struct {
 	// Retries contains the retries for the dns client
 	Retries int
+	// Resolvers contains the specific per request resolvers
+	Resolvers []string
 }
 
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
 	builder := &strings.Builder{}
-	builder.Grow(8)
 	builder.WriteString("r")
 	builder.WriteString(strconv.Itoa(c.Retries))
+	builder.WriteString("l")
+	builder.WriteString(strings.Join(c.Resolvers, ""))
 	hash := builder.String()
 	return hash
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
-	if !(configuration.Retries > 1) {
+	if !(configuration.Retries > 1) && len(configuration.Resolvers) == 0 {
 		return normalClient, nil
 	}
 	hash := configuration.Hash()
@@ -72,6 +75,8 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	resolvers := defaultResolvers
 	if options.ResolversFile != "" {
 		resolvers = options.InternalResolversList
+	} else if len(configuration.Resolvers) > 0 {
+		resolvers = configuration.Resolvers
 	}
 	client := retryabledns.New(resolvers, configuration.Retries)
 
