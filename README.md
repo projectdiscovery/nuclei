@@ -128,9 +128,9 @@ CONFIGURATIONS:
    -system-resolvers           use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
    -env-vars                   enable environment variables support
-   -cc -client-cert            client certificate file (PEM-encoded) used for authenticating against scanned hosts
-   -ck -client-key             client key file (PEM-encoded) used for authenticating against scanned hosts
-   -ca -client-ca              client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+   -cc, -client-cert           client certificate file (PEM-encoded) used for authenticating against scanned hosts
+   -ck, -client-key            client key file (PEM-encoded) used for authenticating against scanned hosts
+   -ca, -client-ca             client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 
 INTERACTSH:
    -no-interactsh                     disable interactsh server for OOB testing
