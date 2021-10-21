@@ -1,12 +1,15 @@
 package http
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
@@ -43,13 +46,13 @@ type Request struct {
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
-	//   - "sniper"
+	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
+	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Method is the HTTP Request Method.
 	// values:
@@ -132,6 +135,11 @@ type Request struct {
 	generator     *generators.Generator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
+	dynamicValues map[string]interface{}
+
+	// description: |
+	//   SelfContained specifies if the request is self contained.
+	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
@@ -166,24 +174,31 @@ type Request struct {
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+	// description: |
+	//   SkipVariablesCheck skips the check for unresolved variables in request
+	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
+}
+
+func (request *Request) isRaw() bool {
+	return len(request.Raw) > 0
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         r.Threads,
-		MaxRedirects:    r.MaxRedirects,
-		FollowRedirects: r.Redirects,
-		CookieReuse:     r.CookieReuse,
+		Threads:         request.Threads,
+		MaxRedirects:    request.MaxRedirects,
+		FollowRedirects: request.Redirects,
+		CookieReuse:     request.CookieReuse,
 	}
 
 	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
-	if _, hasConnectionHeader := r.Headers["Connection"]; hasConnectionHeader {
+	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
 		connectionConfiguration.Connection = &httpclientpool.ConnectionConfiguration{DisableKeepAlive: false}
 	}
 
@@ -191,76 +206,110 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
-	r.customHeaders = make(map[string]string)
-	r.httpClient = client
-	r.options = options
-	for _, option := range r.options.Options.CustomHeaders {
+	request.customHeaders = make(map[string]string)
+	request.httpClient = client
+	request.options = options
+	for _, option := range request.options.Options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		r.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
+		request.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
-	if r.Body != "" && !strings.Contains(r.Body, "\r\n") {
-		r.Body = strings.ReplaceAll(r.Body, "\n", "\r\n")
+	if request.Body != "" && !strings.Contains(request.Body, "\r\n") {
+		request.Body = strings.ReplaceAll(request.Body, "\n", "\r\n")
 	}
-	if len(r.Raw) > 0 {
-		for i, raw := range r.Raw {
+	if len(request.Raw) > 0 {
+		for i, raw := range request.Raw {
 			if !strings.Contains(raw, "\r\n") {
-				r.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
+				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		r.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
 	}
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
 
-	if len(r.Payloads) > 0 {
-		attackType := r.AttackType
-		if attackType == "" {
-			attackType = "sniper"
+	// Resolve payload paths from vars if they exists
+	for name, payload := range request.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		// search for markers in all request parts
+		var inputs []string
+		inputs = append(inputs, request.Method, request.Body)
+		inputs = append(inputs, request.Raw...)
+		for k, v := range request.customHeaders {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
 		}
-		r.attackType = generators.StringToType[attackType]
+		for k, v := range request.Headers {
+			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
+		}
+
+		for _, input := range inputs {
+			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+				hasPayloadName = true
+				break
+			}
+		}
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if request.Payloads == nil {
+				request.Payloads = make(map[string]interface{})
+			}
+			request.Payloads[name] = payloadStr
+		}
+	}
+
+	if len(request.Payloads) > 0 {
+		attackType := request.AttackType
+		if attackType == "" {
+			attackType = "batteringram"
+		}
+		var ok bool
+		request.attackType, ok = generators.StringToType[attackType]
+		if !ok {
+			return fmt.Errorf("invalid attack type provided: %s", attackType)
+		}
 
 		// Resolve payload paths if they are files.
-		for name, payload := range r.Payloads {
+		for name, payload := range request.Payloads {
 			payloadStr, ok := payload.(string)
 			if ok {
 				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
 				if resolveErr != nil {
 					return errors.Wrap(resolveErr, "could not read payload file")
 				}
-				r.Payloads[name] = final
+				request.Payloads[name] = final
 			}
 		}
-		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 	}
-	r.options = options
-	r.totalRequests = r.Requests()
+	request.options = options
+	request.totalRequests = request.Requests()
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
-	if r.generator != nil {
-		payloadRequests := r.generator.NewIterator().Total() * len(r.Raw)
+func (request *Request) Requests() int {
+	if request.generator != nil {
+		payloadRequests := request.generator.NewIterator().Total() * len(request.Raw)
 		return payloadRequests
 	}
-	if len(r.Raw) > 0 {
-		requests := len(r.Raw)
-		if requests == 1 && r.RaceNumberRequests != 0 {
-			requests *= r.RaceNumberRequests
+	if len(request.Raw) > 0 {
+		requests := len(request.Raw)
+		if requests == 1 && request.RaceNumberRequests != 0 {
+			requests *= request.RaceNumberRequests
 		}
 		return requests
 	}
-	return len(r.Path)
+	return len(request.Path)
 }

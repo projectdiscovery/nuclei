@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
@@ -20,11 +21,6 @@ import (
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
-
-	// if VerboseVerbose is set, it implicitly enables the Verbose option as well
-	if options.VerboseVerbose {
-		options.Verbose = true
-	}
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -61,6 +57,14 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
+	// removes all cli variables containing payloads and add them to the internal struct
+	for key, value := range options.Vars.AsMap() {
+		if fileutil.FileExists(value.(string)) {
+			_ = options.Vars.Del(key)
+			options.AddVarPayload(key, value)
+		}
+	}
+
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
@@ -95,6 +99,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	if options.Validate {
+		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
@@ -117,7 +122,7 @@ func isValidURL(urlString string) bool {
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.VerboseVerbose {
+	if options.Verbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {
