@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
@@ -50,5 +51,12 @@ func newhttpClient(options *types.Options) *http.Client {
 		MaxConnsPerHost:     500,
 		TLSClientConfig:     tlsConfig,
 	}
+
+	if options.ProxyURL != "" {
+		if proxyURL, err := url.Parse(options.ProxyURL); err == nil {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+
 	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}
 }
