@@ -1,30 +1,26 @@
 name: 🎉 Release Binary
 on:
   create:
-    tags:
-      - v*
   workflow_dispatch:
 
 jobs: 
   release: 
     runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+
     steps: 
-      - 
-        name: "Check out code"
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with: 
           fetch-depth: 0
-      - 
-        name: "Set up Go"
-        uses: actions/setup-go@v2
+
+      - uses: actions/setup-go@v2
         with: 
           go-version: 1.17
-      - 
-        env: 
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        name: "Create release on GitHub"
-        uses: goreleaser/goreleaser-action@v2
+
+      - uses: goreleaser/goreleaser-action@v2
         with: 
           args: "release --rm-dist"
           version: latest
           workdir: v2/
+        env: 
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
