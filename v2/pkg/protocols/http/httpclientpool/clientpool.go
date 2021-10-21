@@ -3,7 +3,10 @@ package httpclientpool
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -161,16 +164,40 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
+	// Set the base TLS configuration definition
+	tlsConfig := &tls.Config{
+		Renegotiation:      tls.RenegotiateOnceAsClient,
+		InsecureSkipVerify: true,
+	}
+
+	// Build the TLS config with the client certificate if it has been configured with the appropriate options.
+	// Only one of the options needs to be checked since the validation checks in main.go ensure that all three
+	// files are set if any of the client certification configuration options are.
+	if len(options.ClientCertFile) > 0 {
+		// Load the client certificate using the PEM encoded client certificate and the private key file
+		cert, err := tls.LoadX509KeyPair(options.ClientCertFile, options.ClientKeyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+
+		// Load the certificate authority PEM certificate into the TLS configuration
+		caCert, err := ioutil.ReadFile(options.ClientCAFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		tlsConfig.RootCAs = caCertPool
+	}
+
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
-		DisableKeepAlives: disableKeepAlives,
+		TLSClientConfig:     tlsConfig,
+		DisableKeepAlives:   disableKeepAlives,
 	}
 
 	// Attempts to overwrite the dial function with the socks proxied version
