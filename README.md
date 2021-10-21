@@ -90,30 +90,29 @@ TARGET:
    -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
 
 TEMPLATES:
-   -tl                      list all available templates
    -t, -templates string[]  template or template directory paths to include in the scan
-   -w, -workflows string[]  list of workflows to run
-   -nt, -new-templates      run newly added templates only
+   -nt, -new-templates      run only new templates added in latest nuclei-templates release
+   -w, -workflows string[]  workflow or workflow directory paths to include in the scan
    -validate                validate the passed templates to nuclei
+   -tl                      list all available templates
 
 FILTERING:
-   -tags string[]                         execute a subset of templates that contain the provided tags
-   -include-tags string[]                 tags from the default deny list that permit executing more intrusive templates
-   -etags, -exclude-tags string[]         exclude templates with the provided tags
-   -include-templates string[]            templates to be executed even if they are excluded either by default or configuration
-   -exclude-templates, -exclude string[]  template or template directory paths to exclude
-   -severity, -impact value[]             Templates to run based on severity. Possible values: info, low, medium, high, critical
-   -author string[]                       execute templates that are (co-)created by the specified authors
+   -tags string[]                    execute a subset of templates that contain the provided tags
+   -etags, -exclude-tags string[]    exclude templates with the provided tags
+   -itags, -include-tags string[]    tags from the default deny list that permit executing more intrusive templates
+   -et, -exclude-templates string[]  template or template directory paths to exclude
+   -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
+   -s, -severity value[]             Templates to run based on severity. Possible values - info,low,medium,high,critical
+   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values - info,low,medium,high,critical
+   -a, -author string[]              execute templates that are (co-)created by the specified authors
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -silent                       display findings only
-   -v, -verbose                  show verbose output
-   -vv                           display extra verbose information
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
-   -nm, -no-meta                 don't display match metadata in CLI output
+   -nm, -no-meta                 don't display match metadata
    -nts, -no-timestamp           don't display timestamp metadata in CLI output
    -rdb, -report-db string       local nuclei reporting database (always use this to persist report data)
    -me, -markdown-export string  directory to export results in markdown format
@@ -125,40 +124,42 @@ CONFIGURATIONS:
    -H, -header string[]        custom headers in header:value format
    -V, -var value              custom vars in var=value format
    -r, -resolvers string       file containing resolver list for nuclei
-   -system-resolvers           use system DNS resolving as error fallback
+   -sr, -system-resolvers      use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
-   -env-vars                   enable environment variables support
+   -env-vars                   enable environment variables support to be used in template
    -cc, -client-cert           client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key            client key file (PEM-encoded) used for authenticating against scanned hosts
    -ca, -client-ca             client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 
 INTERACTSH:
-   -no-interactsh                     disable interactsh server for OOB testing
-   -interactsh-url string             interactsh server url for self-hosted instance (default "https://interact.sh")
-   -interactsh-token string           authentication token for self-hosted interactsh server
-   -interactions-cache-size int       number of requests to keep in the interactions cache (default 5000)
-   -interactions-eviction int         number of seconds to wait before evicting requests from cache (default 60)
-   -interactions-poll-duration int    number of seconds to wait before each interaction poll request (default 5)
-   -interactions-cooldown-period int  extra time for interaction polling before exiting (default 5)
+   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interactsh.com")
+   -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
+   -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
+   -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
+   -interactions-poll-duration int      number of seconds to wait before each interaction poll request (default 5)
+   -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
+   -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 RATE-LIMIT:
    -rl, -rate-limit int          maximum number of requests to send per second (default 150)
    -rlm, -rate-limit-minute int  maximum number of requests to send per minute
    -bs, -bulk-size int           maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int          maximum number of templates to be executed in parallel (default 10)
+   -c, -concurrency int          maximum number of templates to be executed in parallel (default 25)
 
 OPTIMIZATIONS:
    -timeout int               time to wait in seconds before timeout (default 5)
    -retries int               number of times to retry a failed request (default 1)
-   -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -mhe, -max-host-error int  max errors for a host before skipping from scan (default 30)
    -project                   use a project folder to avoid sending same request multiple times
-   -project-path string       set a specific project path (default "$TMPDIR/")
+   -project-path string       set a specific project path
    -spm, -stop-at-first-path  stop processing HTTP requests after the first match (may break template/workflow logic)
+   -stream                    Stream mode - start elaborating without sorting the input
 
 HEADLESS:
-   -headless          enable templates that require headless browser support
-   -page-timeout int  seconds to wait for each page in headless mode (default 20)
-   -show-browser      show the browser on the screen when running templates with headless mode
+   -headless            enable templates that require headless browser support
+   -page-timeout int    seconds to wait for each page in headless mode (default 20)
+   -sb, -show-browser   show the browser on the screen when running templates with headless mode
+   -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
 
 DEBUG:
    -debug                     show all requests and responses
@@ -166,22 +167,24 @@ DEBUG:
    -debug-resp                show all received responses
    -proxy, -proxy-url string  URL of the HTTP proxy server
    -proxy-socks-url string    URL of the SOCKS proxy server
-   -trace-log string          file to write sent requests trace log
+   -tlog, -trace-log string   file to write sent requests trace log
    -version                   show nuclei version
+   -v, -verbose               show verbose output
+   -vv                        display extra verbose information
    -tv, -templates-version    shows the version of the installed nuclei-templates
 
 UPDATE:
-   -update                        update nuclei to the latest released version
-   -ut, -update-templates         update the community templates to latest released version
-   -nut, -no-update-templates     do not check for nuclei-templates updates
-   -ud, -update-directory string  overwrite the default nuclei-templates directory (default "$HOME/nuclei-templates")
+   -update                        update nuclei engine to the latest released version
+   -ut, -update-templates         update nuclei-templates to latest released version
+   -ud, -update-directory string  overwrite the default directory to install nuclei-templates
+   -duc, -disable-update-check    disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -stats-json               write statistics data to an output file in JSONL(ines) format
+   -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
-   -metrics                  expose nuclei metrics on a port
-   -metrics-port int         port to expose nuclei metrics on (default 9092)
+   -m, -metrics              expose nuclei metrics on a port
+   -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 ```
 
 ### Running Nuclei
