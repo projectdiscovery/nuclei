@@ -97,7 +97,9 @@ func validateOptions(options *types.Options) error {
 		return errors.New("both verbose and silent mode specified")
 	}
 	//loading the proxy server list and test the connectivity
-	loadProxies(options)
+	if err := loadProxies(options); err != nil {
+		return err
+	}
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
@@ -172,49 +174,78 @@ func loadResolvers(options *types.Options) {
 }
 
 // loadProxies load list of proxy servers from file
-func loadProxies(options *types.Options) {
-	if options.Proxy == "" {
-		return
+func loadProxies(options *types.Options) error {
+	if options.ProxyFile == "" && options.Proxy == "" {
+		return nil
 	}
-	file, err := os.Open(options.Proxy)
-	if err != nil {
-		gologger.Fatal().Msgf("Could not open proxy file: %s\n", err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		proxy := scanner.Text()
-		if proxy == "" {
-			continue
+	if options.Proxy != "" {
+		if err := validateProxy(options.Proxy); err != nil {
+			return fmt.Errorf("%s", err)
 		}
-		if err := validateProxy(proxy); err != nil {
-			gologger.Fatal().Msgf("%s\n", err)
+		if valid := assignProxy(options.Proxy, options); !valid {
+			return errors.New("nvalid proxy format (It should be [http/socks]://username:password@host:port)")
+
 		}
-		options.ProxyURLList = append(options.ProxyURLList, proxy)
-	}
-	if len(options.ProxyURLList) == 0 {
-		gologger.Fatal().Msgf("Could not find any proxy in the file\n")
-	} else {
-		done := make(chan bool)
-		for _, ip := range options.ProxyURLList {
-			go runProxyConnectivity(ip, options, done)
+	} else if options.ProxyFile != "" {
+		file, err := os.Open(options.ProxyFile)
+		if err != nil {
+			return fmt.Errorf("could not open proxy file: %s", err)
 		}
-		<-done
-		close(done)
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			proxy := scanner.Text()
+			if proxy == "" {
+				continue
+			}
+			if err := validateProxy(proxy); err != nil {
+				return fmt.Errorf("%s", err)
+			}
+			options.ProxyURLList = append(options.ProxyURLList, proxy)
+		}
+		if len(options.ProxyURLList) == 0 {
+			return fmt.Errorf("could not find any proxy in the file: %s", err)
+		} else {
+			done := make(chan bool)
+			exitCounter := make(chan bool)
+			counter := 0
+			for _, ip := range options.ProxyURLList {
+				go runProxyConnectivity(ip, options, done, exitCounter)
+			}
+
+			for {
+				select {
+				case <-done:
+					{
+						close(done)
+						return nil
+					}
+				case <-exitCounter:
+					{
+						if counter += 1; counter == len(options.ProxyURLList) {
+							return errors.New("no valid proxy found")
+						}
+
+					}
+				}
+			}
+		}
 	}
+	return nil
 }
-func runProxyConnectivity(ip string, options *types.Options, done chan bool) {
-	if proxy, err := testProxyConnection(ip); err == nil {
+func runProxyConnectivity(ip string, options *types.Options, done chan bool, exitCounter chan bool) {
+	if proxy, err := testProxyConnection(ip, options.Timeout); err == nil {
 		if options.ProxyURL == "" && options.ProxySocksURL == "" {
 			if valid := assignProxy(proxy, options); valid {
 				done <- true
 			}
 		}
 	}
+	exitCounter <- true
 }
-func testProxyConnection(proxy string) (string, error) {
+func testProxyConnection(proxy string, timeoutDelay int) (string, error) {
 	ip, _ := url.Parse(proxy)
-	timeout := time.Duration(1 * time.Second)
+	timeout := time.Duration(timeoutDelay) * time.Second
 	_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", ip.Hostname(), ip.Port()), timeout)
 	if err != nil {
 		return "", err
@@ -226,9 +257,11 @@ func assignProxy(proxy string, options *types.Options) bool {
 	if strings.HasPrefix(proxy, "http") || strings.HasPrefix(proxy, "https") {
 		options.ProxyURL = proxy
 		options.ProxySocksURL = ""
+		gologger.Verbose().Msgf("Using %s as default proxy server", options.ProxyURL)
 	} else if strings.HasPrefix(proxy, "socks5") || strings.HasPrefix(proxy, "socks4") {
 		options.ProxyURL = ""
 		options.ProxySocksURL = proxy
+		gologger.Verbose().Msgf("Using %s as default socket proxy server", options.ProxySocksURL)
 	} else {
 		validConfig = false
 	}
