@@ -19,11 +19,11 @@ type requestGenerator struct {
 }
 
 // newGenerator creates a new request generator instance
-func (r *Request) newGenerator() *requestGenerator {
-	generator := &requestGenerator{request: r, options: r.options}
+func (request *Request) newGenerator() *requestGenerator {
+	generator := &requestGenerator{request: request, options: request.options}
 
-	if len(r.Payloads) > 0 {
-		generator.payloadIterator = r.generator.NewIterator()
+	if len(request.Payloads) > 0 {
+		generator.payloadIterator = request.generator.NewIterator()
 	}
 	return generator
 }
@@ -63,7 +63,6 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 		}
 	}
 
-	
 	if len(r.request.Raw) > 0 && r.currentIndex < len(r.request.Raw) {
 		if r.payloadIterator != nil {
 			payload, ok := r.payloadIterator.Value()
