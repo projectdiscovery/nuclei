@@ -148,10 +148,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.DebugRequests, "debug-req", false, "show all sent requests"),
 		flagSet.BoolVar(&options.DebugResponse, "debug-resp", false, "show all received responses"),
 
-		/* TODO why the separation? http://proxy:port vs socks5://proxy:port etc
-		   TODO should auto-set the HTTP_PROXY variable for the process? */
-		flagSet.StringVar(&options.Proxy, "proxy", "", "URL of the proxy server"),
-		flagSet.StringVar(&options.ProxyFile, "proxy-file", "", "path to file containing a list of proxy server URLs"),
+		/* TODO should auto-set the HTTP_PROXY variable for the process? */
+		flagSet.StringVar(&options.Proxy, "proxy", "", "list of proxy server (file or comma separated)"),
 		flagSet.StringVar(&options.TraceLogFile, "trace-log", "", "file to write sent requests trace log"),
 
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),

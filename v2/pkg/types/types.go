@@ -49,9 +49,7 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// ProxyFile is the file to list of proxy server
-	ProxyFile string
-	// URL for proxy server
+	// List of proxy server (file or comma seperated)
 	Proxy string
 	// ProxyURL is the URL for the proxy server
 	ProxyURL string
