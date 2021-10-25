@@ -35,6 +35,7 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 	}
 
 	if validationError := validateTemplateFields(template); validationError != nil {
+		stats.Increment(SyntaxErrorStats)
 		return false, validationError
 	}
 
