@@ -126,7 +126,7 @@ CONFIGURATIONS:
    -r, -resolvers string       file containing resolver list for nuclei
    -sr, -system-resolvers      use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
-   -env-vars                   enable environment variables support to be used in template
+   -ev, -env-vars              enable environment variables support to be used in template
    -cc, -client-cert           client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key            client key file (PEM-encoded) used for authenticating against scanned hosts
    -ca, -client-ca             client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
