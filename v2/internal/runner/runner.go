@@ -376,6 +376,8 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeSeverities:  r.options.ExcludeSeverities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
+		Types:              r.options.Protocols,
+		ExcludeTypes:       r.options.ExcludeProtocols,
 		Catalog:            r.catalog,
 		ExecutorOptions:    executerOpts,
 	}

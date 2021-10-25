@@ -29,6 +29,10 @@ type Options struct {
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
+	// Protocols contains the protocols to be allowed executed
+	Protocols goflags.NormalizedStringSlice
+	// ExcludeProtocols contains protocols to not be executed
+	ExcludeProtocols goflags.NormalizedStringSlice
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
