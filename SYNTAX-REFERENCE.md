@@ -2398,6 +2398,31 @@ read-size: 2048
 
 <div class="dd">
 
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ReadAll determines if the data stream should be read till the end regardless of the size
+
+Default value for read-all is false.
+
+
+
+Examples:
+
+
+```yaml
+read-all: false
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
 
 </div>
