@@ -209,10 +209,10 @@ func generateDNSVariables(domain string) map[string]interface{} {
 
 	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
 	return map[string]interface{}{
-		"{{FQDN}}": domain,
-		"{{RDN}}":  domainName,
-		"{{DN}}":   parsed.SLD,
-		"{{TLD}}":  parsed.TLD,
-		"{{SD}}":   parsed.TRD,
+		"FQDN": domain,
+		"RDN":  domainName,
+		"DN":   parsed.SLD,
+		"TLD":  parsed.TLD,
+		"SD":   parsed.TRD,
 	}
 }
