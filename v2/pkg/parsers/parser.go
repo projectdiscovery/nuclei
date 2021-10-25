@@ -39,7 +39,7 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 		return false, validationError
 	}
 
-	return isTemplateInfoMetadataMatch(tagFilter, &template.Info, extraTags)
+	return isTemplateInfoMetadataMatch(tagFilter, &template.Info, extraTags, template.Type())
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
@@ -59,12 +59,12 @@ func LoadWorkflow(templatePath string) (bool, error) {
 	return false, nil
 }
 
-func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, extraTags []string) (bool, error) {
+func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, extraTags []string, templateType string) (bool, error) {
 	templateTags := templateInfo.Tags.ToSlice()
 	templateAuthors := templateInfo.Authors.ToSlice()
 	templateSeverity := templateInfo.SeverityHolder.Severity
 
-	match, err := tagFilter.Match(templateTags, templateAuthors, templateSeverity, extraTags)
+	match, err := tagFilter.Match(templateTags, templateAuthors, templateSeverity, extraTags, templateType)
 
 	if err == filter.ErrExcluded {
 		return false, filter.ErrExcluded
