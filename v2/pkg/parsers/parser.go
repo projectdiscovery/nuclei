@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -17,7 +18,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
-const mandatoryFieldMissingTemplate = "mandatory '%s' field is missing"
+const (
+	mandatoryFieldMissingTemplate = "mandatory '%s' field is missing"
+	invalidFieldFormatTemplate    = "invalid field format for '%s' (allowed format is %s)"
+)
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string) (bool, error) {
@@ -30,12 +34,11 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 		return false, nil
 	}
 
-	templateInfo := template.Info
-	if validationError := validateMandatoryInfoFields(&templateInfo); validationError != nil {
+	if validationError := validateTemplateFields(template); validationError != nil {
 		return false, validationError
 	}
 
-	return isTemplateInfoMetadataMatch(tagFilter, &templateInfo, extraTags)
+	return isTemplateInfoMetadataMatch(tagFilter, &template.Info, extraTags)
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
@@ -45,10 +48,8 @@ func LoadWorkflow(templatePath string) (bool, error) {
 		return false, templateParseError
 	}
 
-	templateInfo := template.Info
-
 	if len(template.Workflows) > 0 {
-		if validationError := validateMandatoryInfoFields(&templateInfo); validationError != nil {
+		if validationError := validateTemplateFields(template); validationError != nil {
 			return false, validationError
 		}
 		return true, nil
@@ -71,18 +72,29 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *mode
 	return match, err
 }
 
-func validateMandatoryInfoFields(info *model.Info) error {
-	if info == nil {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "info")
-	}
+func validateTemplateFields(template *templates.Template) error {
+	info := template.Info
+
+	var errors []string
 
 	if utils.IsBlank(info.Name) {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "name")
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "name"))
 	}
 
 	if info.Authors.IsEmpty() {
-		return fmt.Errorf(mandatoryFieldMissingTemplate, "author")
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "author"))
 	}
+
+	if template.ID == "" {
+		errors = append(errors, fmt.Sprintf(mandatoryFieldMissingTemplate, "id"))
+	} else if !templateIDRegexp.MatchString(template.ID) {
+		errors = append(errors, fmt.Sprintf(invalidFieldFormatTemplate, "id", templateIDRegexp.String()))
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf(strings.Join(errors, ", "))
+	}
+
 	return nil
 }
 
@@ -90,6 +102,7 @@ var (
 	parsedTemplatesCache *cache.Templates
 	ShouldValidate       bool
 	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
+	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
 )
 
 const (
