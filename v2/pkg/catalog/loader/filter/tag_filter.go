@@ -15,6 +15,8 @@ type TagFilter struct {
 	authors           map[string]struct{}
 	block             map[string]struct{}
 	matchAllows       map[string]struct{}
+	types             map[string]struct{}
+	excludeTypes      map[string]struct{}
 }
 
 // ErrExcluded is returned for excluded templates
@@ -25,7 +27,7 @@ var ErrExcluded = errors.New("the template was excluded")
 // unless it is explicitly specified by user using the includeTags (matchAllows field).
 // Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
 // Returns true if the template matches the filter criteria, false otherwise.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string) (bool, error) {
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string, templateType string) (bool, error) {
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -51,6 +53,9 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 		return false, nil
 	}
 
+	if !isTemplateTypeMatch(tagFilter, templateType) {
+		return false, nil
+	}
 	return true, nil
 }
 
@@ -116,6 +121,24 @@ func isTagMatch(tagFilter *TagFilter, templateTags []string) bool {
 	return false
 }
 
+func isTemplateTypeMatch(tagFilter *TagFilter, templateType string) bool {
+	if (len(tagFilter.excludeTypes) == 0 && len(tagFilter.types) == 0) || templateType == "" {
+		return true
+	}
+
+	included := true
+	if len(tagFilter.types) > 0 {
+		_, included = tagFilter.types[templateType]
+	}
+
+	excluded := false
+	if len(tagFilter.excludeTypes) > 0 {
+		_, excluded = tagFilter.excludeTypes[templateType]
+	}
+
+	return included && !excluded
+}
+
 type Config struct {
 	Tags              []string
 	ExcludeTags       []string
@@ -123,6 +146,8 @@ type Config struct {
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
 	IncludeTags       []string
+	Types             []string
+	ExcludeTypes      []string
 }
 
 // New returns a tag filter for nuclei tag based execution
@@ -136,6 +161,8 @@ func New(config *Config) *TagFilter {
 		excludeSeverities: make(map[severity.Severity]struct{}),
 		block:             make(map[string]struct{}),
 		matchAllows:       make(map[string]struct{}),
+		types:             make(map[string]struct{}),
+		excludeTypes:      make(map[string]struct{}),
 	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
@@ -175,6 +202,16 @@ func New(config *Config) *TagFilter {
 				filter.matchAllows[val] = struct{}{}
 			}
 			delete(filter.block, val)
+		}
+	}
+	for _, tag := range config.Types {
+		if _, ok := filter.types[tag]; !ok {
+			filter.types[tag] = struct{}{}
+		}
+	}
+	for _, tag := range config.ExcludeTypes {
+		if _, ok := filter.excludeTypes[tag]; !ok {
+			filter.excludeTypes[tag] = struct{}{}
 		}
 	}
 	return filter

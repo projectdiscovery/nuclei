@@ -21,6 +21,8 @@ type Config struct {
 
 	Tags              []string
 	ExcludeTags       []string
+	Types             []string
+	ExcludeTypes      []string
 	Authors           []string
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
@@ -56,6 +58,8 @@ func New(config *Config) (*Store, error) {
 			Severities:        config.Severities,
 			ExcludeSeverities: config.ExcludeSeverities,
 			IncludeTags:       config.IncludeTags,
+			Types:             config.Types,
+			ExcludeTypes:      config.ExcludeTypes,
 		}),
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,
