@@ -7,6 +7,8 @@ import (
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
+	"github.com/weppos/publicsuffix-go/publicsuffix"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -132,7 +134,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	final := replacer.Replace(request.Name, map[string]interface{}{"FQDN": domain})
+	final := replacer.Replace(request.Name, generateDNSVariables(domain))
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -197,4 +199,20 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
+}
+
+func generateDNSVariables(domain string) map[string]interface{} {
+	parsed, err := publicsuffix.Parse(domain)
+	if err != nil {
+		return map[string]interface{}{"FQDN": domain}
+	}
+
+	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
+	return map[string]interface{}{
+		"{{FQDN}}": domain,
+		"{{RDN}}":  domainName,
+		"{{DN}}":   parsed.SLD,
+		"{{TLD}}":  parsed.TLD,
+		"{{SD}}":   parsed.TRD,
+	}
 }
