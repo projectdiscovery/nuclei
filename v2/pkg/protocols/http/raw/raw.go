@@ -50,7 +50,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 	// Check if we have also a path from the passed base URL and if yes,
 	// append that to the unsafe request as well.
-	if parsedURL.Path != "" && strings.HasPrefix(parts[1], "/") {
+	if parsedURL.Path != "" && strings.HasPrefix(parts[1], "/") && parts[1] != parsedURL.Path {
 		rawRequest.UnsafeRawBytes = fixUnsafeRequestPath(parsedURL, parts[1], rawRequest.UnsafeRawBytes)
 	}
 	// Set the request Method
