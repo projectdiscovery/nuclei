@@ -16,6 +16,8 @@ import (
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/filekv"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -45,6 +47,7 @@ import (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	hostMap         *hybrid.HybridMap
+	hostMapStream   *filekv.FileDB
 	output          output.Writer
 	interactsh      *interactsh.Client
 	inputCount      int64
@@ -119,6 +122,20 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.hostMap = hm
 
+	if options.Stream {
+		fkvOptions := filekv.DefaultOptions
+		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
+			return nil, errors.Wrap(err, "could not create temporary input file")
+		} else {
+			fkvOptions.Path = tmpFileName
+		}
+		fkv, err := filekv.Open(fkvOptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create temporary unsorted input file")
+		}
+		runner.hostMapStream = fkv
+	}
+
 	runner.inputCount = 0
 	dupeCount := 0
 
@@ -138,6 +155,9 @@ func New(options *types.Options) (*Runner, error) {
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
+			if options.Stream {
+				_ = runner.hostMapStream.Set([]byte(url), nil)
+			}
 		}
 	}
 
@@ -158,6 +178,9 @@ func New(options *types.Options) (*Runner, error) {
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
+			if options.Stream {
+				_ = runner.hostMapStream.Set([]byte(url), nil)
+			}
 		}
 	}
 
@@ -180,6 +203,9 @@ func New(options *types.Options) (*Runner, error) {
 			runner.inputCount++
 			// nolint:errcheck // ignoring error
 			runner.hostMap.Set(url, nil)
+			if options.Stream {
+				_ = runner.hostMapStream.Set([]byte(url), nil)
+			}
 		}
 		input.Close()
 	}
@@ -290,6 +316,9 @@ func (r *Runner) Close() {
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
+	if r.options.Stream {
+		r.hostMapStream.Close()
+	}
 	protocolinit.Close()
 }
 
@@ -344,6 +373,7 @@ func (r *Runner) RunEnumeration() error {
 		IncludeTemplates:   r.options.IncludeTemplates,
 		Authors:            r.options.Author,
 		Severities:         r.options.Severities,
+		ExcludeSeverities:  r.options.ExcludeSeverities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
 		Catalog:            r.catalog,
@@ -508,7 +538,9 @@ func (r *Runner) RunEnumeration() error {
 		go func(template *templates.Template) {
 			defer wgtemplates.Done()
 
-			if len(template.Workflows) > 0 {
+			if template.SelfContained {
+				results.CAS(false, r.processSelfContainedTemplates(template))
+			} else if len(template.Workflows) > 0 {
 				results.CAS(false, r.processWorkflowWithList(template))
 			} else {
 				results.CAS(false, r.processTemplateWithList(template))
