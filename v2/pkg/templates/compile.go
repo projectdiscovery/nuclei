@@ -144,6 +144,21 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	}
 	template.Path = filePath
 
+	template.parseSelfContainedRequests()
+
 	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
+}
+
+// parseSelfContainedRequests parses the self contained template requests.
+func (t *Template) parseSelfContainedRequests() {
+	if !t.SelfContained {
+		return
+	}
+	for _, request := range t.RequestsHTTP {
+		request.SelfContained = true
+	}
+	for _, request := range t.RequestsNetwork {
+		request.SelfContained = true
+	}
 }

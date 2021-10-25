@@ -165,6 +165,14 @@ func (m *Matcher) Result(data bool) bool {
 	return data
 }
 
+// ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
+func (m *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
+	if m.Negative {
+		return !data, []string{}
+	}
+	return data, matchedSnippet
+}
+
 // GetType returns the type of the matcher
 func (m *Matcher) GetType() MatcherType {
 	return m.matcherType
