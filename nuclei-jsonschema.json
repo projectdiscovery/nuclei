@@ -850,6 +850,7 @@
       ],
       "properties": {
         "id": {
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
           "type": "string",
           "title": "id of the template",
           "description": "The Unique ID for the template",
