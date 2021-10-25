@@ -202,7 +202,7 @@ func classToInt(class string) uint16 {
 }
 
 func generateDNSVariables(domain string) map[string]interface{} {
-	parsed, err := publicsuffix.Parse(domain)
+	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}
 	}
