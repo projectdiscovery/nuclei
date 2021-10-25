@@ -58,6 +58,9 @@ func New(options *Options) (*Integration, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse custom baseurl")
 		}
+		if !strings.HasSuffix(parsed.Path, "/") {
+			parsed.Path += "/"
+		}
 		client.BaseURL = parsed
 	}
 	return &Integration{client: client, options: options}, nil
