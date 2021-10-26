@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"time"
 
@@ -50,5 +51,17 @@ func newhttpClient(options *types.Options) *http.Client {
 		}
 	}
 
-	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}
+	jar, _ := cookiejar.New(nil)
+
+	httpclient := &http.Client{
+		Transport: transport,
+		Timeout:   time.Duration(options.Timeout*3) * time.Second,
+		Jar:       jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// the browser should follow redirects not us
+			return http.ErrUseLastResponse
+		},
+	}
+
+	return httpclient
 }
