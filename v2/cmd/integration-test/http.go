@@ -41,8 +41,6 @@ type httpInteractshRequest struct{}
 func (h *httpInteractshRequest) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
-
 		value := r.Header.Get("url")
 		if value != "" {
 			if resp, _ := http.DefaultClient.Get(value); resp != nil {
@@ -53,7 +51,7 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
