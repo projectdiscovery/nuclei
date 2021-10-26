@@ -98,6 +98,13 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	for k, v := range extra {
 		data[k] = v
 	}
+	for _, cookie := range resp.Cookies() {
+		data[strings.ToLower(cookie.Name)] = cookie.Value
+	}
+	for k, v := range resp.Header {
+		k = strings.ToLower(strings.TrimSpace(k))
+		data[k] = strings.Join(v, " ")
+	}
 
 	data["path"] = host
 	data["matched"] = matched
@@ -106,13 +113,6 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["content_length"] = resp.ContentLength
 	data["status_code"] = resp.StatusCode
 	data["body"] = body
-	for _, cookie := range resp.Cookies() {
-		data[strings.ToLower(cookie.Name)] = cookie.Value
-	}
-	for k, v := range resp.Header {
-		k = strings.ToLower(strings.TrimSpace(k))
-		data[k] = strings.Join(v, " ")
-	}
 	data["all_headers"] = headers
 	data["duration"] = duration.Seconds()
 	data["template-id"] = request.options.TemplateID
