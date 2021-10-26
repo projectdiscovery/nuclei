@@ -35,7 +35,10 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 		if err != nil {
 			w.WriteHeader(500)
 		}
-		w.Write(file)
+		_, err = w.Write(file)
+		if err != nil {
+			w.WriteHeader(500)
+		}
 	}))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -68,7 +71,10 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 		if err != nil {
 			w.WriteHeader(500)
 		}
-		w.Write(file)
+		_, err = w.Write(file)
+		if err != nil {
+			w.WriteHeader(500)
+		}
 	}))
 	ts := httptest.NewServer(router)
 	defer ts.Close()
