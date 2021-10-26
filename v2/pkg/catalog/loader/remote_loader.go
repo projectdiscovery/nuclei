@@ -70,10 +70,6 @@ func getRemoteContent(URL string, w chan<- RemoteContentError, contentType Conte
 		return
 	}
 
-	if err != nil {
-
-	}
-
 	scanner := bufio.NewScanner(response.Body)
 	var templateList []string
 	for scanner.Scan() {
