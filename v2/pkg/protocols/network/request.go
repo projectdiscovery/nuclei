@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -26,7 +27,14 @@ var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	address, err := getAddress(input)
+	var address string
+	var err error
+
+	if request.SelfContained {
+		address = ""
+	} else {
+		address, err = getAddress(input)
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplateID, input, "network", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -40,6 +48,9 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				actualAddress, _, _ = net.SplitHostPort(actualAddress)
 			}
 			actualAddress = net.JoinHostPort(actualAddress, kv.port)
+		}
+		if input != "" {
+			input = actualAddress
 		}
 
 		if err := request.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {
@@ -59,6 +70,8 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 		return err
 	}
 
+	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 
@@ -67,12 +80,13 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 			if !ok {
 				break
 			}
+			value = generators.MergeMaps(value, payloads)
 			if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
-		value := make(map[string]interface{})
+		value := generators.MergeMaps(map[string]interface{}{}, payloads)
 		if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 			return err
 		}
@@ -86,6 +100,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		conn     net.Conn
 		err      error
 	)
+
 	request.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
@@ -186,13 +201,48 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	if request.ReadSize != 0 {
 		bufferSize = request.ReadSize
 	}
-	final := make([]byte, bufferSize)
-	n, err := conn.Read(final)
-	if err != nil && err != io.EOF {
-		request.options.Output.Request(request.options.TemplateID, address, "network", err)
-		return errors.Wrap(err, "could not read from server")
+
+	var (
+		final []byte
+		n     int
+	)
+
+	if request.ReadAll {
+		readInterval := time.NewTimer(time.Second * 1)
+		// stop the timer and drain the channel
+		closeTimer := func(t *time.Timer) {
+			if !t.Stop() {
+				<-t.C
+			}
+		}
+	read_socket:
+		for {
+			select {
+			case <-readInterval.C:
+				closeTimer(readInterval)
+				break read_socket
+			default:
+				buf := make([]byte, bufferSize)
+				nBuf, err := conn.Read(buf)
+				if err != nil && !os.IsTimeout(err) {
+					request.options.Output.Request(request.options.TemplateID, address, "network", err)
+					closeTimer(readInterval)
+					return errors.Wrap(err, "could not read from server")
+				}
+				responseBuilder.Write(buf[:nBuf])
+				final = append(final, buf...)
+				n += nBuf
+			}
+		}
+	} else {
+		final = make([]byte, bufferSize)
+		n, err = conn.Read(final)
+		if err != nil && err != io.EOF {
+			request.options.Output.Request(request.options.TemplateID, address, "network", err)
+			return errors.Wrap(err, "could not read from server")
+		}
+		responseBuilder.Write(final[:n])
 	}
-	responseBuilder.Write(final[:n])
 
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)

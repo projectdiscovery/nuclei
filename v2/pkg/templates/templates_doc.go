@@ -31,7 +31,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 8)
+	TemplateDoc.Fields = make([]encoder.Doc, 9)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -84,6 +84,11 @@ func init() {
 	TemplateDoc.Fields[7].Note = ""
 	TemplateDoc.Fields[7].Description = "Workflows is a list of workflows to execute for a template."
 	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[8].Name = "self-contained"
+	TemplateDoc.Fields[8].Type = "bool"
+	TemplateDoc.Fields[8].Note = ""
+	TemplateDoc.Fields[8].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -317,10 +322,10 @@ func init() {
 	HTTPRequestDoc.Fields[7].Name = "attack"
 	HTTPRequestDoc.Fields[7].Type = "string"
 	HTTPRequestDoc.Fields[7].Note = ""
-	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nbatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	HTTPRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	HTTPRequestDoc.Fields[7].Values = []string{
-		"sniper",
+		"batteringram",
 		"pitchfork",
 		"clusterbomb",
 	}
@@ -838,7 +843,7 @@ func init() {
 			FieldName: "network",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 9)
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 10)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -854,10 +859,10 @@ func init() {
 	NETWORKRequestDoc.Fields[2].Name = "attack"
 	NETWORKRequestDoc.Fields[2].Type = "string"
 	NETWORKRequestDoc.Fields[2].Note = ""
-	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	NETWORKRequestDoc.Fields[2].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	NETWORKRequestDoc.Fields[2].Values = []string{
-		"sniper",
+		"batteringram",
 		"pitchfork",
 		"clusterbomb",
 	}
@@ -878,22 +883,29 @@ func init() {
 	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
 
 	NETWORKRequestDoc.Fields[5].AddExample("", 2048)
-	NETWORKRequestDoc.Fields[6].Name = "matchers"
-	NETWORKRequestDoc.Fields[6].Type = "[]matchers.Matcher"
+	NETWORKRequestDoc.Fields[6].Name = "read-all"
+	NETWORKRequestDoc.Fields[6].Type = "bool"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	NETWORKRequestDoc.Fields[7].Name = "extractors"
-	NETWORKRequestDoc.Fields[7].Type = "[]extractors.Extractor"
+	NETWORKRequestDoc.Fields[6].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
+	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+
+	NETWORKRequestDoc.Fields[6].AddExample("", false)
+	NETWORKRequestDoc.Fields[7].Name = "matchers"
+	NETWORKRequestDoc.Fields[7].Type = "[]matchers.Matcher"
 	NETWORKRequestDoc.Fields[7].Note = ""
-	NETWORKRequestDoc.Fields[7].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	NETWORKRequestDoc.Fields[8].Name = "matchers-condition"
-	NETWORKRequestDoc.Fields[8].Type = "string"
+	NETWORKRequestDoc.Fields[7].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	NETWORKRequestDoc.Fields[8].Name = "extractors"
+	NETWORKRequestDoc.Fields[8].Type = "[]extractors.Extractor"
 	NETWORKRequestDoc.Fields[8].Note = ""
-	NETWORKRequestDoc.Fields[8].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	NETWORKRequestDoc.Fields[8].Values = []string{
+	NETWORKRequestDoc.Fields[8].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	NETWORKRequestDoc.Fields[9].Name = "matchers-condition"
+	NETWORKRequestDoc.Fields[9].Type = "string"
+	NETWORKRequestDoc.Fields[9].Note = ""
+	NETWORKRequestDoc.Fields[9].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	NETWORKRequestDoc.Fields[9].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	NETWORKRequestDoc.Fields[9].Values = []string{
 		"and",
 		"or",
 	}

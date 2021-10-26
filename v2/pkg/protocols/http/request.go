@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
+	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -100,6 +101,9 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 		if err == io.EOF {
 			break
 		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -160,6 +164,9 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 		if err == io.EOF {
 			break
 		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -214,6 +221,9 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues, interactURL)
 		if err == io.EOF {
 			break
+		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
 		}
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -373,6 +383,16 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		resp.Body.Close()
 	}()
 
+	var curlCommand string
+	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil {
+		bodyBytes, _ := generatedRequest.request.BodyBytes()
+		resp.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+		command, _ := http2curl.GetCurlCommand(resp.Request)
+		if err == nil && command != nil {
+			curlCommand = command.String()
+		}
+	}
+
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
 	request.options.Output.Request(request.options.TemplateID, formedURL, "http", err)
 
@@ -429,12 +449,19 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
 
 	// Decode gbk response content-types
-	if contentType := strings.ToLower(resp.Header.Get("Content-Type")); contentType != "" && (strings.Contains(contentType, "gbk") || strings.Contains(contentType, "gb2312")) {
+	// gb18030 supersedes gb2312
+	if isContentTypeGbk(resp.Header.Get("Content-Type")) {
 		dumpedResponse, err = decodegbk(dumpedResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
 		redirectedResponse, err = decodegbk(redirectedResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+
+		// the uncompressed body needs to be decoded to standard utf8
+		data, err = decodegbk(data)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
@@ -460,6 +487,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	if i := strings.LastIndex(hostname, ":"); i != -1 {
 		hostname = hostname[:i]
 	}
+	outputEvent["curl-command"] = curlCommand
 	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
 	for k, v := range previousEvent {
