@@ -191,7 +191,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		requestOutput := reqBuilder.String()
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHexdump: \n%s", requestOutput, hex.Dump([]byte(requestOutput)))
+		gologger.Print().Msgf("%s\nHexdump: \n%s", requestOutput, responsehighlighter.HexDump([]byte(requestOutput)))
 	}
 
 	request.options.Output.Request(request.options.TemplateID, actualAddress, "network", err)
@@ -276,7 +276,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHexdump: \n%s", response, responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), request.options.Options.NoColor, true))
+		gologger.Print().Msgf("%s\nHexdump: \n%s", response, responsehighlighter.Highlight(event.OperatorsResult, responsehighlighter.HexDump([]byte(response)), request.options.Options.NoColor, true))
 	}
 
 	return nil
