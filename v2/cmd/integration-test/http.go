@@ -31,6 +31,34 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-unsafe-request.yaml":    &httpRawUnsafeRequest{},
 	"http/request-condition.yaml":     &httpRequestCondition{},
 	"http/request-condition-new.yaml": &httpRequestCondition{},
+	"http/interactsh.yaml":            &httpInteractshRequest{},
+	"http/self-contained.yaml":        &httpRequestSelContained{},
+}
+
+type httpInteractshRequest struct{}
+
+// Executes executes a test case and returns an error if occurred
+func (h *httpInteractshRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+				resp.Body.Close()
+			}
+		}
+	}))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
 }
 
 type httpGetHeaders struct{}
@@ -482,6 +510,38 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return routerErr
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpRequestSelContained struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRequestSelContained) Execute(filePath string) error {
+	router := httprouter.New()
+	var routerErr error
+
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
+		Handler: router,
+	}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+	defer server.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
 		return err
 	}
