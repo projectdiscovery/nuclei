@@ -69,7 +69,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Headless response for %s", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseBody, request.options.Options.NoColor))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseBody, request.options.Options.NoColor, false))
 	}
 
 	callback(event)

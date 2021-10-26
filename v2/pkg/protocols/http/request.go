@@ -511,7 +511,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, string(redirectedResponse), request.options.Options.NoColor))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, string(redirectedResponse), request.options.Options.NoColor, false))
 	}
 
 	callback(event)

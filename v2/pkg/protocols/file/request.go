@@ -61,7 +61,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 			if request.options.Options.Debug || request.options.Options.DebugResponse {
 				gologger.Info().Msgf("[%s] Dumped file request for %s", request.options.TemplateID, filePath)
-				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, request.options.Options.NoColor))
+				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, request.options.Options.NoColor, false))
 			}
 
 			callback(event)
