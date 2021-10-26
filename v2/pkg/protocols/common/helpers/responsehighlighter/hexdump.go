@@ -25,7 +25,7 @@ func HexDump(data []byte) string {
 	buf.Grow((1 + ((len(data) - 1) / 16)) * 79)
 
 	dumper := &dumper{w: &buf}
-	dumper.Write(data)
+	_, _ = dumper.Write(data)
 	dumper.Close()
 	return buf.String()
 }
