@@ -139,19 +139,19 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	var requests []protocols.Request
 	switch {
 	case len(template.RequestsDNS) > 0:
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+		requests = template.convertRequestToProtocolsRequest(template.RequestsDNS)
 
 	case len(template.RequestsFile) > 0:
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+		requests = template.convertRequestToProtocolsRequest(template.RequestsFile)
 
 	case len(template.RequestsNetwork) > 0:
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+		requests = template.convertRequestToProtocolsRequest(template.RequestsNetwork)
 
 	case len(template.RequestsHTTP) > 0:
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		requests = template.convertRequestToProtocolsRequest(template.RequestsHTTP)
 
 	case len(template.RequestsHeadless) > 0 && options.Options.Headless:
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+		requests = template.convertRequestToProtocolsRequest(template.RequestsHeadless)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
