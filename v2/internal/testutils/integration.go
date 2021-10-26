@@ -92,10 +92,14 @@ type TCPServer struct {
 }
 
 // NewTCPServer creates a new TCP server from a handler
-func NewTCPServer(handler func(conn net.Conn)) *TCPServer {
+func NewTCPServer(handler func(conn net.Conn), port ...int) *TCPServer {
 	server := &TCPServer{}
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	var gotPort int
+	if len(port) > 0 {
+		gotPort = port[0]
+	}
+	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", gotPort))
 	if err != nil {
 		panic(err)
 	}
