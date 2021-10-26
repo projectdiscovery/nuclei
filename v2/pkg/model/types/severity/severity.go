@@ -15,15 +15,17 @@ const (
 	Medium
 	High
 	Critical
+	Tentative
 	limit
 )
 
 var severityMappings = map[Severity]string{
-	Info:     "info",
-	Low:      "low",
-	Medium:   "medium",
-	High:     "high",
-	Critical: "critical",
+	Info:      "info",
+	Low:       "low",
+	Medium:    "medium",
+	High:      "high",
+	Critical:  "critical",
+	Tentative: "tentative",
 }
 
 func GetSupportedSeverities() Severities {
