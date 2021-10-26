@@ -26,7 +26,7 @@ func TestYamlUnmarshalFail(t *testing.T) {
 
 func TestGetSupportedSeverities(t *testing.T) {
 	severities := GetSupportedSeverities()
-	assert.Equal(t, severities, Severities{Info, Low, Medium, High, Critical})
+	assert.Equal(t, severities, Severities{Info, Low, Medium, High, Critical, Tentative})
 }
 
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
