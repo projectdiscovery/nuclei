@@ -2,7 +2,6 @@ package runner
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
-	"github.com/rs/xid"
 	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v2"
@@ -21,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/engine/inputs/hmap"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -28,7 +27,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -247,6 +245,9 @@ func (r *Runner) RunEnumeration() error {
 		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
+
+	// Create the executer options which will be used throughout the execution
+	// stage by the nuclei engine modules.
 	executerOpts := protocols.ExecuterOptions{
 		Output:          r.output,
 		Options:         r.options,
@@ -259,12 +260,13 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 	}
+	engine := core.New(r.options)
+	engine.SetExecuterOptions(executerOpts)
 
 	workflowLoader, err := parsers.NewLoader(&executerOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
 	}
-
 	executerOpts.WorkflowLoader = workflowLoader
 
 	loaderConfig := loader.Config{
@@ -370,42 +372,6 @@ func (r *Runner) RunEnumeration() error {
 			r.logAvailableTemplate(template.Path)
 		}
 	}
-	templatesMap := make(map[string]*templates.Template)
-	for _, v := range store.Templates() {
-		templatesMap[v.Path] = v
-	}
-	originalTemplatesCount := len(store.Templates())
-	clusterCount := 0
-	clusters := clusterer.Cluster(templatesMap)
-	for _, cluster := range clusters {
-		if len(cluster) > 1 && !r.options.OfflineHTTP {
-			executerOpts := protocols.ExecuterOptions{
-				Output:          r.output,
-				Options:         r.options,
-				Progress:        r.progress,
-				Catalog:         r.catalog,
-				RateLimiter:     r.ratelimiter,
-				IssuesClient:    r.issuesClient,
-				Browser:         r.browser,
-				ProjectFile:     r.projectFile,
-				Interactsh:      r.interactsh,
-				HostErrorsCache: cache,
-			}
-			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
-
-			finalTemplates = append(finalTemplates, &templates.Template{
-				ID:            clusterID,
-				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP),
-			})
-			clusterCount += len(cluster)
-		} else {
-			finalTemplates = append(finalTemplates, cluster...)
-		}
-	}
-
-	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
 	for _, t := range finalTemplates {

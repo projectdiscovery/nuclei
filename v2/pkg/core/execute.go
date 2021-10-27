@@ -1,5 +1,48 @@
-package runner
+package core
 
+import (
+	"fmt"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/rs/xid"
+)
+
+// clusterTemplates performs identical http requests clustering for a list of templates
+func (e *Engine) clusterTemplates(templatesList []*templates.Template) ([]*templates.Template, int) {
+	if e.options.OfflineHTTP {
+		return templatesList, 0
+	}
+
+	templatesMap := make(map[string]*templates.Template)
+	for _, v := range templatesList {
+		templatesMap[v.Path] = v
+	}
+	clusterCount := 0
+
+	finalTemplatesList := make([]*templates.Template, 0, len(templatesList))
+	clusters := clusterer.Cluster(templatesMap)
+	for _, cluster := range clusters {
+		if len(cluster) > 1 {
+			executerOpts := e.ExecuterOptions()
+
+			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
+
+			finalTemplatesList = append(finalTemplatesList, &templates.Template{
+				ID:            clusterID,
+				RequestsHTTP:  cluster[0].RequestsHTTP,
+				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
+				TotalRequests: len(cluster[0].RequestsHTTP),
+			})
+			clusterCount += len(cluster)
+		} else {
+			finalTemplatesList = append(finalTemplatesList, cluster...)
+		}
+	}
+	return finalTemplatesList, clusterCount
+}
+
+/*
 import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -79,3 +122,4 @@ func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
 	wg.Wait()
 	return results.Load()
 }
+*/

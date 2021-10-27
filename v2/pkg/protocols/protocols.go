@@ -64,6 +64,12 @@ type ExecuterOptions struct {
 	WorkflowLoader model.WorkflowLoader
 }
 
+// Copy returns a copy of the executeroptions structure
+func (e ExecuterOptions) Copy() ExecuterOptions {
+	copy := e
+	return copy
+}
+
 // Request is an interface implemented any protocol based request generator.
 type Request interface {
 	// Compile compiles the request generators preparing any requests possible.

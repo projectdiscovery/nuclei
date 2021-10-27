@@ -1,12 +1,6 @@
-package workflows
+package core
 
-import (
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
-)
-
+/*
 // RunWorkflow runs a workflow on an input and returns true or false
 func (w *Workflow) RunWorkflow(input string) bool {
 	results := &atomic.Bool{}
@@ -123,4 +117,4 @@ func (w *Workflow) runWorkflowStep(template *WorkflowTemplate, input string, res
 		}
 	}
 	return mainErr
-}
+}*/

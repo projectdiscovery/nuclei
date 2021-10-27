@@ -1,4 +1,4 @@
-package engine
+package core
 
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -25,8 +25,8 @@ type WorkPoolConfig struct {
 	HeadlessTypeConcurrency int
 }
 
-// New returns a new WorkPool instance
-func New(config WorkPoolConfig) *WorkPool {
+// NewWorkPool returns a new WorkPool instance
+func NewWorkPool(config WorkPoolConfig) *WorkPool {
 	return &WorkPool{config: config}
 }
 
