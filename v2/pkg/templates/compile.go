@@ -131,7 +131,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 		return fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
-	if template.Options.Options.OfflineHTTP {
+	if options.Options.OfflineHTTP {
 		template.compileOfflineHTTPRequest(options)
 		return nil
 	}
@@ -157,6 +157,9 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	return nil
 }
 
+// convertRequestToProtocolsRequest is a convenience wrapper to convert
+// arbitrary interfaces which are slices of requests from the template to a
+// slice of protocols.Request interface items.
 func (template *Template) convertRequestToProtocolsRequest(requests interface{}) []protocols.Request {
 	switch reflect.TypeOf(requests).Kind() {
 	case reflect.Slice:

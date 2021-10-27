@@ -77,6 +77,10 @@ type Options struct {
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
 	TemplateThreads int
+	// HeadlessBulkSize is the of targets analyzed in parallel for each headless template
+	HeadlessBulkSize int
+	// HeadlessTemplateThreads is the number of headless templates executed in parallel
+	HeadlessTemplateThreads int
 	// Timeout is the seconds to wait for a response from the server.
 	Timeout int
 	// Retries is the number of times to retry the request

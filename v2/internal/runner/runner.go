@@ -16,14 +16,12 @@ import (
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/filekv"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/engine/inputs/hmap"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -46,22 +44,20 @@ import (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	hostMap         *hybrid.HybridMap
-	hostMapStream   *filekv.FileDB
-	output          output.Writer
-	interactsh      *interactsh.Client
-	inputCount      int64
-	templatesConfig *config.Config
-	options         *types.Options
-	projectFile     *projectfile.ProjectFile
-	catalog         *catalog.Catalog
-	progress        progress.Progress
-	colorizer       aurora.Aurora
-	issuesClient    *reporting.Client
-	addColor        func(severity.Severity) string
-	browser         *engine.Browser
-	ratelimiter     ratelimit.Limiter
-	hostErrors      *hosterrorscache.Cache
+	output            output.Writer
+	interactsh        *interactsh.Client
+	templatesConfig   *config.Config
+	options           *types.Options
+	projectFile       *projectfile.ProjectFile
+	catalog           *catalog.Catalog
+	progress          progress.Progress
+	colorizer         aurora.Aurora
+	issuesClient      *reporting.Client
+	addColor          func(severity.Severity) string
+	hmapInputProvider *hmap.Input
+	browser           *engine.Browser
+	ratelimiter       ratelimit.Limiter
+	hostErrors        *hosterrorscache.Cache
 }
 
 // New creates a new client for running enumeration process.
@@ -116,103 +112,13 @@ func New(options *types.Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+
+	// Initialize the input source
+	hmapInput, err := hmap.New(options)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create temporary input file")
+		return nil, errors.Wrap(err, "could not create input provider")
 	}
-	runner.hostMap = hm
-
-	if options.Stream {
-		fkvOptions := filekv.DefaultOptions
-		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
-			return nil, errors.Wrap(err, "could not create temporary input file")
-		} else {
-			fkvOptions.Path = tmpFileName
-		}
-		fkv, err := filekv.Open(fkvOptions)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create temporary unsorted input file")
-		}
-		runner.hostMapStream = fkv
-	}
-
-	runner.inputCount = 0
-	dupeCount := 0
-
-	// Handle multiple targets
-	if len(options.Targets) != 0 {
-		for _, target := range options.Targets {
-			url := strings.TrimSpace(target)
-			if url == "" {
-				continue
-			}
-
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-			if options.Stream {
-				_ = runner.hostMapStream.Set([]byte(url), nil)
-			}
-		}
-	}
-
-	// Handle stdin
-	if options.Stdin {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			url := strings.TrimSpace(scanner.Text())
-			if url == "" {
-				continue
-			}
-
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-			if options.Stream {
-				_ = runner.hostMapStream.Set([]byte(url), nil)
-			}
-		}
-	}
-
-	// Handle target file
-	if options.TargetsFilePath != "" {
-		input, inputErr := os.Open(options.TargetsFilePath)
-		if inputErr != nil {
-			return nil, errors.Wrap(inputErr, "could not open targets file")
-		}
-		scanner := bufio.NewScanner(input)
-		for scanner.Scan() {
-			url := strings.TrimSpace(scanner.Text())
-			if url == "" {
-				continue
-			}
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-			if options.Stream {
-				_ = runner.hostMapStream.Set([]byte(url), nil)
-			}
-		}
-		input.Close()
-	}
-
-	if dupeCount > 0 {
-		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
-	}
+	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
@@ -312,13 +218,10 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
-	r.hostMap.Close()
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
-	if r.options.Stream {
-		r.hostMapStream.Close()
-	}
+	r.hmapInputProvider.Close()
 	protocolinit.Close()
 }
 
@@ -456,7 +359,7 @@ func (r *Runner) RunEnumeration() error {
 		if len(template.Workflows) > 0 {
 			continue
 		}
-		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
+		unclusteredRequests += int64(template.TotalRequests) * r.hmapInputProvider.Count()
 	}
 
 	if r.options.VerboseVerbose {
@@ -509,7 +412,7 @@ func (r *Runner) RunEnumeration() error {
 		if len(t.Workflows) > 0 {
 			continue
 		}
-		totalRequests += int64(t.TotalRequests) * r.inputCount
+		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
@@ -531,7 +434,7 @@ func (r *Runner) RunEnumeration() error {
 	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
-	r.progress.Init(r.inputCount, templateCount, totalRequests)
+	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
 	for _, t := range finalTemplates {
 		wgtemplates.Add()
