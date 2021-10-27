@@ -30,8 +30,6 @@ func NewWorkPool(config WorkPoolConfig) *WorkPool {
 	return &WorkPool{config: config}
 }
 
-// TODO: port these invocations of waitgroups and input logic into a generic
-// workpool type functionality.
 func (w *WorkPool) Execute(templates []*templates.Template) {
 
 }

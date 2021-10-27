@@ -8,6 +8,30 @@ import (
 	"github.com/rs/xid"
 )
 
+// Execute takes a list of templates/workflows that have been compiled
+// and executes them based on provided concurrency options.
+//
+// All the execution logic for the templates/workflows happens in this part
+// of the engine.
+func (e *Engine) Execute(templates []*templates.Template) {
+	finalTemplates, clusterCount := e.clusterTemplates(templates)
+
+	for _, template := range finalTemplates {
+		templateType := template.Type()
+
+		switch {
+		case template.SelfContained:
+			// Self Contained requests are executed here
+
+		case templateType == "workflow":
+			// Workflows requests are executed here
+
+		default:
+			// All other request types are executed here
+		}
+	}
+}
+
 // clusterTemplates performs identical http requests clustering for a list of templates
 func (e *Engine) clusterTemplates(templatesList []*templates.Template) ([]*templates.Template, int) {
 	if e.options.OfflineHTTP {
