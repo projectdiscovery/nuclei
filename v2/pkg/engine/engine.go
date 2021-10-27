@@ -7,3 +7,10 @@ package engine
 // missing from the previous versions of nuclei.
 type Engine struct {
 }
+
+// InputProvider is an input provider interface for the nuclei execution
+// engine.
+//
+// An example InputProvider is provided in form of hmap input provider.
+type InputProvider interface {
+}
