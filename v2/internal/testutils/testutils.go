@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"github.com/logrusorgru/aurora"
 	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/gologger/levels"
@@ -60,41 +59,6 @@ var DefaultOptions = &types.Options{
 	CustomHeaders:      []string{},
 }
 
-// MockOutputWriter is a mocked output writer.
-type MockOutputWriter struct {
-	aurora          aurora.Aurora
-	RequestCallback func(templateID, url, requestType string, err error)
-	WriteCallback   func(o *output.ResultEvent)
-}
-
-// NewMockOutputWriter creates a new mock output writer
-func NewMockOutputWriter() *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
-}
-
-// Close closes the output writer interface
-func (m *MockOutputWriter) Close() {}
-
-// Colorizer returns the colorizer instance for writer
-func (m *MockOutputWriter) Colorizer() aurora.Aurora {
-	return m.aurora
-}
-
-// Write writes the event to file and/or screen.
-func (m *MockOutputWriter) Write(result *output.ResultEvent) error {
-	if m.WriteCallback != nil {
-		m.WriteCallback(result)
-	}
-	return nil
-}
-
-// Request writes a log the requests trace log
-func (m *MockOutputWriter) Request(templateID, url, requestType string, err error) {
-	if m.RequestCallback != nil {
-		m.RequestCallback(templateID, url, requestType, err)
-	}
-}
-
 // TemplateInfo contains info for a mock executed template.
 type TemplateInfo struct {
 	ID   string
@@ -109,7 +73,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(),
+		Output:       output.NewMockOutputWriter(),
 		Options:      options,
 		Progress:     progressImpl,
 		ProjectFile:  nil,

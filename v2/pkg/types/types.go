@@ -181,3 +181,17 @@ func (options *Options) AddVarPayload(key string, value interface{}) {
 func (options *Options) VarsPayload() map[string]interface{} {
 	return options.varsPayload
 }
+
+// DefaultOptions returns default options for nuclei
+func DefaultOptions() *Options {
+	return &Options{
+		RateLimit:               150,
+		BulkSize:                25,
+		TemplateThreads:         25,
+		HeadlessBulkSize:        10,
+		HeadlessTemplateThreads: 10,
+		Timeout:                 5,
+		Retries:                 1,
+		MaxHostError:            30,
+	}
+}
