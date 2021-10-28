@@ -49,6 +49,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, input Inpu
 			// All other request types are executed here
 			e.executeModelWithInput(templateType, template, input, results)
 		}
+		wg.Done()
 	}
 	e.workPool.Wait()
 	return results
