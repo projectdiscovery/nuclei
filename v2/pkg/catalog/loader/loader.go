@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Config contains the configuration options for the loader
@@ -42,6 +43,26 @@ type Store struct {
 	workflows []*templates.Template
 
 	preprocessor templates.Preprocessor
+}
+
+// NewConfig returns a new loader config
+func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+	loaderConfig := Config{
+		Templates:          options.Templates,
+		Workflows:          options.Workflows,
+		ExcludeTemplates:   options.ExcludedTemplates,
+		Tags:               options.Tags,
+		ExcludeTags:        options.ExcludeTags,
+		IncludeTemplates:   options.IncludeTemplates,
+		Authors:            options.Author,
+		Severities:         options.Severities,
+		ExcludeSeverities:  options.ExcludeSeverities,
+		IncludeTags:        options.IncludeTags,
+		TemplatesDirectory: options.TemplatesDirectory,
+		Catalog:            catalog,
+		ExecutorOptions:    executerOpts,
+	}
+	return &loaderConfig
 }
 
 // New creates a new template store based on provided configuration

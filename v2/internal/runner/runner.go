@@ -267,22 +267,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	loaderConfig := loader.Config{
-		Templates:          r.options.Templates,
-		Workflows:          r.options.Workflows,
-		ExcludeTemplates:   r.options.ExcludedTemplates,
-		Tags:               r.options.Tags,
-		ExcludeTags:        r.options.ExcludeTags,
-		IncludeTemplates:   r.options.IncludeTemplates,
-		Authors:            r.options.Author,
-		Severities:         r.options.Severities,
-		ExcludeSeverities:  r.options.ExcludeSeverities,
-		IncludeTags:        r.options.IncludeTags,
-		TemplatesDirectory: r.options.TemplatesDirectory,
-		Catalog:            r.catalog,
-		ExecutorOptions:    executerOpts,
-	}
-	store, err := loader.New(&loaderConfig)
+	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -300,54 +285,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 
-	// Display stats for any loaded templates' syntax warnings or errors
-	stats.Display(parsers.SyntaxWarningStats)
-	stats.Display(parsers.SyntaxErrorStats)
-
-	builder := &strings.Builder{}
-	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
-		builder.WriteString(" (")
-
-		if strings.Contains(config.Version, "-dev") {
-			builder.WriteString(r.colorizer.Blue("development").String())
-		} else if config.Version == r.templatesConfig.NucleiLatestVersion {
-			builder.WriteString(r.colorizer.Green("latest").String())
-		} else {
-			builder.WriteString(r.colorizer.Red("outdated").String())
-		}
-		builder.WriteString(")")
-	}
-	messageStr := builder.String()
-	builder.Reset()
-
-	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
-
-	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
-		builder.WriteString(" (")
-
-		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
-			builder.WriteString(r.colorizer.Green("latest").String())
-		} else {
-			builder.WriteString(r.colorizer.Red("outdated").String())
-		}
-		builder.WriteString(")")
-	}
-	messageStr = builder.String()
-	builder.Reset()
-
-	if r.templatesConfig != nil {
-		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
-	}
-	if r.interactsh != nil {
-		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
-	}
-	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
-		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
-	}
-	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
-	}
+	r.displayExecutionInfo(store)
 
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
@@ -415,6 +353,58 @@ func (r *Runner) RunEnumeration() error {
 		r.browser.Close()
 	}
 	return nil
+}
+
+// displayExecutionInfo displays misc info about the nuclei engine execution
+func (r *Runner) displayExecutionInfo(store *loader.Store) {
+	// Display stats for any loaded templates' syntax warnings or errors
+	stats.Display(parsers.SyntaxWarningStats)
+	stats.Display(parsers.SyntaxErrorStats)
+
+	builder := &strings.Builder{}
+	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
+		builder.WriteString(" (")
+
+		if strings.Contains(config.Version, "-dev") {
+			builder.WriteString(r.colorizer.Blue("development").String())
+		} else if config.Version == r.templatesConfig.NucleiLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
+		}
+		builder.WriteString(")")
+	}
+	messageStr := builder.String()
+	builder.Reset()
+
+	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
+
+	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
+		builder.WriteString(" (")
+
+		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+			builder.WriteString(r.colorizer.Green("latest").String())
+		} else {
+			builder.WriteString(r.colorizer.Red("outdated").String())
+		}
+		builder.WriteString(")")
+	}
+	messageStr = builder.String()
+	builder.Reset()
+
+	if r.templatesConfig != nil {
+		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
+	}
+	if r.interactsh != nil {
+		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
+	}
+	if len(store.Templates()) > 0 {
+		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
+		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
+	}
+	if len(store.Workflows()) > 0 {
+		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
+	}
 }
 
 // readNewTemplatesFile reads newly added templates from directory if it exists
