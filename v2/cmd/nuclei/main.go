@@ -68,8 +68,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory paths to exclude"),
 		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("Templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("Templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
-		flagSet.NormalizedStringSliceVarP(&options.Protocols, "type", "tp", []string{}, "protocol types to be executed (http,dns,headless,network,file,etc)"),
-		flagSet.NormalizedStringSliceVarP(&options.ExcludeProtocols, "exclude-type", "etype", []string{}, "protocol types to not be executed (http,dns,file,etc"),
+		flagSet.NormalizedStringSliceVarP(&options.Protocols, "type", "pt", []string{}, "protocol types to be executed (http,dns,headless,network,file,etc)"),
+		flagSet.NormalizedStringSliceVarP(&options.ExcludeProtocols, "exclude-type", "ept", []string{}, "protocol types to not be executed (http,dns,file,etc"),
 		flagSet.NormalizedStringSliceVarP(&options.Author, "author", "a", []string{}, "execute templates that are (co-)created by the specified authors"),
 	)
 
