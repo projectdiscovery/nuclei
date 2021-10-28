@@ -1,7 +1,9 @@
 package extractors
 
 import (
+	"errors"
 	"regexp"
+	"strings"
 
 	"github.com/itchyny/gojq"
 )
@@ -21,7 +23,7 @@ type Extractor struct {
 	//   - "kval"
 	//   - "json"
 	//   - "xpath"
-	Type string `yaml:"type" jsonschema:"title=type of the extractor,description=Type of the extractor,enum=regex,enum=kval,enum=json,enum=xpath"`
+	Type TypeHolder `json:"name,omitempty" yaml:"type"`
 	// extractorType is the internal type of the extractor
 	extractorType ExtractorType
 
@@ -108,7 +110,7 @@ type Extractor struct {
 }
 
 // ExtractorType is the type of the extractor specified
-type ExtractorType = int
+type ExtractorType int
 
 const (
 	// RegexExtractor extracts responses with regexes
@@ -119,17 +121,48 @@ const (
 	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
+	limit
 )
 
 // ExtractorTypes is a table for conversion of extractor type from string.
-var ExtractorTypes = map[string]ExtractorType{
-	"regex": RegexExtractor,
-	"kval":  KValExtractor,
-	"xpath": XPathExtractor,
-	"json":  JSONExtractor,
+var extractorMappings = map[ExtractorType]string{
+	// "regex": RegexExtractor,
+	// "kval":  KValExtractor,
+	// "xpath": XPathExtractor,
+	// "json":  JSONExtractor,
+	RegexExtractor: "regex",
+	KValExtractor:  "kval",
+	XPathExtractor: "xpath",
+	JSONExtractor:  "json",
 }
 
 // GetType returns the type of the matcher
 func (e *Extractor) GetType() ExtractorType {
 	return e.extractorType
+}
+
+func GetSupportedExtractorTypes() ExtractorTypes {
+	var result []ExtractorType
+	for index := ExtractorType(1); index < limit; index++ {
+		result = append(result, index)
+	}
+	return result
+}
+
+func toExtractorTypes(valueToMap string) (ExtractorType, error) {
+	normalizedValue := normalizeValue(valueToMap)
+	for key, currentValue := range extractorMappings {
+		if normalizedValue == currentValue {
+			return key, nil
+		}
+	}
+	return -1, errors.New("Invalid exctractor type: " + valueToMap)
+}
+
+func normalizeValue(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
+}
+
+func (t ExtractorType) String() string {
+	return extractorMappings[t]
 }
