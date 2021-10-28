@@ -1,6 +1,6 @@
-// Package hmap implements a hybrid hmap/filekv backed input provider
+// Package hybrid implements a hybrid hmap/filekv backed input provider
 // for nuclei that can either stream or store results using different kv stores.
-package hmap
+package hybrid
 
 import (
 	"bufio"
@@ -117,4 +117,17 @@ func (i *Input) normalizeStoreInputValue(value string) {
 // Count returns the input count
 func (i *Input) Count() int64 {
 	return i.inputCount
+}
+
+// Scan calls an input provider till the callback is exhausted
+func (i *Input) Scan(callback func(value string)) {
+	callbackFunc := func(k, _ []byte) error {
+		callback(string(k))
+		return nil
+	}
+	if i.hostMapStream != nil {
+		_ = i.hostMapStream.Scan(callbackFunc)
+	} else {
+		i.hostMap.Scan(callbackFunc)
+	}
 }

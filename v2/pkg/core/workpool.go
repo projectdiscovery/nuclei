@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // WorkPool implements an execution pool for executing different
@@ -10,7 +10,9 @@ import (
 // It also allows Configuration of such requirements. This is used
 // for per-module like separate headless concurrency etc.
 type WorkPool struct {
-	config WorkPoolConfig
+	Headless *sizedwaitgroup.SizedWaitGroup
+	Default  *sizedwaitgroup.SizedWaitGroup
+	config   WorkPoolConfig
 }
 
 // WorkPoolConfig is the configuration for workpool
@@ -27,9 +29,35 @@ type WorkPoolConfig struct {
 
 // NewWorkPool returns a new WorkPool instance
 func NewWorkPool(config WorkPoolConfig) *WorkPool {
-	return &WorkPool{config: config}
+	headlessWg := sizedwaitgroup.New(config.HeadlessTypeConcurrency)
+	defaultWg := sizedwaitgroup.New(config.TypeConcurrency)
+
+	return &WorkPool{
+		config:   config,
+		Headless: &headlessWg,
+		Default:  &defaultWg,
+	}
 }
 
-func (w *WorkPool) Execute(templates []*templates.Template) {
+// Wait waits for all the workpool waitgroups to finish
+func (w *WorkPool) Wait() {
+	w.Default.Wait()
+	w.Headless.Wait()
+}
 
+// InputWorkPool is a workpool per-input
+type InputWorkPool struct {
+	Waitgroup *sizedwaitgroup.SizedWaitGroup
+}
+
+// InputPool returns a workpool for an input type
+func (w *WorkPool) InputPool(templateType string) *InputWorkPool {
+	var count int
+	if templateType == "headless" {
+		count = w.config.HeadlessInputConcurrency
+	} else {
+		count = w.config.InputConcurrency
+	}
+	swg := sizedwaitgroup.New(count)
+	return &InputWorkPool{Waitgroup: &swg}
 }
