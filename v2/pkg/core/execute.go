@@ -3,9 +3,12 @@ package core
 import (
 	"fmt"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/remeh/sizedwaitgroup"
 	"github.com/rs/xid"
+	"go.uber.org/atomic"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -13,27 +16,86 @@ import (
 //
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
-func (e *Engine) Execute(templates []*templates.Template) {
-	finalTemplates, clusterCount := e.clusterTemplates(templates)
+func (e *Engine) Execute(templates []*templates.Template, input InputProvider) *atomic.Bool {
+	return e.ExecuteWithOpts(templates, input, false)
+}
 
+// ExecuteWithOpts is execute with the full options
+func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, input InputProvider, noCluster bool) *atomic.Bool {
+	var finalTemplates []*templates.Template
+	if !noCluster {
+		finalTemplates, _ = e.ClusterTemplates(templatesList)
+	} else {
+		finalTemplates = templatesList
+	}
+
+	results := &atomic.Bool{}
 	for _, template := range finalTemplates {
 		templateType := template.Type()
 
+		var wg *sizedwaitgroup.SizedWaitGroup
+		if templateType == "headless" {
+			wg = e.workPool.Headless
+		} else {
+			wg = e.workPool.Default
+		}
+
+		wg.Add()
 		switch {
 		case template.SelfContained:
-			// Self Contained requests are executed here
-
-		case templateType == "workflow":
-			// Workflows requests are executed here
-
+			// Self Contained requests are executed here separately
+			e.executeSelfContainedTemplateWithInput(template, results)
 		default:
 			// All other request types are executed here
+			e.executeModelWithInput(templateType, template, input, results)
 		}
 	}
+	e.workPool.Wait()
+	return results
 }
 
-// clusterTemplates performs identical http requests clustering for a list of templates
-func (e *Engine) clusterTemplates(templatesList []*templates.Template) ([]*templates.Template, int) {
+// processSelfContainedTemplates execute a self-contained template.
+func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Template, results *atomic.Bool) {
+	match, err := template.Executer.Execute("")
+	if err != nil {
+		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+	}
+	results.CAS(false, match)
+}
+
+// executeModelWithInput executes a type of template with input
+func (e *Engine) executeModelWithInput(templateType string, template *templates.Template, input InputProvider, results *atomic.Bool) {
+	wg := e.workPool.InputPool(templateType)
+
+	input.Scan(func(scannedValue string) {
+		// Skip if the host has had errors
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
+			return
+		}
+
+		wg.Waitgroup.Add()
+		go func(value string) {
+			defer wg.Waitgroup.Done()
+
+			var match bool
+			var err error
+			switch templateType {
+			case "workflow":
+				match = e.executeWorkflow(value, template.CompiledWorkflow)
+			default:
+				match, err = template.Executer.Execute(value)
+			}
+			if err != nil {
+				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+			}
+			results.CAS(false, match)
+		}(scannedValue)
+	})
+	wg.Waitgroup.Wait()
+}
+
+// ClusterTemplates performs identical http requests clustering for a list of templates
+func (e *Engine) ClusterTemplates(templatesList []*templates.Template) ([]*templates.Template, int) {
 	if e.options.OfflineHTTP {
 		return templatesList, 0
 	}
@@ -65,85 +127,3 @@ func (e *Engine) clusterTemplates(templatesList []*templates.Template) ([]*templ
 	}
 	return finalTemplatesList, clusterCount
 }
-
-/*
-import (
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
-)
-
-// processSelfContainedTemplates execute a self-contained template.
-func (r *Runner) processSelfContainedTemplates(template *templates.Template) bool {
-	match, err := template.Executer.Execute("")
-	if err != nil {
-		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
-	}
-	return match
-}
-
-// processTemplateWithList execute a template against the list of user provided targets
-func (r *Runner) processTemplateWithList(template *templates.Template) bool {
-	results := &atomic.Bool{}
-	wg := sizedwaitgroup.New(r.options.BulkSize)
-	processItem := func(k, _ []byte) error {
-		URL := string(k)
-
-		// Skip if the host has had errors
-		if r.hostErrors != nil && r.hostErrors.Check(URL) {
-			return nil
-		}
-		wg.Add()
-		go func(URL string) {
-			defer wg.Done()
-
-			match, err := template.Executer.Execute(URL)
-			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", r.colorizer.BrightBlue(template.ID), err)
-			}
-			results.CAS(false, match)
-		}(URL)
-		return nil
-	}
-	if r.options.Stream {
-		_ = r.hostMapStream.Scan(processItem)
-	} else {
-		r.hostMap.Scan(processItem)
-	}
-
-	wg.Wait()
-	return results.Load()
-}
-
-// processTemplateWithList process a template on the URL list
-func (r *Runner) processWorkflowWithList(template *templates.Template) bool {
-	results := &atomic.Bool{}
-	wg := sizedwaitgroup.New(r.options.BulkSize)
-
-	processItem := func(k, _ []byte) error {
-		URL := string(k)
-
-		// Skip if the host has had errors
-		if r.hostErrors != nil && r.hostErrors.Check(URL) {
-			return nil
-		}
-		wg.Add()
-		go func(URL string) {
-			defer wg.Done()
-			match := template.CompiledWorkflow.RunWorkflow(URL)
-			results.CAS(false, match)
-		}(URL)
-		return nil
-	}
-
-	if r.options.Stream {
-		_ = r.hostMapStream.Scan(processItem)
-	} else {
-		r.hostMap.Scan(processItem)
-	}
-
-	wg.Wait()
-	return results.Load()
-}
-*/

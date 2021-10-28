@@ -3,6 +3,7 @@ package protocols
 import (
 	"go.uber.org/ratelimit"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -61,6 +62,7 @@ type ExecuterOptions struct {
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
+	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 }
 

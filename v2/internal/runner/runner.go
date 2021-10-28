@@ -9,8 +9,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v2"
 
@@ -20,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/engine/inputs/hmap"
+	"github.com/projectdiscovery/nuclei/v2/pkg/engine/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -34,7 +32,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
@@ -52,7 +49,7 @@ type Runner struct {
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
 	addColor          func(severity.Severity) string
-	hmapInputProvider *hmap.Input
+	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
@@ -112,7 +109,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Initialize the input source
-	hmapInput, err := hmap.New(options)
+	hmapInput, err := hybrid.New(options)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
@@ -259,6 +256,7 @@ func (r *Runner) RunEnumeration() error {
 		ProjectFile:     r.projectFile,
 		Browser:         r.browser,
 		HostErrorsCache: cache,
+		Colorizer:       r.colorizer,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -351,9 +349,6 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
-	// pre-parse all the templates, apply filters
-	finalTemplates := []*templates.Template{}
-
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
@@ -373,6 +368,12 @@ func (r *Runner) RunEnumeration() error {
 		}
 	}
 
+	// Cluster the templates first because we want info on how many
+	// templates did we cluster for showing to user in CLI
+	originalTemplatesCount := len(store.Templates())
+	finalTemplates, clusterCount := engine.ClusterTemplates(store.Templates())
+	finalTemplates = append(finalTemplates, store.Workflows()...)
+
 	var totalRequests int64
 	for _, t := range finalTemplates {
 		if len(t.Workflows) > 0 {
@@ -391,32 +392,10 @@ func (r *Runner) RunEnumeration() error {
 		return errors.New("no valid templates were found")
 	}
 
-	/*
-		TODO does it make sense to run the logic below if there are no targets specified?
-		Can we safely assume the user is just experimenting with the template/workflow filters before running them?
-	*/
-
-	results := &atomic.Bool{}
-	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
-
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
-	for _, t := range finalTemplates {
-		wgtemplates.Add()
-		go func(template *templates.Template) {
-			defer wgtemplates.Done()
-
-			if template.SelfContained {
-				results.CAS(false, r.processSelfContainedTemplates(template))
-			} else if len(template.Workflows) > 0 {
-				results.CAS(false, r.processWorkflowWithList(template))
-			} else {
-				results.CAS(false, r.processTemplateWithList(template))
-			}
-		}(t)
-	}
-	wgtemplates.Wait()
+	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
 
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()

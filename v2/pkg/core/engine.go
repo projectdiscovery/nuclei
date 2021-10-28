@@ -24,6 +24,10 @@ type Engine struct {
 //
 // An example InputProvider is provided in form of hmap input provider.
 type InputProvider interface {
+	// Count returns the number of items for input provider
+	Count() int64
+	// Scan calls a callback function till the input provider is exhausted
+	Scan(callback func(value string))
 }
 
 // New returns a new Engine instance
