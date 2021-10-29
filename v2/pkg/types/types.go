@@ -1,6 +1,8 @@
 package types
 
 import (
+	"net/url"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
@@ -56,7 +58,7 @@ type Options struct {
 	// ProxySocksURL is the URL for the proxy socks server
 	ProxySocksURL string
 	// ProxyURLList is a list of URL for the proxy servers
-	ProxyURLList []string
+	ProxyURLList []url.URL
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
