@@ -205,8 +205,6 @@ First the input passed by the user as paths is normalised to absolute paths whic
 
 Clustering module comes in next whose job is to cluster identical HTTP GET requests together (as a lot of the templates perform the same get requests many times, it's a good way to save many requests on large scans with lots of templates). 
 
-Next the templates and workflows are executed. It is currently a very simplistic implementation described in `internal/runner/processor.go` which uses bounded-goroutines. (See the note at the end for further reference.)
-
 ### pkg/operators
 
 Operators package implements all of the matching and extracting logic of Nuclei. 
@@ -356,6 +354,125 @@ func main() {
 }
 ```
 
+### Adding a New Protocol
+
+Protocols form the core of Nuclei Engine. All the request types like `http`, `dns`, etc are implemented in form of protocol requests.
+
+A protocol must implement the `Protocol` and `Request` interfaces described above in `pkg/protocols`. We'll take the example of an existing protocol implementation - websocket for this short reference around Nuclei internals.
+
+The code for the websocket protocol is contained in `pkg/protocols/others/websocket`. 
+
+Below a high level skeleton of the websocket implementation is provided with all the important parts present.
+
+```go
+package websocket
+
+// Request is a request for the Websocket protocol
+type Request struct {
+	// Operators for the current request go here.
+	operators.Operators `yaml:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-"`
+
+	// description: |
+	//   Address contains address for the request
+	Address string `yaml:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
+
+    // declarations here
+}
+
+// Compile compiles the request generators preparing any requests possible.
+func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+	r.options = options
+
+    // request compilation here as well as client creation
+ 
+	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
+		compiled := &r.Operators
+		if err := compiled.Compile(); err != nil {
+			return errors.Wrap(err, "could not compile operators")
+		}
+		r.CompiledOperators = compiled
+	}
+	return nil
+}
+
+// Requests returns the total number of requests the rule will perform
+func (r *Request) Requests() int {
+	if r.generator != nil {
+		return r.generator.NewIterator().Total()
+	}
+	return 1
+}
+
+// GetID returns the ID for the request if any.
+func (r *Request) GetID() string {
+	return ""
+}
+
+// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
+func (r *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+    // payloads init here
+	if err := r.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
+func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	header := http.Header{}
+
+    // make the actual request here after setting all options
+
+	event := eventcreator.CreateEventWithAdditionalOptions(r, data, r.options.Options.Debug || r.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
+	})
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		responseOutput := responseBuilder.String()
+		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", r.options.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, r.options.Options.NoColor))
+	}
+
+	callback(event)
+	return nil
+}
+
+func (r *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	data := &output.ResultEvent{
+		TemplateID:       types.ToString(r.options.TemplateID),
+		TemplatePath:     types.ToString(r.options.TemplatePath),
+		// ... setting more values for result event
+	}
+	return data
+}
+
+// Match performs matching operation for a matcher on model and returns:
+// true and a list of matched snippets if the matcher type is supports it
+// otherwise false and an empty string slice
+func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	return protocols.MakeDefaultMatchFunc(data, matcher)
+}
+
+// Extract performs extracting operation for an extractor on model and returns true or false.
+func (r *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
+	return protocols.MakeDefaultExtractFunc(data, matcher)
+}
+
+// MakeResultEvent creates a result event from internal wrapped event
+func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(r, wrapped)
+}
+
+// GetCompiledOperators returns a list of the compiled operators
+func (r *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{r.CompiledOperators}
+}
+```
+
+Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
+
+`eventcreator` package offers `eventcreator.CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
+
 ## Project Structure
 
 - ./pkg/reporting - Reporting modules for nuclei.
@@ -408,6 +525,4 @@ func main() {
 
 ### Notes
 
-1. Currently workflows, clustered, normal, self-contained execution are all scattered throughout. We'd need to rework this in future to be more generic and contained in a single place, being easy to follow.
-2. All executed tasks are for requests use same thread pool, which should be reworked to use separate pools. This means reworking the `internal/runner/processor.go` functionality into something more modular and scalable.
-3. The matching as well as interim output functionality is a bit complex, we should simplify it a bit as well.
+1. The matching as well as interim output functionality is a bit complex, we should simplify it a bit as well.
