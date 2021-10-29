@@ -96,7 +96,7 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	data["not_after"] = float64(cert.NotAfter.Unix())
 	data["ip"] = r.dialer.GetDialedIP(hostname)
 
-	event := eventcreator.CreateEventWithAdditionalOptions(r, data, r.options.Options.Debug || r.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {})
+	event := eventcreator.CreateEvent(r, data, r.options.Options.Debug || r.options.Options.DebugResponse)
 	callback(event)
 	return nil
 }
