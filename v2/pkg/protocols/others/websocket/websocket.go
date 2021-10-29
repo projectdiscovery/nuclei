@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -278,12 +279,6 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	r.options.Output.Request(r.options.TemplateID, input, "websocket", err)
 	gologger.Verbose().Msgf("Sent Websocket request to %s", input)
 
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		responseOutput := responseBuilder.String()
-		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", r.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responseOutput)
-	}
-
 	data := make(map[string]interface{})
 	for k, v := range previous {
 		data[k] = v
@@ -303,6 +298,11 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	event := eventcreator.CreateEventWithAdditionalOptions(r, data, r.options.Options.Debug || r.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
 	})
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		responseOutput := responseBuilder.String()
+		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", r.options.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, r.options.Options.NoColor))
+	}
 
 	callback(event)
 	return nil
