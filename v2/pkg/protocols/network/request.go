@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -200,13 +201,48 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	if request.ReadSize != 0 {
 		bufferSize = request.ReadSize
 	}
-	final := make([]byte, bufferSize)
-	n, err := conn.Read(final)
-	if err != nil && err != io.EOF {
-		request.options.Output.Request(request.options.TemplateID, address, "network", err)
-		return errors.Wrap(err, "could not read from server")
+
+	var (
+		final []byte
+		n     int
+	)
+
+	if request.ReadAll {
+		readInterval := time.NewTimer(time.Second * 1)
+		// stop the timer and drain the channel
+		closeTimer := func(t *time.Timer) {
+			if !t.Stop() {
+				<-t.C
+			}
+		}
+	read_socket:
+		for {
+			select {
+			case <-readInterval.C:
+				closeTimer(readInterval)
+				break read_socket
+			default:
+				buf := make([]byte, bufferSize)
+				nBuf, err := conn.Read(buf)
+				if err != nil && !os.IsTimeout(err) {
+					request.options.Output.Request(request.options.TemplateID, address, "network", err)
+					closeTimer(readInterval)
+					return errors.Wrap(err, "could not read from server")
+				}
+				responseBuilder.Write(buf[:nBuf])
+				final = append(final, buf...)
+				n += nBuf
+			}
+		}
+	} else {
+		final = make([]byte, bufferSize)
+		n, err = conn.Read(final)
+		if err != nil && err != io.EOF {
+			request.options.Output.Request(request.options.TemplateID, address, "network", err)
+			return errors.Wrap(err, "could not read from server")
+		}
+		responseBuilder.Write(final[:n])
 	}
-	responseBuilder.Write(final[:n])
 
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
