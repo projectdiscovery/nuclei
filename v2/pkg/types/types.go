@@ -152,6 +152,8 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+	// Stream the input without sorting
+	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
 	// NoTimestamp disables display of timestamp for the matcher

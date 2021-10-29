@@ -35,13 +35,13 @@ type Request struct {
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
-	//   - "sniper"
+	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
+	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
@@ -60,6 +60,10 @@ type Request struct {
 	// examples:
 	//   - value: "2048"
 	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
+
+	// description: |
+	//   SelfContained specifies if the request is self contained.
+	SelfContained bool `yaml:"-" json:"-"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
