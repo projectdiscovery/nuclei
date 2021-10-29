@@ -62,19 +62,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		return nil
 	}
 	for _, path := range paths {
-		opts := protocols.ExecuterOptions{
-			Output:          options.Output,
-			Options:         options.Options,
-			Progress:        options.Progress,
-			Catalog:         options.Catalog,
-			Browser:         options.Browser,
-			RateLimiter:     options.RateLimiter,
-			IssuesClient:    options.IssuesClient,
-			Interactsh:      options.Interactsh,
-			ProjectFile:     options.ProjectFile,
-			HostErrorsCache: options.HostErrorsCache,
-		}
-		template, err := Parse(path, preprocessor, opts)
+		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue

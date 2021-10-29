@@ -15,12 +15,14 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -258,7 +260,7 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 
 			// Run any internal extractors for the request here and add found values to map.
 			if r.CompiledOperators != nil {
-				values := r.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, utils.ExtractFunc)
+				values := r.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
 				for k, v := range values {
 					dynamicValues[k] = v
 				}
@@ -298,15 +300,11 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	data["host"] = input
 	data["ip"] = r.dialer.GetDialedIP(hostname)
 
-	event := &output.InternalWrappedEvent{InternalEvent: data}
-	if r.CompiledOperators != nil {
-		var ok bool
-		event.OperatorsResult, ok = r.CompiledOperators.Execute(data, utils.MatchFunc, utils.ExtractFunc)
-		if ok && event.OperatorsResult != nil {
-			event.Results = utils.MakeResultEvent(event, r.makeResultEventItem)
-		}
-		callback(event)
-	}
+	event := eventcreator.CreateEventWithAdditionalOptions(r, data, r.options.Options.Debug || r.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
+	})
+
+	callback(event)
 	return nil
 }
 
@@ -322,7 +320,29 @@ func getAddress(toTest string) (string, error) {
 	return "", nil
 }
 
-func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+// Match performs matching operation for a matcher on model and returns:
+// true and a list of matched snippets if the matcher type is supports it
+// otherwise false and an empty string slice
+func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	return protocols.MakeDefaultMatchFunc(data, matcher)
+}
+
+// Extract performs extracting operation for an extractor on model and returns true or false.
+func (r *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
+	return protocols.MakeDefaultExtractFunc(data, matcher)
+}
+
+// MakeResultEvent creates a result event from internal wrapped event
+func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(r, wrapped)
+}
+
+// GetCompiledOperators returns a list of the compiled operators
+func (r *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{r.CompiledOperators}
+}
+
+func (r *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(r.options.TemplateID),
 		TemplatePath:     types.ToString(r.options.TemplatePath),
