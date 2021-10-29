@@ -141,7 +141,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display extra verbose information"),
+		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
 	)
 
