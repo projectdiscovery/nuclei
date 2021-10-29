@@ -103,6 +103,20 @@ func New(options *Options) (*Client, error) {
 	return interactClient, nil
 }
 
+// NewDefaultOptions returns the default options for interactsh client
+func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
+	return &Options{
+		ServerURL:      "https://interactsh.com",
+		CacheSize:      5000,
+		Eviction:       60 * time.Second,
+		ColldownPeriod: 5 * time.Second,
+		PollDuration:   5 * time.Second,
+		Output:         output,
+		IssuesClient:   reporting,
+		Progress:       progress,
+	}
+}
+
 func (c *Client) firstTimeInitializeClient() error {
 	interactsh, err := client.New(&client.Options{
 		ServerURL:         c.options.ServerURL,

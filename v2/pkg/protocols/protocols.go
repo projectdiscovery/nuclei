@@ -3,9 +3,12 @@ package protocols
 import (
 	"go.uber.org/ratelimit"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
@@ -59,7 +62,14 @@ type ExecuterOptions struct {
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
+	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
+}
+
+// Copy returns a copy of the executeroptions structure
+func (e ExecuterOptions) Copy() ExecuterOptions {
+	copy := e
+	return copy
 }
 
 // Request is an interface implemented any protocol based request generator.
@@ -117,4 +127,52 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 		results = append(results, data)
 	}
 	return results
+}
+
+// MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
+func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+	item, ok := data[extractor.Part]
+	if !ok {
+		return nil
+	}
+	itemStr := types.ToString(item)
+
+	switch extractor.GetType() {
+	case extractors.RegexExtractor:
+		return extractor.ExtractRegex(itemStr)
+	case extractors.KValExtractor:
+		return extractor.ExtractKval(data)
+	case extractors.JSONExtractor:
+		return extractor.ExtractJSON(itemStr)
+	case extractors.XPathExtractor:
+		return extractor.ExtractHTML(itemStr)
+	}
+	return nil
+}
+
+// MakeDefaultMatchFunc performs matching operation for a matcher on model and returns true or false.
+func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	partItem, ok := data[matcher.Part]
+	if !ok && len(matcher.DSL) == 0 {
+		return false, nil
+	}
+	item := types.ToString(partItem)
+
+	switch matcher.GetType() {
+	case matchers.SizeMatcher:
+		result := matcher.Result(matcher.MatchSize(len(item)))
+		return result, nil
+	case matchers.WordsMatcher:
+		result, value := matcher.MatchWords(item, nil)
+		return matcher.Result(result), value
+	case matchers.RegexMatcher:
+		result, value := matcher.MatchRegex(item)
+		return matcher.Result(result), value
+	case matchers.BinaryMatcher:
+		result, value := matcher.MatchBinary(item)
+		return matcher.Result(result), value
+	case matchers.DSLMatcher:
+		return matcher.Result(matcher.MatchDSL(data)), nil
+	}
+	return false, nil
 }

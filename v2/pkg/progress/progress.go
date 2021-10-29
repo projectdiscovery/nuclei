@@ -247,3 +247,27 @@ func (p *StatsTicker) Stop() {
 		_ = p.server.Shutdown(context.Background())
 	}
 }
+
+type MockProgressClient struct{}
+
+// Stop stops the progress recorder.
+func (m *MockProgressClient) Stop() {}
+
+// Init inits the progress bar with initial details for scan
+func (m *MockProgressClient) Init(hostCount int64, rulesCount int, requestCount int64) {}
+
+// AddToTotal adds a value to the total request count
+func (m *MockProgressClient) AddToTotal(delta int64) {}
+
+// IncrementRequests increments the requests counter by 1.
+func (m *MockProgressClient) IncrementRequests() {}
+
+// IncrementMatched increments the matched counter by 1.
+func (m *MockProgressClient) IncrementMatched() {}
+
+// IncrementErrorsBy increments the error counter by count.
+func (m *MockProgressClient) IncrementErrorsBy(count int64) {}
+
+// IncrementFailedRequestsBy increments the number of requests counter by count
+// along with errors.
+func (m *MockProgressClient) IncrementFailedRequestsBy(count int64) {}

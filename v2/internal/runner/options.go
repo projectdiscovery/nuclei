@@ -47,13 +47,6 @@ func ParseOptions(options *types.Options) {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 
-	// Auto adjust rate limits when using headless mode if the user
-	// hasn't specified any custom limits.
-	if options.Headless && options.BulkSize == 25 && options.TemplateThreads == 10 {
-		options.BulkSize = 2
-		options.TemplateThreads = 2
-	}
-
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 

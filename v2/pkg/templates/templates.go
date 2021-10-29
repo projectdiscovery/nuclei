@@ -81,3 +81,33 @@ type Template struct {
 
 	Path string `yaml:"-" json:"-"`
 }
+
+// TemplateTypes is a list of accepted template types
+var TemplateTypes = []string{
+	"dns",
+	"file",
+	"http",
+	"headless",
+	"network",
+	"workflow",
+}
+
+// Type returns the type of the template
+func (t *Template) Type() string {
+	switch {
+	case len(t.RequestsDNS) > 0:
+		return "dns"
+	case len(t.RequestsFile) > 0:
+		return "file"
+	case len(t.RequestsHTTP) > 0:
+		return "http"
+	case len(t.RequestsHeadless) > 0:
+		return "headless"
+	case len(t.RequestsNetwork) > 0:
+		return "network"
+	case len(t.Workflows) > 0:
+		return "workflow"
+	default:
+		return ""
+	}
+}
