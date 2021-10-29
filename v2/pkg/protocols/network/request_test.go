@@ -38,7 +38,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "data",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"<h1>.*</h1>"},
 			}},
 		},
