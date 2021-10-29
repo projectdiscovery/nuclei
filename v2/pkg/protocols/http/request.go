@@ -384,7 +384,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}()
 
 	var curlCommand string
-	if !request.Unsafe && resp != nil && generatedRequest.request != nil {
+	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		command, _ := http2curl.GetCurlCommand(resp.Request)

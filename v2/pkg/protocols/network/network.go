@@ -60,6 +60,13 @@ type Request struct {
 	// examples:
 	//   - value: "2048"
 	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
+	// description: |
+	//   ReadAll determines if the data stream should be read till the end regardless of the size
+	//
+	//   Default value for read-all is false.
+	// examples:
+	//   - value: false
+	ReadAll bool `yaml:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
 
 	// description: |
 	//   SelfContained specifies if the request is self contained.
