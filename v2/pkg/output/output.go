@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -192,8 +193,8 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Input:    input,
 		Type:     requestType,
 	}
-	if requestErr != nil {
-		request.Error = requestErr.Error()
+	if unwrappedErr := utils.UnwrapError(requestErr); unwrappedErr != nil {
+		request.Error = unwrappedErr.Error()
 	} else {
 		request.Error = "none"
 	}
