@@ -1,6 +1,7 @@
 package output
 
 import (
+	"io"
 	"os"
 	"regexp"
 	"time"
@@ -37,9 +38,9 @@ type StandardWriter struct {
 	noTimestamp    bool
 	noMetadata     bool
 	aurora         aurora.Aurora
-	outputFile     *fileWriter
-	traceFile      *fileWriter
-	errorFile      *fileWriter
+	outputFile     io.WriteCloser
+	traceFile      io.WriteCloser
+	errorFile      io.WriteCloser
 	severityColors func(severity.Severity) string
 }
 
@@ -99,7 +100,7 @@ type ResultEvent struct {
 func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
-	var outputFile *fileWriter
+	var outputFile io.WriteCloser
 	if file != "" {
 		output, err := newFileOutputWriter(file)
 		if err != nil {
@@ -107,7 +108,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		}
 		outputFile = output
 	}
-	var traceOutput *fileWriter
+	var traceOutput io.WriteCloser
 	if traceFile != "" {
 		output, err := newFileOutputWriter(traceFile)
 		if err != nil {
@@ -115,7 +116,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		}
 		traceOutput = output
 	}
-	var errorOutput *fileWriter
+	var errorOutput io.WriteCloser
 	if errorFile != "" {
 		output, err := newFileOutputWriter(errorFile)
 		if err != nil {
@@ -161,7 +162,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))
 		}
-		if writeErr := w.outputFile.Write(data); writeErr != nil {
+		if _, writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
 	}
@@ -198,11 +199,11 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	}
 
 	if w.traceFile != nil {
-		_ = w.traceFile.Write(data)
+		_, _ = w.traceFile.Write(data)
 	}
 
 	if requestErr != nil && w.errorFile != nil {
-		_ = w.errorFile.Write(data)
+		_, _ = w.errorFile.Write(data)
 	}
 }
 

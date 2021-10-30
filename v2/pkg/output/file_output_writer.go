@@ -21,14 +21,16 @@ func newFileOutputWriter(file string) (*fileWriter, error) {
 }
 
 // WriteString writes an output to the underlying file
-func (w *fileWriter) Write(data []byte) error {
+func (w *fileWriter) Write(data []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if _, err := w.file.Write(data); err != nil {
-		return err
+		return 0, err
 	}
-	_, err := w.file.Write([]byte("\n"))
-	return err
+	if _, err := w.file.Write([]byte("\n")); err != nil {
+		return 0, err
+	}
+	return len(data) + 1, nil
 }
 
 // Close closes the underlying writer flushing everything to disk
