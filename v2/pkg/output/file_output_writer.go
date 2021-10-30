@@ -2,11 +2,13 @@ package output
 
 import (
 	"os"
+	"sync"
 )
 
 // fileWriter is a concurrent file based output writer.
 type fileWriter struct {
 	file *os.File
+	mu   sync.Mutex
 }
 
 // NewFileOutputWriter creates a new buffered writer for a file
@@ -20,6 +22,8 @@ func newFileOutputWriter(file string) (*fileWriter, error) {
 
 // WriteString writes an output to the underlying file
 func (w *fileWriter) Write(data []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	if _, err := w.file.Write(data); err != nil {
 		return err
 	}
@@ -29,6 +33,8 @@ func (w *fileWriter) Write(data []byte) error {
 
 // Close closes the underlying writer flushing everything to disk
 func (w *fileWriter) Close() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	//nolint:errcheck // we don't care whether sync failed or succeeded.
 	w.file.Sync()
 	return w.file.Close()
