@@ -190,8 +190,8 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		requestOutput := reqBuilder.String()
-		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHex: %s", requestOutput, hex.EncodeToString([]byte(requestOutput)))
+		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n", request.options.TemplateID, actualAddress)
+		gologger.Print().Msgf("%s", hex.Dump([]byte(requestOutput)))
 	}
 
 	request.options.Output.Request(request.options.TemplateID, actualAddress, "network", err)
@@ -274,12 +274,16 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		})
 	}
 
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Network response for %s", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s\nHex: %s", response, responsehighlighter.Highlight(event.OperatorsResult, hex.EncodeToString([]byte(response)), request.options.Options.NoColor))
-	}
+	debug(event, request, response, actualAddress)
 
 	return nil
+}
+
+func debug(event *output.InternalWrappedEvent, request *Request, response string, actualAddress string) {
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n", request.options.TemplateID, actualAddress)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), request.options.Options.NoColor, true))
+	}
 }
 
 // getAddress returns the address of the host to make request to

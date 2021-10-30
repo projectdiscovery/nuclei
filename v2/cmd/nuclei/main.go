@@ -175,10 +175,3 @@ func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags 
 		currentFlag.Group(groupName)
 	}
 }
-
-/*
-HacktoberFest update: Below, you can find our ticket recommendations. Tasks with the "good first issue" label are suitable for first time contributors. If you have other ideas, or need help with getting started, join our Discord channel or reach out to @forgedhallpass.
-
-https://github.com/issues?q=is%3Aopen+is%3Aissue+user%3Aprojectdiscovery+label%3AHacktoberfest
-
-*/
