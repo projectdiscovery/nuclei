@@ -57,6 +57,8 @@ type Options struct {
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
+	// ErrorLogFile specifies a file to write with the errors of all requests
+	ErrorLogFile string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module

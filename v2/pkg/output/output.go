@@ -41,6 +41,8 @@ type StandardWriter struct {
 	outputMutex    *sync.Mutex
 	traceFile      *fileWriter
 	traceMutex     *sync.Mutex
+	errorFile      *fileWriter
+	errorMutex     *sync.Mutex
 	severityColors func(severity.Severity) string
 }
 
@@ -97,7 +99,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile *fileWriter
@@ -116,6 +118,14 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		}
 		traceOutput = output
 	}
+	var errorOutput *fileWriter
+	if errorFile != "" {
+		output, err := newFileOutputWriter(errorFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create error file")
+		}
+		errorOutput = output
+	}
 	writer := &StandardWriter{
 		json:           json,
 		jsonReqResp:    jsonReqResp,
@@ -126,6 +136,8 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		outputMutex:    &sync.Mutex{},
 		traceFile:      traceOutput,
 		traceMutex:     &sync.Mutex{},
+		errorFile:      errorOutput,
+		errorMutex:     &sync.Mutex{},
 		severityColors: colorizer.New(auroraColorizer),
 	}
 	return writer, nil
@@ -171,8 +183,8 @@ type JSONTraceRequest struct {
 }
 
 // Request writes a log the requests trace log
-func (w *StandardWriter) Request(templateID, url, requestType string, err error) {
-	if w.traceFile == nil {
+func (w *StandardWriter) Request(templateID, url, requestType string, requestErr error) {
+	if w.traceFile == nil && w.errorFile == nil {
 		return
 	}
 	request := &JSONTraceRequest{
@@ -180,8 +192,8 @@ func (w *StandardWriter) Request(templateID, url, requestType string, err error)
 		URL:  url,
 		Type: requestType,
 	}
-	if err != nil {
-		request.Error = err.Error()
+	if requestErr != nil {
+		request.Error = requestErr.Error()
 	} else {
 		request.Error = "none"
 	}
@@ -190,9 +202,18 @@ func (w *StandardWriter) Request(templateID, url, requestType string, err error)
 	if err != nil {
 		return
 	}
-	w.traceMutex.Lock()
-	_ = w.traceFile.Write(data)
-	w.traceMutex.Unlock()
+
+	if w.traceFile != nil {
+		w.traceMutex.Lock()
+		_ = w.traceFile.Write(data)
+		w.traceMutex.Unlock()
+	}
+
+	if requestErr != nil && w.errorFile != nil {
+		w.errorMutex.Lock()
+		_ = w.errorFile.Write(data)
+		w.errorMutex.Unlock()
+	}
 }
 
 // Colorizer returns the colorizer instance for writer
@@ -207,5 +228,8 @@ func (w *StandardWriter) Close() {
 	}
 	if w.traceFile != nil {
 		w.traceFile.Close()
+	}
+	if w.errorFile != nil {
+		w.errorFile.Close()
 	}
 }
