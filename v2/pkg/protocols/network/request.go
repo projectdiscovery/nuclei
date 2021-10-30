@@ -189,9 +189,12 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	request.options.Progress.IncrementRequests()
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		requestOutput := reqBuilder.String()
 		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s", hex.Dump([]byte(requestOutput)))
+		requestBytes := []byte(reqBuilder.String())
+		gologger.Print().Msgf("%s", hex.Dump(requestBytes))
+		if request.options.Options.VerboseVerbose {
+			gologger.Print().Msgf("\nCompact HEX view:\n%s", hex.EncodeToString(requestBytes))
+		}
 	}
 
 	request.options.Output.Request(request.options.TemplateID, actualAddress, "network", err)
@@ -282,7 +285,18 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 func debug(event *output.InternalWrappedEvent, request *Request, response string, actualAddress string) {
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n", request.options.TemplateID, actualAddress)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), request.options.Options.NoColor, true))
+		requestBytes := []byte(response)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), request.options.Options.NoColor, true))
+		if request.options.Options.VerboseVerbose {
+			var allMatches []string
+			for _, namedMatch := range event.OperatorsResult.Matches {
+				for _, matchElement := range namedMatch {
+					allMatches = append(allMatches, hex.EncodeToString([]byte(matchElement)))
+				}
+			}
+			event.OperatorsResult.Matches["compact"] = allMatches
+			gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(event.OperatorsResult, hex.EncodeToString([]byte(response)), request.options.Options.NoColor, false))
+		}
 	}
 }
 
