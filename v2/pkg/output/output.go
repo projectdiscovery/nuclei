@@ -174,23 +174,23 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	return nil
 }
 
-// JSONTraceRequest is a trace log request written to file
-type JSONTraceRequest struct {
-	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Error string `json:"error"`
-	Type  string `json:"type"`
+// JSONLogRequest is a trace/error log request written to file
+type JSONLogRequest struct {
+	Template string `json:"template"`
+	Input    string `json:"input"`
+	Error    string `json:"error"`
+	Type     string `json:"type"`
 }
 
 // Request writes a log the requests trace log
-func (w *StandardWriter) Request(templateID, url, requestType string, requestErr error) {
+func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
 	if w.traceFile == nil && w.errorFile == nil {
 		return
 	}
-	request := &JSONTraceRequest{
-		ID:   templateID,
-		URL:  url,
-		Type: requestType,
+	request := &JSONLogRequest{
+		Template: templatePath,
+		Input:    input,
+		Type:     requestType,
 	}
 	if requestErr != nil {
 		request.Error = requestErr.Error()
