@@ -166,6 +166,12 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCertFile string
+	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
+	ClientKeyFile string
+	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCAFile string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
