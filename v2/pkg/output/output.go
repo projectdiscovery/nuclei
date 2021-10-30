@@ -3,7 +3,6 @@ package output
 import (
 	"os"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,11 +38,8 @@ type StandardWriter struct {
 	noMetadata     bool
 	aurora         aurora.Aurora
 	outputFile     *fileWriter
-	outputMutex    *sync.Mutex
 	traceFile      *fileWriter
-	traceMutex     *sync.Mutex
 	errorFile      *fileWriter
-	errorMutex     *sync.Mutex
 	severityColors func(severity.Severity) string
 }
 
@@ -134,11 +130,8 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
-		outputMutex:    &sync.Mutex{},
 		traceFile:      traceOutput,
-		traceMutex:     &sync.Mutex{},
 		errorFile:      errorOutput,
-		errorMutex:     &sync.Mutex{},
 		severityColors: colorizer.New(auroraColorizer),
 	}
 	return writer, nil
@@ -205,15 +198,11 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	}
 
 	if w.traceFile != nil {
-		w.traceMutex.Lock()
 		_ = w.traceFile.Write(data)
-		w.traceMutex.Unlock()
 	}
 
 	if requestErr != nil && w.errorFile != nil {
-		w.errorMutex.Lock()
 		_ = w.errorFile.Write(data)
-		w.errorMutex.Unlock()
 	}
 }
 
