@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gobwas/ws"
+	"github.com/julienschmidt/httprouter"
 )
 
 // RunNucleiTemplateAndGetResults returns a list of results for a template
@@ -119,8 +120,8 @@ func (s *TCPServer) Close() {
 }
 
 // NewWebsocketServer creates a new websocket server from a handler
-func NewWebsocketServer(handler func(conn net.Conn), originValidate func(origin string) bool, port ...int) *httptest.Server {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate func(origin string) bool, port ...int) *httptest.Server {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if value := r.Header.Get("Origin"); value != "" && !originValidate(value) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -134,6 +135,18 @@ func NewWebsocketServer(handler func(conn net.Conn), originValidate func(origin 
 
 			handler(conn)
 		}()
-	}))
+	})
+
+	var router *httprouter.Router
+	if path != "" {
+		router = httprouter.New()
+		router.HandlerFunc("*", "/test", handlerFunc)
+	}
+	var ts *httptest.Server
+	if router != nil {
+		ts = httptest.NewServer(router)
+	} else {
+		ts = httptest.NewServer(handlerFunc)
+	}
 	return ts
 }
