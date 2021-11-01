@@ -57,6 +57,8 @@ type Options struct {
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
+	// ErrorLogFile specifies a file to write with the errors of all requests
+	ErrorLogFile string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
@@ -164,6 +166,12 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCertFile string
+	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
+	ClientKeyFile string
+	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCAFile string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
