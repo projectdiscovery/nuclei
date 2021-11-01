@@ -471,7 +471,78 @@ func (r *Request) GetCompiledOperators() []*operators.Operators {
 
 Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
 
-`eventcreator` package offers `eventcreator.CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
+`eventcreator` package offers `CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
+
+Step by step description of how to add a new protocol to Nuclei - 
+
+1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with less number of options, considering adding it to the `pkg/protocols/others` directory.
+
+2. Add the protocol request structure to the `Template` structure fields. This is done in `pkg/templates/templates.go` with the corresponding import line.
+
+```go
+
+import (
+	...
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/websocket"
+)
+
+// Template is a YAML input file which defines all the requests and
+// other metadata for a template.
+type Template struct {
+	...
+	// description: |
+	//   Websocket contains the Websocket request to make in the template.
+	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
+	...
+}
+```
+
+Also add the protocol case to the `Type` function as well as the `TemplateTypes` array in the same `templates.go` file.
+
+```go
+// TemplateTypes is a list of accepted template types
+var TemplateTypes = []string{
+	...
+	"websocket",
+}
+
+// Type returns the type of the template
+func (t *Template) Type() string {
+	...
+	case len(t.RequestsWebsocket) > 0:
+		return "websocket"
+	default:
+		return ""
+	}
+}
+```
+
+3. Add the protocol request to the `Requests` function and `compileProtocolRequests` function in the `compile.go` file in same directory.
+
+```go
+
+// Requests returns the total request count for the template
+func (template *Template) Requests() int {
+	return len(template.RequestsDNS) +
+		...
+		len(template.RequestsSSL) +
+		len(template.RequestsWebsocket)
+}
+
+
+// compileProtocolRequests compiles all the protocol requests for the template
+func (template *Template) compileProtocolRequests(options protocols.ExecuterOptions) error {
+	...
+
+	case len(template.RequestsWebsocket) > 0:
+		requests = template.convertRequestToProtocolsRequest(template.RequestsWebsocket)
+	}
+	template.Executer = executer.NewExecuter(requests, &options)
+	return nil
+}
+```
+
+That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
 
 ## Project Structure
 
