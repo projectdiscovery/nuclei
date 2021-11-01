@@ -9,15 +9,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
 
-var colorizer = aurora.NewAurora(true)
+var colorFunction = aurora.Green
 
-func Highlight(operatorResult *operators.Result, response string, noColor bool) string {
+func Highlight(operatorResult *operators.Result, response string, noColor, hexDump bool) string {
 	result := response
 	if operatorResult != nil && !noColor {
 		for _, matches := range operatorResult.Matches {
 			if len(matches) > 0 {
 				for _, currentMatch := range matches {
-					result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+					if hexDump {
+						highlightedHexDump, err := toHighLightedHexDump(result, currentMatch)
+						if err == nil {
+							result = highlightedHexDump.String()
+						}
+					} else {
+						result = strings.ReplaceAll(result, currentMatch, addColor(currentMatch))
+					}
 				}
 			}
 		}
@@ -32,4 +39,8 @@ func CreateStatusCodeSnippet(response string, statusCode int) string {
 		return response[:strings.Index(response, strStatusCode)+len(strStatusCode)]
 	}
 	return ""
+}
+
+func addColor(value string) string {
+	return colorFunction(value).String()
 }
