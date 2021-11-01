@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -17,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -71,6 +74,7 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	hostname, _, _ := net.SplitHostPort(address)
 
 	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+
 	conn, err := r.dialer.DialTLSWithConfig(context.Background(), "tcp", address, config)
 	if err != nil {
 		r.options.Output.Request(r.options.TemplateID, input, "ssl", err)
@@ -87,16 +91,33 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	r.options.Output.Request(r.options.TemplateID, address, "ssl", err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
-	if len(connTLS.ConnectionState().PeerCertificates) == 0 {
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
+		gologger.Info().Str("address", input).Msgf("[%s] Dumped SSL request for %s", r.options.TemplateID, input)
+	}
+
+	state := connTLS.ConnectionState()
+	if len(state.PeerCertificates) == 0 {
 		return nil
 	}
+
+	tlsData := cryptoutil.TLSGrab(&state)
+	jsonData, _ := jsoniter.Marshal(tlsData)
+	jsonDataString := string(jsonData)
+
 	data := make(map[string]interface{})
 	cert := connTLS.ConnectionState().PeerCertificates[0]
+
+	data["response"] = jsonDataString
 	data["host"] = input
 	data["not_after"] = float64(cert.NotAfter.Unix())
 	data["ip"] = r.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEvent(r, data, r.options.Options.Debug || r.options.Options.DebugResponse)
+	if r.options.Options.Debug || r.options.Options.DebugResponse {
+		responseOutput := jsonDataString
+		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", r.options.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, r.options.Options.NoColor))
+	}
 	callback(event)
 	return nil
 }
