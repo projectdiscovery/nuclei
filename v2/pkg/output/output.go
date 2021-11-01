@@ -1,9 +1,9 @@
 package output
 
 import (
+	"io"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -37,10 +38,9 @@ type StandardWriter struct {
 	noTimestamp    bool
 	noMetadata     bool
 	aurora         aurora.Aurora
-	outputFile     *fileWriter
-	outputMutex    *sync.Mutex
-	traceFile      *fileWriter
-	traceMutex     *sync.Mutex
+	outputFile     io.WriteCloser
+	traceFile      io.WriteCloser
+	errorFile      io.WriteCloser
 	severityColors func(severity.Severity) string
 }
 
@@ -97,10 +97,10 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
-	var outputFile *fileWriter
+	var outputFile io.WriteCloser
 	if file != "" {
 		output, err := newFileOutputWriter(file)
 		if err != nil {
@@ -108,13 +108,21 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		}
 		outputFile = output
 	}
-	var traceOutput *fileWriter
+	var traceOutput io.WriteCloser
 	if traceFile != "" {
 		output, err := newFileOutputWriter(traceFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create output file")
 		}
 		traceOutput = output
+	}
+	var errorOutput io.WriteCloser
+	if errorFile != "" {
+		output, err := newFileOutputWriter(errorFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create error file")
+		}
+		errorOutput = output
 	}
 	writer := &StandardWriter{
 		json:           json,
@@ -123,9 +131,8 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
-		outputMutex:    &sync.Mutex{},
 		traceFile:      traceOutput,
-		traceMutex:     &sync.Mutex{},
+		errorFile:      errorOutput,
 		severityColors: colorizer.New(auroraColorizer),
 	}
 	return writer, nil
@@ -155,33 +162,33 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))
 		}
-		if writeErr := w.outputFile.Write(data); writeErr != nil {
+		if _, writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
 		}
 	}
 	return nil
 }
 
-// JSONTraceRequest is a trace log request written to file
-type JSONTraceRequest struct {
-	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Error string `json:"error"`
-	Type  string `json:"type"`
+// JSONLogRequest is a trace/error log request written to file
+type JSONLogRequest struct {
+	Template string `json:"template"`
+	Input    string `json:"input"`
+	Error    string `json:"error"`
+	Type     string `json:"type"`
 }
 
 // Request writes a log the requests trace log
-func (w *StandardWriter) Request(templateID, url, requestType string, err error) {
-	if w.traceFile == nil {
+func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
+	if w.traceFile == nil && w.errorFile == nil {
 		return
 	}
-	request := &JSONTraceRequest{
-		ID:   templateID,
-		URL:  url,
-		Type: requestType,
+	request := &JSONLogRequest{
+		Template: templatePath,
+		Input:    input,
+		Type:     requestType,
 	}
-	if err != nil {
-		request.Error = err.Error()
+	if unwrappedErr := utils.UnwrapError(requestErr); unwrappedErr != nil {
+		request.Error = unwrappedErr.Error()
 	} else {
 		request.Error = "none"
 	}
@@ -190,9 +197,14 @@ func (w *StandardWriter) Request(templateID, url, requestType string, err error)
 	if err != nil {
 		return
 	}
-	w.traceMutex.Lock()
-	_ = w.traceFile.Write(data)
-	w.traceMutex.Unlock()
+
+	if w.traceFile != nil {
+		_, _ = w.traceFile.Write(data)
+	}
+
+	if requestErr != nil && w.errorFile != nil {
+		_, _ = w.errorFile.Write(data)
+	}
 }
 
 // Colorizer returns the colorizer instance for writer
@@ -207,5 +219,8 @@ func (w *StandardWriter) Close() {
 	}
 	if w.traceFile != nil {
 		w.traceFile.Close()
+	}
+	if w.errorFile != nil {
+		w.errorFile.Close()
 	}
 }

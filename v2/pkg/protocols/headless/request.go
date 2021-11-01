@@ -20,7 +20,7 @@ var _ protocols.Request = &Request{}
 func (request *Request) ExecuteWithResults(inputURL string, metadata, previous output.InternalEvent /*TODO review unused parameter*/, callback protocols.OutputEventCallback) error {
 	instance, err := request.options.Browser.NewInstance()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, inputURL, "headless", err)
+		request.options.Output.Request(request.options.TemplatePath, inputURL, "headless", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
@@ -28,19 +28,19 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, inputURL, "headless", err)
+		request.options.Output.Request(request.options.TemplatePath, inputURL, "headless", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
 	out, page, err := instance.Run(parsedURL, request.Steps, time.Duration(request.options.Options.PageTimeout)*time.Second)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, inputURL, "headless", err)
+		request.options.Output.Request(request.options.TemplatePath, inputURL, "headless", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could get html element")
 	}
 	defer page.Close()
 
-	request.options.Output.Request(request.options.TemplateID, inputURL, "headless", nil)
+	request.options.Output.Request(request.options.TemplatePath, inputURL, "headless", nil)
 	request.options.Progress.IncrementRequests()
 	gologger.Verbose().Msgf("Sent Headless request to %s", inputURL)
 
