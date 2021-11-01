@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 
@@ -59,6 +60,15 @@ func (m *Matcher) CompileMatchers() error {
 		}
 	} else {
 		m.condition = ORCondition
+	}
+
+	if m.CaseInsensitive {
+		if m.Type != "word" {
+			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", m.Type)
+		}
+		for i := range m.Words {
+			m.Words[i] = strings.ToLower(m.Words[i])
+		}
 	}
 	return nil
 }
