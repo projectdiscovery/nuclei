@@ -99,7 +99,7 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if len(r.Payloads) > 0 {
 		attackType := r.AttackType
 		if attackType == "" {
-			attackType = "sniper"
+			attackType = "batteringram"
 		}
 		r.attackType = generators.StringToType[attackType]
 
@@ -183,10 +183,10 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	if err != nil {
 		return errors.Wrap(err, "could not parse input url")
 	}
-	payloadValues["Address"] = parsed.Host
+	payloadValues["Hostname"] = parsed.Host
+	payloadValues["Host"] = parsed.Hostname()
 	payloadValues["Scheme"] = parsed.Scheme
 	payloadValues["Path"] = parsed.Path
-	payloadValues["hostname"] = parsed.Hostname()
 
 	for key, value := range r.Headers {
 		finalData, dataErr := expressions.EvaluateByte([]byte(value), payloadValues)
@@ -210,10 +210,14 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
+	addressToDial := string(finalAddress)
+	if parsed.Path != "" && parsed.Path != "/" {
+		addressToDial = addressToDial + parsed.Path
+	}
 
-	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), string(finalAddress))
+	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), addressToDial)
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, input, "ssl", err)
+		r.options.Output.Request(r.options.TemplateID, input, "websocket", err)
 		r.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
@@ -296,7 +300,7 @@ func (r *Request) executeRequestWithPayloads(input, hostname string, dynamicValu
 	data["ip"] = r.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEventWithAdditionalOptions(r, data, r.options.Options.Debug || r.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
-		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
+		internalWrappedEvent.OperatorsResult.PayloadValues = dynamicValues
 	})
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
