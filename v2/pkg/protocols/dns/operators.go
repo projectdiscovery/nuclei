@@ -16,13 +16,7 @@ import (
 
 // Match matches a generic data response again a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	partString := matcher.Part
-	switch partString {
-	case "body", "all", "":
-		partString = "raw"
-	}
-
-	item, ok := data[partString]
+	item, ok := request.getMatchPart(matcher.Part, data)
 	if !ok {
 		return false, []string{}
 	}
@@ -50,25 +44,32 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part := extractor.Part
+	item, ok := request.getMatchPart(extractor.Part, data)
+	if !ok {
+		return nil
+	}
+
+	switch extractor.GetType() {
+	case extractors.RegexExtractor:
+		return extractor.ExtractRegex(types.ToString(item))
+	case extractors.KValExtractor:
+		return extractor.ExtractKval(data)
+	}
+	return nil
+}
+
+func (request *Request) getMatchPart(part string, data output.InternalEvent) (interface{}, bool) {
 	switch part {
-	case "body", "all":
+	case "body", "all", "":
 		part = "raw"
 	}
 
 	item, ok := data[part]
 	if !ok {
-		return nil
+		return "", false
 	}
-	itemStr := types.ToString(item)
 
-	switch extractor.GetType() {
-	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(itemStr)
-	case extractors.KValExtractor:
-		return extractor.ExtractKval(data)
-	}
-	return nil
+	return item, true
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching

@@ -105,6 +105,26 @@ func TestFileOperatorMatch(t *testing.T) {
 		require.False(t, isMatched, "could match invalid response matcher")
 		require.Equal(t, []string{}, matched)
 	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		resp := "TEST-DATA\r\n1.1.1.1\r\n"
+		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+		require.Len(t, event, 6, "could not get correct number of items in dsl map")
+		require.Equal(t, resp, event["raw"], "could not get correct resp")
+
+		matcher := &matchers.Matcher{
+			Part:            "raw",
+			Type:            "word",
+			Words:           []string{"TeSt-DaTA"},
+			CaseInsensitive: true,
+		}
+		err = matcher.CompileMatchers()
+		require.Nil(t, err, "could not compile matcher")
+
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, []string{"test-data"}, matched)
+	})
 }
 
 func TestFileOperatorExtract(t *testing.T) {
