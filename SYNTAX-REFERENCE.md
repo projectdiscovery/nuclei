@@ -1554,6 +1554,26 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive matches. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
@@ -1829,6 +1849,26 @@ part: raw
 Internal, when set to true will allow using the value extracted
 in the next request for some protocols (like HTTP).
 
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive extractions. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
 </div>
 
 <hr />

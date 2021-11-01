@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -161,16 +162,22 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
+	// Set the base TLS configuration definition
+	tlsConfig := &tls.Config{
+		Renegotiation:      tls.RenegotiateOnceAsClient,
+		InsecureSkipVerify: true,
+	}
+
+	// Add the client certificate authentication to the request if it's configured
+	tlsConfig = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
-		DisableKeepAlives: disableKeepAlives,
+		TLSClientConfig:     tlsConfig,
+		DisableKeepAlives:   disableKeepAlives,
 	}
 
 	// Attempts to overwrite the dial function with the socks proxied version

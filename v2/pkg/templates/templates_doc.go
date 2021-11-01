@@ -473,7 +473,7 @@ func init() {
 			FieldName: "matchers",
 		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 12)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
 	MATCHERSMatcherDoc.Fields[0].Type = "string"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
@@ -575,6 +575,15 @@ func init() {
 	MATCHERSMatcherDoc.Fields[11].Values = []string{
 		"hex",
 	}
+	MATCHERSMatcherDoc.Fields[12].Name = "case-insensitive"
+	MATCHERSMatcherDoc.Fields[12].Type = "bool"
+	MATCHERSMatcherDoc.Fields[12].Note = ""
+	MATCHERSMatcherDoc.Fields[12].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[12].Values = []string{
+		"false",
+		"true",
+	}
 
 	EXTRACTORSExtractorDoc.Type = "extractors.Extractor"
 	EXTRACTORSExtractorDoc.Comments[encoder.LineComment] = " Extractor is used to extract part of response using a regex."
@@ -601,7 +610,7 @@ func init() {
 			FieldName: "extractors",
 		},
 	}
-	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 10)
+	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 11)
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
 	EXTRACTORSExtractorDoc.Fields[0].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[0].Note = ""
@@ -678,6 +687,15 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[9].Note = ""
 	EXTRACTORSExtractorDoc.Fields[9].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
 	EXTRACTORSExtractorDoc.Fields[9].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
+	EXTRACTORSExtractorDoc.Fields[10].Name = "case-insensitive"
+	EXTRACTORSExtractorDoc.Fields[10].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[10].Note = ""
+	EXTRACTORSExtractorDoc.Fields[10].Description = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[10].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[10].Values = []string{
+		"false",
+		"true",
+	}
 
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
