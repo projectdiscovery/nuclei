@@ -12,6 +12,7 @@ var websocketTestCases = map[string]testutils.TestCase{
 	"websocket/basic.yaml":    &websocketBasic{},
 	"websocket/cswsh.yaml":    &websocketCswsh{},
 	"websocket/no-cswsh.yaml": &websocketNoCswsh{},
+	"websocket/path.yaml":     &websocketWithPath{},
 }
 
 type websocketBasic struct{}
@@ -30,7 +31,7 @@ func (h *websocketBasic) Execute(filePath string) error {
 	originValidate := func(origin string) bool {
 		return true
 	}
-	ts := testutils.NewWebsocketServer(connHandler, originValidate)
+	ts := testutils.NewWebsocketServer("", connHandler, originValidate)
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "http", "ws"), debug)
@@ -53,7 +54,7 @@ func (h *websocketCswsh) Execute(filePath string) error {
 	originValidate := func(origin string) bool {
 		return true
 	}
-	ts := testutils.NewWebsocketServer(connHandler, originValidate)
+	ts := testutils.NewWebsocketServer("", connHandler, originValidate)
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "http", "ws"), debug)
@@ -76,7 +77,30 @@ func (h *websocketNoCswsh) Execute(filePath string) error {
 	originValidate := func(origin string) bool {
 		return origin == "https://google.com"
 	}
-	ts := testutils.NewWebsocketServer(connHandler, originValidate)
+	ts := testutils.NewWebsocketServer("", connHandler, originValidate)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "http", "ws"), debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 0 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type websocketWithPath struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *websocketWithPath) Execute(filePath string) error {
+	connHandler := func(conn net.Conn) {
+
+	}
+	originValidate := func(origin string) bool {
+		return origin == "https://google.com"
+	}
+	ts := testutils.NewWebsocketServer("/test", connHandler, originValidate)
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "http", "ws"), debug)
