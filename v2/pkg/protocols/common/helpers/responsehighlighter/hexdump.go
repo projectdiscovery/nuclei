@@ -77,7 +77,13 @@ func highlightHexSection(hexDump HighlightableHexDump, snippetToColor string) Hi
 func highlightAsciiSection(hexDump HighlightableHexDump, snippetToColor string) HighlightableHexDump {
 	var snippetCharactersMatchPattern string
 	for _, v := range snippetToColor {
-		snippetCharactersMatchPattern += fmt.Sprintf(`(%s\n*)`, regexp.QuoteMeta(string(v)))
+		var value string
+		if IsASCIIPrintable(v) {
+			value = regexp.QuoteMeta(string(v))
+		} else {
+			value = "."
+		}
+		snippetCharactersMatchPattern += fmt.Sprintf(`(%s\n*)`, value)
 	}
 
 	hexDump.ascii = highlight(hexDump.ascii, snippetCharactersMatchPattern, func(v string) string {
@@ -105,6 +111,10 @@ func highlight(values []string, snippetCharactersMatchPattern string, replaceToF
 	return strings.Split(rows, "\n")
 }
 
+func HasBinaryContent(input string) bool {
+	return !IsASCII(input)
+}
+
 // IsASCII tests whether a string consists only of ASCII characters or not
 func IsASCII(input string) bool {
 	for i := 0; i < len(input); i++ {
@@ -113,4 +123,8 @@ func IsASCII(input string) bool {
 		}
 	}
 	return true
+}
+
+func IsASCIIPrintable(input rune) bool {
+	return input > 32 && input < unicode.MaxASCII
 }
