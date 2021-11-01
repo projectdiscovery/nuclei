@@ -1,8 +1,6 @@
 package types
 
 import (
-	"net/url"
-
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
@@ -51,15 +49,9 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// List of proxy server (file or comma seperated)
-	Proxy string
-	// ProxyURL is the URL for the proxy server
-	ProxyURL string
-	// ProxySocksURL is the URL for the proxy socks server
-	ProxySocksURL string
-	// ProxyURLList is a list of URL for the proxy servers
-	ProxyURLList []url.URL
-	// TemplatesDirectory is the directory to use for storing templates
+	// List of HTTP(s)/SOCKS5 proxy servers or path to file containing such list
+	Proxy goflags.NormalizedStringSlice
+		// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string

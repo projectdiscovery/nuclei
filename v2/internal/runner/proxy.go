@@ -15,12 +15,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+var proxyURLList []url.URL
+
 // loadProxyServers load list of proxy servers from file or comma seperated
 func loadProxyServers(options *types.Options) error {
 	if len(options.Proxy) == 0 {
 		return nil
 	}
-	for _, p := range strings.Split(options.Proxy, ",") {
+	for _, p := range options.Proxy {
 		if strings.TrimSpace(p) == "" {
 			continue
 		}
@@ -28,7 +30,7 @@ func loadProxyServers(options *types.Options) error {
 			if proxyURL, err := validateProxyURL(p); err != nil {
 				return err
 			} else {
-				options.ProxyURLList = append(options.ProxyURLList, proxyURL)
+				proxyURLList = append(proxyURLList, proxyURL)
 			}
 		} else if fileutil.FileExists(p) {
 			file, err := os.Open(p)
@@ -45,24 +47,24 @@ func loadProxyServers(options *types.Options) error {
 				if proxyURL, err := validateProxyURL(proxy); err != nil {
 					return err
 				} else {
-					options.ProxyURLList = append(options.ProxyURLList, proxyURL)
+					proxyURLList = append(proxyURLList, proxyURL)
 				}
 			}
 		} else {
-			return errors.New("invalid proxy file or URL provided")
+			return fmt.Errorf("invalid proxy file or URL provided for %s", p)
 		}
 	}
 	return processProxyList(options)
 }
 
 func processProxyList(options *types.Options) error {
-	if len(options.ProxyURLList) == 0 {
+	if len(proxyURLList) == 0 {
 		return fmt.Errorf("could not find any valid proxy")
 	} else {
 		done := make(chan bool)
 		exitCounter := make(chan bool)
 		counter := 0
-		for _, url := range options.ProxyURLList {
+		for _, url := range proxyURLList {
 			go runProxyConnectivity(url, options, done, exitCounter)
 		}
 		for {
@@ -74,7 +76,7 @@ func processProxyList(options *types.Options) error {
 				}
 			case <-exitCounter:
 				{
-					if counter += 1; counter == len(options.ProxyURLList) {
+					if counter += 1; counter == len(proxyURLList) {
 						return errors.New("no reachable proxy found")
 					}
 				}
@@ -85,7 +87,12 @@ func processProxyList(options *types.Options) error {
 
 func runProxyConnectivity(proxyURL url.URL, options *types.Options, done chan bool, exitCounter chan bool) {
 	if err := testProxyConnection(proxyURL, options.Timeout); err == nil {
-		if options.ProxyURL == "" && options.ProxySocksURL == "" {
+		// if options.ProxyURL == "" && options.ProxySocksURL == "" {
+		// 	if valid := assignProxyURL(proxyURL, options); valid {
+		// 		done <- true
+		// 	}
+		// }
+		if os.Getenv(types.HTTP_PROXY_ENV) == "" {
 			if valid := assignProxyURL(proxyURL, options); valid {
 				done <- true
 			}
@@ -105,14 +112,16 @@ func testProxyConnection(proxyURL url.URL, timeoutDelay int) error {
 
 func assignProxyURL(proxyURL url.URL, options *types.Options) bool {
 	var isValid bool = true
-	if proxyURL.Scheme == "http" || proxyURL.Scheme == "https" {
-		options.ProxyURL = proxyURL.String()
-		options.ProxySocksURL = ""
-		gologger.Verbose().Msgf("Using %s as proxy server", options.ProxyURL)
-	} else if proxyURL.Scheme == "socks5" {
-		options.ProxyURL = ""
-		options.ProxySocksURL = proxyURL.String()
-		gologger.Verbose().Msgf("Using %s as socket proxy server", options.ProxySocksURL)
+	if proxyURL.Scheme == types.HTTP || proxyURL.Scheme == types.HTTPS {
+		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+		// options.ProxyURL = proxyURL.String()
+		// options.ProxySocksURL = ""
+		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+	} else if proxyURL.Scheme == types.SOCKS5 {
+		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+		// options.ProxyURL = ""
+		// options.ProxySocksURL = proxyURL.String()
+		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	} else {
 		isValid = false
 	}
@@ -130,7 +139,7 @@ func validateProxyURL(proxy string) (url.URL, error) {
 func isSupportedProtocol(value string, prefixCheck bool) bool {
 	if prefixCheck {
 		value = strings.ToLower(value)
-		return strings.HasPrefix(value, "http") || strings.HasPrefix(value, "https") || strings.HasPrefix(value, "socks5")
+		return strings.HasPrefix(value, types.HTTP) || strings.HasPrefix(value, types.HTTPS) || strings.HasPrefix(value, types.SOCKS5)
 	}
-	return value == "http" || value == "https" || value == "socks5"
+	return value == types.HTTP || value == types.HTTPS || value == types.SOCKS5
 }

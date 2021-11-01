@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -128,10 +129,13 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-
-	if options.ProxyURL != "" {
-		proxyURL, err = url.Parse(options.ProxyURL)
+	var proxyenv = os.Getenv(types.HTTP_PROXY_ENV)
+	if proxyenv != "" {
+		proxyURL, err = url.Parse(proxyenv)
 	}
+	// if options.ProxyURL != "" {
+	// 	proxyURL, err = url.Parse(options.ProxyURL)
+	// }
 	if err != nil {
 		return nil, err
 	}
@@ -172,27 +176,32 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		},
 		DisableKeepAlives: disableKeepAlives,
 	}
-
-	// Attempts to overwrite the dial function with the socks proxied version
-	if options.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
-
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
-		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
-		if proxyErr == nil {
-			transport.DialContext = dc.DialContext
-		}
-	}
 	if proxyURL != nil {
-		transport.Proxy = http.ProxyURL(proxyURL)
+		// Attempts to overwrite the dial function with the socks proxied version
+		if proxyURL.Scheme == types.SOCKS5 {
+			var proxyAuth *proxy.Auth = &proxy.Auth{}
+			//var proxyAuth *proxy.Auth
+			// socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+			// if proxyErr == nil {
+			// 	proxyAuth = &proxy.Auth{}
+			// 	proxyAuth.User = socksURL.User.Username()
+			// 	proxyAuth.Password, _ = socksURL.User.Password()
+			// }
+			// dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+			proxyAuth.User = proxyURL.User.Username()
+			proxyAuth.Password, _ = proxyURL.User.Password()
+
+			dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", proxyURL.Hostname(), proxyURL.Port()), proxyAuth, proxy.Direct)
+
+			dc := dialer.(interface {
+				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+			})
+			if proxyErr == nil {
+				transport.DialContext = dc.DialContext
+			}
+		} else {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
 	}
 
 	var jar *cookiejar.Jar
