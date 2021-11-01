@@ -105,6 +105,12 @@ type Matcher struct {
 	// values:
 	//   - "hex"
 	Encoding string `yaml:"encoding,omitempty" jsonschema:"title=encoding for word field,description=Optional encoding for the word fields,enum=hex"`
+	// description: |
+	//   CaseInsensitive enables case-insensitive matches. Default is false.
+	// values:
+	//   - false
+	//   - true
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
 
 	// cached data for the compiled matcher
 	condition     ConditionType
