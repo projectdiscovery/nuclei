@@ -2,7 +2,6 @@ package file
 
 import (
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -61,7 +60,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-			debug(event, request, filePath, fileContent)
+			dumpResponse(event, request.options, fileContent, filePath)
 
 			callback(event)
 		}(data)
@@ -76,14 +75,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, filePath string, fileContent string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, fileContent string, filePath string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
-		if !responsehighlighter.IsASCII(fileContent) {
+		if responsehighlighter.HasBinaryContent(fileContent) {
 			hexDump = true
 			fileContent = hex.Dump([]byte(fileContent))
 		}
-		logHeader := fmt.Sprintf("[%s] Dumped file request for %s\n", request.options.TemplateID, filePath)
-		gologger.Debug().Msgf("%s\n%s", logHeader, responsehighlighter.Highlight(event.OperatorsResult, fileContent, request.options.Options.NoColor, hexDump))
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, fileContent, cliOptions.NoColor, hexDump)
+		gologger.Debug().Msgf("[%s] Dumped file request for %s\n\n%s", requestOptions.TemplateID, filePath, highlightedResponse)
 	}
 }
