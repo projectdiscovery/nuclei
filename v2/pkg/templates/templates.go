@@ -90,6 +90,8 @@ var TemplateTypes = []string{
 	"headless",
 	"network",
 	"workflow",
+	"ssl",
+	"websocket",
 }
 
 // Type returns the type of the template
@@ -107,6 +109,10 @@ func (t *Template) Type() string {
 		return "network"
 	case len(t.Workflows) > 0:
 		return "workflow"
+	case len(t.RequestsSSL) > 0:
+		return "ssl"
+	case len(t.RequestsWebsocket) > 0:
+		return "websocket"
 	default:
 		return ""
 	}

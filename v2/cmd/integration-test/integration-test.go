@@ -22,10 +22,11 @@ func main() {
 	failed := aurora.Red("[✘]").String()
 
 	protocolTests := map[string]map[string]testutils.TestCase{
-		"http":     httpTestcases,
-		"network":  networkTestcases,
-		"dns":      dnsTestCases,
-		"workflow": workflowTestcases,
+		"http":      httpTestcases,
+		"network":   networkTestcases,
+		"dns":       dnsTestCases,
+		"workflow":  workflowTestcases,
+		"websocket": websocketTestCases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {
