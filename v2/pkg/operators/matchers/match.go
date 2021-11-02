@@ -118,7 +118,7 @@ func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 	var matchedBinary []string
 	// Iterate over all the words accepted as valid
-	for i, binary := range m.binaryCompiled {
+	for i, binary := range m.binaryDecoded {
 		if !strings.Contains(corpus, binary) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.

@@ -48,7 +48,7 @@ func (m *Matcher) CompileMatchers() error {
 		if decoded, err := hex.DecodeString(value); err != nil {
 			return fmt.Errorf("could not hex decode binary: %s", value)
 		} else {
-			m.binaryCompiled = append(m.binaryCompiled, string(decoded))
+			m.binaryDecoded = append(m.binaryDecoded, string(decoded))
 		}
 	}
 
