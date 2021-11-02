@@ -366,7 +366,9 @@ func (r *Runner) RunEnumeration() error {
 
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
+		TemplateURLs:       r.options.TemplateURLs,
 		Workflows:          r.options.Workflows,
+		WorkflowURLs:       r.options.WorkflowURLs,
 		ExcludeTemplates:   r.options.ExcludedTemplates,
 		Tags:               r.options.Tags,
 		ExcludeTags:        r.options.ExcludeTags,
