@@ -6,6 +6,7 @@ import (
 	"github.com/alecthomas/jsonschema"
 )
 
+// TypeHolder is used to hold internal type of the extractor
 type TypeHolder struct {
 	ExtractorType ExtractorType
 }
