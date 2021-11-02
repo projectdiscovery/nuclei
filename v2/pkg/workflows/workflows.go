@@ -5,7 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
 
-// Workflow is a workflow to execute with chained requests, etc.
+// Workflow is a workflow to execute with chained requests,  etc.
 type Workflow struct {
 	// description: |
 	//   Workflows is a list of workflows to execute for a template.
