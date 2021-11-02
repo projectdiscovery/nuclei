@@ -54,7 +54,7 @@ func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts pr
 		Tags:               options.Tags,
 		ExcludeTags:        options.ExcludeTags,
 		IncludeTemplates:   options.IncludeTemplates,
-		Authors:            options.Author,
+		Authors:            options.Authors,
 		Severities:         options.Severities,
 		ExcludeSeverities:  options.ExcludeSeverities,
 		IncludeTags:        options.IncludeTags,
