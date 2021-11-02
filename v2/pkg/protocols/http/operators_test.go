@@ -235,7 +235,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		event["body"] = exampleResponseBody
 
 		extractor := &extractors.Extractor{
-			Type:            "kval",
+			Type:            extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal:            []string{"TEST_HEADER"}, // only applies to KVal
 			CaseInsensitive: true,
 		}

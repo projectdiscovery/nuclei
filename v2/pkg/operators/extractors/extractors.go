@@ -128,15 +128,12 @@ const (
 	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
+	//limit
 	limit
 )
 
 // ExtractorTypes is a table for conversion of extractor type from string.
 var extractorMappings = map[ExtractorType]string{
-	// "regex": RegexExtractor,
-	// "kval":  KValExtractor,
-	// "xpath": XPathExtractor,
-	// "json":  JSONExtractor,
 	RegexExtractor: "regex",
 	KValExtractor:  "kval",
 	XPathExtractor: "xpath",
@@ -145,7 +142,7 @@ var extractorMappings = map[ExtractorType]string{
 
 // GetType returns the type of the matcher
 func (e *Extractor) GetType() ExtractorType {
-	return e.extractorType
+	return e.Type.ExtractorType
 }
 
 func GetSupportedExtractorTypes() ExtractorTypes {
