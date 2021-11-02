@@ -113,10 +113,11 @@ type Matcher struct {
 	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
 
 	// cached data for the compiled matcher
-	condition     ConditionType
-	matcherType   MatcherType
-	regexCompiled []*regexp.Regexp
-	dslCompiled   []*govaluate.EvaluableExpression
+	condition      ConditionType
+	matcherType    MatcherType
+	binaryCompiled []string
+	regexCompiled  []*regexp.Regexp
+	dslCompiled    []*govaluate.EvaluableExpression
 }
 
 // MatcherType is the type of the matcher specified

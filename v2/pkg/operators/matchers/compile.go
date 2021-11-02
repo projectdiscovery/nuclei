@@ -43,6 +43,15 @@ func (m *Matcher) CompileMatchers() error {
 		m.regexCompiled = append(m.regexCompiled, compiled)
 	}
 
+	// Compile and validate binary Values in matcher
+	for _, value := range m.Binary {
+		if decoded, err := hex.DecodeString(value); err != nil {
+			return fmt.Errorf("could not hex decode binary: %s", value)
+		} else {
+			m.binaryCompiled = append(m.binaryCompiled, string(decoded))
+		}
+	}
+
 	// Compile the dsl expressions
 	for _, expr := range m.DSL {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
