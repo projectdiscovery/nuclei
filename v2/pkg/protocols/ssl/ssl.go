@@ -36,37 +36,37 @@ type Request struct {
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
-	r.options = options
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
-	r.dialer = client
+	request.dialer = client
 
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
 	return nil
 }
 
 // Requests returns the total number of requests the rule will perform
-func (r *Request) Requests() int {
+func (request *Request) Requests() int {
 	return 1
 }
 
 // GetID returns the ID for the request if any.
-func (r *Request) GetID() string {
+func (request *Request) GetID() string {
 	return ""
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	address, err := getAddress(input)
 	if err != nil {
 		return nil
@@ -75,24 +75,24 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 
 	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
 
-	conn, err := r.dialer.DialTLSWithConfig(context.Background(), "tcp", address, config)
+	conn, err := request.dialer.DialTLSWithConfig(context.Background(), "tcp", address, config)
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, input, "ssl", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
+		request.options.Output.Request(request.options.TemplateID, input, "ssl", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
-	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(r.options.Options.Timeout) * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	connTLS, ok := conn.(*tls.Conn)
 	if !ok {
 		return nil
 	}
-	r.options.Output.Request(r.options.TemplateID, address, "ssl", err)
+	request.options.Output.Request(request.options.TemplateID, address, "ssl", err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
-	if r.options.Options.Debug || r.options.Options.DebugRequests {
-		gologger.Info().Str("address", input).Msgf("[%s] Dumped SSL request for %s", r.options.TemplateID, input)
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Info().Str("address", input).Msgf("[%s] Dumped SSL request for %s", request.options.TemplateID, input)
 	}
 
 	state := connTLS.ConnectionState()
@@ -110,13 +110,13 @@ func (r *Request) ExecuteWithResults(input string, dynamicValues, previous outpu
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["not_after"] = float64(cert.NotAfter.Unix())
-	data["ip"] = r.dialer.GetDialedIP(hostname)
+	data["ip"] = request.dialer.GetDialedIP(hostname)
 
-	event := eventcreator.CreateEvent(r, data, r.options.Options.Debug || r.options.Options.DebugResponse)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
+	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		responseOutput := jsonDataString
-		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", r.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, r.options.Options.NoColor))
+		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", request.options.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor))
 	}
 	callback(event)
 	return nil
@@ -144,30 +144,30 @@ func getAddress(toTest string) (string, error) {
 // Match performs matching operation for a matcher on model and returns:
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	return protocols.MakeDefaultMatchFunc(data, matcher)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
+func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
 	return protocols.MakeDefaultExtractFunc(data, matcher)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
-func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	return protocols.MakeDefaultResultEvent(r, wrapped)
+func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 // GetCompiledOperators returns a list of the compiled operators
-func (r *Request) GetCompiledOperators() []*operators.Operators {
-	return []*operators.Operators{r.CompiledOperators}
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{request.CompiledOperators}
 }
 
-func (r *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       types.ToString(r.options.TemplateID),
-		TemplatePath:     types.ToString(r.options.TemplatePath),
-		Info:             r.options.TemplateInfo,
+		TemplateID:       types.ToString(request.options.TemplateID),
+		TemplatePath:     types.ToString(request.options.TemplatePath),
+		Info:             request.options.TemplateInfo,
 		Type:             "ssl",
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),

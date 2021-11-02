@@ -9,8 +9,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/ssl"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/websocket"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
