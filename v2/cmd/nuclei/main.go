@@ -54,8 +54,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "templates", "Templates",
 		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "template or template directory paths to include in the scan"),
+		flagSet.StringSliceVarP(&options.TemplateURLs, "template-urls", "tu", []string{}, "URL to a list of templates"),
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "workflow or workflow directory paths to include in the scan"),
+		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-urls", "wu", []string{}, "URL to a list of workflows to run"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 	)
