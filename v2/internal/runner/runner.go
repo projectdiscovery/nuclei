@@ -79,7 +79,7 @@ func New(options *types.Options) (*Runner, error) {
 		parsers.ShouldValidate = true
 	}
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+		gologger.Error().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
 		browser, err := engine.New(options)
