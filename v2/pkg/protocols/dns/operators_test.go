@@ -134,6 +134,30 @@ func TestDNSOperatorMatch(t *testing.T) {
 		require.False(t, isMatched, "could match invalid response matcher")
 		require.Equal(t, []string{}, matched)
 	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		req := new(dns.Msg)
+		req.Question = append(req.Question, dns.Question{Name: "ONE.ONE.ONE.ONE.", Qtype: dns.TypeA, Qclass: dns.ClassINET})
+
+		resp := new(dns.Msg)
+		resp.Rcode = dns.RcodeSuccess
+		resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "ONE.ONE.ONE.ONE."}})
+
+		event := request.responseToDSLMap(req, resp, "ONE.ONE.ONE.ONE", "ONE.ONE.ONE.ONE")
+
+		matcher := &matchers.Matcher{
+			Part:            "raw",
+			Type:            "word",
+			Words:           []string{"one.ONE.one.ONE"},
+			CaseInsensitive: true,
+		}
+		err = matcher.CompileMatchers()
+		require.Nil(t, err, "could not compile matcher")
+
+		isMatch, matched := request.Match(event, matcher)
+		require.True(t, isMatch, "could not match valid response")
+		require.Equal(t, []string{"one.one.one.one"}, matched)
+	})
 }
 
 func TestDNSOperatorExtract(t *testing.T) {

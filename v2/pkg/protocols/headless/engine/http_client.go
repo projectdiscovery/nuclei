@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"time"
 
@@ -17,15 +19,22 @@ import (
 // newhttpClient creates a new http client for headless communication with a timeout
 func newhttpClient(options *types.Options) *http.Client {
 	dialer := protocolstate.Dialer
+
+	// Set the base TLS configuration definition
+	tlsConfig := &tls.Config{
+		Renegotiation:      tls.RenegotiateOnceAsClient,
+		InsecureSkipVerify: true,
+	}
+
+	// Add the client certificate authentication to the request if it's configured
+	tlsConfig = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
 		MaxIdleConns:        500,
 		MaxIdleConnsPerHost: 500,
 		MaxConnsPerHost:     500,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
+		TLSClientConfig:     tlsConfig,
 	}
 
 	if options.ProxyURL != "" {
@@ -50,5 +59,17 @@ func newhttpClient(options *types.Options) *http.Client {
 		}
 	}
 
-	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}
+	jar, _ := cookiejar.New(nil)
+
+	httpclient := &http.Client{
+		Transport: transport,
+		Timeout:   time.Duration(options.Timeout*3) * time.Second,
+		Jar:       jar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// the browser should follow redirects not us
+			return http.ErrUseLastResponse
+		},
+	}
+
+	return httpclient
 }

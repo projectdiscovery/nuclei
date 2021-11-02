@@ -107,6 +107,13 @@ type Extractor struct {
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
 	Internal bool `yaml:"internal,omitempty" jsonschema:"title=mark extracted value for internal variable use,description=Internal when set to true will allow using the value extracted in the next request for some protocols"`
+
+	// description: |
+	//   CaseInsensitive enables case-insensitive extractions. Default is false.
+	// values:
+	//   - false
+	//   - true
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
 }
 
 // ExtractorType is the type of the extractor specified

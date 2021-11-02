@@ -42,6 +42,10 @@ func (m *Matcher) MatchSize(length int) bool {
 
 // MatchWords matches a word check against a corpus.
 func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) (bool, []string) {
+	if m.CaseInsensitive {
+		corpus = strings.ToLower(corpus)
+	}
+
 	var matchedWords []string
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
