@@ -5,7 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// Engine is an engine for running Nuclei Templates/Workflows.
+// Engine is an executer for running Nuclei Templates/Workflows.
 //
 // The engine contains multiple thread pools which allow using different
 // concurrency values per protocol executed.
@@ -19,14 +19,16 @@ type Engine struct {
 	executerOpts protocols.ExecuterOptions
 }
 
-// InputProvider is an input provider interface for the nuclei execution
+// InputProvider is an input providing interface for the nuclei execution
 // engine.
 //
-// An example InputProvider is provided in form of hmap input provider.
+// An example InputProvider implementation is provided in form of hybrid
+// input provider in pkg/core/inputs/hybrid/hmap.go
 type InputProvider interface {
 	// Count returns the number of items for input provider
 	Count() int64
-	// Scan calls a callback function till the input provider is exhausted
+	// Scan iterates the input and for each found item calls the callback
+	// until the input provider has been exhausted.
 	Scan(callback func(value string))
 }
 
