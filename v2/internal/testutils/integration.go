@@ -137,16 +137,10 @@ func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate
 		}()
 	})
 
-	var router *httprouter.Router
 	if path != "" {
-		router = httprouter.New()
+		router := httprouter.New()
 		router.HandlerFunc("*", "/test", handlerFunc)
+		return httptest.NewServer(router)
 	}
-	var ts *httptest.Server
-	if router != nil {
-		ts = httptest.NewServer(router)
-	} else {
-		ts = httptest.NewServer(handlerFunc)
-	}
-	return ts
+	return httptest.NewServer(handlerFunc)
 }
