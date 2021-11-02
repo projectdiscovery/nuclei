@@ -29,8 +29,8 @@ type Options struct {
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
-	// Author filters templates based on their author and only run the matching ones.
-	Author goflags.NormalizedStringSlice
+	// Authors filters templates based on their author and only run the matching ones.
+	Authors goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
