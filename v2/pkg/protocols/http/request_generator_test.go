@@ -3,6 +3,7 @@ package http
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/stretchr/testify/require"
 )
@@ -28,10 +29,11 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		attackType: generators.ClusterBomb,
+		AttackType: "clusterbomb",
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
-	req.generator, err = generators.New(req.Payloads, req.attackType, "")
+	catalogInstance := catalog.New("")
+	req.generator, err = generators.New(req.Payloads, req.AttackType, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()
@@ -51,10 +53,11 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		attackType: generators.ClusterBomb,
+		AttackType: "clusterbomb",
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
-	req.generator, err = generators.New(req.Payloads, req.attackType, "")
+	catalogInstance := catalog.New("")
+	req.generator, err = generators.New(req.Payloads, req.AttackType, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()

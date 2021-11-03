@@ -2,7 +2,12 @@
 
 package generators
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+)
 
 // Generator is the generator struct for generating payloads
 type Generator struct {
@@ -30,21 +35,45 @@ var StringToType = map[string]Type{
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, payloadType Type, templatePath string) (*Generator, error) {
+func New(payloads map[string]interface{}, attackType, templatePath string, catalog *catalog.Catalog) (*Generator, error) {
+	if attackType == "" {
+		attackType = "batteringram"
+	}
+	attackTypeValue, ok := StringToType[attackType]
+	if !ok {
+		return nil, fmt.Errorf("invalid attack type provided: %s", attackType)
+	}
+
+	// Resolve payload paths if they are files.
+	payloadsFinal := make(map[string]interface{})
+	for name, payload := range payloads {
+		payloadsFinal[name] = payload
+	}
+	for name, payload := range payloads {
+		payloadStr, ok := payload.(string)
+		if ok {
+			final, resolveErr := catalog.ResolvePath(payloadStr, templatePath)
+			if resolveErr != nil {
+				return nil, errors.Wrap(resolveErr, "could not read payload file")
+			}
+			payloadsFinal[name] = final
+		}
+	}
+
 	generator := &Generator{}
 	if err := generator.validate(payloads, templatePath); err != nil {
 		return nil, err
 	}
 
-	compiled, err := loadPayloads(payloads)
+	compiled, err := loadPayloads(payloadsFinal)
 	if err != nil {
 		return nil, err
 	}
-	generator.Type = payloadType
+	generator.Type = attackTypeValue
 	generator.payloads = compiled
 
 	// Validate the batteringram payload set
-	if payloadType == BatteringRam {
+	if attackTypeValue == BatteringRam {
 		if len(payloads) != 1 {
 			return nil, errors.New("batteringram must have single payload set")
 		}
