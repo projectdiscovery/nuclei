@@ -92,7 +92,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Str("address", input).Msgf("[%s] Dumped SSL request for %s", request.options.TemplateID, input)
+		gologger.Debug().Str("address", input).Msgf("[%s] Dumped SSL request for %s", request.options.TemplateID, input)
 	}
 
 	state := connTLS.ConnectionState()
@@ -116,7 +116,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		responseOutput := jsonDataString
 		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor, false))
 	}
 	callback(event)
 	return nil
@@ -131,7 +131,7 @@ func getAddress(toTest string) (string, error) {
 		}
 		_, port, _ := net.SplitHostPort(parsed.Host)
 
-		if parsed.Scheme == "https" && port == "" {
+		if strings.ToLower(parsed.Scheme) == "https" && port == "" {
 			toTest = net.JoinHostPort(parsed.Host, "443")
 		} else {
 			toTest = parsed.Host

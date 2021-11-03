@@ -116,7 +116,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile, options.ErrorLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}

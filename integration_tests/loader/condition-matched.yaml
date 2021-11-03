@@ -1,0 +1,11 @@
+id: condition-matched-workflow
+
+info:
+  name: Condition Matched Workflow
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: workflow/match-1.yaml
+    subtemplates:
+      - template: workflow/match-2.yaml

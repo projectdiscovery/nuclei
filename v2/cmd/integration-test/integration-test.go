@@ -26,6 +26,7 @@ func main() {
 		"network":   networkTestcases,
 		"dns":       dnsTestCases,
 		"workflow":  workflowTestcases,
+		"loader":    loaderTestcases,
 		"websocket": websocketTestCases,
 	}
 	for proto, tests := range protocolTests {

@@ -103,6 +103,25 @@ func TestNetworkOperatorMatch(t *testing.T) {
 		require.False(t, isMatched, "could match invalid response matcher")
 		require.Equal(t, []string{}, matched)
 	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		matcher := &matchers.Matcher{
+			Part:            "body",
+			Type:            "word",
+			Words:           []string{"rESp-DAta"},
+			CaseInsensitive: true,
+		}
+		err = matcher.CompileMatchers()
+		require.Nil(t, err, "could not compile matcher")
+
+		req := "TEST-DATA\r\n"
+		resp := "RESP-DATA\r\nSTAT \r\n"
+		event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "TEST")
+
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, []string{"resp-data"}, matched)
+	})
 }
 
 func TestNetworkOperatorExtract(t *testing.T) {

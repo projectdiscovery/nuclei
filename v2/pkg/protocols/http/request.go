@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -356,7 +357,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		request.options.Output.Request(request.options.TemplateID, formedURL, "http", err)
+		request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
 		request.options.Progress.IncrementErrorsBy(1)
 
 		// If we have interactsh markers and request times out, still send
@@ -394,7 +395,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
-	request.options.Output.Request(request.options.TemplateID, formedURL, "http", err)
+	request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
 
 	duration := time.Since(timeStart)
 
@@ -450,7 +451,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 	// Decode gbk response content-types
 	// gb18030 supersedes gb2312
-	if isContentTypeGbk(resp.Header.Get("Content-Type")) {
+	responseContentType := resp.Header.Get("Content-Type")
+	if isContentTypeGbk(responseContentType) {
 		dumpedResponse, err = decodegbk(dumpedResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
@@ -509,10 +511,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 	})
 
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", request.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, string(redirectedResponse), request.options.Options.NoColor))
-	}
+	debug(request, formedURL, redirectedResponse, responseContentType, event)
 
 	callback(event)
 	return nil
@@ -530,5 +529,31 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 				req.request.Host = vv
 			}
 		}
+	}
+}
+
+const CRLF = "\r\n"
+
+func debug(request *Request, formedURL string, redirectedResponse []byte, responseContentType string, event *output.InternalWrappedEvent) {
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		hexDump := false
+		response := string(redirectedResponse)
+
+		var headers string
+		if responseContentType == "" || responseContentType == "application/octet-stream" || (responseContentType == "application/x-www-form-urlencoded" && responsehighlighter.IsASCII(response)) {
+			hexDump = true
+			responseLines := strings.Split(response, CRLF)
+			for i, value := range responseLines {
+				headers += value + CRLF
+				if value == "" {
+					response = hex.Dump([]byte(strings.Join(responseLines[i+1:], "")))
+					break
+				}
+			}
+		}
+		logMessageHeader := fmt.Sprintf("[%s] Dumped HTTP response for %s\n", request.options.TemplateID, formedURL)
+
+		gologger.Debug().Msgf("%s\n%s", logMessageHeader, responsehighlighter.Highlight(event.OperatorsResult, headers, request.options.Options.NoColor, false))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, response, request.options.Options.NoColor, hexDump))
 	}
 }
