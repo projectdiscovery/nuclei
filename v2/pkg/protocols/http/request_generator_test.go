@@ -29,7 +29,7 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
 	catalogInstance := catalog.New("")
@@ -53,7 +53,7 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
 	catalogInstance := catalog.New("")

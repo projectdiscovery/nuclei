@@ -63,8 +63,8 @@ type AttackTypeHolder struct {
 func (holder AttackTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
-		Title:       "type of the protocol",
-		Description: "Type of the protocol",
+		Title:       "type of the attack",
+		Description: "Type of the attack",
 	}
 	for _, types := range GetSupportedAttackTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())
