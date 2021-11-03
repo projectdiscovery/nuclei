@@ -8,6 +8,9 @@ import (
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification
 func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
+	// usually browsers don't use chunked transfer encoding so we set the content-length nevertheless
+	ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
+
 	for _, rule := range p.rules {
 		if rule.Part != "request" {
 			continue
