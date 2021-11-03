@@ -26,6 +26,7 @@ require (
 	github.com/owenrumney/go-sarif v1.0.11
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
+	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345
 	github.com/projectdiscovery/fastdialer v0.0.13
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5
@@ -49,7 +50,10 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
+	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
 	github.com/xanzy/go-gitlab v0.51.1
+	github.com/ysmood/gson v0.6.4 // indirect
+	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.7.0
 	go.uber.org/ratelimit v0.2.0
@@ -100,10 +104,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e // indirect
-	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.8 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
@@ -113,16 +115,10 @@ require (
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.3.0 // indirect
-	github.com/ysmood/gson v0.6.4 // indirect
-	github.com/ysmood/leakless v0.7.0 // indirect
 	github.com/zclconf/go-cty v1.8.4 // indirect
-	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 // indirect
-	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	golang.org/x/crypto v0.0.0-20201124201722-c8d3bf9c5392 // indirect
 	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

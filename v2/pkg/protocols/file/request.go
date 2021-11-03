@@ -1,6 +1,8 @@
 package file
 
 import (
+	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -49,30 +51,39 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				gologger.Error().Msgf("Could not read file path %s: %s\n", filePath, err)
 				return
 			}
-			dataStr := tostring.UnsafeToString(buffer)
+			fileContent := tostring.UnsafeToString(buffer)
 
 			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", request.options.TemplateID, filePath)
-			outputEvent := request.responseToDSLMap(dataStr, input, filePath)
+			outputEvent := request.responseToDSLMap(fileContent, input, filePath)
 			for k, v := range previous {
 				outputEvent[k] = v
 			}
 
 			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-			if request.options.Options.Debug || request.options.Options.DebugResponse {
-				gologger.Info().Msgf("[%s] Dumped file request for %s", request.options.TemplateID, filePath)
-				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataStr, request.options.Options.NoColor))
-			}
+			debug(event, request, filePath, fileContent)
 
 			callback(event)
 		}(data)
 	})
 	wg.Wait()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "file", err)
+		request.options.Output.Request(request.options.TemplatePath, input, "file", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
 	request.options.Progress.IncrementRequests()
 	return nil
+}
+
+func debug(event *output.InternalWrappedEvent, request *Request, filePath string, fileContent string) {
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		hexDump := false
+		if !responsehighlighter.IsASCII(fileContent) {
+			hexDump = true
+			fileContent = hex.Dump([]byte(fileContent))
+		}
+		logHeader := fmt.Sprintf("[%s] Dumped file request for %s\n", request.options.TemplateID, filePath)
+		gologger.Debug().Msgf("%s\n%s", logHeader, responsehighlighter.Highlight(event.OperatorsResult, fileContent, request.options.Options.NoColor, hexDump))
+	}
 }

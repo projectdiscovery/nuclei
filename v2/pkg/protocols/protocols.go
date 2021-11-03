@@ -163,14 +163,11 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		result := matcher.Result(matcher.MatchSize(len(item)))
 		return result, nil
 	case matchers.WordsMatcher:
-		result, value := matcher.MatchWords(item, nil)
-		return matcher.Result(result), value
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
 	case matchers.RegexMatcher:
-		result, value := matcher.MatchRegex(item)
-		return matcher.Result(result), value
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
-		result, value := matcher.MatchBinary(item)
-		return matcher.Result(result), value
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data)), nil
 	}

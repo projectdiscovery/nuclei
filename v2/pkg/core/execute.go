@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/rs/xid"
 	"go.uber.org/atomic"
@@ -34,7 +35,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, input Inpu
 		templateType := template.Type()
 
 		var wg *sizedwaitgroup.SizedWaitGroup
-		if templateType == "headless" {
+		if templateType == types.HeadlessProtocol {
 			wg = e.workPool.Headless
 		} else {
 			wg = e.workPool.Default
@@ -65,7 +66,7 @@ func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Templ
 }
 
 // executeModelWithInput executes a type of template with input
-func (e *Engine) executeModelWithInput(templateType string, template *templates.Template, input InputProvider, results *atomic.Bool) {
+func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template *templates.Template, input InputProvider, results *atomic.Bool) {
 	wg := e.workPool.InputPool(templateType)
 
 	input.Scan(func(scannedValue string) {
@@ -81,7 +82,7 @@ func (e *Engine) executeModelWithInput(templateType string, template *templates.
 			var match bool
 			var err error
 			switch templateType {
-			case "workflow":
+			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
 				match, err = template.Executer.Execute(value)
