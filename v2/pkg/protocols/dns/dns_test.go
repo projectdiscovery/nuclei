@@ -27,12 +27,12 @@ func TestDNSCompileMake(t *testing.T) {
 	testutils.Init(options)
 	const templateID = "testing-dns"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		RequestType: "A",
+		Class:       "INET",
+		Retries:     5,
+		ID:          templateID,
+		Recursion:   false,
+		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
