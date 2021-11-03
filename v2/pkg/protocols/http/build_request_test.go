@@ -134,7 +134,7 @@ func TestMakeRequestFromRawWithPayloads(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -173,7 +173,7 @@ func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
