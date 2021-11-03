@@ -23,15 +23,8 @@ func loadProxyServers(options *types.Options) error {
 		return nil
 	}
 	for _, p := range options.Proxy {
-		if strings.TrimSpace(p) == "" {
-			continue
-		}
-		if isSupportedProtocol(p, true) {
-			if proxyURL, err := validateProxyURL(p); err != nil {
-				return err
-			} else {
-				proxyURLList = append(proxyURLList, proxyURL)
-			}
+		if proxyURL, err := validateProxyURL(p); err == nil {
+			proxyURLList = append(proxyURLList, proxyURL)
 		} else if fileutil.FileExists(p) {
 			file, err := os.Open(p)
 			if err != nil {
@@ -129,17 +122,13 @@ func assignProxyURL(proxyURL url.URL, options *types.Options) bool {
 }
 
 func validateProxyURL(proxy string) (url.URL, error) {
-	if url, err := url.Parse(proxy); err == nil && isSupportedProtocol(url.Scheme, false) {
+	if url, err := url.Parse(proxy); err == nil && isSupportedProtocol(url.Scheme) {
 		return *url, nil
 	}
 	return url.URL{}, errors.New("invalid proxy format (It should be http[s]/socks5://[username:password@]host:port)")
 }
 
 //isSupportedProtocol checks given protocols are supported
-func isSupportedProtocol(value string, prefixCheck bool) bool {
-	if prefixCheck {
-		value = strings.ToLower(value)
-		return strings.HasPrefix(value, types.HTTP) || strings.HasPrefix(value, types.HTTPS) || strings.HasPrefix(value, types.SOCKS5)
-	}
+func isSupportedProtocol(value string) bool {
 	return value == types.HTTP || value == types.HTTPS || value == types.SOCKS5
 }
