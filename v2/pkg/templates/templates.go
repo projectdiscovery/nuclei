@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -72,4 +73,24 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+}
+
+// Type returns the type of the template
+func (t *Template) Type() types.ProtocolType {
+	switch {
+	case len(t.RequestsDNS) > 0:
+		return types.DNSProtocol
+	case len(t.RequestsFile) > 0:
+		return types.FileProtocol
+	case len(t.RequestsHTTP) > 0:
+		return types.HTTPProtocol
+	case len(t.RequestsHeadless) > 0:
+		return types.HeadlessProtocol
+	case len(t.RequestsNetwork) > 0:
+		return types.NetworkProtocol
+	case t.CompiledWorkflow != nil:
+		return types.WorkflowProtocol
+	default:
+		return types.InvalidProtocol
+	}
 }
