@@ -145,7 +145,7 @@ func (e *Extractor) GetType() ExtractorType {
 	return e.Type.ExtractorType
 }
 
-func GetSupportedExtractorTypes() ExtractorTypes {
+func GetSupportedExtractorTypes() SupportedExtractorTypes {
 	var result []ExtractorType
 	for index := ExtractorType(1); index < limit; index++ {
 		result = append(result, index)
