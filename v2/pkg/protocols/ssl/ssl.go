@@ -115,9 +115,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		responseOutput := jsonDataString
 		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor, false))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
 	}
 	callback(event)
 	return nil

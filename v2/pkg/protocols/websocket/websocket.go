@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -212,57 +213,15 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		_, _ = io.Copy(responseBuilder, readBuffer) // Copy initial response
 	}
 
-	reqBuilder := &strings.Builder{}
-
-	inputEvents := make(map[string]interface{})
-	for _, req := range request.Inputs {
-		reqBuilder.Grow(len(req.Data))
-
-		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
-		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(dataErr, "could not evaluate template expressions")
-		}
-		reqBuilder.WriteString(string(finalData))
-
-		err = wsutil.WriteClientMessage(conn, ws.OpText, finalData)
-		if err != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not write request to server")
-		}
-
-		msg, opCode, err := wsutil.ReadServerData(conn)
-		if err != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not write request to server")
-		}
-		// Only perform matching and writes in case we recieve
-		// text or binary opcode from the websocket server.
-		if opCode != ws.OpText && opCode != ws.OpBinary {
-			continue
-		}
-
-		responseBuilder.Write(msg)
-		if req.Name != "" {
-			bufferStr := string(msg)
-			inputEvents[req.Name] = bufferStr
-
-			// Run any internal extractors for the request here and add found values to map.
-			if request.CompiledOperators != nil {
-				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
-				for k, v := range values {
-					dynamicValues[k] = v
-				}
-			}
-		}
+	events, requestOutput, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not read write response")
 	}
 	request.options.Progress.IncrementRequests()
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		requestOutput := reqBuilder.String()
 		gologger.Debug().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", request.options.TemplateID, input)
 		gologger.Print().Msgf("%s", requestOutput)
 	}
@@ -274,20 +233,17 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	for k, v := range previous {
 		data[k] = v
 	}
-	for k, v := range dynamicValues {
-		data[k] = v
-	}
-	for k, v := range inputEvents {
+	for k, v := range events {
 		data[k] = v
 	}
 	data["success"] = "true"
-	data["request"] = reqBuilder.String()
+	data["request"] = requestOutput
 	data["response"] = responseBuilder.String()
 	data["host"] = input
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
-		internalWrappedEvent.OperatorsResult.PayloadValues = dynamicValues
+		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
 	})
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
@@ -297,6 +253,57 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 
 	callback(event)
 	return nil
+}
+
+func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, err error) {
+	reqBuilder := &strings.Builder{}
+	inputEvents := make(map[string]interface{})
+
+	for _, req := range request.Inputs {
+		reqBuilder.Grow(len(req.Data))
+
+		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
+		if dataErr != nil {
+			request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return nil, "", errors.Wrap(dataErr, "could not evaluate template expressions")
+		}
+		reqBuilder.WriteString(string(finalData))
+
+		err = wsutil.WriteClientMessage(conn, ws.OpText, finalData)
+		if err != nil {
+			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return nil, "", errors.Wrap(err, "could not write request to server")
+		}
+
+		msg, opCode, err := wsutil.ReadServerData(conn)
+		if err != nil {
+			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return nil, "", errors.Wrap(err, "could not write request to server")
+		}
+		// Only perform matching and writes in case we recieve
+		// text or binary opcode from the websocket server.
+		if opCode != ws.OpText && opCode != ws.OpBinary {
+			continue
+		}
+
+		respBuilder.Write(msg)
+		if req.Name != "" {
+			bufferStr := string(msg)
+			inputEvents[req.Name] = bufferStr
+
+			// Run any internal extractors for the request here and add found values to map.
+			if request.CompiledOperators != nil {
+				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
+				for k, v := range values {
+					inputEvents[k] = v
+				}
+			}
+		}
+	}
+	return inputEvents, reqBuilder.String(), nil
 }
 
 // getAddress returns the address of the host to make request to
