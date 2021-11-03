@@ -11,7 +11,7 @@ func TestBatteringRamGenerator(t *testing.T) {
 	usernames := []string{"admin", "password"}
 
 	catalogInstance := catalog.New("")
-	generator, err := New(map[string]interface{}{"username": usernames}, "batteringram", "", catalogInstance)
+	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRamAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -31,7 +31,7 @@ func TestPitchforkGenerator(t *testing.T) {
 	passwords := []string{"password1", "password2", "password3"}
 
 	catalogInstance := catalog.New("")
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, "pitchfork", "", catalogInstance)
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchForkAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -53,7 +53,7 @@ func TestClusterbombGenerator(t *testing.T) {
 	passwords := []string{"admin", "password", "token"}
 
 	catalogInstance := catalog.New("")
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, "clusterbomb", "", catalogInstance)
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterbombAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
