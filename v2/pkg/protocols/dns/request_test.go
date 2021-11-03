@@ -20,12 +20,12 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		RequestType: "A",
+		Class:       "INET",
+		Retries:     5,
+		ID:          templateID,
+		Recursion:   false,
+		Name:        "{{FQDN}}",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",

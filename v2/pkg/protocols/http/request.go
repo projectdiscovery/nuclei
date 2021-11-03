@@ -28,11 +28,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
 )
 
 const defaultMaxWorkers = 150
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.HTTPProtocol
+}
 
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {

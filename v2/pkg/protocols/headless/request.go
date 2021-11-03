@@ -12,9 +12,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 var _ protocols.Request = &Request{}
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.HeadlessProtocol
+}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(inputURL string, metadata, previous output.InternalEvent /*TODO review unused parameter*/, callback protocols.OutputEventCallback) error {
