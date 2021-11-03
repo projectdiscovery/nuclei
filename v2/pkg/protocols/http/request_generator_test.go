@@ -29,11 +29,11 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		AttackType: "clusterbomb",
+		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
 	catalogInstance := catalog.New("")
-	req.generator, err = generators.New(req.Payloads, req.AttackType, "", catalogInstance)
+	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()
@@ -53,11 +53,11 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 
 	req := &Request{
 		Payloads:   map[string]interface{}{"username": []string{"admin", "tomcat", "manager"}, "password": []string{"password", "test", "secret"}},
-		AttackType: "clusterbomb",
+		AttackType: generators.AttackTypeHolder{generators.ClusterbombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
 	catalogInstance := catalog.New("")
-	req.generator, err = generators.New(req.Payloads, req.AttackType, "", catalogInstance)
+	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator()

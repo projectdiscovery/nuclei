@@ -3,45 +3,20 @@
 package generators
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
 // Generator is the generator struct for generating payloads
 type Generator struct {
-	Type     Type
+	Type     AttackType
 	payloads map[string][]string
 }
 
-// Type is type of attack
-type Type int
-
-const (
-	// Batteringram replaces same payload into all of the defined payload positions at once.
-	BatteringRam Type = iota + 1
-	// PitchFork replaces variables with positional value from multiple wordlists
-	PitchFork
-	// ClusterBomb replaces variables with all possible combinations of values
-	ClusterBomb
-)
-
-// StringToType is a table for conversion of attack type from string.
-var StringToType = map[string]Type{
-	"batteringram": BatteringRam,
-	"pitchfork":    PitchFork,
-	"clusterbomb":  ClusterBomb,
-}
-
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, attackType, templatePath string, catalog *catalog.Catalog) (*Generator, error) {
-	if attackType == "" {
-		attackType = "batteringram"
-	}
-	attackTypeValue, ok := StringToType[attackType]
-	if !ok {
-		return nil, fmt.Errorf("invalid attack type provided: %s", attackType)
+func New(payloads map[string]interface{}, attackType AttackType, templatePath string, catalog *catalog.Catalog) (*Generator, error) {
+	if attackType.String() == "" {
+		attackType = BatteringRamAttack
 	}
 
 	// Resolve payload paths if they are files.
@@ -69,11 +44,11 @@ func New(payloads map[string]interface{}, attackType, templatePath string, catal
 	if err != nil {
 		return nil, err
 	}
-	generator.Type = attackTypeValue
+	generator.Type = attackType
 	generator.payloads = compiled
 
 	// Validate the batteringram payload set
-	if attackTypeValue == BatteringRam {
+	if attackType == BatteringRamAttack {
 		if len(payloads) != 1 {
 			return nil, errors.New("batteringram must have single payload set")
 		}
@@ -83,7 +58,7 @@ func New(payloads map[string]interface{}, attackType, templatePath string, catal
 
 // Iterator is a single instance of an iterator for a generator structure
 type Iterator struct {
-	Type        Type
+	Type        AttackType
 	position    int
 	msbIterator int
 	total       int
@@ -124,18 +99,18 @@ func (i *Iterator) Remaining() int {
 func (i *Iterator) Total() int {
 	count := 0
 	switch i.Type {
-	case BatteringRam:
+	case BatteringRamAttack:
 		for _, p := range i.payloads {
 			count += len(p.values)
 		}
-	case PitchFork:
+	case PitchForkAttack:
 		count = len(i.payloads[0].values)
 		for _, p := range i.payloads {
 			if count > len(p.values) {
 				count = len(p.values)
 			}
 		}
-	case ClusterBomb:
+	case ClusterbombAttack:
 		count = 1
 		for _, p := range i.payloads {
 			count *= len(p.values)
@@ -147,11 +122,11 @@ func (i *Iterator) Total() int {
 // Value returns the next value for an iterator
 func (i *Iterator) Value() (map[string]interface{}, bool) {
 	switch i.Type {
-	case BatteringRam:
+	case BatteringRamAttack:
 		return i.batteringRamValue()
-	case PitchFork:
+	case PitchForkAttack:
 		return i.pitchforkValue()
-	case ClusterBomb:
+	case ClusterbombAttack:
 		return i.clusterbombValue()
 	default:
 		return i.batteringRamValue()
