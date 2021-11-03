@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
@@ -24,17 +23,11 @@ func newhttpClient(options *types.Options) *http.Client {
 			InsecureSkipVerify: true,
 		},
 	}
-	var proxyenv = os.Getenv(types.HTTP_PROXY_ENV)
-	if proxyenv != "" {
-		if proxyURL, err := url.Parse(proxyenv); err == nil {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	}
-	// if options.ProxyURL != "" {
-	// 	if proxyURL, err := url.Parse(options.ProxyURL); err == nil {
-	// 		transport.Proxy = http.ProxyURL(proxyURL)
-	// 	}
-	// }
 
 	return &http.Client{Transport: transport, Timeout: time.Duration(options.Timeout*3) * time.Second}
 }

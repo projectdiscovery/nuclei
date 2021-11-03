@@ -63,13 +63,9 @@ func New(options *types.Options) (*Browser, error) {
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	var proxyenv = os.Getenv(types.HTTP_PROXY_ENV)
-	if proxyenv != "" {
-		chromeLauncher = chromeLauncher.Proxy(proxyenv)
+	if types.ProxyURL != "" {
+		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
 	}
-	// if options.ProxyURL != "" {
-	// 	chromeLauncher = chromeLauncher.Proxy(options.ProxyURL)
-	// }
 	launcherURL, err := chromeLauncher.Launch()
 	if err != nil {
 		return nil, err

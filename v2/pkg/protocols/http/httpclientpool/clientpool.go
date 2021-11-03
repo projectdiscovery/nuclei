@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -129,13 +128,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-	var proxyenv = os.Getenv(types.HTTP_PROXY_ENV)
-	if proxyenv != "" {
-		proxyURL, err = url.Parse(proxyenv)
+	if types.ProxyURL != "" {
+		proxyURL, err = url.Parse(types.ProxyURL)
 	}
-	// if options.ProxyURL != "" {
-	// 	proxyURL, err = url.Parse(options.ProxyURL)
-	// }
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +176,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		if proxyURL.Scheme == types.SOCKS5 {
 			var proxyAuth *proxy.Auth = &proxy.Auth{}
 			//var proxyAuth *proxy.Auth
-			// socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+			// socksURL, proxyErr := url.Parse(types.ProxySocksURL)
 			// if proxyErr == nil {
 			// 	proxyAuth = &proxy.Auth{}
 			// 	proxyAuth.User = socksURL.User.Username()

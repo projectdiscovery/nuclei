@@ -80,15 +80,9 @@ func processProxyList(options *types.Options) error {
 
 func runProxyConnectivity(proxyURL url.URL, options *types.Options, done chan bool, exitCounter chan bool) {
 	if err := testProxyConnection(proxyURL, options.Timeout); err == nil {
-		// if options.ProxyURL == "" && options.ProxySocksURL == "" {
-		// 	if valid := assignProxyURL(proxyURL, options); valid {
-		// 		done <- true
-		// 	}
-		// }
-		if os.Getenv(types.HTTP_PROXY_ENV) == "" {
-			if valid := assignProxyURL(proxyURL, options); valid {
-				done <- true
-			}
+		if types.ProxyURL == "" && types.ProxySocksURL == "" {
+			assignProxyURL(proxyURL, options)
+			done <- true
 		}
 	}
 	exitCounter <- true
@@ -103,22 +97,17 @@ func testProxyConnection(proxyURL url.URL, timeoutDelay int) error {
 	return nil
 }
 
-func assignProxyURL(proxyURL url.URL, options *types.Options) bool {
-	var isValid bool = true
+func assignProxyURL(proxyURL url.URL, options *types.Options) {
+	os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
 	if proxyURL.Scheme == types.HTTP || proxyURL.Scheme == types.HTTPS {
-		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
-		// options.ProxyURL = proxyURL.String()
-		// options.ProxySocksURL = ""
+		types.ProxyURL = proxyURL.String()
+		types.ProxySocksURL = ""
 		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
 	} else if proxyURL.Scheme == types.SOCKS5 {
-		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
-		// options.ProxyURL = ""
-		// options.ProxySocksURL = proxyURL.String()
+		types.ProxyURL = ""
+		types.ProxySocksURL = proxyURL.String()
 		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
-	} else {
-		isValid = false
 	}
-	return isValid
 }
 
 func validateProxyURL(proxy string) (url.URL, error) {

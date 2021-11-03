@@ -51,7 +51,7 @@ type Options struct {
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy servers or path to file containing such list
 	Proxy goflags.NormalizedStringSlice
-		// TemplatesDirectory is the directory to use for storing templates
+	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
