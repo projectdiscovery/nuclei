@@ -251,11 +251,16 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 			return errors.Wrap(err, "could not write request to server")
 		}
 
-		msg, _, err := wsutil.ReadServerData(conn)
+		msg, opCode, err := wsutil.ReadServerData(conn)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
+		}
+		// Only perform matching and writes in case we recieve
+		// text or binary opcode from the websocket server.
+		if opCode != ws.OpText && opCode != ws.OpBinary {
+			continue
 		}
 
 		responseBuilder.Write(msg)
