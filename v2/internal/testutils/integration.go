@@ -17,15 +17,15 @@ import (
 
 // RunNucleiTemplateAndGetResults returns a list of results for a template
 func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	return runNucleiAndGetResults(true, template, url, debug, extra...)
+	return RunNucleiAndGetResults(true, template, url, debug, extra...)
 }
 
 // RunNucleiWorkflowAndGetResults returns a list of results for a workflow
 func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	return runNucleiAndGetResults(false, template, url, debug, extra...)
+	return RunNucleiAndGetResults(false, template, url, debug, extra...)
 }
 
-func runNucleiAndGetResults(isTemplate bool, template, url string, debug bool, extra ...string) ([]string, error) {
+func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, extra ...string) ([]string, error) {
 	var templateOrWorkflowFlag string
 	if isTemplate {
 		templateOrWorkflowFlag = "-t"
@@ -33,11 +33,22 @@ func runNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 		templateOrWorkflowFlag = "-w"
 	}
 
-	cmd := exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-silent")
+	return RunNucleiBareArgsAndGetResults(debug, append([]string{
+		templateOrWorkflowFlag,
+		template,
+		"-target",
+		url,
+	}, extra...)...)
+}
+
+func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
+	cmd := exec.Command("./nuclei")
 	if debug {
-		cmd = exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-debug")
+		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
 		fmt.Println(cmd.String())
+	} else {
+		cmd.Args = append(cmd.Args, "-silent")
 	}
 	cmd.Args = append(cmd.Args, extra...)
 	data, err := cmd.Output()

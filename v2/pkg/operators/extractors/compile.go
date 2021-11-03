@@ -46,5 +46,15 @@ func (e *Extractor) CompileExtractors() error {
 	if e.Part == "" {
 		e.Part = "body"
 	}
+
+	if e.CaseInsensitive {
+		if e.Type != "kval" {
+			return fmt.Errorf("case-insensitive flag is supported only for 'kval' extractors (not '%s')", e.Type)
+		}
+		for i := range e.KVal {
+			e.KVal[i] = strings.ToLower(e.KVal[i])
+		}
+	}
+
 	return nil
 }

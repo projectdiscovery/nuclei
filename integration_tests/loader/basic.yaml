@@ -1,0 +1,10 @@
+id: workflow-example
+
+info:
+  name: Test Workflow Template
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: workflow/match-1.yaml
+  - template: workflow/match-2.yaml

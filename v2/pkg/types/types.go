@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -15,8 +16,12 @@ type Options struct {
 	ExcludeTags goflags.NormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
+	// WorkflowURLs specifies URLs to a list of workflows to use
+	WorkflowURLs goflags.StringSlice
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
+	// TemplateURLs specifies URLs to a list of templates to use
+	TemplateURLs goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
@@ -31,6 +36,10 @@ type Options struct {
 	ExcludeSeverities severity.Severities
 	// Authors filters templates based on their author and only run the matching ones.
 	Authors goflags.NormalizedStringSlice
+	// Protocols contains the protocols to be allowed executed
+	Protocols types.ProtocolTypes
+	// ExcludeProtocols contains protocols to not be executed
+	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
@@ -57,6 +66,8 @@ type Options struct {
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
+	// ErrorLogFile specifies a file to write with the errors of all requests
+	ErrorLogFile string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
@@ -168,6 +179,12 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCertFile string
+	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
+	ClientKeyFile string
+	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCAFile string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

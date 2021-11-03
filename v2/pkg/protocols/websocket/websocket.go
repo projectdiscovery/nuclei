@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -147,7 +148,7 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostname, err := getAddress(input)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	if request.generator != nil {
@@ -259,9 +260,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		responseBuilder.Write(msg)
 		if req.Name != "" {
 			bufferStr := string(msg)
-			if req.Name != "" {
-				inputEvents[req.Name] = bufferStr
-			}
+			inputEvents[req.Name] = bufferStr
 
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
@@ -276,7 +275,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		requestOutput := reqBuilder.String()
-		gologger.Info().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", request.options.TemplateID, input)
+		gologger.Debug().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", request.options.TemplateID, input)
 		gologger.Print().Msgf("%s", requestOutput)
 	}
 
@@ -305,7 +304,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
 		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor))
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor, false))
 	}
 
 	callback(event)
@@ -314,10 +313,15 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 
 // getAddress returns the address of the host to make request to
 func getAddress(toTest string) (string, error) {
-	if !strings.HasPrefix(toTest, "ws://") && !strings.HasPrefix(toTest, "wss://") {
-		return "", errors.New("invalid websocket provided")
+	parsed, err := url.Parse(toTest)
+	if err != nil {
+		return "", errors.Wrap(err, "could not parse input url")
 	}
-	parsed, _ := url.Parse(toTest)
+	scheme := strings.ToLower(parsed.Scheme)
+
+	if scheme != "ws" && scheme != "wss" {
+		return "", fmt.Errorf("invalid url scheme provided: %s", scheme)
+	}
 	if parsed != nil && parsed.Host != "" {
 		return parsed.Host, nil
 	}

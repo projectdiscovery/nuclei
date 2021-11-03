@@ -96,6 +96,14 @@ func validateOptions(options *types.Options) error {
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
+	// Verify if any of the client certificate options were set since it requires all three to work properly
+	if len(options.ClientCertFile) > 0 || len(options.ClientKeyFile) > 0 || len(options.ClientCAFile) > 0 {
+		if len(options.ClientCertFile) == 0 || len(options.ClientKeyFile) == 0 || len(options.ClientCAFile) == 0 {
+			return errors.New("if a client certification option is provided, then all three must be provided")
+		}
+		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
+	}
+
 	return nil
 }
 
@@ -169,6 +177,17 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 					break
 				}
 			}
+		}
+	}
+}
+
+func validateCertificatePaths(certificatePaths []string) {
+	for _, certificatePath := range certificatePaths {
+		if _, err := os.Stat(certificatePath); os.IsNotExist(err) {
+			// The provided path to the PEM certificate does not exist for the client authentication. As this is
+			// required for successful authentication, log and return an error
+			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
+			break
 		}
 	}
 }

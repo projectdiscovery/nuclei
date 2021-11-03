@@ -191,6 +191,11 @@
           "type": "boolean",
           "title": "mark extracted value for internal variable use",
           "description": "Internal when set to true will allow using the value extracted in the next request for some protocols"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive extract",
+          "description": "use case insensitive extract"
         }
       },
       "additionalProperties": false,
@@ -293,6 +298,11 @@
           "type": "string",
           "title": "encoding for word field",
           "description": "Optional encoding for the word fields"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive match",
+          "description": "use case insensitive match"
         }
       },
       "additionalProperties": false,

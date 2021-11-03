@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/remeh/sizedwaitgroup"
 )
 
@@ -51,9 +52,9 @@ type InputWorkPool struct {
 }
 
 // InputPool returns a workpool for an input type
-func (w *WorkPool) InputPool(templateType string) *InputWorkPool {
+func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 	var count int
-	if templateType == "headless" {
+	if templateType == types.HeadlessProtocol {
 		count = w.config.HeadlessInputConcurrency
 	} else {
 		count = w.config.InputConcurrency
