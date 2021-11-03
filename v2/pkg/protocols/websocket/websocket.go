@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -195,9 +196,18 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
+
 	addressToDial := string(finalAddress)
+	parsedAddress, err := url.Parse(addressToDial)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(dataErr, "could not parse input url")
+	}
+
 	if parsed.Path != "" && parsed.Path != "/" {
-		addressToDial = addressToDial + parsed.Path
+		parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
+		addressToDial = parsedAddress.String()
 	}
 
 	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), addressToDial)
@@ -240,6 +250,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["request"] = requestOutput
 	data["response"] = responseBuilder.String()
 	data["host"] = input
+	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
@@ -352,7 +363,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Info:             request.options.TemplateInfo,
 		Type:             request.Type().String(),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
-		Matched:          types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
