@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Config contains the configuration options for the loader
@@ -21,8 +22,8 @@ type Config struct {
 
 	Tags              []string
 	ExcludeTags       []string
-	Types             []string
-	ExcludeTypes      []string
+	Protocols         types.ProtocolTypes
+	ExcludeProtocols  types.ProtocolTypes
 	Authors           []string
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
@@ -58,8 +59,8 @@ func New(config *Config) (*Store, error) {
 			Severities:        config.Severities,
 			ExcludeSeverities: config.ExcludeSeverities,
 			IncludeTags:       config.IncludeTags,
-			Types:             config.Types,
-			ExcludeTypes:      config.ExcludeTypes,
+			Protocols:         config.Protocols,
+			ExcludeProtocols:  config.ExcludeProtocols,
 		}),
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,

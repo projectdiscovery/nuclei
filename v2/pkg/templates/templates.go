@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -75,19 +76,21 @@ type Template struct {
 }
 
 // Type returns the type of the template
-func (t *Template) Type() string {
+func (t *Template) Type() types.ProtocolType {
 	switch {
 	case len(t.RequestsDNS) > 0:
-		return "dns"
+		return types.DNSProtocol
 	case len(t.RequestsFile) > 0:
-		return "file"
+		return types.FileProtocol
 	case len(t.RequestsHTTP) > 0:
-		return "http"
+		return types.HTTPProtocol
 	case len(t.RequestsHeadless) > 0:
-		return "headless"
+		return types.HeadlessProtocol
 	case len(t.RequestsNetwork) > 0:
-		return "network"
+		return types.NetworkProtocol
+	case t.CompiledWorkflow != nil:
+		return types.WorkflowProtocol
 	default:
-		return ""
+		return types.InvalidProtocol
 	}
 }
