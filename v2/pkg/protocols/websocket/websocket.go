@@ -63,8 +63,7 @@ type Request struct {
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the webosocket request,description=Payloads contains any payloads for the current request"`
 
-	generator  *generators.Generator
-	attackType generators.Type
+	generator *generators.Generator
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -99,24 +98,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		attackType := request.AttackType
-		if attackType == "" {
-			attackType = "batteringram"
-		}
-		request.attackType = generators.StringToType[attackType]
-
-		// Resolve payload paths if they are files.
-		for name, payload := range request.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				request.Payloads[name] = final
-			}
-		}
-		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.AttackType, request.options.TemplatePath, options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
