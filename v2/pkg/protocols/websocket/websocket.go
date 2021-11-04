@@ -65,7 +65,7 @@ type Request struct {
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the webosocket request,description=Payloads contains any payloads for the current request"`
 
-	generator *generators.Generator
+	generator *generators.PayloadGenerator
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -174,46 +174,44 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	payloadValues["Scheme"] = parsed.Scheme
 	payloadValues["Path"] = parsed.Path
 
+	requestOptions := request.options
 	for key, value := range request.Headers {
 		finalData, dataErr := expressions.EvaluateByte([]byte(value), payloadValues)
 		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
-			request.options.Progress.IncrementFailedRequestsBy(1)
+			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(dataErr, "could not evaluate template expressions")
 		}
 		header.Set(key, string(finalData))
 	}
 	websocketDialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(header),
-		Timeout:   time.Duration(request.options.Options.Timeout) * time.Second,
+		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
 		NetDial:   request.dialer.Dial,
 		TLSConfig: &tls.Config{InsecureSkipVerify: true, ServerName: hostname},
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
 	if dataErr != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
 
 	addressToDial := string(finalAddress)
 	parsedAddress, err := url.Parse(addressToDial)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not parse input url")
 	}
-
-	if parsed.Path != "" && parsed.Path != "/" {
-		parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
-		addressToDial = parsedAddress.String()
-	}
+	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
+	addressToDial = parsedAddress.String()
 
 	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), addressToDial)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
@@ -225,18 +223,18 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 
 	events, requestOutput, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not read write response")
 	}
-	request.options.Progress.IncrementRequests()
+	requestOptions.Progress.IncrementRequests()
 
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", request.options.TemplateID, input)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
+		gologger.Debug().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", requestOptions.TemplateID, input)
 		gologger.Print().Msgf("%s", requestOutput)
 	}
 
-	request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
+	requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent Websocket request to %s", input)
 
 	data := make(map[string]interface{})
@@ -253,13 +251,13 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
-	event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
 	})
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
-		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, request.options.Options.NoColor, false))
+		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", requestOptions.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, requestOptions.Options.NoColor, false))
 	}
 
 	callback(event)
@@ -270,28 +268,29 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 	reqBuilder := &strings.Builder{}
 	inputEvents := make(map[string]interface{})
 
+	requestOptions := request.options
 	for _, req := range request.Inputs {
 		reqBuilder.Grow(len(req.Data))
 
 		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
 		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", dataErr)
-			request.options.Progress.IncrementFailedRequestsBy(1)
+			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(dataErr, "could not evaluate template expressions")
 		}
 		reqBuilder.WriteString(string(finalData))
 
 		err = wsutil.WriteClientMessage(conn, ws.OpText, finalData)
 		if err != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
+			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(err, "could not write request to server")
 		}
 
 		msg, opCode, err := wsutil.ReadServerData(conn)
 		if err != nil {
-			request.options.Output.Request(request.options.TemplateID, input, "websocket", err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
+			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(err, "could not write request to server")
 		}
 		// Only perform matching and writes in case we recieve

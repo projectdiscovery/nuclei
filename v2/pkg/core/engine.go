@@ -27,8 +27,8 @@ type Engine struct {
 type InputProvider interface {
 	// Count returns the number of items for input provider
 	Count() int64
-	// Scan iterates the input and for each found item calls the callback
-	// until the input provider has been exhausted.
+	// Scan iterates the input and each found item is passed to the
+	// callback consumer.
 	Scan(callback func(value string))
 }
 

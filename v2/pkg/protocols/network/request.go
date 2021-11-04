@@ -42,7 +42,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		address, err = getAddress(input)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
@@ -71,7 +71,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 func (request *Request) executeAddress(actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
-		request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
@@ -119,7 +119,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server request")
 	}
@@ -149,7 +149,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			data = []byte(input.Data)
 		}
 		if err != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
@@ -157,7 +157,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 
 		finalData, dataErr := expressions.EvaluateByte(data, payloads)
 		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", dataErr)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), dataErr)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(dataErr, "could not evaluate template expressions")
 		}
@@ -168,7 +168,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			return nil
 		}
 		if _, err := conn.Write(finalData); err != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
@@ -203,7 +203,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		}
 	}
 
-	request.options.Output.Request(request.options.TemplatePath, actualAddress, "network", err)
+	request.options.Output.Request(request.options.TemplatePath, actualAddress, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent TCP request to %s", actualAddress)
 
 	bufferSize := 1024
@@ -234,7 +234,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
 				if err != nil && !os.IsTimeout(err) {
-					request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+					request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 					closeTimer(readInterval)
 					return errors.Wrap(err, "could not read from server")
 				}
@@ -247,7 +247,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		final = make([]byte, bufferSize)
 		n, err = conn.Read(final)
 		if err != nil && err != io.EOF {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			return errors.Wrap(err, "could not read from server")
 		}
 		responseBuilder.Write(final[:n])

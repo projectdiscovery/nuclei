@@ -17,12 +17,12 @@ import (
 //
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
-func (e *Engine) Execute(templates []*templates.Template, input InputProvider) *atomic.Bool {
-	return e.ExecuteWithOpts(templates, input, false)
+func (e *Engine) Execute(templates []*templates.Template, target InputProvider) *atomic.Bool {
+	return e.ExecuteWithOpts(templates, target, false)
 }
 
 // ExecuteWithOpts is execute with the full options
-func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, input InputProvider, noCluster bool) *atomic.Bool {
+func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	var finalTemplates []*templates.Template
 	if !noCluster {
 		finalTemplates, _ = e.ClusterTemplates(templatesList)
@@ -48,7 +48,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, input Inpu
 			e.executeSelfContainedTemplateWithInput(template, results)
 		default:
 			// All other request types are executed here
-			e.executeModelWithInput(templateType, template, input, results)
+			e.executeModelWithInput(templateType, template, target, results)
 		}
 		wg.Done()
 	}

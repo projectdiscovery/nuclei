@@ -75,7 +75,7 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
-	generator *generators.Generator
+	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
 	dialer        *fastdialer.Dialer
 	options       *protocols.ExecuterOptions

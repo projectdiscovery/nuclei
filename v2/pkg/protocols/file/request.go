@@ -74,7 +74,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	})
 	wg.Wait()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input, "file", err)
+		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}

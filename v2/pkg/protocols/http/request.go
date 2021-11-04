@@ -363,7 +363,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
+		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
 
 		// If we have interactsh markers and request times out, still send
@@ -401,7 +401,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
-	request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
+	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 
 	duration := time.Since(timeStart)
 
