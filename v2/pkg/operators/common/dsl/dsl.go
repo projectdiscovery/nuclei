@@ -332,7 +332,7 @@ var functions = map[string]govaluate.ExpressionFunction{
 		}
 		now := time.Now()
 		offset := now.Add(time.Duration(seconds) * time.Second)
-		return offset.Unix(), nil
+		return float64(offset.Unix()), nil
 	},
 	// Time Functions
 	"waitfor": func(args ...interface{}) (interface{}, error) {
@@ -362,11 +362,6 @@ var functions = map[string]govaluate.ExpressionFunction{
 	"print_debug": func(args ...interface{}) (interface{}, error) {
 		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
 		return true, nil
-	},
-	// is_before_now compares a timestamp and returns true if the first
-	// passed argument is a time.Time that has already passed.
-	"time_now": func(args ...interface{}) (interface{}, error) {
-		return float64(time.Now().Unix()), nil
 	},
 }
 

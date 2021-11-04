@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -96,6 +97,8 @@ type Request interface {
 	MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
 	// GetCompiledOperators returns a list of the compiled operators
 	GetCompiledOperators() []*operators.Operators
+	// Type returns the type of the protocol request
+	Type() templateTypes.ProtocolType
 }
 
 // OutputEventCallback is a callback event for any results found during scanning.
