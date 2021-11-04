@@ -1,9 +1,7 @@
 package extractors
 
 import (
-	"errors"
 	"regexp"
-	"strings"
 
 	"github.com/itchyny/gojq"
 )
@@ -114,59 +112,4 @@ type Extractor struct {
 	//   - false
 	//   - true
 	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
-}
-
-// ExtractorType is the type of the extractor specified
-type ExtractorType int
-
-const (
-	// RegexExtractor extracts responses with regexes
-	RegexExtractor ExtractorType = iota + 1
-	// KValExtractor extracts responses with key:value
-	KValExtractor
-	// XPathExtractor extracts responses with Xpath selectors
-	XPathExtractor
-	// JSONExtractor extracts responses with json
-	JSONExtractor
-	//limit
-	limit
-)
-
-// ExtractorTypes is a table for conversion of extractor type from string.
-var extractorMappings = map[ExtractorType]string{
-	RegexExtractor: "regex",
-	KValExtractor:  "kval",
-	XPathExtractor: "xpath",
-	JSONExtractor:  "json",
-}
-
-// GetType returns the type of the matcher
-func (e *Extractor) GetType() ExtractorType {
-	return e.Type.ExtractorType
-}
-
-func GetSupportedExtractorTypes() SupportedExtractorTypes {
-	var result []ExtractorType
-	for index := ExtractorType(1); index < limit; index++ {
-		result = append(result, index)
-	}
-	return result
-}
-
-func toExtractorTypes(valueToMap string) (ExtractorType, error) {
-	normalizedValue := normalizeValue(valueToMap)
-	for key, currentValue := range extractorMappings {
-		if normalizedValue == currentValue {
-			return key, nil
-		}
-	}
-	return -1, errors.New("Invalid exctractor type: " + valueToMap)
-}
-
-func normalizeValue(value string) string {
-	return strings.TrimSpace(strings.ToLower(value))
-}
-
-func (t ExtractorType) String() string {
-	return extractorMappings[t]
 }
