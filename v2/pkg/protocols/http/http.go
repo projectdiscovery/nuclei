@@ -131,7 +131,7 @@ type Request struct {
 	options       *protocols.ExecuterOptions
 	totalRequests int
 	customHeaders map[string]string
-	generator     *generators.Generator // optional, only enabled when using payloads
+	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
 	dynamicValues map[string]interface{}

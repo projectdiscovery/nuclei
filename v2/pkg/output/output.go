@@ -224,38 +224,3 @@ func (w *StandardWriter) Close() {
 		w.errorFile.Close()
 	}
 }
-
-// MockOutputWriter is a mocked output writer.
-type MockOutputWriter struct {
-	aurora          aurora.Aurora
-	RequestCallback func(templateID, url, requestType string, err error)
-	WriteCallback   func(o *ResultEvent)
-}
-
-// NewMockOutputWriter creates a new mock output writer
-func NewMockOutputWriter() *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
-}
-
-// Close closes the output writer interface
-func (m *MockOutputWriter) Close() {}
-
-// Colorizer returns the colorizer instance for writer
-func (m *MockOutputWriter) Colorizer() aurora.Aurora {
-	return m.aurora
-}
-
-// Write writes the event to file and/or screen.
-func (m *MockOutputWriter) Write(result *ResultEvent) error {
-	if m.WriteCallback != nil {
-		m.WriteCallback(result)
-	}
-	return nil
-}
-
-// Request writes a log the requests trace log
-func (m *MockOutputWriter) Request(templateID, url, requestType string, err error) {
-	if m.RequestCallback != nil {
-		m.RequestCallback(templateID, url, requestType, err)
-	}
-}

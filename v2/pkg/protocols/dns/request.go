@@ -35,7 +35,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	// Compile each request for the template based on the URL
 	compiledRequest, err := request.Make(domain)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not build request")
 	}
@@ -53,7 +53,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	// Send the request to the target servers
 	response, err := request.dnsClient.Do(compiledRequest)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 	}
 	if response == nil {
@@ -61,7 +61,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	}
 	request.options.Progress.IncrementRequests()
 
-	request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
 
 	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input)

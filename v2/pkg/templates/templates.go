@@ -83,8 +83,8 @@ type Template struct {
 	Path string `yaml:"-" json:"-"`
 }
 
-// TemplateTypes is a list of accepted template types
-var TemplateTypes = []string{
+// TemplateProtocols is a list of accepted template protocols
+var TemplateProtocols = []string{
 	"dns",
 	"file",
 	"http",

@@ -119,7 +119,8 @@ func (i *Input) Count() int64 {
 	return i.inputCount
 }
 
-// Scan calls an input provider till the callback is exhausted
+// Scan iterates the input and each found item is passed to the
+// callback consumer.
 func (i *Input) Scan(callback func(value string)) {
 	callbackFunc := func(k, _ []byte) error {
 		callback(string(k))

@@ -7,14 +7,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
-// Generator is the generator struct for generating payloads
-type Generator struct {
+// PayloadGenerator is the generator struct for generating payloads
+type PayloadGenerator struct {
 	Type     AttackType
 	payloads map[string][]string
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, attackType AttackType, templatePath string, catalog *catalog.Catalog) (*Generator, error) {
+func New(payloads map[string]interface{}, attackType AttackType, templatePath string, catalog *catalog.Catalog) (*PayloadGenerator, error) {
 	if attackType.String() == "" {
 		attackType = BatteringRamAttack
 	}
@@ -35,7 +35,7 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 		}
 	}
 
-	generator := &Generator{}
+	generator := &PayloadGenerator{}
 	if err := generator.validate(payloads, templatePath); err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ type Iterator struct {
 }
 
 // NewIterator creates a new iterator for the payloads generator
-func (g *Generator) NewIterator() *Iterator {
+func (g *PayloadGenerator) NewIterator() *Iterator {
 	var payloads []*payloadIterator
 
 	for name, values := range g.payloads {
