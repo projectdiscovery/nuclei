@@ -249,7 +249,7 @@ func New(options *types.Options) (*Runner, error) {
 			Authorization:  options.InteractshToken,
 			CacheSize:      int64(options.InteractionsCacheSize),
 			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
-			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
+			ColldownPeriod: time.Duration(options.InteractionsCooldownPeriod) * time.Second,
 			PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
 			Output:         runner.output,
 			IssuesClient:   runner.issuesClient,

@@ -241,15 +241,11 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 				c.requests.Set(id, data, c.eviction)
 				return
 			}
-			matched := false
 			for _, interaction := range interactions {
 				if c.processInteractionForRequest(interaction, data) {
-					matched = true
+					c.interactions.Delete(id)
 					break
 				}
-			}
-			if matched {
-				c.interactions.Delete(id)
 			}
 		} else {
 			c.requests.Set(id, data, c.eviction)
