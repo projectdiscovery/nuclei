@@ -233,8 +233,22 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	got, err := generator.Make("https://example.com", map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
-	//check if all the interactsh markers are replaced with unique urls
+	// check if all the interactsh markers are replaced with unique urls
 	require.NotContains(t, got.request.URL.String(), "{{interactsh-url}}", "could not get correct interactsh url")
-	//check the length of returned urls
+	// check the length of returned urls
 	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
+	// check if the interactsh urls are unique
+	require.True(t, areUnique(got.interactshURLs), "interactsh urls are not unique")
+}
+
+// areUnique checks if the elements of string slice are unique
+func areUnique(elements []string) bool {
+	encountered := map[string]bool{}
+	for v := range elements {
+		if encountered[elements[v]] {
+			return false
+		}
+		encountered[elements[v]] = true
+	}
+	return true
 }
