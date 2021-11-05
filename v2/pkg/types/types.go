@@ -49,8 +49,10 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// List of HTTP(s)/SOCKS5 proxy servers or path to file containing such list
-	Proxy goflags.NormalizedStringSlice
+	// ProxyURL is the URL for the proxy server
+	ProxyURL string
+	// ProxySocksURL is the URL for the proxy socks server
+	ProxySocksURL string
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
