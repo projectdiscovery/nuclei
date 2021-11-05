@@ -23,9 +23,8 @@ func newhttpClient(options *types.Options) *http.Client {
 			InsecureSkipVerify: true,
 		},
 	}
-
-	if options.ProxyURL != "" {
-		if proxyURL, err := url.Parse(options.ProxyURL); err == nil {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	}
