@@ -15,7 +15,9 @@ func TestSSLProtocol(t *testing.T) {
 
 	testutils.Init(options)
 	templateID := "testing-ssl"
-	request := &Request{}
+	request := &Request{
+		Address: "{{Hostname}}",
+	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
@@ -23,8 +25,12 @@ func TestSSLProtocol(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile ssl request")
 
-	err = request.ExecuteWithResults("google.com:443", nil, nil, func(event *output.InternalWrappedEvent) {})
+	var gotEvent output.InternalEvent
+	err = request.ExecuteWithResults("google.com:443", nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
 	require.Nil(t, err, "could not run ssl request")
+	require.NotEmpty(t, gotEvent, "could not get event items")
 }
 
 func TestGetAddress(t *testing.T) {
