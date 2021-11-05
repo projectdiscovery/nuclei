@@ -21,7 +21,7 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 }
 
 func TestDSLTimeComparison(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("time_now() > not_after", HelperFunctions())
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("unixtime() > not_after", HelperFunctions())
 	require.Nil(t, err, "could not compare time")
 
 	result, err := compiled.Evaluate(map[string]interface{}{"not_after": float64(time.Now().Unix() - 1000)})
