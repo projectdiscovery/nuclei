@@ -16,6 +16,7 @@ type requestGenerator struct {
 	request         *Request
 	options         *protocols.ExecuterOptions
 	payloadIterator *generators.Iterator
+	interactshURLs  []string
 }
 
 // newGenerator creates a new request generator instance
