@@ -42,7 +42,6 @@ func newhttpClient(options *types.Options) *http.Client {
 		}
 	} else if options.Proxy.String()!= "" {
 		var proxyAuth *proxy.Auth
-
 		socksURL, proxyErr := url.Parse(options.Proxy.String())
 		if proxyErr == nil {
 			proxyAuth = &proxy.Auth{}
