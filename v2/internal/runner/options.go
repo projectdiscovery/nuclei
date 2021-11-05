@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,7 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
+
 	// Show the user the banner
 	showBanner()
 
@@ -87,16 +89,34 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	//loading the proxy server list from file or cli and test the connectivity
-	if err := loadProxyServers(options); err != nil {
+
+	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
 		return err
 	}
+
+	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
+		return err
+	}
+
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
 	return nil
+}
+
+func validateProxyURL(proxyURL, message string) error {
+	if proxyURL != "" && !isValidURL(proxyURL) {
+		return errors.New(message)
+	}
+
+	return nil
+}
+
+func isValidURL(urlString string) bool {
+	_, err := url.Parse(urlString)
+	return err == nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -144,6 +164,7 @@ func loadResolvers(options *types.Options) {
 
 func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
+
 	for _, templatePath := range allGivenTemplatePaths {
 		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
 			fileInfo, err := os.Stat(templatePath)
