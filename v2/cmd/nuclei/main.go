@@ -106,7 +106,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
-		flagSet.IntVar(&options.InteractionsColldownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
+		flagSet.IntVar(&options.InteractionsCooldownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
