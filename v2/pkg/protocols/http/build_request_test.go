@@ -3,12 +3,13 @@ package http
 import (
 	"net/url"
 	"testing"
-
-	"github.com/stretchr/testify/require"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBaseURLWithTemplatePrefs(t *testing.T) {
@@ -197,4 +198,43 @@ Accept-Encoding: gzip`},
 	require.Nil(t, err, "could not make http request")
 	authorization = req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
+}
+
+func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
+
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-unique-interactsh"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{"{{BaseURL}}/?u=http://{{interactsh-url}}/&href=http://{{interactsh-url}}/&action=http://{{interactsh-url}}/&host={{interactsh-url}}"},
+		Method: "GET",
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator()
+
+	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
+		ServerURL:      options.InteractshURL,
+		CacheSize:      int64(options.InteractionsCacheSize),
+		Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
+		ColldownPeriod: time.Duration(options.InteractionsCooldownPeriod) * time.Second,
+		PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+
+	got, err := generator.Make("https://example.com", map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+
+	//check if all the interactsh markers are replaced with unique urls
+	require.NotContains(t, got.request.URL.String(), "{{interactsh-url}}", "could not get correct interactsh url")
+	//check the length of returned urls
+	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
 }
