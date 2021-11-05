@@ -283,13 +283,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/ratelimit"
 )
@@ -298,11 +298,11 @@ func main() {
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
 	defer cache.Close()
 
-	mockProgress := &progress.MockProgressClient{}
+	mockProgress := &testutils.MockProgressClient{}
 	reportingClient, _ := reporting.New(&reporting.Options{}, "")
 	defer reportingClient.Close()
 
-	outputWriter := output.NewMockOutputWriter()
+	outputWriter := testutils.NewMockOutputWriter()
 	outputWriter.WriteCallback = func(event *output.ResultEvent) {
 		fmt.Printf("Got Result: %v\n", event)
 	}
