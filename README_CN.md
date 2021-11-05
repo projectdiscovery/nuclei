@@ -121,7 +121,8 @@ nuclei -h
 |templates-version|显示已安装的模板版本|nuclei -templates-version|
 |v|显示发送请求的详细信息|nuclei -v|
 |version|显示nuclei的版本号|nuclei -version|
-|proxy|输入代理地址|nuclei -proxy ./proxy.txt|
+|proxy-url|输入代理地址|nuclei -proxy-url hxxp://127.0.0.1:8080|
+|proxy-socks-url|输入socks代理地址|nuclei -proxy-socks-url socks5://127.0.0.1:8080|
 |random-agent|使用随机的UA|nuclei -random-agent|
 |H|自定义请求头|nuclei -H “x-bug-bounty:hacker”|
 
