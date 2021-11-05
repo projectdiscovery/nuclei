@@ -347,24 +347,24 @@ func TestActionExtract(t *testing.T) {
 	})
 }
 
-func TestActionSetMethod(t *testing.T) {
-	response := `
-		<html>
-			<head>
-				<title>Nuclei Test Page</title>
-			</head>
-		</html>`
+// func TestActionSetMethod(t *testing.T) {
+// 	response := `
+// 		<html>
+// 			<head>
+// 				<title>Nuclei Test Page</title>
+// 			</head>
+// 		</html>`
 
-	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSetMethod)}, Data: map[string]string{"part": "x", "method": "SET"}},
-	}
+// 	actions := []*Action{
+// 		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
+// 		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSetMethod)}, Data: map[string]string{"part": "x", "method": "SET"}},
+// 	}
 
-	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
-		require.Nil(t, err, "could not run page actions")
-		require.Equal(t, "SET", page.rules[0].Args["method"], "could not find resource")
-	})
-}
+// 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
+// 		require.Nil(t, err, "could not run page actions")
+// 		require.Equal(t, "SET", page.rules[0].Args["method"], "could not find resource")
+// 	})
+// }
 
 func TestActionAddHeader(t *testing.T) {
 	actions := []*Action{
