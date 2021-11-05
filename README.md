@@ -162,8 +162,9 @@ DEBUG:
    -debug                     show all requests and responses
    -debug-req                 show all sent requests
    -debug-resp                show all received responses
-   -proxy string              List of HTTP(s)/SOCKS5 proxy servers or path to file containing such list
-   -trace-log string          file to write sent requests trace log
+   -proxy, -proxy-url string  URL of the HTTP proxy server
+   -proxy-socks-url string    URL of the SOCKS proxy server
+   -tlog, -trace-log string   file to write sent requests trace log
    -version                   show nuclei version
    -v, -verbose               show verbose output
    -vv                        display extra verbose information
