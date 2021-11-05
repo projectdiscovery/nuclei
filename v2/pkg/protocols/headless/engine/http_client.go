@@ -40,10 +40,10 @@ func newhttpClient(options *types.Options) *http.Client {
 		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if options.ProxySocksURL != "" {
+	} else if options.Proxy.String()!= "" {
 		var proxyAuth *proxy.Auth
 
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+		socksURL, proxyErr := url.Parse(options.Proxy.String())
 		if proxyErr == nil {
 			proxyAuth = &proxy.Auth{}
 			proxyAuth.User = socksURL.User.Username()
