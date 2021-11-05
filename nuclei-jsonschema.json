@@ -191,6 +191,11 @@
           "type": "boolean",
           "title": "mark extracted value for internal variable use",
           "description": "Internal when set to true will allow using the value extracted in the next request for some protocols"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive extract",
+          "description": "use case insensitive extract"
         }
       },
       "additionalProperties": false,
@@ -293,6 +298,11 @@
           "type": "string",
           "title": "encoding for word field",
           "description": "Optional encoding for the word fields"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive match",
+          "description": "use case insensitive match"
         }
       },
       "additionalProperties": false,
@@ -809,6 +819,11 @@
           "title": "size of network response to read",
           "description": "Size of response to read at the end. Default is 1024 bytes"
         },
+        "read-all": {
+          "type": "boolean",
+          "title": "read all response stream",
+          "description": "Read all response stream till the server stops sending"
+        },
         "matchers": {
           "items": {
             "$ref": "#/definitions/matchers.Matcher"
@@ -845,6 +860,7 @@
       ],
       "properties": {
         "id": {
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
           "type": "string",
           "title": "id of the template",
           "description": "The Unique ID for the template",

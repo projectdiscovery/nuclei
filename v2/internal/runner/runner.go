@@ -215,7 +215,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile, options.ErrorLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -366,7 +366,9 @@ func (r *Runner) RunEnumeration() error {
 
 	loaderConfig := loader.Config{
 		Templates:          r.options.Templates,
+		TemplateURLs:       r.options.TemplateURLs,
 		Workflows:          r.options.Workflows,
+		WorkflowURLs:       r.options.WorkflowURLs,
 		ExcludeTemplates:   r.options.ExcludedTemplates,
 		Tags:               r.options.Tags,
 		ExcludeTags:        r.options.ExcludeTags,
@@ -376,6 +378,8 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeSeverities:  r.options.ExcludeSeverities,
 		IncludeTags:        r.options.IncludeTags,
 		TemplatesDirectory: r.options.TemplatesDirectory,
+		Protocols:          r.options.Protocols,
+		ExcludeProtocols:   r.options.ExcludeProtocols,
 		Catalog:            r.catalog,
 		ExecutorOptions:    executerOpts,
 	}
