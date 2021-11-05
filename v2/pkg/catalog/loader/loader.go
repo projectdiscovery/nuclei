@@ -56,6 +56,8 @@ func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts pr
 	loaderConfig := Config{
 		Templates:          options.Templates,
 		Workflows:          options.Workflows,
+		TemplateURLs:       options.TemplateURLs,
+		WorkflowURLs:       options.WorkflowURLs,
 		ExcludeTemplates:   options.ExcludedTemplates,
 		Tags:               options.Tags,
 		ExcludeTags:        options.ExcludeTags,
@@ -96,7 +98,8 @@ func New(config *Config) (*Store, error) {
 		finalWorkflows: config.Workflows,
 	}
 
-	if len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0 {
+	urlbasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
+	if urlbasedTemplatesProvided {
 		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
 		if err != nil {
 			return store, err
@@ -106,7 +109,7 @@ func New(config *Config) (*Store, error) {
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 {
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlbasedTemplatesProvided {
 		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
 
