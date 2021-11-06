@@ -182,6 +182,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		// Attempts to overwrite the dial function with the socks proxied version
 		if proxyURL.Scheme == types.SOCKS5 {
 			var proxyAuth *proxy.Auth = &proxy.Auth{}
+			//var proxyAuth *proxy.Auth
+			// socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+			// if proxyErr == nil {
+			// 	proxyAuth = &proxy.Auth{}
+			// 	proxyAuth.User = socksURL.User.Username()
+			// 	proxyAuth.Password, _ = socksURL.User.Password()
+			// }
+			// dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
 			proxyAuth.User = proxyURL.User.Username()
 			proxyAuth.Password, _ = proxyURL.User.Password()
 
