@@ -41,7 +41,7 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := request.newGenerator()
-	requestForDump, err := generator.Make(reqURL, nil, "")
+	requestForDump, err := generator.Make(reqURL, nil)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		generator := request.newGenerator()
-		generatedRequest, err := generator.Make(reqURL, nil, "")
+		generatedRequest, err := generator.Make(reqURL, nil)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues, "")
+		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
 			break
 		}
@@ -161,7 +161,7 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues, "")
+		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
 			break
 		}
@@ -215,11 +215,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	for {
 		hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
 
-		var interactURL string
-		if request.options.Interactsh != nil && hasInteractMarkers {
-			interactURL = request.options.Interactsh.URL()
-		}
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues, interactURL)
+		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
 		if err == io.EOF {
 			break
 		}
@@ -245,7 +241,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
 			}
 			if hasInteractMarkers && request.options.Interactsh != nil {
-				request.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+				request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
 					MakeResultFunc: request.MakeResultEvent,
 					Event:          event,
 					Operators:      request.CompiledOperators,
