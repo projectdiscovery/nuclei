@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -183,9 +184,8 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	request.options.Progress.IncrementRequests()
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n", request.options.TemplateID, actualAddress)
 		requestBytes := []byte(reqBuilder.String())
-		gologger.Print().Msgf("%s", hex.Dump(requestBytes))
+		gologger.Debug().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n%s", request.options.TemplateID, actualAddress, hex.Dump(requestBytes))
 		if request.options.Options.VerboseVerbose {
 			gologger.Print().Msgf("\nCompact HEX view:\n%s", hex.EncodeToString(requestBytes))
 		}
@@ -271,26 +271,35 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		})
 	}
 
-	debug(event, request, response, actualAddress)
+	dumpResponse(event, request.options, response, actualAddress)
 
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, response string, actualAddress string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n", request.options.TemplateID, actualAddress)
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, actualAddress string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		requestBytes := []byte(response)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), request.options.Options.NoColor, true))
-		if request.options.Options.VerboseVerbose {
-			var allMatches []string
-			for _, namedMatch := range event.OperatorsResult.Matches {
-				for _, matchElement := range namedMatch {
-					allMatches = append(allMatches, hex.EncodeToString([]byte(matchElement)))
-				}
-			}
-			event.OperatorsResult.Matches["compact"] = allMatches
-			gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(event.OperatorsResult, hex.EncodeToString([]byte(response)), request.options.Options.NoColor, false))
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), cliOptions.NoColor, true)
+		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n\n%s", requestOptions.TemplateID, actualAddress, highlightedResponse)
+
+		if cliOptions.VerboseVerbose {
+			displayCompactHexView(event, response, cliOptions.NoColor)
 		}
+	}
+}
+
+func displayCompactHexView(event *output.InternalWrappedEvent, response string, noColor bool) {
+	operatorsResult := event.OperatorsResult
+	if operatorsResult != nil {
+		var allMatches []string
+		for _, namedMatch := range operatorsResult.Matches {
+			for _, matchElement := range namedMatch {
+				allMatches = append(allMatches, hex.EncodeToString([]byte(matchElement)))
+			}
+		}
+		tempOperatorResult := &operators.Result{Matches: map[string][]string{"matchesInHex": allMatches}}
+		gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(tempOperatorResult, hex.EncodeToString([]byte(response)), noColor, false))
 	}
 }
 
