@@ -126,11 +126,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
-	hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
-	var interactURL string
-	if request.options.Interactsh != nil && hasInteractMarkers {
-		interactURL = request.options.Interactsh.URL()
-	}
+	var interactshURLs []string
 
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
@@ -143,9 +139,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		case "hex":
 			data, err = hex.DecodeString(input.Data)
 		default:
-			if interactURL != "" {
-				input.Data = request.options.Interactsh.ReplaceMarkers(input.Data, interactURL)
-			}
+			input.Data, interactshURLs = request.options.Interactsh.ReplaceMarkers(input.Data, []string{})
 			data = []byte(input.Data)
 		}
 		if err != nil {
@@ -267,14 +261,14 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	}
 
 	var event *output.InternalWrappedEvent
-	if interactURL == "" {
+	if len(interactshURLs) == 0 {
 		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
