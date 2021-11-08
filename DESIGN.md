@@ -467,6 +467,11 @@ func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*outpu
 func (r *Request) GetCompiledOperators() []*operators.Operators {
 	return []*operators.Operators{r.CompiledOperators}
 }
+
+// Type returns the type of the protocol request
+func (r *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.WebsocketProtocol
+}
 ```
 
 Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
@@ -475,7 +480,7 @@ Almost all of these protocols have boilerplate functions for which default imple
 
 Step by step description of how to add a new protocol to Nuclei - 
 
-1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with less number of options, considering adding it to the `pkg/protocols/others` directory.
+1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with less number of options, considering adding it to the `pkg/protocols/others` directory. Add the enum for the new protocol to `v2/pkg/templates/types/types.go`.
 
 2. Add the protocol request structure to the `Template` structure fields. This is done in `pkg/templates/templates.go` with the corresponding import line.
 
@@ -507,10 +512,10 @@ var TemplateTypes = []string{
 }
 
 // Type returns the type of the template
-func (t *Template) Type() string {
+func (t *Template) Type() templateTypes.ProtocolType {
 	...
 	case len(t.RequestsWebsocket) > 0:
-		return "websocket"
+		return templateTypes.WebsocketProtocol
 	default:
 		return ""
 	}
