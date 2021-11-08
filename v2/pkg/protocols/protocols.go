@@ -134,7 +134,12 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
 func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	item, ok := data[extractor.Part]
+	part := extractor.Part
+	if part == "" {
+		part = "response"
+	}
+
+	item, ok := data[part]
 	if !ok {
 		return nil
 	}
@@ -155,6 +160,11 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 
 // MakeDefaultMatchFunc performs matching operation for a matcher on model and returns true or false.
 func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	part := matcher.Part
+	if part == "" {
+		part = "response"
+	}
+
 	partItem, ok := data[matcher.Part]
 	if !ok && len(matcher.DSL) == 0 {
 		return false, nil
