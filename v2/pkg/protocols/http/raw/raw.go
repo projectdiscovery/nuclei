@@ -3,6 +3,7 @@ package raw
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -145,4 +146,30 @@ func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) 
 	fixedPath := filepath.Join(baseURL.Path, requestPath)
 	fixed := bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1)
 	return fixed
+}
+
+// TryFillCustomHeaders after the Host header
+func (r *Request) TryFillCustomHeaders(headers []string) error {
+	unsafeBytes := bytes.ToLower(r.UnsafeRawBytes)
+	// locate first host header
+	hostHeaderIndex := bytes.Index(unsafeBytes, []byte("host:"))
+	if hostHeaderIndex > 0 {
+		// attempt to locate next newline
+		newLineIndex := bytes.Index(unsafeBytes[hostHeaderIndex:], []byte("\r\n"))
+		if newLineIndex > 0 {
+			newLineIndex += hostHeaderIndex + 2
+			// insert custom headers
+			var buf bytes.Buffer
+			buf.Write(r.UnsafeRawBytes[:newLineIndex])
+			for _, header := range headers {
+				buf.WriteString(fmt.Sprintf("%s\r\n", header))
+			}
+			buf.Write(r.UnsafeRawBytes[newLineIndex:])
+			r.UnsafeRawBytes = buf.Bytes()
+			return nil
+		}
+		return errors.New("no new line found at the end of host header")
+	}
+
+	return errors.New("no host header found")
 }
