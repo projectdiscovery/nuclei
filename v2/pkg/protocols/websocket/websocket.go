@@ -201,9 +201,9 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	addressToDial := string(finalAddress)
 	parsedAddress, err := url.Parse(addressToDial)
 	if err != nil {
-		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(dataErr, "could not parse input url")
+		return errors.Wrap(err, "could not parse input url")
 	}
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
 	addressToDial = parsedAddress.String()
