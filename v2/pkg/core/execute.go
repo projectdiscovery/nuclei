@@ -66,10 +66,10 @@ func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Templ
 }
 
 // executeModelWithInput executes a type of template with input
-func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template *templates.Template, input InputProvider, results *atomic.Bool) {
+func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool) {
 	wg := e.workPool.InputPool(templateType)
 
-	input.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue string) {
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
 			return
