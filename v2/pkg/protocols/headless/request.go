@@ -67,15 +67,16 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-	debug(event, request, responseBody, inputURL)
+	dumpResponse(event, request.options, responseBody, inputURL)
 
 	callback(event)
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, responseBody string, input string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n", request.options.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseBody, request.options.Options.NoColor, false))
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, responseBody string, input string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
+		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
 	}
 }
