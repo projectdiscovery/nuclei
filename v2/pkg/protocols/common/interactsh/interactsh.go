@@ -220,12 +220,14 @@ func (c *Client) Close() bool {
 //
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
-func (c *Client) ReplaceMarkers(data, interactshURL string) string {
-	if !strings.Contains(data, interactshURLMarker) {
-		return data
+func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
+
+	for strings.Contains(data, interactshURLMarker) {
+		url := c.URL()
+		interactshURLs = append(interactshURLs, url)
+		data = strings.Replace(data, interactshURLMarker, url, 1)
 	}
-	replaced := strings.NewReplacer("{{interactsh-url}}", interactshURL).Replace(data)
-	return replaced
+	return data, interactshURLs
 }
 
 // MakeResultEventFunc is a result making function for nuclei
@@ -241,30 +243,29 @@ type RequestData struct {
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
-func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
-	id := strings.TrimSuffix(interactshURL, c.dotHostname)
+func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	for _, interactshURL := range interactshURLs {
+		id := strings.TrimSuffix(interactshURL, c.dotHostname)
 
-	interaction := c.interactions.Get(id)
-	if interaction != nil {
-		// If we have previous interactions, get them and process them.
-		interactions, ok := interaction.Value().([]*server.Interaction)
-		if !ok {
-			c.requests.Set(id, data, c.eviction)
-			return
-		}
-		matched := false
-		for _, interaction := range interactions {
-			if c.processInteractionForRequest(interaction, data) {
-				matched = true
-				break
+		interaction := c.interactions.Get(id)
+		if interaction != nil {
+			// If we have previous interactions, get them and process them.
+			interactions, ok := interaction.Value().([]*server.Interaction)
+			if !ok {
+				c.requests.Set(id, data, c.eviction)
+				return
 			}
+			for _, interaction := range interactions {
+				if c.processInteractionForRequest(interaction, data) {
+					c.interactions.Delete(id)
+					break
+				}
+			}
+		} else {
+			c.requests.Set(id, data, c.eviction)
 		}
-		if matched {
-			c.interactions.Delete(id)
-		}
-	} else {
-		c.requests.Set(id, data, c.eviction)
 	}
+
 }
 
 // HasMatchers returns true if an operator has interactsh part
