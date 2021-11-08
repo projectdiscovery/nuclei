@@ -109,9 +109,9 @@ type Options struct {
 	// Eviction is the number of seconds after which to automatically discard
 	// interaction requests.
 	InteractionsEviction int
-	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// InteractionsCooldownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
-	InteractionsColldownPeriod int
+	InteractionsCooldownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.

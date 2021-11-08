@@ -151,7 +151,7 @@ func New(options *types.Options) (*Runner, error) {
 		opts.Authorization = options.InteractshToken
 		opts.CacheSize = int64(options.InteractionsCacheSize)
 		opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-		opts.ColldownPeriod = time.Duration(options.InteractionsColldownPeriod) * time.Second
+		opts.ColldownPeriod = time.Duration(options.InteractionsCooldownPeriod) * time.Second
 		opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 
 		interactshClient, err := interactsh.New(opts)
