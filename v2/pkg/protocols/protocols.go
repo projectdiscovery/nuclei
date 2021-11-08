@@ -165,7 +165,7 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		part = "response"
 	}
 
-	partItem, ok := data[matcher.Part]
+	partItem, ok := data[part]
 	if !ok && len(matcher.DSL) == 0 {
 		return false, nil
 	}
