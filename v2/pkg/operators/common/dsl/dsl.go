@@ -1,6 +1,8 @@
 package dsl
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -119,6 +121,16 @@ var functions = map[string]govaluate.ExpressionFunction{
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 
 		return sEnc, nil
+	},
+	"gzip": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
+		buffer := &bytes.Buffer{}
+		if _, err := gzip.NewWriter(buffer).Write([]byte(args[0].(string))); err != nil {
+			return "", err
+		}
+		return buffer.String(), nil
 	},
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	"base64_py": func(args ...interface{}) (interface{}, error) {
