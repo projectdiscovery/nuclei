@@ -127,9 +127,12 @@ var functions = map[string]govaluate.ExpressionFunction{
 			return nil, ErrDSLArguments
 		}
 		buffer := &bytes.Buffer{}
-		if _, err := gzip.NewWriter(buffer).Write([]byte(args[0].(string))); err != nil {
+		writer := gzip.NewWriter(buffer)
+		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
 			return "", err
 		}
+		_ = writer.Close()
+
 		return buffer.String(), nil
 	},
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
