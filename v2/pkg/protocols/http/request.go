@@ -445,7 +445,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		finalEvent := make(output.InternalEvent)
 
-		outputEvent := request.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(response.resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
