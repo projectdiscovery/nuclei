@@ -10,13 +10,19 @@ import (
 	"net/http/httputil"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
+
+type redirectedResponse struct {
+	headers      []byte
+	body         []byte
+	fullResponse []byte
+}
 
 // dumpResponseWithRedirectChain dumps a http response with the
 // complete http redirect chain.
@@ -25,18 +31,22 @@ import (
 // and returns the data to the user for matching and viewing in that order.
 //
 // Inspired from - https://github.com/ffuf/ffuf/issues/324#issuecomment-719858923
-func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, error) {
-	redirects := []string{}
+func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirectedResponse, error) {
+	var response []redirectedResponse
+
 	respData, err := httputil.DumpResponse(resp, false)
 	if err != nil {
 		return nil, err
 	}
-	redirectChain := &bytes.Buffer{}
-
-	redirectChain.WriteString(tostring.UnsafeToString(respData))
-	redirectChain.Write(body)
-	redirects = append(redirects, redirectChain.String())
-	redirectChain.Reset()
+	respObj := redirectedResponse{
+		headers:      respData,
+		body:         body,
+		fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
+	}
+	if err := normalizeResponseBody(resp, respObj); err != nil {
+		return nil, err
+	}
+	response = append(response, respObj)
 
 	var redirectResp *http.Response
 	if resp != nil && resp.Request != nil {
@@ -52,40 +62,50 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]byte, er
 		if redirectResp.Body != nil {
 			body, _ = ioutil.ReadAll(redirectResp.Body)
 		}
-		redirectChain.WriteString(tostring.UnsafeToString(respData))
-		if len(body) > 0 {
-			redirectChain.WriteString(tostring.UnsafeToString(body))
+		respObj := redirectedResponse{
+			headers:      respData,
+			body:         body,
+			fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
 		}
-		redirects = append(redirects, redirectChain.String())
+		if err := normalizeResponseBody(redirectResp, respObj); err != nil {
+			return nil, err
+		}
+		response = append(response, respObj)
 		redirectResp = redirectResp.Request.Response
-		redirectChain.Reset()
 	}
-	for i := len(redirects) - 1; i >= 0; i-- {
-		redirectChain.WriteString(redirects[i])
-	}
-	return redirectChain.Bytes(), nil
+	return response, nil
 }
 
-// headersToString converts http headers to string
-func headersToString(headers http.Header) string {
-	builder := &strings.Builder{}
-
-	for header, values := range headers {
-		builder.WriteString(header)
-		builder.WriteString(": ")
-
-		for i, value := range values {
-			builder.WriteString(value)
-
-			if i != len(values)-1 {
-				builder.WriteRune('\n')
-				builder.WriteString(header)
-				builder.WriteString(": ")
-			}
-		}
-		builder.WriteRune('\n')
+// normalizeResponseBody performs normalization on the http response object.
+func normalizeResponseBody(resp *http.Response, response redirectedResponse) error {
+	var err error
+	// net/http doesn't automatically decompress the response body if an
+	// encoding has been specified by the user in the request so in case we have to
+	// manually do it.
+	dataOrig := response.body
+	response.body, err = handleDecompression(resp, response.body)
+	// in case of error use original data
+	if err != nil {
+		response.body = dataOrig
 	}
-	return builder.String()
+	response.fullResponse = bytes.ReplaceAll(response.fullResponse, dataOrig, response.body)
+
+	// Decode gbk response content-types
+	// gb18030 supersedes gb2312
+	responseContentType := resp.Header.Get("Content-Type")
+	if isContentTypeGbk(responseContentType) {
+		response.fullResponse, err = decodegbk(response.fullResponse)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+
+		// the uncompressed body needs to be decoded to standard utf8
+		response.body, err = decodegbk(response.body)
+		if err != nil {
+			return errors.Wrap(err, "could not gbk decode")
+		}
+	}
+	return nil
 }
 
 // dump creates a dump of the http request in form of a byte slice
