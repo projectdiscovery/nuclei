@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
@@ -169,7 +170,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	// Add the client certificate authentication to the request if it's configured
-	tlsConfig = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
 
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
