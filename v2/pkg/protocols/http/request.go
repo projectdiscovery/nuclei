@@ -400,7 +400,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		return errors.Wrap(err, "could not dump http response")
 	}
 
-	var data, redirectedResponse []byte
+	var dumpedResponse []redirectedResponse
 	// If the status code is HTTP 101, we should not proceed with reading body.
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		var bodyReader io.Reader
@@ -409,7 +409,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		} else {
 			bodyReader = resp.Body
 		}
-		data, err = ioutil.ReadAll(bodyReader)
+		data, err := ioutil.ReadAll(bodyReader)
 		if err != nil {
 			// Ignore body read due to server misconfiguration errors
 			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
@@ -420,96 +420,61 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		resp.Body.Close()
 
-		redirectedResponse, err = dumpResponseWithRedirectChain(resp, data)
+		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
 		if err != nil {
 			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
 	} else {
-		redirectedResponse = dumpedResponseHeaders
+		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
-	// net/http doesn't automatically decompress the response body if an
-	// encoding has been specified by the user in the request so in case we have to
-	// manually do it.
-	dataOrig := data
-	data, err = handleDecompression(resp, data)
-	// in case of error use original data
-	if err != nil {
-		data = dataOrig
-	}
-
-	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	dumpedResponseBuilder := &bytes.Buffer{}
-	dumpedResponseBuilder.Write(dumpedResponseHeaders)
-	dumpedResponseBuilder.Write(data)
-	dumpedResponse := dumpedResponseBuilder.Bytes()
-	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
-
-	// Decode gbk response content-types
-	// gb18030 supersedes gb2312
-	responseContentType := resp.Header.Get("Content-Type")
-	if isContentTypeGbk(responseContentType) {
-		dumpedResponse, err = decodegbk(dumpedResponse)
-		if err != nil {
-			return errors.Wrap(err, "could not gbk decode")
-		}
-		redirectedResponse, err = decodegbk(redirectedResponse)
-		if err != nil {
-			return errors.Wrap(err, "could not gbk decode")
+	for _, response := range dumpedResponse {
+		// if nuclei-project is enabled store the response if not previously done
+		if request.options.ProjectFile != nil && !fromCache {
+			if err := request.options.ProjectFile.Set(dumpedRequest, resp, response.body); err != nil {
+				return errors.Wrap(err, "could not store in project file")
+			}
 		}
 
-		// the uncompressed body needs to be decoded to standard utf8
-		data, err = decodegbk(data)
-		if err != nil {
-			return errors.Wrap(err, "could not gbk decode")
+		matchedURL := reqURL
+		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
+			matchedURL = generatedRequest.rawRequest.FullURL
 		}
-	}
-
-	// if nuclei-project is enabled store the response if not previously done
-	if request.options.ProjectFile != nil && !fromCache {
-		if err := request.options.ProjectFile.Set(dumpedRequest, resp, data); err != nil {
-			return errors.Wrap(err, "could not store in project file")
+		if generatedRequest.request != nil {
+			matchedURL = generatedRequest.request.URL.String()
 		}
-	}
+		finalEvent := make(output.InternalEvent)
 
-	matchedURL := reqURL
-	if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
-		matchedURL = generatedRequest.rawRequest.FullURL
-	}
-	if generatedRequest.request != nil {
-		matchedURL = generatedRequest.request.URL.String()
-	}
-	finalEvent := make(output.InternalEvent)
-
-	outputEvent := request.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, generatedRequest.meta)
-	if i := strings.LastIndex(hostname, ":"); i != -1 {
-		hostname = hostname[:i]
-	}
-	outputEvent["curl-command"] = curlCommand
-	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
-	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
-	for k, v := range previousEvent {
-		finalEvent[k] = v
-	}
-	for k, v := range outputEvent {
-		finalEvent[k] = v
-	}
-	// Add to history the current request number metadata if asked by the user.
-	if request.ReqCondition {
+		outputEvent := request.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		if i := strings.LastIndex(hostname, ":"); i != -1 {
+			hostname = hostname[:i]
+		}
+		outputEvent["curl-command"] = curlCommand
+		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		for k, v := range previousEvent {
+			finalEvent[k] = v
+		}
 		for k, v := range outputEvent {
-			key := fmt.Sprintf("%s_%d", k, requestCount)
-			previousEvent[key] = v
-			finalEvent[key] = v
+			finalEvent[k] = v
 		}
+		// Add to history the current request number metadata if asked by the user.
+		if request.ReqCondition {
+			for k, v := range outputEvent {
+				key := fmt.Sprintf("%s_%d", k, requestCount)
+				previousEvent[key] = v
+				finalEvent[key] = v
+			}
+		}
+
+		event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+		})
+
+		responseContentType := resp.Header.Get("Content-Type")
+		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType)
+
+		callback(event)
 	}
-
-	event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
-		internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
-	})
-
-	dumpResponse(event, request.options, redirectedResponse, formedURL, responseContentType)
-
-	callback(event)
 	return nil
 }
 
