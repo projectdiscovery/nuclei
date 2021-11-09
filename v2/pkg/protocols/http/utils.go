@@ -43,7 +43,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 		body:         body,
 		fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
 	}
-	if err := normalizeResponseBody(resp, respObj); err != nil {
+	if err := normalizeResponseBody(resp, &respObj); err != nil {
 		return nil, err
 	}
 	response = append(response, respObj)
@@ -67,7 +67,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 			body:         body,
 			fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
 		}
-		if err := normalizeResponseBody(redirectResp, respObj); err != nil {
+		if err := normalizeResponseBody(redirectResp, &respObj); err != nil {
 			return nil, err
 		}
 		response = append(response, respObj)
@@ -77,7 +77,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 }
 
 // normalizeResponseBody performs normalization on the http response object.
-func normalizeResponseBody(resp *http.Response, response redirectedResponse) error {
+func normalizeResponseBody(resp *http.Response, response *redirectedResponse) error {
 	var err error
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
