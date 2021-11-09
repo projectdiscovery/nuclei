@@ -184,7 +184,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
-	method, err := expressions.Evaluate(r.request.Method, finalValues)
+	method, err := expressions.Evaluate(r.request.Method.String(), finalValues)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
