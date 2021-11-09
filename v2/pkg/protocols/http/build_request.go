@@ -227,6 +227,9 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 
 	// Unsafe option uses rawhttp library
 	if r.request.Unsafe {
+		if len(r.options.Options.CustomHeaders) > 0 {
+			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
+		}
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request}
 		return unsafeReq, nil
 	}
