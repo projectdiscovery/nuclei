@@ -614,7 +614,7 @@ func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
 		http.Redirect(w, r, "/final", http.StatusFound)
 	})
 	router.GET("/final", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
