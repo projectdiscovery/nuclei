@@ -22,6 +22,7 @@ type redirectedResponse struct {
 	headers      []byte
 	body         []byte
 	fullResponse []byte
+	resp         *http.Response
 }
 
 // dumpResponseWithRedirectChain dumps a http response with the
@@ -41,6 +42,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 	respObj := redirectedResponse{
 		headers:      respData,
 		body:         body,
+		resp:         resp,
 		fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
 	}
 	if err := normalizeResponseBody(resp, &respObj); err != nil {
@@ -65,6 +67,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 		respObj := redirectedResponse{
 			headers:      respData,
 			body:         body,
+			resp:         redirectResp,
 			fullResponse: bytes.Join([][]byte{respData, body}, []byte{}),
 		}
 		if err := normalizeResponseBody(redirectResp, &respObj); err != nil {

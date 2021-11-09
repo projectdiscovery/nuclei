@@ -11,8 +11,13 @@ requests:
       - "{{BaseURL}}"
     redirects: true
     max-redirects: 3
+    matchers-condition: and
     matchers:
       - type: word
         part: header
         words:
           - "TestRedirectHeaderMatch"
+
+      - type: status
+        status:
+          - 302
