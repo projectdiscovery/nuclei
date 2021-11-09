@@ -513,7 +513,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 	})
 
-	debug(request, formedURL, redirectedResponse, responseContentType, event)
+	dumpResponse(event, request.options, redirectedResponse, formedURL, responseContentType)
 
 	callback(event)
 	return nil
@@ -536,26 +536,33 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func debug(request *Request, formedURL string, redirectedResponse []byte, responseContentType string, event *output.InternalWrappedEvent) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		hexDump := false
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, redirectedResponse []byte, formedURL string, responseContentType string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		response := string(redirectedResponse)
 
-		var headers string
-		if responseContentType == "" || responseContentType == "application/octet-stream" || (responseContentType == "application/x-www-form-urlencoded" && responsehighlighter.IsASCII(response)) {
-			hexDump = true
-			responseLines := strings.Split(response, CRLF)
-			for i, value := range responseLines {
-				headers += value + CRLF
-				if value == "" {
-					response = hex.Dump([]byte(strings.Join(responseLines[i+1:], "")))
-					break
-				}
-			}
+		var highlightedResult string
+		if responseContentType == "application/octet-stream" || ((responseContentType == "" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response)) {
+			highlightedResult = createResponseHexDump(event, response, cliOptions.NoColor)
+		} else {
+			highlightedResult = responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, false)
 		}
-		logMessageHeader := fmt.Sprintf("[%s] Dumped HTTP response for %s\n", request.options.TemplateID, formedURL)
 
-		gologger.Debug().Msgf("%s\n%s", logMessageHeader, responsehighlighter.Highlight(event.OperatorsResult, headers, request.options.Options.NoColor, false))
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, response, request.options.Options.NoColor, hexDump))
+		gologger.Debug().Msgf("[%s] Dumped HTTP response for %s\n\n%s", requestOptions.TemplateID, formedURL, highlightedResult)
+	}
+}
+
+func createResponseHexDump(event *output.InternalWrappedEvent, response string, noColor bool) string {
+	CRLFs := CRLF + CRLF
+	headerEndIndex := strings.Index(response, CRLFs) + len(CRLFs)
+	if headerEndIndex > 0 {
+		headers := response[0:headerEndIndex]
+		responseBodyHexDump := hex.Dump([]byte(response[headerEndIndex:]))
+
+		highlightedHeaders := responsehighlighter.Highlight(event.OperatorsResult, headers, noColor, false)
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBodyHexDump, noColor, true)
+		return fmt.Sprintf("%s\n%s", highlightedHeaders, highlightedResponse)
+	} else {
+		return responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), noColor, true)
 	}
 }

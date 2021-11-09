@@ -71,22 +71,22 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-	debug(event, request, domain, response.String())
+	dumpResponse(event, request.options, response.String(), domain)
 
 	callback(event)
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, domain string, response string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n", request.options.TemplateID, domain)
-
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, domain string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
-		if !responsehighlighter.IsASCII(response) {
+		if responsehighlighter.HasBinaryContent(response) {
 			hexDump = true
 			response = hex.Dump([]byte(response))
 		}
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, response, request.options.Options.NoColor, hexDump))
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
+		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }
 

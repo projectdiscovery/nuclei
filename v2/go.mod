@@ -64,6 +64,8 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
+require github.com/weppos/publicsuffix-go v0.15.0
+
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
