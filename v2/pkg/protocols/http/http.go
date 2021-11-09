@@ -253,7 +253,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 
 		for _, input := range inputs {
-			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input) == nil {
 				hasPayloadName = true
 				break
 			}

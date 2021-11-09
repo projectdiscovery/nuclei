@@ -11,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -61,7 +62,9 @@ type Request struct {
 	// examples:
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
-	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
+	Retries           int  `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
+	Trace             bool `yaml:"trace,omitempty"`
+	TraceMaxRecursion int  `yaml:"trace-max-recursion,omitempty"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
@@ -96,7 +99,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		dnsClientOptions.Resolvers = request.Resolvers
 	}
 	// Create a dns client for the class
-	client, err := dnsclientpool.Get(options.Options, dnsClientOptions)
+	client, err := request.getDnsClient(options, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
@@ -113,6 +116,28 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 	request.question = questionTypeToInt(request.Type)
 	return nil
+}
+
+func (request *Request) getDnsClient(options *protocols.ExecuterOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
+	dnsClientOptions := &dnsclientpool.Configuration{
+		Retries: request.Retries,
+	}
+	if len(request.Resolvers) > 0 {
+		if len(request.Resolvers) > 0 {
+			for _, resolver := range request.Resolvers {
+				if expressions.ContainsUnresolvedVariables(resolver) != nil {
+					var err error
+					resolver, err = expressions.Evaluate(resolver, metadata)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
+					}
+					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
+				}
+			}
+		}
+		dnsClientOptions.Resolvers = request.Resolvers
+	}
+	return dnsclientpool.Get(options.Options, dnsClientOptions)
 }
 
 // Requests returns the total number of requests the YAML rule will perform

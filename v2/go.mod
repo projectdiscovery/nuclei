@@ -39,7 +39,7 @@ require (
 	github.com/projectdiscovery/interactsh v0.0.6
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20210914222811-0a072d262f77
 	github.com/projectdiscovery/rawhttp v0.0.7
-	github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a
+	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20211013053023-e7b2e104d80d
 	github.com/projectdiscovery/yamldoc-go v1.0.2

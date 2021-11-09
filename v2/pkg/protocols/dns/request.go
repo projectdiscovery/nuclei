@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 var _ protocols.Request = &Request{}
@@ -34,6 +35,14 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		return errors.Wrap(err, "could not build request")
 	}
 
+	dnsClient := request.dnsClient
+	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
+		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
+			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+			return nil
+		}
+	}
+
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
@@ -45,7 +54,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	}
 
 	// Send the request to the target servers
-	response, err := request.dnsClient.Do(compiledRequest)
+	response, err := dnsClient.Do(compiledRequest)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -58,12 +67,22 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input)
+	// perform trace if necessary
+	var tracedata *retryabledns.TraceData
+	if request.Trace {
+		tracedata, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
+		if err != nil {
+			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+		}
+	}
+
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, tracedata)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
 
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request.options, response.String(), domain)
 
