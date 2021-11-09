@@ -24,9 +24,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 
 	outData := make(map[string]string)
 	for _, act := range actions {
-		actionType := ActionStringToAction[act.ActionType.String()]
-
-		switch actionType {
+		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData, baseURL)
 		case ActionScript:
