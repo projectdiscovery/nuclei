@@ -162,16 +162,16 @@ HEADLESS:
    -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
 
 DEBUG:
-   -debug                     show all requests and responses
-   -debug-req                 show all sent requests
-   -debug-resp                show all received responses
-   -proxy, -proxy-url string  URL of the HTTP proxy server
-   -proxy-socks-url string    URL of the SOCKS proxy server
-   -tlog, -trace-log string   file to write sent requests trace log
-   -version                   show nuclei version
-   -v, -verbose               show verbose output
-   -vv                        display extra verbose information
-   -tv, -templates-version    shows the version of the installed nuclei-templates
+   -debug                    show all requests and responses
+   -debug-req                show all sent requests
+   -debug-resp               show all received responses
+   -p, -proxy string[]       List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+   -tlog, -trace-log string  file to write sent requests trace log
+   -elog, -error-log string  file to write sent requests error log
+   -version                  show nuclei version
+   -v, -verbose              show verbose output
+   -vv                       display templates loaded for scan
+   -tv, -templates-version   shows the version of the installed nuclei-templates
 
 UPDATE:
    -update                        update nuclei engine to the latest released version

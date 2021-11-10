@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -36,15 +37,13 @@ func newhttpClient(options *types.Options) *http.Client {
 		MaxConnsPerHost:     500,
 		TLSClientConfig:     tlsConfig,
 	}
-
-	if options.ProxyURL != "" {
-		if proxyURL, err := url.Parse(options.ProxyURL); err == nil {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if options.ProxySocksURL != "" {
+	} else if types.ProxySocksURL != "" {
 		var proxyAuth *proxy.Auth
-
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
 		if proxyErr == nil {
 			proxyAuth = &proxy.Auth{}
 			proxyAuth.User = socksURL.User.Username()
