@@ -99,15 +99,15 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 	mutex := &sync.Mutex{}
 	for {
 		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			return err
 		}
 		if reqURL == "" {
 			reqURL = generatedHttpRequest.URL()
-		}
-		if err != nil {
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			return err
 		}
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
@@ -162,18 +162,17 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 	mutex := &sync.Mutex{}
 	for {
 		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			return err
 		}
 		if reqURL == "" {
 			reqURL = generatedHttpRequest.URL()
 		}
-		if err != nil {
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			return err
-		}
 		generatedHttpRequest.pipelinedClient = pipeClient
-
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
@@ -216,17 +215,16 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
 
 		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			return err
 		}
 		if reqURL == "" {
 			reqURL = generatedHttpRequest.URL()
 		}
-		if err != nil {
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			return err
-		}
-
 		request.dynamicValues = generatedHttpRequest.dynamicValues
 		// Check if hosts just keep erroring
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
