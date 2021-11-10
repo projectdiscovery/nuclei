@@ -62,9 +62,16 @@ type Request struct {
 	// examples:
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
-	Retries           int  `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
-	Trace             bool `yaml:"trace,omitempty"`
-	TraceMaxRecursion int  `yaml:"trace-max-recursion,omitempty"`
+	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
+	// description: |
+	//   Trace performs a trace operation for the target.
+	Trace bool `yaml:"trace,omitempty" jsonschema:"title=trace operation,description=Trace performs a trace operation for the target."`
+	// description: |
+	//   TraceMaxRecursion is the number of max recursion allowed for trace operations
+	// examples:
+	//   - name: Use a retry of 100 to 150 generally
+	//     value: 100
+	TraceMaxRecursion int `yaml:"trace-max-recursion,omitempty"  jsonschema:"title=trace-max-recursion level for dns request,description=TraceMaxRecursion is the number of max recursion allowed for trace operations"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
