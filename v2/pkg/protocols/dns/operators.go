@@ -131,8 +131,10 @@ func questionToString(resourceRecords []dns.Question) string {
 
 func traceToString(tracedata *retryabledns.TraceData) string {
 	buffer := &bytes.Buffer{}
-	for _, dnsRecord := range tracedata.DNSData {
-		buffer.WriteString(dnsRecord.Raw)
+	if tracedata != nil {
+		for _, dnsRecord := range tracedata.DNSData {
+			buffer.WriteString(dnsRecord.Raw)
+		}
 	}
 	return buffer.String()
 }
