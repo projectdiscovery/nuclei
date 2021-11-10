@@ -51,5 +51,5 @@ func main() {
 }
 
 func errIncorrectResultsCount(results []string) error {
-	return fmt.Errorf("incorrect number of results %s", strings.Join(results, "\n\t"))
+	return fmt.Errorf("incorrect number of results \n\t%s", strings.Join(results, "\n\t"))
 }
