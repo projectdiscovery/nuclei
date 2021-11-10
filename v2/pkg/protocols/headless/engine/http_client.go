@@ -18,7 +18,7 @@ import (
 )
 
 // newhttpClient creates a new http client for headless communication with a timeout
-func newhttpClient(options *types.Options) *http.Client {
+func newhttpClient(options *types.Options) (*http.Client, error) {
 	dialer := protocolstate.Dialer
 
 	// Set the base TLS configuration definition
@@ -28,7 +28,11 @@ func newhttpClient(options *types.Options) *http.Client {
 	}
 
 	// Add the client certificate authentication to the request if it's configured
-	tlsConfig = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	var err error
+	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, err
+	}
 
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
@@ -70,5 +74,5 @@ func newhttpClient(options *types.Options) *http.Client {
 		},
 	}
 
-	return httpclient
+	return httpclient, nil
 }
