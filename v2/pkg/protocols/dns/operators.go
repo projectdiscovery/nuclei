@@ -14,7 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// Match matches a generic data response again a given matcher
+// Match matches a generic data response against a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
 	if !ok {
