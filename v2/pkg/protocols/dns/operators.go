@@ -2,6 +2,8 @@ package dns
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -88,7 +90,7 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
-		"trace":         traceToString(tracedata),
+		"trace":         traceToString(tracedata, false),
 	}
 }
 
@@ -129,10 +131,13 @@ func questionToString(resourceRecords []dns.Question) string {
 	return buffer.String()
 }
 
-func traceToString(tracedata *retryabledns.TraceData) string {
+func traceToString(tracedata *retryabledns.TraceData, withSteps bool) string {
 	buffer := &bytes.Buffer{}
 	if tracedata != nil {
-		for _, dnsRecord := range tracedata.DNSData {
+		for i, dnsRecord := range tracedata.DNSData {
+			if withSteps {
+				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+			}
 			buffer.WriteString(dnsRecord.Raw)
 		}
 	}

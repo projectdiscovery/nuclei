@@ -85,12 +85,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request.options, response.String(), domain)
+	if request.Trace {
+		dumpTraceData(event, request.options, traceToString(tracedata, true), domain)
+	}
 
 	callback(event)
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response, domain string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
@@ -100,6 +103,19 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+	}
+}
+
+func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, tracedata, domain string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
+		hexDump := false
+		if responsehighlighter.HasBinaryContent(tracedata) {
+			hexDump = true
+			tracedata = hex.Dump([]byte(tracedata))
+		}
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, tracedata, cliOptions.NoColor, hexDump)
+		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }
 
