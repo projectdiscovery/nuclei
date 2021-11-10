@@ -13,7 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// Match matches a generic data response again a given matcher
+// Match matches a generic data response against a given matcher
 func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
 	partString := matcher.Part
 	switch partString {
