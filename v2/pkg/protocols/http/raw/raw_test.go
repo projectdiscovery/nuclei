@@ -75,3 +75,13 @@ Connection: close`, "https://test.com/test/", true)
 	require.Nil(t, err, "could not parse unsafe request")
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test/manager/html", "Could not parse unsafe method request path correctly")
 }
+
+func TestTryFillCustomHeaders(t *testing.T) {
+	testValue := "GET /manager/html HTTP/1.1\r\nHost: Test\r\n"
+	expected := "GET /test/manager/html HTTP/1.1\r\nHost: Test\r\ntest: test\r\n"
+	request, err := Parse(testValue, "https://test.com/test/", true)
+	require.Nil(t, err, "could not parse unsafe request")
+	err = request.TryFillCustomHeaders([]string{"test: test"})
+	require.Nil(t, err, "could not add custom headers")
+	require.Equal(t, expected, string(request.UnsafeRawBytes), "actual value and expected value are different")
+}

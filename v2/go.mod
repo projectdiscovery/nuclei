@@ -53,7 +53,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
-	github.com/weppos/publicsuffix-go v0.15.0
 	github.com/xanzy/go-gitlab v0.50.3
 	github.com/ysmood/gson v0.6.4 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
@@ -68,6 +67,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
+
+require github.com/weppos/publicsuffix-go v0.15.0
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
