@@ -3,11 +3,11 @@ package runner
 import (
 	"bufio"
 	"errors"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
@@ -21,14 +21,8 @@ func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = hasStdin()
 
-	// if VerboseVerbose is set, it implicitly enables the Verbose option as well
-	if options.VerboseVerbose {
-		options.Verbose = true
-	}
-
 	// Read the inputs and configure the logging
 	configureOutput(options)
-
 	// Show the user the banner
 	showBanner()
 
@@ -61,6 +55,14 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
+	// removes all cli variables containing payloads and add them to the internal struct
+	for key, value := range options.Vars.AsMap() {
+		if fileutil.FileExists(value.(string)) {
+			_ = options.Vars.Del(key)
+			options.AddVarPayload(key, value)
+		}
+	}
+
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
@@ -85,40 +87,30 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-
-	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
+	//loading the proxy server list from file or cli and test the connectivity
+	if err := loadProxyServers(options); err != nil {
 		return err
 	}
-
-	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
-		return err
-	}
-
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
-	return nil
-}
-
-func validateProxyURL(proxyURL, message string) error {
-	if proxyURL != "" && !isValidURL(proxyURL) {
-		return errors.New(message)
+	// Verify if any of the client certificate options were set since it requires all three to work properly
+	if len(options.ClientCertFile) > 0 || len(options.ClientKeyFile) > 0 || len(options.ClientCAFile) > 0 {
+		if len(options.ClientCertFile) == 0 || len(options.ClientKeyFile) == 0 || len(options.ClientCAFile) == 0 {
+			return errors.New("if a client certification option is provided, then all three must be provided")
+		}
+		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 
 	return nil
 }
 
-func isValidURL(urlString string) bool {
-	_, err := url.Parse(urlString)
-	return err == nil
-}
-
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.VerboseVerbose {
+	if options.Verbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {
@@ -160,7 +152,6 @@ func loadResolvers(options *types.Options) {
 
 func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
-
 	for _, templatePath := range allGivenTemplatePaths {
 		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
 			fileInfo, err := os.Stat(templatePath)
@@ -172,6 +163,17 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 					break
 				}
 			}
+		}
+	}
+}
+
+func validateCertificatePaths(certificatePaths []string) {
+	for _, certificatePath := range certificatePaths {
+		if _, err := os.Stat(certificatePath); os.IsNotExist(err) {
+			// The provided path to the PEM certificate does not exist for the client authentication. As this is
+			// required for successful authentication, log and return an error
+			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
+			break
 		}
 	}
 }

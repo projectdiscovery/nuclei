@@ -1,18 +1,23 @@
 package dns
 
 import (
+	"encoding/hex"
 	"net/url"
 
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 )
 
 var _ protocols.Request = &Request{}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if isURL(input) {
@@ -22,51 +27,61 @@ func (r *Request) ExecuteWithResults(input string, metadata /*TODO review unused
 	}
 
 	// Compile each request for the template based on the URL
-	compiledRequest, err := r.Make(domain)
+	compiledRequest, err := request.Make(domain)
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
+		request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not build request")
 	}
 
-	if r.options.Options.Debug || r.options.Options.DebugRequests {
-		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", r.options.TemplateID, domain)
-		gologger.Print().Msgf("%s", compiledRequest.String())
+	requestString := compiledRequest.String()
+	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
+		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+		return nil
+	}
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
+		gologger.Print().Msgf("%s", requestString)
 	}
 
 	// Send the request to the target servers
-	resp, err := r.dnsClient.Do(compiledRequest)
+	response, err := request.dnsClient.Do(compiledRequest)
 	if err != nil {
-		r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-		r.options.Progress.IncrementFailedRequestsBy(1)
+		request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
 	}
-	if resp == nil {
+	if response == nil {
 		return errors.Wrap(err, "could not send dns request")
 	}
-	r.options.Progress.IncrementRequests()
+	request.options.Progress.IncrementRequests()
 
-	r.options.Output.Request(r.options.TemplateID, domain, "dns", err)
-	gologger.Verbose().Msgf("[%s] Sent DNS request to %s", r.options.TemplateID, domain)
+	request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
+	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
 
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped DNS response for %s", r.options.TemplateID, domain)
-		gologger.Print().Msgf("%s", resp.String())
-	}
-	outputEvent := r.responseToDSLMap(compiledRequest, resp, input, input)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
 
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if r.CompiledOperators != nil {
-		result, ok := r.CompiledOperators.Execute(outputEvent, r.Match, r.Extract)
-		if ok && result != nil {
-			event.OperatorsResult = result
-			event.Results = r.MakeResultEvent(event)
-		}
-	}
+	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+
+	dumpResponse(event, request.options, response.String(), domain)
+
 	callback(event)
 	return nil
+}
+
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, domain string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
+		hexDump := false
+		if responsehighlighter.HasBinaryContent(response) {
+			hexDump = true
+			response = hex.Dump([]byte(response))
+		}
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
+		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+	}
 }
 
 // isURL tests a string to determine if it is a well-structured url or not.

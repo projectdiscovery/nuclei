@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
@@ -128,9 +130,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-
-	if options.ProxyURL != "" {
-		proxyURL, err = url.Parse(options.ProxyURL)
+	if types.ProxyURL != "" {
+		proxyURL, err = url.Parse(types.ProxyURL)
 	}
 	if err != nil {
 		return nil, err
@@ -161,38 +162,44 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
+	// Set the base TLS configuration definition
+	tlsConfig := &tls.Config{
+		Renegotiation:      tls.RenegotiateOnceAsClient,
+		InsecureSkipVerify: true,
+	}
+
+	// Add the client certificate authentication to the request if it's configured
+	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
+
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
-		DisableKeepAlives: disableKeepAlives,
-	}
-
-	// Attempts to overwrite the dial function with the socks proxied version
-	if options.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
-
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
-		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
-		if proxyErr == nil {
-			transport.DialContext = dc.DialContext
-		}
+		TLSClientConfig:     tlsConfig,
+		DisableKeepAlives:   disableKeepAlives,
 	}
 	if proxyURL != nil {
-		transport.Proxy = http.ProxyURL(proxyURL)
+		// Attempts to overwrite the dial function with the socks proxied version
+		if proxyURL.Scheme == types.SOCKS5 {
+			var proxyAuth *proxy.Auth = &proxy.Auth{}
+			proxyAuth.User = proxyURL.User.Username()
+			proxyAuth.Password, _ = proxyURL.User.Password()
+
+			dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", proxyURL.Hostname(), proxyURL.Port()), proxyAuth, proxy.Direct)
+
+			dc := dialer.(interface {
+				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+			})
+			if proxyErr == nil {
+				transport.DialContext = dc.DialContext
+			}
+		} else {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
 	}
 
 	var jar *cookiejar.Jar

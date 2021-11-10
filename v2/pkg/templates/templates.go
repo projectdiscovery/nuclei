@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -27,7 +28,7 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520"`
+	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
@@ -62,10 +63,34 @@ type Template struct {
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
 
+	// description: |
+	//   Self Contained marks Requests for the template as self-contained
+	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
 	// Executer is the actual template executor for running template requests
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+}
+
+// Type returns the type of the template
+func (t *Template) Type() types.ProtocolType {
+	switch {
+	case len(t.RequestsDNS) > 0:
+		return types.DNSProtocol
+	case len(t.RequestsFile) > 0:
+		return types.FileProtocol
+	case len(t.RequestsHTTP) > 0:
+		return types.HTTPProtocol
+	case len(t.RequestsHeadless) > 0:
+		return types.HeadlessProtocol
+	case len(t.RequestsNetwork) > 0:
+		return types.NetworkProtocol
+	case t.CompiledWorkflow != nil:
+		return types.WorkflowProtocol
+	default:
+		return types.InvalidProtocol
+	}
 }

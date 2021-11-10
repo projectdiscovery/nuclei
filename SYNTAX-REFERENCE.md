@@ -230,6 +230,19 @@ Workflows is a list of workflows to execute for a template.
 
 <hr />
 
+<div class="dd">
+
+<code>self-contained</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Self Contained marks Requests for the template as self-contained
+
+</div>
+
+<hr />
+
 
 
 
@@ -823,14 +836,14 @@ in a combined manner allowing multirequest based matchers.
 
 Attack is the type of payload combinations to perform.
 
-Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
 Valid values:
 
 
-  - <code>sniper</code>
+  - <code>batteringram</code>
 
   - <code>pitchfork</code>
 
@@ -1192,6 +1205,19 @@ StopAtFirstMatch stops the execution of the requests and template as soon as a m
 
 <hr />
 
+<div class="dd">
+
+<code>skip-variables-check</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipVariablesCheck skips the check for unresolved variables in request
+
+</div>
+
+<hr />
+
 
 
 
@@ -1528,6 +1554,26 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive matches. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
@@ -1807,6 +1853,26 @@ in the next request for some protocols (like HTTP).
 
 <hr />
 
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive extractions. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
@@ -2021,6 +2087,19 @@ retries: 5
 <div class="dt">
 
 Recursion determines if resolver should recurse all records to get fresh results.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>resolvers</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Resolvers to use for the dns requests
 
 </div>
 
@@ -2286,14 +2365,14 @@ host:
 
 Attack is the type of payload combinations to perform.
 
-Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
 Valid values:
 
 
-  - <code>sniper</code>
+  - <code>batteringram</code>
 
   - <code>pitchfork</code>
 
@@ -2350,6 +2429,31 @@ Examples:
 
 ```yaml
 read-size: 2048
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ReadAll determines if the data stream should be read till the end regardless of the size
+
+Default value for read-all is false.
+
+
+
+Examples:
+
+
+```yaml
+read-all: false
 ```
 
 

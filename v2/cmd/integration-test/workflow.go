@@ -23,7 +23,6 @@ type workflowBasic struct{}
 func (h *workflowBasic) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -45,7 +44,6 @@ type workflowConditionMatched struct{}
 func (h *workflowConditionMatched) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -67,7 +65,6 @@ type workflowConditionUnmatch struct{}
 func (h *workflowConditionUnmatch) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -89,7 +86,6 @@ type workflowMatcherName struct{}
 func (h *workflowMatcherName) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)

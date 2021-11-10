@@ -34,6 +34,7 @@ func New(options *types.Options) (*Browser, error) {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
 	previouspids := findChromeProcesses()
+
 	chromeLauncher := launcher.New().
 		Leakless(false).
 		Set("disable-gpu", "true").
@@ -49,13 +50,21 @@ func New(options *types.Options) (*Browser, error) {
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
 
+	if options.UseInstalledChrome {
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
+		} else {
+			return nil, errors.New("the chrome browser is not installed")
+		}
+	}
+
 	if options.ShowBrowser {
 		chromeLauncher = chromeLauncher.Headless(false)
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	if options.ProxyURL != "" {
-		chromeLauncher = chromeLauncher.Proxy(options.ProxyURL)
+	if types.ProxyURL != "" {
+		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
 	}
 	launcherURL, err := chromeLauncher.Launch()
 	if err != nil {
@@ -79,7 +88,12 @@ func New(options *types.Options) (*Browser, error) {
 	if customAgent == "" {
 		customAgent = uarand.GetRandom()
 	}
-	httpclient := newhttpClient(options)
+
+	httpclient, err := newhttpClient(options)
+	if err != nil {
+		return nil, err
+	}
+
 	engine := &Browser{
 		tempDir:     dataStore,
 		customAgent: customAgent,

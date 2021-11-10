@@ -105,6 +105,12 @@ type Matcher struct {
 	// values:
 	//   - "hex"
 	Encoding string `yaml:"encoding,omitempty" jsonschema:"title=encoding for word field,description=Optional encoding for the word fields,enum=hex"`
+	// description: |
+	//   CaseInsensitive enables case-insensitive matches. Default is false.
+	// values:
+	//   - false
+	//   - true
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
 
 	// cached data for the compiled matcher
 	condition     ConditionType
@@ -163,6 +169,14 @@ func (m *Matcher) Result(data bool) bool {
 		return !data
 	}
 	return data
+}
+
+// ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
+func (m *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
+	if m.Negative {
+		return !data, []string{}
+	}
+	return data, matchedSnippet
 }
 
 // GetType returns the type of the matcher

@@ -26,6 +26,7 @@ func main() {
 		"network":  networkTestcases,
 		"dns":      dnsTestCases,
 		"workflow": workflowTestcases,
+		"loader":   loaderTestcases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {
@@ -50,5 +51,5 @@ func main() {
 }
 
 func errIncorrectResultsCount(results []string) error {
-	return fmt.Errorf("incorrect number of results %s", strings.Join(results, "\n\t"))
+	return fmt.Errorf("incorrect number of results \n\t%s", strings.Join(results, "\n\t"))
 }

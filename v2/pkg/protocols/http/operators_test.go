@@ -84,8 +84,9 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid response")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, matcher.Words, matched)
 	})
 
 	t.Run("negative", func(t *testing.T) {
@@ -98,8 +99,9 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile negative matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid negative response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid negative response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -111,8 +113,24 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.False(t, matched, "could match invalid response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.False(t, isMatched, "could match invalid response matcher")
+		require.Equal(t, []string{}, matched)
+	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		matcher := &matchers.Matcher{
+			Part:            "body",
+			Type:            "word", // only applies to word
+			Words:           []string{"EXAMPLE DOMAIN"},
+			CaseInsensitive: true,
+		}
+		err = matcher.CompileMatchers()
+		require.Nil(t, err, "could not compile matcher")
+
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, []string{"example domain"}, matched)
 	})
 }
 
@@ -212,6 +230,22 @@ func TestHTTPOperatorExtract(t *testing.T) {
 			require.Equal(t, map[string]struct{}{"{\"batter\":[{\"id\":\"1001\",\"type\":\"Regular\"},{\"id\":\"1002\",\"type\":\"Chocolate\"},{\"id\":\"1003\",\"type\":\"Blueberry\"},{\"id\":\"1004\",\"type\":\"Devil's Food\"}]}": {}}, data, "could not extract correct json data")
 		})
 	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		event["body"] = exampleResponseBody
+
+		extractor := &extractors.Extractor{
+			Type:            "kval",
+			KVal:            []string{"TEST_HEADER"}, // only applies to KVal
+			CaseInsensitive: true,
+		}
+		err = extractor.CompileExtractors()
+		require.Nil(t, err, "could not compile kval extractor")
+
+		data := request.Extract(event, extractor)
+		require.Greater(t, len(data), 0, "could not extractor kval valid response")
+		require.Equal(t, map[string]struct{}{"test-response": {}}, data, "could not extract correct kval data")
+	})
 }
 
 func TestHTTPMakeResult(t *testing.T) {
@@ -259,7 +293,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	event["ip"] = "192.169.1.1"
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)

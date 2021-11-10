@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -15,16 +16,28 @@ type Options struct {
 	ExcludeTags goflags.NormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
+	// WorkflowURLs specifies URLs to a list of workflows to use
+	WorkflowURLs goflags.StringSlice
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
+	// TemplateURLs specifies URLs to a list of templates to use
+	TemplateURLs goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
+	// vars to use as iterative payload
+	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
+	// ExcludeSeverities specifies severities to exclude
+	ExcludeSeverities severity.Severities
+	// Protocols contains the protocols to be allowed executed
+	Protocols types.ProtocolTypes
+	// ExcludeProtocols contains protocols to not be executed
+	ExcludeProtocols types.ProtocolTypes
 	// Author filters templates based on their author and only run the matching ones.
 	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
@@ -45,14 +58,14 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// ProxyURL is the URL for the proxy server
-	ProxyURL string
-	// ProxySocksURL is the URL for the proxy socks server
-	ProxySocksURL string
+	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+	Proxy goflags.NormalizedStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
+	// ErrorLogFile specifies a file to write with the errors of all requests
+	ErrorLogFile string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
@@ -90,9 +103,9 @@ type Options struct {
 	// Eviction is the number of seconds after which to automatically discard
 	// interaction requests.
 	InteractionsEviction int
-	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// InteractionsCooldownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
-	InteractionsColldownPeriod int
+	InteractionsCooldownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -103,6 +116,8 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
+	// UseInstalledChrome skips chrome install and use local instance
+	UseInstalledChrome bool
 	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
 	// Metrics enables display of metrics via an http endpoint
@@ -140,6 +155,8 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+	// Stream the input without sorting
+	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
 	// NoTimestamp disables display of timestamp for the matcher
@@ -156,4 +173,22 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCertFile string
+	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
+	ClientKeyFile string
+	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCAFile string
+}
+
+func (options *Options) AddVarPayload(key string, value interface{}) {
+	if options.varsPayload == nil {
+		options.varsPayload = make(map[string]interface{})
+	}
+
+	options.varsPayload[key] = value
+}
+
+func (options *Options) VarsPayload() map[string]interface{} {
+	return options.varsPayload
 }
