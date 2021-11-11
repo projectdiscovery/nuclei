@@ -63,8 +63,8 @@ func New(options *types.Options) (*Browser, error) {
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	if options.ProxyURL != "" {
-		chromeLauncher = chromeLauncher.Proxy(options.ProxyURL)
+	if types.ProxyURL != "" {
+		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
 	}
 	launcherURL, err := chromeLauncher.Launch()
 	if err != nil {
@@ -88,7 +88,12 @@ func New(options *types.Options) (*Browser, error) {
 	if customAgent == "" {
 		customAgent = uarand.GetRandom()
 	}
-	httpclient := newhttpClient(options)
+
+	httpclient, err := newhttpClient(options)
+	if err != nil {
+		return nil, err
+	}
+
 	engine := &Browser{
 		tempDir:     dataStore,
 		customAgent: customAgent,
