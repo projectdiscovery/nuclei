@@ -87,6 +87,9 @@ require (
 	github.com/eggsampler/acme/v3 v3.2.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -102,6 +105,7 @@ require (
 	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.15 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -123,6 +127,7 @@ require (
 	github.com/ysmood/goob v0.3.0 // indirect
 	github.com/zclconf/go-cty v1.8.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
