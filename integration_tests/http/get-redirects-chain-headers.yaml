@@ -1,0 +1,23 @@
+id: basic-get-redirects-chain-headers
+
+info:
+  name: Basic GET Redirects Request With Chain header
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    redirects: true
+    max-redirects: 3
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: header
+        words:
+          - "TestRedirectHeaderMatch"
+
+      - type: status
+        status:
+          - 302
