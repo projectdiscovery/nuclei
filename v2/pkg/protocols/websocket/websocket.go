@@ -172,7 +172,11 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	payloadValues["Hostname"] = parsed.Host
 	payloadValues["Host"] = parsed.Hostname()
 	payloadValues["Scheme"] = parsed.Scheme
-	payloadValues["Path"] = parsed.Path
+	requestPath := parsed.Path
+	if values := parsed.Query(); len(values) > 0 {
+		requestPath = requestPath + "?" + values.Encode()
+	}
+	payloadValues["Path"] = requestPath
 
 	requestOptions := request.options
 	for key, value := range request.Headers {
