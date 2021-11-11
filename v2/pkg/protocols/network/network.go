@@ -107,7 +107,7 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type NetworkTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
+	Type NetworkInputTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
