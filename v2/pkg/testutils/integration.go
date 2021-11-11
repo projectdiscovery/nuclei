@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/gobwas/ws"
+	"github.com/julienschmidt/httprouter"
 )
 
 // RunNucleiTemplateAndGetResults returns a list of results for a template
@@ -123,4 +128,30 @@ func NewTCPServer(handler func(conn net.Conn), port ...int) *TCPServer {
 // Close closes the TCP server
 func (s *TCPServer) Close() {
 	s.listener.Close()
+}
+
+// NewWebsocketServer creates a new websocket server from a handler
+func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate func(origin string) bool, port ...int) *httptest.Server {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if value := r.Header.Get("Origin"); value != "" && !originValidate(value) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		conn, _, _, err := ws.UpgradeHTTP(r, w)
+		if err != nil {
+			return
+		}
+		go func() {
+			defer conn.Close()
+
+			handler(conn)
+		}()
+	})
+
+	if path != "" {
+		router := httprouter.New()
+		router.HandlerFunc("*", "/test", handlerFunc)
+		return httptest.NewServer(router)
+	}
+	return httptest.NewServer(handlerFunc)
 }
