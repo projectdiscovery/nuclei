@@ -152,6 +152,11 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 // parseSelfContainedRequests parses the self contained template requests.
 func (t *Template) parseSelfContainedRequests() {
+	if t.AwsSign {
+		for _, request := range t.RequestsHTTP {
+			request.AwsSign = true
+		}
+	}
 	if !t.SelfContained {
 		return
 	}

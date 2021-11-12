@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
@@ -342,6 +344,39 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 		if resp == nil {
+			// aws sign the request if necessary
+			if request.AwsSign {
+				generatedRequest.request.Header.Del("Host")
+				payloads := request.options.Options.Vars.AsMap()
+				var creds *credentials.Credentials
+				if request.options.Options.EnvironmentVariables {
+					// get from env
+					creds = credentials.NewEnvCredentials()
+				} else { // get from variables {
+					awsAccessKeyId := payloads["aws-id"]
+					awsSecretAccessKey := payloads["aws-secret"]
+					creds = credentials.NewStaticCredentials(awsAccessKeyId.(string), awsSecretAccessKey.(string), "")
+				}
+
+				signer := v4.NewSigner(creds)
+				var body *bytes.Reader
+				if generatedRequest.request.Request.Body != nil {
+					bodyBytes, err := ioutil.ReadAll(generatedRequest.request.Request.Body)
+					if err != nil {
+						return err
+					}
+					generatedRequest.request.Request.Body.Close()
+					body = bytes.NewReader(bodyBytes)
+				}
+
+				service := payloads["service"].(string)
+				region := payloads["region"].(string)
+				now := time.Now()
+				_, err = signer.Sign(generatedRequest.request.Request, body, service, region, now)
+				if err != nil {
+					return err
+				}
+			}
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
