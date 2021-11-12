@@ -19,6 +19,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -126,6 +127,13 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("malformed request supplied")
 		}
+
+		// the url might contain placeholders
+		parts[1] = replacer.Replace(parts[1], generators.BuildPayloadFromOptions(r.request.options.Options))
+		if expressions.ContainsUnresolvedVariables(parts[1]) != nil {
+			return nil, err
+		}
+
 		parsed, err := url.Parse(parts[1])
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %s", err)
