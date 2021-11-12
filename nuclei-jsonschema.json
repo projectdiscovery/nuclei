@@ -560,7 +560,7 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "http.HttpMethodTypeHolder": {
+    "http.HTTPMethodTypeHolder": {
       "enum": [
         "GET",
         "HEAD",
@@ -643,7 +643,7 @@
         },
         "method": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/http.HttpMethodTypeHolder",
+          "$ref": "#/definitions/http.HTTPMethodTypeHolder",
           "title": "method is the http request method",
           "description": "Method is the HTTP Request Method"
         },

@@ -854,7 +854,7 @@ Valid values:
 
 <div class="dd">
 
-<code>method</code>  <i>HttpMethodTypeHolder</i>
+<code>method</code>  <i>HTTPMethodTypeHolder</i>
 
 </div>
 <div class="dt">
