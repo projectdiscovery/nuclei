@@ -43,7 +43,7 @@ type Request struct {
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	Type DnsTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	Type DNSTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//

@@ -20,7 +20,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		Type:      DnsTypeHolder{DnsType: A},
+		Type:      DNSTypeHolder{DNSType: A},
 		Class:     "INET",
 		Retries:   5,
 		ID:        templateID,
