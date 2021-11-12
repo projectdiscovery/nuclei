@@ -560,6 +560,23 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "http.HttpMethodTypeHolder": {
+      "enum": [
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "CONNECT",
+        "OPTIONS",
+        "TRACE",
+        "PATCH",
+        "PURGE"
+      ],
+      "type": "string",
+      "title": "method is the http request method",
+      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
+    },
     "http.Request": {
       "properties": {
         "matchers": {
@@ -625,19 +642,8 @@
           "description": "Attack is the type of payload combinations to perform"
         },
         "method": {
-          "enum": [
-            "GET",
-            "HEAD",
-            "POST",
-            "PUT",
-            "DELETE",
-            "CONNECT",
-            "OPTIONS",
-            "TRACE",
-            "PATCH",
-            "PURGE"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/http.HttpMethodTypeHolder",
           "title": "method is the http request method",
           "description": "Method is the HTTP Request Method"
         },
