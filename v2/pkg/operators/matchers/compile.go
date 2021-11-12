@@ -31,7 +31,7 @@ func (m *Matcher) CompileMatchers() error {
 	}
 	// By default, match on body if user hasn't provided any specific items
 	if m.Part == "" {
-		m.Part = "body"
+		m.Part = "response"
 	}
 
 	// Compile the regexes

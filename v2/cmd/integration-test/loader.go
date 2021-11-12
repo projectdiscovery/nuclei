@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/julienschmidt/httprouter"
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var loaderTestcases = map[string]testutils.TestCase{

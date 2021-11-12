@@ -30,11 +30,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
 )
 
 const defaultMaxWorkers = 150
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.HTTPProtocol
+}
 
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -386,7 +392,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
+		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
 
 		// If we have interactsh markers and request times out, still send
@@ -424,7 +430,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
-	request.options.Output.Request(request.options.TemplatePath, formedURL, "http", err)
+	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 
 	duration := time.Since(timeStart)
 
