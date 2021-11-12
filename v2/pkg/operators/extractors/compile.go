@@ -42,11 +42,6 @@ func (e *Extractor) CompileExtractors() error {
 		e.jsonCompiled = append(e.jsonCompiled, compiled)
 	}
 
-	// Set up the part of the request to match, if any.
-	if e.Part == "" {
-		e.Part = "body"
-	}
-
 	if e.CaseInsensitive {
 		if e.Type != "kval" {
 			return fmt.Errorf("case-insensitive flag is supported only for 'kval' extractors (not '%s')", e.Type)
