@@ -37,11 +37,11 @@ var (
 	_ = exampleNormalHTTPRequest
 
 	exampleNormalDNSRequest = &dns.Request{
-		Name:      "{{FQDN}}",
-		Type:      "CNAME",
-		Class:     "inet",
-		Retries:   2,
-		Recursion: true,
+		Name:        "{{FQDN}}",
+		RequestType: "CNAME",
+		Class:       "inet",
+		Retries:     2,
+		Recursion:   true,
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
 				{Type: "regex", Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
