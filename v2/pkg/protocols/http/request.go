@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
@@ -31,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
 )
@@ -352,33 +351,29 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if resp == nil {
 			// aws sign the request if necessary
 			if request.AwsSign {
-				generatedRequest.request.Header.Del("Host")
+				var awsSigner *AwsSigner
 				payloads := request.options.Options.Vars.AsMap()
-				var creds *credentials.Credentials
 				if request.options.Options.EnvironmentVariables {
-					// get from env
-					creds = credentials.NewEnvCredentials()
-				} else { // get from variables {
-					awsAccessKeyId := payloads["aws-id"]
-					awsSecretAccessKey := payloads["aws-secret"]
-					creds = credentials.NewStaticCredentials(awsAccessKeyId.(string), awsSecretAccessKey.(string), "")
-				}
-
-				signer := v4.NewSigner(creds)
-				var body *bytes.Reader
-				if generatedRequest.request.Request.Body != nil {
-					bodyBytes, err := ioutil.ReadAll(generatedRequest.request.Request.Body)
+					var err error
+					awsSigner, err = NewAwsSignerFromEnv()
 					if err != nil {
 						return err
 					}
-					generatedRequest.request.Request.Body.Close()
-					body = bytes.NewReader(bodyBytes)
+				} else { // get from variables {
+					awsAccessKeyId := types.ToString(payloads["aws-id"])
+					awsSecretAccessKey := types.ToString(payloads["aws-secret"])
+					awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
+					if err != nil {
+						return err
+					}
 				}
 
-				service := payloads["service"].(string)
-				region := payloads["region"].(string)
-				now := time.Now()
-				_, err = signer.Sign(generatedRequest.request.Request, body, service, region, now)
+				args := SignArguments{
+					Service: types.ToString(payloads["service"]),
+					Region:  types.ToString(payloads["region"]),
+					Time:    time.Now(),
+				}
+				err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
 				if err != nil {
 					return err
 				}
