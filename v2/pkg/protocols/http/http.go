@@ -138,8 +138,8 @@ type Request struct {
 
 	// description: |
 	//   SelfContained specifies if the request is self contained.
-	SelfContained bool `yaml:"-" json:"-"`
-	AwsSign       bool `yaml:"-" json:"-"`
+	SelfContained  bool     `yaml:"-" json:"-"`
+	PostProcessors []string `yaml:"-" json:"-"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
