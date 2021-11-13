@@ -197,6 +197,10 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 	return requestErr
 }
 
+func (request *Request) hasPreprocessors() bool {
+	return len(request.PostProcessors) > 0
+}
+
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
@@ -296,6 +300,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
 		var dumpError error
+		// TODO: dump is currently not working with post-processors - somehow it alters the signature
 		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
 		if dumpError != nil {
 			return dumpError
@@ -349,33 +354,37 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 		if resp == nil {
-			// aws sign the request if necessary
-			if request.AwsSign {
-				var awsSigner *AwsSigner
-				payloads := request.options.Options.Vars.AsMap()
-				if request.options.Options.EnvironmentVariables {
-					var err error
-					awsSigner, err = NewAwsSignerFromEnv()
-					if err != nil {
-						return err
-					}
-				} else { // get from variables {
+			for _, postProcessor := range request.PostProcessors {
+				switch postProcessor {
+				case "aws-sign":
+					var awsSigner *AwsSigner
+					payloads := request.options.Options.Vars.AsMap()
 					awsAccessKeyId := types.ToString(payloads["aws-id"])
 					awsSecretAccessKey := types.ToString(payloads["aws-secret"])
-					awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
+					if awsAccessKeyId != "" && awsSecretAccessKey != "" {
+						awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
+					} else {
+						awsSigner, err = NewAwsSignerFromEnv()
+					}
 					if err != nil {
 						return err
 					}
-				}
 
-				args := SignArguments{
-					Service: types.ToString(payloads["service"]),
-					Region:  types.ToString(payloads["region"]),
-					Time:    time.Now(),
-				}
-				err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
-				if err != nil {
-					return err
+					service := types.ToString(payloads["service"])
+					region := types.ToString(payloads["region"])
+					if service == "" || region == "" {
+						return errors.New("service and region are mandatory")
+					}
+
+					args := SignArguments{
+						Service: types.ToString(payloads["service"]),
+						Region:  types.ToString(payloads["region"]),
+						Time:    time.Now(),
+					}
+					err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			resp, err = request.httpClient.Do(generatedRequest.request)

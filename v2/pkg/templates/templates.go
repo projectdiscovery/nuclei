@@ -73,8 +73,8 @@ type Template struct {
 
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
-	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
-	AwsSign       bool `yaml:"aws-sign,omitempty"`
+	SelfContained  bool     `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+	PostProcessors []string `yaml:"post-processors,omitempty"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
