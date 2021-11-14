@@ -108,7 +108,7 @@ func (t *Template) Type() types.ProtocolType {
 		return types.HeadlessProtocol
 	case len(t.RequestsNetwork) > 0:
 		return types.NetworkProtocol
-	case t.CompiledWorkflow != nil:
+	case len(t.Workflow.Workflows) > 0:
 		return types.WorkflowProtocol
 	case len(t.RequestsSSL) > 0:
 		return types.SSLProtocol
