@@ -3,9 +3,10 @@ package loader
 import (
 	"bufio"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type ContentType string

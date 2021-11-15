@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestGenerateDNSVariables(t *testing.T) {
@@ -27,12 +27,12 @@ func TestDNSCompileMake(t *testing.T) {
 	testutils.Init(options)
 	const templateID = "testing-dns"
 	request := &Request{
-		Type:      DNSTypeHolder{DNSType: A},
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		RequestType: DNSTypeHolder{DNSType: A},
+		Class:       "INET",
+		Retries:     5,
+		ID:          templateID,
+		Recursion:   false,
+		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
