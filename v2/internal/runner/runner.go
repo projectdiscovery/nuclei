@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
@@ -307,7 +308,7 @@ func (r *Runner) RunEnumeration() error {
 	// Cluster the templates first because we want info on how many
 	// templates did we cluster for showing to user in CLI
 	originalTemplatesCount := len(store.Templates())
-	finalTemplates, clusterCount := engine.ClusterTemplates(store.Templates())
+	finalTemplates, clusterCount := templates.ClusterTemplates(store.Templates(), engine.ExecuterOptions())
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
