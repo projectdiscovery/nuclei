@@ -33,7 +33,7 @@ type Request struct {
 	//   - value: "\"{{FQDN}}\""
 	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
-	//   Type is the type of DNS request to make.
+	//   RequestType is the type of DNS request to make.
 	// values:
 	//   - "A"
 	//   - "NS"
@@ -44,7 +44,7 @@ type Request struct {
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -121,7 +121,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.class = classToInt(request.Class)
 	request.options = options
-	request.question = questionTypeToInt(request.Type)
+	request.question = questionTypeToInt(request.RequestType)
 	return nil
 }
 

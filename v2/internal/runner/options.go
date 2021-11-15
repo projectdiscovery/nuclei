@@ -3,7 +3,6 @@ package runner
 import (
 	"bufio"
 	"errors"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +23,6 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
-
 	// Show the user the banner
 	showBanner()
 
@@ -45,13 +43,6 @@ func ParseOptions(options *types.Options) {
 	// invalid options have been used, exit.
 	if err := validateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
-	}
-
-	// Auto adjust rate limits when using headless mode if the user
-	// hasn't specified any custom limits.
-	if options.Headless && options.BulkSize == 25 && options.TemplateThreads == 10 {
-		options.BulkSize = 2
-		options.TemplateThreads = 2
 	}
 
 	// Load the resolvers if user asked for them
@@ -89,15 +80,10 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-
-	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
+	//loading the proxy server list from file or cli and test the connectivity
+	if err := loadProxyServers(options); err != nil {
 		return err
 	}
-
-	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
-		return err
-	}
-
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
@@ -112,19 +98,6 @@ func validateOptions(options *types.Options) error {
 	}
 
 	return nil
-}
-
-func validateProxyURL(proxyURL, message string) error {
-	if proxyURL != "" && !isValidURL(proxyURL) {
-		return errors.New(message)
-	}
-
-	return nil
-}
-
-func isValidURL(urlString string) bool {
-	_, err := url.Parse(urlString)
-	return err == nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -172,7 +145,6 @@ func loadResolvers(options *types.Options) {
 
 func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
-
 	for _, templatePath := range allGivenTemplatePaths {
 		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
 			fileInfo, err := os.Stat(templatePath)

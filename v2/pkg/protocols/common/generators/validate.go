@@ -11,7 +11,7 @@ import (
 )
 
 // validate validates the payloads if any.
-func (g *Generator) validate(payloads map[string]interface{}, templatePath string) error {
+func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePath string) error {
 	for name, payload := range payloads {
 		switch pt := payload.(type) {
 		case string:
