@@ -152,7 +152,3 @@ func (m *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (
 	return data, matchedSnippet
 }
 
-// GetType returns the type of the matcher
-// func (m *Matcher) GetType() MatcherType {
-// 	return m.matcherType
-// }
