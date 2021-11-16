@@ -104,7 +104,7 @@ The `ExecuteWithResults` function accepts a callback, which gets provided with r
 
 The default executer is provided in `pkg/protocols/common/executer` . It takes a list of Requests and relevant `ExecuterOptions` and implements the Executer interface required for template execution. The executer during Template compilation process is created from this package and used as-is.
 
-A different executer is the Clustered Requests executer which implements the Nuclei Request clustering functionality in `pkg/protocols/common/clusterer`  We have a single HTTP  request in cases where multiple templates can be clustered and multiple operator lists to match/extract. The first HTTP request is executed while all the template matcher/extractor are evaluated separately.
+A different executer is the Clustered Requests executer which implements the Nuclei Request clustering functionality in `pkg/templates`  We have a single HTTP  request in cases where multiple templates can be clustered and multiple operator lists to match/extract. The first HTTP request is executed while all the template matcher/extractor are evaluated separately.
 
 For Workflow execution, a separate RunWorkflow function is used which executes the workflow independently from the template execution.
 
@@ -585,7 +585,6 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 - [v2/pkg/protocols/common/generators](./v2/pkg/protocols/common/generators) - Payload support for Requests (Sniper, etc)
 - [v2/pkg/protocols/common/executer](./v2/pkg/protocols/common/executer) - Default Template Executer
 - [v2/pkg/protocols/common/replacer](./v2/pkg/protocols/common/replacer) - Template replacement helpers
-- [v2/pkg/protocols/common/clusterer](./v2/pkg/protocols/common/clusterer) - HTTP Request Clustering Implementation
 - [v2/pkg/protocols/common/helpers/eventcreator](./v2/pkg/protocols/common/helpers/eventcreator) - Result event creator
 - [v2/pkg/protocols/common/helpers/responsehighlighter](./v2/pkg/protocols/common/helpers/responsehighlighter) - Debug response highlighter
 - [v2/pkg/protocols/common/helpers/deserialization](./v2/pkg/protocols/common/helpers/deserialization) - Deserialization helper functions
