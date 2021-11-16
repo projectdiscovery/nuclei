@@ -118,6 +118,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["response"] = rawResp
 	data["status_code"] = resp.StatusCode
 	data["body"] = body
+	data["type"] = request.Type().String()
 	data["content_length"] = resp.ContentLength
 	data["all_headers"] = headers
 	data["duration"] = duration.Seconds()
@@ -141,12 +142,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "http",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
+		MatchedStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),

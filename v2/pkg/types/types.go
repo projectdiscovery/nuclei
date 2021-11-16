@@ -177,6 +177,8 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// MatchedStatus displays optional status for the failed matches as well
+	MatchedStatus bool
 	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCertFile string
 	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts

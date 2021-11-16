@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
@@ -27,6 +28,8 @@ type Writer interface {
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
+	// WriteFailure writes the optional failure event for template to file and/or screen.
+	WriteFailure(event InternalEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
 }
@@ -37,6 +40,7 @@ type StandardWriter struct {
 	jsonReqResp    bool
 	noTimestamp    bool
 	noMetadata     bool
+	matchedStatus  bool
 	aurora         aurora.Aurora
 	outputFile     io.WriteCloser
 	traceFile      io.WriteCloser
@@ -92,12 +96,14 @@ type ResultEvent struct {
 	Interaction *server.Interaction `json:"interaction,omitempty"`
 	// CURLCommand is an optional curl command to reproduce the request
 	// Only applicable if the report is for HTTP.
-	CURLCommand         string         `json:"curl-command,omitempty"`
+	CURLCommand string `json:"curl-command,omitempty"`
+	// MatchedStatus is the status of the match
+	MatchedStatus       bool           `json:"matched-status"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, matchedStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -128,6 +134,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 		json:           json,
 		jsonReqResp:    jsonReqResp,
 		noMetadata:     noMetadata,
+		matchedStatus:  matchedStatus,
 		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
@@ -167,6 +174,23 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 	}
 	return nil
+}
+
+// WriteFailure writes the failure event for template to file and/or screen.
+func (w *StandardWriter) WriteFailure(event InternalEvent) error {
+	if !w.matchedStatus {
+		return nil
+	}
+	data := &ResultEvent{
+		TemplateID:    types.ToString(event["template-id"]),
+		TemplatePath:  types.ToString(event["template-path"]),
+		Info:          event["template-info"].(model.Info),
+		Type:          types.ToString(event["type"]),
+		Matched:       types.ToString(event["host"]),
+		MatchedStatus: false,
+		Timestamp:     time.Now(),
+	}
+	return w.Write(data)
 }
 
 // JSONLogRequest is a trace/error log request written to file

@@ -124,6 +124,11 @@ func (m *MockOutputWriter) Write(result *output.ResultEvent) error {
 	return nil
 }
 
+// Write writes the event to file and/or screen.
+func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
+	return nil
+}
+
 // Request writes a log the requests trace log
 func (m *MockOutputWriter) Request(templateID, url, requestType string, err error) {
 	if m.RequestCallback != nil {

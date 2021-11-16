@@ -131,6 +131,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 
 	data["response"] = jsonDataString
 	data["host"] = input
+	data["type"] = request.Type().String()
 	data["matched"] = addressToDial
 	data["not_after"] = float64(cert.NotAfter.Unix())
 	data["ip"] = request.dialer.GetDialedIP(hostname)
@@ -195,12 +196,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
-		Type:             request.Type().String(),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
+		MatchedStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	return data
