@@ -73,6 +73,8 @@ type Options struct {
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
 	Debug bool
+
+	NoInteractsh bool
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -119,6 +121,9 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 }
 
 func (c *Client) firstTimeInitializeClient() error {
+	if c.options.NoInteractsh {
+		return nil // do not init if disabled
+	}
 	interactsh, err := client.New(&client.Options{
 		ServerURL:         c.options.ServerURL,
 		Token:             c.options.Authorization,
@@ -211,7 +216,6 @@ func (c *Client) Close() bool {
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
 func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-
 	for strings.Contains(data, interactshURLMarker) {
 		url := c.URL()
 		interactshURLs = append(interactshURLs, url)
