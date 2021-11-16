@@ -24,7 +24,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		MaxSize:     1024,
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
-		Exclude:     []string{".go"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -49,7 +49,7 @@ func TestFileOperatorMatch(t *testing.T) {
 		MaxSize:     1024,
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
-		Exclude:     []string{".go"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -137,7 +137,7 @@ func TestFileOperatorExtract(t *testing.T) {
 		MaxSize:     1024,
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
-		Exclude:     []string{".go"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -244,7 +244,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 		MaxSize:     1024,
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
-		Exclude:     []string{".go"},
+		DenyList:    []string{".go"},
 		Operators: operators.Operators{
 			MatchersCondition: matcherCondition,
 			Matchers:          matchers,
