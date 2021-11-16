@@ -7,7 +7,6 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
-
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -51,7 +50,7 @@ func (request *Request) findGlobPathMatches(absPath string, processed map[string
 		return errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	for _, match := range matches {
-		if !request.validatePath(match) {
+		if !request.validatePath(absPath, match) {
 			continue
 		}
 		if _, ok := processed[match]; !ok {
@@ -73,7 +72,7 @@ func (request *Request) findFileMatches(absPath string, processed map[string]str
 		return false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
-		if !request.validatePath(absPath) {
+		if !request.validatePath(absPath, absPath) {
 			return false, nil
 		}
 		processed[absPath] = struct{}{}
@@ -93,7 +92,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 			if d.IsDir() {
 				return nil
 			}
-			if !request.validatePath(path) {
+			if !request.validatePath(absPath, path) {
 				return nil
 			}
 			if _, ok := processed[path]; !ok {
@@ -107,7 +106,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 }
 
 // validatePath validates a file path for blacklist and whitelist options
-func (request *Request) validatePath(item string) bool {
+func (request *Request) validatePath(absPath, item string) bool {
 	extension := filepath.Ext(item)
 
 	if len(request.extensions) > 0 {
@@ -117,9 +116,45 @@ func (request *Request) validatePath(item string) bool {
 			return false
 		}
 	}
-	if _, ok := request.extensionDenylist[extension]; ok {
-		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, extension)
+	if matchingRule, ok := request.isInDenyList(absPath, item); ok {
+		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, matchingRule)
 		return false
 	}
+
 	return true
+}
+
+func (request *Request) isInDenyList(absPath, item string) (string, bool) {
+	extension := filepath.Ext(item)
+	// check for possible deny rules
+	// - extension is in deny list
+	if _, ok := request.denyList[extension]; ok {
+		return extension, true
+	}
+
+	// - full path is in deny list
+	if _, ok := request.denyList[item]; ok {
+		return item, true
+	}
+	// file is in a forbidden subdirectory
+	filename := filepath.Base(item)
+	relativePath := strings.TrimSuffix(strings.TrimPrefix(item, absPath), filename)
+	// - filename is in deny list
+	if _, ok := request.denyList[filename]; ok {
+		return filename, true
+	}
+	// - relative path is in deny list
+	if _, ok := request.denyList[relativePath]; ok {
+		return relativePath, true
+	}
+	// any progressive part of the relative path matches any prefix of the rules
+	pathTree := strings.Split(relativePath, string(os.PathSeparator))
+	for i := range pathTree {
+		pathTreeItem := filepath.Join(pathTree[:i]...)
+		if _, ok := request.denyList[relativePath]; ok {
+			return pathTreeItem, true
+		}
+	}
+
+	return "", false
 }

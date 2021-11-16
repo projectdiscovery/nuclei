@@ -20,11 +20,11 @@ func TestResponseToDSLMap(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		Exclude:     []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -45,11 +45,11 @@ func TestFileOperatorMatch(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		Exclude:     []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -133,11 +133,11 @@ func TestFileOperatorExtract(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		Exclude:     []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -240,11 +240,11 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		Exclude:     []string{".go"},
 		Operators: operators.Operators{
 			MatchersCondition: matcherCondition,
 			Matchers:          matchers,
