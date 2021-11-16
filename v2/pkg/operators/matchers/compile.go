@@ -29,11 +29,13 @@ func (m *Matcher) CompileMatchers() error {
 	if err != nil {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
+
 	m.matcherType = computedType
 	// By default, match on body if user hasn't provided any specific items
 	if m.Part == "" {
 		m.Part = "body"
 	}
+
 
 	// Compile the regexes
 	for _, regex := range m.Regex {
