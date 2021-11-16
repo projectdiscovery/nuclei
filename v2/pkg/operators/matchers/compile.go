@@ -29,10 +29,6 @@ func (m *Matcher) CompileMatchers() error {
 	if !ok {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
-	// By default, match on body if user hasn't provided any specific items
-	if m.Part == "" {
-		m.Part = "response"
-	}
 
 	// Compile the regexes
 	for _, regex := range m.Regex {

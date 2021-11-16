@@ -144,22 +144,21 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if !options.NoInteractsh {
-		opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
-		opts.Debug = runner.options.Debug
-		opts.ServerURL = options.InteractshURL
-		opts.Authorization = options.InteractshToken
-		opts.CacheSize = int64(options.InteractionsCacheSize)
-		opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-		opts.ColldownPeriod = time.Duration(options.InteractionsCooldownPeriod) * time.Second
-		opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
+	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
+	opts.Debug = runner.options.Debug
+	opts.ServerURL = options.InteractshURL
+	opts.Authorization = options.InteractshToken
+	opts.CacheSize = int64(options.InteractionsCacheSize)
+	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
+	opts.ColldownPeriod = time.Duration(options.InteractionsCooldownPeriod) * time.Second
+	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
+	opts.NoInteractsh = runner.options.NoInteractsh
 
-		interactshClient, err := interactsh.New(opts)
-		if err != nil {
-			gologger.Error().Msgf("Could not create interactsh client: %s", err)
-		} else {
-			runner.interactsh = interactshClient
-		}
+	interactshClient, err := interactsh.New(opts)
+	if err != nil {
+		gologger.Error().Msgf("Could not create interactsh client: %s", err)
+	} else {
+		runner.interactsh = interactshClient
 	}
 
 	if options.RateLimitMinute > 0 {
