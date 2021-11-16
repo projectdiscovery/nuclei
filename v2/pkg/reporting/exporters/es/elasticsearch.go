@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	"encoding/base64"
@@ -20,19 +19,19 @@ import (
 // Options contains necessary options required for elasticsearch communicaiton
 type Options struct {
 	// IP for elasticsearch instance
-	IP string `yaml:"ip"`
+	IP string `yaml:"ip"  validate:"required,ip"`
 	// Port is the port of elasticsearch instance
-	Port int `yaml:"port"`
+	Port int `yaml:"port"  validate:"required"`
 	// SSL (optional) enables ssl for elasticsearch connection
 	SSL bool `yaml:"ssl"`
 	// SSLVerification (optional) disables SSL verification for elasticsearch
 	SSLVerification bool `yaml:"ssl-verification"`
 	// Username for the elasticsearch instance
-	Username string `yaml:"username"`
+	Username string `yaml:"username"  validate:"required"`
 	// Password is the password for elasticsearch instance
-	Password string `yaml:"password"`
+	Password string `yaml:"password"  validate:"required"`
 	// IndexName is the name of the elasticsearch index
-	IndexName string `yaml:"index-name"`
+	IndexName string `yaml:"index-name"  validate:"required"`
 }
 
 type data struct {
@@ -50,10 +49,6 @@ type Exporter struct {
 // New creates and returns a new exporter for elasticsearch
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
-	err := validateOptions(option)
-	if err != nil {
-		return nil, err
-	}
 
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -84,31 +79,6 @@ func New(option *Options) (*Exporter, error) {
 		elasticsearch:  client,
 	}
 	return ei, nil
-}
-
-func validateOptions(options *Options) error {
-	errs := []string{}
-	if options.IP == "" {
-		errs = append(errs, "IP")
-	}
-	if options.Port == 0 {
-		errs = append(errs, "Port")
-	}
-	if options.Username == "" {
-		errs = append(errs, "Username")
-	}
-	if options.Password == "" {
-		errs = append(errs, "Password")
-	}
-	if options.IndexName == "" {
-		errs = append(errs, "IndexName")
-	}
-
-	if len(errs) > 0 {
-		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
-	}
-
-	return nil
 }
 
 // Export exports a passed result event to elasticsearch

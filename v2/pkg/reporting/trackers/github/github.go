@@ -24,7 +24,7 @@ type Integration struct {
 // Options contains the configuration options for github issue tracker client
 type Options struct {
 	// BaseURL (optional) is the self-hosted github application url
-	BaseURL string `yaml:"base-url"`
+	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
 	// Username is the username of the github user
 	Username string `yaml:"username" validate:"required"`
 	// Owner (manadatory) is the owner name of the repository for issues.

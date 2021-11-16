@@ -27,7 +27,7 @@ func YAMLDecodeAndValidate(r io.Reader, v interface{}) error {
 		}
 		errs := []string{}
 		for _, err := range err.(validator.ValidationErrors) {
-			errs = append(errs, err.Field()+": "+err.Tag())
+			errs = append(errs, err.Namespace()+": "+err.Tag())
 		}
 		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
 	}
