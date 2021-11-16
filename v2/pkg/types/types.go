@@ -34,12 +34,12 @@ type Options struct {
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
+	// Authors filters templates based on their author and only run the matching ones.
+	Authors goflags.NormalizedStringSlice
 	// Protocols contains the protocols to be allowed executed
 	Protocols types.ProtocolTypes
 	// ExcludeProtocols contains protocols to not be executed
 	ExcludeProtocols types.ProtocolTypes
-	// Author filters templates based on their author and only run the matching ones.
-	Author goflags.NormalizedStringSlice
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
@@ -86,6 +86,10 @@ type Options struct {
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
 	TemplateThreads int
+	// HeadlessBulkSize is the of targets analyzed in parallel for each headless template
+	HeadlessBulkSize int
+	// HeadlessTemplateThreads is the number of headless templates executed in parallel
+	HeadlessTemplateThreads int
 	// Timeout is the seconds to wait for a response from the server.
 	Timeout int
 	// Retries is the number of times to retry the request
@@ -191,4 +195,18 @@ func (options *Options) AddVarPayload(key string, value interface{}) {
 
 func (options *Options) VarsPayload() map[string]interface{} {
 	return options.varsPayload
+}
+
+// DefaultOptions returns default options for nuclei
+func DefaultOptions() *Options {
+	return &Options{
+		RateLimit:               150,
+		BulkSize:                25,
+		TemplateThreads:         25,
+		HeadlessBulkSize:        10,
+		HeadlessTemplateThreads: 10,
+		Timeout:                 5,
+		Retries:                 1,
+		MaxHostError:            30,
+	}
 }
