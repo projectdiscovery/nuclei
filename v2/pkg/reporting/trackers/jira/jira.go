@@ -31,7 +31,7 @@ type Options struct {
 	// AccountID is the accountID of the jira user.
 	AccountID string `yaml:"account-id" validate:"required"`
 	// Email is the email of the user for jira instance
-	Email string `yaml:"email" validate:"required"`
+	Email string `yaml:"email" validate:"required,email"`
 	// Token is the token for jira instance.
 	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the project.
