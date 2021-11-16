@@ -10,6 +10,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Config contains the configuration options for the loader
@@ -23,6 +25,8 @@ type Config struct {
 
 	Tags              []string
 	ExcludeTags       []string
+	Protocols         templateTypes.ProtocolTypes
+	ExcludeProtocols  templateTypes.ProtocolTypes
 	Authors           []string
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
@@ -47,6 +51,30 @@ type Store struct {
 	preprocessor templates.Preprocessor
 }
 
+// NewConfig returns a new loader config
+func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+	loaderConfig := Config{
+		Templates:          options.Templates,
+		Workflows:          options.Workflows,
+		TemplateURLs:       options.TemplateURLs,
+		WorkflowURLs:       options.WorkflowURLs,
+		ExcludeTemplates:   options.ExcludedTemplates,
+		Tags:               options.Tags,
+		ExcludeTags:        options.ExcludeTags,
+		IncludeTemplates:   options.IncludeTemplates,
+		Authors:            options.Authors,
+		Severities:         options.Severities,
+		ExcludeSeverities:  options.ExcludeSeverities,
+		IncludeTags:        options.IncludeTags,
+		TemplatesDirectory: options.TemplatesDirectory,
+		Protocols:          options.Protocols,
+		ExcludeProtocols:   options.ExcludeProtocols,
+		Catalog:            catalog,
+		ExecutorOptions:    executerOpts,
+	}
+	return &loaderConfig
+}
+
 // New creates a new template store based on provided configuration
 func New(config *Config) (*Store, error) {
 	// Create a tag filter based on provided configuration
@@ -59,6 +87,8 @@ func New(config *Config) (*Store, error) {
 			Severities:        config.Severities,
 			ExcludeSeverities: config.ExcludeSeverities,
 			IncludeTags:       config.IncludeTags,
+			Protocols:         config.Protocols,
+			ExcludeProtocols:  config.ExcludeProtocols,
 		}),
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,
@@ -68,7 +98,8 @@ func New(config *Config) (*Store, error) {
 		finalWorkflows: config.Workflows,
 	}
 
-	if len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0 {
+	urlbasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
+	if urlbasedTemplatesProvided {
 		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
 		if err != nil {
 			return store, err
@@ -78,7 +109,7 @@ func New(config *Config) (*Store, error) {
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 {
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlbasedTemplatesProvided {
 		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
 

@@ -7,6 +7,8 @@ import (
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
+	"github.com/weppos/publicsuffix-go/publicsuffix"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -30,7 +32,7 @@ type Request struct {
 	//   - value: "\"{{FQDN}}\""
 	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
-	//   Type is the type of DNS request to make.
+	//   RequestType is the type of DNS request to make.
 	// values:
 	//   - "A"
 	//   - "NS"
@@ -41,7 +43,7 @@ type Request struct {
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -109,7 +111,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.class = classToInt(request.Class)
 	request.options = options
-	request.question = questionTypeToInt(request.Type)
+	request.question = questionTypeToInt(request.RequestType)
 	return nil
 }
 
@@ -132,7 +134,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	final := replacer.Replace(request.Name, map[string]interface{}{"FQDN": domain})
+	final := replacer.Replace(request.Name, generateDNSVariables(domain))
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -197,4 +199,20 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
+}
+
+func generateDNSVariables(domain string) map[string]interface{} {
+	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
+	if err != nil {
+		return map[string]interface{}{"FQDN": domain}
+	}
+
+	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
+	return map[string]interface{}{
+		"FQDN": domain,
+		"RDN":  domainName,
+		"DN":   parsed.SLD,
+		"TLD":  parsed.TLD,
+		"SD":   parsed.TRD,
+	}
 }

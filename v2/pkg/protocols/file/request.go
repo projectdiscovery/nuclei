@@ -2,7 +2,6 @@ package file
 
 import (
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -15,9 +14,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 var _ protocols.Request = &Request{}
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.FileProtocol
+}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -61,14 +66,14 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-			debug(event, request, filePath, fileContent)
+			dumpResponse(event, request.options, fileContent, filePath)
 
 			callback(event)
 		}(data)
 	})
 	wg.Wait()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input, "file", err)
+		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
@@ -76,14 +81,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, filePath string, fileContent string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, fileContent string, filePath string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
-		if !responsehighlighter.IsASCII(fileContent) {
+		if responsehighlighter.HasBinaryContent(fileContent) {
 			hexDump = true
 			fileContent = hex.Dump([]byte(fileContent))
 		}
-		logHeader := fmt.Sprintf("[%s] Dumped file request for %s\n", request.options.TemplateID, filePath)
-		gologger.Debug().Msgf("%s\n%s", logHeader, responsehighlighter.Highlight(event.OperatorsResult, fileContent, request.options.Options.NoColor, hexDump))
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, fileContent, cliOptions.NoColor, hexDump)
+		gologger.Debug().Msgf("[%s] Dumped file request for %s\n\n%s", requestOptions.TemplateID, filePath, highlightedResponse)
 	}
 }

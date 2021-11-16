@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -33,8 +34,12 @@ type Options struct {
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
-	// Author filters templates based on their author and only run the matching ones.
-	Author goflags.NormalizedStringSlice
+	// Authors filters templates based on their author and only run the matching ones.
+	Authors goflags.NormalizedStringSlice
+	// Protocols contains the protocols to be allowed executed
+	Protocols types.ProtocolTypes
+	// ExcludeProtocols contains protocols to not be executed
+	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
@@ -53,10 +58,8 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// ProxyURL is the URL for the proxy server
-	ProxyURL string
-	// ProxySocksURL is the URL for the proxy socks server
-	ProxySocksURL string
+	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+	Proxy goflags.NormalizedStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -83,6 +86,10 @@ type Options struct {
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
 	TemplateThreads int
+	// HeadlessBulkSize is the of targets analyzed in parallel for each headless template
+	HeadlessBulkSize int
+	// HeadlessTemplateThreads is the number of headless templates executed in parallel
+	HeadlessTemplateThreads int
 	// Timeout is the seconds to wait for a response from the server.
 	Timeout int
 	// Retries is the number of times to retry the request
@@ -100,9 +107,9 @@ type Options struct {
 	// Eviction is the number of seconds after which to automatically discard
 	// interaction requests.
 	InteractionsEviction int
-	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// InteractionsCooldownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
-	InteractionsColldownPeriod int
+	InteractionsCooldownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -188,4 +195,18 @@ func (options *Options) AddVarPayload(key string, value interface{}) {
 
 func (options *Options) VarsPayload() map[string]interface{} {
 	return options.varsPayload
+}
+
+// DefaultOptions returns default options for nuclei
+func DefaultOptions() *Options {
+	return &Options{
+		RateLimit:               150,
+		BulkSize:                25,
+		TemplateThreads:         25,
+		HeadlessBulkSize:        10,
+		HeadlessTemplateThreads: 10,
+		Timeout:                 5,
+		Retries:                 1,
+		MaxHostError:            30,
+	}
 }

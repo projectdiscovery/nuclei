@@ -1,12 +1,15 @@
 package offlinehttp
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/http/httputil"
 	"testing"
 	"time"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/require"
 )
 
@@ -154,11 +157,30 @@ Server: Google Frontend
 	}
 
 	t.Run("test-live-response-with-content-length", func(t *testing.T) {
+		var ts *httptest.Server
+		router := httprouter.New()
+		router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+			w.Header().Add("Server", "Google Frontend")
+			fmt.Fprintf(w, "%s", `<!DOCTYPE html>
+			<html>
+			<head>
+			<title>Firing Range</title>
+			</head>
+			<body>
+			   <h1>Version 0.48</h1>
+			   <h1>What is the Firing Range?</h1>
+			   <p>
+			</body>
+			</html>`)
+		}))
+		ts = httptest.NewServer(router)
+		defer ts.Close()
+
 		client := &http.Client{
 			Timeout: 3 * time.Second,
 		}
 
-		data, err := client.Get("https://golang.org/doc/install")
+		data, err := client.Get(ts.URL)
 		require.Nil(t, err, "could not dial url")
 		defer data.Body.Close()
 

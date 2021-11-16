@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -21,9 +22,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 var _ protocols.Request = &Request{}
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.NetworkProtocol
+}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -36,7 +43,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		address, err = getAddress(input)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
@@ -65,7 +72,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 func (request *Request) executeAddress(actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
-		request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
@@ -113,18 +120,14 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server request")
 	}
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
-	hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
-	var interactURL string
-	if request.options.Interactsh != nil && hasInteractMarkers {
-		interactURL = request.options.Interactsh.URL()
-	}
+	var interactshURLs []string
 
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
@@ -137,21 +140,24 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		case "hex":
 			data, err = hex.DecodeString(input.Data)
 		default:
-			if interactURL != "" {
-				input.Data = request.options.Interactsh.ReplaceMarkers(input.Data, interactURL)
-			}
 			data = []byte(input.Data)
 		}
 		if err != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
 
+		if request.options.Interactsh != nil {
+			var transformedData string
+			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})
+			data = []byte(transformedData)
+		}
+
 		finalData, dataErr := expressions.EvaluateByte(data, payloads)
 		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", dataErr)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), dataErr)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(dataErr, "could not evaluate template expressions")
 		}
@@ -162,7 +168,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			return nil
 		}
 		if _, err := conn.Write(finalData); err != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
@@ -189,15 +195,14 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	request.options.Progress.IncrementRequests()
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n", request.options.TemplateID, actualAddress)
 		requestBytes := []byte(reqBuilder.String())
-		gologger.Print().Msgf("%s", hex.Dump(requestBytes))
+		gologger.Debug().Str("address", actualAddress).Msgf("[%s] Dumped Network request for %s\n%s", request.options.TemplateID, actualAddress, hex.Dump(requestBytes))
 		if request.options.Options.VerboseVerbose {
 			gologger.Print().Msgf("\nCompact HEX view:\n%s", hex.EncodeToString(requestBytes))
 		}
 	}
 
-	request.options.Output.Request(request.options.TemplatePath, actualAddress, "network", err)
+	request.options.Output.Request(request.options.TemplatePath, actualAddress, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent TCP request to %s", actualAddress)
 
 	bufferSize := 1024
@@ -228,7 +233,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
 				if err != nil && !os.IsTimeout(err) {
-					request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+					request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 					closeTimer(readInterval)
 					return errors.Wrap(err, "could not read from server")
 				}
@@ -241,7 +246,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		final = make([]byte, bufferSize)
 		n, err = conn.Read(final)
 		if err != nil && err != io.EOF {
-			request.options.Output.Request(request.options.TemplatePath, address, "network", err)
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			return errors.Wrap(err, "could not read from server")
 		}
 		responseBuilder.Write(final[:n])
@@ -261,14 +266,14 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	}
 
 	var event *output.InternalWrappedEvent
-	if interactURL == "" {
+	if len(interactshURLs) == 0 {
 		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
+		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -277,26 +282,35 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		})
 	}
 
-	debug(event, request, response, actualAddress)
+	dumpResponse(event, request.options, response, actualAddress)
 
 	return nil
 }
 
-func debug(event *output.InternalWrappedEvent, request *Request, response string, actualAddress string) {
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n", request.options.TemplateID, actualAddress)
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, actualAddress string) {
+	cliOptions := requestOptions.Options
+	if cliOptions.Debug || cliOptions.DebugResponse {
 		requestBytes := []byte(response)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), request.options.Options.NoColor, true))
-		if request.options.Options.VerboseVerbose {
-			var allMatches []string
-			for _, namedMatch := range event.OperatorsResult.Matches {
-				for _, matchElement := range namedMatch {
-					allMatches = append(allMatches, hex.EncodeToString([]byte(matchElement)))
-				}
-			}
-			event.OperatorsResult.Matches["compact"] = allMatches
-			gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(event.OperatorsResult, hex.EncodeToString([]byte(response)), request.options.Options.NoColor, false))
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), cliOptions.NoColor, true)
+		gologger.Debug().Msgf("[%s] Dumped Network response for %s\n\n%s", requestOptions.TemplateID, actualAddress, highlightedResponse)
+
+		if cliOptions.VerboseVerbose {
+			displayCompactHexView(event, response, cliOptions.NoColor)
 		}
+	}
+}
+
+func displayCompactHexView(event *output.InternalWrappedEvent, response string, noColor bool) {
+	operatorsResult := event.OperatorsResult
+	if operatorsResult != nil {
+		var allMatches []string
+		for _, namedMatch := range operatorsResult.Matches {
+			for _, matchElement := range namedMatch {
+				allMatches = append(allMatches, hex.EncodeToString([]byte(matchElement)))
+			}
+		}
+		tempOperatorResult := &operators.Result{Matches: map[string][]string{"matchesInHex": allMatches}}
+		gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(tempOperatorResult, hex.EncodeToString([]byte(response)), noColor, false))
 	}
 }
 
