@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -235,7 +234,6 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	got, err := generator.Make("https://example.com", map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
-	fmt.Printf("%+v\n", got)
 	// check if all the interactsh markers are replaced with unique urls
 	require.NotContains(t, got.request.URL.String(), "{{interactsh-url}}", "could not get correct interactsh url")
 	// check the length of returned urls
