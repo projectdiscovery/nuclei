@@ -52,7 +52,7 @@ type Request struct {
 	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Method is the HTTP Request Method.
 	// values:
@@ -129,10 +129,9 @@ type Request struct {
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	options       *protocols.ExecuterOptions
-	attackType    generators.Type
 	totalRequests int
 	customHeaders map[string]string
-	generator     *generators.Generator // optional, only enabled when using payloads
+	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
 	dynamicValues map[string]interface{}
@@ -267,28 +266,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		attackType := request.AttackType
-		if attackType == "" {
-			attackType = "batteringram"
-		}
-		var ok bool
-		request.attackType, ok = generators.StringToType[attackType]
-		if !ok {
-			return fmt.Errorf("invalid attack type provided: %s", attackType)
-		}
-
-		// Resolve payload paths if they are files.
-		for name, payload := range request.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				request.Payloads[name] = final
-			}
-		}
-		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

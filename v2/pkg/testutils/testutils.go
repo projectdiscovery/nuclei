@@ -1,9 +1,9 @@
 package testutils
 
 import (
-	"github.com/logrusorgru/aurora"
 	"go.uber.org/ratelimit"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -51,8 +51,7 @@ var DefaultOptions = &types.Options{
 	Targets:                    []string{},
 	TargetsFilePath:            "",
 	Output:                     "",
-	ProxyURL:                   "",
-	ProxySocksURL:              "",
+	Proxy:                      []string{},
 	TemplatesDirectory:         "",
 	TraceLogFile:               "",
 	Templates:                  []string{},
@@ -64,6 +63,38 @@ var DefaultOptions = &types.Options{
 	InteractionsCooldownPeriod: 5,
 	InteractionsPollDuration:   5,
 }
+
+// TemplateInfo contains info for a mock executed template.
+type TemplateInfo struct {
+	ID   string
+	Info model.Info
+	Path string
+}
+
+// NewMockExecuterOptions creates a new mock executeroptions struct
+func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	executerOpts := &protocols.ExecuterOptions{
+		TemplateID:   info.ID,
+		TemplateInfo: info.Info,
+		TemplatePath: info.Path,
+		Output:       NewMockOutputWriter(),
+		Options:      options,
+		Progress:     progressImpl,
+		ProjectFile:  nil,
+		IssuesClient: nil,
+		Browser:      nil,
+		Catalog:      catalog.New(options.TemplatesDirectory),
+		RateLimiter:  ratelimit.New(options.RateLimit),
+	}
+	return executerOpts
+}
+
+// NoopWriter is a NooP gologger writer.
+type NoopWriter struct{}
+
+// Write writes the data to an output writer.
+func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 
 // MockOutputWriter is a mocked output writer.
 type MockOutputWriter struct {
@@ -100,34 +131,26 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 	}
 }
 
-// TemplateInfo contains info for a mock executed template.
-type TemplateInfo struct {
-	ID   string
-	Info model.Info
-	Path string
-}
+type MockProgressClient struct{}
 
-// NewMockExecuterOptions creates a new mock executeroptions struct
-func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	executerOpts := &protocols.ExecuterOptions{
-		TemplateID:   info.ID,
-		TemplateInfo: info.Info,
-		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      catalog.New(options.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(options.RateLimit),
-	}
-	return executerOpts
-}
+// Stop stops the progress recorder.
+func (m *MockProgressClient) Stop() {}
 
-// NoopWriter is a NooP gologger writer.
-type NoopWriter struct{}
+// Init inits the progress bar with initial details for scan
+func (m *MockProgressClient) Init(hostCount int64, rulesCount int, requestCount int64) {}
 
-// Write writes the data to an output writer.
-func (n *NoopWriter) Write(data []byte, level levels.Level) {}
+// AddToTotal adds a value to the total request count
+func (m *MockProgressClient) AddToTotal(delta int64) {}
+
+// IncrementRequests increments the requests counter by 1.
+func (m *MockProgressClient) IncrementRequests() {}
+
+// IncrementMatched increments the matched counter by 1.
+func (m *MockProgressClient) IncrementMatched() {}
+
+// IncrementErrorsBy increments the error counter by count.
+func (m *MockProgressClient) IncrementErrorsBy(count int64) {}
+
+// IncrementFailedRequestsBy increments the number of requests counter by count
+// along with errors.
+func (m *MockProgressClient) IncrementFailedRequestsBy(count int64) {}
