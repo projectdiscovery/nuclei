@@ -8,11 +8,11 @@ import (
 	"github.com/alecthomas/jsonschema"
 )
 
-// DNSType is the type of the method specified
-type DNSType int
+// DNSRequestType is the type of the method specified
+type DNSRequestType int
 
 const (
-	A DNSType = iota + 1
+	A DNSRequestType = iota + 1
 	NS
 	DS
 	CNAME
@@ -25,8 +25,8 @@ const (
 	limit
 )
 
-// DNSTypeMapping is a table for conversion of method from string.
-var DNSTypeMapping = map[DNSType]string{
+// DNSRequestTypeMapping is a table for conversion of method from string.
+var DNSRequestTypeMapping = map[DNSRequestType]string{
 	A:     "A",
 	NS:    "NS",
 	DS:    "DS",
@@ -38,73 +38,73 @@ var DNSTypeMapping = map[DNSType]string{
 	AAAA:  "AAAA",
 }
 
-// GetSupportedDNSTypes returns list of supported types
-func GetSupportedDNSTypes() []DNSType {
-	var result []DNSType
-	for index := DNSType(1); index < limit; index++ {
+// GetSupportedDNSRequestTypes returns list of supported types
+func GetSupportedDNSRequestTypes() []DNSRequestType {
+	var result []DNSRequestType
+	for index := DNSRequestType(1); index < limit; index++ {
 		result = append(result, index)
 	}
 	return result
 }
 
-func toDNSTypes(valueToMap string) (DNSType, error) {
+func toDNSRequestTypes(valueToMap string) (DNSRequestType, error) {
 	normalizedValue := normalizeValue(valueToMap)
-	for key, currentValue := range DNSTypeMapping {
+	for key, currentValue := range DNSRequestTypeMapping {
 		if normalizedValue == currentValue {
 			return key, nil
 		}
 	}
-	return -1, errors.New("Invalid DNS type: " + valueToMap)
+	return -1, errors.New("Invalid DNS request type: " + valueToMap)
 }
 
 func normalizeValue(value string) string {
 	return strings.TrimSpace(strings.ToUpper(value))
 }
 
-func (t DNSType) String() string {
-	return DNSTypeMapping[t]
+func (t DNSRequestType) String() string {
+	return DNSRequestTypeMapping[t]
 }
 
-// DNSTypeHolder is used to hold internal type of the DNS type
-type DNSTypeHolder struct {
-	DNSType DNSType
+// DNSRequestTypeHolder is used to hold internal type of the DNS type
+type DNSRequestTypeHolder struct {
+	DNSRequestType DNSRequestType
 }
 
-func (holder DNSTypeHolder) String() string {
-	return holder.DNSType.String()
+func (holder DNSRequestTypeHolder) String() string {
+	return holder.DNSRequestType.String()
 }
 
-func (holder DNSTypeHolder) JSONSchemaType() *jsonschema.Type {
+func (holder DNSRequestTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "type of DNS request to make",
 		Description: "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA",
 	}
-	for _, types := range GetSupportedDNSTypes() {
+	for _, types := range GetSupportedDNSRequestTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())
 	}
 	return gotType
 }
 
-func (holder *DNSTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (holder *DNSRequestTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var marshalledTypes string
 	if err := unmarshal(&marshalledTypes); err != nil {
 		return err
 	}
 
-	computedType, err := toDNSTypes(marshalledTypes)
+	computedType, err := toDNSRequestTypes(marshalledTypes)
 	if err != nil {
 		return err
 	}
 
-	holder.DNSType = computedType
+	holder.DNSRequestType = computedType
 	return nil
 }
 
-func (holder *DNSTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.DNSType.String())
+func (holder *DNSRequestTypeHolder) MarshalJSON() ([]byte, error) {
+	return json.Marshal(holder.DNSRequestType.String())
 }
 
-func (holder DNSTypeHolder) MarshalYAML() (interface{}, error) {
-	return holder.DNSType.String(), nil
+func (holder DNSRequestTypeHolder) MarshalYAML() (interface{}, error) {
+	return holder.DNSRequestType.String(), nil
 }

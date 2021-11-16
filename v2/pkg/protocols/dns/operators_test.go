@@ -23,7 +23,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		RequestType: DNSTypeHolder{DNSType: A},
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
@@ -55,7 +55,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		RequestType: DNSTypeHolder{DNSType: A},
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
@@ -166,7 +166,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		RequestType: DNSTypeHolder{DNSType: A},
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
@@ -223,7 +223,7 @@ func TestDNSMakeResult(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		RequestType: DNSTypeHolder{DNSType: A},
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
