@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Request is a request for the Websocket protocol
@@ -361,9 +362,12 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	templatePath, templateURL := utils.TemplatePathURL(request.options.TemplatePath)
 	data := &output.ResultEvent{
-		TemplateID:       types.ToString(request.options.TemplateID),
-		TemplatePath:     types.ToString(request.options.TemplatePath),
+		Template:         templatePath,
+		TemplateURL:      templateURL,
+		TemplateID:       request.options.TemplateID,
+		TemplatePath:     request.options.TemplatePath,
 		Info:             request.options.TemplateInfo,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),

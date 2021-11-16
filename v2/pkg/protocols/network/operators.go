@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Match matches a generic data response again a given matcher
@@ -90,7 +91,10 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(wrapped.InternalEvent["template-path"]))
 	data := &output.ResultEvent{
+		Template:         templatePath,
+		TemplateURL:      templateURL,
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),

@@ -62,6 +62,11 @@ type InternalWrappedEvent struct {
 
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
+	// Template is the relative filename for the template
+	Template string `json:"template,omitempty"`
+	// TemplateURL is the URL of the template for the result inside the nuclei
+	// templates repository if it belongs to the repository.
+	TemplateURL string `json:"template-url,omitempty"`
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"template-id"`
 	// TemplatePath is the path of template
