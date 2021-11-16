@@ -226,10 +226,6 @@ func (c *Client) Close() bool {
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
 func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-	if c.interactsh == nil {
-		return "", nil
-	}
-
 	for strings.Contains(data, interactshURLMarker) {
 		url := c.URL()
 		interactshURLs = append(interactshURLs, url)
