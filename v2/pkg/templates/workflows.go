@@ -77,10 +77,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		workflowTemplates = append(workflowTemplates, template)
 	}
 
-	finalTemplates, clusterCount := ClusterTemplates(workflowTemplates, options.Copy())
-	if clusterCount > 0 {
-		gologger.Info().Msgf("Templates clustered at same workflow level: %d ", clusterCount)
-	}
+	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())
 	for _, template := range finalTemplates {
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
 			Executer: template.Executer,
