@@ -154,6 +154,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Type: "kval",
 			KVal: []string{"test-header"},
+			Part: "header",
 		}
 		err = extractor.CompileExtractors()
 		require.Nil(t, err, "could not compile kval extractor")
