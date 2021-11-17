@@ -73,8 +73,13 @@ type Template struct {
 
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
-	SelfContained  bool     `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
-	PostProcessors []string `yaml:"post-processors,omitempty"`
+	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+
+	// description: |
+	//   Signature is the request signature method
+	// values:
+	//   - "AWS"
+	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`

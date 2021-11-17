@@ -138,8 +138,13 @@ type Request struct {
 
 	// description: |
 	//   SelfContained specifies if the request is self contained.
-	SelfContained  bool     `yaml:"-" json:"-"`
-	PostProcessors []string `yaml:"-" json:"-"`
+	SelfContained bool `yaml:"-" json:"-"`
+
+	// description: |
+	//   Signature is the request signature method
+	// values:
+	//   - "AWS"
+	Signature SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
