@@ -197,10 +197,6 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 	return requestErr
 }
 
-func (request *Request) hasPreprocessors() bool {
-	return len(request.PostProcessors) > 0
-}
-
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
@@ -354,37 +350,35 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 		if resp == nil {
-			for _, postProcessor := range request.PostProcessors {
-				switch postProcessor {
-				case "aws-sign":
-					var awsSigner *AwsSigner
-					payloads := request.options.Options.Vars.AsMap()
-					awsAccessKeyId := types.ToString(payloads["aws-id"])
-					awsSecretAccessKey := types.ToString(payloads["aws-secret"])
-					if awsAccessKeyId != "" && awsSecretAccessKey != "" {
-						awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
-					} else {
-						awsSigner, err = NewAwsSignerFromEnv()
-					}
-					if err != nil {
-						return err
-					}
+			switch request.Signature.Value {
+			case AWSSignature:
+				var awsSigner *AwsSigner
+				payloads := request.options.Options.Vars.AsMap()
+				awsAccessKeyId := types.ToString(payloads["aws-id"])
+				awsSecretAccessKey := types.ToString(payloads["aws-secret"])
+				if awsAccessKeyId != "" && awsSecretAccessKey != "" {
+					awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
+				} else {
+					awsSigner, err = NewAwsSignerFromEnv()
+				}
+				if err != nil {
+					return err
+				}
 
-					service := types.ToString(payloads["service"])
-					region := types.ToString(payloads["region"])
-					if service == "" || region == "" {
-						return errors.New("service and region are mandatory")
-					}
+				service := types.ToString(payloads["service"])
+				region := types.ToString(payloads["region"])
+				if service == "" || region == "" {
+					return errors.New("service and region are mandatory")
+				}
 
-					args := SignArguments{
-						Service: types.ToString(payloads["service"]),
-						Region:  types.ToString(payloads["region"]),
-						Time:    time.Now(),
-					}
-					err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
-					if err != nil {
-						return err
-					}
+				args := SignArguments{
+					Service: types.ToString(payloads["service"]),
+					Region:  types.ToString(payloads["region"]),
+					Time:    time.Now(),
+				}
+				err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
+				if err != nil {
+					return err
 				}
 			}
 			resp, err = request.httpClient.Do(generatedRequest.request)
