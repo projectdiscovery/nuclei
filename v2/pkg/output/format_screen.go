@@ -26,9 +26,13 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteString(":")
 			builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
 		}
-		if !output.MatchedStatus {
+		if w.matchedStatus {
 			builder.WriteString("] [")
-			builder.WriteString(w.aurora.Red("failed").String())
+			if !output.MatchedStatus {
+				builder.WriteString(w.aurora.Red("failed").String())
+			} else {
+				builder.WriteString(w.aurora.Green("matched").String())
+			}
 		}
 
 		builder.WriteString("] [")

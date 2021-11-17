@@ -191,7 +191,7 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		TemplatePath:  types.ToString(event["template-path"]),
 		Info:          event["template-info"].(model.Info),
 		Type:          types.ToString(event["type"]),
-		Matched:       types.ToString(event["host"]),
+		Host:          types.ToString(event["host"]),
 		MatchedStatus: false,
 		Timestamp:     time.Now(),
 	}
