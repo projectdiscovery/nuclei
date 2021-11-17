@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var (
@@ -22,11 +22,12 @@ func main() {
 	failed := aurora.Red("[✘]").String()
 
 	protocolTests := map[string]map[string]testutils.TestCase{
-		"http":     httpTestcases,
-		"network":  networkTestcases,
-		"dns":      dnsTestCases,
-		"workflow": workflowTestcases,
-		"loader":   loaderTestcases,
+		"http":      httpTestcases,
+		"network":   networkTestcases,
+		"dns":       dnsTestCases,
+		"workflow":  workflowTestcases,
+		"loader":    loaderTestcases,
+		"websocket": websocketTestCases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {

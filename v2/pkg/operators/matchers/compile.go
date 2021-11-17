@@ -29,10 +29,6 @@ func (m *Matcher) CompileMatchers() error {
 	if !ok {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
-	// By default, match on body if user hasn't provided any specific items
-	if m.Part == "" {
-		m.Part = "body"
-	}
 
 	// Compile the regexes
 	for _, regex := range m.Regex {
@@ -41,6 +37,15 @@ func (m *Matcher) CompileMatchers() error {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
 		m.regexCompiled = append(m.regexCompiled, compiled)
+	}
+
+	// Compile and validate binary Values in matcher
+	for _, value := range m.Binary {
+		if decoded, err := hex.DecodeString(value); err != nil {
+			return fmt.Errorf("could not hex decode binary: %s", value)
+		} else {
+			m.binaryDecoded = append(m.binaryDecoded, string(decoded))
+		}
 	}
 
 	// Compile the dsl expressions
