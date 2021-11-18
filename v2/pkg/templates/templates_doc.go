@@ -790,7 +790,7 @@ func init() {
 
 	DNSRequestDoc.Fields[4].AddExample("", "{{FQDN}}")
 	DNSRequestDoc.Fields[5].Name = "type"
-	DNSRequestDoc.Fields[5].Type = "string"
+	DNSRequestDoc.Fields[5].Type = "DNSRequestTypeHolder"
 	DNSRequestDoc.Fields[5].Note = ""
 	DNSRequestDoc.Fields[5].Description = "RequestType is the type of DNS request to make."
 	DNSRequestDoc.Fields[5].Comments[encoder.LineComment] = "RequestType is the type of DNS request to make."
@@ -997,7 +997,7 @@ func init() {
 
 	NETWORKInputDoc.Fields[0].AddExample("", "hex_decode('50494e47')")
 	NETWORKInputDoc.Fields[1].Name = "type"
-	NETWORKInputDoc.Fields[1].Type = "string"
+	NETWORKInputDoc.Fields[1].Type = "NetworkInputTypeHolder"
 	NETWORKInputDoc.Fields[1].Note = ""
 	NETWORKInputDoc.Fields[1].Description = "Type is the type of input specified in `data` field.\n\nDefault value is text, but hex can be used for hex formatted data."
 	NETWORKInputDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of input specified in `data` field."
