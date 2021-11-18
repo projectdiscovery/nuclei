@@ -24,7 +24,7 @@ var (
 		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
-		Method: "GET",
+		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},
 		Path:   []string{"{{BaseURL}}/.git/config"},
 		Operators: operators.Operators{
 			MatchersCondition: "and",
