@@ -10,13 +10,12 @@ import (
 
 // CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
-	var ok bool
 	// Set up the extractor type
-	e.extractorType, ok = ExtractorTypes[e.Type]
-	if !ok {
+	computedType, err := toExtractorTypes(e.GetType().String())
+	if err != nil {
 		return fmt.Errorf("unknown extractor type specified: %s", e.Type)
 	}
-
+	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		compiled, err := regexp.Compile(regex)
@@ -25,7 +24,6 @@ func (e *Extractor) CompileExtractors() error {
 		}
 		e.regexCompiled = append(e.regexCompiled, compiled)
 	}
-
 	for i, kval := range e.KVal {
 		e.KVal[i] = strings.ToLower(kval)
 	}
@@ -43,7 +41,7 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	if e.CaseInsensitive {
-		if e.Type != "kval" {
+		if e.GetType() != KValExtractor {
 			return fmt.Errorf("case-insensitive flag is supported only for 'kval' extractors (not '%s')", e.Type)
 		}
 		for i := range e.KVal {
