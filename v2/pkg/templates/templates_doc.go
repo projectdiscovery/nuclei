@@ -344,7 +344,7 @@ func init() {
 		"clusterbomb",
 	}
 	HTTPRequestDoc.Fields[8].Name = "method"
-	HTTPRequestDoc.Fields[8].Type = "string"
+	HTTPRequestDoc.Fields[8].Type = "HTTPMethodTypeHolder"
 	HTTPRequestDoc.Fields[8].Note = ""
 	HTTPRequestDoc.Fields[8].Description = "Method is the HTTP Request Method."
 	HTTPRequestDoc.Fields[8].Comments[encoder.LineComment] = "Method is the HTTP Request Method."
@@ -757,7 +757,7 @@ func init() {
 			FieldName: "dns",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 10)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 12)
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -790,7 +790,7 @@ func init() {
 
 	DNSRequestDoc.Fields[4].AddExample("", "{{FQDN}}")
 	DNSRequestDoc.Fields[5].Name = "type"
-	DNSRequestDoc.Fields[5].Type = "string"
+	DNSRequestDoc.Fields[5].Type = "DNSRequestTypeHolder"
 	DNSRequestDoc.Fields[5].Note = ""
 	DNSRequestDoc.Fields[5].Description = "RequestType is the type of DNS request to make."
 	DNSRequestDoc.Fields[5].Comments[encoder.LineComment] = "RequestType is the type of DNS request to make."
@@ -825,16 +825,28 @@ func init() {
 	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Retries is the number of retries for the DNS request"
 
 	DNSRequestDoc.Fields[7].AddExample("Use a retry of 3 to 5 generally", 5)
-	DNSRequestDoc.Fields[8].Name = "recursion"
+	DNSRequestDoc.Fields[8].Name = "trace"
 	DNSRequestDoc.Fields[8].Type = "bool"
 	DNSRequestDoc.Fields[8].Note = ""
-	DNSRequestDoc.Fields[8].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[9].Name = "resolvers"
-	DNSRequestDoc.Fields[9].Type = "[]string"
+	DNSRequestDoc.Fields[8].Description = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[9].Name = "trace-max-recursion"
+	DNSRequestDoc.Fields[9].Type = "int"
 	DNSRequestDoc.Fields[9].Note = ""
-	DNSRequestDoc.Fields[9].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[9].Description = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+
+	DNSRequestDoc.Fields[9].AddExample("Use a retry of 100 to 150 generally", 100)
+	DNSRequestDoc.Fields[10].Name = "recursion"
+	DNSRequestDoc.Fields[10].Type = "bool"
+	DNSRequestDoc.Fields[10].Note = ""
+	DNSRequestDoc.Fields[10].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[11].Name = "resolvers"
+	DNSRequestDoc.Fields[11].Type = "[]string"
+	DNSRequestDoc.Fields[11].Note = ""
+	DNSRequestDoc.Fields[11].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[11].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	FILERequestDoc.Type = "file.Request"
 	FILERequestDoc.Comments[encoder.LineComment] = " Request contains a File matching mechanism for local disk operations."
@@ -997,7 +1009,7 @@ func init() {
 
 	NETWORKInputDoc.Fields[0].AddExample("", "hex_decode('50494e47')")
 	NETWORKInputDoc.Fields[1].Name = "type"
-	NETWORKInputDoc.Fields[1].Type = "string"
+	NETWORKInputDoc.Fields[1].Type = "NetworkInputTypeHolder"
 	NETWORKInputDoc.Fields[1].Note = ""
 	NETWORKInputDoc.Fields[1].Description = "Type is the type of input specified in `data` field.\n\nDefault value is text, but hex can be used for hex formatted data."
 	NETWORKInputDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of input specified in `data` field."

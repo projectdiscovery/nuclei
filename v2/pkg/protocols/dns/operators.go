@@ -2,6 +2,8 @@ package dns
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -13,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 // Match matches a generic data response against a given matcher
@@ -74,7 +77,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (in
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
+func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, tracedata *retryabledns.TraceData) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
@@ -89,6 +92,7 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
+		"trace":         traceToString(tracedata, false),
 	}
 }
 
@@ -129,6 +133,19 @@ func questionToString(resourceRecords []dns.Question) string {
 	buffer := &bytes.Buffer{}
 	for _, resourceRecord := range resourceRecords {
 		buffer.WriteString(resourceRecord.String())
+	}
+	return buffer.String()
+}
+
+func traceToString(tracedata *retryabledns.TraceData, withSteps bool) string {
+	buffer := &bytes.Buffer{}
+	if tracedata != nil {
+		for i, dnsRecord := range tracedata.DNSData {
+			if withSteps {
+				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+			}
+			buffer.WriteString(dnsRecord.Raw)
+		}
 	}
 	return buffer.String()
 }

@@ -318,6 +318,22 @@
       "title": "type of the attack",
       "description": "Type of the attack"
     },
+    "dns.DNSRequestTypeHolder": {
+      "enum": [
+        "A",
+        "NS",
+        "DS",
+        "CNAME",
+        "SOA",
+        "PTR",
+        "MX",
+        "TXT",
+        "AAAA"
+      ],
+      "type": "string",
+      "title": "type of DNS request to make",
+      "description": "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"
+    },
     "dns.Request": {
       "properties": {
         "matchers": {
@@ -356,18 +372,8 @@
           "description": "Name is the Hostname to make DNS request for"
         },
         "type": {
-          "enum": [
-            "A",
-            "NS",
-            "DS",
-            "CNAME",
-            "SOA",
-            "PTR",
-            "MX",
-            "TXT",
-            "AAAA"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/dns.DNSRequestTypeHolder",
           "title": "type of dns request to make",
           "description": "Type is the type of DNS request to make"
         },
@@ -388,6 +394,16 @@
           "type": "integer",
           "title": "retries for dns request",
           "description": "Retries is the number of retries for the DNS request"
+        },
+        "trace": {
+          "type": "boolean",
+          "title": "trace operation",
+          "description": "Trace performs a trace operation for the target."
+        },
+        "trace-max-recursion": {
+          "type": "integer",
+          "title": "trace-max-recursion level for dns request",
+          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
         },
         "recursion": {
           "type": "boolean",
@@ -570,6 +586,23 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "http.HTTPMethodTypeHolder": {
+      "enum": [
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "CONNECT",
+        "OPTIONS",
+        "TRACE",
+        "PATCH",
+        "PURGE"
+      ],
+      "type": "string",
+      "title": "method is the HTTP request method",
+      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
+    },
     "http.Request": {
       "properties": {
         "matchers": {
@@ -631,19 +664,8 @@
           "description": "Attack is the type of payload combinations to perform"
         },
         "method": {
-          "enum": [
-            "GET",
-            "HEAD",
-            "POST",
-            "PUT",
-            "DELETE",
-            "CONNECT",
-            "OPTIONS",
-            "TRACE",
-            "PATCH",
-            "PURGE"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/http.HTTPMethodTypeHolder",
           "title": "method is the http request method",
           "description": "Method is the HTTP Request Method"
         },
@@ -754,11 +776,8 @@
           "description": "Data is the data to send as the input"
         },
         "type": {
-          "enum": [
-            "hex",
-            "text"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/network.NetworkInputTypeHolder",
           "title": "type is the type of input data",
           "description": "Type of input specified in data field"
         },
@@ -775,6 +794,15 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "network.NetworkInputTypeHolder": {
+      "enum": [
+        "hex",
+        "text"
+      ],
+      "type": "string",
+      "title": "type is the type of input data",
+      "description": "description=Type of input specified in data field,enum=hex,enum=text"
     },
     "network.Request": {
       "properties": {

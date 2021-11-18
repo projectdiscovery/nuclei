@@ -115,6 +115,7 @@ type Matcher struct {
 	// cached data for the compiled matcher
 	condition     ConditionType
 	matcherType   MatcherType
+	binaryDecoded []string
 	regexCompiled []*regexp.Regexp
 	dslCompiled   []*govaluate.EvaluableExpression
 }
