@@ -395,6 +395,16 @@
           "title": "retries for dns request",
           "description": "Retries is the number of retries for the DNS request"
         },
+        "trace": {
+          "type": "boolean",
+          "title": "trace operation",
+          "description": "Trace performs a trace operation for the target."
+        },
+        "trace-max-recursion": {
+          "type": "integer",
+          "title": "trace-max-recursion level for dns request",
+          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+        },
         "recursion": {
           "type": "boolean",
           "title": "recurse all servers",

@@ -757,7 +757,7 @@ func init() {
 			FieldName: "dns",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 10)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 12)
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -825,16 +825,28 @@ func init() {
 	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Retries is the number of retries for the DNS request"
 
 	DNSRequestDoc.Fields[7].AddExample("Use a retry of 3 to 5 generally", 5)
-	DNSRequestDoc.Fields[8].Name = "recursion"
+	DNSRequestDoc.Fields[8].Name = "trace"
 	DNSRequestDoc.Fields[8].Type = "bool"
 	DNSRequestDoc.Fields[8].Note = ""
-	DNSRequestDoc.Fields[8].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[9].Name = "resolvers"
-	DNSRequestDoc.Fields[9].Type = "[]string"
+	DNSRequestDoc.Fields[8].Description = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[9].Name = "trace-max-recursion"
+	DNSRequestDoc.Fields[9].Type = "int"
 	DNSRequestDoc.Fields[9].Note = ""
-	DNSRequestDoc.Fields[9].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[9].Description = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+
+	DNSRequestDoc.Fields[9].AddExample("Use a retry of 100 to 150 generally", 100)
+	DNSRequestDoc.Fields[10].Name = "recursion"
+	DNSRequestDoc.Fields[10].Type = "bool"
+	DNSRequestDoc.Fields[10].Note = ""
+	DNSRequestDoc.Fields[10].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[11].Name = "resolvers"
+	DNSRequestDoc.Fields[11].Type = "[]string"
+	DNSRequestDoc.Fields[11].Note = ""
+	DNSRequestDoc.Fields[11].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[11].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	FILERequestDoc.Type = "file.Request"
 	FILERequestDoc.Comments[encoder.LineComment] = " Request contains a File matching mechanism for local disk operations."
