@@ -186,7 +186,10 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 	if !w.matchedStatus {
 		return nil
 	}
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
 	data := &ResultEvent{
+		Template:      templatePath,
+		TemplateURL:   templateURL,
 		TemplateID:    types.ToString(event["template-id"]),
 		TemplatePath:  types.ToString(event["template-path"]),
 		Info:          event["template-info"].(model.Info),
