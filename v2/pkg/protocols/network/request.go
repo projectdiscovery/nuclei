@@ -136,8 +136,8 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	for _, input := range request.Inputs {
 		var data []byte
 
-		switch input.Type {
-		case "hex":
+		switch input.Type.GetType() {
+		case hexType:
 			data, err = hex.DecodeString(input.Data)
 		default:
 			data = []byte(input.Data)
