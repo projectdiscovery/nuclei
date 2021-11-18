@@ -24,7 +24,7 @@ var (
 		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
-		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},
+		Method: "GET",
 		Path:   []string{"{{BaseURL}}/.git/config"},
 		Operators: operators.Operators{
 			MatchersCondition: "and",
@@ -38,7 +38,7 @@ var (
 
 	exampleNormalDNSRequest = &dns.Request{
 		Name:        "{{FQDN}}",
-		RequestType: dns.DNSRequestTypeHolder{DNSRequestType: dns.CNAME},
+		RequestType: "CNAME",
 		Class:       "inet",
 		Retries:     2,
 		Recursion:   true,

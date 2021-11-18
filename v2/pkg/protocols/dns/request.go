@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/retryabledns"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -41,14 +40,6 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		return errors.Wrap(err, "could not build request")
 	}
 
-	dnsClient := request.dnsClient
-	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
-		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
-			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
-			return nil
-		}
-	}
-
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
@@ -60,7 +51,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	}
 
 	// Send the request to the target servers
-	response, err := dnsClient.Do(compiledRequest)
+	response, err := request.dnsClient.Do(compiledRequest)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -73,33 +64,20 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
 
-	// perform trace if necessary
-	var tracedata *retryabledns.TraceData
-	if request.Trace {
-		tracedata, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
-		if err != nil {
-			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
-		}
-	}
-
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, tracedata)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
 
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request.options, response.String(), domain)
-	if request.Trace {
-		dumpTraceData(event, request.options, traceToString(tracedata, true), domain)
-	}
 
 	callback(event)
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response string, domain string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
@@ -109,19 +87,6 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
-	}
-}
-
-func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, tracedata, domain string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
-		hexDump := false
-		if responsehighlighter.HasBinaryContent(tracedata) {
-			hexDump = true
-			tracedata = hex.Dump([]byte(tracedata))
-		}
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, tracedata, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }
 

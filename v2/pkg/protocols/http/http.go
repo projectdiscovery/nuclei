@@ -66,7 +66,7 @@ type Request struct {
 	//   - "TRACE"
 	//   - "PATCH"
 	//   - "PURGE"
-	Method HTTPMethodTypeHolder `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
+	Method string `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.
 	// examples:
@@ -242,7 +242,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		var hasPayloadName bool
 		// search for markers in all request parts
 		var inputs []string
-		inputs = append(inputs, request.Method.String(), request.Body)
+		inputs = append(inputs, request.Method, request.Body)
 		inputs = append(inputs, request.Raw...)
 		for k, v := range request.customHeaders {
 			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
@@ -252,7 +252,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 
 		for _, input := range inputs {
-			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input) == nil {
+			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
 				hasPayloadName = true
 				break
 			}

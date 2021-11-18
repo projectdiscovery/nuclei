@@ -880,7 +880,7 @@ Valid values:
 
 <div class="dd">
 
-<code>method</code>  <i>HTTPMethodTypeHolder</i>
+<code>method</code>  <i>string</i>
 
 </div>
 <div class="dt">
@@ -2043,7 +2043,7 @@ name: '{{FQDN}}'
 
 <div class="dd">
 
-<code>type</code>  <i>DNSRequestTypeHolder</i>
+<code>type</code>  <i>string</i>
 
 </div>
 <div class="dt">
@@ -2122,43 +2122,6 @@ Examples:
 ```yaml
 # Use a retry of 3 to 5 generally
 retries: 5
-```
-
-
-</div>
-
-<hr />
-
-<div class="dd">
-
-<code>trace</code>  <i>bool</i>
-
-</div>
-<div class="dt">
-
-Trace performs a trace operation for the target.
-
-</div>
-
-<hr />
-
-<div class="dd">
-
-<code>trace-max-recursion</code>  <i>int</i>
-
-</div>
-<div class="dt">
-
-TraceMaxRecursion is the number of max recursion allowed for trace operations
-
-
-
-Examples:
-
-
-```yaml
-# Use a retry of 100 to 150 generally
-trace-max-recursion: 100
 ```
 
 
@@ -2646,7 +2609,7 @@ data: hex_decode('50494e47')
 
 <div class="dd">
 
-<code>type</code>  <i>NetworkInputTypeHolder</i>
+<code>type</code>  <i>string</i>
 
 </div>
 <div class="dt">

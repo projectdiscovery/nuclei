@@ -25,7 +25,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -55,7 +55,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -143,7 +143,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -257,7 +257,7 @@ func TestHTTPMakeResult(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",

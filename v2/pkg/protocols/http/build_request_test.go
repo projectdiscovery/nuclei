@@ -71,7 +71,7 @@ func TestMakeRequestFromModal(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}/login.php"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Method: "POST",
 		Body:   "username=test&password=pass",
 		Headers: map[string]string{
 			"Content-Type":   "application/x-www-form-urlencoded",
@@ -103,7 +103,7 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?query=example"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -211,7 +211,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}/?u=http://{{interactsh-url}}/&href=http://{{interactsh-url}}/&action=http://{{interactsh-url}}/&host={{interactsh-url}}"},
-		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Method: "GET",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,

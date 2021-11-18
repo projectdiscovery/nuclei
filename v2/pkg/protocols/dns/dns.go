@@ -11,7 +11,6 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -44,7 +43,7 @@ type Request struct {
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -63,15 +62,6 @@ type Request struct {
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
 	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
-	// description: |
-	//   Trace performs a trace operation for the target.
-	Trace bool `yaml:"trace,omitempty" jsonschema:"title=trace operation,description=Trace performs a trace operation for the target."`
-	// description: |
-	//   TraceMaxRecursion is the number of max recursion allowed for trace operations
-	// examples:
-	//   - name: Use a retry of 100 to 150 generally
-	//     value: 100
-	TraceMaxRecursion int `yaml:"trace-max-recursion,omitempty"  jsonschema:"title=trace-max-recursion level for dns request,description=TraceMaxRecursion is the number of max recursion allowed for trace operations"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
@@ -106,7 +96,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		dnsClientOptions.Resolvers = request.Resolvers
 	}
 	// Create a dns client for the class
-	client, err := request.getDnsClient(options, nil)
+	client, err := dnsclientpool.Get(options.Options, dnsClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
@@ -121,30 +111,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.class = classToInt(request.Class)
 	request.options = options
-	request.question = questionTypeToInt(request.RequestType.String())
+	request.question = questionTypeToInt(request.RequestType)
 	return nil
-}
-
-func (request *Request) getDnsClient(options *protocols.ExecuterOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
-	dnsClientOptions := &dnsclientpool.Configuration{
-		Retries: request.Retries,
-	}
-	if len(request.Resolvers) > 0 {
-		if len(request.Resolvers) > 0 {
-			for _, resolver := range request.Resolvers {
-				if expressions.ContainsUnresolvedVariables(resolver) != nil {
-					var err error
-					resolver, err = expressions.Evaluate(resolver, metadata)
-					if err != nil {
-						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
-					}
-					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
-				}
-			}
-		}
-		dnsClientOptions.Resolvers = request.Resolvers
-	}
-	return dnsclientpool.Get(options.Options, dnsClientOptions)
 }
 
 // Requests returns the total number of requests the YAML rule will perform
