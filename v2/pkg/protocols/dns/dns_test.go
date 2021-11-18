@@ -27,7 +27,7 @@ func TestDNSCompileMake(t *testing.T) {
 	testutils.Init(options)
 	const templateID = "testing-dns"
 	request := &Request{
-		RequestType: "A",
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
