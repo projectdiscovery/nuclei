@@ -10,7 +10,6 @@ import (
 
 // CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
-	//var ok bool
 	// Set up the extractor type
 	computedType, err := toExtractorTypes(e.GetType().String())
 	if err != nil {
