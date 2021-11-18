@@ -590,7 +590,7 @@
         "PURGE"
       ],
       "type": "string",
-      "title": "method is the http request method",
+      "title": "method is the HTTP request method",
       "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
     },
     "http.Request": {
