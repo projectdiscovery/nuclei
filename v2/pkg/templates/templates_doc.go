@@ -649,7 +649,7 @@ func init() {
 
 	EXTRACTORSExtractorDoc.Fields[0].AddExample("", "cookie-extractor")
 	EXTRACTORSExtractorDoc.Fields[1].Name = "type"
-	EXTRACTORSExtractorDoc.Fields[1].Type = "string"
+	EXTRACTORSExtractorDoc.Fields[1].Type = "TypeHolder"
 	EXTRACTORSExtractorDoc.Fields[1].Note = ""
 	EXTRACTORSExtractorDoc.Fields[1].Description = "Type is the type of the extractor."
 	EXTRACTORSExtractorDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of the extractor."
@@ -1098,7 +1098,7 @@ func init() {
 	ENGINEActionDoc.Fields[2].Description = "Description is the optional description of the headless action"
 	ENGINEActionDoc.Fields[2].Comments[encoder.LineComment] = "Description is the optional description of the headless action"
 	ENGINEActionDoc.Fields[3].Name = "action"
-	ENGINEActionDoc.Fields[3].Type = "string"
+	ENGINEActionDoc.Fields[3].Type = "ActionTypeHolder"
 	ENGINEActionDoc.Fields[3].Note = ""
 	ENGINEActionDoc.Fields[3].Description = "Action is the type of the action to perform."
 	ENGINEActionDoc.Fields[3].Comments[encoder.LineComment] = "Action is the type of the action to perform."
