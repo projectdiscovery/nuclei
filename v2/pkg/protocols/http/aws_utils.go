@@ -49,6 +49,14 @@ func NewAwsSignerFromEnv() (*AwsSigner, error) {
 	return &AwsSigner{creds: creds}, nil
 }
 
+func NewAwsSignerFromFile() (*AwsSigner, error) {
+	creds := credentials.NewSharedCredentials("", "")
+	if creds == nil {
+		return nil, errors.New("couldn't create the credentials structure")
+	}
+	return &AwsSigner{creds: creds}, nil
+}
+
 func (awsSigner *AwsSigner) SignHTTP(request *http.Request, args SignArguments) error {
 	awsSigner.prepareRequest(request)
 	var body *bytes.Reader

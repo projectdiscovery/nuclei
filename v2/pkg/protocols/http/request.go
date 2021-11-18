@@ -359,7 +359,15 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				if awsAccessKeyId != "" && awsSecretAccessKey != "" {
 					awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
 				} else {
+					// env variables
 					awsSigner, err = NewAwsSignerFromEnv()
+					if err != nil {
+						// $HOME/.aws/credentials
+						awsSigner, err = NewAwsSignerFromFile()
+						if err != nil {
+							return err
+						}
+					}
 				}
 				if err != nil {
 					return err
