@@ -12,7 +12,8 @@ type SignatureType int
 
 // Supported values for the SignatureType
 const (
-	AWSSignature SignatureType = iota
+	AWSSignature SignatureType = iota + 1
+	signatureLimit
 )
 
 // signatureTypeMappings is a table for conversion of signature type from string.
@@ -22,8 +23,8 @@ var signatureTypeMappings = map[SignatureType]string{
 
 func GetSupportedSignaturesTypes() []SignatureType {
 	var result []SignatureType
-	for i := 0; SignatureType(i).String() != ""; i++ {
-		result = append(result, SignatureType(i))
+	for index := SignatureType(1); index < signatureLimit; index++ {
+		result = append(result, index)
 	}
 	return result
 }
