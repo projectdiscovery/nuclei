@@ -38,7 +38,7 @@ var (
 
 	exampleNormalDNSRequest = &dns.Request{
 		Name:        "{{FQDN}}",
-		RequestType: "CNAME",
+		RequestType: dns.DNSRequestTypeHolder{DNSRequestType: dns.CNAME},
 		Class:       "inet",
 		Retries:     2,
 		Recursion:   true,
