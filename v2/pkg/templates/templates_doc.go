@@ -344,7 +344,7 @@ func init() {
 		"clusterbomb",
 	}
 	HTTPRequestDoc.Fields[8].Name = "method"
-	HTTPRequestDoc.Fields[8].Type = "string"
+	HTTPRequestDoc.Fields[8].Type = "HTTPMethodTypeHolder"
 	HTTPRequestDoc.Fields[8].Note = ""
 	HTTPRequestDoc.Fields[8].Description = "Method is the HTTP Request Method."
 	HTTPRequestDoc.Fields[8].Comments[encoder.LineComment] = "Method is the HTTP Request Method."
