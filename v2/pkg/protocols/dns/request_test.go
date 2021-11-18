@@ -35,7 +35,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
