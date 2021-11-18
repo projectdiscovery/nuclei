@@ -2131,6 +2131,43 @@ retries: 5
 
 <div class="dd">
 
+<code>trace</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Trace performs a trace operation for the target.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>trace-max-recursion</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+TraceMaxRecursion is the number of max recursion allowed for trace operations
+
+
+
+Examples:
+
+
+```yaml
+# Use a retry of 100 to 150 generally
+trace-max-recursion: 100
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>recursion</code>  <i>bool</i>
 
 </div>
