@@ -170,7 +170,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			if input.Type.String() != "" {
 				continue
 			}
-			if expressions.ContainsVariablesWithNames(input.Data, map[string]interface{}{name: payload}) == nil {
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input.Data) == nil {
 				hasPayloadName = true
 				break
 			}
