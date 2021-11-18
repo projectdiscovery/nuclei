@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
@@ -14,7 +13,7 @@ type SignatureType int
 // Supported values for the SignatureType
 const (
 	AWSSignature SignatureType = iota + 1
-	limit
+	signatureLimit
 )
 
 // signatureTypeMappings is a table for conversion of signature type from string.
@@ -24,7 +23,7 @@ var signatureTypeMappings = map[SignatureType]string{
 
 func GetSupportedSignaturesTypes() []SignatureType {
 	var result []SignatureType
-	for index := SignatureType(1); index < limit; index++ {
+	for index := SignatureType(1); index < signatureLimit; index++ {
 		result = append(result, index)
 	}
 	return result
@@ -38,10 +37,6 @@ func toSignatureType(valueToMap string) (SignatureType, error) {
 		}
 	}
 	return -1, errors.New("invalid signature type: " + valueToMap)
-}
-
-func normalizeValue(value string) string {
-	return strings.TrimSpace(strings.ToLower(value))
 }
 
 func (t SignatureType) String() string {
