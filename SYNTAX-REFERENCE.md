@@ -2043,7 +2043,7 @@ name: '{{FQDN}}'
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>DNSRequestTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -2609,7 +2609,7 @@ data: hex_decode('50494e47')
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>NetworkInputTypeHolder</i>
 
 </div>
 <div class="dt">
