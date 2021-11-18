@@ -105,7 +105,7 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
+	Type NetworkInputTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
@@ -153,7 +153,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	// Pre-compile any input dsl functions before executing the request.
 	for _, input := range request.Inputs {
-		if input.Type != "" {
+		if input.Type.String() != "" {
 			continue
 		}
 		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
@@ -167,7 +167,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		// check if inputs contains the payload
 		var hasPayloadName bool
 		for _, input := range request.Inputs {
-			if input.Type != "" {
+			if input.Type.String() != "" {
 				continue
 			}
 			if expressions.ContainsVariablesWithNames(input.Data, map[string]interface{}{name: payload}) == nil {
