@@ -211,15 +211,8 @@
       ],
       "properties": {
         "type": {
-          "enum": [
-            "status",
-            "size",
-            "word",
-            "regex",
-            "binary",
-            "dsl"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/matchers.MatcherTypeHolder",
           "title": "type of matcher",
           "description": "Type of the matcher"
         },
@@ -311,6 +304,19 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "matchers.MatcherTypeHolder": {
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "type": "string",
+      "title": "type of the matcher",
+      "description": "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"
     },
     "generators.AttackTypeHolder": {
       "enum": [

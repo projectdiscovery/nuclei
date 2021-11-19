@@ -87,15 +87,15 @@ Examples:
 ```yaml
 requests:
     matchers:
-        - type: word
+        - type: 1
           words:
             - '[core]'
-        - type: dsl
+        - type: 6
           condition: and
           dsl:
             - '!contains(tolower(body), ''<html'')'
             - '!contains(tolower(body), ''<body'')'
-        - type: status
+        - type: 4
           status:
             - 200
     matchers-condition: and
@@ -194,7 +194,7 @@ network:
         - data: "envi\r\nquit\r\n"
     read-size: 2048
     matchers:
-        - type: word
+        - type: 1
           words:
             - zookeeper.version
 ```
@@ -688,15 +688,15 @@ Appears in:
 
 ```yaml
 matchers:
-    - type: word
+    - type: 1
       words:
         - '[core]'
-    - type: dsl
+    - type: 6
       condition: and
       dsl:
         - '!contains(tolower(body), ''<html'')'
         - '!contains(tolower(body), ''<body'')'
-    - type: status
+    - type: 4
       status:
         - 200
 matchers-condition: and
@@ -1274,7 +1274,7 @@ Appears in:
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>MatcherTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -2396,7 +2396,7 @@ inputs:
     - data: "envi\r\nquit\r\n"
 read-size: 2048
 matchers:
-    - type: word
+    - type: 1
       words:
         - zookeeper.version
 ```

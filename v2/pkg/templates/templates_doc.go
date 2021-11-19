@@ -497,7 +497,7 @@ func init() {
 	}
 	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
-	MATCHERSMatcherDoc.Fields[0].Type = "string"
+	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
 	MATCHERSMatcherDoc.Fields[0].Description = "Type is the type of the matcher."
 	MATCHERSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Type is the type of the matcher."
