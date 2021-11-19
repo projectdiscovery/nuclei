@@ -64,7 +64,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"STAT "},
 		}
 		err = matcher.CompileMatchers()
@@ -78,7 +78,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "data",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -93,7 +93,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "data",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -107,7 +107,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("caseInsensitive", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:            "body",
-			Type:            "word",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words:           []string{"rESp-DAta"},
 			CaseInsensitive: true,
 		}
@@ -188,7 +188,7 @@ func TestNetworkMakeResult(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "data",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"STAT "},
 			}},
 			Extractors: []*extractors.Extractor{{

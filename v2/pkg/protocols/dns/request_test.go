@@ -30,7 +30,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"93.184.216.34"},
 			}},
 			Extractors: []*extractors.Extractor{{

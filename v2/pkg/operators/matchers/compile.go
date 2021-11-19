@@ -25,10 +25,17 @@ func (m *Matcher) CompileMatchers() error {
 	}
 
 	// Set up the matcher type
-	m.matcherType, ok = MatcherTypes[m.Type]
-	if !ok {
+	computedType, err := toMatcherTypes(m.GetType().String())
+	if err != nil {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
+
+	m.matcherType = computedType
+	// By default, match on body if user hasn't provided any specific items
+	if m.Part == "" {
+		m.Part = "body"
+	}
+
 
 	// Compile the regexes
 	for _, regex := range m.Regex {
@@ -68,7 +75,7 @@ func (m *Matcher) CompileMatchers() error {
 	}
 
 	if m.CaseInsensitive {
-		if m.Type != "word" {
+		if m.GetType() != WordsMatcher {
 			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", m.Type)
 		}
 		for i := range m.Words {

@@ -32,7 +32,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"1.1.1.1"},
 			}},
 			Extractors: []*extractors.Extractor{{
