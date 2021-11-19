@@ -70,7 +70,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}
 		err = matcher.CompileMatchers()
@@ -84,7 +84,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "body",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -99,7 +99,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -179,7 +179,7 @@ func TestHTTPMakeResult(t *testing.T) {
 		Matchers: []*matchers.Matcher{{
 			Name:  "test",
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}},
 		Extractors: []*extractors.Extractor{{
