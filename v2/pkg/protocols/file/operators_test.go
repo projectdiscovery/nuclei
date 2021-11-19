@@ -66,7 +66,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}
 		err = matcher.CompileMatchers()
@@ -80,7 +80,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "raw",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -95,7 +95,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -114,7 +114,7 @@ func TestFileOperatorMatch(t *testing.T) {
 
 		matcher := &matchers.Matcher{
 			Part:            "raw",
-			Type:            "word",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words:           []string{"TeSt-DaTA"},
 			CaseInsensitive: true,
 		}
@@ -200,13 +200,13 @@ func testFileMakeResultOperators(t *testing.T, matcherCondition string) *output.
 	matcher := []*matchers.Matcher{
 		{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: expectedValue,
 		},
 		{
 			Name:  namedMatcherName,
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: expectedValue,
 		},
 	}
