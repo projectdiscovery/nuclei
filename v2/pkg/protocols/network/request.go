@@ -136,11 +136,10 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 	for _, input := range request.Inputs {
 		var data []byte
 
-		switch input.Type {
-		case "hex":
+		switch input.Type.GetType() {
+		case hexType:
 			data, err = hex.DecodeString(input.Data)
 		default:
-			input.Data, interactshURLs = request.options.Interactsh.ReplaceMarkers(input.Data, []string{})
 			data = []byte(input.Data)
 		}
 		if err != nil {
@@ -149,6 +148,12 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			return errors.Wrap(err, "could not write request to server")
 		}
 		reqBuilder.Grow(len(input.Data))
+
+		if request.options.Interactsh != nil {
+			var transformedData string
+			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})
+			data = []byte(transformedData)
+		}
 
 		finalData, dataErr := expressions.EvaluateByte(data, payloads)
 		if dataErr != nil {

@@ -24,7 +24,7 @@ var (
 		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
-		Method: "GET",
+		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},
 		Path:   []string{"{{BaseURL}}/.git/config"},
 		Operators: operators.Operators{
 			MatchersCondition: "and",
@@ -38,13 +38,13 @@ var (
 
 	exampleNormalDNSRequest = &dns.Request{
 		Name:        "{{FQDN}}",
-		RequestType: "CNAME",
+		RequestType: dns.DNSRequestTypeHolder{DNSRequestType: dns.CNAME},
 		Class:       "inet",
 		Retries:     2,
 		Recursion:   true,
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
-				{Type: "regex", Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
+				{Type: extractors.TypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
 			},
 		},
 	}
@@ -54,7 +54,7 @@ var (
 		Extensions: []string{"all"},
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
-				{Type: "regex", Regex: []string{"amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"}},
+				{Type: extractors.TypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"}},
 			},
 		},
 	}

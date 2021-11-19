@@ -64,10 +64,15 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	}
 	ctx := context.Background()
 
-	data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
-
-	for payloadName, payloadValue := range payloads {
-		payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
+	if r.options.Interactsh != nil {
+		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+		for payloadName, payloadValue := range payloads {
+			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
+		}
+	} else {
+		for payloadName, payloadValue := range payloads {
+			payloads[payloadName] = types.ToString(payloadValue)
+		}
 	}
 
 	parsed, err := url.Parse(baseURL)
@@ -171,7 +176,9 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
-	data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+	if r.options.Interactsh != nil {
+		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+	}
 
 	// Combine the template payloads along with base
 	// request values.
@@ -184,7 +191,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
 
-	method, err := expressions.Evaluate(r.request.Method, finalValues)
+	method, err := expressions.Evaluate(r.request.Method.String(), finalValues)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not evaluate helper expressions")
 	}
@@ -204,7 +211,9 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
 func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
-	data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+	if r.options.Interactsh != nil {
+		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+	}
 	return r.handleRawWithPayloads(ctx, data, baseURL, values, payloads)
 }
 
@@ -268,7 +277,9 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
 	for header, value := range r.request.Headers {
-		value, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(value, r.interactshURLs)
+		if r.options.Interactsh != nil {
+			value, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(value, r.interactshURLs)
+		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not evaluate helper expressions")
@@ -286,8 +297,10 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 
 	// Check if the user requested a request body
 	if r.request.Body != "" {
-		var body string
-		body, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(r.request.Body, r.interactshURLs)
+		body := r.request.Body
+		if r.options.Interactsh != nil {
+			body, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(r.request.Body, r.interactshURLs)
+		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not evaluate helper expressions")
