@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 )
 
 // Runner is a client for running the enumeration process.
@@ -180,7 +181,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if err := YAMLDecodeAndValidate(file, reportingOptions); err != nil {
+		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}

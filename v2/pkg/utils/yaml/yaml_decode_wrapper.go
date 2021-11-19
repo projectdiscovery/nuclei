@@ -1,4 +1,4 @@
-package runner
+package yaml
 
 import (
 	"io"
@@ -11,8 +11,8 @@ import (
 
 var validate *validator.Validate
 
-// YAMLDecodeWrapper is a wrapper for yaml Decode adding struct validation
-func YAMLDecodeAndValidate(r io.Reader, v interface{}) error {
+// DecodeAndValidate is a wrapper for yaml Decode adding struct validation
+func DecodeAndValidate(r io.Reader, v interface{}) error {
 	if err := yaml.NewDecoder(r).Decode(v); err != nil {
 		return err
 	}
