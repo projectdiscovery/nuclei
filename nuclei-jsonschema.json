@@ -130,15 +130,8 @@
           "description": "Name of the extractor"
         },
         "type": {
-          "enum": [
-            "regex",
-            "kval",
-            "json",
-            "xpath"
-          ],
-          "type": "string",
-          "title": "type of the extractor",
-          "description": "Type of the extractor"
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/extractors.TypeHolder"
         },
         "regex": {
           "items": {
@@ -200,6 +193,17 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "extractors.TypeHolder": {
+      "enum": [
+        "regex",
+        "kval",
+        "xpath",
+        "json"
+      ],
+      "type": "string",
+      "title": "type of the extractor",
+      "description": "Type of the extractor"
     },
     "matchers.Matcher": {
       "required": [
@@ -539,36 +543,60 @@
           "description": "Description of the headless action"
         },
         "action": {
-          "enum": [
-            "navigate",
-            "script",
-            "click",
-            "rightclick",
-            "text",
-            "screenshot",
-            "time",
-            "select",
-            "files",
-            "waitload",
-            "getresource",
-            "extract",
-            "setmethod",
-            "addheader",
-            "setheader",
-            "deleteheader",
-            "setbody",
-            "waitevent",
-            "keyboard",
-            "debug",
-            "sleep"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/engine.ActionTypeHolder",
           "title": "action to perform",
           "description": "Type of actions to perform"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "engine.ActionTypeHolder": {
+      "enum": [
+        "navigate",
+        "script",
+        "click",
+        "rightclick",
+        "text",
+        "screenshot",
+        "time",
+        "select",
+        "files",
+        "waitload",
+        "getresource",
+        "extract",
+        "set-method",
+        "addheader",
+        "setheader",
+        "deleteheader",
+        "setbody",
+        "waitevent",
+        "keyboard",
+        "debug",
+        "sleep",
+        "waitvisible"
+      ],
+      "type": "string",
+      "title": "action to perform",
+      "description": "Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"
+    },
+    "http.HTTPMethodTypeHolder": {
+      "enum": [
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "CONNECT",
+        "OPTIONS",
+        "TRACE",
+        "PATCH",
+        "PURGE"
+      ],
+      "type": "string",
+      "title": "method is the HTTP request method",
+      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
     },
     "http.Request": {
       "properties": {

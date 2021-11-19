@@ -166,7 +166,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "body",
-			Type:  "regex",
+			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -179,7 +179,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: "kval",
+			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"test_header"},
 		}
 		err = extractor.CompileExtractors()
@@ -195,7 +195,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 
 		t.Run("jq-simple", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".batters | .batter | .[] | .id"},
 			}
 			err = extractor.CompileExtractors()
@@ -207,7 +207,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		})
 		t.Run("jq-array", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".array"},
 			}
 			err = extractor.CompileExtractors()
@@ -219,7 +219,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		})
 		t.Run("jq-object", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".batters"},
 			}
 			err = extractor.CompileExtractors()
@@ -235,7 +235,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		event["body"] = exampleResponseBody
 
 		extractor := &extractors.Extractor{
-			Type:            "kval",
+			Type:            extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal:            []string{"TEST_HEADER"}, // only applies to KVal
 			CaseInsensitive: true,
 		}
@@ -267,7 +267,7 @@ func TestHTTPMakeResult(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "body",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

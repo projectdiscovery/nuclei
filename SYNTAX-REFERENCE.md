@@ -1658,7 +1658,7 @@ name: cookie-extractor
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>TypeHolder</i>
 
 </div>
 <div class="dt">
@@ -2842,7 +2842,7 @@ Description is the optional description of the headless action
 
 <div class="dd">
 
-<code>action</code>  <i>string</i>
+<code>action</code>  <i>ActionTypeHolder</i>
 
 </div>
 <div class="dt">
