@@ -18,7 +18,7 @@ const (
 
 // signatureTypeMappings is a table for conversion of signature type from string.
 var signatureTypeMappings = map[SignatureType]string{
-	AWSSignature: "aws",
+	AWSSignature: "AWS",
 }
 
 func GetSupportedSignaturesTypes() []SignatureType {
