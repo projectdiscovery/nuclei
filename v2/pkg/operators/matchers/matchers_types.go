@@ -86,7 +86,7 @@ func (holder MatcherTypeHolder) JSONSchemaType() *jsonschema.Type {
 		Description: "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl",
 	}
 	for _, types := range GetSupportedMatcherTypes() {
-		gotType.Enum = append(gotType.Enum, types)
+		gotType.Enum = append(gotType.Enum, types.String())
 	}
 	return gotType
 }
