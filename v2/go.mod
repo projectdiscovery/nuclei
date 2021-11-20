@@ -12,6 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.1.1
+	github.com/go-playground/validator/v10 v10.9.0
 	github.com/go-rod/rod v0.101.8
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
@@ -82,6 +83,8 @@ require (
 	github.com/eggsampler/acme/v3 v3.2.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
@@ -100,6 +103,7 @@ require (
 	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -119,6 +123,7 @@ require (
 	github.com/ysmood/goob v0.3.0 // indirect
 	github.com/zclconf/go-cty v1.8.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
