@@ -10,7 +10,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -35,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 )
 
 // Runner is a client for running the enumeration process.
@@ -180,9 +180,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
+		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
-			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
+			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
 	}
