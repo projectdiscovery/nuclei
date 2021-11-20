@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 )
@@ -68,22 +69,22 @@ func (e *Executer) Execute(input string) (bool, error) {
 	err := e.requests.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			event.InternalEvent["template-id"] = operator.templateID
+			event.InternalEvent["template-path"] = operator.templatePath
+			event.InternalEvent["template-info"] = operator.templateInfo
+
+			if result == nil && !matched {
+				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+				}
+				continue
+			}
 			if matched && result != nil {
 				event.OperatorsResult = result
-				event.InternalEvent["template-id"] = operator.templateID
-				event.InternalEvent["template-path"] = operator.templatePath
-				event.InternalEvent["template-info"] = operator.templateInfo
 				event.Results = e.requests.MakeResultEvent(event)
 				results = true
-				for _, r := range event.Results {
-					if e.options.IssuesClient != nil {
-						if err := e.options.IssuesClient.CreateIssue(r); err != nil {
-							gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-						}
-					}
-					_ = e.options.Output.Write(r)
-					e.options.Progress.IncrementMatched()
-				}
+
+				_ = writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
 			}
 		}
 	})

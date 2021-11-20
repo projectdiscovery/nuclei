@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
@@ -27,6 +28,8 @@ type Writer interface {
 	Colorizer() aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
+	// WriteFailure writes the optional failure event for template to file and/or screen.
+	WriteFailure(event InternalEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
 }
@@ -37,6 +40,7 @@ type StandardWriter struct {
 	jsonReqResp    bool
 	noTimestamp    bool
 	noMetadata     bool
+	matchedStatus  bool
 	aurora         aurora.Aurora
 	outputFile     io.WriteCloser
 	traceFile      io.WriteCloser
@@ -58,6 +62,11 @@ type InternalWrappedEvent struct {
 
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
+	// Template is the relative filename for the template
+	Template string `json:"template,omitempty"`
+	// TemplateURL is the URL of the template for the result inside the nuclei
+	// templates repository if it belongs to the repository.
+	TemplateURL string `json:"template-url,omitempty"`
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"template-id"`
 	// TemplatePath is the path of template
@@ -92,12 +101,14 @@ type ResultEvent struct {
 	Interaction *server.Interaction `json:"interaction,omitempty"`
 	// CURLCommand is an optional curl command to reproduce the request
 	// Only applicable if the report is for HTTP.
-	CURLCommand         string         `json:"curl-command,omitempty"`
+	CURLCommand string `json:"curl-command,omitempty"`
+	// MatchedStatus is the status of the match
+	MatchedStatus       bool           `json:"matched-status"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, matchedStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -140,6 +151,11 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp bool, 
 
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
+	// Enrich the result event with extra metadata on the template-path and url.
+	if event.TemplatePath != "" {
+		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath))
+	}
+
 	event.Timestamp = time.Now()
 
 	var data []byte
@@ -223,4 +239,24 @@ func (w *StandardWriter) Close() {
 	if w.errorFile != nil {
 		w.errorFile.Close()
 	}
+}
+
+// WriteFailure writes the failure event for template to file and/or screen.
+func (w *StandardWriter) WriteFailure(event InternalEvent) error {
+	if !w.matchedStatus {
+		return nil
+	}
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
+	data := &ResultEvent{
+		Template:      templatePath,
+		TemplateURL:   templateURL,
+		TemplateID:    types.ToString(event["template-id"]),
+		TemplatePath:  types.ToString(event["template-path"]),
+		Info:          event["template-info"].(model.Info),
+		Type:          types.ToString(event["type"]),
+		Host:          types.ToString(event["host"]),
+		MatchedStatus: false,
+		Timestamp:     time.Now(),
+	}
+	return w.Write(data)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
 // Executer executes a group of requests for a protocol
@@ -62,15 +63,13 @@ func (e *Executer) Execute(input string) (bool, error) {
 			if event.OperatorsResult == nil {
 				return
 			}
-			for _, result := range event.Results {
-				if e.options.IssuesClient != nil {
-					if err := e.options.IssuesClient.CreateIssue(result); err != nil {
-						gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-					}
+			if len(event.Results) == 0 {
+				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
+			}
+			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 				results = true
-				_ = e.options.Output.Write(result)
-				e.options.Progress.IncrementMatched()
 			}
 		})
 		if err != nil {
