@@ -2,11 +2,13 @@ package runner
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -77,6 +79,17 @@ func hasStdin() bool {
 
 // validateOptions validates the configuration options passed
 func validateOptions(options *types.Options) error {
+	validate := validator.New()
+	if err := validate.Struct(options); err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return err
+		}
+		errs := []string{}
+		for _, err := range err.(validator.ValidationErrors) {
+			errs = append(errs, err.Namespace()+": "+err.Tag())
+		}
+		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
