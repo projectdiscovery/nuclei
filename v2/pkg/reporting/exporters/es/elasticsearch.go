@@ -21,7 +21,7 @@ type Options struct {
 	// IP for elasticsearch instance
 	IP string `yaml:"ip"  validate:"required,ip"`
 	// Port is the port of elasticsearch instance
-	Port int `yaml:"port"  validate:"required"`
+	Port int `yaml:"port"  validate:"required,gte=0,lte=65535"`
 	// SSL (optional) enables ssl for elasticsearch connection
 	SSL bool `yaml:"ssl"`
 	// SSLVerification (optional) disables SSL verification for elasticsearch

@@ -81,7 +81,6 @@ func hasStdin() bool {
 func validateOptions(options *types.Options) error {
 	validate := validator.New()
 	if err := validate.Struct(options); err != nil {
-
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return err
 		}
