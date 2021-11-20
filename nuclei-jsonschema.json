@@ -307,12 +307,12 @@
     },
     "matchers.MatcherTypeHolder": {
       "enum": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
+        "word",
+        "regex",
+        "binary",
+        "status",
+        "size",
+        "dsl"
       ],
       "type": "string",
       "title": "type of the matcher",
