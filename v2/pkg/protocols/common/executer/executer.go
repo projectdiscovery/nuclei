@@ -60,9 +60,6 @@ func (e *Executer) Execute(input string) (bool, error) {
 					builder.Reset()
 				}
 			}
-			if event.OperatorsResult == nil {
-				return
-			}
 			if len(event.Results) == 0 {
 				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)

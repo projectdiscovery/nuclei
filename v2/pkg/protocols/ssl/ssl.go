@@ -129,6 +129,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data := make(map[string]interface{})
 	cert := connTLS.ConnectionState().PeerCertificates[0]
 
+	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
@@ -195,7 +196,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
-		Type:             request.Type().String(),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,

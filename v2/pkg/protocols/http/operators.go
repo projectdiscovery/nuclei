@@ -113,6 +113,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 		data[k] = strings.Join(v, " ")
 	}
 	data["host"] = host
+	data["type"] = request.Type().String()
 	data["matched"] = matched
 	data["request"] = rawReq
 	data["response"] = rawResp
@@ -141,7 +142,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "http",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,

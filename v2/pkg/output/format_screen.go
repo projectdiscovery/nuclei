@@ -44,7 +44,11 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
 		builder.WriteString("] ")
 	}
-	builder.WriteString(output.Matched)
+	if output.Matched != "" {
+		builder.WriteString(output.Matched)
+	} else {
+		builder.WriteString(output.Host)
+	}
 
 	// If any extractors, write the results
 	if len(output.ExtractedResults) > 0 {
