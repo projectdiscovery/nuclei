@@ -310,17 +310,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", dumpedRequestString)
-		} /*else if request.Unsafe {
-			builder := strings.Builder{}
-			for i, text := range strings.Split(dumpedRequestString, "\r\n") {
-				if i > 1 {
-					break
-				}
-				builder.Write([]byte(fmt.Sprintf("%s\r\n", text)))
-			}
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", builder.String())
-		}*/
+		} 
 	}
 	var formedURL string
 	var hostname string
