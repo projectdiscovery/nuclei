@@ -157,8 +157,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath))
 	}
-	event.MatchedStatus = true
-
 	event.Timestamp = time.Now()
 
 	var data []byte
