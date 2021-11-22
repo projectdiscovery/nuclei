@@ -58,6 +58,7 @@ type InternalWrappedEvent struct {
 	InternalEvent   InternalEvent
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
+	UsesInteractsh  bool
 }
 
 // ResultEvent is a wrapped result event for a single nuclei output.
@@ -156,6 +157,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath))
 	}
+	event.MatchedStatus = true
 
 	event.Timestamp = time.Now()
 
