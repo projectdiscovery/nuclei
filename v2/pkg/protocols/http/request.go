@@ -473,6 +473,9 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
+		if hasInteractMarkers {
+			event.UsesInteractsh = true
+		}
 
 		responseContentType := resp.Header.Get("Content-Type")
 		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType)

@@ -281,6 +281,9 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			ExtractFunc:    request.Extract,
 		})
 	}
+	if len(interactshURLs) > 0 {
+		event.UsesInteractsh = true
+	}
 
 	dumpResponse(event, request.options, response, actualAddress)
 

@@ -131,6 +131,11 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 	}
 }
 
+// Write writes the event to file and/or screen.
+func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
+	return nil
+}
+
 type MockProgressClient struct{}
 
 // Stop stops the progress recorder.
