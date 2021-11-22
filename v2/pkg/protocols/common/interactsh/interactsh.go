@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 )
 
@@ -177,19 +178,8 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 	data.Event.Results = data.MakeResultFunc(data.Event)
 
-	for _, result := range data.Event.Results {
-		result.Interaction = interaction
-		_ = c.options.Output.Write(result)
-		if !c.matched {
-			c.matched = true
-		}
-		c.options.Progress.IncrementMatched()
-
-		if c.options.IssuesClient != nil {
-			if err := c.options.IssuesClient.CreateIssue(result); err != nil {
-				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-			}
-		}
+	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
+		c.matched = true
 	}
 	return true
 }
