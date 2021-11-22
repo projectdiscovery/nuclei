@@ -86,7 +86,7 @@ func (holder MatcherTypeHolder) JSONSchemaType() *jsonschema.Type {
 		Description: "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl",
 	}
 	for _, types := range GetSupportedMatcherTypes() {
-		gotType.Enum = append(gotType.Enum, types)
+		gotType.Enum = append(gotType.Enum, types.String())
 	}
 	return gotType
 }
@@ -106,10 +106,10 @@ func (holder *MatcherTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error
 	return nil
 }
 
-func (holder *MatcherTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.MatcherType)
+func (holder MatcherTypeHolder) MarshalJSON() ([]byte, error) {
+	return json.Marshal(holder.MatcherType.String())
 }
 
 func (holder MatcherTypeHolder) MarshalYAML() (interface{}, error) {
-	return holder.MatcherType, nil
+	return holder.MatcherType.String(), nil
 }

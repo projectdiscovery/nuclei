@@ -1,6 +1,8 @@
-package clusterer
+package templates
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -8,8 +10,85 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/rs/xid"
 )
+
+// Cluster clusters a list of templates into a lesser number if possible based
+// on the similarity between the sent requests.
+//
+// If the attributes match, multiple requests can be clustered into a single
+// request which saves time and network resources during execution.
+func Cluster(list map[string]*Template) [][]*Template {
+	final := [][]*Template{}
+
+	// Each protocol that can be clustered should be handled here.
+	for key, template := range list {
+		// We only cluster http requests as of now.
+		// Take care of requests that can't be clustered first.
+		if len(template.RequestsHTTP) == 0 {
+			delete(list, key)
+			final = append(final, []*Template{template})
+			continue
+		}
+
+		delete(list, key) // delete element first so it's not found later.
+		// Find any/all similar matching request that is identical to
+		// this one and cluster them together for http protocol only.
+		if len(template.RequestsHTTP) == 1 {
+			cluster := []*Template{}
+
+			for otherKey, other := range list {
+				if len(other.RequestsHTTP) == 0 {
+					continue
+				}
+				if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
+					delete(list, otherKey)
+					cluster = append(cluster, other)
+				}
+			}
+			if len(cluster) > 0 {
+				cluster = append(cluster, template)
+				final = append(final, cluster)
+				continue
+			}
+		}
+		final = append(final, []*Template{template})
+	}
+	return final
+}
+
+func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptions) ([]*Template, int) {
+	if options.Options.OfflineHTTP {
+		return templatesList, 0
+	}
+
+	templatesMap := make(map[string]*Template)
+	for _, v := range templatesList {
+		templatesMap[v.Path] = v
+	}
+	clusterCount := 0
+
+	finalTemplatesList := make([]*Template, 0, len(templatesList))
+	clusters := Cluster(templatesMap)
+	for _, cluster := range clusters {
+		if len(cluster) > 1 {
+			executerOpts := options
+
+			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
+
+			finalTemplatesList = append(finalTemplatesList, &Template{
+				ID:            clusterID,
+				RequestsHTTP:  cluster[0].RequestsHTTP,
+				Executer:      NewExecuter(cluster, &executerOpts),
+				TotalRequests: len(cluster[0].RequestsHTTP),
+			})
+			clusterCount += len(cluster)
+		} else {
+			finalTemplatesList = append(finalTemplatesList, cluster...)
+		}
+	}
+	return finalTemplatesList, clusterCount
+}
 
 // Executer executes a group of requests for a protocol for a clustered
 // request. It is different from normal executers since the original
@@ -32,7 +111,7 @@ type clusteredOperator struct {
 var _ protocols.Executer = &Executer{}
 
 // NewExecuter creates a new request executer for list of requests
-func NewExecuter(requests []*templates.Template, options *protocols.ExecuterOptions) *Executer {
+func NewExecuter(requests []*Template, options *protocols.ExecuterOptions) *Executer {
 	executer := &Executer{
 		options:  options,
 		requests: requests[0].RequestsHTTP[0],
