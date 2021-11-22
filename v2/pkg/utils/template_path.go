@@ -20,7 +20,7 @@ func init() {
 // TemplatePathURL returns the Path and URL for the provided template
 func TemplatePathURL(fullPath string) (string, string) {
 	var templateDirectory string
-	if configData != nil && configData.TemplatesDirectory != "" {
+	if configData != nil && configData.TemplatesDirectory != "" && strings.HasPrefix(fullPath, configData.TemplatesDirectory) {
 		templateDirectory = configData.TemplatesDirectory
 	} else {
 		return "", ""
