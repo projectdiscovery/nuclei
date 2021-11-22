@@ -97,7 +97,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	createGroup(flagSet, "interactsh", "interactsh",
 		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "https://interactsh.com", "interactsh server url for self-hosted instance"),
-		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
+		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", []string{}, "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
