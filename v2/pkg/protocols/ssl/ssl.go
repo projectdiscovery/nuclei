@@ -202,7 +202,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
-		MatchedStatus:    true,
+		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	return data

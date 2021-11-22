@@ -109,7 +109,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
-		MatchedStatus:    true,
+		MatcherStatus:    true,
 		Timestamp:        time.Now(),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),

@@ -40,7 +40,7 @@ type StandardWriter struct {
 	jsonReqResp    bool
 	noTimestamp    bool
 	noMetadata     bool
-	matchedStatus  bool
+	MatcherStatus  bool
 	aurora         aurora.Aurora
 	outputFile     io.WriteCloser
 	traceFile      io.WriteCloser
@@ -103,13 +103,13 @@ type ResultEvent struct {
 	// CURLCommand is an optional curl command to reproduce the request
 	// Only applicable if the report is for HTTP.
 	CURLCommand string `json:"curl-command,omitempty"`
-	// MatchedStatus is the status of the match
-	MatchedStatus       bool           `json:"matched-status"`
+	// MatcherStatus is the status of the match
+	MatcherStatus       bool           `json:"matcher-status"`
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, matchedStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -140,7 +140,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, match
 		json:           json,
 		jsonReqResp:    jsonReqResp,
 		noMetadata:     noMetadata,
-		matchedStatus:  matchedStatus,
+		MatcherStatus:  MatcherStatus,
 		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
@@ -244,7 +244,7 @@ func (w *StandardWriter) Close() {
 
 // WriteFailure writes the failure event for template to file and/or screen.
 func (w *StandardWriter) WriteFailure(event InternalEvent) error {
-	if !w.matchedStatus {
+	if !w.MatcherStatus {
 		return nil
 	}
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
@@ -256,7 +256,7 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		Info:          event["template-info"].(model.Info),
 		Type:          types.ToString(event["type"]),
 		Host:          types.ToString(event["host"]),
-		MatchedStatus: false,
+		MatcherStatus: false,
 		Timestamp:     time.Now(),
 	}
 	return w.Write(data)
