@@ -40,7 +40,7 @@ type StandardWriter struct {
 	jsonReqResp    bool
 	noTimestamp    bool
 	noMetadata     bool
-	MatcherStatus  bool
+	matcherStatus  bool
 	aurora         aurora.Aurora
 	outputFile     io.WriteCloser
 	traceFile      io.WriteCloser
@@ -140,7 +140,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		json:           json,
 		jsonReqResp:    jsonReqResp,
 		noMetadata:     noMetadata,
-		MatcherStatus:  MatcherStatus,
+		matcherStatus:  MatcherStatus,
 		noTimestamp:    noTimestamp,
 		aurora:         auroraColorizer,
 		outputFile:     outputFile,
@@ -244,7 +244,7 @@ func (w *StandardWriter) Close() {
 
 // WriteFailure writes the failure event for template to file and/or screen.
 func (w *StandardWriter) WriteFailure(event InternalEvent) error {
-	if !w.MatcherStatus {
+	if !w.matcherStatus {
 		return nil
 	}
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
