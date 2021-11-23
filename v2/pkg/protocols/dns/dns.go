@@ -83,7 +83,7 @@ type Request struct {
 
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
-	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	Recursion *bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 	// Resolvers to use for the dns requests
 	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
@@ -99,6 +99,12 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if request.Retries == 0 {
+		request.Retries = 3
+	}
+	if request.Recursion == nil {
+		*request.Recursion = true
+	}
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 	}
@@ -162,7 +168,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
-	req.RecursionDesired = request.Recursion
+	req.RecursionDesired = *request.Recursion
 
 	var q dns.Question
 
@@ -207,6 +213,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
+	default:
+		question = dns.TypeA
 	}
 	return question
 }
@@ -229,6 +237,8 @@ func classToInt(class string) uint16 {
 		result = dns.ClassNONE
 	case "ANY":
 		result = dns.ClassANY
+	default:
+		result = dns.ClassINET
 	}
 	return uint16(result)
 }

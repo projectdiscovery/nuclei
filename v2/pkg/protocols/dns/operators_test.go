@@ -20,6 +20,7 @@ import (
 func TestResponseToDSLMap(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -27,7 +28,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -52,6 +53,7 @@ func TestResponseToDSLMap(t *testing.T) {
 func TestDNSOperatorMatch(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -59,7 +61,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -163,6 +165,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 func TestDNSOperatorExtract(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -170,7 +173,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -220,6 +223,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 func TestDNSMakeResult(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -227,7 +231,7 @@ func TestDNSMakeResult(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
