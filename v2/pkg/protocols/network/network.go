@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"net"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -78,9 +77,8 @@ type Request struct {
 }
 
 type addressKV struct {
-	ip   string
-	port string
-	tls  bool
+	address string
+	tls     bool
 }
 
 // Input is the input to send on the network
@@ -136,15 +134,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			shouldUseTLS = true
 			address = strings.TrimPrefix(address, "tls://")
 		}
-		if strings.Contains(address, ":") {
-			addressHost, addressPort, portErr := net.SplitHostPort(address)
-			if portErr != nil {
-				return errors.Wrap(portErr, "could not parse address")
-			}
-			request.addresses = append(request.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
-		} else {
-			request.addresses = append(request.addresses, addressKV{ip: address, tls: shouldUseTLS})
-		}
+		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
 	}
 	// Pre-compile any input dsl functions before executing the request.
 	for _, input := range request.Inputs {
