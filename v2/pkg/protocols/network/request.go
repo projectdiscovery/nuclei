@@ -41,18 +41,10 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	}
 
 	for _, kv := range request.addresses {
-		actualAddress := replacer.Replace(kv.ip, map[string]interface{}{"Hostname": address})
-		if kv.port != "" {
-			if strings.Contains(address, ":") {
-				actualAddress, _, _ = net.SplitHostPort(actualAddress)
-			}
-			actualAddress = net.JoinHostPort(actualAddress, kv.port)
-		}
-		if input != "" {
-			input = actualAddress
-		}
+		variables := generateNetworkVariables(address)
+		actualAddress := replacer.Replace(kv.address, variables)
 
-		if err := request.executeAddress(actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
@@ -61,7 +53,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 }
 
 // executeAddress executes the request for an address
-func (request *Request) executeAddress(actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		request.options.Output.Request(request.options.TemplateID, address, "network", err)
@@ -80,27 +72,27 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 				break
 			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
-		value := generators.MergeMaps(map[string]interface{}{}, payloads)
-		if err := request.executeRequestWithPayloads(actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
+		value := generators.CopyMap(payloads)
+		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(actualAddress, address, input string, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address, input string, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var (
 		hostname string
 		conn     net.Conn
 		err      error
 	)
 
-	request.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
+	request.dynamicValues = generators.MergeMaps(payloads, variables)
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
@@ -256,4 +248,19 @@ func getAddress(toTest string) (string, error) {
 		toTest = parsed.Host
 	}
 	return toTest, nil
+}
+
+func generateNetworkVariables(input string) map[string]interface{} {
+	if !strings.Contains(input, ":") {
+		return map[string]interface{}{"Hostname": input, "Host": input}
+	}
+	host, port, err := net.SplitHostPort(input)
+	if err != nil {
+		return map[string]interface{}{"Hostname": input}
+	}
+	return map[string]interface{}{
+		"Host":     host,
+		"Port":     port,
+		"Hostname": input,
+	}
 }
