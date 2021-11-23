@@ -36,12 +36,13 @@ var (
 	}
 	_ = exampleNormalHTTPRequest
 
+	recursion               = false
 	exampleNormalDNSRequest = &dns.Request{
 		Name:        "{{FQDN}}",
 		RequestType: dns.DNSRequestTypeHolder{DNSRequestType: dns.CNAME},
 		Class:       "inet",
 		Retries:     2,
-		Recursion:   true,
+		Recursion:   &recursion,
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
 				{Type: extractors.TypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
