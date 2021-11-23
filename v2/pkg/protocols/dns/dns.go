@@ -213,8 +213,6 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
-	default:
-		question = dns.TypeA
 	}
 	return question
 }
@@ -237,8 +235,6 @@ func classToInt(class string) uint16 {
 		result = dns.ClassNONE
 	case "ANY":
 		result = dns.ClassANY
-	default:
-		result = dns.ClassINET
 	}
 	return uint16(result)
 }
