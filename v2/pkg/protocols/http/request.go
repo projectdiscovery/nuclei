@@ -302,7 +302,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		var gotErr error
 		var skip bool
 		if len(gotDynamicValues) > 0 {
-			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAllValues, func(data map[string]interface{}) bool {
+			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
 				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
 					return true
 				}
