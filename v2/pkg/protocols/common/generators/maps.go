@@ -1,6 +1,7 @@
 package generators
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -13,12 +14,11 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 		if val.Kind() != reflect.Map {
 			continue
 		}
-		appendToSlice := func(key, value reflect.Value) {
-			keyStr, valueStr := key.String(), value.String()
-			if values, ok := m[keyStr]; !ok {
-				m[keyStr] = []string{valueStr}
+		appendToSlice := func(key, value string) {
+			if values, ok := m[key]; !ok {
+				m[key] = []string{value}
 			} else {
-				m[keyStr] = append(values, valueStr)
+				m[key] = append(values, value)
 			}
 		}
 		for _, e := range val.MapKeys() {
@@ -26,10 +26,21 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 			switch v.Kind() {
 			case reflect.Slice, reflect.Array:
 				for i := 0; i < v.Len(); i++ {
-					appendToSlice(e, v.Index(i))
+					appendToSlice(e.String(), v.Index(i).String())
 				}
 			case reflect.String:
-				appendToSlice(e, v)
+				appendToSlice(e.String(), v.String())
+			case reflect.Interface:
+				switch data := v.Interface().(type) {
+				case string:
+					appendToSlice(e.String(), data)
+				case []string:
+					for _, value := range data {
+						appendToSlice(e.String(), value)
+					}
+				}
+			default:
+				fmt.Printf("invalid type: %v\n", v.Kind())
 			}
 		}
 	}
