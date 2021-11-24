@@ -12,10 +12,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
@@ -25,7 +26,7 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -50,9 +51,9 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(newTempDir)
 
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create base file")
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("new.zip", newTempDir)
@@ -77,7 +78,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
