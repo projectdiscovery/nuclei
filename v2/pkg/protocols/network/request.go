@@ -78,6 +78,7 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 	}
 
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+	generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -107,8 +108,6 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 		conn     net.Conn
 		err      error
 	)
-
-	request.dynamicValues = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
@@ -267,7 +266,7 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 
 	var event *output.InternalWrappedEvent
 	if len(interactshURLs) == 0 {
-		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
 		callback(event)
