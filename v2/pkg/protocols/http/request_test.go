@@ -53,6 +53,7 @@ func TestHTTPExtractMultipleReuse(t *testing.T) {
 				Internal: true,
 			}},
 		},
+		IterateAllValues: true,
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

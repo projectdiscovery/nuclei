@@ -176,6 +176,9 @@ type Request struct {
 	// description: |
 	//   SkipVariablesCheck skips the check for unresolved variables in request
 	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
+	// description: |
+	//   IterateAllValues iterates all the values extracted from internal extractors
+	IterateAllValues bool `yaml:"iterate-all-values,omitempty" jsonschema:"title=iterate all values,description=Iterates all the values extracted from internal extractors"`
 }
 
 // GetID returns the unique ID of the request if any.
