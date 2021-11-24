@@ -3,6 +3,9 @@ package matchers
 import (
 	"strings"
 
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
@@ -39,7 +42,7 @@ func (m *Matcher) MatchSize(length int) bool {
 }
 
 // MatchWords matches a word check against a corpus.
-func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) (bool, []string) {
+func (m *Matcher) MatchWords(corpus string, data map[string]interface{}) (bool, []string) {
 	if m.CaseInsensitive {
 		corpus = strings.ToLower(corpus)
 	}
@@ -47,12 +50,12 @@ func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}
 	var matchedWords []string
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
-		if dynamicValues == nil {
-			dynamicValues = make(map[string]interface{})
+		if data == nil {
+			data = make(map[string]interface{})
 		}
 
 		var err error
-		word, err = expressions.Evaluate(word, dynamicValues)
+		word, err = expressions.Evaluate(word, data)
 		if err != nil {
 			continue
 		}
@@ -148,6 +151,18 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
 	for i, expression := range m.dslCompiled {
+		if varErr := expressions.ContainsUnresolvedVariables(expression.String()); varErr != nil {
+			resolvedExpression, err := expressions.Evaluate(expression.String(), data)
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", m.Name, err.Error())
+				return false
+			}
+			expression, err = govaluate.NewEvaluableExpressionWithFunctions(resolvedExpression, dsl.HelperFunctions())
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", m.Name, err.Error())
+				return false
+			}
+		}
 		result, err := expression.Evaluate(data)
 		if err != nil {
 			continue

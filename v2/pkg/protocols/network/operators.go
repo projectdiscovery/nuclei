@@ -23,7 +23,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, request.dynamicValues))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, data))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:

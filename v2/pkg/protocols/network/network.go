@@ -77,9 +77,8 @@ type Request struct {
 
 	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
-	dialer        *fastdialer.Dialer
-	options       *protocols.ExecuterOptions
-	dynamicValues map[string]interface{}
+	dialer  *fastdialer.Dialer
+	options *protocols.ExecuterOptions
 }
 
 type addressKV struct {
