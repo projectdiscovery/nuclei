@@ -54,7 +54,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return err
 	}
 	configDir := filepath.Join(home, ".config", "nuclei")
-	_ = os.MkdirAll(configDir, os.ModePerm)
+	_ = os.MkdirAll(configDir, 0755)
 
 	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
 		return errors.Wrap(err, "could not read configuration file")
@@ -266,7 +266,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	// Create the template folder if it doesn't exist
-	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, os.ModePerm); err != nil {
+	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %s", err)
 	}
 
@@ -291,7 +291,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		buffer.WriteString("\n")
 	}
 
-	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), os.ModePerm); err != nil {
+	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), 0644); err != nil {
 		return nil, errors.Wrap(err, "could not write new additions file")
 	}
 	return results, err
@@ -331,7 +331,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 		}
 		results.totalCount++
 		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
-		if err := os.MkdirAll(templateDirectory, os.ModePerm); err != nil {
+		if err := os.MkdirAll(templateDirectory, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
 		}
 
@@ -341,7 +341,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
 			isAddition = true
 		}
-		templateFile, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
+		templateFile, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			templateFile.Close()
 			return nil, fmt.Errorf("could not create uncompressed file: %s", err)
