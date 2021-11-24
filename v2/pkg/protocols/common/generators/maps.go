@@ -1,8 +1,40 @@
 package generators
 
 import (
+	"reflect"
 	"strings"
 )
+
+// MergeMapsMany merges many maps into a new map
+func MergeMapsMany(maps ...interface{}) map[string][]string {
+	m := make(map[string][]string)
+	for _, gotMap := range maps {
+		val := reflect.ValueOf(gotMap)
+		if val.Kind() != reflect.Map {
+			continue
+		}
+		appendToSlice := func(key, value reflect.Value) {
+			keyStr, valueStr := key.String(), value.String()
+			if values, ok := m[keyStr]; !ok {
+				m[keyStr] = []string{valueStr}
+			} else {
+				m[keyStr] = append(values, valueStr)
+			}
+		}
+		for _, e := range val.MapKeys() {
+			v := val.MapIndex(e)
+			switch v.Kind() {
+			case reflect.Slice, reflect.Array:
+				for i := 0; i < v.Len(); i++ {
+					appendToSlice(e, v.Index(i))
+				}
+			case reflect.String:
+				appendToSlice(e, v)
+			}
+		}
+	}
+	return m
+}
 
 // MergeMaps merges two maps into a new map
 func MergeMaps(m1, m2 map[string]interface{}) map[string]interface{} {

@@ -19,6 +19,7 @@ import (
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -47,7 +48,12 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := request.newGenerator()
-	requestForDump, err := generator.Make(reqURL, nil)
+
+	inputData, payloads, ok := generator.nextValue()
+	if !ok {
+		return nil
+	}
+	requestForDump, err := generator.Make(reqURL, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -65,7 +71,11 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		generator := request.newGenerator()
-		generatedRequest, err := generator.Make(reqURL, nil)
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
+			break
+		}
+		generatedRequest, err := generator.Make(reqURL, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -104,7 +114,11 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
+			break
+		}
+		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -167,11 +181,12 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
+			break
+		}
+		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
@@ -215,62 +230,91 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 
 	generator := request.newGenerator()
 
+	var gotDynamicValues map[string][]string
 	requestCount := 1
 	var requestErr error
 	for {
-		hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
+		// returns two values, error and skip, which skips the execution for the request instance.
+		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
+			hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
 
-		generatedHttpRequest, err := generator.Make(reqURL, dynamicValues)
-		if err != nil {
-			if err == io.EOF {
-				break
+			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
+			if err != nil {
+				if err == io.EOF {
+					return true, nil
+				}
+				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+				return true, err
 			}
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			return err
+			if reqURL == "" {
+				reqURL = generatedHttpRequest.URL()
+			}
+			request.dynamicValues = generatedHttpRequest.dynamicValues
+			// Check if hosts just keep erroring
+			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
+				return true, nil
+			}
+			var gotOutput bool
+			request.options.RateLimiter.Take()
+
+			err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
+				// Add the extracts to the dynamic values if any.
+				if event.OperatorsResult != nil {
+					gotOutput = true
+					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+				}
+				if hasInteractMarkers && request.options.Interactsh != nil {
+					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
+						MakeResultFunc: request.MakeResultEvent,
+						Event:          event,
+						Operators:      request.CompiledOperators,
+						MatchFunc:      request.Match,
+						ExtractFunc:    request.Extract,
+					})
+				} else {
+					callback(event)
+				}
+			}, requestCount)
+			// If a variable is unresolved, skip all further requests
+			if err == errStopExecution {
+				return true, nil
+			}
+			if err != nil {
+				if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.CheckError(err) {
+					request.options.HostErrorsCache.MarkFailed(reqURL)
+				}
+				requestErr = err
+			}
+			requestCount++
+			request.options.Progress.IncrementRequests()
+
+			// If this was a match and we want to stop at first match, skip all further requests.
+			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
+				return true, nil
+			}
+			return false, nil
 		}
-		if reqURL == "" {
-			reqURL = generatedHttpRequest.URL()
-		}
-		request.dynamicValues = generatedHttpRequest.dynamicValues
-		// Check if hosts just keep erroring
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
+
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
 			break
 		}
-		var gotOutput bool
-		request.options.RateLimiter.Take()
-		err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotOutput = true
-				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
-			}
-			if hasInteractMarkers && request.options.Interactsh != nil {
-				request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
-					MakeResultFunc: request.MakeResultEvent,
-					Event:          event,
-					Operators:      request.CompiledOperators,
-					MatchFunc:      request.Match,
-					ExtractFunc:    request.Extract,
-				})
-			} else {
-				callback(event)
-			}
-		}, requestCount)
-		// If a variable is unresolved, skip all further requests
-		if err == errStopExecution {
-			break
+		var gotErr error
+		var skip bool
+		if len(gotDynamicValues) > 0 {
+			operators.MakeDynamicValuesCallback(gotDynamicValues, func(data map[string]interface{}) bool {
+				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
+					return true
+				}
+				return false
+			})
+		} else {
+			skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
 		}
-		if err != nil {
-			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.CheckError(err) {
-				request.options.HostErrorsCache.MarkFailed(reqURL)
-			}
-			requestErr = err
+		if gotErr != nil && requestErr == nil {
+			requestErr = gotErr
 		}
-		requestCount++
-		request.options.Progress.IncrementRequests()
-
-		// If this was a match and we want to stop at first match, skip all further requests.
-		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
+		if skip || gotErr != nil {
 			break
 		}
 	}
