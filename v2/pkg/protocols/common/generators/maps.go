@@ -1,7 +1,6 @@
 package generators
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -39,8 +38,6 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 						appendToSlice(e.String(), value)
 					}
 				}
-			default:
-				fmt.Printf("invalid type: %v\n", v.Kind())
 			}
 		}
 	}

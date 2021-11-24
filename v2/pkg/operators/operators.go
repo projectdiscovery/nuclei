@@ -80,8 +80,18 @@ type Result struct {
 // MakeDynamicValuesCallback takes an input dynamic values map and calls
 // the callback function with all variations of the data in input in form
 // of map[string]string (interface{}).
-func MakeDynamicValuesCallback(input map[string][]string, callback func(map[string]interface{}) bool) {
+func MakeDynamicValuesCallback(input map[string][]string, iterateAllValues bool, callback func(map[string]interface{}) bool) {
 	output := make(map[string]interface{}, len(input))
+
+	if !iterateAllValues {
+		for k, v := range input {
+			if len(v) > 0 {
+				output[k] = v[0]
+			}
+		}
+		callback(output)
+		return
+	}
 	inputIndex := make(map[string]int, len(input))
 
 	var maxValue int
