@@ -72,9 +72,52 @@ type Result struct {
 	// OutputExtracts is the list of extracts to be displayed on screen.
 	OutputExtracts []string
 	// DynamicValues contains any dynamic values to be templated
-	DynamicValues map[string]interface{}
+	DynamicValues map[string][]string
 	// PayloadValues contains payload values provided by user. (Optional)
 	PayloadValues map[string]interface{}
+}
+
+// MakeDynamicValuesCallback takes an input dynamic values map and calls
+// the callback function with all variations of the data in input in form
+// of map[string]string (interface{}).
+func MakeDynamicValuesCallback(input map[string][]string, callback func(map[string]interface{}) bool) {
+	output := make(map[string]interface{}, len(input))
+	inputIndex := make(map[string]int, len(input))
+
+	var maxValue int
+	for _, v := range input {
+		if len(v) > maxValue {
+			maxValue = len(v)
+		}
+	}
+
+	for i := 0; i < maxValue; i++ {
+		for k, v := range input {
+			if len(v) == 0 {
+				continue
+			}
+			if len(v) == 1 {
+				output[k] = v[0]
+				continue
+			}
+			if gotIndex, ok := inputIndex[k]; !ok {
+				inputIndex[k] = 0
+				output[k] = v[0]
+			} else {
+				newIndex := gotIndex + 1
+				if newIndex >= len(v) {
+					output[k] = v[len(v)-1]
+					continue
+				}
+				output[k] = v[newIndex]
+				inputIndex[k] = newIndex
+			}
+		}
+		// skip if the callback says so
+		if callback(output) {
+			return
+		}
+	}
 }
 
 // Merge merges a result structure into the other.
@@ -115,7 +158,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	result := &Result{
 		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
-		DynamicValues: make(map[string]interface{}),
+		DynamicValues: make(map[string][]string),
 	}
 
 	// Start with the extractors first and evaluate them.
@@ -126,8 +169,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 			extractorResults = append(extractorResults, match)
 
 			if extractor.Internal {
-				if _, ok := result.DynamicValues[extractor.Name]; !ok {
-					result.DynamicValues[extractor.Name] = match
+				if data, ok := result.DynamicValues[extractor.Name]; !ok {
+					result.DynamicValues[extractor.Name] = []string{match}
+				} else {
+					result.DynamicValues[extractor.Name] = append(data, match)
 				}
 			} else {
 				result.OutputExtracts = append(result.OutputExtracts, match)
