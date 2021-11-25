@@ -316,60 +316,42 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	configuredTemplateDirectory := r.templatesConfig.TemplatesDirectory
+	checksumFile := filepath.Join(configuredTemplateDirectory, ".checksum")
 	templateChecksumsMap, _ := createTemplateChecksumsMap(checksumFile)
 	for _, zipTemplateFile := range zipReader.File {
-		directory, name := filepath.Split(zipTemplateFile.Name)
-		if name == "" {
+		templateAbsolutePath, skipFile, err := calculateTemplateAbsolutePath(zipTemplateFile.Name, configuredTemplateDirectory)
+		if err != nil {
+			return nil, err
+		}
+		if skipFile {
 			continue
 		}
-		paths := strings.Split(directory, string(os.PathSeparator))
-		finalPath := filepath.Join(paths[1:]...)
-
-		if strings.HasPrefix(name, ".") || strings.HasPrefix(finalPath, ".") || strings.EqualFold(name, "README.md") {
-			continue
-		}
-		results.totalCount++
-		templateDirectory := filepath.Join(r.templatesConfig.TemplatesDirectory, finalPath)
-		if err := os.MkdirAll(templateDirectory, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create template folder %s : %s", templateDirectory, err)
-		}
-
-		templatePath := filepath.Join(templateDirectory, name)
 
 		isAddition := false
-		if _, statErr := os.Stat(templatePath); os.IsNotExist(statErr) {
+		if _, statErr := os.Stat(templateAbsolutePath); os.IsNotExist(statErr) {
 			isAddition = true
 		}
-		templateFile, err := os.OpenFile(templatePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+
+		newTemplateChecksum, err := writeUnZippedTemplateFile(err, templateAbsolutePath, zipTemplateFile)
 		if err != nil {
-			templateFile.Close()
-			return nil, fmt.Errorf("could not create uncompressed file: %s", err)
+			return nil, err
 		}
 
-		zipTemplateFileReader, err := zipTemplateFile.Open()
+		oldTemplateChecksum, checksumOk := templateChecksumsMap[templateAbsolutePath]
+
+		relativeTemplatePath, err := filepath.Rel(configuredTemplateDirectory, templateAbsolutePath)
 		if err != nil {
-			templateFile.Close()
-			return nil, fmt.Errorf("could not open archive to extract file: %s", err)
+			return nil, fmt.Errorf("could not calculate relative path for template: %s. %s", templateAbsolutePath, err)
 		}
-		hasher := md5.New()
 
-		// Save file and also read into hasher for md5
-		if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, hasher)); err != nil {
-			templateFile.Close()
-			return nil, fmt.Errorf("could not write template file: %s", err)
-		}
-		templateFile.Close()
-
-		oldChecksum, checksumOK := templateChecksumsMap[templatePath]
-
-		checksum := hex.EncodeToString(hasher.Sum(nil))
 		if isAddition {
-			results.additions = append(results.additions, filepath.Join(finalPath, name))
-		} else if checksumOK && oldChecksum[0] != checksum {
-			results.modifications = append(results.modifications, filepath.Join(finalPath, name))
+			results.additions = append(results.additions, relativeTemplatePath)
+		} else if checksumOk && oldTemplateChecksum[0] != newTemplateChecksum {
+			results.modifications = append(results.modifications, relativeTemplatePath)
 		}
-		results.checksums[templatePath] = checksum
+		results.checksums[templateAbsolutePath] = newTemplateChecksum
+		results.totalCount++
 	}
 
 	// If we don't find the previous file in the newly downloaded list,
@@ -378,10 +360,61 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 		_, ok := results.checksums[templatePath]
 		if !ok && templateChecksums[0] == templateChecksums[1] {
 			_ = os.Remove(templatePath)
-			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(templatePath, r.templatesConfig.TemplatesDirectory), string(os.PathSeparator)))
+			results.deletions = append(results.deletions, strings.TrimPrefix(strings.TrimPrefix(templatePath, configuredTemplateDirectory), string(os.PathSeparator)))
 		}
 	}
 	return results, nil
+}
+
+func writeUnZippedTemplateFile(err error, templateAbsolutePath string, zipTemplateFile *zip.File) (string, error) {
+	templateFile, err := os.OpenFile(templateAbsolutePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", fmt.Errorf("could not create template file: %s", err)
+	}
+
+	zipTemplateFileReader, err := zipTemplateFile.Open()
+	if err != nil {
+		_ = templateFile.Close()
+		return "", fmt.Errorf("could not open archive to extract file: %s", err)
+	}
+
+	md5Hash := md5.New()
+
+	// Save file and also read into hash.Hash for md5
+	if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, md5Hash)); err != nil {
+		_ = templateFile.Close()
+		return "", fmt.Errorf("could not write template file: %s", err)
+	}
+
+	if err := templateFile.Close(); err != nil {
+		return "", fmt.Errorf("could not close file newly created template file: %s", err)
+	}
+
+	checksum := hex.EncodeToString(md5Hash.Sum(nil))
+	return checksum, nil
+}
+
+func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
+	directory, fileName := filepath.Split(zipFilePath)
+
+	if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
+		return "", true, nil
+	}
+
+	directoryPathChunks := strings.Split(directory, string(os.PathSeparator))
+	relativeDirectoryPathWithoutZipRoot := filepath.Join(directoryPathChunks[1:]...)
+
+	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
+		return "", true, nil
+	}
+
+	templateDirectory := filepath.Join(configuredTemplateDirectory, relativeDirectoryPathWithoutZipRoot)
+
+	if err := os.MkdirAll(templateDirectory, 0755); err != nil {
+		return "", false, fmt.Errorf("failed to create template folder: %s. %s", templateDirectory, err)
+	}
+
+	return filepath.Join(templateDirectory, fileName), false, nil
 }
 
 // createTemplateChecksumsMap reads the previous checksum file from the disk.

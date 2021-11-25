@@ -119,6 +119,43 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Equal(t, "base.yaml", results.deletions[0], "could not get correct new deletions")
 }
 
+func TestCalculateTemplateAbsolutePath(t *testing.T) {
+	configuredTemplateDirectory := filepath.Join(os.TempDir(), "templates")
+	defer os.RemoveAll(configuredTemplateDirectory)
+
+	t.Run("positive scenarios", func(t *testing.T) {
+		zipFilePathsExpectedPathsMap := map[string]string{
+			"nuclei-templates/cve/test.yaml":      filepath.Join(configuredTemplateDirectory, "cve/test.yaml"),
+			"nuclei-templates/cve/test/test.yaml": filepath.Join(configuredTemplateDirectory, "cve/test/test.yaml"),
+		}
+
+		for filePathFromZip, expectedTemplateAbsPath := range zipFilePathsExpectedPathsMap {
+			calculatedTemplateAbsPath, skipFile, err := calculateTemplateAbsolutePath(filePathFromZip, configuredTemplateDirectory)
+			require.Nil(t, err)
+			require.Equal(t, expectedTemplateAbsPath, calculatedTemplateAbsPath)
+			require.False(t, skipFile)
+		}
+	})
+
+	t.Run("negative scenarios", func(t *testing.T) {
+		filePathsFromZip := []string{
+			"./../nuclei-templates/../cve/test.yaml",
+			"nuclei-templates/../cve/test.yaml",
+			"nuclei-templates/cve/../test.yaml",
+			"nuclei-templates/././../cve/test.yaml",
+			"nuclei-templates/.././../cve/test.yaml",
+			"nuclei-templates/.././../cve/../test.yaml",
+		}
+
+		for _, filePathFromZip := range filePathsFromZip {
+			calculatedTemplateAbsPath, skipFile, err := calculateTemplateAbsolutePath(filePathFromZip, configuredTemplateDirectory)
+			require.Nil(t, err)
+			require.True(t, skipFile)
+			require.Equal(t, "", calculatedTemplateAbsPath)
+		}
+	})
+}
+
 func zipFromDirectory(zipPath, directory string) error {
 	file, err := os.Create(zipPath)
 	if err != nil {
