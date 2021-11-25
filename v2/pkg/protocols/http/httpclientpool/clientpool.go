@@ -185,7 +185,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if proxyURL != nil {
 		// Attempts to overwrite the dial function with the socks proxied version
 		if proxyURL.Scheme == types.SOCKS5 {
-			var proxyAuth *proxy.Auth = &proxy.Auth{}
+			var proxyAuth = &proxy.Auth{}
 			proxyAuth.User = proxyURL.User.Username()
 			proxyAuth.Password, _ = proxyURL.User.Password()
 

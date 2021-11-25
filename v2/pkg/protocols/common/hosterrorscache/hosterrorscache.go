@@ -25,11 +25,11 @@ type Cache struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(MaxHostError, maxHostsCount int) *Cache {
+func New(maxHostError, maxHostsCount int) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
-	return &Cache{failedTargets: gc, MaxHostError: MaxHostError}
+	return &Cache{failedTargets: gc, MaxHostError: maxHostError}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -47,7 +47,6 @@ func (c *Cache) normalizeCacheValue(value string) string {
 	finalValue := value
 	if strings.HasPrefix(value, "http") {
 		if parsed, err := url.Parse(value); err == nil {
-
 			hostname := parsed.Host
 			finalPort := parsed.Port()
 			if finalPort == "" {

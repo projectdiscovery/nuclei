@@ -16,15 +16,16 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 			continue
 		}
 
-		if rule.Action == ActionSetMethod {
+		switch {
+		case rule.Action == ActionSetMethod:
 			ctx.Request.Req().Method = rule.Args["method"]
-		} else if rule.Action == ActionAddHeader {
+		case rule.Action == ActionAddHeader:
 			ctx.Request.Req().Header.Add(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionSetHeader {
+		case rule.Action == ActionSetHeader:
 			ctx.Request.Req().Header.Set(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionDeleteHeader {
+		case rule.Action == ActionDeleteHeader:
 			ctx.Request.Req().Header.Del(rule.Args["key"])
-		} else if rule.Action == ActionSetBody {
+		case rule.Action == ActionSetBody:
 			body := rule.Args["body"]
 			ctx.Request.Req().ContentLength = int64(len(body))
 			ctx.Request.SetBody(body)
@@ -36,13 +37,15 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 		if rule.Part != "response" {
 			continue
 		}
-		if rule.Action == ActionAddHeader {
+
+		switch {
+		case rule.Action == ActionAddHeader:
 			ctx.Response.Headers().Add(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionSetHeader {
+		case rule.Action == ActionSetHeader:
 			ctx.Response.Headers().Set(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionDeleteHeader {
+		case rule.Action == ActionDeleteHeader:
 			ctx.Response.Headers().Del(rule.Args["key"])
-		} else if rule.Action == ActionSetBody {
+		case rule.Action == ActionSetBody:
 			body := rule.Args["body"]
 			ctx.Response.Headers().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 			ctx.Response.SetBody(rule.Args["body"])
