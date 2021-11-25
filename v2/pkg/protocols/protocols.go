@@ -4,6 +4,7 @@ import (
 	"go.uber.org/ratelimit"
 
 	"github.com/logrusorgru/aurora"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"

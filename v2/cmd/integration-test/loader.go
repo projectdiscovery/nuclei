@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
