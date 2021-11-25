@@ -48,15 +48,19 @@ func gadgetEncodingHelper(returnData []byte, encoding string) string {
 		return hex.EncodeToString(returnData)
 	case "gzip":
 		buffer := &bytes.Buffer{}
-		if _, err := gzip.NewWriter(buffer).Write(returnData); err != nil {
+		writer := gzip.NewWriter(buffer)
+		if _, err := writer.Write(returnData); err != nil {
 			return ""
 		}
+		_ = writer.Close()
 		return buffer.String()
 	case "gzip-base64":
 		buffer := &bytes.Buffer{}
-		if _, err := gzip.NewWriter(buffer).Write(returnData); err != nil {
+		writer := gzip.NewWriter(buffer)
+		if _, err := writer.Write(returnData); err != nil {
 			return ""
 		}
+		_ = writer.Close()
 		return urlsafeBase64Encode(buffer.Bytes())
 	case "base64-raw":
 		return base64.StdEncoding.EncodeToString(returnData)

@@ -52,7 +52,7 @@ type Request struct {
 	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Method is the HTTP Request Method.
 	// values:
@@ -66,7 +66,7 @@ type Request struct {
 	//   - "TRACE"
 	//   - "PATCH"
 	//   - "PURGE"
-	Method string `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
+	Method HTTPMethodTypeHolder `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.
 	// examples:
@@ -129,10 +129,9 @@ type Request struct {
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	options       *protocols.ExecuterOptions
-	attackType    generators.Type
 	totalRequests int
 	customHeaders map[string]string
-	generator     *generators.Generator // optional, only enabled when using payloads
+	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
 	dynamicValues map[string]interface{}
@@ -243,7 +242,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		var hasPayloadName bool
 		// search for markers in all request parts
 		var inputs []string
-		inputs = append(inputs, request.Method, request.Body)
+		inputs = append(inputs, request.Method.String(), request.Body)
 		inputs = append(inputs, request.Raw...)
 		for k, v := range request.customHeaders {
 			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
@@ -253,7 +252,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 
 		for _, input := range inputs {
-			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input) == nil {
 				hasPayloadName = true
 				break
 			}
@@ -267,28 +266,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		attackType := request.AttackType
-		if attackType == "" {
-			attackType = "batteringram"
-		}
-		var ok bool
-		request.attackType, ok = generators.StringToType[attackType]
-		if !ok {
-			return fmt.Errorf("invalid attack type provided: %s", attackType)
-		}
-
-		// Resolve payload paths if they are files.
-		for name, payload := range request.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				request.Payloads[name] = final
-			}
-		}
-		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

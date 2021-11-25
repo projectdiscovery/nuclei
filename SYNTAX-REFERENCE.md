@@ -219,6 +219,32 @@ Headless contains the headless request to make in the template.
 
 <div class="dd">
 
+<code>ssl</code>  <i>[]<a href="#sslrequest">ssl.Request</a></i>
+
+</div>
+<div class="dt">
+
+SSL contains the SSL request to make in the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>websocket</code>  <i>[]<a href="#websocketrequest">websocket.Request</a></i>
+
+</div>
+<div class="dt">
+
+Websocket contains the Websocket request to make in the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>workflows</code>  <i>[]<a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a></i>
 
 </div>
@@ -829,7 +855,7 @@ in a combined manner allowing multirequest based matchers.
 
 <div class="dd">
 
-<code>attack</code>  <i>string</i>
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -854,7 +880,7 @@ Valid values:
 
 <div class="dd">
 
-<code>method</code>  <i>string</i>
+<code>method</code>  <i>HTTPMethodTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -1238,13 +1264,17 @@ Appears in:
 
 - <code><a href="#headlessrequest">headless.Request</a>.matchers</code>
 
+- <code><a href="#sslrequest">ssl.Request</a>.matchers</code>
+
+- <code><a href="#websocketrequest">websocket.Request</a>.matchers</code>
+
 
 
 <hr />
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>MatcherTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -1554,6 +1584,26 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive matches. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
@@ -1573,6 +1623,10 @@ Appears in:
 - <code><a href="#networkrequest">network.Request</a>.extractors</code>
 
 - <code><a href="#headlessrequest">headless.Request</a>.extractors</code>
+
+- <code><a href="#sslrequest">ssl.Request</a>.extractors</code>
+
+- <code><a href="#websocketrequest">websocket.Request</a>.extractors</code>
 
 
 
@@ -1604,7 +1658,7 @@ name: cookie-extractor
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>TypeHolder</i>
 
 </div>
 <div class="dt">
@@ -1833,6 +1887,42 @@ in the next request for some protocols (like HTTP).
 
 <hr />
 
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive extractions. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
+
+
+
+
+## generators.AttackTypeHolder
+AttackTypeHolder is used to hold internal type of the protocol
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.attack</code>
+
+- <code><a href="#networkrequest">network.Request</a>.attack</code>
+
+- <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
+
 
 
 
@@ -1953,12 +2043,12 @@ name: '{{FQDN}}'
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>DNSRequestTypeHolder</i>
 
 </div>
 <div class="dt">
 
-Type is the type of DNS request to make.
+RequestType is the type of DNS request to make.
 
 
 Valid values:
@@ -2032,6 +2122,43 @@ Examples:
 ```yaml
 # Use a retry of 3 to 5 generally
 retries: 5
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>trace</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Trace performs a trace operation for the target.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>trace-max-recursion</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+TraceMaxRecursion is the number of max recursion allowed for trace operations
+
+
+
+Examples:
+
+
+```yaml
+# Use a retry of 100 to 150 generally
+trace-max-recursion: 100
 ```
 
 
@@ -2318,7 +2445,7 @@ host:
 
 <div class="dd">
 
-<code>attack</code>  <i>string</i>
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -2389,6 +2516,31 @@ Examples:
 
 ```yaml
 read-size: 2048
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ReadAll determines if the data stream should be read till the end regardless of the size
+
+Default value for read-all is false.
+
+
+
+Examples:
+
+
+```yaml
+read-all: false
 ```
 
 
@@ -2494,7 +2646,7 @@ data: hex_decode('50494e47')
 
 <div class="dd">
 
-<code>type</code>  <i>string</i>
+<code>type</code>  <i>NetworkInputTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -2727,7 +2879,7 @@ Description is the optional description of the headless action
 
 <div class="dd">
 
-<code>action</code>  <i>string</i>
+<code>action</code>  <i>ActionTypeHolder</i>
 
 </div>
 <div class="dt">
@@ -2779,6 +2931,303 @@ Valid values:
   - <code>debug</code>
 
   - <code>sleep</code>
+</div>
+
+<hr />
+
+
+
+
+
+## ssl.Request
+Request is a request for the SSL protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.ssl</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+
+</div>
+<div class="dt">
+
+Matchers contains the detection mechanism for the request to identify
+whether the request was successful by doing pattern matching
+on request/responses.
+
+Multiple matchers can be combined with `matcher-condition` flag
+which accepts either `and` or `or` as argument.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>extractors</code>  <i>[]<a href="#extractorsextractor">extractors.Extractor</a></i>
+
+</div>
+<div class="dt">
+
+Extractors contains the extraction mechanism for the request to identify
+and extract parts of the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>matchers-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+MatchersCondition is the condition between the matchers. Default is OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>address</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Address contains address for the request
+
+</div>
+
+<hr />
+
+
+
+
+
+## websocket.Request
+Request is a request for the Websocket protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.websocket</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+
+</div>
+<div class="dt">
+
+Matchers contains the detection mechanism for the request to identify
+whether the request was successful by doing pattern matching
+on request/responses.
+
+Multiple matchers can be combined with `matcher-condition` flag
+which accepts either `and` or `or` as argument.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>extractors</code>  <i>[]<a href="#extractorsextractor">extractors.Extractor</a></i>
+
+</div>
+<div class="dt">
+
+Extractors contains the extraction mechanism for the request to identify
+and extract parts of the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>matchers-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+MatchersCondition is the condition between the matchers. Default is OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>address</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Address contains address for the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>inputs</code>  <i>[]<a href="#websocketinput">websocket.Input</a></i>
+
+</div>
+<div class="dt">
+
+Inputs contains inputs for the websocket protocol
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>headers</code>  <i>map[string]string</i>
+
+</div>
+<div class="dt">
+
+Headers contains headers for the request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Attack is the type of payload combinations to perform.
+
+Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+permutations and combinations for all payloads.
+
+
+Valid values:
+
+
+  - <code>sniper</code>
+
+  - <code>pitchfork</code>
+
+  - <code>clusterbomb</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>payloads</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Payloads contains any payloads for the current request.
+
+Payloads support both key-values combinations where a list
+of payloads is provided, or optionally a single file can also
+be provided as payload which will be read on run-time.
+
+</div>
+
+<hr />
+
+
+
+
+
+## websocket.Input
+
+Appears in:
+
+
+- <code><a href="#websocketrequest">websocket.Request</a>.inputs</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>data</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Data is the data to send as the input.
+
+It supports DSL Helper Functions as well as normal expressions.
+
+
+
+Examples:
+
+
+```yaml
+data: TEST
+```
+
+```yaml
+data: hex_decode('50494e47')
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>name</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Name is the optional name of the data read to provide matching on.
+
+
+
+Examples:
+
+
+```yaml
+name: prefix
+```
+
+
 </div>
 
 <hr />

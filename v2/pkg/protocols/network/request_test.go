@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestNetworkExecuteWithResults(t *testing.T) {
@@ -33,12 +33,12 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "data",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"200 OK"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "data",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"<h1>.*</h1>"},
 			}},
 		},
@@ -91,7 +91,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	require.Equal(t, "<h1>Example Domain</h1>", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
 
-	request.Inputs[0].Type = "hex"
+	request.Inputs[0].Type = NetworkInputTypeHolder{NetworkInputType: hexType}
 	request.Inputs[0].Data = hex.EncodeToString([]byte(fmt.Sprintf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", parsed.Host)))
 
 	t.Run("hex-to-string", func(t *testing.T) {

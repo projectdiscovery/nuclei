@@ -26,8 +26,8 @@ gitlab:
   username: test-username
   # token is the token for gitlab account.
   token: test-token
-  # project-id is the ID of the repository.
-  project-id: 1234
+  # project-name is the name/id of the project(repository).
+  project-name: "1234"
   # issue-label is the label of the created issue type
   issue-label: bug
 
