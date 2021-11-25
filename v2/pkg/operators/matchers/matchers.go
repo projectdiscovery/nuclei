@@ -120,7 +120,6 @@ type Matcher struct {
 	dslCompiled   []*govaluate.EvaluableExpression
 }
 
-
 // ConditionType is the type of condition for matcher
 type ConditionType int
 
@@ -138,18 +137,17 @@ var ConditionTypes = map[string]ConditionType{
 }
 
 // Result reverts the results of the match if the matcher is of type negative.
-func (m *Matcher) Result(data bool) bool {
-	if m.Negative {
+func (matcher *Matcher) Result(data bool) bool {
+	if matcher.Negative {
 		return !data
 	}
 	return data
 }
 
 // ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
-func (m *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
-	if m.Negative {
+func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
+	if matcher.Negative {
 		return !data, []string{}
 	}
 	return data, matchedSnippet
 }
-
