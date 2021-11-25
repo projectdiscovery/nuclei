@@ -435,19 +435,6 @@ reference:
 
 Severity of the template.
 
-
-Valid values:
-
-
-  - <code>info</code>
-
-  - <code>low</code>
-
-  - <code>medium</code>
-
-  - <code>high</code>
-
-  - <code>critical</code>
 </div>
 
 <hr />
@@ -565,6 +552,38 @@ Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>Severity</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>undefined</code>
+
+  - <code>info</code>
+
+  - <code>low</code>
+
+  - <code>medium</code>
+
+  - <code>high</code>
+
+  - <code>critical</code>
+</div>
+
+<hr />
 
 
 
@@ -880,36 +899,13 @@ Valid values:
 
 <div class="dd">
 
-<code>method</code>  <i>HTTPMethodTypeHolder</i>
+<code>method</code>  <i><a href="#httpmethodtypeholder">HTTPMethodTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 Method is the HTTP Request Method.
 
-
-Valid values:
-
-
-  - <code>GET</code>
-
-  - <code>HEAD</code>
-
-  - <code>POST</code>
-
-  - <code>PUT</code>
-
-  - <code>DELETE</code>
-
-  - <code>CONNECT</code>
-
-  - <code>OPTIONS</code>
-
-  - <code>TRACE</code>
-
-  - <code>PATCH</code>
-
-  - <code>PURGE</code>
 </div>
 
 <hr />
@@ -1274,28 +1270,13 @@ Appears in:
 
 <div class="dd">
 
-<code>type</code>  <i>MatcherTypeHolder</i>
+<code>type</code>  <i><a href="#matchertypeholder">MatcherTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 Type is the type of the matcher.
 
-
-Valid values:
-
-
-  - <code>status</code>
-
-  - <code>size</code>
-
-  - <code>word</code>
-
-  - <code>regex</code>
-
-  - <code>binary</code>
-
-  - <code>dsl</code>
 </div>
 
 <hr />
@@ -1608,6 +1589,50 @@ Valid values:
 
 
 
+## MatcherTypeHolder
+MatcherTypeHolder is used to hold internal type of the matcher
+
+Appears in:
+
+
+- <code><a href="#matchersmatcher">matchers.Matcher</a>.type</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>MatcherType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>word</code>
+
+  - <code>regex</code>
+
+  - <code>binary</code>
+
+  - <code>status</code>
+
+  - <code>size</code>
+
+  - <code>dsl</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## extractors.Extractor
 Extractor is used to extract part of response using a regex.
 
@@ -1658,24 +1683,13 @@ name: cookie-extractor
 
 <div class="dd">
 
-<code>type</code>  <i>TypeHolder</i>
+<code>type</code>  <i><a href="#extractortypeholder">ExtractorTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 Type is the type of the extractor.
 
-
-Valid values:
-
-
-  - <code>regex</code>
-
-  - <code>kval</code>
-
-  - <code>json</code>
-
-  - <code>xpath</code>
 </div>
 
 <hr />
@@ -1911,6 +1925,46 @@ Valid values:
 
 
 
+## ExtractorTypeHolder
+ExtractorTypeHolder is used to hold internal type of the extractor
+
+Appears in:
+
+
+- <code><a href="#extractorsextractor">extractors.Extractor</a>.type</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>ExtractorType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>regex</code>
+
+  - <code>kval</code>
+
+  - <code>xpath</code>
+
+  - <code>json</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## generators.AttackTypeHolder
 AttackTypeHolder is used to hold internal type of the protocol
 
@@ -1922,6 +1976,84 @@ Appears in:
 - <code><a href="#networkrequest">network.Request</a>.attack</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>AttackType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>batteringram</code>
+
+  - <code>pitchfork</code>
+
+  - <code>clusterbomb</code>
+</div>
+
+<hr />
+
+
+
+
+
+## HTTPMethodTypeHolder
+HTTPMethodTypeHolder is used to hold internal type of the HTTP Method
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.method</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>HTTPMethodType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>GET</code>
+
+  - <code>GET</code>
+
+  - <code>POST</code>
+
+  - <code>PUT</code>
+
+  - <code>DELETE</code>
+
+  - <code>CONNECT</code>
+
+  - <code>OPTIONS</code>
+
+  - <code>TRACE</code>
+
+  - <code>PATCH</code>
+
+  - <code>PURGE</code>
+</div>
+
+<hr />
 
 
 
@@ -2043,34 +2175,13 @@ name: '{{FQDN}}'
 
 <div class="dd">
 
-<code>type</code>  <i>DNSRequestTypeHolder</i>
+<code>type</code>  <i><a href="#dnsrequesttypeholder">DNSRequestTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 RequestType is the type of DNS request to make.
 
-
-Valid values:
-
-
-  - <code>A</code>
-
-  - <code>NS</code>
-
-  - <code>DS</code>
-
-  - <code>CNAME</code>
-
-  - <code>SOA</code>
-
-  - <code>PTR</code>
-
-  - <code>MX</code>
-
-  - <code>TXT</code>
-
-  - <code>AAAA</code>
 </div>
 
 <hr />
@@ -2188,6 +2299,56 @@ Recursion determines if resolver should recurse all records to get fresh results
 
 Resolvers to use for the dns requests
 
+</div>
+
+<hr />
+
+
+
+
+
+## DNSRequestTypeHolder
+DNSRequestTypeHolder is used to hold internal type of the DNS type
+
+Appears in:
+
+
+- <code><a href="#dnsrequest">dns.Request</a>.type</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>DNSRequestType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>A</code>
+
+  - <code>NS</code>
+
+  - <code>DS</code>
+
+  - <code>CNAME</code>
+
+  - <code>SOA</code>
+
+  - <code>PTR</code>
+
+  - <code>MX</code>
+
+  - <code>TXT</code>
+
+  - <code>AAAA</code>
 </div>
 
 <hr />
@@ -2455,15 +2616,6 @@ Attack is the type of payload combinations to perform.
 Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
-
-Valid values:
-
-
-  - <code>batteringram</code>
-
-  - <code>pitchfork</code>
-
-  - <code>clusterbomb</code>
 </div>
 
 <hr />
@@ -2646,7 +2798,7 @@ data: hex_decode('50494e47')
 
 <div class="dd">
 
-<code>type</code>  <i>NetworkInputTypeHolder</i>
+<code>type</code>  <i><a href="#networkinputtypeholder">NetworkInputTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -2714,6 +2866,42 @@ name: prefix
 ```
 
 
+</div>
+
+<hr />
+
+
+
+
+
+## NetworkInputTypeHolder
+NetworkInputTypeHolder is used to hold internal type of the Network type
+
+Appears in:
+
+
+- <code><a href="#networkinput">network.Input</a>.type</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>NetworkInputType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>hex</code>
+
+  - <code>text</code>
 </div>
 
 <hr />
@@ -2879,15 +3067,44 @@ Description is the optional description of the headless action
 
 <div class="dd">
 
-<code>action</code>  <i>ActionTypeHolder</i>
+<code>action</code>  <i><a href="#actiontypeholder">ActionTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 Action is the type of the action to perform.
 
+</div>
 
-Valid values:
+<hr />
+
+
+
+
+
+## ActionTypeHolder
+ActionTypeHolder is used to hold internal type of the action
+
+Appears in:
+
+
+- <code><a href="#engineaction">engine.Action</a>.action</code>
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>ActionType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
 
 
   - <code>navigate</code>
@@ -2931,6 +3148,8 @@ Valid values:
   - <code>debug</code>
 
   - <code>sleep</code>
+
+  - <code>waitvisible</code>
 </div>
 
 <hr />
@@ -3135,15 +3354,6 @@ Attack is the type of payload combinations to perform.
 Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
-
-Valid values:
-
-
-  - <code>sniper</code>
-
-  - <code>pitchfork</code>
-
-  - <code>clusterbomb</code>
 </div>
 
 <hr />
