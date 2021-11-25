@@ -33,7 +33,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %s", err)
+		return nil, fmt.Errorf("could not parse request URL: %w", err)
 	}
 
 	if unsafe {
@@ -42,7 +42,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	reader := bufio.NewReader(strings.NewReader(request))
 	s, err := reader.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("could not read request: %s", err)
+		return nil, fmt.Errorf("could not read request: %w", err)
 	}
 
 	parts := strings.Split(s, " ")
@@ -101,7 +101,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if !unsafe && strings.HasPrefix(parts[1], "http") {
 		parsed, parseErr := url.Parse(parts[1])
 		if parseErr != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", parseErr)
+			return nil, fmt.Errorf("could not parse request URL: %w", parseErr)
 		}
 
 		rawRequest.Path = parsed.Path
@@ -133,7 +133,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// Set the request body
 	b, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %s", err)
+		return nil, fmt.Errorf("could not read request body: %w", err)
 	}
 	rawRequest.Data = string(b)
 	if !mutlipartRequest {
