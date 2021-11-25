@@ -55,17 +55,6 @@ type Request struct {
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Method is the HTTP Request Method.
-	// values:
-	//   - "GET"
-	//   - "HEAD"
-	//   - "POST"
-	//   - "PUT"
-	//   - "DELETE"
-	//   - "CONNECT"
-	//   - "OPTIONS"
-	//   - "TRACE"
-	//   - "PATCH"
-	//   - "PURGE"
 	Method HTTPMethodTypeHolder `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.

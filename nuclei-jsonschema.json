@@ -131,7 +131,7 @@
         },
         "type": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/extractors.TypeHolder"
+          "$ref": "#/definitions/extractors.ExtractorTypeHolder"
         },
         "regex": {
           "items": {
@@ -194,7 +194,7 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "extractors.TypeHolder": {
+    "extractors.ExtractorTypeHolder": {
       "enum": [
         "regex",
         "kval",

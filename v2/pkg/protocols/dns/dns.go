@@ -34,16 +34,6 @@ type Request struct {
 	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	// values:
-	//   - "A"
-	//   - "NS"
-	//   - "DS"
-	//   - "CNAME"
-	//   - "SOA"
-	//   - "PTR"
-	//   - "MX"
-	//   - "TXT"
-	//   - "AAAA"
 	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.

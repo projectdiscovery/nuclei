@@ -8,11 +8,14 @@ import (
 	"github.com/alecthomas/jsonschema"
 )
 
-// NetworkInputType is the type of the method specified
+// NetworkInputType is the type of the network input specified
 type NetworkInputType int
 
+// name:NetworkInputType
 const (
+	// name:hex
 	hexType NetworkInputType = iota + 1
+	// name:text
 	textType
 	//limit
 	limit
@@ -53,7 +56,7 @@ func (t NetworkInputType) String() string {
 
 // NetworkInputTypeHolder is used to hold internal type of the Network type
 type NetworkInputTypeHolder struct {
-	NetworkInputType NetworkInputType
+	NetworkInputType NetworkInputType `mapping:"true"`
 }
 
 func (holder NetworkInputTypeHolder) GetType() NetworkInputType {
