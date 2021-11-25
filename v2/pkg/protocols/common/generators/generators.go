@@ -4,6 +4,7 @@ package generators
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 

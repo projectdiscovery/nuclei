@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gobwas/ws/wsutil"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 

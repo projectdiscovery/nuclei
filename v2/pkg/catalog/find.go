@@ -7,6 +7,7 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 )
 

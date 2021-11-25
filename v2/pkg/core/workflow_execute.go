@@ -1,11 +1,12 @@
 package core
 
 import (
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/atomic"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
 )
 
 // executeWorkflow runs a workflow on an input and returns true or false

@@ -1,11 +1,12 @@
 package core
 
 import (
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/atomic"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
