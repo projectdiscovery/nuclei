@@ -28,7 +28,7 @@ func TestActionNavigate(t *testing.T) {
 		</body>
 	</html>`
 
-	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}}}
+	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}}}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
 		require.Nil(t, err, "could not run page actions")
@@ -50,9 +50,9 @@ func TestActionScript(t *testing.T) {
 
 	t.Run("run-and-results", func(t *testing.T) {
 		actions := []*Action{
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionScript)}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
 		}
 
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
@@ -64,10 +64,10 @@ func TestActionScript(t *testing.T) {
 
 	t.Run("hook", func(t *testing.T) {
 		actions := []*Action{
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionScript)}, Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-			{ActionType: ActionTypeHolder{ActionType: ActionType(ActionScript)}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
 		}
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
 			require.Nil(t, err, "could not run page actions")
@@ -88,9 +88,9 @@ func TestActionClick(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionClick)}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -121,9 +121,9 @@ func TestActionRightClick(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionRightClick)}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionRightClick}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -146,9 +146,9 @@ func TestActionTextInput(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionTextInput)}, Data: map[string]string{"selector": "input", "value": "test"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionTextInput}, Data: map[string]string{"selector": "input", "value": "test"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -163,9 +163,9 @@ func TestActionTextInput(t *testing.T) {
 
 func TestActionHeadersChange(t *testing.T) {
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSetHeader)}, Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
+		{ActionType: ActionTypeHolder{ActionType: ActionSetHeader}, Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -190,9 +190,9 @@ func TestActionScreenshot(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionScreenshot)}, Data: map[string]string{"to": "test"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": "test"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -215,9 +215,9 @@ func TestActionTimeInput(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionTimeInput)}, Data: map[string]string{"selector": "input", "value": "2006-01-02T15:04:05Z"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionTimeInput}, Data: map[string]string{"selector": "input", "value": "2006-01-02T15:04:05Z"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -243,9 +243,9 @@ func TestActionSelectInput(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSelectInput)}, Data: map[string]string{"by": "x", "xpath": "//select[@id='test']", "value": "Test2", "selected": "true"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionSelectInput}, Data: map[string]string{"by": "x", "xpath": "//select[@id='test']", "value": "Test2", "selected": "true"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -266,9 +266,9 @@ func TestActionFilesInput(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionFilesInput)}, Data: map[string]string{"selector": "input", "value": "test1.pdf"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionFilesInput}, Data: map[string]string{"selector": "input", "value": "test1.pdf"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -292,8 +292,8 @@ func TestActionWaitLoad(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -317,8 +317,8 @@ func TestActionGetResource(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionGetResource)}, Data: map[string]string{"by": "x", "xpath": "//img[@id='test']"}, Name: "src"},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionGetResource}, Data: map[string]string{"by": "x", "xpath": "//img[@id='test']"}, Name: "src"},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -337,8 +337,8 @@ func TestActionExtract(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionExtract)}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}, Name: "extract"},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionExtract}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}, Name: "extract"},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -356,8 +356,8 @@ func TestActionSetMethod(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSetMethod)}, Data: map[string]string{"part": "x", "method": "SET"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionSetMethod}, Data: map[string]string{"part": "x", "method": "SET"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -368,9 +368,9 @@ func TestActionSetMethod(t *testing.T) {
 
 func TestActionAddHeader(t *testing.T) {
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionAddHeader)}, Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
+		{ActionType: ActionTypeHolder{ActionType: ActionAddHeader}, Data: map[string]string{"part": "request", "key": "Test", "value": "Hello"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -387,11 +387,11 @@ func TestActionAddHeader(t *testing.T) {
 
 func TestActionDeleteHeader(t *testing.T) {
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionAddHeader)}, Data: map[string]string{"part": "request", "key": "Test1", "value": "Hello"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionAddHeader)}, Data: map[string]string{"part": "request", "key": "Test2", "value": "World"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionDeleteHeader)}, Data: map[string]string{"part": "request", "key": "Test2"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
+		{ActionType: ActionTypeHolder{ActionType: ActionAddHeader}, Data: map[string]string{"part": "request", "key": "Test1", "value": "Hello"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionAddHeader}, Data: map[string]string{"part": "request", "key": "Test2", "value": "World"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionDeleteHeader}, Data: map[string]string{"part": "request", "key": "Test2"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -408,9 +408,9 @@ func TestActionDeleteHeader(t *testing.T) {
 
 func TestActionSetBody(t *testing.T) {
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSetBody)}, Data: map[string]string{"part": "request", "body": "hello"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
+		{ActionType: ActionTypeHolder{ActionType: ActionSetBody}, Data: map[string]string{"part": "request", "body": "hello"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -436,10 +436,10 @@ func TestActionKeyboard(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitLoad)}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionClick)}, Data: map[string]string{"selector": "input"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionKeyboard)}, Data: map[string]string{"keys": "Test2"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "input"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionKeyboard}, Data: map[string]string{"keys": "Test2"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -462,8 +462,8 @@ func TestActionSleep(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionSleep)}, Data: map[string]string{"duration": "2"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionSleep}, Data: map[string]string{"duration": "2"}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
@@ -485,8 +485,8 @@ func TestActionWaitVisible(t *testing.T) {
 		</html>`
 
 	actions := []*Action{
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionNavigate)}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionType(ActionWaitVisible)}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitVisible}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
