@@ -333,7 +333,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 			isAddition = true
 		}
 
-		newTemplateChecksum, err := writeUnZippedTemplateFile(err, templateAbsolutePath, zipTemplateFile)
+		newTemplateChecksum, err := writeUnZippedTemplateFile(templateAbsolutePath, zipTemplateFile)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +366,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 	return results, nil
 }
 
-func writeUnZippedTemplateFile(err error, templateAbsolutePath string, zipTemplateFile *zip.File) (string, error) {
+func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip.File) (string, error) {
 	templateFile, err := os.OpenFile(templateAbsolutePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return "", fmt.Errorf("could not create template file: %w", err)
