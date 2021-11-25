@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bluele/gcache"
+
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -16,7 +17,7 @@ import (
 // It uses an LRU cache internally for skipping unresponsive hosts
 // that remain so for a duration.
 type Cache struct {
-	MaxHostError int
+	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
 }
@@ -64,7 +65,7 @@ func (c *Cache) normalizeCacheValue(value string) string {
 }
 
 // ErrUnresponsiveHost is returned when a host is unresponsive
-//var ErrUnresponsiveHost = errors.New("skipping as host is unresponsive")
+// var ErrUnresponsiveHost = errors.New("skipping as host is unresponsive")
 
 // Check returns true if a host should be skipped as it has been
 // unresponsive for a certain number of times.

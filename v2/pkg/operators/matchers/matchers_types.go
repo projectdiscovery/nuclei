@@ -24,7 +24,6 @@ const (
 	SizeMatcher
 	// DSLMatcher matches based upon dsl syntax
 	DSLMatcher
-	//limit
 	limit
 )
 
