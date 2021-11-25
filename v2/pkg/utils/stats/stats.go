@@ -30,7 +30,7 @@ func NewEntry(name, description string) {
 	Default.NewEntry(name, description)
 }
 
-// Increment incrmements the value for a name string
+// Increment increments the value for a name string
 func Increment(name string) {
 	Default.Increment(name)
 }
@@ -57,7 +57,7 @@ func (s *Storage) NewEntry(name, description string) {
 	s.mutex.Unlock()
 }
 
-// Increment incrmements the value for a name string
+// Increment increments the value for a name string
 func (s *Storage) Increment(name string) {
 	s.mutex.RLock()
 	data, ok := s.data[name]

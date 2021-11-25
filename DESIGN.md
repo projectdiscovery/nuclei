@@ -10,9 +10,9 @@ Template is the basic unit of input to the engine which describes the requests t
 
 The template structure is described here. Template level attributes are defined here as well as convenience methods to validate, parse and compile templates creating executers. 
 
-Any attributes etc required for the template, engine or requests to function are also set here.
+Any attributes etc. required for the template, engine or requests to function are also set here.
 
-Workflows are also compiled, their templates are loaded and compiled as well. Any validations etc on the paths provided are also done here.
+Workflows are also compiled, their templates are loaded and compiled as well. Any validations etc. on the paths provided are also done here.
 
 `Parse` function is the main entry point which returns a template for a `filePath` and `executorOptions`. It compiles all the requests for the templates, all the workflows, as well as any self-contained request etc. It also caches the templates in an in-memory cache.
 
@@ -106,7 +106,7 @@ The default executer is provided in `pkg/protocols/common/executer` . It takes a
 
 A different executer is the Clustered Requests executer which implements the Nuclei Request clustering functionality in `pkg/templates`  We have a single HTTP  request in cases where multiple templates can be clustered and multiple operator lists to match/extract. The first HTTP request is executed while all the template matcher/extractor are evaluated separately.
 
-For Workflow execution, a separate RunWorkflow function is used which executes the workflow independently from the template execution.
+For Workflow execution, a separate RunWorkflow function is used which executes the workflow independently of the template execution.
 
 With this basic premise set, we can now start exploring the current runner implementation which will also walk us through the architecture of nuclei.
 
@@ -118,7 +118,7 @@ The first process after all CLI specific initialisation is the loading of templa
 
 #### pkg/catalog
 
-This package is used to get paths using mixed syntax. It takes a template directory and performs resolving for template paths both from provided template directory as well as the current user directory.
+This package is used to get paths using mixed syntax. It takes a template directory and performs resolving for template paths both from provided template and current user directory.
 
 The syntax is very versatile and can include filenames, glob patterns, directories, absolute paths, and relative-paths.
 
@@ -177,7 +177,7 @@ ResultEvent structure is passed to the Nuclei Output Writer which contains the e
 
 #### pkg/protocols/common/interactsh
 
-Interactsh module is used to provide automatic Out of Band vulnerability identification in Nuclei. 
+Interactsh module is used to provide automatic Out-of-Band vulnerability identification in Nuclei. 
 
 It uses two LRU caches, one for storing interactions for request URLs and one for storing requests for interaction URL. These both caches are used to correlated requests received to the Interactsh OOB server and Nuclei Instance. [Interactsh Client](https://github.com/projectdiscovery/interactsh/pkg/client) package does most of the heavy lifting of this module.
 
@@ -193,13 +193,13 @@ Next we arrive in the `RunEnumeration` function of the runner.
 
 Next the `WorkflowLoader` is initialised which used to load workflows. It exists in `v2/pkg/parsers/workflow_loader.go`
 
-The loader is initialised moving forward which is responsible for Using Catalog, Passed Tags, Filters, Paths, etc to return compiled `Templates` and `Workflows`. 
+The loader is initialised moving forward which is responsible for Using Catalog, Passed Tags, Filters, Paths, etc. to return compiled `Templates` and `Workflows`. 
 
 #### pkg/catalog/loader
 
-First the input passed by the user as paths is normalised to absolute paths which is done by the `pkg/catalog` module.  Next the path filter module is used to removed the excluded template/workflows paths.
+First the input passed by the user as paths is normalised to absolute paths which is done by the `pkg/catalog` module.  Next the path filter module is used to remove the excluded template/workflows paths.
 
-`pkg/parsers` module's `LoadTemplate`,`LoadWorkflow` functions are used to check if the templates pass the validation + are not excluded via tags/severity/etc filters. If all checks are passed, then the template/workflow is parsed and returned in a compiled form by the `pkg/templates`'s `Parse` function.
+`pkg/parsers` module's `LoadTemplate`,`LoadWorkflow` functions are used to check if the templates pass the validation + are not excluded via tags/severity/etc. filters. If all checks are passed, then the template/workflow is parsed and returned in a compiled form by the `pkg/templates`'s `Parse` function.
 
 `Parse` function performs compilation of all the requests in a template + creates Executers from them returning a runnable Template/Workflow structure.
 
@@ -207,10 +207,10 @@ Clustering module comes in next whose job is to cluster identical HTTP GET reque
 
 ### pkg/operators
 
-Operators package implements all of the matching and extracting logic of Nuclei. 
+Operators package implements all the matching and extracting logic of Nuclei. 
 
 ```go
-// Operators contains the operators that can be applied on protocols
+// Operators contain the operators that can be applied on protocols
 type Operators struct {
 	Matchers []*matchers.Matcher
 	Extractors []*extractors.Extractor
@@ -218,7 +218,7 @@ type Operators struct {
 }
 ```
 
-A protocol only needs to embed the `operators.Operators` type shown above and it can utilise all the matching/extracting functionality of nuclei.
+A protocol only needs to embed the `operators.Operators` type shown above, and it can utilise all the matching/extracting functionality of nuclei.
 
 ```go
 // MatchFunc performs matching operation for a matcher on model and returns true or false.
@@ -246,7 +246,7 @@ type Result struct {
 }
 ```
 
-The internal logics for matching and extracting for things like words, regexes, jq, paths, etc is specified in `pkg/operators/matchers`, `pkg/operators/extractors`. Those packages should be investigated for further look into the topic.
+The internal logics for matching and extracting for things like words, regexes, jq, paths, etc. is specified in `pkg/operators/matchers`, `pkg/operators/extractors`. Those packages should be investigated for further look into the topic.
 
 
 ### Template Execution
@@ -357,7 +357,7 @@ func main() {
 
 ### Adding a New Protocol
 
-Protocols form the core of Nuclei Engine. All the request types like `http`, `dns`, etc are implemented in form of protocol requests.
+Protocols form the core of Nuclei Engine. All the request types like `http`, `dns`, etc. are implemented in form of protocol requests.
 
 A protocol must implement the `Protocol` and `Request` interfaces described above in `pkg/protocols`. We'll take the example of an existing protocol implementation - websocket for this short reference around Nuclei internals.
 
@@ -475,13 +475,13 @@ func (r *Request) Type() templateTypes.ProtocolType {
 }
 ```
 
-Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
+Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc. which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
 
 `eventcreator` package offers `CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
 
 Step by step description of how to add a new protocol to Nuclei - 
 
-1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with less number of options, considering adding it to the `pkg/protocols/others` directory. Add the enum for the new protocol to `v2/pkg/templates/types/types.go`.
+1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with fewer options, considering adding it to the `pkg/protocols/others` directory. Add the enum for the new protocol to `v2/pkg/templates/types/types.go`.
 
 2. Add the protocol request structure to the `Template` structure fields. This is done in `pkg/templates/templates.go` with the corresponding import line.
 
@@ -527,7 +527,7 @@ func (t *Template) Type() templateTypes.ProtocolType {
 
 ```go
 
-// Requests returns the total request count for the template
+// Requests return the total request count for the template
 func (template *Template) Requests() int {
 	return len(template.RequestsDNS) +
 		...
@@ -559,7 +559,7 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 - [v2/pkg/reporting/dedupe](./v2/pkg/reporting/dedupe) - Dedupe module for Results
 - [v2/pkg/reporting/trackers/gitlab](./v2/pkg/reporting/trackers/gitlab) - Gitlab Issue Tracker Exporter
 - [v2/pkg/reporting/trackers/jira](./v2/pkg/reporting/trackers/jira) - Jira Issue Tracker Exporter
-- [v2/pkg/reporting/trackers/github](./v2/pkg/reporting/trackers/github) - Github Issue Tracker Exporter
+- [v2/pkg/reporting/trackers/github](./v2/pkg/reporting/trackers/github) - GitHub Issue Tracker Exporter
 - [v2/pkg/reporting/format](./v2/pkg/reporting/format) - Result Formatting Functions
 - [v2/pkg/parsers](./v2/pkg/parsers) - Implements template as well as workflow loader for initial template discovery, validation and - loading.
 - [v2/pkg/types](./v2/pkg/types) - Contains CLI options as well as misc helper functions.
@@ -583,7 +583,7 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 - [v2/pkg/protocols/network](./v2/pkg/protocols/network) - Network protocol
 - [v2/pkg/protocols/common/expressions](./v2/pkg/protocols/common/expressions) - Expression evaluation + Templating Support
 - [v2/pkg/protocols/common/interactsh](./v2/pkg/protocols/common/interactsh) - Interactsh integration
-- [v2/pkg/protocols/common/generators](./v2/pkg/protocols/common/generators) - Payload support for Requests (Sniper, etc)
+- [v2/pkg/protocols/common/generators](./v2/pkg/protocols/common/generators) - Payload support for Requests (Sniper, etc.)
 - [v2/pkg/protocols/common/executer](./v2/pkg/protocols/common/executer) - Default Template Executer
 - [v2/pkg/protocols/common/replacer](./v2/pkg/protocols/common/replacer) - Template replacement helpers
 - [v2/pkg/protocols/common/helpers/eventcreator](./v2/pkg/protocols/common/helpers/eventcreator) - Result event creator

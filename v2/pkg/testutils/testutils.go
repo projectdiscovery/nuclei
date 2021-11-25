@@ -61,7 +61,7 @@ var DefaultOptions = &types.Options{
 	InteractshURL:              "https://interactsh.com",
 	InteractionsCacheSize:      5000,
 	InteractionsEviction:       60,
-	InteractionsCooldownPeriod: 5,
+	InteractionsCoolDownPeriod: 5,
 	InteractionsPollDuration:   5,
 }
 

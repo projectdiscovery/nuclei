@@ -21,7 +21,7 @@ import (
 type Browser struct {
 	customAgent  string
 	tempDir      string
-	previouspids map[int32]struct{} // track already running pids
+	previousPIDs map[int32]struct{} // track already running PIDs
 	engine       *rod.Browser
 	httpclient   *http.Client
 	options      *types.Options
@@ -33,7 +33,7 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
-	previouspids := findChromeProcesses()
+	previousPIDs := findChromeProcesses()
 
 	chromeLauncher := launcher.New().
 		Leakless(false).
@@ -89,7 +89,7 @@ func New(options *types.Options) (*Browser, error) {
 		customAgent = uarand.GetRandom()
 	}
 
-	httpclient, err := newhttpClient(options)
+	httpclient, err := newHttpClient(options)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func New(options *types.Options) (*Browser, error) {
 		httpclient:  httpclient,
 		options:     options,
 	}
-	engine.previouspids = previouspids
+	engine.previousPIDs = previousPIDs
 	return engine, nil
 }
 
@@ -123,7 +123,7 @@ func (b *Browser) killChromeProcesses() {
 			continue
 		}
 		// skip chrome processes that were already running
-		if _, ok := b.previouspids[process.Pid]; ok {
+		if _, ok := b.previousPIDs[process.Pid]; ok {
 			continue
 		}
 		_ = process.Kill()

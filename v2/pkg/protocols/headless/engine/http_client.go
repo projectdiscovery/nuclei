@@ -18,8 +18,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// newhttpClient creates a new http client for headless communication with a timeout
-func newhttpClient(options *types.Options) (*http.Client, error) {
+// newHttpClient creates a new http client for headless communication with a timeout
+func newHttpClient(options *types.Options) (*http.Client, error) {
 	dialer := protocolstate.Dialer
 
 	// Set the base TLS configuration definition
