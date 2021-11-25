@@ -16,7 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Options contains necessary options required for elasticsearch communicaiton
+// Options contains necessary options required for elasticsearch communication
 type Options struct {
 	// IP for elasticsearch instance
 	IP string `yaml:"ip"  validate:"required,ip"`

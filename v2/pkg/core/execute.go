@@ -18,7 +18,7 @@ func (e *Engine) Execute(templates []*templates.Template, target InputProvider) 
 	return e.ExecuteWithOpts(templates, target, false)
 }
 
-// ExecuteWithOpts is execute with the full options
+// ExecuteWithOpts executes with the full options
 func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	var finalTemplates []*templates.Template
 	if !noCluster {
@@ -72,9 +72,9 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			return
 		}
 
-		wg.Waitgroup.Add()
+		wg.WaitGroup.Add()
 		go func(value string) {
-			defer wg.Waitgroup.Done()
+			defer wg.WaitGroup.Done()
 
 			var match bool
 			var err error
@@ -90,5 +90,5 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			results.CAS(false, match)
 		}(scannedValue)
 	})
-	wg.Waitgroup.Wait()
+	wg.WaitGroup.Wait()
 }

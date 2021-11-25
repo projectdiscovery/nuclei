@@ -232,7 +232,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			reqURL = generatedHttpRequest.URL()
 		}
 		request.dynamicValues = generatedHttpRequest.dynamicValues
-		// Check if hosts just keep erroring
+		// Check if hosts keep erroring
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
 			break
 		}
@@ -269,7 +269,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		requestCount++
 		request.options.Progress.IncrementRequests()
 
-		// If this was a match and we want to stop at first match, skip all further requests.
+		// If this was a match, and we want to stop at first match, skip all further requests.
 		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
 			break
 		}
@@ -301,7 +301,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 
-		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		// Check if are there any unresolved variables. If yes, skip unless overridden by user.
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
 			return errStopExecution

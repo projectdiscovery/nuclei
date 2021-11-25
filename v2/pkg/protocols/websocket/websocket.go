@@ -300,7 +300,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(err, "could not write request to server")
 		}
-		// Only perform matching and writes in case we recieve
+		// Only perform matching and writes in case we receive
 		// text or binary opcode from the websocket server.
 		if opCode != ws.OpText && opCode != ws.OpBinary {
 			continue

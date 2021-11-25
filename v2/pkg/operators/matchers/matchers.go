@@ -62,7 +62,7 @@ type Matcher struct {
 	// description: |
 	//   Words contains word patterns required to be present in the response part.
 	// examples:
-	//   - name: Match for outlook mail protection domain
+	//   - name: Match for Outlook mail protection domain
 	//     value: >
 	//       []string{"mail.protection.outlook.com"}
 	//   - name: Match for application/json in response headers

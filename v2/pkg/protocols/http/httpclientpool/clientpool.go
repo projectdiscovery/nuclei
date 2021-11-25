@@ -30,7 +30,7 @@ var (
 	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
-	rawhttpClient *rawhttp.Client
+	rawHttpClient *rawhttp.Client
 	poolMutex     *sync.RWMutex
 	normalClient  *retryablehttp.Client
 	clientPool    map[string]*retryablehttp.Client
@@ -98,12 +98,12 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *types.Options) *rawhttp.Client {
-	if rawhttpClient == nil {
-		rawhttpOptions := rawhttp.DefaultOptions
-		rawhttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
-		rawhttpClient = rawhttp.NewClient(rawhttpOptions)
+	if rawHttpClient == nil {
+		rawHttpOptions := rawhttp.DefaultOptions
+		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
-	return rawhttpClient
+	return rawHttpClient
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
@@ -138,7 +138,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	// Multiple Host
-	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
 	maxIdleConns := 0
 	maxConnsPerHost := 0
@@ -146,14 +146,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	if configuration.Threads > 0 {
 		// Single host
-		retryablehttpOptions = retryablehttp.DefaultOptionsSingle
+		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
 		maxIdleConnsPerHost = 500
 		maxConnsPerHost = 500
 	}
 
-	retryablehttpOptions.RetryWaitMax = 10 * time.Second
-	retryablehttpOptions.RetryMax = options.Retries
+	retryableHttpOptions.RetryWaitMax = 10 * time.Second
+	retryableHttpOptions.RetryMax = options.Retries
 	followRedirects := configuration.FollowRedirects
 	maxRedirects := configuration.MaxRedirects
 
@@ -213,7 +213,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions)
+	}, retryableHttpOptions)
 	if jar != nil {
 		client.HTTPClient.Jar = jar
 	}

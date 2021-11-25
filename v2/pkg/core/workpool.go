@@ -7,7 +7,7 @@ import (
 )
 
 // WorkPool implements an execution pool for executing different
-// types of task with different concurreny requirements.
+// types of task with different concurrency requirements.
 //
 // It also allows Configuration of such requirements. This is used
 // for per-module like separate headless concurrency etc.
@@ -17,7 +17,7 @@ type WorkPool struct {
 	config   WorkPoolConfig
 }
 
-// WorkPoolConfig is the configuration for workpool
+// WorkPoolConfig is the configuration for work pool
 type WorkPoolConfig struct {
 	// InputConcurrency is the concurrency for inputs values.
 	InputConcurrency int
@@ -41,18 +41,18 @@ func NewWorkPool(config WorkPoolConfig) *WorkPool {
 	}
 }
 
-// Wait waits for all the workpool waitgroups to finish
+// Wait waits for all the work pool wait groups to finish
 func (w *WorkPool) Wait() {
 	w.Default.Wait()
 	w.Headless.Wait()
 }
 
-// InputWorkPool is a workpool per-input
+// InputWorkPool is a work pool per-input
 type InputWorkPool struct {
-	Waitgroup *sizedwaitgroup.SizedWaitGroup
+	WaitGroup *sizedwaitgroup.SizedWaitGroup
 }
 
-// InputPool returns a workpool for an input type
+// InputPool returns a work pool for an input type
 func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 	var count int
 	if templateType == types.HeadlessProtocol {
@@ -61,5 +61,5 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 		count = w.config.InputConcurrency
 	}
 	swg := sizedwaitgroup.New(count)
-	return &InputWorkPool{Waitgroup: &swg}
+	return &InputWorkPool{WaitGroup: &swg}
 }
