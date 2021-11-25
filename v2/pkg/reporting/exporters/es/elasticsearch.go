@@ -3,15 +3,15 @@ package es
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"encoding/base64"
-	"encoding/json"
-
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )

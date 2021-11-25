@@ -12,8 +12,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/retryabledns"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 var _ protocols.Request = &Request{}

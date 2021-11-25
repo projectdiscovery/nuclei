@@ -3,9 +3,10 @@ package http
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRequestGeneratorPaths(t *testing.T) {

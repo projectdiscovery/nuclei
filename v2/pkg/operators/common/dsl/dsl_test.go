@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 func TestDSLURLEncodeDecode(t *testing.T) {

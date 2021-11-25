@@ -275,6 +275,8 @@ import (
 	"path"
 
 	"github.com/logrusorgru/aurora"
+	"go.uber.org/ratelimit"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -291,7 +293,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/ratelimit"
 )
 
 func main() {

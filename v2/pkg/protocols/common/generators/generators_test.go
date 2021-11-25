@@ -3,8 +3,9 @@ package generators
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
 func TestBatteringRamGenerator(t *testing.T) {
