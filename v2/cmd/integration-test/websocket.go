@@ -23,7 +23,7 @@ func (h *websocketBasic) Execute(filePath string) error {
 	connHandler := func(conn net.Conn) {
 		for {
 			msg, op, _ := wsutil.ReadClientData(conn)
-			if string(msg) != string("hello") {
+			if string(msg) != "hello" {
 				return
 			}
 			_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
