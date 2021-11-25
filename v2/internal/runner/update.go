@@ -242,12 +242,12 @@ func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.Repositor
 func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadURL string) (*templateUpdateResults, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request to %s: %s", downloadURL, err)
+		return nil, fmt.Errorf("failed to create HTTP request to %s: %w", downloadURL, err)
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download a release file from %s: %s", downloadURL, err)
+		return nil, fmt.Errorf("failed to download a release file from %s: %w", downloadURL, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
@@ -256,23 +256,23 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 
 	buf, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create buffer for zip file: %s", err)
+		return nil, fmt.Errorf("failed to create buffer for zip file: %w", err)
 	}
 
 	reader := bytes.NewReader(buf)
 	zipReader, err := zip.NewReader(reader, reader.Size())
 	if err != nil {
-		return nil, fmt.Errorf("failed to uncompress zip file: %s", err)
+		return nil, fmt.Errorf("failed to uncompress zip file: %w", err)
 	}
 
 	// Create the template folder if it doesn't exist
 	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create template base folder: %s", err)
+		return nil, fmt.Errorf("failed to create template base folder: %w", err)
 	}
 
 	results, err := r.compareAndWriteTemplates(zipReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write templates: %s", err)
+		return nil, fmt.Errorf("failed to write templates: %w", err)
 	}
 
 	if r.options.Verbose {
@@ -342,7 +342,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 
 		relativeTemplatePath, err := filepath.Rel(configuredTemplateDirectory, templateAbsolutePath)
 		if err != nil {
-			return nil, fmt.Errorf("could not calculate relative path for template: %s. %s", templateAbsolutePath, err)
+			return nil, fmt.Errorf("could not calculate relative path for template: %s. %w", templateAbsolutePath, err)
 		}
 
 		if isAddition {
@@ -369,13 +369,13 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 func writeUnZippedTemplateFile(err error, templateAbsolutePath string, zipTemplateFile *zip.File) (string, error) {
 	templateFile, err := os.OpenFile(templateAbsolutePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return "", fmt.Errorf("could not create template file: %s", err)
+		return "", fmt.Errorf("could not create template file: %w", err)
 	}
 
 	zipTemplateFileReader, err := zipTemplateFile.Open()
 	if err != nil {
 		_ = templateFile.Close()
-		return "", fmt.Errorf("could not open archive to extract file: %s", err)
+		return "", fmt.Errorf("could not open archive to extract file: %w", err)
 	}
 
 	md5Hash := md5.New()
@@ -383,11 +383,11 @@ func writeUnZippedTemplateFile(err error, templateAbsolutePath string, zipTempla
 	// Save file and also read into hash.Hash for md5
 	if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, md5Hash)); err != nil {
 		_ = templateFile.Close()
-		return "", fmt.Errorf("could not write template file: %s", err)
+		return "", fmt.Errorf("could not write template file: %w", err)
 	}
 
 	if err := templateFile.Close(); err != nil {
-		return "", fmt.Errorf("could not close file newly created template file: %s", err)
+		return "", fmt.Errorf("could not close file newly created template file: %w", err)
 	}
 
 	checksum := hex.EncodeToString(md5Hash.Sum(nil))
@@ -411,7 +411,7 @@ func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory stri
 	templateDirectory := filepath.Join(configuredTemplateDirectory, relativeDirectoryPathWithoutZipRoot)
 
 	if err := os.MkdirAll(templateDirectory, 0755); err != nil {
-		return "", false, fmt.Errorf("failed to create template folder: %s. %s", templateDirectory, err)
+		return "", false, fmt.Errorf("failed to create template folder: %s. %w", templateDirectory, err)
 	}
 
 	return filepath.Join(templateDirectory, fileName), false, nil

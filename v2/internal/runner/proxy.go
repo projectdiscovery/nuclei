@@ -28,7 +28,7 @@ func loadProxyServers(options *types.Options) error {
 		} else if fileutil.FileExists(p) {
 			file, err := os.Open(p)
 			if err != nil {
-				return fmt.Errorf("could not open proxy file: %s", err)
+				return fmt.Errorf("could not open proxy file: %w", err)
 			}
 			defer file.Close()
 			scanner := bufio.NewScanner(file)
