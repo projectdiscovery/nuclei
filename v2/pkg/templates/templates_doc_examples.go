@@ -44,7 +44,7 @@ var (
 		Recursion:   true,
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
-				{Type: extractors.TypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
+				{Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"ec2-[-\\d]+\\.compute[-\\d]*\\.amazonaws\\.com", "ec2-[-\\d]+\\.[\\w\\d\\-]+\\.compute[-\\d]*\\.amazonaws\\.com"}},
 			},
 		},
 	}
@@ -54,7 +54,7 @@ var (
 		Extensions: []string{"all"},
 		Operators: operators.Operators{
 			Extractors: []*extractors.Extractor{
-				{Type: extractors.TypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"}},
+				{Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{"amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"}},
 			},
 		},
 	}

@@ -11,15 +11,25 @@ import (
 // DNSRequestType is the type of the method specified
 type DNSRequestType int
 
+// name:DNSRequestType
 const (
+	// name:A
 	A DNSRequestType = iota + 1
+	// name:NS
 	NS
+	// name:DS
 	DS
+	// name:CNAME
 	CNAME
+	// name:SOA
 	SOA
+	// name:PTR
 	PTR
+	// name:MX
 	MX
+	// name:TXT
 	TXT
+	// name:AAAA
 	AAAA
 	//limit
 	limit
@@ -67,7 +77,7 @@ func (t DNSRequestType) String() string {
 
 // DNSRequestTypeHolder is used to hold internal type of the DNS type
 type DNSRequestTypeHolder struct {
-	DNSRequestType DNSRequestType
+	DNSRequestType DNSRequestType `mapping:"true"`
 }
 
 func (holder DNSRequestTypeHolder) String() string {

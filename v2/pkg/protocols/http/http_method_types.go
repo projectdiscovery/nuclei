@@ -11,16 +11,27 @@ import (
 // HTTPMethodType is the type of the method specified
 type HTTPMethodType int
 
+// name:HTTPMethodType
 const (
+	// name:GET
 	HTTPGet HTTPMethodType = iota + 1
+	// name:GET
 	HTTPHead
+	// name:POST
 	HTTPPost
+	// name:PUT
 	HTTPPut
+	// name:DELETE
 	HTTPDelete
+	// name:CONNECT
 	HTTPConnect
+	// name:OPTIONS
 	HTTPOptions
+	// name:TRACE
 	HTTPTrace
+	// name:PATCH
 	HTTPPatch
+	// name:PURGE
 	HTTPPurge
 	//limit
 	limit
@@ -69,7 +80,7 @@ func (t HTTPMethodType) String() string {
 
 // HTTPMethodTypeHolder is used to hold internal type of the HTTP Method
 type HTTPMethodTypeHolder struct {
-	MethodType HTTPMethodType
+	MethodType HTTPMethodType `mapping:"true"`
 }
 
 func (holder HTTPMethodTypeHolder) String() string {
