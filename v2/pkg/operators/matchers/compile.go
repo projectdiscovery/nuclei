@@ -12,74 +12,73 @@ import (
 )
 
 // CompileMatchers performs the initial setup operation on a matcher
-func (m *Matcher) CompileMatchers() error {
+func (matcher *Matcher) CompileMatchers() error {
 	var ok bool
 
 	// Support hexadecimal encoding for matchers too.
-	if m.Encoding == "hex" {
-		for i, word := range m.Words {
+	if matcher.Encoding == "hex" {
+		for i, word := range matcher.Words {
 			if decoded, err := hex.DecodeString(word); err == nil && len(decoded) > 0 {
-				m.Words[i] = string(decoded)
+				matcher.Words[i] = string(decoded)
 			}
 		}
 	}
 
 	// Set up the matcher type
-	computedType, err := toMatcherTypes(m.GetType().String())
+	computedType, err := toMatcherTypes(matcher.GetType().String())
 	if err != nil {
-		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
+		return fmt.Errorf("unknown matcher type specified: %s", matcher.Type)
 	}
 
-	m.matcherType = computedType
+	matcher.matcherType = computedType
 	// By default, match on body if user hasn't provided any specific items
-	if m.Part == "" {
-		m.Part = "body"
+	if matcher.Part == "" {
+		matcher.Part = "body"
 	}
-
 
 	// Compile the regexes
-	for _, regex := range m.Regex {
+	for _, regex := range matcher.Regex {
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-		m.regexCompiled = append(m.regexCompiled, compiled)
+		matcher.regexCompiled = append(matcher.regexCompiled, compiled)
 	}
 
 	// Compile and validate binary Values in matcher
-	for _, value := range m.Binary {
+	for _, value := range matcher.Binary {
 		if decoded, err := hex.DecodeString(value); err != nil {
 			return fmt.Errorf("could not hex decode binary: %s", value)
 		} else {
-			m.binaryDecoded = append(m.binaryDecoded, string(decoded))
+			matcher.binaryDecoded = append(matcher.binaryDecoded, string(decoded))
 		}
 	}
 
 	// Compile the dsl expressions
-	for _, expr := range m.DSL {
+	for _, expr := range matcher.DSL {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
 			return fmt.Errorf("could not compile dsl: %s", expr)
 		}
-		m.dslCompiled = append(m.dslCompiled, compiled)
+		matcher.dslCompiled = append(matcher.dslCompiled, compiled)
 	}
 
 	// Set up the condition type, if any.
-	if m.Condition != "" {
-		m.condition, ok = ConditionTypes[m.Condition]
+	if matcher.Condition != "" {
+		matcher.condition, ok = ConditionTypes[matcher.Condition]
 		if !ok {
-			return fmt.Errorf("unknown condition specified: %s", m.Condition)
+			return fmt.Errorf("unknown condition specified: %s", matcher.Condition)
 		}
 	} else {
-		m.condition = ORCondition
+		matcher.condition = ORCondition
 	}
 
-	if m.CaseInsensitive {
-		if m.GetType() != WordsMatcher {
-			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", m.Type)
+	if matcher.CaseInsensitive {
+		if matcher.GetType() != WordsMatcher {
+			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", matcher.Type)
 		}
-		for i := range m.Words {
-			m.Words[i] = strings.ToLower(m.Words[i])
+		for i := range matcher.Words {
+			matcher.Words[i] = strings.ToLower(matcher.Words[i])
 		}
 	}
 	return nil

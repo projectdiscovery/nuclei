@@ -15,7 +15,7 @@ type Preprocessor interface {
 var preprocessorRegex = regexp.MustCompile(`{{([a-z0-9_]+)}}`)
 
 // expandPreprocessors expands the pre-processors if any for a template data.
-func (t *Template) expandPreprocessors(data []byte) []byte {
+func (template *Template) expandPreprocessors(data []byte) []byte {
 	foundMap := make(map[string]struct{})
 
 	for _, expression := range preprocessorRegex.FindAllStringSubmatch(string(data), -1) {
