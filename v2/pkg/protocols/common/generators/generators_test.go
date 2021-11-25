@@ -54,7 +54,7 @@ func TestClusterbombGenerator(t *testing.T) {
 	passwords := []string{"admin", "password", "token"}
 
 	catalogInstance := catalog.New("")
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterbombAttack, "", catalogInstance)
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBombAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
