@@ -554,7 +554,7 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 - [v2/pkg/reporting](./v2/pkg/reporting) - Reporting modules for nuclei.
 - [v2/pkg/reporting/exporters/sarif](./v2/pkg/reporting/exporters/sarif) - Sarif Result Exporter
 - [v2/pkg/reporting/exporters/markdown](./v2/pkg/reporting/exporters/markdown) - Markdown Result Exporter
-- [v2/pkg/reporting/exporters/es](./v2/pkg/reporting/exporters/e) - Elasticsearch Result Exporter
+- [v2/pkg/reporting/exporters/es](./v2/pkg/reporting/exporters/es) - Elasticsearch Result Exporter
 - [v2/pkg/reporting/dedupe](./v2/pkg/reporting/dedupe) - Dedupe module for Results
 - [v2/pkg/reporting/trackers/gitlab](./v2/pkg/reporting/trackers/gitlab) - Gitlab Issue Tracker Exporter
 - [v2/pkg/reporting/trackers/jira](./v2/pkg/reporting/trackers/jira) - Jira Issue Tracker Exporter
@@ -577,7 +577,7 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 - [v2/pkg/model](./v2/pkg/model) - Template Info + misc
 - [v2/pkg/templates](./v2/pkg/templates) - Templates core starting point
 - [v2/pkg/templates/cache](./v2/pkg/templates/cache) - Templates cache
-- [v2/pkg/protocols](./v2/pkg/protocol) - Protocol Specification
+- [v2/pkg/protocols](./v2/pkg/protocols) - Protocol Specification
 - [v2/pkg/protocols/file](./v2/pkg/protocols/file) - File protocol
 - [v2/pkg/protocols/network](./v2/pkg/protocols/network) - Network protocol
 - [v2/pkg/protocols/common/expressions](./v2/pkg/protocols/common/expressions) - Expression evaluation + Templating Support
