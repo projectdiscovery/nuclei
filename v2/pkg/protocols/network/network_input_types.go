@@ -14,7 +14,6 @@ type NetworkInputType int
 const (
 	hexType NetworkInputType = iota + 1
 	textType
-	//limit
 	limit
 )
 
