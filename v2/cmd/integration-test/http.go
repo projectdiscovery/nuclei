@@ -40,7 +40,7 @@ var httpTestcases = map[string]testutils.TestCase{
 
 type httpInteractshRequest struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpInteractshRequest) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
