@@ -28,6 +28,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
@@ -293,6 +295,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		err           error
 	)
 
+	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
 		var dumpError error
@@ -307,11 +310,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
 			return errStopExecution
-		}
-
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", dumpedRequestString)
 		}
 	}
 
@@ -352,39 +350,24 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if resp == nil {
 			switch request.Signature.Value {
 			case AWSSignature:
-				var awsSigner *AwsSigner
+				var awsSigner signer.Signer
 				payloads := request.options.Options.Vars.AsMap()
 				awsAccessKeyId := types.ToString(payloads["aws-id"])
 				awsSecretAccessKey := types.ToString(payloads["aws-secret"])
-				if awsAccessKeyId != "" && awsSecretAccessKey != "" {
-					awsSigner, err = NewAwsSigner(awsAccessKeyId, awsSecretAccessKey)
-				} else {
-					// env variables
-					awsSigner, err = NewAwsSignerFromEnv()
-					if err != nil {
-						// $HOME/.aws/credentials
-						awsSigner, err = NewAwsSignerFromFile()
-						if err != nil {
-							return err
-						}
-					}
+				awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
+				service := types.ToString(payloads["service"])
+				region := types.ToString(payloads["region"])
+				awsSignatureArguments := signer.AwsSignatureArguments{
+					Service: types.ToString(service),
+					Region:  types.ToString(region),
+					Time:    time.Now(),
 				}
+
+				awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
 				if err != nil {
 					return err
 				}
-
-				service := types.ToString(payloads["service"])
-				region := types.ToString(payloads["region"])
-				if service == "" || region == "" {
-					return errors.New("service and region are mandatory")
-				}
-
-				args := SignArguments{
-					Service: types.ToString(payloads["service"]),
-					Region:  types.ToString(payloads["region"]),
-					Time:    time.Now(),
-				}
-				err = awsSigner.SignHTTP(generatedRequest.request.Request, args)
+				err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
 				if err != nil {
 					return err
 				}
@@ -392,6 +375,21 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
+
+	// Dump the requests containing all headers
+	if !generatedRequest.original.Race {
+		var dumpError error
+		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
+		if dumpError != nil {
+			return dumpError
+		}
+		dumpedRequestString := string(dumpedRequest)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			gologger.Print().Msgf("%s", dumpedRequestString)
+		}
+	}
+
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil {
