@@ -9,6 +9,8 @@ Template is a YAML input file which defines all the requests and
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -290,6 +292,8 @@ reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
 
+
+
 <hr />
 
 <div class="dd">
@@ -545,6 +549,8 @@ CWE-22
 
 
 
+
+
 ## severity.Holder
 Holder holds a Severity type. Required for un/marshalling purposes
 
@@ -552,6 +558,8 @@ Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.severity</code>
+
+
 
 
 
@@ -595,6 +603,8 @@ Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
 
 
 
@@ -723,6 +733,26 @@ path:
     - '{{BaseURL}}/.git/config'
 method: GET
 ```
+
+Part Definitions: 
+
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>request</code> - HTTP request made from the client
+- <code>response</code> - HTTP response recieved from server
+- <code>status_code</code> - Status Code received from the Server
+- <code>body</code> - HTTP response body received from server (default)
+- <code>content_length</code> - HTTP Response content length
+- <code>header,all_headers</code> - HTTP response headers
+- <code>duration</code> - HTTP request time duration
+- <code>all</code> - HTTP response body + headers
+- <code><cookies_from_response></code> - HTTP response cookies in <name>:<value> format
+- <code><headers_from_response></code> - HTTP response headers in <name>:<value> format
 
 <hr />
 
@@ -1266,6 +1296,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -1599,6 +1631,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -1652,6 +1686,8 @@ Appears in:
 - <code><a href="#sslrequest">ssl.Request</a>.extractors</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.extractors</code>
+
+
 
 
 
@@ -1935,6 +1971,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -1979,6 +2017,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2014,6 +2054,8 @@ Appears in:
 
 
 - <code><a href="#httprequest">http.Request</a>.method</code>
+
+
 
 
 
@@ -2080,6 +2122,24 @@ class: inet
 retries: 2
 recursion: true
 ```
+
+Part Definitions: 
+
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>request</code> - Request contains the DNS request in text format
+- <code>type</code> - Type is the type of request made
+- <code>rcode</code> - Rcode field returned for the DNS request
+- <code>question</code> - Question contains the DNS question field
+- <code>extra</code> - Extra contains the DNS response extra field
+- <code>answer</code> - Answer contains the DNS response answer field
+- <code>ns</code> - NS contains the DNS response NS field
+- <code>raw,body,all</code> - Raw contains the raw DNS response (default)
+- <code>trace</code> - Trace contains trace data for DNS request if enabled
 
 <hr />
 
@@ -2317,6 +2377,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2374,6 +2436,17 @@ extractors:
 extensions:
     - all
 ```
+
+Part Definitions: 
+
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>path</code> - Path is the path of file on local filesystem
+- <code>type</code> - Type is the type of request made
+- <code>raw,body,all,data</code> - Raw contains the raw file contents
 
 <hr />
 
@@ -2561,6 +2634,19 @@ matchers:
       words:
         - zookeeper.version
 ```
+
+Part Definitions: 
+
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>request</code> - Network request made from the client
+- <code>body,all,data</code> - Network response recieved from server (default)
+- <code>raw</code> - Full Network protocol data
 
 <hr />
 
@@ -2765,6 +2851,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2884,6 +2972,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2919,6 +3009,18 @@ Appears in:
 - <code><a href="#template">Template</a>.headless</code>
 
 
+
+Part Definitions: 
+
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>req</code> - Headless request made from the client
+- <code>resp,body,data</code> - Headless response recieved from client (default)
 
 <hr />
 
@@ -3019,6 +3121,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -3089,6 +3193,8 @@ Appears in:
 
 
 - <code><a href="#engineaction">engine.Action</a>.action</code>
+
+
 
 
 
@@ -3167,6 +3273,15 @@ Appears in:
 - <code><a href="#template">Template</a>.ssl</code>
 
 
+
+Part Definitions: 
+
+
+- <code>type</code> - Type is the type of request made
+- <code>response</code> - JSON SSL protocol handshake details
+- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
 
 <hr />
 
@@ -3248,6 +3363,16 @@ Appears in:
 - <code><a href="#template">Template</a>.websocket</code>
 
 
+
+Part Definitions: 
+
+
+- <code>type</code> - Type is the type of request made
+- <code>success</code> - Success specifies whether websocket connection was successful
+- <code>request</code> - Websocket request made to the server
+- <code>response</code> - Websocket response recieved from the server
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
 
 <hr />
 
@@ -3388,6 +3513,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -3456,6 +3583,8 @@ Appears in:
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.subtemplates</code>
 
 - <code><a href="#workflowsmatcher">workflows.Matcher</a>.subtemplates</code>
+
+
 
 
 
@@ -3539,6 +3668,8 @@ Appears in:
 
 
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.matchers</code>
+
+
 
 
 
