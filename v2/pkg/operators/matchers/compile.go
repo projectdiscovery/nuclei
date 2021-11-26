@@ -36,7 +36,6 @@ func (m *Matcher) CompileMatchers() error {
 		m.Part = "body"
 	}
 
-
 	// Compile the regexes
 	for _, regex := range m.Regex {
 		compiled, err := regexp.Compile(regex)
@@ -59,7 +58,7 @@ func (m *Matcher) CompileMatchers() error {
 	for _, expr := range m.DSL {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
-			return fmt.Errorf("could not compile dsl: %s", expr)
+			return fmt.Errorf("could not compile dsl: %s. %w", expr, err)
 		}
 		m.dslCompiled = append(m.dslCompiled, compiled)
 	}
