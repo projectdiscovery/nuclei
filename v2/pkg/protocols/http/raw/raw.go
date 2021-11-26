@@ -112,11 +112,11 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.Path = parts[1]
 	}
 
-	hostURL := parsedURL.Host
+	hostURL := rawRequest.Headers["Host"]
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	if parsedURL.Path != rawRequest.Path {
+	if parsedURL.Path != rawRequest.Path && hostURL == parsedURL.Host {
 		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
 	if strings.HasSuffix(rawRequest.Path, "//") {
