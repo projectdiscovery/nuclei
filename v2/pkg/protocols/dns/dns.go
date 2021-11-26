@@ -78,6 +78,26 @@ type Request struct {
 	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
 
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"template-id":   "ID of the template executed",
+	"template-info": "Info Block of the template executed",
+	"template-path": "Path of the template executed",
+	"host":          "Host is the input to the template",
+	"matched":       "Matched is the input which was matched upon",
+	"request":       "Request contains the DNS request in text format",
+	"type":          "Type is the type of request made",
+	"rcode":         "Rcode field returned for the DNS request",
+	"question":      "Question contains the DNS question field",
+	"extra":         "Extra contains the DNS response extra field",
+	"answer":        "Answer contains the DNS response answer field",
+	"ns":            "NS contains the DNS response NS field",
+	"raw,body,all":  "Raw contains the raw DNS response (default)",
+	"trace":         "Trace contains trace data for DNS request if enabled",
+}
+
 func (request *Request) GetCompiledOperators() []*operators.Operators {
 	return []*operators.Operators{request.CompiledOperators}
 }
