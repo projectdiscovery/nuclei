@@ -301,6 +301,72 @@ func init() {
 			FieldName: "requests",
 		},
 	}
+	HTTPRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "request",
+			Value: "HTTP request made from the client",
+		},
+		{
+			Key:   "response",
+			Value: "HTTP response recieved from server",
+		},
+		{
+			Key:   "status_code",
+			Value: "Status Code received from the Server",
+		},
+		{
+			Key:   "body",
+			Value: "HTTP response body received from server (default)",
+		},
+		{
+			Key:   "content_length",
+			Value: "HTTP Response content length",
+		},
+		{
+			Key:   "header,all_headers",
+			Value: "HTTP response headers",
+		},
+		{
+			Key:   "duration",
+			Value: "HTTP request time duration",
+		},
+		{
+			Key:   "all",
+			Value: "HTTP response body + headers",
+		},
+		{
+			Key:   "<cookies_from_response>",
+			Value: "HTTP response cookies in <name>:<value> format",
+		},
+		{
+			Key:   "<headers_from_response>",
+			Value: "HTTP response headers in <name>:<value> format",
+		},
+	}
 	HTTPRequestDoc.Fields = make([]encoder.Doc, 26)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
@@ -827,6 +893,64 @@ func init() {
 			FieldName: "dns",
 		},
 	}
+	DNSRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "request",
+			Value: "Request contains the DNS request in text format",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "rcode",
+			Value: "Rcode field returned for the DNS request",
+		},
+		{
+			Key:   "question",
+			Value: "Question contains the DNS question field",
+		},
+		{
+			Key:   "extra",
+			Value: "Extra contains the DNS response extra field",
+		},
+		{
+			Key:   "answer",
+			Value: "Answer contains the DNS response answer field",
+		},
+		{
+			Key:   "ns",
+			Value: "NS contains the DNS response NS field",
+		},
+		{
+			Key:   "raw,body,all",
+			Value: "Raw contains the raw DNS response (default)",
+		},
+		{
+			Key:   "trace",
+			Value: "Trace contains trace data for DNS request if enabled",
+		},
+	}
 	DNSRequestDoc.Fields = make([]encoder.Doc, 12)
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
@@ -945,6 +1069,36 @@ func init() {
 			FieldName: "file",
 		},
 	}
+	FILERequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "path",
+			Value: "Path is the path of file on local filesystem",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "raw,body,all,data",
+			Value: "Raw contains the raw file contents",
+		},
+	}
 	FILERequestDoc.Fields = make([]encoder.Doc, 8)
 	FILERequestDoc.Fields[0].Name = "matchers"
 	FILERequestDoc.Fields[0].Type = "[]matchers.Matcher"
@@ -1006,6 +1160,44 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "network",
+		},
+	}
+	NETWORKRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "request",
+			Value: "Network request made from the client",
+		},
+		{
+			Key:   "body,all,data",
+			Value: "Network response recieved from server (default)",
+		},
+		{
+			Key:   "raw",
+			Value: "Full Network protocol data",
 		},
 	}
 	NETWORKRequestDoc.Fields = make([]encoder.Doc, 10)
@@ -1142,6 +1334,40 @@ func init() {
 			FieldName: "headless",
 		},
 	}
+	HEADLESSRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "req",
+			Value: "Headless request made from the client",
+		},
+		{
+			Key:   "resp,body,data",
+			Value: "Headless response recieved from client (default)",
+		},
+	}
 	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 5)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
@@ -1253,6 +1479,28 @@ func init() {
 			FieldName: "ssl",
 		},
 	}
+	SSLRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "response",
+			Value: "JSON SSL protocol handshake details",
+		},
+		{
+			Key:   "not_after",
+			Value: "Timestamp after which the remote cert expires",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+	}
 	SSLRequestDoc.Fields = make([]encoder.Doc, 4)
 	SSLRequestDoc.Fields[0].Name = "matchers"
 	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
@@ -1286,6 +1534,32 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "websocket",
+		},
+	}
+	WEBSOCKETRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "success",
+			Value: "Success specifies whether websocket connection was successful",
+		},
+		{
+			Key:   "request",
+			Value: "Websocket request made to the server",
+		},
+		{
+			Key:   "response",
+			Value: "Websocket response recieved from the server",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
 		},
 	}
 	WEBSOCKETRequestDoc.Fields = make([]encoder.Doc, 8)
