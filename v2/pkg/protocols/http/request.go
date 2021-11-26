@@ -405,6 +405,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	var dumpedResponse []redirectedResponse
+	var gotData []byte
 	// If the status code is HTTP 101, we should not proceed with reading body.
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		var bodyReader io.Reader
@@ -422,6 +423,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				return errors.Wrap(err, "could not read http body")
 			}
 		}
+		gotData = data
 		resp.Body.Close()
 
 		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
@@ -432,14 +434,17 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
-	for _, response := range dumpedResponse {
-		// if nuclei-project is enabled store the response if not previously done
-		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, response.body); err != nil {
-				return errors.Wrap(err, "could not store in project file")
-			}
+	// if nuclei-project is enabled store the response if not previously done
+	if request.options.ProjectFile != nil && !fromCache {
+		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
+			return errors.Wrap(err, "could not store in project file")
 		}
+	}
 
+	for _, response := range dumpedResponse {
+		if response.resp == nil {
+			continue // Skip nil responses
+		}
 		matchedURL := reqURL
 		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 			matchedURL = generatedRequest.rawRequest.FullURL
