@@ -307,10 +307,12 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}
-	setHeader(req, "User-Agent", uarand.GetRandom())
+	if !r.request.Unsafe {
+		setHeader(req, "User-Agent", uarand.GetRandom())
+	}
 
 	// Only set these headers on non-raw requests
-	if len(r.request.Raw) == 0 {
+	if len(r.request.Raw) == 0 && !r.request.Unsafe {
 		setHeader(req, "Accept", "*/*")
 		setHeader(req, "Accept-Language", "en")
 	}
