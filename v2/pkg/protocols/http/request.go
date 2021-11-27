@@ -310,9 +310,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", dumpedRequestString)
-		}
+		} 
 	}
-
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
