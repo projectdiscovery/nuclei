@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ type Request struct {
 	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
@@ -59,6 +60,13 @@ type Request struct {
 	// examples:
 	//   - value: "2048"
 	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
+	// description: |
+	//   ReadAll determines if the data stream should be read till the end regardless of the size
+	//
+	//   Default value for read-all is false.
+	// examples:
+	//   - value: false
+	ReadAll bool `yaml:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
 
 	// description: |
 	//   SelfContained specifies if the request is self contained.
@@ -68,8 +76,7 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
-	generator  *generators.Generator
-	attackType generators.Type
+	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
 	dialer        *fastdialer.Dialer
 	options       *protocols.ExecuterOptions
@@ -98,7 +105,7 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
+	Type NetworkInputTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
@@ -138,7 +145,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	// Pre-compile any input dsl functions before executing the request.
 	for _, input := range request.Inputs {
-		if input.Type != "" {
+		if input.Type.String() != "" {
 			continue
 		}
 		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
@@ -152,10 +159,10 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		// check if inputs contains the payload
 		var hasPayloadName bool
 		for _, input := range request.Inputs {
-			if input.Type != "" {
+			if input.Type.String() != "" {
 				continue
 			}
-			if expressions.ContainsVariablesWithNames(input.Data, map[string]interface{}{name: payload}) == nil {
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input.Data) == nil {
 				hasPayloadName = true
 				break
 			}
@@ -169,28 +176,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		attackType := request.AttackType
-		if attackType == "" {
-			attackType = "batteringram"
-		}
-		var ok bool
-		request.attackType, ok = generators.StringToType[attackType]
-		if !ok {
-			return fmt.Errorf("invalid attack type provided: %s", attackType)
-		}
-
-		// Resolve payload paths if they are files.
-		for name, payload := range request.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				request.Payloads[name] = final
-			}
-		}
-		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

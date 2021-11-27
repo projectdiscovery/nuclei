@@ -2,12 +2,13 @@ package runner
 
 import (
 	"bufio"
-	"errors"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -24,7 +25,6 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
-
 	// Show the user the banner
 	showBanner()
 
@@ -45,13 +45,6 @@ func ParseOptions(options *types.Options) {
 	// invalid options have been used, exit.
 	if err := validateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
-	}
-
-	// Auto adjust rate limits when using headless mode if the user
-	// hasn't specified any custom limits.
-	if options.Headless && options.BulkSize == 25 && options.TemplateThreads == 10 {
-		options.BulkSize = 2
-		options.TemplateThreads = 2
 	}
 
 	// Load the resolvers if user asked for them
@@ -78,45 +71,45 @@ func hasStdin() bool {
 		return false
 	}
 
-	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) == 0
+	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) != 0
 	isPipedFromFIFO := (stat.Mode() & os.ModeNamedPipe) != 0
-
 	return isPipedFromChrDev || isPipedFromFIFO
 }
 
 // validateOptions validates the configuration options passed
 func validateOptions(options *types.Options) error {
+	validate := validator.New()
+	if err := validate.Struct(options); err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return err
+		}
+		errs := []string{}
+		for _, err := range err.(validator.ValidationErrors) {
+			errs = append(errs, err.Namespace()+": "+err.Tag())
+		}
+		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-
-	if err := validateProxyURL(options.ProxyURL, "invalid http proxy format (It should be http://username:password@host:port)"); err != nil {
+	//loading the proxy server list from file or cli and test the connectivity
+	if err := loadProxyServers(options); err != nil {
 		return err
 	}
-
-	if err := validateProxyURL(options.ProxySocksURL, "invalid socks proxy format (It should be socks5://username:password@host:port)"); err != nil {
-		return err
-	}
-
 	if options.Validate {
 		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
-	return nil
-}
-
-func validateProxyURL(proxyURL, message string) error {
-	if proxyURL != "" && !isValidURL(proxyURL) {
-		return errors.New(message)
+	// Verify if any of the client certificate options were set since it requires all three to work properly
+	if len(options.ClientCertFile) > 0 || len(options.ClientKeyFile) > 0 || len(options.ClientCAFile) > 0 {
+		if len(options.ClientCertFile) == 0 || len(options.ClientKeyFile) == 0 || len(options.ClientCAFile) == 0 {
+			return errors.New("if a client certification option is provided, then all three must be provided")
+		}
+		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 
 	return nil
-}
-
-func isValidURL(urlString string) bool {
-	_, err := url.Parse(urlString)
-	return err == nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -164,7 +157,6 @@ func loadResolvers(options *types.Options) {
 
 func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
-
 	for _, templatePath := range allGivenTemplatePaths {
 		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
 			fileInfo, err := os.Stat(templatePath)
@@ -176,6 +168,17 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 					break
 				}
 			}
+		}
+	}
+}
+
+func validateCertificatePaths(certificatePaths []string) {
+	for _, certificatePath := range certificatePaths {
+		if _, err := os.Stat(certificatePath); os.IsNotExist(err) {
+			// The provided path to the PEM certificate does not exist for the client authentication. As this is
+			// required for successful authentication, log and return an error
+			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
+			break
 		}
 	}
 }

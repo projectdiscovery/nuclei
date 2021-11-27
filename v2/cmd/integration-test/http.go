@@ -11,27 +11,57 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	"http/get-headers.yaml":           &httpGetHeaders{},
-	"http/get-query-string.yaml":      &httpGetQueryString{},
-	"http/get-redirects.yaml":         &httpGetRedirects{},
-	"http/get.yaml":                   &httpGet{},
-	"http/post-body.yaml":             &httpPostBody{},
-	"http/post-json-body.yaml":        &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":   &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":      &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml": &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":         &httpRawGetQuery{},
-	"http/raw-get.yaml":               &httpRawGet{},
-	"http/raw-payload.yaml":           &httpRawPayload{},
-	"http/raw-post-body.yaml":         &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":    &httpRawUnsafeRequest{},
-	"http/request-condition.yaml":     &httpRequestCondition{},
-	"http/request-condition-new.yaml": &httpRequestCondition{},
-	"http/self-contained.yaml":        &httpRequestSelContained{},
+	"http/get-headers.yaml":                        &httpGetHeaders{},
+	"http/get-query-string.yaml":                   &httpGetQueryString{},
+	"http/get-redirects.yaml":                      &httpGetRedirects{},
+	"http/get.yaml":                                &httpGet{},
+	"http/post-body.yaml":                          &httpPostBody{},
+	"http/post-json-body.yaml":                     &httpPostJSONBody{},
+	"http/post-multipart-body.yaml":                &httpPostMultipartBody{},
+	"http/raw-cookie-reuse.yaml":                   &httpRawCookieReuse{},
+	"http/raw-dynamic-extractor.yaml":              &httpRawDynamicExtractor{},
+	"http/raw-get-query.yaml":                      &httpRawGetQuery{},
+	"http/raw-get.yaml":                            &httpRawGet{},
+	"http/raw-payload.yaml":                        &httpRawPayload{},
+	"http/raw-post-body.yaml":                      &httpRawPostBody{},
+	"http/raw-unsafe-request.yaml":                 &httpRawUnsafeRequest{},
+	"http/request-condition.yaml":                  &httpRequestCondition{},
+	"http/request-condition-new.yaml":              &httpRequestCondition{},
+	"http/interactsh.yaml":                         &httpInteractshRequest{},
+	"http/self-contained.yaml":                     &httpRequestSelContained{},
+	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
+	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
+	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
+}
+
+type httpInteractshRequest struct{}
+
+// Executes executes a test case and returns an error if occurred
+func (h *httpInteractshRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+				resp.Body.Close()
+			}
+		}
+	}))
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
 }
 
 type httpGetHeaders struct{}
@@ -520,6 +550,78 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	}
 	if routerErr != nil {
 		return routerErr
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetCaseInsensitive struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetCaseInsensitive) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "THIS IS TEST MATCHER TEXT")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetCaseInsensitiveCluster struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	files := strings.Split(filesPath, ",")
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(files[0], ts.URL, debug, "-t", files[1])
+	if err != nil {
+		return err
+	}
+	if len(results) != 2 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetRedirectsChainHeaders struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Secret", "TestRedirectHeaderMatch")
+		http.Redirect(w, r, "/final", http.StatusFound)
+	})
+	router.GET("/final", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("ok"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
 	if len(results) != 1 {
 		return errIncorrectResultsCount(results)

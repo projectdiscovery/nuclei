@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 

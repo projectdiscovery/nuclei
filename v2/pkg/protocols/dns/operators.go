@@ -2,6 +2,8 @@ package dns
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -12,17 +14,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/retryabledns"
 )
 
-// Match matches a generic data response again a given matcher
+// Match matches a generic data response against a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	partString := matcher.Part
-	switch partString {
-	case "body", "all", "":
-		partString = "raw"
-	}
-
-	item, ok := data[partString]
+	item, ok := request.getMatchPart(matcher.Part, data)
 	if !ok {
 		return false, []string{}
 	}
@@ -50,29 +47,36 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	part := extractor.Part
-	switch part {
-	case "body", "all":
-		part = "raw"
-	}
-
-	item, ok := data[part]
+	item, ok := request.getMatchPart(extractor.Part, data)
 	if !ok {
 		return nil
 	}
-	itemStr := types.ToString(item)
 
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(itemStr)
+		return extractor.ExtractRegex(types.ToString(item))
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	}
 	return nil
 }
 
+func (request *Request) getMatchPart(part string, data output.InternalEvent) (interface{}, bool) {
+	switch part {
+	case "body", "all", "":
+		part = "raw"
+	}
+
+	item, ok := data[part]
+	if !ok {
+		return "", false
+	}
+
+	return item, true
+}
+
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
+func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, tracedata *retryabledns.TraceData) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
@@ -86,6 +90,8 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
+		"type":          request.Type().String(),
+		"trace":         traceToString(tracedata, false),
 	}
 }
 
@@ -99,10 +105,11 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "dns",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		MatcherStatus:    true,
 		Timestamp:        time.Now(),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
@@ -122,6 +129,19 @@ func questionToString(resourceRecords []dns.Question) string {
 	buffer := &bytes.Buffer{}
 	for _, resourceRecord := range resourceRecords {
 		buffer.WriteString(resourceRecord.String())
+	}
+	return buffer.String()
+}
+
+func traceToString(tracedata *retryabledns.TraceData, withSteps bool) string {
+	buffer := &bytes.Buffer{}
+	if tracedata != nil {
+		for i, dnsRecord := range tracedata.DNSData {
+			if withSteps {
+				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+			}
+			buffer.WriteString(dnsRecord.Raw)
+		}
 	}
 	return buffer.String()
 }
