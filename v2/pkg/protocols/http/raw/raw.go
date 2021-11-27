@@ -111,12 +111,24 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	} else if len(parts) > 1 {
 		rawRequest.Path = parts[1]
 	}
-
+	//the following logic checks if the Host value has multiple port numbers
+	//concatenated because it is possible to set port number in template as
+	//well. The code selects the port number in template and ignores the
+	//port number in the url
+	host_sep := strings.Split(rawRequest.Headers["Host"], ":")
+	len_host := len(host_sep)
+	if len_host > 2 {
+		rawRequest.Headers["Host"] = strings.Join(host_sep[:(len_host-2)], ":") + ":" + host_sep[len_host-1]
+		gologger.Info().Msgf("Printing Rawrequests Host after port adjustments %s",rawRequest.Headers["Host"])
+	}
+	//using the hostname provided in the template instead of using the one
+	//provided in the url
 	hostURL := rawRequest.Headers["Host"]
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	if parsedURL.Path != rawRequest.Path && hostURL == parsedURL.Host {
+	//the host check below is done ignoring any port number if present
+	if parsedURL.Path != rawRequest.Path && strings.Split(hostURL, ":")[0] == strings.Split(parsedURL.Host, ":")[0] {
 		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
 	}
 	if strings.HasSuffix(rawRequest.Path, "//") {
