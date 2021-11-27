@@ -21,7 +21,7 @@ type Extractor struct {
 	//   - "kval"
 	//   - "json"
 	//   - "xpath"
-	Type string `yaml:"type" jsonschema:"title=type of the extractor,description=Type of the extractor,enum=regex,enum=kval,enum=json,enum=xpath"`
+	Type TypeHolder `json:"name,omitempty" yaml:"type"`
 	// extractorType is the internal type of the extractor
 	extractorType ExtractorType
 
@@ -105,31 +105,11 @@ type Extractor struct {
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
 	Internal bool `yaml:"internal,omitempty" jsonschema:"title=mark extracted value for internal variable use,description=Internal when set to true will allow using the value extracted in the next request for some protocols"`
-}
 
-// ExtractorType is the type of the extractor specified
-type ExtractorType = int
-
-const (
-	// RegexExtractor extracts responses with regexes
-	RegexExtractor ExtractorType = iota + 1
-	// KValExtractor extracts responses with key:value
-	KValExtractor
-	// XPathExtractor extracts responses with Xpath selectors
-	XPathExtractor
-	// JSONExtractor extracts responses with json
-	JSONExtractor
-)
-
-// ExtractorTypes is a table for conversion of extractor type from string.
-var ExtractorTypes = map[string]ExtractorType{
-	"regex": RegexExtractor,
-	"kval":  KValExtractor,
-	"xpath": XPathExtractor,
-	"json":  JSONExtractor,
-}
-
-// GetType returns the type of the matcher
-func (e *Extractor) GetType() ExtractorType {
-	return e.extractorType
+	// description: |
+	//   CaseInsensitive enables case-insensitive extractions. Default is false.
+	// values:
+	//   - false
+	//   - true
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
 }

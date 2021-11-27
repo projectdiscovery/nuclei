@@ -5,10 +5,21 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
+
+func TestGenerateDNSVariables(t *testing.T) {
+	vars := generateDNSVariables("www.projectdiscovery.io")
+	require.Equal(t, map[string]interface{}{
+		"FQDN": "www.projectdiscovery.io",
+		"RDN":  "projectdiscovery.io",
+		"DN":   "projectdiscovery",
+		"TLD":  "io",
+		"SD":   "www",
+	}, vars, "could not get dns variables")
+}
 
 func TestDNSCompileMake(t *testing.T) {
 	options := testutils.DefaultOptions
@@ -16,12 +27,12 @@ func TestDNSCompileMake(t *testing.T) {
 	testutils.Init(options)
 	const templateID = "testing-dns"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
+		Class:       "INET",
+		Retries:     5,
+		ID:          templateID,
+		Recursion:   false,
+		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,

@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 
@@ -24,14 +25,17 @@ func (m *Matcher) CompileMatchers() error {
 	}
 
 	// Set up the matcher type
-	m.matcherType, ok = MatcherTypes[m.Type]
-	if !ok {
+	computedType, err := toMatcherTypes(m.GetType().String())
+	if err != nil {
 		return fmt.Errorf("unknown matcher type specified: %s", m.Type)
 	}
+
+	m.matcherType = computedType
 	// By default, match on body if user hasn't provided any specific items
 	if m.Part == "" {
 		m.Part = "body"
 	}
+
 
 	// Compile the regexes
 	for _, regex := range m.Regex {
@@ -40,6 +44,15 @@ func (m *Matcher) CompileMatchers() error {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
 		m.regexCompiled = append(m.regexCompiled, compiled)
+	}
+
+	// Compile and validate binary Values in matcher
+	for _, value := range m.Binary {
+		if decoded, err := hex.DecodeString(value); err != nil {
+			return fmt.Errorf("could not hex decode binary: %s", value)
+		} else {
+			m.binaryDecoded = append(m.binaryDecoded, string(decoded))
+		}
 	}
 
 	// Compile the dsl expressions
@@ -59,6 +72,15 @@ func (m *Matcher) CompileMatchers() error {
 		}
 	} else {
 		m.condition = ORCondition
+	}
+
+	if m.CaseInsensitive {
+		if m.GetType() != WordsMatcher {
+			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", m.Type)
+		}
+		for i := range m.Words {
+			m.Words[i] = strings.ToLower(m.Words[i])
+		}
 	}
 	return nil
 }

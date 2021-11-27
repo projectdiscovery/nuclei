@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestFileExecuteWithResults(t *testing.T) {
@@ -32,12 +32,12 @@ func TestFileExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"1.1.1.1"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
