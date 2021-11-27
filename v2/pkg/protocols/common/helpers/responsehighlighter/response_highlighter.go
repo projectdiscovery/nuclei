@@ -1,6 +1,7 @@
 package responsehighlighter
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -9,21 +10,45 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 )
 
-var colorizer = aurora.NewAurora(true)
+var colorFunction = aurora.Green
 
-func Highlight(operatorResult *operators.Result, response string, noColor bool) string {
+func Highlight(operatorResult *operators.Result, response string, noColor, hexDump bool) string {
 	result := response
 	if operatorResult != nil && !noColor {
-		for _, matches := range operatorResult.Matches {
-			if len(matches) > 0 {
-				for _, currentMatch := range matches {
-					result = strings.ReplaceAll(result, currentMatch, colorizer.Green(currentMatch).String())
+		for _, currentMatch := range getSortedMatches(operatorResult) {
+			if hexDump {
+				highlightedHexDump, err := toHighLightedHexDump(result, currentMatch)
+				if err == nil {
+					result = highlightedHexDump.String()
 				}
+			} else {
+				result = highlightASCII(currentMatch, result)
 			}
 		}
 	}
 
 	return result
+}
+
+func highlightASCII(currentMatch string, result string) string {
+	var coloredMatchBuilder strings.Builder
+	for _, char := range currentMatch {
+		coloredMatchBuilder.WriteString(addColor(string(char)))
+	}
+
+	return strings.ReplaceAll(result, currentMatch, coloredMatchBuilder.String())
+}
+
+func getSortedMatches(operatorResult *operators.Result) []string {
+	sortedMatches := make([]string, 0, len(operatorResult.Matches))
+	for _, matches := range operatorResult.Matches {
+		sortedMatches = append(sortedMatches, matches...)
+	}
+
+	sort.Slice(sortedMatches, func(i, j int) bool {
+		return len(sortedMatches[i]) > len(sortedMatches[j])
+	})
+	return sortedMatches
 }
 
 func CreateStatusCodeSnippet(response string, statusCode int) string {
@@ -32,4 +57,8 @@ func CreateStatusCodeSnippet(response string, statusCode int) string {
 		return response[:strings.Index(response, strStatusCode)+len(strStatusCode)]
 	}
 	return ""
+}
+
+func addColor(value string) string {
+	return colorFunction(value).String()
 }

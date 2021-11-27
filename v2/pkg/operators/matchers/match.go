@@ -1,10 +1,8 @@
 package matchers
 
 import (
-	"encoding/hex"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
@@ -42,6 +40,10 @@ func (m *Matcher) MatchSize(length int) bool {
 
 // MatchWords matches a word check against a corpus.
 func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}) (bool, []string) {
+	if m.CaseInsensitive {
+		corpus = strings.ToLower(corpus)
+	}
+
 	var matchedWords []string
 	// Iterate over all the words accepted as valid
 	for i, word := range m.Words {
@@ -116,17 +118,8 @@ func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 	var matchedBinary []string
 	// Iterate over all the words accepted as valid
-	for i, binary := range m.Binary {
-		// Continue if the word doesn't match
-		hexa, err := hex.DecodeString(binary)
-		if err != nil {
-			gologger.Warning().Msgf("Could not hex encode the given binary matcher value: '%s'", binary)
-			if m.condition == ANDCondition {
-				return false, []string{}
-			}
-			continue
-		}
-		if !strings.Contains(corpus, string(hexa)) {
+	for i, binary := range m.binaryDecoded {
+		if !strings.Contains(corpus, binary) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			if m.condition == ANDCondition {
@@ -138,10 +131,10 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 
 		// If the condition was an OR, return on the first match.
 		if m.condition == ORCondition {
-			return true, []string{string(hexa)}
+			return true, []string{binary}
 		}
 
-		matchedBinary = append(matchedBinary, string(hexa))
+		matchedBinary = append(matchedBinary, binary)
 
 		// If we are at the end of the words, return with true
 		if len(m.Binary)-1 == i {
