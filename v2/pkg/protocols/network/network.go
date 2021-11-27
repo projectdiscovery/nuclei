@@ -1,8 +1,6 @@
 package network
 
 import (
-	"fmt"
-	"net"
 	"strings"
 
 	"github.com/pkg/errors"
