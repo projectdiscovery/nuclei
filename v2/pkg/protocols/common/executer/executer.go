@@ -81,6 +81,11 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
+		// 
+		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
+			gologger.Info().Msgf("[%s] Stopping execution at first match for %s\n", e.options.TemplateID, input)
+			break
+		}
 	}
 	return results, nil
 }
