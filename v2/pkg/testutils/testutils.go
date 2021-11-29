@@ -4,6 +4,7 @@ import (
 	"go.uber.org/ratelimit"
 
 	"github.com/logrusorgru/aurora"
+
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -60,7 +61,7 @@ var DefaultOptions = &types.Options{
 	InteractshURL:              "https://interactsh.com",
 	InteractionsCacheSize:      5000,
 	InteractionsEviction:       60,
-	InteractionsCooldownPeriod: 5,
+	InteractionsCoolDownPeriod: 5,
 	InteractionsPollDuration:   5,
 }
 
@@ -131,7 +132,7 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 	}
 }
 
-// Write writes the event to file and/or screen.
+// WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
 	return nil
 }

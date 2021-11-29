@@ -20,7 +20,6 @@ const (
 	XPathExtractor
 	// JSONExtractor extracts responses with json
 	JSONExtractor
-	//limit
 	limit
 )
 

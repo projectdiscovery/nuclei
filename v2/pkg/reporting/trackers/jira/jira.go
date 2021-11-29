@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -103,7 +104,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 			d, _ := ioutil.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return fmt.Errorf("%s => %s", err, data)
+		return fmt.Errorf("%w => %s", err, data)
 	}
 	return nil
 }
@@ -140,7 +141,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 			d, _ := ioutil.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return "", fmt.Errorf("%s => %s", err, data)
+		return "", fmt.Errorf("%w => %s", err, data)
 	}
 
 	switch resp.Total {

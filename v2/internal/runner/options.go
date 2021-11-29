@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/go-playground/validator/v10"
+
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -93,7 +94,7 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	//loading the proxy server list from file or cli and test the connectivity
+	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
 		return err
 	}
