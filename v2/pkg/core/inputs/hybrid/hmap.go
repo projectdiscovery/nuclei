@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/filekv"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"

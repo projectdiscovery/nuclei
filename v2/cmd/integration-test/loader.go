@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -24,14 +25,14 @@ type remoteTemplateList struct{}
 func (h *remoteTemplateList) Execute(templateList string) error {
 	router := httprouter.New()
 
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test headers matcher text")
 		}
-	}))
+	})
 
-	router.GET("/template_list", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/template_list", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		file, err := os.ReadFile(templateList)
 		if err != nil {
 			w.WriteHeader(500)
@@ -40,7 +41,7 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 		if err != nil {
 			w.WriteHeader(500)
 		}
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -60,14 +61,14 @@ type remoteWorkflowList struct{}
 func (h *remoteWorkflowList) Execute(workflowList string) error {
 	router := httprouter.New()
 
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test headers matcher text")
 		}
-	}))
+	})
 
-	router.GET("/workflow_list", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/workflow_list", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		file, err := os.ReadFile(workflowList)
 		if err != nil {
 			w.WriteHeader(500)
@@ -76,7 +77,7 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 		if err != nil {
 			w.WriteHeader(500)
 		}
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

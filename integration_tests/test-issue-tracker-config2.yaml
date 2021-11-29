@@ -5,47 +5,47 @@ allow-list:
 deny-list:
   severity: low
 
-# github contains configuration options for github issue tracker
-github:
-  # base-url is the optional self-hosted github application url
-  base-url: https://localhost:8443/github
-  # username is the username of the github user
+# GitHub contains configuration options for GitHub issue tracker
+GitHub:
+  # base-url is the optional self-hosted GitHub application url
+  base-url: https://localhost:8443/GitHub
+  # username is the username of the GitHub user
   username: test-username
   # owner is the owner name of the repository for issues.
   owner: test-owner
-  # token is the token for github account.
+  # token is the token for GitHub account.
   token: test-token
   # project-name is the name of the repository.
   project-name: test-project
   # issue-label is the label of the created issue type
   issue-label: bug
 
-# gitlab contains configuration options for gitlab issue tracker
-gitlab:
-  # base-url is the optional self-hosted gitlab application url
-  base-url: https://localhost:8443/gitlab
-  # username is the username of the gitlab user
+# GitLab contains configuration options for GitLab issue tracker
+GitLab:
+  # base-url is the optional self-hosted GitLab application url
+  base-url: https://localhost:8443/GitLab
+  # username is the username of the GitLab user
   username: test-username
-  # token is the token for gitlab account.
+  # token is the token for GitLab account.
   token: test-token
   # project-name is the name/id of the project(repository).
   project-name: "1234"
   # issue-label is the label of the created issue type
   issue-label: bug
 
-# jira contains configuration options for jira issue tracker
-jira:
+# Jira contains configuration options for Jira issue tracker
+Jira:
   # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
   cloud: true
   # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
   update-existing: false
-  # URL is the jira application url
-  url: https://localhost/jira
-  # account-id is the account-id of the jira user or username in case of on-prem Jira
+  # URL is the Jira application url
+  url: https://localhost/Jira
+  # account-id is the account-id of the Jira user or username in case of on-prem Jira
   account-id: test-account-id
-  # email is the email of the user for jira instance
+  # email is the email of the user for Jira instance
   email: test@test.com
-  # token is the token for jira instance or password in case of on-prem Jira
+  # token is the token for Jira instance or password in case of on-prem Jira
   token: test-token
   # project-name is the name of the project.
   project-name: test-project-name

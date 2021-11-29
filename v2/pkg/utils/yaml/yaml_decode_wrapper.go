@@ -19,8 +19,8 @@ func DecodeAndValidate(r io.Reader, v interface{}) error {
 	if validate == nil {
 		validate = validator.New()
 	}
-	if err := validate.Struct(v); err != nil {
 
+	if err := validate.Struct(v); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return err
 		}

@@ -331,7 +331,7 @@ func init() {
 	HTTPRequestDoc.Fields[6].Name = "name"
 	HTTPRequestDoc.Fields[6].Type = "string"
 	HTTPRequestDoc.Fields[6].Note = ""
-	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multirequest based matchers."
+	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers."
 	HTTPRequestDoc.Fields[6].Comments[encoder.LineComment] = "Name is the optional name of the request."
 	HTTPRequestDoc.Fields[7].Name = "attack"
 	HTTPRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
