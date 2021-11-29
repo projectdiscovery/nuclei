@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -25,7 +25,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: "GET",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -41,7 +41,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 13, "could not get correct number of items in dsl map")
+	require.Len(t, event, 14, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 }
@@ -55,7 +55,7 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: "GET",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -71,48 +71,66 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 13, "could not get correct number of items in dsl map")
+	require.Len(t, event, 14, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}
 		err = matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid response")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, matcher.Words, matched)
 	})
 
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "body",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile negative matcher")
 
-		matched := request.Match(event, matcher)
-		require.True(t, matched, "could not match valid negative response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid negative response matcher")
+		require.Equal(t, []string{}, matched)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
 		require.Nil(t, err, "could not compile matcher")
 
-		matched := request.Match(event, matcher)
-		require.False(t, matched, "could match invalid response matcher")
+		isMatched, matched := request.Match(event, matcher)
+		require.False(t, isMatched, "could match invalid response matcher")
+		require.Equal(t, []string{}, matched)
+	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		matcher := &matchers.Matcher{
+			Part:            "body",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, // only applies to word
+			Words:           []string{"EXAMPLE DOMAIN"},
+			CaseInsensitive: true,
+		}
+		err = matcher.CompileMatchers()
+		require.Nil(t, err, "could not compile matcher")
+
+		isMatched, matched := request.Match(event, matcher)
+		require.True(t, isMatched, "could not match valid response")
+		require.Equal(t, []string{"example domain"}, matched)
 	})
 }
 
@@ -125,7 +143,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: "GET",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -141,14 +159,14 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 13, "could not get correct number of items in dsl map")
+	require.Len(t, event, 14, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test_header"], "could not get correct resp for header")
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "body",
-			Type:  "regex",
+			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -161,7 +179,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: "kval",
+			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"test_header"},
 		}
 		err = extractor.CompileExtractors()
@@ -177,7 +195,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 
 		t.Run("jq-simple", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".batters | .batter | .[] | .id"},
 			}
 			err = extractor.CompileExtractors()
@@ -189,7 +207,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		})
 		t.Run("jq-array", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".array"},
 			}
 			err = extractor.CompileExtractors()
@@ -201,7 +219,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		})
 		t.Run("jq-object", func(t *testing.T) {
 			extractor := &extractors.Extractor{
-				Type: "json",
+				Type: extractors.TypeHolder{ExtractorType: extractors.JSONExtractor},
 				JSON: []string{".batters"},
 			}
 			err = extractor.CompileExtractors()
@@ -211,6 +229,22 @@ func TestHTTPOperatorExtract(t *testing.T) {
 			require.Greater(t, len(data), 0, "could not extractor json valid response")
 			require.Equal(t, map[string]struct{}{"{\"batter\":[{\"id\":\"1001\",\"type\":\"Regular\"},{\"id\":\"1002\",\"type\":\"Chocolate\"},{\"id\":\"1003\",\"type\":\"Blueberry\"},{\"id\":\"1004\",\"type\":\"Devil's Food\"}]}": {}}, data, "could not extract correct json data")
 		})
+	})
+
+	t.Run("caseInsensitive", func(t *testing.T) {
+		event["body"] = exampleResponseBody
+
+		extractor := &extractors.Extractor{
+			Type:            extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
+			KVal:            []string{"TEST_HEADER"}, // only applies to KVal
+			CaseInsensitive: true,
+		}
+		err = extractor.CompileExtractors()
+		require.Nil(t, err, "could not compile kval extractor")
+
+		data := request.Extract(event, extractor)
+		require.Greater(t, len(data), 0, "could not extractor kval valid response")
+		require.Equal(t, map[string]struct{}{"test-response": {}}, data, "could not extract correct kval data")
 	})
 }
 
@@ -223,17 +257,17 @@ func TestHTTPMakeResult(t *testing.T) {
 		ID:     templateID,
 		Name:   "testing",
 		Path:   []string{"{{BaseURL}}?test=1"},
-		Method: "GET",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "body",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"1.1.1.1"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "body",
-				Type:  "regex",
+				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
@@ -252,14 +286,14 @@ func TestHTTPMakeResult(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 13, "could not get correct number of items in dsl map")
+	require.Len(t, event, 14, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 
 	event["ip"] = "192.169.1.1"
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract)
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {
 			finalEvent.OperatorsResult = result
 			finalEvent.Results = request.MakeResultEvent(finalEvent)

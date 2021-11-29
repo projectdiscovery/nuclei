@@ -4,23 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/gobwas/ws"
+	"github.com/julienschmidt/httprouter"
 )
 
 // RunNucleiTemplateAndGetResults returns a list of results for a template
 func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	return runNucleiAndGetResults(true, template, url, debug, extra...)
+	return RunNucleiAndGetResults(true, template, url, debug, extra...)
 }
 
 // RunNucleiWorkflowAndGetResults returns a list of results for a workflow
 func RunNucleiWorkflowAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
-	return runNucleiAndGetResults(false, template, url, debug, extra...)
+	return RunNucleiAndGetResults(false, template, url, debug, extra...)
 }
 
-func runNucleiAndGetResults(isTemplate bool, template, url string, debug bool, extra ...string) ([]string, error) {
+func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, extra ...string) ([]string, error) {
 	var templateOrWorkflowFlag string
 	if isTemplate {
 		templateOrWorkflowFlag = "-t"
@@ -28,11 +33,22 @@ func runNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 		templateOrWorkflowFlag = "-w"
 	}
 
-	cmd := exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-silent")
+	return RunNucleiBareArgsAndGetResults(debug, append([]string{
+		templateOrWorkflowFlag,
+		template,
+		"-target",
+		url,
+	}, extra...)...)
+}
+
+func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
+	cmd := exec.Command("./nuclei")
 	if debug {
-		cmd = exec.Command("./nuclei", templateOrWorkflowFlag, template, "-target", url, "-debug")
+		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
 		fmt.Println(cmd.String())
+	} else {
+		cmd.Args = append(cmd.Args, "-silent")
 	}
 	cmd.Args = append(cmd.Args, extra...)
 	data, err := cmd.Output()
@@ -81,10 +97,14 @@ type TCPServer struct {
 }
 
 // NewTCPServer creates a new TCP server from a handler
-func NewTCPServer(handler func(conn net.Conn)) *TCPServer {
+func NewTCPServer(handler func(conn net.Conn), port ...int) *TCPServer {
 	server := &TCPServer{}
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	var gotPort int
+	if len(port) > 0 {
+		gotPort = port[0]
+	}
+	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", gotPort))
 	if err != nil {
 		panic(err)
 	}
@@ -108,4 +128,30 @@ func NewTCPServer(handler func(conn net.Conn)) *TCPServer {
 // Close closes the TCP server
 func (s *TCPServer) Close() {
 	s.listener.Close()
+}
+
+// NewWebsocketServer creates a new websocket server from a handler
+func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate func(origin string) bool, port ...int) *httptest.Server {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if value := r.Header.Get("Origin"); value != "" && !originValidate(value) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		conn, _, _, err := ws.UpgradeHTTP(r, w)
+		if err != nil {
+			return
+		}
+		go func() {
+			defer conn.Close()
+
+			handler(conn)
+		}()
+	})
+
+	if path != "" {
+		router := httprouter.New()
+		router.HandlerFunc("*", "/test", handlerFunc)
+		return httptest.NewServer(router)
+	}
+	return httptest.NewServer(handlerFunc)
 }

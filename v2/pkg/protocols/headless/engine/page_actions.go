@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	"github.com/valyala/fasttemplate"
@@ -22,9 +24,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 
 	outData := make(map[string]string)
 	for _, act := range actions {
-		actionType := ActionStringToAction[act.ActionType]
-
-		switch actionType {
+		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData, baseURL)
 		case ActionScript:
@@ -46,7 +46,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 		case ActionGetResource:
 			err = p.GetResource(act, outData)
 		case ActionExtract:
-			err = p.SelectInputElement(act, outData)
+			err = p.ExtractElement(act, outData)
 		case ActionWaitEvent:
 			err = p.WaitEvent(act, outData)
 		case ActionFilesInput:
@@ -67,6 +67,8 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 			err = p.DebugAction(act, outData)
 		case ActionSleep:
 			err = p.SleepAction(act, outData)
+		case ActionWaitVisible:
+			err = p.WaitVisible(act, outData)
 		default:
 			continue
 		}
@@ -81,6 +83,83 @@ type requestRule struct {
 	Action ActionType
 	Part   string
 	Args   map[string]string
+}
+
+const elementDidNotAppearMessage = "Element did not appear in the given amount of time"
+
+// WaitVisible waits until an element appears.
+func (p *Page) WaitVisible(act *Action, out map[string]string) error {
+	timeout, err := getTimeout(act)
+	if err != nil {
+		return errors.Wrap(err, "Wrong timeout given")
+	}
+
+	pollTime, err := getPollTime(act)
+	if err != nil {
+		return errors.Wrap(err, "Wrong polling time given")
+	}
+
+	element, _ := p.Sleeper(pollTime, timeout).
+		Timeout(timeout).
+		pageElementBy(act.Data)
+
+	if element != nil {
+		if err := element.WaitVisible(); err != nil {
+			return errors.Wrap(err, elementDidNotAppearMessage)
+		}
+	} else {
+		return errors.New(elementDidNotAppearMessage)
+	}
+
+	return nil
+}
+
+func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
+	page := *p
+	page.page = page.Page().Sleeper(func() utils.Sleeper {
+		return createBackOffSleeper(pollTimeout, timeout)
+	})
+	return &page
+}
+
+func (p *Page) Timeout(timeout time.Duration) *Page {
+	page := *p
+	page.page = page.Page().Timeout(timeout)
+	return &page
+}
+
+func createBackOffSleeper(pollTimeout, timeout time.Duration) utils.Sleeper {
+	backoffSleeper := utils.BackoffSleeper(pollTimeout, timeout, func(duration time.Duration) time.Duration {
+		return duration
+	})
+
+	return func(ctx context.Context) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		return backoffSleeper(ctx)
+	}
+}
+
+func getTimeout(act *Action) (time.Duration, error) {
+	return geTimeParameter(act, "timeout", 3, time.Second)
+}
+
+func getPollTime(act *Action) (time.Duration, error) {
+	return geTimeParameter(act, "pollTime", 100, time.Millisecond)
+}
+
+func geTimeParameter(act *Action, parameterName string, defaultValue time.Duration, duration time.Duration) (time.Duration, error) {
+	pollTimeString := act.GetArg(parameterName)
+	if pollTimeString == "" {
+		return defaultValue * duration, nil
+	}
+	timeout, err := strconv.Atoi(pollTimeString)
+	if err != nil {
+		return time.Duration(0), err
+	}
+	return time.Duration(timeout) * duration, nil
 }
 
 // ActionAddHeader executes a AddHeader action.
@@ -320,12 +399,12 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string /*TODO revi
 		return errors.Wrap(err, "could not scroll into view")
 	}
 
-	selectedbool := false
+	selectedBool := false
 	if act.GetArg("selected") == "true" {
-		selectedbool = true
+		selectedBool = true
 	}
 	by := act.GetArg("selector")
-	if err := element.Select([]string{value}, selectedbool, selectorBy(by)); err != nil {
+	if err := element.Select([]string{value}, selectedBool, selectorBy(by)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
 	return nil
@@ -430,7 +509,7 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 	protoEvent := &protoEvent{event: event}
 
 	// Uses another instance in order to be able to chain the timeout only to the wait operation
-	pagec := p.page
+	pageCopy := p.page
 	timeout := act.GetArg("timeout")
 	if timeout != "" {
 		ts, err := strconv.Atoi(timeout)
@@ -438,11 +517,11 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 			return errors.Wrap(err, "could not get timeout")
 		}
 		if ts > 0 {
-			pagec = p.page.Timeout(time.Duration(ts) * time.Second)
+			pageCopy = p.page.Timeout(time.Duration(ts) * time.Second)
 		}
 	}
 	// Just wait the event to happen
-	pagec.WaitEvent(protoEvent)()
+	pageCopy.WaitEvent(protoEvent)()
 	return nil
 }
 

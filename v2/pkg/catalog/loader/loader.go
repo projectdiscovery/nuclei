@@ -10,20 +10,27 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Config contains the configuration options for the loader
 type Config struct {
 	Templates        []string
+	TemplateURLs     []string
 	Workflows        []string
+	WorkflowURLs     []string
 	ExcludeTemplates []string
 	IncludeTemplates []string
 
-	Tags        []string
-	ExcludeTags []string
-	Authors     []string
-	Severities  severity.Severities
-	IncludeTags []string
+	Tags              []string
+	ExcludeTags       []string
+	Protocols         templateTypes.ProtocolTypes
+	ExcludeProtocols  templateTypes.ProtocolTypes
+	Authors           []string
+	Severities        severity.Severities
+	ExcludeSeverities severity.Severities
+	IncludeTags       []string
 
 	Catalog            *catalog.Catalog
 	ExecutorOptions    protocols.ExecuterOptions
@@ -36,11 +43,36 @@ type Store struct {
 	pathFilter     *filter.PathFilter
 	config         *Config
 	finalTemplates []string
+	finalWorkflows []string
 
 	templates []*templates.Template
 	workflows []*templates.Template
 
 	preprocessor templates.Preprocessor
+}
+
+// NewConfig returns a new loader config
+func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+	loaderConfig := Config{
+		Templates:          options.Templates,
+		Workflows:          options.Workflows,
+		TemplateURLs:       options.TemplateURLs,
+		WorkflowURLs:       options.WorkflowURLs,
+		ExcludeTemplates:   options.ExcludedTemplates,
+		Tags:               options.Tags,
+		ExcludeTags:        options.ExcludeTags,
+		IncludeTemplates:   options.IncludeTemplates,
+		Authors:            options.Authors,
+		Severities:         options.Severities,
+		ExcludeSeverities:  options.ExcludeSeverities,
+		IncludeTags:        options.IncludeTags,
+		TemplatesDirectory: options.TemplatesDirectory,
+		Protocols:          options.Protocols,
+		ExcludeProtocols:   options.ExcludeProtocols,
+		Catalog:            catalog,
+		ExecutorOptions:    executerOpts,
+	}
+	return &loaderConfig
 }
 
 // New creates a new template store based on provided configuration
@@ -49,23 +81,38 @@ func New(config *Config) (*Store, error) {
 	store := &Store{
 		config: config,
 		tagFilter: filter.New(&filter.Config{
-			Tags:        config.Tags,
-			ExcludeTags: config.ExcludeTags,
-			Authors:     config.Authors,
-			Severities:  config.Severities,
-			IncludeTags: config.IncludeTags,
+			Tags:              config.Tags,
+			ExcludeTags:       config.ExcludeTags,
+			Authors:           config.Authors,
+			Severities:        config.Severities,
+			ExcludeSeverities: config.ExcludeSeverities,
+			IncludeTags:       config.IncludeTags,
+			Protocols:         config.Protocols,
+			ExcludeProtocols:  config.ExcludeProtocols,
 		}),
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,
 			ExcludedTemplates: config.ExcludeTemplates,
 		}, config.Catalog),
+		finalTemplates: config.Templates,
+		finalWorkflows: config.Workflows,
+	}
+
+	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
+	if urlBasedTemplatesProvided {
+		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
+		if err != nil {
+			return store, err
+		}
+		store.finalTemplates = append(store.finalTemplates, remoteTemplates...)
+		store.finalWorkflows = append(store.finalWorkflows, remoteWorkflows...)
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(config.Templates) == 0 && len(config.Workflows) == 0 {
-		config.Templates = append(config.Templates, config.TemplatesDirectory)
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
+		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
-	store.finalTemplates = append(store.finalTemplates, config.Templates...)
+
 	return store, nil
 }
 
@@ -88,7 +135,7 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() {
 	store.templates = store.LoadTemplates(store.finalTemplates)
-	store.workflows = store.LoadWorkflows(store.config.Workflows)
+	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
 // ValidateTemplates takes a list of templates and validates them

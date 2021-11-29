@@ -130,15 +130,8 @@
           "description": "Name of the extractor"
         },
         "type": {
-          "enum": [
-            "regex",
-            "kval",
-            "json",
-            "xpath"
-          ],
-          "type": "string",
-          "title": "type of the extractor",
-          "description": "Type of the extractor"
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/extractors.TypeHolder"
         },
         "regex": {
           "items": {
@@ -191,10 +184,26 @@
           "type": "boolean",
           "title": "mark extracted value for internal variable use",
           "description": "Internal when set to true will allow using the value extracted in the next request for some protocols"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive extract",
+          "description": "use case insensitive extract"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "extractors.TypeHolder": {
+      "enum": [
+        "regex",
+        "kval",
+        "xpath",
+        "json"
+      ],
+      "type": "string",
+      "title": "type of the extractor",
+      "description": "Type of the extractor"
     },
     "matchers.Matcher": {
       "required": [
@@ -202,15 +211,8 @@
       ],
       "properties": {
         "type": {
-          "enum": [
-            "status",
-            "size",
-            "word",
-            "regex",
-            "binary",
-            "dsl"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/matchers.MatcherTypeHolder",
           "title": "type of matcher",
           "description": "Type of the matcher"
         },
@@ -293,10 +295,54 @@
           "type": "string",
           "title": "encoding for word field",
           "description": "Optional encoding for the word fields"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive match",
+          "description": "use case insensitive match"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "matchers.MatcherTypeHolder": {
+      "enum": [
+        "word",
+        "regex",
+        "binary",
+        "status",
+        "size",
+        "dsl"
+      ],
+      "type": "string",
+      "title": "type of the matcher",
+      "description": "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"
+    },
+    "generators.AttackTypeHolder": {
+      "enum": [
+        "batteringram",
+        "pitchfork",
+        "clusterbomb"
+      ],
+      "type": "string",
+      "title": "type of the attack",
+      "description": "Type of the attack"
+    },
+    "dns.DNSRequestTypeHolder": {
+      "enum": [
+        "A",
+        "NS",
+        "DS",
+        "CNAME",
+        "SOA",
+        "PTR",
+        "MX",
+        "TXT",
+        "AAAA"
+      ],
+      "type": "string",
+      "title": "type of DNS request to make",
+      "description": "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"
     },
     "dns.Request": {
       "properties": {
@@ -336,18 +382,8 @@
           "description": "Name is the Hostname to make DNS request for"
         },
         "type": {
-          "enum": [
-            "A",
-            "NS",
-            "DS",
-            "CNAME",
-            "SOA",
-            "PTR",
-            "MX",
-            "TXT",
-            "AAAA"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/dns.DNSRequestTypeHolder",
           "title": "type of dns request to make",
           "description": "Type is the type of DNS request to make"
         },
@@ -368,6 +404,16 @@
           "type": "integer",
           "title": "retries for dns request",
           "description": "Retries is the number of retries for the DNS request"
+        },
+        "trace": {
+          "type": "boolean",
+          "title": "trace operation",
+          "description": "Trace performs a trace operation for the target."
+        },
+        "trace-max-recursion": {
+          "type": "integer",
+          "title": "trace-max-recursion level for dns request",
+          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
         },
         "recursion": {
           "type": "boolean",
@@ -519,36 +565,60 @@
           "description": "Description of the headless action"
         },
         "action": {
-          "enum": [
-            "navigate",
-            "script",
-            "click",
-            "rightclick",
-            "text",
-            "screenshot",
-            "time",
-            "select",
-            "files",
-            "waitload",
-            "getresource",
-            "extract",
-            "setmethod",
-            "addheader",
-            "setheader",
-            "deleteheader",
-            "setbody",
-            "waitevent",
-            "keyboard",
-            "debug",
-            "sleep"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/engine.ActionTypeHolder",
           "title": "action to perform",
           "description": "Type of actions to perform"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "engine.ActionTypeHolder": {
+      "enum": [
+        "navigate",
+        "script",
+        "click",
+        "rightclick",
+        "text",
+        "screenshot",
+        "time",
+        "select",
+        "files",
+        "waitload",
+        "getresource",
+        "extract",
+        "set-method",
+        "addheader",
+        "setheader",
+        "deleteheader",
+        "setbody",
+        "waitevent",
+        "keyboard",
+        "debug",
+        "sleep",
+        "waitvisible"
+      ],
+      "type": "string",
+      "title": "action to perform",
+      "description": "Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"
+    },
+    "http.HTTPMethodTypeHolder": {
+      "enum": [
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "CONNECT",
+        "OPTIONS",
+        "TRACE",
+        "PATCH",
+        "PURGE"
+      ],
+      "type": "string",
+      "title": "method is the HTTP request method",
+      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
     },
     "http.Request": {
       "properties": {
@@ -605,29 +675,14 @@
           "description": "Optional name for the HTTP Request"
         },
         "attack": {
-          "enum": [
-            "sniper",
-            "pitchfork",
-            "clusterbomb"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
         "method": {
-          "enum": [
-            "GET",
-            "HEAD",
-            "POST",
-            "PUT",
-            "DELETE",
-            "CONNECT",
-            "OPTIONS",
-            "TRACE",
-            "PATCH",
-            "PURGE"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/http.HTTPMethodTypeHolder",
           "title": "method is the http request method",
           "description": "Method is the HTTP Request Method"
         },
@@ -720,6 +775,11 @@
           "type": "boolean",
           "title": "stop at first match",
           "description": "Stop the execution after a match is found"
+        },
+        "skip-variables-check": {
+          "type": "boolean",
+          "title": "skip variable checks",
+          "description": "Skips the check for unresolved variables in request"
         }
       },
       "additionalProperties": false,
@@ -733,11 +793,8 @@
           "description": "Data is the data to send as the input"
         },
         "type": {
-          "enum": [
-            "hex",
-            "text"
-          ],
-          "type": "string",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/network.NetworkInputTypeHolder",
           "title": "type is the type of input data",
           "description": "Type of input specified in data field"
         },
@@ -755,6 +812,15 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "network.NetworkInputTypeHolder": {
+      "enum": [
+        "hex",
+        "text"
+      ],
+      "type": "string",
+      "title": "type is the type of input data",
+      "description": "description=Type of input specified in data field,enum=hex,enum=text"
+    },
     "network.Request": {
       "properties": {
         "id": {
@@ -771,12 +837,7 @@
           "description": "Host to send network requests to"
         },
         "attack": {
-          "enum": [
-            "sniper",
-            "pitchfork",
-            "clusterbomb"
-          ],
-          "type": "string",
+          "$ref": "#/definitions/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
@@ -803,6 +864,11 @@
           "type": "integer",
           "title": "size of network response to read",
           "description": "Size of response to read at the end. Default is 1024 bytes"
+        },
+        "read-all": {
+          "type": "boolean",
+          "title": "read all response stream",
+          "description": "Read all response stream till the server stops sending"
         },
         "matchers": {
           "items": {
@@ -833,6 +899,128 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "ssl.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "address": {
+          "type": "string",
+          "title": "address for the ssl request",
+          "description": "Address contains address for the request"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "websocket.Input": {
+      "properties": {
+        "data": {
+          "type": "string",
+          "title": "data to send as input",
+          "description": "Data is the data to send as the input"
+        },
+        "name": {
+          "type": "string",
+          "title": "optional name for data read",
+          "description": "Optional name of the data read to provide matching on"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "websocket.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "address": {
+          "type": "string",
+          "title": "address for the websocket request",
+          "description": "Address contains address for the request"
+        },
+        "inputs": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/websocket.Input"
+          },
+          "type": "array",
+          "title": "inputs for the websocket request",
+          "description": "Inputs contains any input/output for the current request"
+        },
+        "headers": {
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "title": "headers contains the request headers",
+          "description": "Headers contains headers for the request"
+        },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the webosocket request",
+          "description": "Payloads contains any payloads for the current request"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "templates.Template": {
       "required": [
         "id",
@@ -840,6 +1028,7 @@
       ],
       "properties": {
         "id": {
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
           "type": "string",
           "title": "id of the template",
           "description": "The Unique ID for the template",
@@ -898,6 +1087,24 @@
           "title": "headless requests to make",
           "description": "Headless requests to make for the template"
         },
+        "ssl": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/ssl.Request"
+          },
+          "type": "array",
+          "title": "ssl requests to make",
+          "description": "SSL requests to make for the template"
+        },
+        "websocket": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/websocket.Request"
+          },
+          "type": "array",
+          "title": "websocket requests to make",
+          "description": "Websocket requests to make for the template"
+        },
         "workflows": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -906,6 +1113,11 @@
           "type": "array",
           "title": "list of workflows to execute",
           "description": "List of workflows to execute for template"
+        },
+        "self-contained": {
+          "type": "boolean",
+          "title": "mark requests as self-contained",
+          "description": "Mark Requests for the template as self-contained"
         }
       },
       "additionalProperties": false,

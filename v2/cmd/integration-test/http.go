@@ -7,39 +7,61 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/http/httputil"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	"http/get-headers.yaml":           &httpGetHeaders{},
-	"http/get-query-string.yaml":      &httpGetQueryString{},
-	"http/get-redirects.yaml":         &httpGetRedirects{},
-	"http/get.yaml":                   &httpGet{},
-	"http/post-body.yaml":             &httpPostBody{},
-	"http/post-json-body.yaml":        &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":   &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":      &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml": &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":         &httpRawGetQuery{},
-	"http/raw-get.yaml":               &httpRawGet{},
-	"http/raw-payload.yaml":           &httpRawPayload{},
-	"http/raw-post-body.yaml":         &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":    &httpRawUnsafeRequest{},
-	"http/request-condition.yaml":     &httpRequestCondition{},
-	"http/request-condition-new.yaml": &httpRequestCondition{},
+	"http/get-headers.yaml":                        &httpGetHeaders{},
+	"http/get-query-string.yaml":                   &httpGetQueryString{},
+	"http/get-redirects.yaml":                      &httpGetRedirects{},
+	"http/get.yaml":                                &httpGet{},
+	"http/post-body.yaml":                          &httpPostBody{},
+	"http/post-json-body.yaml":                     &httpPostJSONBody{},
+	"http/post-multipart-body.yaml":                &httpPostMultipartBody{},
+	"http/raw-cookie-reuse.yaml":                   &httpRawCookieReuse{},
+	"http/raw-dynamic-extractor.yaml":              &httpRawDynamicExtractor{},
+	"http/raw-get-query.yaml":                      &httpRawGetQuery{},
+	"http/raw-get.yaml":                            &httpRawGet{},
+	"http/raw-payload.yaml":                        &httpRawPayload{},
+	"http/raw-post-body.yaml":                      &httpRawPostBody{},
+	"http/raw-unsafe-request.yaml":                 &httpRawUnsafeRequest{},
+	"http/request-condition.yaml":                  &httpRequestCondition{},
+	"http/request-condition-new.yaml":              &httpRequestCondition{},
+	"http/interactsh.yaml":                         &httpInteractshRequest{},
+	"http/self-contained.yaml":                     &httpRequestSelContained{},
+	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
+	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
+	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
 }
 
-func httpDebugRequestDump(r *http.Request) {
-	if debug {
-		if dump, err := httputil.DumpRequest(r, true); err == nil {
-			fmt.Printf("\nRequest dump: \n%s\n\n", string(dump))
+type httpInteractshRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpInteractshRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+				resp.Body.Close()
+			}
 		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
 }
 
 type httpGetHeaders struct{}
@@ -48,7 +70,6 @@ type httpGetHeaders struct{}
 func (h *httpGetHeaders) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test headers matcher text")
 		}
@@ -72,7 +93,6 @@ type httpGetQueryString struct{}
 func (h *httpGetQueryString) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
 			fmt.Fprintf(w, "This is test querystring matcher text")
 		}
@@ -96,11 +116,9 @@ type httpGetRedirects struct{}
 func (h *httpGetRedirects) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		http.Redirect(w, r, "/redirected", http.StatusFound)
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test redirects matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -122,7 +140,6 @@ type httpGet struct{}
 func (h *httpGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -146,7 +163,6 @@ func (h *httpPostBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -179,8 +195,6 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
-
 		type doc struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
@@ -218,7 +232,6 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseMultipartForm(1 * 1024); err != nil {
 			routerErr = err
 			return
@@ -261,7 +274,6 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -271,7 +283,6 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 		}
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("username"), "nuclei") {
 			fmt.Fprintf(w, "Test is test-dynamic-extractor-raw matcher text")
 		}
@@ -300,7 +311,6 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
 			fmt.Fprintf(w, "Test is test raw-get-query-matcher text")
 		}
@@ -329,8 +339,6 @@ func (h *httpRawGet) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
-
 		fmt.Fprintf(w, "Test is test raw-get-matcher text")
 	})
 	ts := httptest.NewServer(router)
@@ -357,7 +365,6 @@ func (h *httpRawPayload) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -393,7 +400,6 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -426,7 +432,6 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -436,7 +441,6 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 		}
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		if err := r.ParseForm(); err != nil {
 			routerErr = err
 			return
@@ -500,11 +504,9 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	var routerErr error
 
 	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		w.WriteHeader(200)
 	})
 	router.GET("/400", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		httpDebugRequestDump(r)
 		w.WriteHeader(400)
 	})
 	ts := httptest.NewServer(router)
@@ -516,6 +518,110 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	}
 	if routerErr != nil {
 		return routerErr
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpRequestSelContained struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRequestSelContained) Execute(filePath string) error {
+	router := httprouter.New()
+	var routerErr error
+
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
+		Handler: router,
+	}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+	defer server.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return routerErr
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetCaseInsensitive struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetCaseInsensitive) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "THIS IS TEST MATCHER TEXT")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetCaseInsensitiveCluster struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	files := strings.Split(filesPath, ",")
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(files[0], ts.URL, debug, "-t", files[1])
+	if err != nil {
+		return err
+	}
+	if len(results) != 2 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetRedirectsChainHeaders struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Secret", "TestRedirectHeaderMatch")
+		http.Redirect(w, r, "/final", http.StatusFound)
+	})
+	router.GET("/final", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("ok"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
 	if len(results) != 1 {
 		return errIncorrectResultsCount(results)

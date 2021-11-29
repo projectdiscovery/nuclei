@@ -1,6 +1,7 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/projectdiscovery/nebula"
@@ -14,8 +15,13 @@ type Options struct {
 	Store *runtime.Store
 }
 
+var ErrDSLArguments = errors.New("invalid arguments provided to dsl")
+
 func AddGlobalCustomHelpers(options *Options) error {
 	_ = nebula.AddFunc("generate_java_gadget", func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, ErrDSLArguments
+		}
 		gadget := args[0].(string)
 		cmd := args[1].(string)
 

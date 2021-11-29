@@ -7,8 +7,11 @@ import (
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
+	"github.com/weppos/publicsuffix-go/publicsuffix"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -30,7 +33,7 @@ type Request struct {
 	//   - value: "\"{{FQDN}}\""
 	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
-	//   Type is the type of DNS request to make.
+	//   RequestType is the type of DNS request to make.
 	// values:
 	//   - "A"
 	//   - "NS"
@@ -41,7 +44,7 @@ type Request struct {
 	//   - "MX"
 	//   - "TXT"
 	//   - "AAAA"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -60,6 +63,15 @@ type Request struct {
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
 	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
+	// description: |
+	//   Trace performs a trace operation for the target.
+	Trace bool `yaml:"trace,omitempty" jsonschema:"title=trace operation,description=Trace performs a trace operation for the target."`
+	// description: |
+	//   TraceMaxRecursion is the number of max recursion allowed for trace operations
+	// examples:
+	//   - name: Use a retry of 100 to 150 generally
+	//     value: 100
+	TraceMaxRecursion int `yaml:"trace-max-recursion,omitempty"  jsonschema:"title=trace-max-recursion level for dns request,description=TraceMaxRecursion is the number of max recursion allowed for trace operations"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
@@ -76,47 +88,73 @@ type Request struct {
 	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
 
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{request.CompiledOperators}
+}
+
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	dnsClientOptions := &dnsclientpool.Configuration{
-		Retries: r.Retries,
+		Retries: request.Retries,
 	}
-	if len(r.Resolvers) > 0 {
-		dnsClientOptions.Resolvers = r.Resolvers
+	if len(request.Resolvers) > 0 {
+		dnsClientOptions.Resolvers = request.Resolvers
 	}
 	// Create a dns client for the class
-	client, err := dnsclientpool.Get(options.Options, dnsClientOptions)
+	client, err := request.getDnsClient(options, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
 	}
-	r.dnsClient = client
+	request.dnsClient = client
 
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
-	r.class = classToInt(r.Class)
-	r.options = options
-	r.question = questionTypeToInt(r.Type)
+	request.class = classToInt(request.Class)
+	request.options = options
+	request.question = questionTypeToInt(request.RequestType.String())
 	return nil
 }
 
+func (request *Request) getDnsClient(options *protocols.ExecuterOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
+	dnsClientOptions := &dnsclientpool.Configuration{
+		Retries: request.Retries,
+	}
+	if len(request.Resolvers) > 0 {
+		if len(request.Resolvers) > 0 {
+			for _, resolver := range request.Resolvers {
+				if expressions.ContainsUnresolvedVariables(resolver) != nil {
+					var err error
+					resolver, err = expressions.Evaluate(resolver, metadata)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
+					}
+					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
+				}
+			}
+		}
+		dnsClientOptions.Resolvers = request.Resolvers
+	}
+	return dnsclientpool.Get(options.Options, dnsClientOptions)
+}
+
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
+func (request *Request) Requests() int {
 	return 1
 }
 
 // Make returns the request to be sent for the protocol
-func (r *Request) Make(domain string) (*dns.Msg, error) {
-	if r.question != dns.TypePTR && net.ParseIP(domain) != nil {
+func (request *Request) Make(domain string) (*dns.Msg, error) {
+	if request.question != dns.TypePTR && net.ParseIP(domain) != nil {
 		return nil, errors.New("cannot use IP address as DNS input")
 	}
 	domain = dns.Fqdn(domain)
@@ -124,20 +162,20 @@ func (r *Request) Make(domain string) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
-	req.RecursionDesired = r.Recursion
+	req.RecursionDesired = request.Recursion
 
 	var q dns.Question
 
-	final := replacer.Replace(r.Name, map[string]interface{}{"FQDN": domain})
+	final := replacer.Replace(request.Name, generateDNSVariables(domain))
 
 	q.Name = dns.Fqdn(final)
-	q.Qclass = r.class
-	q.Qtype = r.question
+	q.Qclass = request.class
+	q.Qtype = request.question
 	req.Question = append(req.Question, q)
 
 	req.SetEdns0(4096, false)
 
-	switch r.question {
+	switch request.question {
 	case dns.TypeTXT:
 		req.AuthenticatedData = true
 	}
@@ -193,4 +231,20 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
+}
+
+func generateDNSVariables(domain string) map[string]interface{} {
+	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
+	if err != nil {
+		return map[string]interface{}{"FQDN": domain}
+	}
+
+	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
+	return map[string]interface{}{
+		"FQDN": domain,
+		"RDN":  domainName,
+		"DN":   parsed.SLD,
+		"TLD":  parsed.TLD,
+		"SD":   parsed.TRD,
+	}
 }

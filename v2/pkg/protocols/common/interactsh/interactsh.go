@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 )
 
@@ -72,6 +73,8 @@ type Options struct {
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
 	Debug bool
+
+	NoInteractsh bool
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -103,7 +106,24 @@ func New(options *Options) (*Client, error) {
 	return interactClient, nil
 }
 
+// NewDefaultOptions returns the default options for interactsh client
+func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
+	return &Options{
+		ServerURL:      "https://interactsh.com",
+		CacheSize:      5000,
+		Eviction:       60 * time.Second,
+		ColldownPeriod: 5 * time.Second,
+		PollDuration:   5 * time.Second,
+		Output:         output,
+		IssuesClient:   reporting,
+		Progress:       progress,
+	}
+}
+
 func (c *Client) firstTimeInitializeClient() error {
+	if c.options.NoInteractsh {
+		return nil // do not init if disabled
+	}
 	interactsh, err := client.New(&client.Options{
 		ServerURL:         c.options.ServerURL,
 		Token:             c.options.Authorization,
@@ -145,7 +165,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
-	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc)
+	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, false)
 	if !matched || result == nil {
 		return false // if we don't match, return
 	}
@@ -158,19 +178,8 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 	data.Event.Results = data.MakeResultFunc(data.Event)
 
-	for _, result := range data.Event.Results {
-		result.Interaction = interaction
-		_ = c.options.Output.Write(result)
-		if !c.matched {
-			c.matched = true
-		}
-		c.options.Progress.IncrementMatched()
-
-		if c.options.IssuesClient != nil {
-			if err := c.options.IssuesClient.CreateIssue(result); err != nil {
-				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-			}
-		}
+	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
+		c.matched = true
 	}
 	return true
 }
@@ -206,12 +215,13 @@ func (c *Client) Close() bool {
 //
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
-func (c *Client) ReplaceMarkers(data, interactshURL string) string {
-	if !strings.Contains(data, interactshURLMarker) {
-		return data
+func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
+	for strings.Contains(data, interactshURLMarker) {
+		url := c.URL()
+		interactshURLs = append(interactshURLs, url)
+		data = strings.Replace(data, interactshURLMarker, url, 1)
 	}
-	replaced := strings.NewReplacer("{{interactsh-url}}", interactshURL).Replace(data)
-	return replaced
+	return data, interactshURLs
 }
 
 // MakeResultEventFunc is a result making function for nuclei
@@ -227,30 +237,29 @@ type RequestData struct {
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
-func (c *Client) RequestEvent(interactshURL string, data *RequestData) {
-	id := strings.TrimSuffix(interactshURL, c.dotHostname)
+func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	for _, interactshURL := range interactshURLs {
+		id := strings.TrimSuffix(interactshURL, c.dotHostname)
 
-	interaction := c.interactions.Get(id)
-	if interaction != nil {
-		// If we have previous interactions, get them and process them.
-		interactions, ok := interaction.Value().([]*server.Interaction)
-		if !ok {
-			c.requests.Set(id, data, c.eviction)
-			return
-		}
-		matched := false
-		for _, interaction := range interactions {
-			if c.processInteractionForRequest(interaction, data) {
-				matched = true
-				break
+		interaction := c.interactions.Get(id)
+		if interaction != nil {
+			// If we have previous interactions, get them and process them.
+			interactions, ok := interaction.Value().([]*server.Interaction)
+			if !ok {
+				c.requests.Set(id, data, c.eviction)
+				return
 			}
+			for _, interaction := range interactions {
+				if c.processInteractionForRequest(interaction, data) {
+					c.interactions.Delete(id)
+					break
+				}
+			}
+		} else {
+			c.requests.Set(id, data, c.eviction)
 		}
-		if matched {
-			c.interactions.Delete(id)
-		}
-	} else {
-		c.requests.Set(id, data, c.eviction)
 	}
+
 }
 
 // HasMatchers returns true if an operator has interactsh part

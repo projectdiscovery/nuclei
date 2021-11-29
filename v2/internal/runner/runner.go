@@ -2,7 +2,6 @@ package runner
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,18 +9,15 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
-	"github.com/rs/xid"
-	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -29,7 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -42,25 +37,25 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 )
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	hostMap         *hybrid.HybridMap
-	output          output.Writer
-	interactsh      *interactsh.Client
-	inputCount      int64
-	templatesConfig *config.Config
-	options         *types.Options
-	projectFile     *projectfile.ProjectFile
-	catalog         *catalog.Catalog
-	progress        progress.Progress
-	colorizer       aurora.Aurora
-	issuesClient    *reporting.Client
-	addColor        func(severity.Severity) string
-	browser         *engine.Browser
-	ratelimiter     ratelimit.Limiter
-	hostErrors      *hosterrorscache.Cache
+	output            output.Writer
+	interactsh        *interactsh.Client
+	templatesConfig   *config.Config
+	options           *types.Options
+	projectFile       *projectfile.ProjectFile
+	catalog           *catalog.Catalog
+	progress          progress.Progress
+	colorizer         aurora.Aurora
+	issuesClient      *reporting.Client
+	addColor          func(severity.Severity) string
+	hmapInputProvider *hybrid.Input
+	browser           *engine.Browser
+	ratelimiter       ratelimit.Limiter
+	hostErrors        *hosterrorscache.Cache
 }
 
 // New creates a new client for running enumeration process.
@@ -115,83 +110,16 @@ func New(options *types.Options) (*Runner, error) {
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
-	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+
+	// Initialize the input source
+	hmapInput, err := hybrid.New(options)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create temporary input file")
+		return nil, errors.Wrap(err, "could not create input provider")
 	}
-	runner.hostMap = hm
-
-	runner.inputCount = 0
-	dupeCount := 0
-
-	// Handle multiple targets
-	if len(options.Targets) != 0 {
-		for _, target := range options.Targets {
-			url := strings.TrimSpace(target)
-			if url == "" {
-				continue
-			}
-
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-		}
-	}
-
-	// Handle stdin
-	if options.Stdin {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			url := strings.TrimSpace(scanner.Text())
-			if url == "" {
-				continue
-			}
-
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-		}
-	}
-
-	// Handle target file
-	if options.TargetsFilePath != "" {
-		input, inputErr := os.Open(options.TargetsFilePath)
-		if inputErr != nil {
-			return nil, errors.Wrap(inputErr, "could not open targets file")
-		}
-		scanner := bufio.NewScanner(input)
-		for scanner.Scan() {
-			url := strings.TrimSpace(scanner.Text())
-			if url == "" {
-				continue
-			}
-			if _, ok := runner.hostMap.Get(url); ok {
-				dupeCount++
-				continue
-			}
-			runner.inputCount++
-			// nolint:errcheck // ignoring error
-			runner.hostMap.Set(url, nil)
-		}
-		input.Close()
-	}
-
-	if dupeCount > 0 {
-		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", dupeCount)
-	}
+	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.Output, options.TraceLogFile, options.ErrorLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -219,24 +147,21 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if !options.NoInteractsh {
-		interactshClient, err := interactsh.New(&interactsh.Options{
-			ServerURL:      options.InteractshURL,
-			Authorization:  options.InteractshToken,
-			CacheSize:      int64(options.InteractionsCacheSize),
-			Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
-			ColldownPeriod: time.Duration(options.InteractionsColldownPeriod) * time.Second,
-			PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
-			Output:         runner.output,
-			IssuesClient:   runner.issuesClient,
-			Progress:       runner.progress,
-			Debug:          runner.options.Debug,
-		})
-		if err != nil {
-			gologger.Error().Msgf("Could not create interactsh client: %s", err)
-		} else {
-			runner.interactsh = interactshClient
-		}
+	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
+	opts.Debug = runner.options.Debug
+	opts.ServerURL = options.InteractshURL
+	opts.Authorization = options.InteractshToken
+	opts.CacheSize = int64(options.InteractionsCacheSize)
+	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
+	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
+	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
+	opts.NoInteractsh = runner.options.NoInteractsh
+
+	interactshClient, err := interactsh.New(opts)
+	if err != nil {
+		gologger.Error().Msgf("Could not create interactsh client: %s", err)
+	} else {
+		runner.interactsh = interactshClient
 	}
 
 	if options.RateLimitMinute > 0 {
@@ -259,9 +184,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
+		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
-			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
+			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
 	}
@@ -289,10 +214,10 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
-	r.hostMap.Close()
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
+	r.hmapInputProvider.Close()
 	protocolinit.Close()
 }
 
@@ -323,6 +248,8 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.hostErrors = cache
 
+	// Create the executer options which will be used throughout the execution
+	// stage by the nuclei engine modules.
 	executerOpts := protocols.ExecuterOptions{
 		Output:          r.output,
 		Options:         r.options,
@@ -335,30 +262,18 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		Store:           s,
 		HostErrorsCache: cache,
+		Colorizer:       r.colorizer,
 	}
+	engine := core.New(r.options)
+	engine.SetExecuterOptions(executerOpts)
 
 	workflowLoader, err := parsers.NewLoader(&executerOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
 	}
-
 	executerOpts.WorkflowLoader = workflowLoader
 
-	loaderConfig := loader.Config{
-		Templates:          r.options.Templates,
-		Workflows:          r.options.Workflows,
-		ExcludeTemplates:   r.options.ExcludedTemplates,
-		Tags:               r.options.Tags,
-		ExcludeTags:        r.options.ExcludeTags,
-		IncludeTemplates:   r.options.IncludeTemplates,
-		Authors:            r.options.Author,
-		Severities:         r.options.Severities,
-		IncludeTags:        r.options.IncludeTags,
-		TemplatesDirectory: r.options.TemplatesDirectory,
-		Catalog:            r.catalog,
-		ExecutorOptions:    executerOpts,
-	}
-	store, err := loader.New(&loaderConfig)
+	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -376,6 +291,78 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 
+	r.displayExecutionInfo(store)
+
+	var unclusteredRequests int64
+	for _, template := range store.Templates() {
+		// workflows will dynamically adjust the totals while running, as
+		// it can't be known in advance which requests will be called
+		if len(template.Workflows) > 0 {
+			continue
+		}
+		unclusteredRequests += int64(template.TotalRequests) * r.hmapInputProvider.Count()
+	}
+
+	if r.options.VerboseVerbose {
+		for _, template := range store.Templates() {
+			r.logAvailableTemplate(template.Path)
+		}
+		for _, template := range store.Workflows() {
+			r.logAvailableTemplate(template.Path)
+		}
+	}
+
+	// Cluster the templates first because we want info on how many
+	// templates did we cluster for showing to user in CLI
+	originalTemplatesCount := len(store.Templates())
+	finalTemplates, clusterCount := templates.ClusterTemplates(store.Templates(), engine.ExecuterOptions())
+	finalTemplates = append(finalTemplates, store.Workflows()...)
+
+	var totalRequests int64
+	for _, t := range finalTemplates {
+		if len(t.Workflows) > 0 {
+			continue
+		}
+		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
+	}
+	if totalRequests < unclusteredRequests {
+		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
+	}
+	workflowCount := len(store.Workflows())
+	templateCount := originalTemplatesCount + workflowCount
+
+	// 0 matches means no templates were found in directory
+	if templateCount == 0 {
+		return errors.New("no valid templates were found")
+	}
+
+	// tracks global progress and captures stdout/stderr until p.Wait finishes
+	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
+
+	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
+
+	if r.interactsh != nil {
+		matched := r.interactsh.Close()
+		if matched {
+			results.CAS(false, true)
+		}
+	}
+	r.progress.Stop()
+
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
+	if !results.Load() {
+		gologger.Info().Msgf("No results found. Better luck next time!")
+	}
+	if r.browser != nil {
+		r.browser.Close()
+	}
+	return nil
+}
+
+// displayExecutionInfo displays misc info about the nuclei engine execution
+func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
@@ -424,127 +411,6 @@ func (r *Runner) RunEnumeration() error {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
-
-	// pre-parse all the templates, apply filters
-	finalTemplates := []*templates.Template{}
-
-	var unclusteredRequests int64
-	for _, template := range store.Templates() {
-		// workflows will dynamically adjust the totals while running, as
-		// it can't be known in advance which requests will be called
-		if len(template.Workflows) > 0 {
-			continue
-		}
-		unclusteredRequests += int64(template.TotalRequests) * r.inputCount
-	}
-
-	if r.options.VerboseVerbose {
-		for _, template := range store.Templates() {
-			r.logAvailableTemplate(template.Path)
-		}
-		for _, template := range store.Workflows() {
-			r.logAvailableTemplate(template.Path)
-		}
-	}
-	templatesMap := make(map[string]*templates.Template)
-	for _, v := range store.Templates() {
-		templatesMap[v.Path] = v
-	}
-	originalTemplatesCount := len(store.Templates())
-	clusterCount := 0
-	clusters := clusterer.Cluster(templatesMap)
-	for _, cluster := range clusters {
-		if len(cluster) > 1 && !r.options.OfflineHTTP {
-			executerOpts := protocols.ExecuterOptions{
-				Output:          r.output,
-				Options:         r.options,
-				Progress:        r.progress,
-				Catalog:         r.catalog,
-				RateLimiter:     r.ratelimiter,
-				IssuesClient:    r.issuesClient,
-				Browser:         r.browser,
-				ProjectFile:     r.projectFile,
-				Interactsh:      r.interactsh,
-				Store:           s,
-				HostErrorsCache: cache,
-			}
-			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
-
-			finalTemplates = append(finalTemplates, &templates.Template{
-				ID:            clusterID,
-				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP),
-			})
-			clusterCount += len(cluster)
-		} else {
-			finalTemplates = append(finalTemplates, cluster...)
-		}
-	}
-
-	finalTemplates = append(finalTemplates, store.Workflows()...)
-
-	var totalRequests int64
-	for _, t := range finalTemplates {
-		if len(t.Workflows) > 0 {
-			continue
-		}
-		totalRequests += int64(t.TotalRequests) * r.inputCount
-	}
-	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
-	}
-	workflowCount := len(store.Workflows())
-	templateCount := originalTemplatesCount + workflowCount
-
-	// 0 matches means no templates were found in directory
-	if templateCount == 0 {
-		return errors.New("no valid templates were found")
-	}
-
-	/*
-		TODO does it make sense to run the logic below if there are no targets specified?
-		Can we safely assume the user is just experimenting with the template/workflow filters before running them?
-	*/
-
-	results := &atomic.Bool{}
-	wgtemplates := sizedwaitgroup.New(r.options.TemplateThreads)
-
-	// tracks global progress and captures stdout/stderr until p.Wait finishes
-	r.progress.Init(r.inputCount, templateCount, totalRequests)
-
-	for _, t := range finalTemplates {
-		wgtemplates.Add()
-		go func(template *templates.Template) {
-			defer wgtemplates.Done()
-
-			if len(template.Workflows) > 0 {
-				results.CAS(false, r.processWorkflowWithList(template))
-			} else {
-				results.CAS(false, r.processTemplateWithList(template))
-			}
-		}(t)
-	}
-	wgtemplates.Wait()
-
-	if r.interactsh != nil {
-		matched := r.interactsh.Close()
-		if matched {
-			results.CAS(false, true)
-		}
-	}
-	r.progress.Stop()
-
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
-	}
-	if !results.Load() {
-		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
-	}
-	return nil
 }
 
 // readNewTemplatesFile reads newly added templates from directory if it exists

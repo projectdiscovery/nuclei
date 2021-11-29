@@ -5,47 +5,51 @@
 #deny-list:
 #  severity: info, low, medium
 
-# github contains configuration options for github issue tracker
-#github: 
-#  # base-url is the optional self-hosted github application url
+# GitHub contains configuration options for GitHub issue tracker
+#GitHub: 
+#  # base-url (optional) is the self-hosted GitHub application url
 #  base-url: ""
-#  # username is the username of the github user
+#  # username is the username of the GitHub user
 #  username: ""
 #  # owner is the owner name of the repository for issues.
 #  owner: ""
-#  # token is the token for github account.
+#  # token is the token for GitHub account.
 #  token: ""
 #  # project-name is the name of the repository.
 #  project-name: ""
-#  # issue-label is the label of the created issue type
+#  # issue-label (optional) is the label of the created issue type
 #  issue-label: ""
+#  # severity-as-label (optional) sets the severity as the label of the created issue type
+#  severity-as-label: false
 
-# gitlab contains configuration options for gitlab issue tracker
-#gitlab: 
-#  # base-url is the optional self-hosted gitlab application url
+# GitLab contains configuration options for GitLab issue tracker
+#GitLab: 
+#  # base-url (optional) is the self-hosted GitLab application url
 #  base-url: ""
-#  # username is the username of the gitlab user
+#  # username is the username of the GitLab user
 #  username: ""
-#  # token is the token for gitlab account.
+#  # token is the token for GitLab account.
 #  token: ""
 #  # project-id is the ID of the repository.
 #  project-id: ""
-#  # issue-label is the label of the created issue type
+#  # issue-label (optional) is the label of the created issue type
 #  issue-label: ""
+#  # severity-as-label (optional) sets the severity as the label of the created issue type
+#  severity-as-label: false
 
-# jira contains configuration options for jira issue tracker
-#jira:
-#  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+# Jira contains configuration options for Jira issue tracker
+#Jira:
+#  # cloud (optional) is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
 #  cloud: true
-#  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
+#  # update-existing (optional) is the boolean which tells if the existing, opened issue should be updated or new one should be created
 #  update-existing: false
-#  # URL is the jira application url
+#  # URL is the Jira application URL
 #  url: ""
-#  # account-id is the account-id of the jira user or username in case of on-prem Jira
+#  # account-id is the account-id of the Jira user or username in case of on-prem Jira
 #  account-id: ""
-#  # email is the email of the user for jira instance
+#  # email is the email of the user for Jira instance
 #  email: ""
-#  # token is the token for jira instance or password in case of on-prem Jira
+#  # token is the token for Jira instance or password in case of on-prem Jira
 #  token: ""
 #  # project-name is the name of the project.
 #  project-name: ""
@@ -60,9 +64,9 @@
 #  port: 9200
 #  # IndexName is the name of the elasticsearch index
 #  index-name: nuclei
-#  # SSL enables ssl for elasticsearch connection
+#  # SSL (optional) enables ssl for elasticsearch connection
 #  ssl: false
-#  # SSLVerification disables SSL verification for elasticsearch
+#  # SSLVerification (optional) disables SSL verification for elasticsearch
 #  ssl-verification: false
 #  # Username for the elasticsearch instance
 #  username: test

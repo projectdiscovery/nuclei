@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bluele/gcache"
+
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -16,7 +17,7 @@ import (
 // It uses an LRU cache internally for skipping unresponsive hosts
 // that remain so for a duration.
 type Cache struct {
-	MaxHostError int
+	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
 }
@@ -24,11 +25,11 @@ type Cache struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(MaxHostError, maxHostsCount int) *Cache {
+func New(maxHostError, maxHostsCount int) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
-	return &Cache{failedTargets: gc, MaxHostError: MaxHostError}
+	return &Cache{failedTargets: gc, MaxHostError: maxHostError}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -46,7 +47,6 @@ func (c *Cache) normalizeCacheValue(value string) string {
 	finalValue := value
 	if strings.HasPrefix(value, "http") {
 		if parsed, err := url.Parse(value); err == nil {
-
 			hostname := parsed.Host
 			finalPort := parsed.Port()
 			if finalPort == "" {
@@ -64,7 +64,7 @@ func (c *Cache) normalizeCacheValue(value string) string {
 }
 
 // ErrUnresponsiveHost is returned when a host is unresponsive
-//var ErrUnresponsiveHost = errors.New("skipping as host is unresponsive")
+// var ErrUnresponsiveHost = errors.New("skipping as host is unresponsive")
 
 // Check returns true if a host should be skipped as it has been
 // unresponsive for a certain number of times.

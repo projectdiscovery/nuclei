@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -15,18 +16,30 @@ type Options struct {
 	ExcludeTags goflags.NormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
 	Workflows goflags.StringSlice
+	// WorkflowURLs specifies URLs to a list of workflows to use
+	WorkflowURLs goflags.StringSlice
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
+	// TemplateURLs specifies URLs to a list of templates to use
+	TemplateURLs goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
+	// vars to use as iterative payload
+	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
-	// Author filters templates based on their author and only run the matching ones.
-	Author goflags.NormalizedStringSlice
+	// ExcludeSeverities specifies severities to exclude
+	ExcludeSeverities severity.Severities
+	// Authors filters templates based on their author and only run the matching ones.
+	Authors goflags.NormalizedStringSlice
+	// Protocols contains the protocols to be allowed executed
+	Protocols types.ProtocolTypes
+	// ExcludeProtocols contains protocols to not be executed
+	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
@@ -36,7 +49,7 @@ type Options struct {
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
-	InteractshURL string
+	InteractshURL string `validate:"omitempty,url"`
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
 	// Target URLs/Domains to scan using a template
@@ -45,19 +58,19 @@ type Options struct {
 	TargetsFilePath string
 	// Output is the file to write found results to.
 	Output string
-	// ProxyURL is the URL for the proxy server
-	ProxyURL string
-	// ProxySocksURL is the URL for the proxy socks server
-	ProxySocksURL string
+	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+	Proxy goflags.NormalizedStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
+	// ErrorLogFile specifies a file to write with the errors of all requests
+	ErrorLogFile string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
 	ReportingConfig string
-	// MarkdownExportDirectory is the directory to export reports in markdown format
+	// MarkdownExportDirectory is the directory to export reports in Markdown format
 	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
@@ -73,6 +86,10 @@ type Options struct {
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
 	TemplateThreads int
+	// HeadlessBulkSize is the of targets analyzed in parallel for each headless template
+	HeadlessBulkSize int
+	// HeadlessTemplateThreads is the number of headless templates executed in parallel
+	HeadlessTemplateThreads int
 	// Timeout is the seconds to wait for a response from the server.
 	Timeout int
 	// Retries is the number of times to retry the request
@@ -90,9 +107,9 @@ type Options struct {
 	// Eviction is the number of seconds after which to automatically discard
 	// interaction requests.
 	InteractionsEviction int
-	// InteractionsColldownPeriod is additional seconds to wait for interactions after closing
+	// InteractionsCoolDownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
-	InteractionsColldownPeriod int
+	InteractionsCoolDownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -142,6 +159,8 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+	// Stream the input without sorting
+	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
 	// NoTimestamp disables display of timestamp for the matcher
@@ -158,4 +177,38 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// MatcherStatus displays optional status for the failed matches as well
+	MatcherStatus bool
+	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCertFile string
+	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
+	ClientKeyFile string
+	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+	ClientCAFile string
+}
+
+func (options *Options) AddVarPayload(key string, value interface{}) {
+	if options.varsPayload == nil {
+		options.varsPayload = make(map[string]interface{})
+	}
+
+	options.varsPayload[key] = value
+}
+
+func (options *Options) VarsPayload() map[string]interface{} {
+	return options.varsPayload
+}
+
+// DefaultOptions returns default options for nuclei
+func DefaultOptions() *Options {
+	return &Options{
+		RateLimit:               150,
+		BulkSize:                25,
+		TemplateThreads:         25,
+		HeadlessBulkSize:        10,
+		HeadlessTemplateThreads: 10,
+		Timeout:                 5,
+		Retries:                 1,
+		MaxHostError:            30,
+	}
 }

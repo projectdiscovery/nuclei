@@ -15,7 +15,7 @@ type Matcher struct {
 	//   - "regex"
 	//   - "binary"
 	//   - "dsl"
-	Type string `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"`
+	Type MatcherTypeHolder `yaml:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"`
 	// description: |
 	//   Condition is the optional condition between two matcher variables. By default,
 	//   the condition is assumed to be OR.
@@ -60,7 +60,7 @@ type Matcher struct {
 	// description: |
 	//   Words contains word patterns required to be present in the response part.
 	// examples:
-	//   - name: Match for outlook mail protection domain
+	//   - name: Match for Outlook mail protection domain
 	//     value: >
 	//       []string{"mail.protection.outlook.com"}
 	//   - name: Match for application/json in response headers
@@ -103,39 +103,18 @@ type Matcher struct {
 	// values:
 	//   - "hex"
 	Encoding string `yaml:"encoding,omitempty" jsonschema:"title=encoding for word field,description=Optional encoding for the word fields,enum=hex"`
+	// description: |
+	//   CaseInsensitive enables case-insensitive matches. Default is false.
+	// values:
+	//   - false
+	//   - true
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
 
 	// cached data for the compiled matcher
 	condition     ConditionType
 	matcherType   MatcherType
+	binaryDecoded []string
 	regexCompiled []*regexp.Regexp
-}
-
-// MatcherType is the type of the matcher specified
-type MatcherType = int
-
-const (
-	// WordsMatcher matches responses with words
-	WordsMatcher MatcherType = iota + 1
-	// RegexMatcher matches responses with regexes
-	RegexMatcher
-	// BinaryMatcher matches responses with words
-	BinaryMatcher
-	// StatusMatcher matches responses with status codes
-	StatusMatcher
-	// SizeMatcher matches responses with response size
-	SizeMatcher
-	// DSLMatcher matches based upon dsl syntax
-	DSLMatcher
-)
-
-// MatcherTypes is a table for conversion of matcher type from string.
-var MatcherTypes = map[string]MatcherType{
-	"status": StatusMatcher,
-	"size":   SizeMatcher,
-	"word":   WordsMatcher,
-	"regex":  RegexMatcher,
-	"binary": BinaryMatcher,
-	"dsl":    DSLMatcher,
 }
 
 // ConditionType is the type of condition for matcher
@@ -155,14 +134,17 @@ var ConditionTypes = map[string]ConditionType{
 }
 
 // Result reverts the results of the match if the matcher is of type negative.
-func (m *Matcher) Result(data bool) bool {
-	if m.Negative {
+func (matcher *Matcher) Result(data bool) bool {
+	if matcher.Negative {
 		return !data
 	}
 	return data
 }
 
-// GetType returns the type of the matcher
-func (m *Matcher) GetType() MatcherType {
-	return m.matcherType
+// ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
+func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
+	if matcher.Negative {
+		return !data, []string{}
+	}
+	return data, matchedSnippet
 }

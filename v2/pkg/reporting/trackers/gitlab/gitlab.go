@@ -3,9 +3,10 @@ package gitlab
 import (
 	"fmt"
 
+	"github.com/xanzy/go-gitlab"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/xanzy/go-gitlab"
 )
 
 // Integration is a client for an issue tracker integration
@@ -17,16 +18,19 @@ type Integration struct {
 
 // Options contains the configuration options for gitlab issue tracker client
 type Options struct {
-	// BaseURL is the optional self-hosted gitlab application url
-	BaseURL string `yaml:"base-url"`
+	// BaseURL (optional) is the self-hosted gitlab application url
+	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
 	// Username is the username of the gitlab user
-	Username string `yaml:"username"`
+	Username string `yaml:"username" validate:"required"`
 	// Token is the token for gitlab account.
-	Token string `yaml:"token"`
+	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the repository.
-	ProjectName string `yaml:"project-name"`
+	ProjectName string `yaml:"project-name" validate:"required"`
 	// IssueLabel is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
+	// SeverityAsLabel (optional) sends the severity as the label of the created
+	// issue.
+	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -50,12 +54,19 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
+	if i.options.SeverityAsLabel && severityLabel != "" {
+		labels = append(labels, severityLabel)
+	}
+	if label := i.options.IssueLabel; label != "" {
+		labels = append(labels, label)
+	}
 
 	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
-		Labels:      gitlab.Labels{i.options.IssueLabel, severityLabel},
+		Labels:      labels,
 		AssigneeIDs: []int{i.userID},
 	})
 

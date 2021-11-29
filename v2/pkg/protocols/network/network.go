@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -33,13 +34,13 @@ type Request struct {
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
-	//   - "sniper"
+	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
@@ -58,13 +59,23 @@ type Request struct {
 	// examples:
 	//   - value: "2048"
 	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
+	// description: |
+	//   ReadAll determines if the data stream should be read till the end regardless of the size
+	//
+	//   Default value for read-all is false.
+	// examples:
+	//   - value: false
+	ReadAll bool `yaml:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
+
+	// description: |
+	//   SelfContained specifies if the request is self-contained.
+	SelfContained bool `yaml:"-" json:"-"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
-	generator  *generators.Generator
-	attackType generators.Type
+	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
 	dialer        *fastdialer.Dialer
 	options       *protocols.ExecuterOptions
@@ -94,12 +105,12 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type string `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
+	Type NetworkInputTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
 	//   This can be used for protocols which expect an immediate response. You can
-	//   read and write responses one after another and evetually perform matching
+	//   read and write responses one after another and eventually perform matching
 	//   on every data captured with `name` attribute.
 	//
 	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
@@ -114,17 +125,17 @@ type Input struct {
 }
 
 // GetID returns the unique ID of the request if any.
-func (r *Request) GetID() string {
-	return r.ID
+func (request *Request) GetID() string {
+	return request.ID
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	var shouldUseTLS bool
 	var err error
 
-	r.options = options
-	for _, address := range r.Address {
+	request.options = options
+	for _, address := range request.Address {
 		// check if the connection should be encrypted
 		if strings.HasPrefix(address, "tls://") {
 			shouldUseTLS = true
@@ -135,9 +146,9 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 			if portErr != nil {
 				return errors.Wrap(portErr, "could not parse address")
 			}
-			r.addresses = append(r.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
+			request.addresses = append(request.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
 		} else {
-			r.addresses = append(r.addresses, addressKV{ip: address, tls: shouldUseTLS})
+			request.addresses = append(request.addresses, addressKV{ip: address, tls: shouldUseTLS})
 		}
 	}
 
@@ -145,8 +156,8 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	values := generators.MergeVariables(map[string]interface{}{}, options.Options)
 
 	// Pre-compile any input dsl functions before executing the request.
-	for _, input := range r.Inputs {
-		if input.Type != "" {
+	for _, input := range request.Inputs {
+		if input.Type.String() != "" {
 			continue
 		}
 		if compiled, evalErr := expressions.Evaluate(input.Data, values); evalErr == nil {
@@ -154,25 +165,30 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 
-	if len(r.Payloads) > 0 {
-		attackType := r.AttackType
-		if attackType == "" {
-			attackType = "sniper"
-		}
-		r.attackType = generators.StringToType[attackType]
-
-		// Resolve payload paths if they are files.
-		for name, payload := range r.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				r.Payloads[name] = final
+	// Resolve payload paths from vars if they exists
+	for name, payload := range request.options.Options.VarsPayload() {
+		payloadStr, ok := payload.(string)
+		// check if inputs contains the payload
+		var hasPayloadName bool
+		for _, input := range request.Inputs {
+			if input.Type.String() != "" {
+				continue
+			}
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input.Data) == nil {
+				hasPayloadName = true
+				break
 			}
 		}
-		r.generator, err = generators.New(r.Payloads, r.attackType, r.options.TemplatePath)
+		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+			if request.Payloads == nil {
+				request.Payloads = make(map[string]interface{})
+			}
+			request.Payloads[name] = payloadStr
+		}
+	}
+
+	if len(request.Payloads) > 0 {
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -183,19 +199,19 @@ func (r *Request) Compile(options *protocols.ExecuterOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
-	r.dialer = client
+	request.dialer = client
 
-	if len(r.Matchers) > 0 || len(r.Extractors) > 0 {
-		compiled := &r.Operators
+	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
+		compiled := &request.Operators
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
-		r.CompiledOperators = compiled
+		request.CompiledOperators = compiled
 	}
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
-func (r *Request) Requests() int {
-	return len(r.Address)
+func (request *Request) Requests() int {
+	return len(request.Address)
 }

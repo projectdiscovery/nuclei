@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"golang.org/x/oauth2"
 
@@ -20,20 +21,23 @@ type Integration struct {
 	options *Options
 }
 
-// Options contains the configuration options for github issue tracker client
+// Options contains the configuration options for GitHub issue tracker client
 type Options struct {
-	// BaseURL is the optional self-hosted github application url
-	BaseURL string `yaml:"base-url"`
+	// BaseURL (optional) is the self-hosted GitHub application url
+	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
 	// Username is the username of the github user
-	Username string `yaml:"username"`
+	Username string `yaml:"username" validate:"required"`
 	// Owner is the owner name of the repository for issues.
-	Owner string `yaml:"owner"`
-	// Token is the token for github account.
-	Token string `yaml:"token"`
+	Owner string `yaml:"owner" validate:"required"`
+	// Token is the token for GitHub account.
+	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the repository.
-	ProjectName string `yaml:"project-name"`
-	// IssueLabel is the label of the created issue type
+	ProjectName string `yaml:"project-name" validate:"required"`
+	// IssueLabel (optional) is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
+	// SeverityAsLabel (optional) sends the severity as the label of the created
+	// issue.
+	SeverityAsLabel bool `yaml:"severity-as-label"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -50,6 +54,9 @@ func New(options *Options) (*Integration, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse custom baseurl")
 		}
+		if !strings.HasSuffix(parsed.Path, "/") {
+			parsed.Path += "/"
+		}
 		client.BaseURL = parsed
 	}
 	return &Integration{client: client, options: options}, nil
@@ -59,12 +66,19 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
+	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
+	if i.options.SeverityAsLabel && severityLabel != "" {
+		labels = append(labels, severityLabel)
+	}
+	if label := i.options.IssueLabel; label != "" {
+		labels = append(labels, label)
+	}
 
 	req := &github.IssueRequest{
 		Title:     &summary,
 		Body:      &description,
-		Labels:    &[]string{i.options.IssueLabel, severityLabel},
+		Labels:    &labels,
 		Assignees: &[]string{i.options.Username},
 	}
 	_, _, err := i.client.Issues.Create(context.Background(), i.options.Owner, i.options.ProjectName, req)

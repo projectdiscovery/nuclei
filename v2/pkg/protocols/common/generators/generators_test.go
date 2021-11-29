@@ -4,13 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
-func TestSniperGenerator(t *testing.T) {
+func TestBatteringRamGenerator(t *testing.T) {
 	usernames := []string{"admin", "password"}
-	moreUsernames := []string{"login", "test"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "aliases": moreUsernames}, Sniper, "")
+	catalogInstance := catalog.New("")
+	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRamAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -22,14 +24,15 @@ func TestSniperGenerator(t *testing.T) {
 		}
 		count++
 	}
-	require.Equal(t, len(usernames)+len(moreUsernames), count, "could not get correct sniper counts")
+	require.Equal(t, len(usernames), count, "could not get correct batteringram counts")
 }
 
 func TestPitchforkGenerator(t *testing.T) {
 	usernames := []string{"admin", "token"}
 	passwords := []string{"password1", "password2", "password3"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchFork, "")
+	catalogInstance := catalog.New("")
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchForkAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -50,7 +53,8 @@ func TestClusterbombGenerator(t *testing.T) {
 	usernames := []string{"admin"}
 	passwords := []string{"admin", "password", "token"}
 
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBomb, "")
+	catalogInstance := catalog.New("")
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBombAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
