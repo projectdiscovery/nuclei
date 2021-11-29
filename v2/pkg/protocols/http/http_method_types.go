@@ -22,7 +22,6 @@ const (
 	HTTPTrace
 	HTTPPatch
 	HTTPPurge
-	//limit
 	limit
 )
 

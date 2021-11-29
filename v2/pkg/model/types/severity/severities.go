@@ -43,7 +43,7 @@ func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 func (severities Severities) String() string {
-	var stringSeverities []string
+	var stringSeverities = make([]string, 0, len(severities))
 	for _, severity := range severities {
 		stringSeverities = append(stringSeverities, severity.String())
 	}

@@ -1,9 +1,8 @@
 package extractors
 
 import (
-	"strings"
-
 	"encoding/json"
+	"strings"
 
 	"github.com/antchfx/htmlquery"
 
