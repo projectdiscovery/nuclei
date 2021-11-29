@@ -124,7 +124,7 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		reader := bufio.NewReader(strings.NewReader(data))
 		s, err := reader.ReadString('\n')
 		if err != nil {
-			return nil, fmt.Errorf("could not read request: %s", err)
+			return nil, fmt.Errorf("could not read request: %w", err)
 		}
 
 		parts := strings.Split(s, " ")
@@ -133,7 +133,7 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		}
 		parsed, err := url.Parse(parts[1])
 		if err != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", err)
+			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values := generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),

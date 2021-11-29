@@ -98,8 +98,8 @@ func New(config *Config) (*Store, error) {
 		finalWorkflows: config.Workflows,
 	}
 
-	urlbasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
-	if urlbasedTemplatesProvided {
+	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
+	if urlBasedTemplatesProvided {
 		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
 		if err != nil {
 			return store, err
@@ -109,7 +109,7 @@ func New(config *Config) (*Store, error) {
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlbasedTemplatesProvided {
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
 		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
 

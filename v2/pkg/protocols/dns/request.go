@@ -12,8 +12,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/retryabledns"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 var _ protocols.Request = &Request{}
@@ -74,15 +74,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
 
 	// perform trace if necessary
-	var tracedata *retryabledns.TraceData
+	var traceData *retryabledns.TraceData
 	if request.Trace {
-		tracedata, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
+		traceData, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, tracedata)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
@@ -92,7 +92,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 	dumpResponse(event, request.options, response.String(), domain)
 	if request.Trace {
-		dumpTraceData(event, request.options, traceToString(tracedata, true), domain)
+		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
 	}
 
 	callback(event)
@@ -112,15 +112,15 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 	}
 }
 
-func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, tracedata, domain string) {
+func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, traceData, domain string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
-		if responsehighlighter.HasBinaryContent(tracedata) {
+		if responsehighlighter.HasBinaryContent(traceData) {
 			hexDump = true
-			tracedata = hex.Dump([]byte(tracedata))
+			traceData = hex.Dump([]byte(traceData))
 		}
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, tracedata, cliOptions.NoColor, hexDump)
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }

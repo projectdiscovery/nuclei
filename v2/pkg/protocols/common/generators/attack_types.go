@@ -13,12 +13,12 @@ type AttackType int
 
 // Supported values for the ProtocolType
 const (
-	// BatteringRamAttack replaces same payload into all of the defined payload positions at once.
+	// BatteringRamAttack replaces same payload in all the defined payload positions at once
 	BatteringRamAttack AttackType = iota + 1
 	// PitchForkAttack replaces variables with positional value from multiple wordlists
 	PitchForkAttack
-	// ClusterbombAttack replaces variables with all possible combinations of values
-	ClusterbombAttack
+	// ClusterBombAttack replaces variables with all possible combinations of values
+	ClusterBombAttack
 	limit
 )
 
@@ -26,7 +26,7 @@ const (
 var attackTypeMappings = map[AttackType]string{
 	BatteringRamAttack: "batteringram",
 	PitchForkAttack:    "pitchfork",
-	ClusterbombAttack:  "clusterbomb",
+	ClusterBombAttack:  "clusterbomb",
 }
 
 func GetSupportedAttackTypes() []AttackType {
