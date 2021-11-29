@@ -66,6 +66,7 @@ type ExecuterOptions struct {
 
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
+	ResumeCfg      *types.ResumeCfg
 }
 
 // Copy returns a copy of the executeroptions structure

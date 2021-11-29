@@ -67,6 +67,19 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 	wg := e.workPool.InputPool(templateType)
 
 	target.Scan(func(scannedValue string) {
+		// Best effort to track the host progression
+		// - the last valid host with multiple threads is considered the last valid one
+		// - slow progression hosts might be skipped upon next run
+		// - For a precise resume capability use bulk size equal to one per template
+		if e.executerOpts.ResumeCfg != nil {
+			e.executerOpts.ResumeCfg.TemplatesCurrent[template.ID] = scannedValue
+			e.executerOpts.ResumeCfg.TemplatesCurrentIndex[template.ID]++
+			if e.executerOpts.ResumeCfg.TemplatesCurrentIndex[template.ID] <= e.executerOpts.ResumeCfg.TemplatesResumeFromIndex[template.ID] {
+				gologger.Debug().Msgf("[%s] Skipping due to resume: %s\n", template.ID, scannedValue)
+				return
+			}
+		}
+
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
 			return

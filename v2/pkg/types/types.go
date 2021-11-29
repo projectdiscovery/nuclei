@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -56,6 +57,8 @@ type Options struct {
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
+	// Resume the scan from the state stored in the resume config file
+	Resume bool
 	// Output is the file to write found results to.
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
@@ -197,6 +200,16 @@ func (options *Options) AddVarPayload(key string, value interface{}) {
 
 func (options *Options) VarsPayload() map[string]interface{} {
 	return options.varsPayload
+}
+
+// ShouldLoadResume resume file
+func (options *Options) ShouldLoadResume() bool {
+	return options.Resume && fileutil.FileExists(DefaultResumeFile)
+}
+
+// ShouldSaveResume file
+func (options *Options) ShouldSaveResume() bool {
+	return true
 }
 
 // DefaultOptions returns default options for nuclei
