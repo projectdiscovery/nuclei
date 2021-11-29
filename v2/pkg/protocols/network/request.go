@@ -78,7 +78,8 @@ func (request *Request) executeAddress(actualAddress, address, input string, sho
 	}
 
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
-	generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
+	// add Hostname variable to the payload
+	payloads = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
