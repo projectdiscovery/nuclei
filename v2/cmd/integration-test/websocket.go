@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gobwas/ws/wsutil"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -22,7 +23,7 @@ func (h *websocketBasic) Execute(filePath string) error {
 	connHandler := func(conn net.Conn) {
 		for {
 			msg, op, _ := wsutil.ReadClientData(conn)
-			if string(msg) != string("hello") {
+			if string(msg) != "hello" {
 				return
 			}
 			_ = wsutil.WriteServerMessage(conn, op, []byte("world"))

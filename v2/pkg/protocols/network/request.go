@@ -223,12 +223,12 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 				<-t.C
 			}
 		}
-	read_socket:
+	readSocket:
 		for {
 			select {
 			case <-readInterval.C:
 				closeTimer(readInterval)
-				break read_socket
+				break readSocket
 			default:
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)

@@ -24,7 +24,6 @@ const (
 	SizeMatcher
 	// DSLMatcher matches based upon dsl syntax
 	DSLMatcher
-	//limit
 	limit
 )
 
@@ -39,8 +38,8 @@ var MatcherTypes = map[MatcherType]string{
 }
 
 //GetType returns the type of the matcher
-func (e *Matcher) GetType() MatcherType {
-	return e.Type.MatcherType
+func (matcher *Matcher) GetType() MatcherType {
+	return matcher.Type.MatcherType
 }
 
 // GetSupportedMatcherTypes returns list of supported types

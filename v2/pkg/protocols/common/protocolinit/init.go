@@ -2,6 +2,7 @@ package protocolinit
 
 import (
 	"github.com/corpix/uarand"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
