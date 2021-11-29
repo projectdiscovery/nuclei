@@ -29,9 +29,9 @@ var (
 		Operators: operators.Operators{
 			MatchersCondition: "and",
 			Matchers: []*matchers.Matcher{
-				{Type: "word", Words: []string{"[core]"}},
-				{Type: "dsl", DSL: []string{"!contains(tolower(body), '<html')", "!contains(tolower(body), '<body')"}, Condition: "and"},
-				{Type: "status", Status: []int{200}}},
+				{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"[core]"}},
+				{Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher}, DSL: []string{"!contains(tolower(body), '<html')", "!contains(tolower(body), '<body')"}, Condition: "and"},
+				{Type: matchers.MatcherTypeHolder{MatcherType: matchers.StatusMatcher}, Status: []int{200}}},
 		},
 	}
 	_ = exampleNormalHTTPRequest
@@ -66,7 +66,7 @@ var (
 		ReadSize: 2048,
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{
-				{Type: "word", Words: []string{"zookeeper.version"}},
+				{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"zookeeper.version"}},
 			},
 		},
 	}

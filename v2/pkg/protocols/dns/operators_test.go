@@ -45,7 +45,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
 
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
-	require.Len(t, event, 13, "could not get correct number of items in dsl map")
+	require.Len(t, event, 14, "could not get correct number of items in dsl map")
 	require.Equal(t, dns.RcodeSuccess, event["rcode"], "could not get correct rcode")
 }
 
@@ -81,7 +81,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}
 		err = matcher.CompileMatchers()
@@ -95,7 +95,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	t.Run("rcode", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:   "rcode",
-			Type:   "status",
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.StatusMatcher},
 			Status: []int{dns.RcodeSuccess},
 		}
 		err = matcher.CompileMatchers()
@@ -109,7 +109,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "raw",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -124,7 +124,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -147,7 +147,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 
 		matcher := &matchers.Matcher{
 			Part:            "raw",
-			Type:            "word",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words:           []string{"one.ONE.one.ONE"},
 			CaseInsensitive: true,
 		}
@@ -233,7 +233,7 @@ func TestDNSMakeResult(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"1.1.1.1"},
 			}},
 			Extractors: []*extractors.Extractor{{

@@ -73,6 +73,7 @@ func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName str
 		"path":          inputFilePath,
 		"matched":       matchedFileName,
 		"raw":           raw,
+		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
@@ -120,10 +121,11 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
+		MatcherStatus:    true,
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "file",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),

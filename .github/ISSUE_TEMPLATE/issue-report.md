@@ -33,4 +33,4 @@ Example: steps to reproduce the behavior:
 
 
 ### Anything else:
-<!-- Links? References? Screnshots? Anything that will give us more context about the issue that you are encountering! -->
+<!-- Links? References? Screenshots? Anything that will give us more context about the issue that you are encountering! -->
