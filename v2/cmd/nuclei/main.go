@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 
 	"github.com/projectdiscovery/goflags"
@@ -30,6 +31,25 @@ func main() {
 	if nucleiRunner == nil {
 		return
 	}
+
+	// Setup graceful exits
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
+			nucleiRunner.Close()
+			if options.ShouldSaveResume() {
+				gologger.Info().Msgf("Creating resume file: %s\n", types.DefaultResumeFile)
+				err := nucleiRunner.SaveResumeConfig()
+				if err != nil {
+					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
+				}
+			}
+			os.Exit(1)
+		}
+	}()
+
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
 	}
@@ -51,6 +71,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.BoolVar(&options.Resume, "resume", false, "Resume scan using resume.cfg (clustering will be disabled)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",

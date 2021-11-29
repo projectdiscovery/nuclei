@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,6 +56,7 @@ type Runner struct {
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
+	resumeCfg         *types.ResumeCfg
 }
 
 // New creates a new client for running enumeration process.
@@ -144,6 +147,22 @@ func New(options *types.Options) (*Runner, error) {
 			return nil, projectFileErr
 		}
 	}
+
+	// create the resume configuration structure
+	resumeCfg := types.NewResumeCfg()
+	if runner.options.ShouldLoadResume() {
+		gologger.Info().Msg("Resuming from save checkpoint")
+		file, err := ioutil.ReadFile(types.DefaultResumeFile)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(file), &resumeCfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	runner.resumeCfg = resumeCfg
 
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
@@ -255,6 +274,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
+		ResumeCfg:       r.resumeCfg,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -451,4 +471,14 @@ func (r *Runner) countNewTemplates() int {
 		count++
 	}
 	return count
+}
+
+// SaveResumeConfig to file
+func (r *Runner) SaveResumeConfig() error {
+	resumeCfg := types.NewResumeCfg()
+	resumeCfg.TemplatesResumeFrom = r.resumeCfg.TemplatesCurrent
+	resumeCfg.TemplatesResumeFromIndex = r.resumeCfg.TemplatesCurrentIndex
+	file, _ := json.MarshalIndent(resumeCfg, "", "\t")
+
+	return ioutil.WriteFile(types.DefaultResumeFile, file, 0644)
 }
