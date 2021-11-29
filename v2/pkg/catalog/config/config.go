@@ -34,7 +34,7 @@ func getConfigDetails() (string, error) {
 		return "", errors.Wrap(err, "could not get home directory")
 	}
 	configDir := filepath.Join(homeDir, ".config", "nuclei")
-	_ = os.MkdirAll(configDir, os.ModePerm)
+	_ = os.MkdirAll(configDir, 0755)
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	return templatesConfigFile, nil
 }
@@ -67,7 +67,7 @@ func WriteConfiguration(config *Config) error {
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
+	file, err := os.OpenFile(templatesConfigFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func getIgnoreFilePath() string {
 	home, err := os.UserHomeDir()
 	if err == nil {
 		configDir := filepath.Join(home, ".config", "nuclei")
-		_ = os.MkdirAll(configDir, os.ModePerm)
+		_ = os.MkdirAll(configDir, 0755)
 
 		defIgnoreFilePath = filepath.Join(configDir, nucleiIgnoreFile)
 		return defIgnoreFilePath

@@ -235,7 +235,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			reqURL = generatedHttpRequest.URL()
 		}
 		request.dynamicValues = generatedHttpRequest.dynamicValues
-		// Check if hosts just keep erroring
+		// Check if hosts keep erroring
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
 			break
 		}
@@ -272,7 +272,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		requestCount++
 		request.options.Progress.IncrementRequests()
 
-		// If this was a match and we want to stop at first match, skip all further requests.
+		// If this was a match, and we want to stop at first match, skip all further requests.
 		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
 			break
 		}
@@ -306,13 +306,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 
-		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		// Check if are there any unresolved variables. If yes, skip unless overridden by user.
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
 			return errStopExecution
 		}
 	}
-
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
@@ -444,6 +443,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	var dumpedResponse []redirectedResponse
+	var gotData []byte
 	// If the status code is HTTP 101, we should not proceed with reading body.
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		var bodyReader io.Reader
@@ -461,6 +461,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				return errors.Wrap(err, "could not read http body")
 			}
 		}
+		gotData = data
 		resp.Body.Close()
 
 		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
@@ -471,14 +472,17 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
-	for _, response := range dumpedResponse {
-		// if nuclei-project is enabled store the response if not previously done
-		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, response.body); err != nil {
-				return errors.Wrap(err, "could not store in project file")
-			}
+	// if nuclei-project is enabled store the response if not previously done
+	if request.options.ProjectFile != nil && !fromCache {
+		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
+			return errors.Wrap(err, "could not store in project file")
 		}
+	}
 
+	for _, response := range dumpedResponse {
+		if response.resp == nil {
+			continue // Skip nil responses
+		}
 		matchedURL := reqURL
 		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 			matchedURL = generatedRequest.rawRequest.FullURL
@@ -512,6 +516,9 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
+		if hasInteractMarkers {
+			event.UsesInteractsh = true
+		}
 
 		responseContentType := resp.Header.Get("Content-Type")
 		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType)

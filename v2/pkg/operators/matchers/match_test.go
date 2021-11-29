@@ -19,7 +19,7 @@ func TestWordANDCondition(t *testing.T) {
 }
 
 func TestRegexANDCondition(t *testing.T) {
-	m := &Matcher{Type: "regex", Condition: "and", Regex: []string{"[a-z]{3}", "\\d{2}"}}
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "and", Regex: []string{"[a-z]{3}", "\\d{2}"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err)
 
@@ -49,7 +49,7 @@ func TestORCondition(t *testing.T) {
 }
 
 func TestRegexOrCondition(t *testing.T) {
-	m := &Matcher{Type: "regex", Condition: "or", Regex: []string{"[a-z]{3}", "\\d{2}"}}
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "or", Regex: []string{"[a-z]{3}", "\\d{2}"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err)
 
@@ -63,7 +63,7 @@ func TestRegexOrCondition(t *testing.T) {
 }
 
 func TestHexEncoding(t *testing.T) {
-	m := &Matcher{Encoding: "hex", Type: "word", Part: "body", Words: []string{"50494e47"}}
+	m := &Matcher{Encoding: "hex", Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Part: "body", Words: []string{"50494e47"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err, "could not compile matcher")
 

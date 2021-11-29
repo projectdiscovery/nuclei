@@ -41,12 +41,12 @@ type Request struct {
 	//  Name is the optional name of the request.
 	//
 	//  If a name is specified, all the named request in a template can be matched upon
-	//  in a combined manner allowing multirequest based matchers.
+	//  in a combined manner allowing multi-request based matchers.
 	Name string `yaml:"name,omitempty" jsonschema:"title=name for the http request,description=Optional name for the HTTP Request"`
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
 	//   - "batteringram"
@@ -137,7 +137,7 @@ type Request struct {
 	dynamicValues map[string]interface{}
 
 	// description: |
-	//   SelfContained specifies if the request is self contained.
+	//   SelfContained specifies if the request is self-contained.
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
