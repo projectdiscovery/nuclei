@@ -34,7 +34,7 @@ type Request struct {
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
 	//   - "batteringram"
@@ -68,7 +68,7 @@ type Request struct {
 	ReadAll bool `yaml:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
 
 	// description: |
-	//   SelfContained specifies if the request is self contained.
+	//   SelfContained specifies if the request is self-contained.
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// Operators for the current request go here.
@@ -109,7 +109,7 @@ type Input struct {
 	//   Read is the number of bytes to read from socket.
 	//
 	//   This can be used for protocols which expect an immediate response. You can
-	//   read and write responses one after another and evetually perform matching
+	//   read and write responses one after another and eventually perform matching
 	//   on every data captured with `name` attribute.
 	//
 	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
