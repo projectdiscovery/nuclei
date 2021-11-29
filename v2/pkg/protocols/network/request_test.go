@@ -33,7 +33,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "data",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"200 OK"},
 			}},
 			Extractors: []*extractors.Extractor{{

@@ -223,12 +223,12 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 				<-t.C
 			}
 		}
-	read_socket:
+	readSocket:
 		for {
 			select {
 			case <-readInterval.C:
 				closeTimer(readInterval)
-				break read_socket
+				break readSocket
 			default:
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
@@ -280,6 +280,9 @@ func (request *Request) executeRequestWithPayloads(actualAddress, address, input
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
 		})
+	}
+	if len(interactshURLs) > 0 {
+		event.UsesInteractsh = true
 	}
 
 	dumpResponse(event, request.options, response, actualAddress)

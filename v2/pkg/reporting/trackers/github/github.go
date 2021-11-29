@@ -21,18 +21,18 @@ type Integration struct {
 	options *Options
 }
 
-// Options contains the configuration options for github issue tracker client
+// Options contains the configuration options for GitHub issue tracker client
 type Options struct {
-	// BaseURL (optional) is the self-hosted github application url
-	BaseURL string `yaml:"base-url"`
+	// BaseURL (optional) is the self-hosted GitHub application url
+	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
 	// Username is the username of the github user
-	Username string `yaml:"username"`
-	// Owner (manadatory) is the owner name of the repository for issues.
-	Owner string `yaml:"owner"`
-	// Token is the token for github account.
-	Token string `yaml:"token"`
+	Username string `yaml:"username" validate:"required"`
+	// Owner is the owner name of the repository for issues.
+	Owner string `yaml:"owner" validate:"required"`
+	// Token is the token for GitHub account.
+	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the repository.
-	ProjectName string `yaml:"project-name"`
+	ProjectName string `yaml:"project-name" validate:"required"`
 	// IssueLabel (optional) is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
@@ -42,10 +42,6 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
-	err := validateOptions(options)
-	if err != nil {
-		return nil, err
-	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
@@ -64,28 +60,6 @@ func New(options *Options) (*Integration, error) {
 		client.BaseURL = parsed
 	}
 	return &Integration{client: client, options: options}, nil
-}
-
-func validateOptions(options *Options) error {
-	errs := []string{}
-	if options.Username == "" {
-		errs = append(errs, "Username")
-	}
-	if options.Owner == "" {
-		errs = append(errs, "Owner")
-	}
-	if options.Token == "" {
-		errs = append(errs, "Token")
-	}
-	if options.ProjectName == "" {
-		errs = append(errs, "ProjectName")
-	}
-
-	if len(errs) > 0 {
-		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
-	}
-
-	return nil
 }
 
 // CreateIssue creates an issue in the tracker

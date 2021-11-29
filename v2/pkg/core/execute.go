@@ -1,15 +1,12 @@
 package core
 
 import (
-	"fmt"
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/clusterer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/remeh/sizedwaitgroup"
-	"github.com/rs/xid"
-	"go.uber.org/atomic"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -21,11 +18,11 @@ func (e *Engine) Execute(templates []*templates.Template, target InputProvider) 
 	return e.ExecuteWithOpts(templates, target, false)
 }
 
-// ExecuteWithOpts is execute with the full options
+// ExecuteWithOpts executes with the full options
 func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	var finalTemplates []*templates.Template
 	if !noCluster {
-		finalTemplates, _ = e.ClusterTemplates(templatesList)
+		finalTemplates, _ = templates.ClusterTemplates(templatesList, e.executerOpts)
 	} else {
 		finalTemplates = templatesList
 	}
@@ -75,9 +72,9 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			return
 		}
 
-		wg.Waitgroup.Add()
+		wg.WaitGroup.Add()
 		go func(value string) {
-			defer wg.Waitgroup.Done()
+			defer wg.WaitGroup.Done()
 
 			var match bool
 			var err error
@@ -93,39 +90,5 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			results.CAS(false, match)
 		}(scannedValue)
 	})
-	wg.Waitgroup.Wait()
-}
-
-// ClusterTemplates performs identical http requests clustering for a list of templates
-func (e *Engine) ClusterTemplates(templatesList []*templates.Template) ([]*templates.Template, int) {
-	if e.options.OfflineHTTP {
-		return templatesList, 0
-	}
-
-	templatesMap := make(map[string]*templates.Template)
-	for _, v := range templatesList {
-		templatesMap[v.Path] = v
-	}
-	clusterCount := 0
-
-	finalTemplatesList := make([]*templates.Template, 0, len(templatesList))
-	clusters := clusterer.Cluster(templatesMap)
-	for _, cluster := range clusters {
-		if len(cluster) > 1 {
-			executerOpts := e.ExecuterOptions()
-
-			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
-
-			finalTemplatesList = append(finalTemplatesList, &templates.Template{
-				ID:            clusterID,
-				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      clusterer.NewExecuter(cluster, &executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP),
-			})
-			clusterCount += len(cluster)
-		} else {
-			finalTemplatesList = append(finalTemplatesList, cluster...)
-		}
-	}
-	return finalTemplatesList, clusterCount
+	wg.WaitGroup.Wait()
 }

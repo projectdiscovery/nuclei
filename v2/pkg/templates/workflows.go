@@ -2,6 +2,7 @@ package templates
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -61,6 +62,9 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	if len(paths) == 0 {
 		return nil
 	}
+
+	var workflowTemplates []*Template
+
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
@@ -71,10 +75,16 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
 		}
+		workflowTemplates = append(workflowTemplates, template)
+	}
+
+	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())
+	for _, template := range finalTemplates {
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
 			Executer: template.Executer,
 			Options:  options,
 		})
 	}
+
 	return nil
 }

@@ -35,7 +35,7 @@ func TestResponseToDSLMap(t *testing.T) {
 
 	resp := "test-data\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 }
 
@@ -60,13 +60,13 @@ func TestFileOperatorMatch(t *testing.T) {
 
 	resp := "test-data\r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"1.1.1.1"},
 		}
 		err = matcher.CompileMatchers()
@@ -80,7 +80,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "raw",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -95,7 +95,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -109,12 +109,12 @@ func TestFileOperatorMatch(t *testing.T) {
 	t.Run("caseInsensitive", func(t *testing.T) {
 		resp := "TEST-DATA\r\n1.1.1.1\r\n"
 		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-		require.Len(t, event, 6, "could not get correct number of items in dsl map")
+		require.Len(t, event, 7, "could not get correct number of items in dsl map")
 		require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 		matcher := &matchers.Matcher{
 			Part:            "raw",
-			Type:            "word",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words:           []string{"TeSt-DaTA"},
 			CaseInsensitive: true,
 		}
@@ -148,7 +148,7 @@ func TestFileOperatorExtract(t *testing.T) {
 
 	resp := "test-data\r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("extract", func(t *testing.T) {
@@ -200,13 +200,13 @@ func testFileMakeResultOperators(t *testing.T, matcherCondition string) *output.
 	matcher := []*matchers.Matcher{
 		{
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: expectedValue,
 		},
 		{
 			Name:  namedMatcherName,
 			Part:  "raw",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: expectedValue,
 		},
 	}
@@ -266,7 +266,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	fileContent := "test-data\r\n1.1.1.1\r\n"
 
 	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName)
-	require.Len(t, event, 6, "could not get correct number of items in dsl map")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}

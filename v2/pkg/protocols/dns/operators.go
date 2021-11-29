@@ -76,7 +76,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (in
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, tracedata *retryabledns.TraceData) output.InternalEvent {
+func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, traceData *retryabledns.TraceData) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
@@ -90,7 +90,8 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
-		"trace":         traceToString(tracedata, false),
+		"type":          request.Type().String(),
+		"trace":         traceToString(traceData, false),
 	}
 }
 
@@ -104,10 +105,11 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "dns",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		MatcherStatus:    true,
 		Timestamp:        time.Now(),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
@@ -131,10 +133,10 @@ func questionToString(resourceRecords []dns.Question) string {
 	return buffer.String()
 }
 
-func traceToString(tracedata *retryabledns.TraceData, withSteps bool) string {
+func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
 	buffer := &bytes.Buffer{}
-	if tracedata != nil {
-		for i, dnsRecord := range tracedata.DNSData {
+	if traceData != nil {
+		for i, dnsRecord := range traceData.DNSData {
 			if withSteps {
 				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
 			}

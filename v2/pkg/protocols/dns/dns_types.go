@@ -21,7 +21,6 @@ const (
 	MX
 	TXT
 	AAAA
-	//limit
 	limit
 )
 

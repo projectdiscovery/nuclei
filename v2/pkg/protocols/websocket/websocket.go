@@ -15,6 +15,7 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -248,6 +249,8 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	for k, v := range events {
 		data[k] = v
 	}
+
+	data["type"] = request.Type().String()
 	data["success"] = "true"
 	data["request"] = requestOutput
 	data["response"] = responseBuilder.String()
@@ -297,7 +300,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(err, "could not write request to server")
 		}
-		// Only perform matching and writes in case we recieve
+		// Only perform matching and writes in case we receive
 		// text or binary opcode from the websocket server.
 		if opCode != ws.OpText && opCode != ws.OpBinary {
 			continue
@@ -364,12 +367,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
-		Type:             request.Type().String(),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
+		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),

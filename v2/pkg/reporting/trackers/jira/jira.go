@@ -2,12 +2,12 @@ package jira
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -28,15 +28,15 @@ type Options struct {
 	// UpdateExisting value (optional) if true, the existing opened issue is updated
 	UpdateExisting bool `yaml:"update-existing"`
 	// URL is the URL of the jira server
-	URL string `yaml:"url"`
+	URL string `yaml:"url" validate:"required"`
 	// AccountID is the accountID of the jira user.
-	AccountID string `yaml:"account-id"`
+	AccountID string `yaml:"account-id" validate:"required"`
 	// Email is the email of the user for jira instance
-	Email string `yaml:"email"`
+	Email string `yaml:"email" validate:"required,email"`
 	// Token is the token for jira instance.
-	Token string `yaml:"token"`
+	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the project.
-	ProjectName string `yaml:"project-name"`
+	ProjectName string `yaml:"project-name" validate:"required"`
 	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
@@ -46,10 +46,6 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
-	err := validateOptions(options)
-	if err != nil {
-		return nil, err
-	}
 	username := options.Email
 	if !options.Cloud {
 		username = options.AccountID
@@ -63,31 +59,6 @@ func New(options *Options) (*Integration, error) {
 		return nil, err
 	}
 	return &Integration{jira: jiraClient, options: options}, nil
-}
-
-func validateOptions(options *Options) error {
-	errs := []string{}
-	if options.URL == "" {
-		errs = append(errs, "URL")
-	}
-	if options.AccountID == "" {
-		errs = append(errs, "AccountID")
-	}
-	if options.Email == "" {
-		errs = append(errs, "Email")
-	}
-	if options.Token == "" {
-		errs = append(errs, "Token")
-	}
-	if options.ProjectName == "" {
-		errs = append(errs, "ProjectName")
-	}
-
-	if len(errs) > 0 {
-		return errors.New("Mandatory reporting configuration fields are missing: " + strings.Join(errs, ","))
-	}
-
-	return nil
 }
 
 // CreateNewIssue creates a new issue in the tracker
@@ -133,7 +104,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 			d, _ := ioutil.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return fmt.Errorf("%s => %s", err, data)
+		return fmt.Errorf("%w => %s", err, data)
 	}
 	return nil
 }
@@ -170,7 +141,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 			d, _ := ioutil.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return "", fmt.Errorf("%s => %s", err, data)
+		return "", fmt.Errorf("%w => %s", err, data)
 	}
 
 	switch resp.Total {
