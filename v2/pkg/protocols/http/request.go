@@ -270,7 +270,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		request.options.Progress.IncrementRequests()
 
 		// If this was a match, and we want to stop at first match, skip all further requests.
-		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
+		if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
 			break
 		}
 	}
@@ -310,7 +310,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", dumpedRequestString)
-		} 
+		}
 	}
 	var formedURL string
 	var hostname string
