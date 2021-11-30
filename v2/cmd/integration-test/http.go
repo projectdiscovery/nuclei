@@ -36,6 +36,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
 	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
+	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
 }
 
 type httpInteractshRequest struct{}
@@ -150,6 +151,27 @@ func (h *httpGet) Execute(filePath string) error {
 		return err
 	}
 	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpDSLVariable struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDSLVariable) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 5 {
 		return errIncorrectResultsCount(results)
 	}
 	return nil
