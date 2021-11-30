@@ -21,7 +21,6 @@ const (
 	XPathExtractor
 	// name:json
 	JSONExtractor
-	//limit
 	limit
 )
 

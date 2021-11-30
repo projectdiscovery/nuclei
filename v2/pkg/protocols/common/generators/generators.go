@@ -4,6 +4,7 @@ package generators
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
@@ -110,7 +111,7 @@ func (i *Iterator) Total() int {
 				count = len(p.values)
 			}
 		}
-	case ClusterbombAttack:
+	case ClusterBombAttack:
 		count = 1
 		for _, p := range i.payloads {
 			count *= len(p.values)
@@ -126,7 +127,7 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 		return i.batteringRamValue()
 	case PitchForkAttack:
 		return i.pitchforkValue()
-	case ClusterbombAttack:
+	case ClusterBombAttack:
 		return i.clusterbombValue()
 	default:
 		return i.batteringRamValue()
@@ -183,7 +184,7 @@ func (i *Iterator) clusterbombValue() (map[string]interface{}, bool) {
 			signalNext = false
 		}
 		if !p.next() {
-			// No more inputs in this inputprovider
+			// No more inputs in this input provider
 			if index == i.msbIterator {
 				// Reset all previous wordlists and increment the msb counter
 				i.msbIterator++

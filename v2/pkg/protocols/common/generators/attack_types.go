@@ -27,7 +27,7 @@ const (
 var attackTypeMappings = map[AttackType]string{
 	BatteringRamAttack: "batteringram",
 	PitchForkAttack:    "pitchfork",
-	ClusterbombAttack:  "clusterbomb",
+	ClusterBombAttack:  "clusterbomb",
 }
 
 func GetSupportedAttackTypes() []AttackType {

@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBaseURLWithTemplatePrefs(t *testing.T) {
@@ -135,7 +136,7 @@ func TestMakeRequestFromRawWithPayloads(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -174,7 +175,7 @@ func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -226,7 +227,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		ServerURL:      options.InteractshURL,
 		CacheSize:      int64(options.InteractionsCacheSize),
 		Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
-		ColldownPeriod: time.Duration(options.InteractionsCooldownPeriod) * time.Second,
+		ColldownPeriod: time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
 	})
 	require.Nil(t, err, "could not create interactsh client")

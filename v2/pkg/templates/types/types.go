@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 )

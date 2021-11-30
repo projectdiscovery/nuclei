@@ -896,7 +896,7 @@ ID is the optional id of the request
 Name is the optional name of the request.
 
 If a name is specified, all the named request in a template can be matched upon
-in a combined manner allowing multirequest based matchers.
+in a combined manner allowing multi-request based matchers.
 
 </div>
 
@@ -911,7 +911,7 @@ in a combined manner allowing multirequest based matchers.
 
 Attack is the type of payload combinations to perform.
 
-batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 
@@ -1467,7 +1467,7 @@ Examples:
 
 
 ```yaml
-# Match for outlook mail protection domain
+# Match for Outlook mail protection domain
 words:
     - mail.protection.outlook.com
 ```
@@ -2699,7 +2699,7 @@ host:
 
 Attack is the type of payload combinations to perform.
 
-Batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
 </div>
@@ -2916,7 +2916,7 @@ Valid values:
 Read is the number of bytes to read from socket.
 
 This can be used for protocols which expect an immediate response. You can
-read and write responses one after another and evetually perform matching
+read and write responses one after another and eventually perform matching
 on every data captured with `name` attribute.
 
 The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
