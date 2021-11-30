@@ -21,7 +21,7 @@ type headlessBasic struct{}
 func (h *headlessBasic) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Write([]byte("<html><body></body></html>"))
+		_, _ = w.Write([]byte("<html><body></body></html>"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -44,7 +44,7 @@ func (h *headlessHeaderActions) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		testValue := r.Header.Get("test")
 		if r.Header.Get("test") != "" {
-			w.Write([]byte("<html><body>" + testValue + "</body></html>"))
+			_, _ = w.Write([]byte("<html><body>" + testValue + "</body></html>"))
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -66,7 +66,7 @@ type headlessExtractValues struct{}
 func (h *headlessExtractValues) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Write([]byte("<html><body><a href='/test.html'>test</a></body></html>"))
+		_, _ = w.Write([]byte("<html><body><a href='/test.html'>test</a></body></html>"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
