@@ -33,7 +33,6 @@ const (
 	HTTPPatch
 	// name:PURGE
 	HTTPPurge
-	//limit
 	limit
 )
 

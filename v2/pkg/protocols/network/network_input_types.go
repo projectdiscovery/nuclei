@@ -17,7 +17,6 @@ const (
 	hexType NetworkInputType = iota + 1
 	// name:text
 	textType
-	//limit
 	limit
 )
 

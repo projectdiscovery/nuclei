@@ -3,6 +3,8 @@ package templates
 import (
 	"fmt"
 
+	"github.com/rs/xid"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -10,7 +12,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/rs/xid"
 )
 
 // Cluster clusters a list of templates into a lesser number if possible based
