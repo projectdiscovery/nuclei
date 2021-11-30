@@ -55,7 +55,7 @@ type Matcher struct {
 	// description: |
 	//   Words contains word patterns required to be present in the response part.
 	// examples:
-	//   - name: Match for outlook mail protection domain
+	//   - name: Match for Outlook mail protection domain
 	//     value: >
 	//       []string{"mail.protection.outlook.com"}
 	//   - name: Match for application/json in response headers
@@ -130,16 +130,16 @@ var ConditionTypes = map[string]ConditionType{
 }
 
 // Result reverts the results of the match if the matcher is of type negative.
-func (m *Matcher) Result(data bool) bool {
-	if m.Negative {
+func (matcher *Matcher) Result(data bool) bool {
+	if matcher.Negative {
 		return !data
 	}
 	return data
 }
 
 // ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
-func (m *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
-	if m.Negative {
+func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
+	if matcher.Negative {
 		return !data, []string{}
 	}
 	return data, matchedSnippet

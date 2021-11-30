@@ -31,7 +31,6 @@ const (
 	TXT
 	// name:AAAA
 	AAAA
-	//limit
 	limit
 )
 
