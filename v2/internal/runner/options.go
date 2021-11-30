@@ -67,15 +67,14 @@ func ParseOptions(options *types.Options) {
 
 // hasStdin returns true if we have stdin input
 func hasStdin() bool {
-	stat, err := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-
-	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) == 0
-	isPipedFromFIFO := (stat.Mode() & os.ModeNamedPipe) != 0
-
-	return isPipedFromChrDev || isPipedFromFIFO
+	if fi.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+	return true
 }
 
 // validateOptions validates the configuration options passed
