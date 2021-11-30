@@ -96,23 +96,23 @@ var TemplateProtocols = []string{
 }
 
 // Type returns the type of the template
-func (t *Template) Type() types.ProtocolType {
+func (template *Template) Type() types.ProtocolType {
 	switch {
-	case len(t.RequestsDNS) > 0:
+	case len(template.RequestsDNS) > 0:
 		return types.DNSProtocol
-	case len(t.RequestsFile) > 0:
+	case len(template.RequestsFile) > 0:
 		return types.FileProtocol
-	case len(t.RequestsHTTP) > 0:
+	case len(template.RequestsHTTP) > 0:
 		return types.HTTPProtocol
-	case len(t.RequestsHeadless) > 0:
+	case len(template.RequestsHeadless) > 0:
 		return types.HeadlessProtocol
-	case len(t.RequestsNetwork) > 0:
+	case len(template.RequestsNetwork) > 0:
 		return types.NetworkProtocol
-	case len(t.Workflow.Workflows) > 0:
+	case len(template.Workflow.Workflows) > 0:
 		return types.WorkflowProtocol
-	case len(t.RequestsSSL) > 0:
+	case len(template.RequestsSSL) > 0:
 		return types.SSLProtocol
-	case len(t.RequestsWebsocket) > 0:
+	case len(template.RequestsWebsocket) > 0:
 		return types.WebsocketProtocol
 	default:
 		return types.InvalidProtocol

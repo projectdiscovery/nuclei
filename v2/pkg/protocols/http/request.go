@@ -250,7 +250,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				reqURL = generatedHttpRequest.URL()
 			}
 			request.dynamicValues = generatedHttpRequest.dynamicValues
-			// Check if hosts just keep erroring
+
+			// Check if hosts keep erroring
 			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
 				return true, nil
 			}
@@ -275,6 +276,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 					callback(event)
 				}
 			}, requestCount)
+
 			// If a variable is unresolved, skip all further requests
 			if err == errStopExecution {
 				return true, nil
@@ -345,7 +347,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 
-		// Check if are there any unresolved variables. If yes, skip unless overriden by user.
+		// Check if are there any unresolved variables. If yes, skip unless overridden by user.
 		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
 			return errStopExecution
@@ -356,7 +358,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			gologger.Print().Msgf("%s", dumpedRequestString)
 		}
 	}
-
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
@@ -449,6 +450,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 
 	var dumpedResponse []redirectedResponse
+	var gotData []byte
 	// If the status code is HTTP 101, we should not proceed with reading body.
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		var bodyReader io.Reader
@@ -466,6 +468,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				return errors.Wrap(err, "could not read http body")
 			}
 		}
+		gotData = data
 		resp.Body.Close()
 
 		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
@@ -476,14 +479,17 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
-	for _, response := range dumpedResponse {
-		// if nuclei-project is enabled store the response if not previously done
-		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, response.body); err != nil {
-				return errors.Wrap(err, "could not store in project file")
-			}
+	// if nuclei-project is enabled store the response if not previously done
+	if request.options.ProjectFile != nil && !fromCache {
+		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
+			return errors.Wrap(err, "could not store in project file")
 		}
+	}
 
+	for _, response := range dumpedResponse {
+		if response.resp == nil {
+			continue // Skip nil responses
+		}
 		matchedURL := reqURL
 		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 			matchedURL = generatedRequest.rawRequest.FullURL
