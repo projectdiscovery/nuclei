@@ -154,7 +154,7 @@ func TestFileOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "raw",
-			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+			Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -167,7 +167,7 @@ func TestFileOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"raw"},
 		}
 		err = extractor.CompileExtractors()
@@ -250,7 +250,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 			Matchers:          matchers,
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
