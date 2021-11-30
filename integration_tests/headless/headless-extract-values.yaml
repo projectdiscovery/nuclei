@@ -10,10 +10,8 @@ headless:
   - steps:
       - action: navigate
         args:
-          url: "{{BaseURL}}"
-        
+          url: "{{BaseURL}}"        
       - action: waitload
-
       # From headless/extract-urls.yaml
       - action: script
         name: extract
@@ -21,7 +19,6 @@ headless:
           code: |
             '\n' + [...new Set(Array.from(document.querySelectorAll('[src], [href], [url], [action]')).map(i => i.src || i.href || i.url || i.action))].join('\r\n') + '\n'
 
-    
     matchers:
       - type: word
         words:
@@ -32,14 +29,3 @@ headless:
         part: extract
         kval:
           - extract
-
-
-
-
-
-
-
-
-
-
-
