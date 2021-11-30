@@ -19,7 +19,7 @@ const (
 	// name:pitchfork
 	PitchForkAttack
 	// name:clusterbomb
-	ClusterbombAttack
+	ClusterBombAttack
 	limit
 )
 
