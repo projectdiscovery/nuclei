@@ -17,7 +17,7 @@ func TestNetworkCompileMake(t *testing.T) {
 	templateID := "testing-network"
 	request := &Request{
 		ID:       templateID,
-		Address:  []string{"tls://{{Hostname}}:443"},
+		Address:  []string{"tls://{{Host}}:443"},
 		ReadSize: 1024,
 		Inputs:   []*Input{{Data: "test-data"}},
 	}
