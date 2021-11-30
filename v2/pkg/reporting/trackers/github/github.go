@@ -21,15 +21,15 @@ type Integration struct {
 	options *Options
 }
 
-// Options contains the configuration options for github issue tracker client
+// Options contains the configuration options for GitHub issue tracker client
 type Options struct {
-	// BaseURL (optional) is the self-hosted github application url
+	// BaseURL (optional) is the self-hosted GitHub application url
 	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
 	// Username is the username of the github user
 	Username string `yaml:"username" validate:"required"`
-	// Owner (manadatory) is the owner name of the repository for issues.
+	// Owner is the owner name of the repository for issues.
 	Owner string `yaml:"owner" validate:"required"`
-	// Token is the token for github account.
+	// Token is the token for GitHub account.
 	Token string `yaml:"token" validate:"required"`
 	// ProjectName is the name of the repository.
 	ProjectName string `yaml:"project-name" validate:"required"`

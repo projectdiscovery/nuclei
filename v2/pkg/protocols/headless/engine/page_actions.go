@@ -399,12 +399,12 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string /*TODO revi
 		return errors.Wrap(err, "could not scroll into view")
 	}
 
-	selectedbool := false
+	selectedBool := false
 	if act.GetArg("selected") == "true" {
-		selectedbool = true
+		selectedBool = true
 	}
 	by := act.GetArg("selector")
-	if err := element.Select([]string{value}, selectedbool, selectorBy(by)); err != nil {
+	if err := element.Select([]string{value}, selectedBool, selectorBy(by)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
 	return nil
@@ -509,7 +509,7 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 	protoEvent := &protoEvent{event: event}
 
 	// Uses another instance in order to be able to chain the timeout only to the wait operation
-	pagec := p.page
+	pageCopy := p.page
 	timeout := act.GetArg("timeout")
 	if timeout != "" {
 		ts, err := strconv.Atoi(timeout)
@@ -517,11 +517,11 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 			return errors.Wrap(err, "could not get timeout")
 		}
 		if ts > 0 {
-			pagec = p.page.Timeout(time.Duration(ts) * time.Second)
+			pageCopy = p.page.Timeout(time.Duration(ts) * time.Second)
 		}
 	}
 	// Just wait the event to happen
-	pagec.WaitEvent(protoEvent)()
+	pageCopy.WaitEvent(protoEvent)()
 	return nil
 }
 

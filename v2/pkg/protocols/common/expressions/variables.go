@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
+var unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|{){2}([^}]+)(?:%7[D|d]|}){2}["')}]*`)
 
 // ContainsUnresolvedVariables returns an error with variable names if the passed
 // input contains unresolved {{<pattern-here>}} variables.
