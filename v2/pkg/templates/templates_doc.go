@@ -331,12 +331,12 @@ func init() {
 	HTTPRequestDoc.Fields[6].Name = "name"
 	HTTPRequestDoc.Fields[6].Type = "string"
 	HTTPRequestDoc.Fields[6].Note = ""
-	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multirequest based matchers."
+	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers."
 	HTTPRequestDoc.Fields[6].Comments[encoder.LineComment] = "Name is the optional name of the request."
 	HTTPRequestDoc.Fields[7].Name = "attack"
 	HTTPRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
 	HTTPRequestDoc.Fields[7].Note = ""
-	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nbatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nbatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	HTTPRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	HTTPRequestDoc.Fields[7].Values = []string{
 		"batteringram",
@@ -559,7 +559,7 @@ func init() {
 	MATCHERSMatcherDoc.Fields[7].Description = "Words contains word patterns required to be present in the response part."
 	MATCHERSMatcherDoc.Fields[7].Comments[encoder.LineComment] = "Words contains word patterns required to be present in the response part."
 
-	MATCHERSMatcherDoc.Fields[7].AddExample("Match for outlook mail protection domain", []string{"mail.protection.outlook.com"})
+	MATCHERSMatcherDoc.Fields[7].AddExample("Match for Outlook mail protection domain", []string{"mail.protection.outlook.com"})
 
 	MATCHERSMatcherDoc.Fields[7].AddExample("Match for application/json in response headers", []string{"application/json"})
 	MATCHERSMatcherDoc.Fields[8].Name = "regex"
@@ -938,7 +938,7 @@ func init() {
 	NETWORKRequestDoc.Fields[2].Name = "attack"
 	NETWORKRequestDoc.Fields[2].Type = "generators.AttackTypeHolder"
 	NETWORKRequestDoc.Fields[2].Note = ""
-	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	NETWORKRequestDoc.Fields[2].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	NETWORKRequestDoc.Fields[2].Values = []string{
 		"batteringram",
@@ -1020,7 +1020,7 @@ func init() {
 	NETWORKInputDoc.Fields[2].Name = "read"
 	NETWORKInputDoc.Fields[2].Type = "int"
 	NETWORKInputDoc.Fields[2].Note = ""
-	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
+	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and eventually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
 	NETWORKInputDoc.Fields[2].Comments[encoder.LineComment] = "Read is the number of bytes to read from socket."
 
 	NETWORKInputDoc.Fields[2].AddExample("", 1024)
