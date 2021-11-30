@@ -83,7 +83,6 @@ func (e *Executer) Execute(input string) (bool, error) {
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
-			gologger.Info().Msgf("[%s] Stopping execution at first match for %s\n", e.options.TemplateID, input)
 			break
 		}
 	}
@@ -127,7 +126,6 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
-			gologger.Info().Msgf("[%s] Stopping execution at first match for %s\n", e.options.TemplateID, input)
 			break
 		}
 	}
