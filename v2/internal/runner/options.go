@@ -2,10 +2,13 @@ package runner
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
+
+	"github.com/go-playground/validator/v10"
 
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
@@ -64,23 +67,33 @@ func ParseOptions(options *types.Options) {
 
 // hasStdin returns true if we have stdin input
 func hasStdin() bool {
-	stat, err := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-
-	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) == 0
-	isPipedFromFIFO := (stat.Mode() & os.ModeNamedPipe) != 0
-
-	return isPipedFromChrDev || isPipedFromFIFO
+	if fi.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+	return true
 }
 
 // validateOptions validates the configuration options passed
 func validateOptions(options *types.Options) error {
+	validate := validator.New()
+	if err := validate.Struct(options); err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return err
+		}
+		errs := []string{}
+		for _, err := range err.(validator.ValidationErrors) {
+			errs = append(errs, err.Namespace()+": "+err.Tag())
+		}
+		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	//loading the proxy server list from file or cli and test the connectivity
+	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
 		return err
 	}

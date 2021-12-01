@@ -73,6 +73,7 @@ func (request *Request) responseToDSLMap(req, resp, raw, host, matched string) o
 		"request":       req,
 		"data":          resp, // Data is the last bytes read
 		"raw":           raw,  // Raw is the full transaction data for network
+		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
@@ -93,12 +94,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "network",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		Timestamp:        time.Now(),
+		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["data"]),

@@ -230,9 +230,9 @@ func splitCommaTrim(value string) []string {
 	if !strings.Contains(value, ",") {
 		return []string{strings.ToLower(value)}
 	}
-	splitted := strings.Split(value, ",")
-	final := make([]string, len(splitted))
-	for i, value := range splitted {
+	split := strings.Split(value, ",")
+	final := make([]string, len(split))
+	for i, value := range split {
 		final[i] = strings.ToLower(strings.TrimSpace(value))
 	}
 	return final

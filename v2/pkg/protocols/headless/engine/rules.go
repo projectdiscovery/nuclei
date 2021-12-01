@@ -8,7 +8,7 @@ import (
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification
 func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
-	// usually browsers don't use chunked transfer encoding so we set the content-length nevertheless
+	// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
 	ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
 
 	for _, rule := range p.rules {
@@ -16,15 +16,16 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 			continue
 		}
 
-		if rule.Action == ActionSetMethod {
+		switch rule.Action {
+		case ActionSetMethod:
 			ctx.Request.Req().Method = rule.Args["method"]
-		} else if rule.Action == ActionAddHeader {
+		case ActionAddHeader:
 			ctx.Request.Req().Header.Add(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionSetHeader {
+		case ActionSetHeader:
 			ctx.Request.Req().Header.Set(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionDeleteHeader {
+		case ActionDeleteHeader:
 			ctx.Request.Req().Header.Del(rule.Args["key"])
-		} else if rule.Action == ActionSetBody {
+		case ActionSetBody:
 			body := rule.Args["body"]
 			ctx.Request.Req().ContentLength = int64(len(body))
 			ctx.Request.SetBody(body)
@@ -36,13 +37,15 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 		if rule.Part != "response" {
 			continue
 		}
-		if rule.Action == ActionAddHeader {
+
+		switch rule.Action {
+		case ActionAddHeader:
 			ctx.Response.Headers().Add(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionSetHeader {
+		case ActionSetHeader:
 			ctx.Response.Headers().Set(rule.Args["key"], rule.Args["value"])
-		} else if rule.Action == ActionDeleteHeader {
+		case ActionDeleteHeader:
 			ctx.Response.Headers().Del(rule.Args["key"])
-		} else if rule.Action == ActionSetBody {
+		case ActionSetBody:
 			body := rule.Args["body"]
 			ctx.Response.Headers().Set("Content-Length", fmt.Sprintf("%d", len(body)))
 			ctx.Response.SetBody(rule.Args["body"])

@@ -10,6 +10,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -129,6 +130,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data := make(map[string]interface{})
 	cert := connTLS.ConnectionState().PeerCertificates[0]
 
+	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
@@ -142,6 +144,17 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 	callback(event)
 	return nil
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":      "Type is the type of request made",
+	"response":  "JSON SSL protocol handshake details",
+	"not_after": "Timestamp after which the remote cert expires",
+	"host":      "Host is the input to the template",
+	"matched":   "Matched is the input which was matched upon",
 }
 
 // getAddress returns the address of the host to make request to
@@ -195,12 +208,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
-		Type:             request.Type().String(),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
+		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 	}
 	return data

@@ -10,7 +10,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -32,9 +31,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 )
 
 // Runner is a client for running the enumeration process.
@@ -116,7 +117,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.Output, options.TraceLogFile, options.ErrorLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.Output, options.TraceLogFile, options.ErrorLogFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -150,7 +151,7 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-	opts.ColldownPeriod = time.Duration(options.InteractionsCooldownPeriod) * time.Second
+	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 
@@ -180,9 +181,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if parseErr := yaml.NewDecoder(file).Decode(reportingOptions); parseErr != nil {
+		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
-			return nil, errors.Wrap(parseErr, "could not parse reporting config file")
+			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
 	}
@@ -306,7 +307,7 @@ func (r *Runner) RunEnumeration() error {
 	// Cluster the templates first because we want info on how many
 	// templates did we cluster for showing to user in CLI
 	originalTemplatesCount := len(store.Templates())
-	finalTemplates, clusterCount := engine.ClusterTemplates(store.Templates())
+	finalTemplates, clusterCount := templates.ClusterTemplates(store.Templates(), engine.ExecuterOptions())
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
 	var totalRequests int64
