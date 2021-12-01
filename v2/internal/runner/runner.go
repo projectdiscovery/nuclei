@@ -69,6 +69,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	if options.Validate {
 		parsers.ShouldValidate = true
+		// Does not update the templates when validate flag is used
+		options.NoUpdateTemplates = true
 	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
@@ -231,10 +233,12 @@ func (r *Runner) RunEnumeration() error {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	ignoreFile := config.ReadIgnoreFile()
-	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
-	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
-
+	// Exclude ignored file for validation
+	if !r.options.Validate {
+		ignoreFile := config.ReadIgnoreFile()
+		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+	}
 	var cache *hosterrorscache.Cache
 	if r.options.MaxHostError > 0 {
 		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
