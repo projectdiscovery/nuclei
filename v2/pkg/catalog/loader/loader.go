@@ -141,6 +141,10 @@ func (store *Store) Load() {
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
+	// consider all the templates by default if no templates passed by user
+	if len(templatesList) == 0 {
+		templatesList = store.finalTemplates
+	}
 	templatePaths := store.config.Catalog.GetTemplatesPath(templatesList)
 	workflowPaths := store.config.Catalog.GetTemplatesPath(workflowsList)
 
