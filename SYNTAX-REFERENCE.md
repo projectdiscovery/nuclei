@@ -1220,6 +1220,19 @@ SkipVariablesCheck skips the check for unresolved variables in request
 
 <hr />
 
+<div class="dd">
+
+<code>iterate-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+IterateAll iterates all the values extracted from internal extractors
+
+</div>
+
+<hr />
+
 
 
 
