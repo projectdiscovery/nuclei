@@ -391,29 +391,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 		if resp == nil {
-			switch request.Signature.Value {
-			case AWSSignature:
-				var awsSigner signer.Signer
-				payloads := request.options.Options.Vars.AsMap()
-				awsAccessKeyId := types.ToString(payloads["aws-id"])
-				awsSecretAccessKey := types.ToString(payloads["aws-secret"])
-				awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
-				service := types.ToString(payloads["service"])
-				region := types.ToString(payloads["region"])
-				awsSignatureArguments := signer.AwsSignatureArguments{
-					Service: types.ToString(service),
-					Region:  types.ToString(region),
-					Time:    time.Now(),
-				}
-
-				awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
-				if err != nil {
-					return err
-				}
-				err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
-				if err != nil {
-					return err
-				}
+			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
+				return errSignature
 			}
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
@@ -569,6 +548,36 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 		callback(event)
 	}
+	return nil
+}
+
+// handleSignature of the http request
+func (request *Request) handleSignature(generatedRequest *generatedRequest) error {
+	switch request.Signature.Value {
+	case AWSSignature:
+		var awsSigner signer.Signer
+		payloads := request.options.Options.Vars.AsMap()
+		awsAccessKeyId := types.ToString(payloads["aws-id"])
+		awsSecretAccessKey := types.ToString(payloads["aws-secret"])
+		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
+		service := types.ToString(payloads["service"])
+		region := types.ToString(payloads["region"])
+		awsSignatureArguments := signer.AwsSignatureArguments{
+			Service: types.ToString(service),
+			Region:  types.ToString(region),
+			Time:    time.Now(),
+		}
+
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
+		if err != nil {
+			return err
+		}
+		err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
