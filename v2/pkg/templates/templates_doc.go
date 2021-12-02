@@ -35,7 +35,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 11)
+	TemplateDoc.Fields = make([]encoder.Doc, 12)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -103,6 +103,11 @@ func init() {
 	TemplateDoc.Fields[10].Note = ""
 	TemplateDoc.Fields[10].Description = "Self Contained marks Requests for the template as self-contained"
 	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[11].Name = "stop-at-first-match"
+	TemplateDoc.Fields[11].Type = "bool"
+	TemplateDoc.Fields[11].Note = ""
+	TemplateDoc.Fields[11].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Stop execution once first match is found"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
