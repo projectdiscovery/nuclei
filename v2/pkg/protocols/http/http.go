@@ -123,7 +123,6 @@ type Request struct {
 	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
-	dynamicValues map[string]interface{}
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
