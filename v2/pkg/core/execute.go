@@ -39,15 +39,17 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 		}
 
 		wg.Add()
-		switch {
-		case template.SelfContained:
-			// Self Contained requests are executed here separately
-			e.executeSelfContainedTemplateWithInput(template, results)
-		default:
-			// All other request types are executed here
-			e.executeModelWithInput(templateType, template, target, results)
-		}
-		wg.Done()
+		go func(tpl *templates.Template) {
+			switch {
+			case tpl.SelfContained:
+				// Self Contained requests are executed here separately
+				e.executeSelfContainedTemplateWithInput(tpl, results)
+			default:
+				// All other request types are executed here
+				e.executeModelWithInput(templateType, tpl, target, results)
+			}
+			wg.Done()
+		}(template)
 	}
 	e.workPool.Wait()
 	return results

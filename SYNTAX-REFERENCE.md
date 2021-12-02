@@ -9,6 +9,8 @@ Template is a YAML input file which defines all the requests and
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -290,6 +292,8 @@ reference: https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/
 severity: high
 ```
 
+
+
 <hr />
 
 <div class="dd">
@@ -435,19 +439,6 @@ reference:
 
 Severity of the template.
 
-
-Valid values:
-
-
-  - <code>info</code>
-
-  - <code>low</code>
-
-  - <code>medium</code>
-
-  - <code>high</code>
-
-  - <code>critical</code>
 </div>
 
 <hr />
@@ -558,6 +549,8 @@ CWE-22
 
 
 
+
+
 ## severity.Holder
 Holder holds a Severity type. Required for un/marshalling purposes
 
@@ -570,12 +563,16 @@ Appears in:
 
 
 
+
+
 ## model.Classification
 
 Appears in:
 
 
 - <code><a href="#modelinfo">model.Info</a>.classification</code>
+
+
 
 
 
@@ -704,6 +701,8 @@ path:
     - '{{BaseURL}}/.git/config'
 method: GET
 ```
+
+
 
 <hr />
 
@@ -887,29 +886,6 @@ Valid values:
 
 Method is the HTTP Request Method.
 
-
-Valid values:
-
-
-  - <code>GET</code>
-
-  - <code>HEAD</code>
-
-  - <code>POST</code>
-
-  - <code>PUT</code>
-
-  - <code>DELETE</code>
-
-  - <code>CONNECT</code>
-
-  - <code>OPTIONS</code>
-
-  - <code>TRACE</code>
-
-  - <code>PATCH</code>
-
-  - <code>PURGE</code>
 </div>
 
 <hr />
@@ -1244,6 +1220,19 @@ SkipVariablesCheck skips the check for unresolved variables in request
 
 <hr />
 
+<div class="dd">
+
+<code>iterate-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+IterateAll iterates all the values extracted from internal extractors
+
+</div>
+
+<hr />
+
 
 
 
@@ -1270,6 +1259,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -1281,21 +1272,6 @@ Appears in:
 
 Type is the type of the matcher.
 
-
-Valid values:
-
-
-  - <code>status</code>
-
-  - <code>size</code>
-
-  - <code>word</code>
-
-  - <code>regex</code>
-
-  - <code>binary</code>
-
-  - <code>dsl</code>
 </div>
 
 <hr />
@@ -1630,6 +1606,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -1658,24 +1636,13 @@ name: cookie-extractor
 
 <div class="dd">
 
-<code>type</code>  <i>TypeHolder</i>
+<code>type</code>  <i>ExtractorTypeHolder</i>
 
 </div>
 <div class="dt">
 
 Type is the type of the extractor.
 
-
-Valid values:
-
-
-  - <code>regex</code>
-
-  - <code>kval</code>
-
-  - <code>json</code>
-
-  - <code>xpath</code>
 </div>
 
 <hr />
@@ -1927,6 +1894,8 @@ Appears in:
 
 
 
+
+
 ## dns.Request
 Request contains a DNS protocol request to be made from a template
 
@@ -1948,6 +1917,8 @@ class: inet
 retries: 2
 recursion: true
 ```
+
+
 
 <hr />
 
@@ -2050,27 +2021,6 @@ name: '{{FQDN}}'
 
 RequestType is the type of DNS request to make.
 
-
-Valid values:
-
-
-  - <code>A</code>
-
-  - <code>NS</code>
-
-  - <code>DS</code>
-
-  - <code>CNAME</code>
-
-  - <code>SOA</code>
-
-  - <code>PTR</code>
-
-  - <code>MX</code>
-
-  - <code>TXT</code>
-
-  - <code>AAAA</code>
 </div>
 
 <hr />
@@ -2213,6 +2163,8 @@ extractors:
 extensions:
     - all
 ```
+
+
 
 <hr />
 
@@ -2401,6 +2353,8 @@ matchers:
         - zookeeper.version
 ```
 
+
+
 <hr />
 
 <div class="dd">
@@ -2455,15 +2409,6 @@ Attack is the type of payload combinations to perform.
 Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
-
-Valid values:
-
-
-  - <code>batteringram</code>
-
-  - <code>pitchfork</code>
-
-  - <code>clusterbomb</code>
 </div>
 
 <hr />
@@ -2613,6 +2558,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2732,6 +2679,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2831,6 +2780,8 @@ Appears in:
 
 
 
+
+
 <hr />
 
 <div class="dd">
@@ -2886,51 +2837,6 @@ Description is the optional description of the headless action
 
 Action is the type of the action to perform.
 
-
-Valid values:
-
-
-  - <code>navigate</code>
-
-  - <code>script</code>
-
-  - <code>click</code>
-
-  - <code>rightclick</code>
-
-  - <code>text</code>
-
-  - <code>screenshot</code>
-
-  - <code>time</code>
-
-  - <code>select</code>
-
-  - <code>files</code>
-
-  - <code>waitload</code>
-
-  - <code>getresource</code>
-
-  - <code>extract</code>
-
-  - <code>setmethod</code>
-
-  - <code>addheader</code>
-
-  - <code>setheader</code>
-
-  - <code>deleteheader</code>
-
-  - <code>setbody</code>
-
-  - <code>waitevent</code>
-
-  - <code>keyboard</code>
-
-  - <code>debug</code>
-
-  - <code>sleep</code>
 </div>
 
 <hr />
@@ -2946,6 +2852,8 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.ssl</code>
+
+
 
 
 
@@ -3027,6 +2935,8 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.websocket</code>
+
+
 
 
 
@@ -3135,15 +3045,6 @@ Attack is the type of payload combinations to perform.
 Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
 permutations and combinations for all payloads.
 
-
-Valid values:
-
-
-  - <code>sniper</code>
-
-  - <code>pitchfork</code>
-
-  - <code>clusterbomb</code>
 </div>
 
 <hr />
@@ -3175,6 +3076,8 @@ Appears in:
 
 
 - <code><a href="#websocketrequest">websocket.Request</a>.inputs</code>
+
+
 
 
 
@@ -3246,6 +3149,8 @@ Appears in:
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.subtemplates</code>
 
 - <code><a href="#workflowsmatcher">workflows.Matcher</a>.subtemplates</code>
+
+
 
 
 
@@ -3329,6 +3234,8 @@ Appears in:
 
 
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.matchers</code>
+
+
 
 
 
