@@ -25,6 +25,9 @@ type WorkflowTemplate struct {
 	//     value: "\"misconfigurations/aem\""
 	Template string `yaml:"template,omitempty" jsonschema:"title=template/directory to execute,description=Template or directory to execute as part of workflow"`
 	// description: |
+	//    CaptureValues enables capturing of values from ran templates
+	CaptureValues bool `yaml:"capture-values,omitempty" jsonschema:"title=capture values from templates,description=Enable capturing of values from templates"`
+	// description: |
 	//    Tags to run templates based on.
 	Tags stringslice.StringSlice `yaml:"tags,omitempty" jsonschema:"title=tags to execute,description=Tags to run template based on"`
 	// description: |

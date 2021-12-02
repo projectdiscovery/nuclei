@@ -42,11 +42,9 @@ func (e *Executer) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input string) (bool, error) {
+func (e *Executer) Execute(input string, dynamicValues, previous output.InternalEvent) (bool, error) {
 	var results bool
 
-	dynamicValues := make(map[string]interface{})
-	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
@@ -86,10 +84,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
-	dynamicValues := make(map[string]interface{})
-	previous := make(map[string]interface{})
-
+func (e *Executer) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	for _, req := range e.requests {
 		req := req
 

@@ -28,9 +28,9 @@ type Executer interface {
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
 	// Execute executes the protocol group and returns true or false if results were found.
-	Execute(input string) (bool, error)
+	Execute(input string, dynamicValues, previous output.InternalEvent) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, callback OutputEventCallback) error
+	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
 }
 
 // ExecuterOptions contains the configuration options for executer clients

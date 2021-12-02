@@ -5,6 +5,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
@@ -57,7 +58,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 
 // processSelfContainedTemplates execute a self-contained template.
 func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Template, results *atomic.Bool) {
-	match, err := template.Executer.Execute("")
+	match, err := template.Executer.Execute("", make(output.InternalEvent), make(output.InternalEvent))
 	if err != nil {
 		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 	}
@@ -84,7 +85,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
-				match, err = template.Executer.Execute(value)
+				match, err = template.Executer.Execute(value, make(output.InternalEvent), make(output.InternalEvent))
 			}
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
