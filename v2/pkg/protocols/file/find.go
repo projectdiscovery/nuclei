@@ -139,6 +139,7 @@ func (request *Request) isInDenyList(absPath, item string) (string, bool) {
 
 	// file is in a forbidden subdirectory
 	filename := filepath.Base(item)
+	fullPathWithoutFilename := strings.TrimSuffix(item, filename)
 	relativePathWithFilename := strings.TrimPrefix(item, absPath)
 	relativePath := strings.TrimSuffix(relativePathWithFilename, filename)
 
@@ -155,6 +156,11 @@ func (request *Request) isInDenyList(absPath, item string) (string, bool) {
 	// relative path + filename are in the forbidden list
 	if _, ok := request.denyList[relativePathWithFilename]; ok {
 		return relativePathWithFilename, true
+	}
+
+	// root path + relative path are in the forbidden list
+	if _, ok := request.denyList[fullPathWithoutFilename]; ok {
+		return fullPathWithoutFilename, true
 	}
 
 	// any progressive combined part of the relative path with filename matches any prefix of the rules
