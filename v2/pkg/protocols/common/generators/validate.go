@@ -30,6 +30,9 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 
 			for i := range pathTokens {
 				payloadPath := filepath.Join(filepath.Join(pathTokens[:i]...), payloadType)
+				if strings.HasPrefix(templatePath, "/") {
+					payloadPath = "/" + payloadPath
+				}
 				if fileExists(payloadPath) {
 					payloads[name] = payloadPath
 					changed = true
