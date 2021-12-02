@@ -271,6 +271,19 @@ Self Contained marks Requests for the template as self-contained
 
 <hr />
 
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Stop execution once first match is found
+
+</div>
+
+<hr />
+
 
 
 
