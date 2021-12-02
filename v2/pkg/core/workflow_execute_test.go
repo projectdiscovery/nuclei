@@ -33,12 +33,12 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				firstInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
@@ -58,13 +58,13 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				firstInput = input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
@@ -84,11 +84,11 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: false, executeHook: func(input string) {
+			Executer: &mockExecuter{result: false, executeHook: func(input string, values output.InternalEvent) {
 				firstInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
@@ -108,7 +108,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				firstInput = input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
@@ -117,7 +117,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: "tomcat", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
@@ -137,7 +137,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				firstInput = input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
@@ -146,7 +146,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: "apache", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
@@ -160,9 +160,49 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	require.Equal(t, "", secondInput, "could not get correct second input")
 }
 
+func TestWorkflowsSubtemplatesWithCaptureValues(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	var gotValues output.InternalEvent
+	var firstInput string
+	workflow := &workflows.Workflow{
+		Options: &protocols.ExecuterOptions{
+			Options: &types.Options{TemplateThreads: 10},
+		},
+		Workflows: []*workflows.WorkflowTemplate{
+			{
+				Executers: []*workflows.ProtocolExecuterPair{{
+					Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
+						firstInput = input
+					}, outputs: []*output.InternalWrappedEvent{
+						{OperatorsResult: &operators.Result{
+							DynamicValues: map[string]interface{}{"value": "test"},
+						}},
+					}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
+				CaptureValues: true,
+				Subtemplates: []*workflows.WorkflowTemplate{
+					{
+						Executers: []*workflows.ProtocolExecuterPair{
+							{
+								Executer: &mockExecuter{result: false, executeHook: func(input string, values output.InternalEvent) {
+									gotValues = values
+								}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
+					},
+				},
+			},
+		},
+	}
+
+	engine := &Engine{}
+	_ = engine.executeWorkflow("https://test.com", workflow)
+
+	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
+	require.Equal(t, output.InternalEvent{"value": "test"}, gotValues, "could not get dynamic value")
+}
+
 type mockExecuter struct {
 	result      bool
-	executeHook func(input string)
+	executeHook func(input string, values output.InternalEvent)
 	outputs     []*output.InternalWrappedEvent
 }
 
@@ -179,7 +219,7 @@ func (m *mockExecuter) Requests() int {
 // Execute executes the protocol group and  returns true or false if results were found.
 func (m *mockExecuter) Execute(input string, a, b output.InternalEvent) (bool, error) {
 	if m.executeHook != nil {
-		m.executeHook(input)
+		m.executeHook(input, a)
 	}
 	return m.result, nil
 }
@@ -187,7 +227,7 @@ func (m *mockExecuter) Execute(input string, a, b output.InternalEvent) (bool, e
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (m *mockExecuter) ExecuteWithResults(input string, a, b output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
-		m.executeHook(input)
+		m.executeHook(input, a)
 	}
 	for _, output := range m.outputs {
 		callback(output)

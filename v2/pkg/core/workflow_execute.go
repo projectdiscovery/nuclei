@@ -161,7 +161,10 @@ func (e *Engine) executeWorkflowStepMatchers(workflowArgs *runWorkflowStepArgs) 
 					workflowArgs.swg.Add()
 
 					go func(subtemplate *workflows.WorkflowTemplate) {
-						if err := e.runWorkflowStep(workflowArgs); err != nil {
+						copy := workflowArgs.Copy()
+						copy.template = subtemplate
+
+						if err := e.runWorkflowStep(copy); err != nil {
 							gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", subtemplate.Template, err)
 						}
 						workflowArgs.swg.Done()
@@ -187,7 +190,10 @@ func (e *Engine) executeWorkflowStepSubtemplates(workflowArgs *runWorkflowStepAr
 		workflowArgs.swg.Add()
 
 		go func(template *workflows.WorkflowTemplate) {
-			if err := e.runWorkflowStep(workflowArgs); err != nil {
+			copy := workflowArgs.Copy()
+			copy.template = template
+
+			if err := e.runWorkflowStep(copy); err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute workflow step: %s\n", template.Template, err)
 			}
 			workflowArgs.swg.Done()
