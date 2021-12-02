@@ -282,7 +282,7 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 26)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 27)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -442,6 +442,11 @@ func init() {
 	HTTPRequestDoc.Fields[25].Note = ""
 	HTTPRequestDoc.Fields[25].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
 	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[26].Name = "iterate-all"
+	HTTPRequestDoc.Fields[26].Type = "bool"
+	HTTPRequestDoc.Fields[26].Note = ""
+	HTTPRequestDoc.Fields[26].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
