@@ -165,33 +165,23 @@ func TestWorkflowsSubtemplatesWithCaptureValues(t *testing.T) {
 
 	var gotValues output.InternalEvent
 	var firstInput string
-	workflow := &workflows.Workflow{
-		Options: &protocols.ExecuterOptions{
-			Options: &types.Options{TemplateThreads: 10},
-		},
-		Workflows: []*workflows.WorkflowTemplate{
-			{
-				Executers: []*workflows.ProtocolExecuterPair{{
-					Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
-						firstInput = input
-					}, outputs: []*output.InternalWrappedEvent{
-						{OperatorsResult: &operators.Result{
-							DynamicValues: map[string]interface{}{"value": "test"},
-						}},
-					}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
-				CaptureValues: true,
-				Subtemplates: []*workflows.WorkflowTemplate{
-					{
-						Executers: []*workflows.ProtocolExecuterPair{
-							{
-								Executer: &mockExecuter{result: false, executeHook: func(input string, values output.InternalEvent) {
-									gotValues = values
-								}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
-					},
-				},
-			},
-		},
-	}
+	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{
+		Options: &types.Options{TemplateThreads: 10},
+	}, Workflows: []*workflows.WorkflowTemplate{{
+		Executers: []*workflows.ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, executeHook: func(input string, values output.InternalEvent) {
+				firstInput = input
+			}, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{
+					DynamicValues: map[string]interface{}{"value": "test"},
+				}},
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
+		CaptureValues: true, Subtemplates: []*workflows.WorkflowTemplate{{
+			Executers: []*workflows.ProtocolExecuterPair{{Executer: &mockExecuter{result: false, executeHook: func(input string, values output.InternalEvent) {
+				gotValues = values
+			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}}},
+		}},
+	}}}
 
 	engine := &Engine{}
 	_ = engine.executeWorkflow("https://test.com", workflow)
