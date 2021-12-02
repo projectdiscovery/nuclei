@@ -48,7 +48,7 @@ func TestHTTPExtractMultipleReuse(t *testing.T) {
 			Extractors: []*extractors.Extractor{{
 				Part:     "body",
 				Name:     "endpoint",
-				Type:     extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:     extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex:    []string{"(?m)/([a-zA-Z0-9-_/\\\\]+)"},
 				Internal: true,
 			}},
