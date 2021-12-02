@@ -11,13 +11,14 @@ import (
 // AttackType is the type of attack for payloads
 type AttackType int
 
-// Supported values for the ProtocolType
+// Supported values for the AttackType
+// name:AttackType
 const (
-	// BatteringRamAttack replaces same payload in all the defined payload positions at once
+	// name:batteringram
 	BatteringRamAttack AttackType = iota + 1
-	// PitchForkAttack replaces variables with positional value from multiple wordlists
+	// name:pitchfork
 	PitchForkAttack
-	// ClusterBombAttack replaces variables with all possible combinations of values
+	// name:clusterbomb
 	ClusterBombAttack
 	limit
 )
@@ -57,7 +58,7 @@ func (t AttackType) String() string {
 
 // AttackTypeHolder is used to hold internal type of the protocol
 type AttackTypeHolder struct {
-	Value AttackType
+	Value AttackType `mapping:"true"`
 }
 
 func (holder AttackTypeHolder) JSONSchemaType() *jsonschema.Type {
