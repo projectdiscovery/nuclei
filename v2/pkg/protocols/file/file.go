@@ -52,7 +52,20 @@ type Request struct {
 	allExtensions bool
 }
 
-// defaultDenylist is the default list to be denied
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"template-id":       "ID of the template executed",
+	"template-info":     "Info Block of the template executed",
+	"template-path":     "Path of the template executed",
+	"matched":           "Matched is the input which was matched upon",
+	"path":              "Path is the path of file on local filesystem",
+	"type":              "Type is the type of request made",
+	"raw,body,all,data": "Raw contains the raw file contents",
+}
+
+// defaultDenylist is the default list of extensions to be denied
 var defaultDenylist = []string{".3g2", ".3gp", ".7z", ".apk", ".arj", ".avi", ".axd", ".bmp", ".css", ".csv", ".deb", ".dll", ".doc", ".drv", ".eot", ".exe", ".flv", ".gif", ".gifv", ".gz", ".h264", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lock", ".m4a", ".m4v", ".map", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg", ".mpg", ".msi", ".ogg", ".ogm", ".ogv", ".otf", ".pdf", ".pkg", ".png", ".ppt", ".psd", ".rar", ".rm", ".rpm", ".svg", ".swf", ".sys", ".tar.gz", ".tar", ".tif", ".tiff", ".ttf", ".vob", ".wav", ".webm", ".wmv", ".woff", ".woff2", ".xcf", ".xls", ".xlsx", ".zip"}
 
 // GetID returns the unique ID of the request if any.

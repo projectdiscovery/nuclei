@@ -12,10 +12,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
@@ -25,7 +26,7 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -50,9 +51,9 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(newTempDir)
 
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create base file")
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("new.zip", newTempDir)
@@ -77,7 +78,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create write base file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -116,6 +117,43 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not download release and unzip")
 
 	require.Equal(t, "base.yaml", results.deletions[0], "could not get correct new deletions")
+}
+
+func TestCalculateTemplateAbsolutePath(t *testing.T) {
+	configuredTemplateDirectory := filepath.Join(os.TempDir(), "templates")
+	defer os.RemoveAll(configuredTemplateDirectory)
+
+	t.Run("positive scenarios", func(t *testing.T) {
+		zipFilePathsExpectedPathsMap := map[string]string{
+			"nuclei-templates/cve/test.yaml":      filepath.Join(configuredTemplateDirectory, "cve/test.yaml"),
+			"nuclei-templates/cve/test/test.yaml": filepath.Join(configuredTemplateDirectory, "cve/test/test.yaml"),
+		}
+
+		for filePathFromZip, expectedTemplateAbsPath := range zipFilePathsExpectedPathsMap {
+			calculatedTemplateAbsPath, skipFile, err := calculateTemplateAbsolutePath(filePathFromZip, configuredTemplateDirectory)
+			require.Nil(t, err)
+			require.Equal(t, expectedTemplateAbsPath, calculatedTemplateAbsPath)
+			require.False(t, skipFile)
+		}
+	})
+
+	t.Run("negative scenarios", func(t *testing.T) {
+		filePathsFromZip := []string{
+			"./../nuclei-templates/../cve/test.yaml",
+			"nuclei-templates/../cve/test.yaml",
+			"nuclei-templates/cve/../test.yaml",
+			"nuclei-templates/././../cve/test.yaml",
+			"nuclei-templates/.././../cve/test.yaml",
+			"nuclei-templates/.././../cve/../test.yaml",
+		}
+
+		for _, filePathFromZip := range filePathsFromZip {
+			calculatedTemplateAbsPath, skipFile, err := calculateTemplateAbsolutePath(filePathFromZip, configuredTemplateDirectory)
+			require.Nil(t, err)
+			require.True(t, skipFile)
+			require.Equal(t, "", calculatedTemplateAbsPath)
+		}
+	})
 }
 
 func zipFromDirectory(zipPath, directory string) error {

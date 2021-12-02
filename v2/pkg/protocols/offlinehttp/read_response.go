@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var noMinor = regexp.MustCompile(`HTTP\/([0-9]) `)
+var noMinor = regexp.MustCompile(`HTTP/([0-9]) `)
 
 // readResponseFromString reads a raw http response from a string.
 func readResponseFromString(data string) (*http.Response, error) {

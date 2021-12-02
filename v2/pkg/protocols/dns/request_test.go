@@ -20,7 +20,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		RequestType: "A",
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
@@ -30,12 +30,12 @@ func TestDNSExecuteWithResults(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"93.184.216.34"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  "regex",
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

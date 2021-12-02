@@ -10,8 +10,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
@@ -24,10 +24,10 @@ type Options struct {
 	AllowList *Filter `yaml:"allow-list"`
 	// DenyList contains a list of denied events for reporting module
 	DenyList *Filter `yaml:"deny-list"`
-	// Github contains configuration options for Github Issue Tracker
-	Github *github.Options `yaml:"github"`
-	// Gitlab contains configuration options for Gitlab Issue Tracker
-	Gitlab *gitlab.Options `yaml:"gitlab"`
+	// GitHub contains configuration options for GitHub Issue Tracker
+	GitHub *github.Options `yaml:"github"`
+	// GitLab contains configuration options for GitLab Issue Tracker
+	GitLab *gitlab.Options `yaml:"gitlab"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
 	// MarkdownExporter contains configuration options for Markdown Exporter Module
@@ -107,15 +107,15 @@ type Client struct {
 // New creates a new nuclei issue tracker reporting client
 func New(options *Options, db string) (*Client, error) {
 	client := &Client{options: options}
-	if options.Github != nil {
-		tracker, err := github.New(options.Github)
+	if options.GitHub != nil {
+		tracker, err := github.New(options.GitHub)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create reporting client")
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
-	if options.Gitlab != nil {
-		tracker, err := gitlab.New(options.Gitlab)
+	if options.GitLab != nil {
+		tracker, err := gitlab.New(options.GitLab)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create reporting client")
 		}

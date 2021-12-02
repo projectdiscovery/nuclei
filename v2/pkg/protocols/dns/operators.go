@@ -2,6 +2,8 @@ package dns
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -12,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/retryabledns"
 )
 
 // Match matches a generic data response against a given matcher
@@ -73,7 +76,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (in
 }
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string) output.InternalEvent {
+func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, traceData *retryabledns.TraceData) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
@@ -87,6 +90,8 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,
+		"type":          request.Type().String(),
+		"trace":         traceToString(traceData, false),
 	}
 }
 
@@ -100,10 +105,11 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "dns",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		MatcherStatus:    true,
 		Timestamp:        time.Now(),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
@@ -123,6 +129,19 @@ func questionToString(resourceRecords []dns.Question) string {
 	buffer := &bytes.Buffer{}
 	for _, resourceRecord := range resourceRecords {
 		buffer.WriteString(resourceRecord.String())
+	}
+	return buffer.String()
+}
+
+func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
+	buffer := &bytes.Buffer{}
+	if traceData != nil {
+		for i, dnsRecord := range traceData.DNSData {
+			if withSteps {
+				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+			}
+			buffer.WriteString(dnsRecord.Raw)
+		}
 	}
 	return buffer.String()
 }

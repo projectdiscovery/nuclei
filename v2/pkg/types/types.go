@@ -49,7 +49,7 @@ type Options struct {
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
-	InteractshURL string
+	InteractshURL string `validate:"omitempty,url"`
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
 	// Target URLs/Domains to scan using a template
@@ -70,7 +70,7 @@ type Options struct {
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
 	ReportingConfig string
-	// MarkdownExportDirectory is the directory to export reports in markdown format
+	// MarkdownExportDirectory is the directory to export reports in Markdown format
 	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
@@ -107,9 +107,9 @@ type Options struct {
 	// Eviction is the number of seconds after which to automatically discard
 	// interaction requests.
 	InteractionsEviction int
-	// InteractionsCooldownPeriod is additional seconds to wait for interactions after closing
+	// InteractionsCoolDownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
-	InteractionsCooldownPeriod int
+	InteractionsCoolDownPeriod int
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -177,6 +177,8 @@ type Options struct {
 	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
+	// MatcherStatus displays optional status for the failed matches as well
+	MatcherStatus bool
 	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCertFile string
 	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
