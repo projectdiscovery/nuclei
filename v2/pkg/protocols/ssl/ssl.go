@@ -146,6 +146,17 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	return nil
 }
 
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":      "Type is the type of request made",
+	"response":  "JSON SSL protocol handshake details",
+	"not_after": "Timestamp after which the remote cert expires",
+	"host":      "Host is the input to the template",
+	"matched":   "Matched is the input which was matched upon",
+}
+
 // getAddress returns the address of the host to make request to
 func getAddress(toTest string) (string, error) {
 	if strings.Contains(toTest, "://") {

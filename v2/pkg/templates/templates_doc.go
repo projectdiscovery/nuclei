@@ -160,13 +160,6 @@ func init() {
 	MODELInfoDoc.Fields[5].Note = ""
 	MODELInfoDoc.Fields[5].Description = "Severity of the template."
 	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
-	MODELInfoDoc.Fields[5].Values = []string{
-		"info",
-		"low",
-		"medium",
-		"high",
-		"critical",
-	}
 	MODELInfoDoc.Fields[6].Name = "metadata"
 	MODELInfoDoc.Fields[6].Type = "map[string]string"
 	MODELInfoDoc.Fields[6].Note = ""
@@ -289,7 +282,7 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 26)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 27)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -348,18 +341,6 @@ func init() {
 	HTTPRequestDoc.Fields[8].Note = ""
 	HTTPRequestDoc.Fields[8].Description = "Method is the HTTP Request Method."
 	HTTPRequestDoc.Fields[8].Comments[encoder.LineComment] = "Method is the HTTP Request Method."
-	HTTPRequestDoc.Fields[8].Values = []string{
-		"GET",
-		"HEAD",
-		"POST",
-		"PUT",
-		"DELETE",
-		"CONNECT",
-		"OPTIONS",
-		"TRACE",
-		"PATCH",
-		"PURGE",
-	}
 	HTTPRequestDoc.Fields[9].Name = "body"
 	HTTPRequestDoc.Fields[9].Type = "string"
 	HTTPRequestDoc.Fields[9].Note = ""
@@ -461,6 +442,11 @@ func init() {
 	HTTPRequestDoc.Fields[25].Note = ""
 	HTTPRequestDoc.Fields[25].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
 	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[26].Name = "iterate-all"
+	HTTPRequestDoc.Fields[26].Type = "bool"
+	HTTPRequestDoc.Fields[26].Note = ""
+	HTTPRequestDoc.Fields[26].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -501,14 +487,6 @@ func init() {
 	MATCHERSMatcherDoc.Fields[0].Note = ""
 	MATCHERSMatcherDoc.Fields[0].Description = "Type is the type of the matcher."
 	MATCHERSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Type is the type of the matcher."
-	MATCHERSMatcherDoc.Fields[0].Values = []string{
-		"status",
-		"size",
-		"word",
-		"regex",
-		"binary",
-		"dsl",
-	}
 	MATCHERSMatcherDoc.Fields[1].Name = "condition"
 	MATCHERSMatcherDoc.Fields[1].Type = "string"
 	MATCHERSMatcherDoc.Fields[1].Note = ""
@@ -649,16 +627,10 @@ func init() {
 
 	EXTRACTORSExtractorDoc.Fields[0].AddExample("", "cookie-extractor")
 	EXTRACTORSExtractorDoc.Fields[1].Name = "type"
-	EXTRACTORSExtractorDoc.Fields[1].Type = "TypeHolder"
+	EXTRACTORSExtractorDoc.Fields[1].Type = "ExtractorTypeHolder"
 	EXTRACTORSExtractorDoc.Fields[1].Note = ""
 	EXTRACTORSExtractorDoc.Fields[1].Description = "Type is the type of the extractor."
 	EXTRACTORSExtractorDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of the extractor."
-	EXTRACTORSExtractorDoc.Fields[1].Values = []string{
-		"regex",
-		"kval",
-		"json",
-		"xpath",
-	}
 	EXTRACTORSExtractorDoc.Fields[2].Name = "regex"
 	EXTRACTORSExtractorDoc.Fields[2].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[2].Note = ""
@@ -794,17 +766,6 @@ func init() {
 	DNSRequestDoc.Fields[5].Note = ""
 	DNSRequestDoc.Fields[5].Description = "RequestType is the type of DNS request to make."
 	DNSRequestDoc.Fields[5].Comments[encoder.LineComment] = "RequestType is the type of DNS request to make."
-	DNSRequestDoc.Fields[5].Values = []string{
-		"A",
-		"NS",
-		"DS",
-		"CNAME",
-		"SOA",
-		"PTR",
-		"MX",
-		"TXT",
-		"AAAA",
-	}
 	DNSRequestDoc.Fields[6].Name = "class"
 	DNSRequestDoc.Fields[6].Type = "string"
 	DNSRequestDoc.Fields[6].Note = ""
@@ -940,11 +901,6 @@ func init() {
 	NETWORKRequestDoc.Fields[2].Note = ""
 	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	NETWORKRequestDoc.Fields[2].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
-	NETWORKRequestDoc.Fields[2].Values = []string{
-		"batteringram",
-		"pitchfork",
-		"clusterbomb",
-	}
 	NETWORKRequestDoc.Fields[3].Name = "payloads"
 	NETWORKRequestDoc.Fields[3].Type = "map[string]interface{}"
 	NETWORKRequestDoc.Fields[3].Note = ""
@@ -1102,29 +1058,6 @@ func init() {
 	ENGINEActionDoc.Fields[3].Note = ""
 	ENGINEActionDoc.Fields[3].Description = "Action is the type of the action to perform."
 	ENGINEActionDoc.Fields[3].Comments[encoder.LineComment] = "Action is the type of the action to perform."
-	ENGINEActionDoc.Fields[3].Values = []string{
-		"navigate",
-		"script",
-		"click",
-		"rightclick",
-		"text",
-		"screenshot",
-		"time",
-		"select",
-		"files",
-		"waitload",
-		"getresource",
-		"extract",
-		"setmethod",
-		"addheader",
-		"setheader",
-		"deleteheader",
-		"setbody",
-		"waitevent",
-		"keyboard",
-		"debug",
-		"sleep",
-	}
 
 	SSLRequestDoc.Type = "ssl.Request"
 	SSLRequestDoc.Comments[encoder.LineComment] = " Request is a request for the SSL protocol"
@@ -1210,11 +1143,6 @@ func init() {
 	WEBSOCKETRequestDoc.Fields[6].Note = ""
 	WEBSOCKETRequestDoc.Fields[6].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	WEBSOCKETRequestDoc.Fields[6].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
-	WEBSOCKETRequestDoc.Fields[6].Values = []string{
-		"sniper",
-		"pitchfork",
-		"clusterbomb",
-	}
 	WEBSOCKETRequestDoc.Fields[7].Name = "payloads"
 	WEBSOCKETRequestDoc.Fields[7].Type = "map[string]interface{}"
 	WEBSOCKETRequestDoc.Fields[7].Note = ""

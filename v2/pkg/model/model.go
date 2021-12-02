@@ -50,13 +50,6 @@ type Info struct {
 	Reference stringslice.StringSlice `json:"reference,omitempty" yaml:"reference,omitempty" jsonschema:"title=references for the template,description=Links relevant to the template"`
 	// description: |
 	//   Severity of the template.
-	//
-	// values:
-	//   - info
-	//   - low
-	//   - medium
-	//   - high
-	//   - critical
 	SeverityHolder severity.Holder `json:"severity,omitempty" yaml:"severity,omitempty"`
 	// description: |
 	//   Metadata of the template.
