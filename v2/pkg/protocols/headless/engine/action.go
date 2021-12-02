@@ -26,28 +26,6 @@ type Action struct {
 	Description string `yaml:"description,omitempty" jsonschema:"title=description for headless action,description=Description of the headless action"`
 	// description: |
 	//   Action is the type of the action to perform.
-	// values:
-	//   - "navigate"
-	//   - "script"
-	//   - "click"
-	//   - "rightclick"
-	//   - "text"
-	//   - "screenshot"
-	//   - "time"
-	//   - "select"
-	//   - "files"
-	//   - "waitload"
-	//   - "getresource"
-	//   - "extract"
-	//   - "setmethod"
-	//   - "addheader"
-	//   - "setheader"
-	//   - "deleteheader"
-	//   - "setbody"
-	//   - "waitevent"
-	//   - "keyboard"
-	//   - "debug"
-	//   - "sleep"
 	ActionType ActionTypeHolder `yaml:"action" jsonschema:"title=action to perform,description=Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"`
 }
 
