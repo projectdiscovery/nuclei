@@ -54,14 +54,9 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(dynamicValues)
-	}
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
+		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
 	}
 	ctx := context.Background()
 
@@ -108,12 +103,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
 }
 
-func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
-	}
+func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	ctx := context.Background()
 
 	isRawRequest := r.request.isRaw()

@@ -131,7 +131,7 @@
         },
         "type": {
           "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/extractors.TypeHolder"
+          "$ref": "#/definitions/extractors.ExtractorTypeHolder"
         },
         "regex": {
           "items": {
@@ -194,7 +194,7 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "extractors.TypeHolder": {
+    "extractors.ExtractorTypeHolder": {
       "enum": [
         "regex",
         "kval",
@@ -780,6 +780,11 @@
           "type": "boolean",
           "title": "skip variable checks",
           "description": "Skips the check for unresolved variables in request"
+        },
+        "iterate-all": {
+          "type": "boolean",
+          "title": "iterate all the values",
+          "description": "Iterates all the values extracted from internal extractors"
         }
       },
       "additionalProperties": false,

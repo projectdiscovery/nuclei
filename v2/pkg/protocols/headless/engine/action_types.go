@@ -12,51 +12,73 @@ import (
 type ActionType int8
 
 // Types to be executed by the user.
+// name:ActionType
 const (
 	// ActionNavigate performs a navigation to the specified URL
-	// URL can include nuclei payload data such as URL, Hostname, etc.
+	// name:navigate
 	ActionNavigate ActionType = iota + 1
 	// ActionScript executes a JS snippet on the page.
+	// name:script
 	ActionScript
 	// ActionClick performs the left-click action on an Element.
+	// name:click
 	ActionClick
 	// ActionRightClick performs the right-click action on an Element.
+	// name:rightclick
 	ActionRightClick
 	// ActionTextInput performs an action for a text input
+	// name:text
 	ActionTextInput
 	// ActionScreenshot performs the screenshot action writing to a file.
+	// name:screenshot
 	ActionScreenshot
 	// ActionTimeInput performs an action on a time input.
+	// name:time
 	ActionTimeInput
 	// ActionSelectInput performs an action on a select input.
+	// name:select
 	ActionSelectInput
 	// ActionFilesInput performs an action on a file input.
+	// name:files
 	ActionFilesInput
 	// ActionWaitLoad waits for the page to stop loading.
+	// name:waitload
 	ActionWaitLoad
 	// ActionGetResource performs a get resource action on an element
+	// name:getresource
 	ActionGetResource
 	// ActionExtract performs an extraction on an element
+	// name:extract
 	ActionExtract
 	// ActionSetMethod sets the request method
+	// name:setmethod
 	ActionSetMethod
 	// ActionAddHeader adds a header to the request
+	// name:addheader
 	ActionAddHeader
 	// ActionSetHeader sets a header in the request
+	// name:setheader
 	ActionSetHeader
 	// ActionDeleteHeader deletes a header from the request
+	// name:deleteheader
 	ActionDeleteHeader
 	// ActionSetBody sets the value of the request body
+	// name:setbody
 	ActionSetBody
 	// ActionWaitEvent waits for a specific event.
+	// name:waitevent
 	ActionWaitEvent
 	// ActionKeyboard performs a keyboard action event on a page.
+	// name:keyboard
 	ActionKeyboard
 	// ActionDebug debug slows down headless and adds a sleep to each page.
+	// name:debug
 	ActionDebug
 	// ActionSleep executes a sleep for a specified duration
+	// name:sleep
 	ActionSleep
 	// ActionWaitVisible waits until an element appears.
+	// name:waitvisible
 	ActionWaitVisible
 	// limit
 	limit
@@ -143,7 +165,7 @@ func (t ActionType) String() string {
 
 // ActionTypeHolder is used to hold internal type of the action
 type ActionTypeHolder struct {
-	ActionType ActionType
+	ActionType ActionType `mapping:"true"`
 }
 
 func (holder ActionTypeHolder) String() string {
