@@ -16,12 +16,7 @@ type Extractor struct {
 	Name string `yaml:"name,omitempty" jsonschema:"title=name of the extractor,description=Name of the extractor"`
 	// description: |
 	//   Type is the type of the extractor.
-	// values:
-	//   - "regex"
-	//   - "kval"
-	//   - "json"
-	//   - "xpath"
-	Type TypeHolder `json:"name,omitempty" yaml:"type"`
+	Type ExtractorTypeHolder `json:"name,omitempty" yaml:"type"`
 	// extractorType is the internal type of the extractor
 	extractorType ExtractorType
 

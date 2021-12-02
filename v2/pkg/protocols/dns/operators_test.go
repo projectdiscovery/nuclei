@@ -192,7 +192,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "raw",
-			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+			Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -205,7 +205,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"rcode"},
 		}
 		err = extractor.CompileExtractors()
@@ -238,7 +238,7 @@ func TestDNSMakeResult(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
