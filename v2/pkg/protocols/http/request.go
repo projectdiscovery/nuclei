@@ -249,8 +249,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			if reqURL == "" {
 				reqURL = generatedHttpRequest.URL()
 			}
-			request.dynamicValues = generatedHttpRequest.dynamicValues
-
 			// Check if hosts keep erroring
 			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
 				return true, nil
@@ -520,7 +518,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 
-		event := eventcreator.CreateEventWithAdditionalOptions(request, finalEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
 		if hasInteractMarkers {
