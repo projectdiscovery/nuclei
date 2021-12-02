@@ -1123,6 +1123,11 @@
           "type": "boolean",
           "title": "mark requests as self-contained",
           "description": "Mark Requests for the template as self-contained"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop at first match for the template"
         }
       },
       "additionalProperties": false,
