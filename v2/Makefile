@@ -18,5 +18,9 @@ docs:
 	./cmd/docgen/docgen docs.md nuclei-jsonschema.json
 test:
 	$(GOTEST) -v ./...
+integration:
+	bash ../integration_tests/run.sh
+functional:
+	bash cmd/functional-tests/run.sh
 tidy:
 	$(GOMOD) tidy
