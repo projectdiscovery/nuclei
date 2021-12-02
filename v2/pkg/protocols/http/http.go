@@ -165,6 +165,9 @@ type Request struct {
 	// description: |
 	//   SkipVariablesCheck skips the check for unresolved variables in request
 	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
+	// description: |
+	//   IterateAll iterates all the values extracted from internal extractors
+	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
