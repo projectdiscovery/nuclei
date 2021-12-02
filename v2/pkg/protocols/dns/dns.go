@@ -103,7 +103,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		request.Retries = 3
 	}
 	if request.Recursion == nil {
-		*request.Recursion = true
+		recursion := true
+		request.Recursion = &recursion
 	}
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
