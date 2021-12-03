@@ -1031,7 +1031,7 @@ func init() {
 
 	DNSRequestDoc.Fields[9].AddExample("Use a retry of 100 to 150 generally", 100)
 	DNSRequestDoc.Fields[10].Name = "recursion"
-	DNSRequestDoc.Fields[10].Type = "bool"
+	DNSRequestDoc.Fields[10].Type = "dns.bool"
 	DNSRequestDoc.Fields[10].Note = ""
 	DNSRequestDoc.Fields[10].Description = "Recursion determines if resolver should recurse all records to get fresh results."
 	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."

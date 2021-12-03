@@ -136,7 +136,7 @@ dns:
     type: CNAME
     class: inet
     retries: 2
-    recursion: true
+    recursion: false
 ```
 
 
@@ -2146,7 +2146,7 @@ name: '{{FQDN}}'
 type: CNAME
 class: inet
 retries: 2
-recursion: true
+recursion: false
 ```
 
 Part Definitions: 
@@ -2365,7 +2365,7 @@ trace-max-recursion: 100
 
 <div class="dd">
 
-<code>recursion</code>  <i>bool</i>
+<code>recursion</code>  <i>dns.bool</i>
 
 </div>
 <div class="dt">
