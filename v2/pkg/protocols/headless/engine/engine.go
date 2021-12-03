@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/corpix/uarand"
@@ -44,11 +45,16 @@ func New(options *types.Options) (*Browser, error) {
 		Set("disable-notifications", "true").
 		Set("hide-scrollbars", "true").
 		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-		Set("no-sandbox", "false").
 		Set("mute-audio", "true").
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
+
+	// when running as root on linux boxes we need --no-sandbox
+	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
+	if runtime.GOOS == "linux" && os.Geteuid() == 0 {
+		chromeLauncher = chromeLauncher.NoSandbox(true)
+	}
 
 	if options.UseInstalledChrome {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
