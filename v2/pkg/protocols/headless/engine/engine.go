@@ -50,9 +50,7 @@ func New(options *types.Options) (*Browser, error) {
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
 
-	// when running as root on linux boxes we need --no-sandbox
-	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	if runtime.GOOS == "linux" && os.Geteuid() == 0 {
+	if MustDisableSandbox() {
 		chromeLauncher = chromeLauncher.NoSandbox(true)
 	}
 
@@ -104,6 +102,13 @@ func New(options *types.Options) (*Browser, error) {
 	}
 	engine.previouspids = previouspids
 	return engine, nil
+}
+
+// MustDisableSandbox determines if the current os and user needs sandbox mode disabled
+func MustDisableSandbox() bool {
+	// linux with root user needs "--no-sandbox" option
+	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
+	return runtime.GOOS == "linux" && os.Geteuid() == 0
 }
 
 // Close closes the browser engine
