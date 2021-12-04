@@ -1,0 +1,18 @@
+id: headless-basic
+info:
+  name: Headless Basic
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}/"
+        
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "<html>"
