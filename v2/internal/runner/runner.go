@@ -76,6 +76,9 @@ func New(options *types.Options) (*Runner, error) {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
+		if engine.MustDisableSandbox() {
+			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+		}
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err

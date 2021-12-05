@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/corpix/uarand"
@@ -44,11 +45,14 @@ func New(options *types.Options) (*Browser, error) {
 		Set("disable-notifications", "true").
 		Set("hide-scrollbars", "true").
 		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-		Set("no-sandbox", "true").
 		Set("mute-audio", "true").
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
+
+	if MustDisableSandbox() {
+		chromeLauncher = chromeLauncher.NoSandbox(true)
+	}
 
 	if options.UseInstalledChrome {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
@@ -103,6 +107,13 @@ func New(options *types.Options) (*Browser, error) {
 	}
 	engine.previousPIDs = previousPIDs
 	return engine, nil
+}
+
+// MustDisableSandbox determines if the current os and user needs sandbox mode disabled
+func MustDisableSandbox() bool {
+	// linux with root user needs "--no-sandbox" option
+	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
+	return runtime.GOOS == "linux" && os.Geteuid() == 0
 }
 
 // Close closes the browser engine
