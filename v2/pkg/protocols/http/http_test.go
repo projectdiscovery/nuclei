@@ -5,9 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestHTTPCompile(t *testing.T) {
@@ -22,7 +23,7 @@ func TestHTTPCompile(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: "clusterbomb",
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)

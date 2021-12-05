@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
@@ -28,7 +30,7 @@ var (
 	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
-	rawhttpClient *rawhttp.Client
+	rawHttpClient *rawhttp.Client
 	poolMutex     *sync.RWMutex
 	normalClient  *retryablehttp.Client
 	clientPool    map[string]*retryablehttp.Client
@@ -96,12 +98,12 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *types.Options) *rawhttp.Client {
-	if rawhttpClient == nil {
-		rawhttpOptions := rawhttp.DefaultOptions
-		rawhttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
-		rawhttpClient = rawhttp.NewClient(rawhttpOptions)
+	if rawHttpClient == nil {
+		rawHttpOptions := rawhttp.DefaultOptions
+		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
-	return rawhttpClient
+	return rawHttpClient
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
@@ -128,16 +130,15 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-
-	if options.ProxyURL != "" {
-		proxyURL, err = url.Parse(options.ProxyURL)
+	if types.ProxyURL != "" {
+		proxyURL, err = url.Parse(types.ProxyURL)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	// Multiple Host
-	retryablehttpOptions := retryablehttp.DefaultOptionsSpraying
+	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
 	maxIdleConns := 0
 	maxConnsPerHost := 0
@@ -145,14 +146,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	if configuration.Threads > 0 {
 		// Single host
-		retryablehttpOptions = retryablehttp.DefaultOptionsSingle
+		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
 		maxIdleConnsPerHost = 500
 		maxConnsPerHost = 500
 	}
 
-	retryablehttpOptions.RetryWaitMax = 10 * time.Second
-	retryablehttpOptions.RetryMax = options.Retries
+	retryableHttpOptions.RetryWaitMax = 10 * time.Second
+	retryableHttpOptions.RetryMax = options.Retries
 	followRedirects := configuration.FollowRedirects
 	maxRedirects := configuration.MaxRedirects
 
@@ -161,38 +162,44 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
+	// Set the base TLS configuration definition
+	tlsConfig := &tls.Config{
+		Renegotiation:      tls.RenegotiateOnceAsClient,
+		InsecureSkipVerify: true,
+	}
+
+	// Add the client certificate authentication to the request if it's configured
+	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
+
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig: &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-		},
-		DisableKeepAlives: disableKeepAlives,
-	}
-
-	// Attempts to overwrite the dial function with the socks proxied version
-	if options.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
-
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
-		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
-		if proxyErr == nil {
-			transport.DialContext = dc.DialContext
-		}
+		TLSClientConfig:     tlsConfig,
+		DisableKeepAlives:   disableKeepAlives,
 	}
 	if proxyURL != nil {
-		transport.Proxy = http.ProxyURL(proxyURL)
+		// Attempts to overwrite the dial function with the socks proxied version
+		if proxyURL.Scheme == types.SOCKS5 {
+			var proxyAuth = &proxy.Auth{}
+			proxyAuth.User = proxyURL.User.Username()
+			proxyAuth.Password, _ = proxyURL.User.Password()
+
+			dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", proxyURL.Hostname(), proxyURL.Port()), proxyAuth, proxy.Direct)
+
+			dc := dialer.(interface {
+				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+			})
+			if proxyErr == nil {
+				transport.DialContext = dc.DialContext
+			}
+		} else {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
 	}
 
 	var jar *cookiejar.Jar
@@ -206,7 +213,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		Transport:     transport,
 		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryablehttpOptions)
+	}, retryableHttpOptions)
 	if jar != nil {
 		client.HTTPClient.Jar = jar
 	}

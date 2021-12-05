@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
 // Executer executes a group of requests for a protocol
@@ -47,8 +48,6 @@ func (e *Executer) Execute(input string) (bool, error) {
 	dynamicValues := make(map[string]interface{})
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		req := req
-
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
@@ -61,18 +60,17 @@ func (e *Executer) Execute(input string) (bool, error) {
 					builder.Reset()
 				}
 			}
-			if event.OperatorsResult == nil {
-				return
-			}
-			for _, result := range event.Results {
-				if e.options.IssuesClient != nil {
-					if err := e.options.IssuesClient.CreateIssue(result); err != nil {
-						gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-					}
+			// If no results were found, and also interactsh is not being used
+			// in that case we can skip it, otherwise we've to show failure in
+			// case of matcher-status flag.
+			if event.OperatorsResult == nil && !event.UsesInteractsh {
+				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
-				results = true
-				_ = e.options.Output.Write(result)
-				e.options.Progress.IncrementMatched()
+			} else {
+				if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+					results = true
+				}
 			}
 		})
 		if err != nil {
@@ -83,6 +81,10 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
+		// If a match was found and stop at first match is set, break out of the loop and return
+		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
+			break
+		}
 	}
 	return results, nil
 }
@@ -91,6 +93,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	previous := make(map[string]interface{})
+	var results bool
 
 	for _, req := range e.requests {
 		req := req
@@ -110,6 +113,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			if event.OperatorsResult == nil {
 				return
 			}
+			results = true
 			callback(event)
 		})
 		if err != nil {
@@ -119,6 +123,10 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 				}
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
+		}
+		// If a match was found and stop at first match is set, break out of the loop and return
+		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
+			break
 		}
 	}
 	return nil

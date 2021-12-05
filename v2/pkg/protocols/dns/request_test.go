@@ -5,37 +5,38 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestDNSExecuteWithResults(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
-		Type:      "A",
-		Class:     "INET",
-		Retries:   5,
-		ID:        templateID,
-		Recursion: false,
-		Name:      "{{FQDN}}",
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
+		Class:       "INET",
+		Retries:     5,
+		ID:          templateID,
+		Recursion:   &recursion,
+		Name:        "{{FQDN}}",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "raw",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"93.184.216.34"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  "regex",
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

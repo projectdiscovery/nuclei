@@ -1,0 +1,23 @@
+id: dsl-matcher-variable
+
+info:
+  name: dsl-matcher-variable
+  author: pd-team
+  severity: info
+
+requests: 
+  - 
+    path: 
+      - "{{BaseURL}}"
+    payloads: 
+      VALUES: 
+        - This
+        - is
+        - test
+        - matcher
+        - text
+    matchers: 
+      - 
+        dsl: 
+          - 'contains(body,"{{VALUES}}")'
+        type: dsl

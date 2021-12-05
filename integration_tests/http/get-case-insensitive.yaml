@@ -1,0 +1,16 @@
+id: basic-get-case-insensitive
+
+info:
+  name: Basic GET Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        case-insensitive: true
+        words:
+          - "ThIS is TEsT MAtcHEr TExT"
