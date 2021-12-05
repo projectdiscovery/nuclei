@@ -9,29 +9,39 @@ import (
 )
 
 var (
-	TemplateDoc                  encoder.Doc
-	MODELInfoDoc                 encoder.Doc
-	STRINGSLICEStringSliceDoc    encoder.Doc
-	SEVERITYHolderDoc            encoder.Doc
-	MODELClassificationDoc       encoder.Doc
-	HTTPRequestDoc               encoder.Doc
-	MATCHERSMatcherDoc           encoder.Doc
-	EXTRACTORSExtractorDoc       encoder.Doc
-	DNSRequestDoc                encoder.Doc
-	FILERequestDoc               encoder.Doc
-	NETWORKRequestDoc            encoder.Doc
-	NETWORKInputDoc              encoder.Doc
-	HEADLESSRequestDoc           encoder.Doc
-	ENGINEActionDoc              encoder.Doc
-	WORKFLOWSWorkflowTemplateDoc encoder.Doc
-	WORKFLOWSMatcherDoc          encoder.Doc
+	TemplateDoc                   encoder.Doc
+	MODELInfoDoc                  encoder.Doc
+	STRINGSLICEStringSliceDoc     encoder.Doc
+	SEVERITYHolderDoc             encoder.Doc
+	MODELClassificationDoc        encoder.Doc
+	HTTPRequestDoc                encoder.Doc
+	MATCHERSMatcherDoc            encoder.Doc
+	MatcherTypeHolderDoc          encoder.Doc
+	EXTRACTORSExtractorDoc        encoder.Doc
+	ExtractorTypeHolderDoc        encoder.Doc
+	GENERATORSAttackTypeHolderDoc encoder.Doc
+	HTTPMethodTypeHolderDoc       encoder.Doc
+	DNSRequestDoc                 encoder.Doc
+	DNSRequestTypeHolderDoc       encoder.Doc
+	FILERequestDoc                encoder.Doc
+	NETWORKRequestDoc             encoder.Doc
+	NETWORKInputDoc               encoder.Doc
+	NetworkInputTypeHolderDoc     encoder.Doc
+	HEADLESSRequestDoc            encoder.Doc
+	ENGINEActionDoc               encoder.Doc
+	ActionTypeHolderDoc           encoder.Doc
+	SSLRequestDoc                 encoder.Doc
+	WEBSOCKETRequestDoc           encoder.Doc
+	WEBSOCKETInputDoc             encoder.Doc
+	WORKFLOWSWorkflowTemplateDoc  encoder.Doc
+	WORKFLOWSMatcherDoc           encoder.Doc
 )
 
 func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 9)
+	TemplateDoc.Fields = make([]encoder.Doc, 12)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -79,16 +89,31 @@ func init() {
 	TemplateDoc.Fields[6].Note = ""
 	TemplateDoc.Fields[6].Description = "Headless contains the headless request to make in the template."
 	TemplateDoc.Fields[6].Comments[encoder.LineComment] = "Headless contains the headless request to make in the template."
-	TemplateDoc.Fields[7].Name = "workflows"
-	TemplateDoc.Fields[7].Type = "[]workflows.WorkflowTemplate"
+	TemplateDoc.Fields[7].Name = "ssl"
+	TemplateDoc.Fields[7].Type = "[]ssl.Request"
 	TemplateDoc.Fields[7].Note = ""
-	TemplateDoc.Fields[7].Description = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[8].Name = "self-contained"
-	TemplateDoc.Fields[8].Type = "bool"
+	TemplateDoc.Fields[7].Description = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[8].Name = "websocket"
+	TemplateDoc.Fields[8].Type = "[]websocket.Request"
 	TemplateDoc.Fields[8].Note = ""
-	TemplateDoc.Fields[8].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[8].Description = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[9].Name = "workflows"
+	TemplateDoc.Fields[9].Type = "[]workflows.WorkflowTemplate"
+	TemplateDoc.Fields[9].Note = ""
+	TemplateDoc.Fields[9].Description = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[10].Name = "self-contained"
+	TemplateDoc.Fields[10].Type = "bool"
+	TemplateDoc.Fields[10].Note = ""
+	TemplateDoc.Fields[10].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[11].Name = "stop-at-first-match"
+	TemplateDoc.Fields[11].Type = "bool"
+	TemplateDoc.Fields[11].Note = ""
+	TemplateDoc.Fields[11].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Stop execution once first match is found"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -146,13 +171,6 @@ func init() {
 	MODELInfoDoc.Fields[5].Note = ""
 	MODELInfoDoc.Fields[5].Description = "Severity of the template."
 	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
-	MODELInfoDoc.Fields[5].Values = []string{
-		"info",
-		"low",
-		"medium",
-		"high",
-		"critical",
-	}
 	MODELInfoDoc.Fields[6].Name = "metadata"
 	MODELInfoDoc.Fields[6].Type = "map[string]string"
 	MODELInfoDoc.Fields[6].Note = ""
@@ -223,7 +241,20 @@ func init() {
 			FieldName: "severity",
 		},
 	}
-	SEVERITYHolderDoc.Fields = make([]encoder.Doc, 0)
+	SEVERITYHolderDoc.Fields = make([]encoder.Doc, 1)
+	SEVERITYHolderDoc.Fields[0].Name = ""
+	SEVERITYHolderDoc.Fields[0].Type = "Severity"
+	SEVERITYHolderDoc.Fields[0].Note = ""
+	SEVERITYHolderDoc.Fields[0].Description = ""
+	SEVERITYHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	SEVERITYHolderDoc.Fields[0].EnumFields = []string{
+		"undefined",
+		"info",
+		"low",
+		"medium",
+		"high",
+		"critical",
+	}
 
 	MODELClassificationDoc.Type = "model.Classification"
 	MODELClassificationDoc.Comments[encoder.LineComment] = ""
@@ -275,7 +306,73 @@ func init() {
 			FieldName: "requests",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 26)
+	HTTPRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "request",
+			Value: "HTTP request made from the client",
+		},
+		{
+			Key:   "response",
+			Value: "HTTP response recieved from server",
+		},
+		{
+			Key:   "status_code",
+			Value: "Status Code received from the Server",
+		},
+		{
+			Key:   "body",
+			Value: "HTTP response body received from server (default)",
+		},
+		{
+			Key:   "content_length",
+			Value: "HTTP Response content length",
+		},
+		{
+			Key:   "header,all_headers",
+			Value: "HTTP response headers",
+		},
+		{
+			Key:   "duration",
+			Value: "HTTP request time duration",
+		},
+		{
+			Key:   "all",
+			Value: "HTTP response body + headers",
+		},
+		{
+			Key:   "cookies_from_response",
+			Value: "HTTP response cookies in name:value format",
+		},
+		{
+			Key:   "headers_from_response",
+			Value: "HTTP response headers in name:value format",
+		},
+	}
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 27)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -317,12 +414,12 @@ func init() {
 	HTTPRequestDoc.Fields[6].Name = "name"
 	HTTPRequestDoc.Fields[6].Type = "string"
 	HTTPRequestDoc.Fields[6].Note = ""
-	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multirequest based matchers."
+	HTTPRequestDoc.Fields[6].Description = "Name is the optional name of the request.\n\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers."
 	HTTPRequestDoc.Fields[6].Comments[encoder.LineComment] = "Name is the optional name of the request."
 	HTTPRequestDoc.Fields[7].Name = "attack"
-	HTTPRequestDoc.Fields[7].Type = "string"
+	HTTPRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
 	HTTPRequestDoc.Fields[7].Note = ""
-	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nbatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HTTPRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nbatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	HTTPRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
 	HTTPRequestDoc.Fields[7].Values = []string{
 		"batteringram",
@@ -330,22 +427,10 @@ func init() {
 		"clusterbomb",
 	}
 	HTTPRequestDoc.Fields[8].Name = "method"
-	HTTPRequestDoc.Fields[8].Type = "string"
+	HTTPRequestDoc.Fields[8].Type = "HTTPMethodTypeHolder"
 	HTTPRequestDoc.Fields[8].Note = ""
 	HTTPRequestDoc.Fields[8].Description = "Method is the HTTP Request Method."
 	HTTPRequestDoc.Fields[8].Comments[encoder.LineComment] = "Method is the HTTP Request Method."
-	HTTPRequestDoc.Fields[8].Values = []string{
-		"GET",
-		"HEAD",
-		"POST",
-		"PUT",
-		"DELETE",
-		"CONNECT",
-		"OPTIONS",
-		"TRACE",
-		"PATCH",
-		"PURGE",
-	}
 	HTTPRequestDoc.Fields[9].Name = "body"
 	HTTPRequestDoc.Fields[9].Type = "string"
 	HTTPRequestDoc.Fields[9].Note = ""
@@ -447,6 +532,11 @@ func init() {
 	HTTPRequestDoc.Fields[25].Note = ""
 	HTTPRequestDoc.Fields[25].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
 	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[26].Name = "iterate-all"
+	HTTPRequestDoc.Fields[26].Type = "bool"
+	HTTPRequestDoc.Fields[26].Note = ""
+	HTTPRequestDoc.Fields[26].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -472,21 +562,21 @@ func init() {
 			TypeName:  "headless.Request",
 			FieldName: "matchers",
 		},
+		{
+			TypeName:  "ssl.Request",
+			FieldName: "matchers",
+		},
+		{
+			TypeName:  "websocket.Request",
+			FieldName: "matchers",
+		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 12)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
-	MATCHERSMatcherDoc.Fields[0].Type = "string"
+	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
 	MATCHERSMatcherDoc.Fields[0].Description = "Type is the type of the matcher."
 	MATCHERSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Type is the type of the matcher."
-	MATCHERSMatcherDoc.Fields[0].Values = []string{
-		"status",
-		"size",
-		"word",
-		"regex",
-		"binary",
-		"dsl",
-	}
 	MATCHERSMatcherDoc.Fields[1].Name = "condition"
 	MATCHERSMatcherDoc.Fields[1].Type = "string"
 	MATCHERSMatcherDoc.Fields[1].Note = ""
@@ -537,7 +627,7 @@ func init() {
 	MATCHERSMatcherDoc.Fields[7].Description = "Words contains word patterns required to be present in the response part."
 	MATCHERSMatcherDoc.Fields[7].Comments[encoder.LineComment] = "Words contains word patterns required to be present in the response part."
 
-	MATCHERSMatcherDoc.Fields[7].AddExample("Match for outlook mail protection domain", []string{"mail.protection.outlook.com"})
+	MATCHERSMatcherDoc.Fields[7].AddExample("Match for Outlook mail protection domain", []string{"mail.protection.outlook.com"})
 
 	MATCHERSMatcherDoc.Fields[7].AddExample("Match for application/json in response headers", []string{"application/json"})
 	MATCHERSMatcherDoc.Fields[8].Name = "regex"
@@ -575,6 +665,39 @@ func init() {
 	MATCHERSMatcherDoc.Fields[11].Values = []string{
 		"hex",
 	}
+	MATCHERSMatcherDoc.Fields[12].Name = "case-insensitive"
+	MATCHERSMatcherDoc.Fields[12].Type = "bool"
+	MATCHERSMatcherDoc.Fields[12].Note = ""
+	MATCHERSMatcherDoc.Fields[12].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[12].Values = []string{
+		"false",
+		"true",
+	}
+
+	MatcherTypeHolderDoc.Type = "MatcherTypeHolder"
+	MatcherTypeHolderDoc.Comments[encoder.LineComment] = " MatcherTypeHolder is used to hold internal type of the matcher"
+	MatcherTypeHolderDoc.Description = "MatcherTypeHolder is used to hold internal type of the matcher"
+	MatcherTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "matchers.Matcher",
+			FieldName: "type",
+		},
+	}
+	MatcherTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	MatcherTypeHolderDoc.Fields[0].Name = ""
+	MatcherTypeHolderDoc.Fields[0].Type = "MatcherType"
+	MatcherTypeHolderDoc.Fields[0].Note = ""
+	MatcherTypeHolderDoc.Fields[0].Description = ""
+	MatcherTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	MatcherTypeHolderDoc.Fields[0].EnumFields = []string{
+		"word",
+		"regex",
+		"binary",
+		"status",
+		"size",
+		"dsl",
+	}
 
 	EXTRACTORSExtractorDoc.Type = "extractors.Extractor"
 	EXTRACTORSExtractorDoc.Comments[encoder.LineComment] = " Extractor is used to extract part of response using a regex."
@@ -600,8 +723,16 @@ func init() {
 			TypeName:  "headless.Request",
 			FieldName: "extractors",
 		},
+		{
+			TypeName:  "ssl.Request",
+			FieldName: "extractors",
+		},
+		{
+			TypeName:  "websocket.Request",
+			FieldName: "extractors",
+		},
 	}
-	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 10)
+	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 11)
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
 	EXTRACTORSExtractorDoc.Fields[0].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[0].Note = ""
@@ -610,16 +741,10 @@ func init() {
 
 	EXTRACTORSExtractorDoc.Fields[0].AddExample("", "cookie-extractor")
 	EXTRACTORSExtractorDoc.Fields[1].Name = "type"
-	EXTRACTORSExtractorDoc.Fields[1].Type = "string"
+	EXTRACTORSExtractorDoc.Fields[1].Type = "ExtractorTypeHolder"
 	EXTRACTORSExtractorDoc.Fields[1].Note = ""
 	EXTRACTORSExtractorDoc.Fields[1].Description = "Type is the type of the extractor."
 	EXTRACTORSExtractorDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of the extractor."
-	EXTRACTORSExtractorDoc.Fields[1].Values = []string{
-		"regex",
-		"kval",
-		"json",
-		"xpath",
-	}
 	EXTRACTORSExtractorDoc.Fields[2].Name = "regex"
 	EXTRACTORSExtractorDoc.Fields[2].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[2].Note = ""
@@ -678,6 +803,94 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[9].Note = ""
 	EXTRACTORSExtractorDoc.Fields[9].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
 	EXTRACTORSExtractorDoc.Fields[9].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
+	EXTRACTORSExtractorDoc.Fields[10].Name = "case-insensitive"
+	EXTRACTORSExtractorDoc.Fields[10].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[10].Note = ""
+	EXTRACTORSExtractorDoc.Fields[10].Description = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[10].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[10].Values = []string{
+		"false",
+		"true",
+	}
+
+	ExtractorTypeHolderDoc.Type = "ExtractorTypeHolder"
+	ExtractorTypeHolderDoc.Comments[encoder.LineComment] = " ExtractorTypeHolder is used to hold internal type of the extractor"
+	ExtractorTypeHolderDoc.Description = "ExtractorTypeHolder is used to hold internal type of the extractor"
+	ExtractorTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "extractors.Extractor",
+			FieldName: "type",
+		},
+	}
+	ExtractorTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	ExtractorTypeHolderDoc.Fields[0].Name = ""
+	ExtractorTypeHolderDoc.Fields[0].Type = "ExtractorType"
+	ExtractorTypeHolderDoc.Fields[0].Note = ""
+	ExtractorTypeHolderDoc.Fields[0].Description = ""
+	ExtractorTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	ExtractorTypeHolderDoc.Fields[0].EnumFields = []string{
+		"regex",
+		"kval",
+		"xpath",
+		"json",
+	}
+
+	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
+	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
+	GENERATORSAttackTypeHolderDoc.Description = "AttackTypeHolder is used to hold internal type of the protocol"
+	GENERATORSAttackTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "http.Request",
+			FieldName: "attack",
+		},
+		{
+			TypeName:  "network.Request",
+			FieldName: "attack",
+		},
+		{
+			TypeName:  "websocket.Request",
+			FieldName: "attack",
+		},
+	}
+	GENERATORSAttackTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	GENERATORSAttackTypeHolderDoc.Fields[0].Name = ""
+	GENERATORSAttackTypeHolderDoc.Fields[0].Type = "AttackType"
+	GENERATORSAttackTypeHolderDoc.Fields[0].Note = ""
+	GENERATORSAttackTypeHolderDoc.Fields[0].Description = ""
+	GENERATORSAttackTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	GENERATORSAttackTypeHolderDoc.Fields[0].EnumFields = []string{
+		"batteringram",
+		"pitchfork",
+		"clusterbomb",
+	}
+
+	HTTPMethodTypeHolderDoc.Type = "HTTPMethodTypeHolder"
+	HTTPMethodTypeHolderDoc.Comments[encoder.LineComment] = " HTTPMethodTypeHolder is used to hold internal type of the HTTP Method"
+	HTTPMethodTypeHolderDoc.Description = "HTTPMethodTypeHolder is used to hold internal type of the HTTP Method"
+	HTTPMethodTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "http.Request",
+			FieldName: "method",
+		},
+	}
+	HTTPMethodTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	HTTPMethodTypeHolderDoc.Fields[0].Name = ""
+	HTTPMethodTypeHolderDoc.Fields[0].Type = "HTTPMethodType"
+	HTTPMethodTypeHolderDoc.Fields[0].Note = ""
+	HTTPMethodTypeHolderDoc.Fields[0].Description = ""
+	HTTPMethodTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	HTTPMethodTypeHolderDoc.Fields[0].EnumFields = []string{
+		"GET",
+		"GET",
+		"POST",
+		"PUT",
+		"DELETE",
+		"CONNECT",
+		"OPTIONS",
+		"TRACE",
+		"PATCH",
+		"PURGE",
+	}
 
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
@@ -690,7 +903,65 @@ func init() {
 			FieldName: "dns",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 10)
+	DNSRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "request",
+			Value: "Request contains the DNS request in text format",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "rcode",
+			Value: "Rcode field returned for the DNS request",
+		},
+		{
+			Key:   "question",
+			Value: "Question contains the DNS question field",
+		},
+		{
+			Key:   "extra",
+			Value: "Extra contains the DNS response extra field",
+		},
+		{
+			Key:   "answer",
+			Value: "Answer contains the DNS response answer field",
+		},
+		{
+			Key:   "ns",
+			Value: "NS contains the DNS response NS field",
+		},
+		{
+			Key:   "raw,body,all",
+			Value: "Raw contains the raw DNS response (default)",
+		},
+		{
+			Key:   "trace",
+			Value: "Trace contains trace data for DNS request if enabled",
+		},
+	}
+	DNSRequestDoc.Fields = make([]encoder.Doc, 12)
 	DNSRequestDoc.Fields[0].Name = "matchers"
 	DNSRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -723,21 +994,10 @@ func init() {
 
 	DNSRequestDoc.Fields[4].AddExample("", "{{FQDN}}")
 	DNSRequestDoc.Fields[5].Name = "type"
-	DNSRequestDoc.Fields[5].Type = "string"
+	DNSRequestDoc.Fields[5].Type = "DNSRequestTypeHolder"
 	DNSRequestDoc.Fields[5].Note = ""
-	DNSRequestDoc.Fields[5].Description = "Type is the type of DNS request to make."
-	DNSRequestDoc.Fields[5].Comments[encoder.LineComment] = "Type is the type of DNS request to make."
-	DNSRequestDoc.Fields[5].Values = []string{
-		"A",
-		"NS",
-		"DS",
-		"CNAME",
-		"SOA",
-		"PTR",
-		"MX",
-		"TXT",
-		"AAAA",
-	}
+	DNSRequestDoc.Fields[5].Description = "RequestType is the type of DNS request to make."
+	DNSRequestDoc.Fields[5].Comments[encoder.LineComment] = "RequestType is the type of DNS request to make."
 	DNSRequestDoc.Fields[6].Name = "class"
 	DNSRequestDoc.Fields[6].Type = "string"
 	DNSRequestDoc.Fields[6].Note = ""
@@ -758,16 +1018,55 @@ func init() {
 	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Retries is the number of retries for the DNS request"
 
 	DNSRequestDoc.Fields[7].AddExample("Use a retry of 3 to 5 generally", 5)
-	DNSRequestDoc.Fields[8].Name = "recursion"
+	DNSRequestDoc.Fields[8].Name = "trace"
 	DNSRequestDoc.Fields[8].Type = "bool"
 	DNSRequestDoc.Fields[8].Note = ""
-	DNSRequestDoc.Fields[8].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[9].Name = "resolvers"
-	DNSRequestDoc.Fields[9].Type = "[]string"
+	DNSRequestDoc.Fields[8].Description = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Trace performs a trace operation for the target."
+	DNSRequestDoc.Fields[9].Name = "trace-max-recursion"
+	DNSRequestDoc.Fields[9].Type = "int"
 	DNSRequestDoc.Fields[9].Note = ""
-	DNSRequestDoc.Fields[9].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[9].Description = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+
+	DNSRequestDoc.Fields[9].AddExample("Use a retry of 100 to 150 generally", 100)
+	DNSRequestDoc.Fields[10].Name = "recursion"
+	DNSRequestDoc.Fields[10].Type = "dns.bool"
+	DNSRequestDoc.Fields[10].Note = ""
+	DNSRequestDoc.Fields[10].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[11].Name = "resolvers"
+	DNSRequestDoc.Fields[11].Type = "[]string"
+	DNSRequestDoc.Fields[11].Note = ""
+	DNSRequestDoc.Fields[11].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[11].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+
+	DNSRequestTypeHolderDoc.Type = "DNSRequestTypeHolder"
+	DNSRequestTypeHolderDoc.Comments[encoder.LineComment] = " DNSRequestTypeHolder is used to hold internal type of the DNS type"
+	DNSRequestTypeHolderDoc.Description = "DNSRequestTypeHolder is used to hold internal type of the DNS type"
+	DNSRequestTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "dns.Request",
+			FieldName: "type",
+		},
+	}
+	DNSRequestTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	DNSRequestTypeHolderDoc.Fields[0].Name = ""
+	DNSRequestTypeHolderDoc.Fields[0].Type = "DNSRequestType"
+	DNSRequestTypeHolderDoc.Fields[0].Note = ""
+	DNSRequestTypeHolderDoc.Fields[0].Description = ""
+	DNSRequestTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	DNSRequestTypeHolderDoc.Fields[0].EnumFields = []string{
+		"A",
+		"NS",
+		"DS",
+		"CNAME",
+		"SOA",
+		"PTR",
+		"MX",
+		"TXT",
+		"AAAA",
+	}
 
 	FILERequestDoc.Type = "file.Request"
 	FILERequestDoc.Comments[encoder.LineComment] = " Request contains a File matching mechanism for local disk operations."
@@ -778,6 +1077,36 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "file",
+		},
+	}
+	FILERequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "path",
+			Value: "Path is the path of file on local filesystem",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "raw,body,all,data",
+			Value: "Raw contains the raw file contents",
 		},
 	}
 	FILERequestDoc.Fields = make([]encoder.Doc, 8)
@@ -843,7 +1172,45 @@ func init() {
 			FieldName: "network",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 9)
+	NETWORKRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "request",
+			Value: "Network request made from the client",
+		},
+		{
+			Key:   "body,all,data",
+			Value: "Network response recieved from server (default)",
+		},
+		{
+			Key:   "raw",
+			Value: "Full Network protocol data",
+		},
+	}
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 10)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -857,15 +1224,10 @@ func init() {
 
 	NETWORKRequestDoc.Fields[1].AddExample("", []string{"{{Hostname}}"})
 	NETWORKRequestDoc.Fields[2].Name = "attack"
-	NETWORKRequestDoc.Fields[2].Type = "string"
+	NETWORKRequestDoc.Fields[2].Type = "generators.AttackTypeHolder"
 	NETWORKRequestDoc.Fields[2].Note = ""
-	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	NETWORKRequestDoc.Fields[2].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
 	NETWORKRequestDoc.Fields[2].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
-	NETWORKRequestDoc.Fields[2].Values = []string{
-		"batteringram",
-		"pitchfork",
-		"clusterbomb",
-	}
 	NETWORKRequestDoc.Fields[3].Name = "payloads"
 	NETWORKRequestDoc.Fields[3].Type = "map[string]interface{}"
 	NETWORKRequestDoc.Fields[3].Note = ""
@@ -883,22 +1245,29 @@ func init() {
 	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
 
 	NETWORKRequestDoc.Fields[5].AddExample("", 2048)
-	NETWORKRequestDoc.Fields[6].Name = "matchers"
-	NETWORKRequestDoc.Fields[6].Type = "[]matchers.Matcher"
+	NETWORKRequestDoc.Fields[6].Name = "read-all"
+	NETWORKRequestDoc.Fields[6].Type = "bool"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	NETWORKRequestDoc.Fields[7].Name = "extractors"
-	NETWORKRequestDoc.Fields[7].Type = "[]extractors.Extractor"
+	NETWORKRequestDoc.Fields[6].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
+	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+
+	NETWORKRequestDoc.Fields[6].AddExample("", false)
+	NETWORKRequestDoc.Fields[7].Name = "matchers"
+	NETWORKRequestDoc.Fields[7].Type = "[]matchers.Matcher"
 	NETWORKRequestDoc.Fields[7].Note = ""
-	NETWORKRequestDoc.Fields[7].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	NETWORKRequestDoc.Fields[8].Name = "matchers-condition"
-	NETWORKRequestDoc.Fields[8].Type = "string"
+	NETWORKRequestDoc.Fields[7].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	NETWORKRequestDoc.Fields[8].Name = "extractors"
+	NETWORKRequestDoc.Fields[8].Type = "[]extractors.Extractor"
 	NETWORKRequestDoc.Fields[8].Note = ""
-	NETWORKRequestDoc.Fields[8].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	NETWORKRequestDoc.Fields[8].Values = []string{
+	NETWORKRequestDoc.Fields[8].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	NETWORKRequestDoc.Fields[9].Name = "matchers-condition"
+	NETWORKRequestDoc.Fields[9].Type = "string"
+	NETWORKRequestDoc.Fields[9].Note = ""
+	NETWORKRequestDoc.Fields[9].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	NETWORKRequestDoc.Fields[9].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	NETWORKRequestDoc.Fields[9].Values = []string{
 		"and",
 		"or",
 	}
@@ -923,7 +1292,7 @@ func init() {
 
 	NETWORKInputDoc.Fields[0].AddExample("", "hex_decode('50494e47')")
 	NETWORKInputDoc.Fields[1].Name = "type"
-	NETWORKInputDoc.Fields[1].Type = "string"
+	NETWORKInputDoc.Fields[1].Type = "NetworkInputTypeHolder"
 	NETWORKInputDoc.Fields[1].Note = ""
 	NETWORKInputDoc.Fields[1].Description = "Type is the type of input specified in `data` field.\n\nDefault value is text, but hex can be used for hex formatted data."
 	NETWORKInputDoc.Fields[1].Comments[encoder.LineComment] = "Type is the type of input specified in `data` field."
@@ -934,7 +1303,7 @@ func init() {
 	NETWORKInputDoc.Fields[2].Name = "read"
 	NETWORKInputDoc.Fields[2].Type = "int"
 	NETWORKInputDoc.Fields[2].Note = ""
-	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and evetually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
+	NETWORKInputDoc.Fields[2].Description = "Read is the number of bytes to read from socket.\n\nThis can be used for protocols which expect an immediate response. You can\nread and write responses one after another and eventually perform matching\non every data captured with `name` attribute.\n\nThe [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this."
 	NETWORKInputDoc.Fields[2].Comments[encoder.LineComment] = "Read is the number of bytes to read from socket."
 
 	NETWORKInputDoc.Fields[2].AddExample("", 1024)
@@ -946,6 +1315,26 @@ func init() {
 
 	NETWORKInputDoc.Fields[3].AddExample("", "prefix")
 
+	NetworkInputTypeHolderDoc.Type = "NetworkInputTypeHolder"
+	NetworkInputTypeHolderDoc.Comments[encoder.LineComment] = " NetworkInputTypeHolder is used to hold internal type of the Network type"
+	NetworkInputTypeHolderDoc.Description = "NetworkInputTypeHolder is used to hold internal type of the Network type"
+	NetworkInputTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "network.Input",
+			FieldName: "type",
+		},
+	}
+	NetworkInputTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	NetworkInputTypeHolderDoc.Fields[0].Name = ""
+	NetworkInputTypeHolderDoc.Fields[0].Type = "NetworkInputType"
+	NetworkInputTypeHolderDoc.Fields[0].Note = ""
+	NetworkInputTypeHolderDoc.Fields[0].Description = ""
+	NetworkInputTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	NetworkInputTypeHolderDoc.Fields[0].EnumFields = []string{
+		"hex",
+		"text",
+	}
+
 	HEADLESSRequestDoc.Type = "headless.Request"
 	HEADLESSRequestDoc.Comments[encoder.LineComment] = " Request contains a Headless protocol request to be made from a template"
 	HEADLESSRequestDoc.Description = "Request contains a Headless protocol request to be made from a template"
@@ -953,6 +1342,40 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "headless",
+		},
+	}
+	HEADLESSRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "template-id",
+			Value: "ID of the template executed",
+		},
+		{
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
+		},
+		{
+			Key:   "template-path",
+			Value: "Path of the template executed",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "req",
+			Value: "Headless request made from the client",
+		},
+		{
+			Key:   "resp,body,data",
+			Value: "Headless response recieved from client (default)",
 		},
 	}
 	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 5)
@@ -1012,11 +1435,27 @@ func init() {
 	ENGINEActionDoc.Fields[2].Description = "Description is the optional description of the headless action"
 	ENGINEActionDoc.Fields[2].Comments[encoder.LineComment] = "Description is the optional description of the headless action"
 	ENGINEActionDoc.Fields[3].Name = "action"
-	ENGINEActionDoc.Fields[3].Type = "string"
+	ENGINEActionDoc.Fields[3].Type = "ActionTypeHolder"
 	ENGINEActionDoc.Fields[3].Note = ""
 	ENGINEActionDoc.Fields[3].Description = "Action is the type of the action to perform."
 	ENGINEActionDoc.Fields[3].Comments[encoder.LineComment] = "Action is the type of the action to perform."
-	ENGINEActionDoc.Fields[3].Values = []string{
+
+	ActionTypeHolderDoc.Type = "ActionTypeHolder"
+	ActionTypeHolderDoc.Comments[encoder.LineComment] = " ActionTypeHolder is used to hold internal type of the action"
+	ActionTypeHolderDoc.Description = "ActionTypeHolder is used to hold internal type of the action"
+	ActionTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "engine.Action",
+			FieldName: "action",
+		},
+	}
+	ActionTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	ActionTypeHolderDoc.Fields[0].Name = ""
+	ActionTypeHolderDoc.Fields[0].Type = "ActionType"
+	ActionTypeHolderDoc.Fields[0].Note = ""
+	ActionTypeHolderDoc.Fields[0].Description = ""
+	ActionTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	ActionTypeHolderDoc.Fields[0].EnumFields = []string{
 		"navigate",
 		"script",
 		"click",
@@ -1038,7 +1477,173 @@ func init() {
 		"keyboard",
 		"debug",
 		"sleep",
+		"waitvisible",
 	}
+
+	SSLRequestDoc.Type = "ssl.Request"
+	SSLRequestDoc.Comments[encoder.LineComment] = " Request is a request for the SSL protocol"
+	SSLRequestDoc.Description = "Request is a request for the SSL protocol"
+	SSLRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "ssl",
+		},
+	}
+	SSLRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "response",
+			Value: "JSON SSL protocol handshake details",
+		},
+		{
+			Key:   "not_after",
+			Value: "Timestamp after which the remote cert expires",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+	}
+	SSLRequestDoc.Fields = make([]encoder.Doc, 4)
+	SSLRequestDoc.Fields[0].Name = "matchers"
+	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
+	SSLRequestDoc.Fields[0].Note = ""
+	SSLRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	SSLRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	SSLRequestDoc.Fields[1].Name = "extractors"
+	SSLRequestDoc.Fields[1].Type = "[]extractors.Extractor"
+	SSLRequestDoc.Fields[1].Note = ""
+	SSLRequestDoc.Fields[1].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	SSLRequestDoc.Fields[1].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	SSLRequestDoc.Fields[2].Name = "matchers-condition"
+	SSLRequestDoc.Fields[2].Type = "string"
+	SSLRequestDoc.Fields[2].Note = ""
+	SSLRequestDoc.Fields[2].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	SSLRequestDoc.Fields[2].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	SSLRequestDoc.Fields[2].Values = []string{
+		"and",
+		"or",
+	}
+	SSLRequestDoc.Fields[3].Name = "address"
+	SSLRequestDoc.Fields[3].Type = "string"
+	SSLRequestDoc.Fields[3].Note = ""
+	SSLRequestDoc.Fields[3].Description = "Address contains address for the request"
+	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Address contains address for the request"
+
+	WEBSOCKETRequestDoc.Type = "websocket.Request"
+	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
+	WEBSOCKETRequestDoc.Description = "Request is a request for the Websocket protocol"
+	WEBSOCKETRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "websocket",
+		},
+	}
+	WEBSOCKETRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "success",
+			Value: "Success specifies whether websocket connection was successful",
+		},
+		{
+			Key:   "request",
+			Value: "Websocket request made to the server",
+		},
+		{
+			Key:   "response",
+			Value: "Websocket response recieved from the server",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+	}
+	WEBSOCKETRequestDoc.Fields = make([]encoder.Doc, 8)
+	WEBSOCKETRequestDoc.Fields[0].Name = "matchers"
+	WEBSOCKETRequestDoc.Fields[0].Type = "[]matchers.Matcher"
+	WEBSOCKETRequestDoc.Fields[0].Note = ""
+	WEBSOCKETRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	WEBSOCKETRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	WEBSOCKETRequestDoc.Fields[1].Name = "extractors"
+	WEBSOCKETRequestDoc.Fields[1].Type = "[]extractors.Extractor"
+	WEBSOCKETRequestDoc.Fields[1].Note = ""
+	WEBSOCKETRequestDoc.Fields[1].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	WEBSOCKETRequestDoc.Fields[1].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	WEBSOCKETRequestDoc.Fields[2].Name = "matchers-condition"
+	WEBSOCKETRequestDoc.Fields[2].Type = "string"
+	WEBSOCKETRequestDoc.Fields[2].Note = ""
+	WEBSOCKETRequestDoc.Fields[2].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	WEBSOCKETRequestDoc.Fields[2].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	WEBSOCKETRequestDoc.Fields[2].Values = []string{
+		"and",
+		"or",
+	}
+	WEBSOCKETRequestDoc.Fields[3].Name = "address"
+	WEBSOCKETRequestDoc.Fields[3].Type = "string"
+	WEBSOCKETRequestDoc.Fields[3].Note = ""
+	WEBSOCKETRequestDoc.Fields[3].Description = "Address contains address for the request"
+	WEBSOCKETRequestDoc.Fields[3].Comments[encoder.LineComment] = "Address contains address for the request"
+	WEBSOCKETRequestDoc.Fields[4].Name = "inputs"
+	WEBSOCKETRequestDoc.Fields[4].Type = "[]websocket.Input"
+	WEBSOCKETRequestDoc.Fields[4].Note = ""
+	WEBSOCKETRequestDoc.Fields[4].Description = "Inputs contains inputs for the websocket protocol"
+	WEBSOCKETRequestDoc.Fields[4].Comments[encoder.LineComment] = "Inputs contains inputs for the websocket protocol"
+	WEBSOCKETRequestDoc.Fields[5].Name = "headers"
+	WEBSOCKETRequestDoc.Fields[5].Type = "map[string]string"
+	WEBSOCKETRequestDoc.Fields[5].Note = ""
+	WEBSOCKETRequestDoc.Fields[5].Description = "Headers contains headers for the request."
+	WEBSOCKETRequestDoc.Fields[5].Comments[encoder.LineComment] = "Headers contains headers for the request."
+	WEBSOCKETRequestDoc.Fields[6].Name = "attack"
+	WEBSOCKETRequestDoc.Fields[6].Type = "generators.AttackTypeHolder"
+	WEBSOCKETRequestDoc.Fields[6].Note = ""
+	WEBSOCKETRequestDoc.Fields[6].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	WEBSOCKETRequestDoc.Fields[6].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	WEBSOCKETRequestDoc.Fields[7].Name = "payloads"
+	WEBSOCKETRequestDoc.Fields[7].Type = "map[string]interface{}"
+	WEBSOCKETRequestDoc.Fields[7].Note = ""
+	WEBSOCKETRequestDoc.Fields[7].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	WEBSOCKETRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+
+	WEBSOCKETInputDoc.Type = "websocket.Input"
+	WEBSOCKETInputDoc.Comments[encoder.LineComment] = ""
+	WEBSOCKETInputDoc.Description = ""
+	WEBSOCKETInputDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "websocket.Request",
+			FieldName: "inputs",
+		},
+	}
+	WEBSOCKETInputDoc.Fields = make([]encoder.Doc, 2)
+	WEBSOCKETInputDoc.Fields[0].Name = "data"
+	WEBSOCKETInputDoc.Fields[0].Type = "string"
+	WEBSOCKETInputDoc.Fields[0].Note = ""
+	WEBSOCKETInputDoc.Fields[0].Description = "Data is the data to send as the input.\n\nIt supports DSL Helper Functions as well as normal expressions."
+	WEBSOCKETInputDoc.Fields[0].Comments[encoder.LineComment] = "Data is the data to send as the input."
+
+	WEBSOCKETInputDoc.Fields[0].AddExample("", "TEST")
+
+	WEBSOCKETInputDoc.Fields[0].AddExample("", "hex_decode('50494e47')")
+	WEBSOCKETInputDoc.Fields[1].Name = "name"
+	WEBSOCKETInputDoc.Fields[1].Type = "string"
+	WEBSOCKETInputDoc.Fields[1].Note = ""
+	WEBSOCKETInputDoc.Fields[1].Description = "Name is the optional name of the data read to provide matching on."
+	WEBSOCKETInputDoc.Fields[1].Comments[encoder.LineComment] = "Name is the optional name of the data read to provide matching on."
+
+	WEBSOCKETInputDoc.Fields[1].AddExample("", "prefix")
 
 	WORKFLOWSWorkflowTemplateDoc.Type = "workflows.WorkflowTemplate"
 	WORKFLOWSWorkflowTemplateDoc.Comments[encoder.LineComment] = ""
@@ -1118,13 +1723,23 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&MODELClassificationDoc,
 			&HTTPRequestDoc,
 			&MATCHERSMatcherDoc,
+			&MatcherTypeHolderDoc,
 			&EXTRACTORSExtractorDoc,
+			&ExtractorTypeHolderDoc,
+			&GENERATORSAttackTypeHolderDoc,
+			&HTTPMethodTypeHolderDoc,
 			&DNSRequestDoc,
+			&DNSRequestTypeHolderDoc,
 			&FILERequestDoc,
 			&NETWORKRequestDoc,
 			&NETWORKInputDoc,
+			&NetworkInputTypeHolderDoc,
 			&HEADLESSRequestDoc,
 			&ENGINEActionDoc,
+			&ActionTypeHolderDoc,
+			&SSLRequestDoc,
+			&WEBSOCKETRequestDoc,
+			&WEBSOCKETInputDoc,
 			&WORKFLOWSWorkflowTemplateDoc,
 			&WORKFLOWSMatcherDoc,
 		},

@@ -41,32 +41,21 @@ type Request struct {
 	//  Name is the optional name of the request.
 	//
 	//  If a name is specified, all the named request in a template can be matched upon
-	//  in a combined manner allowing multirequest based matchers.
+	//  in a combined manner allowing multi-request based matchers.
 	Name string `yaml:"name,omitempty" jsonschema:"title=name for the http request,description=Optional name for the HTTP Request"`
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
-	//   batteringram is same payload into all of the defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+	//   batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	// values:
 	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType string `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Method is the HTTP Request Method.
-	// values:
-	//   - "GET"
-	//   - "HEAD"
-	//   - "POST"
-	//   - "PUT"
-	//   - "DELETE"
-	//   - "CONNECT"
-	//   - "OPTIONS"
-	//   - "TRACE"
-	//   - "PATCH"
-	//   - "PURGE"
-	Method string `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
+	Method HTTPMethodTypeHolder `yaml:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.
 	// examples:
@@ -129,16 +118,14 @@ type Request struct {
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	options       *protocols.ExecuterOptions
-	attackType    generators.Type
 	totalRequests int
 	customHeaders map[string]string
-	generator     *generators.Generator // optional, only enabled when using payloads
+	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
-	dynamicValues map[string]interface{}
 
 	// description: |
-	//   SelfContained specifies if the request is self contained.
+	//   SelfContained specifies if the request is self-contained.
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
@@ -177,6 +164,31 @@ type Request struct {
 	// description: |
 	//   SkipVariablesCheck skips the check for unresolved variables in request
 	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
+	// description: |
+	//   IterateAll iterates all the values extracted from internal extractors
+	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"template-id":           "ID of the template executed",
+	"template-info":         "Info Block of the template executed",
+	"template-path":         "Path of the template executed",
+	"host":                  "Host is the input to the template",
+	"matched":               "Matched is the input which was matched upon",
+	"type":                  "Type is the type of request made",
+	"request":               "HTTP request made from the client",
+	"response":              "HTTP response recieved from server",
+	"status_code":           "Status Code received from the Server",
+	"body":                  "HTTP response body received from server (default)",
+	"content_length":        "HTTP Response content length",
+	"header,all_headers":    "HTTP response headers",
+	"duration":              "HTTP request time duration",
+	"all":                   "HTTP response body + headers",
+	"cookies_from_response": "HTTP response cookies in name:value format",
+	"headers_from_response": "HTTP response headers in name:value format",
 }
 
 // GetID returns the unique ID of the request if any.
@@ -243,7 +255,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		var hasPayloadName bool
 		// search for markers in all request parts
 		var inputs []string
-		inputs = append(inputs, request.Method, request.Body)
+		inputs = append(inputs, request.Method.String(), request.Body)
 		inputs = append(inputs, request.Raw...)
 		for k, v := range request.customHeaders {
 			inputs = append(inputs, fmt.Sprintf("%s: %s", k, v))
@@ -253,7 +265,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 
 		for _, input := range inputs {
-			if expressions.ContainsVariablesWithNames(input, map[string]interface{}{name: payload}) == nil {
+			if expressions.ContainsVariablesWithNames(map[string]interface{}{name: payload}, input) == nil {
 				hasPayloadName = true
 				break
 			}
@@ -267,28 +279,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		attackType := request.AttackType
-		if attackType == "" {
-			attackType = "batteringram"
-		}
-		var ok bool
-		request.attackType, ok = generators.StringToType[attackType]
-		if !ok {
-			return fmt.Errorf("invalid attack type provided: %s", attackType)
-		}
-
-		// Resolve payload paths if they are files.
-		for name, payload := range request.Payloads {
-			payloadStr, ok := payload.(string)
-			if ok {
-				final, resolveErr := options.Catalog.ResolvePath(payloadStr, options.TemplatePath)
-				if resolveErr != nil {
-					return errors.Wrap(resolveErr, "could not read payload file")
-				}
-				request.Payloads[name] = final
-			}
-		}
-		request.generator, err = generators.New(request.Payloads, request.attackType, request.options.TemplatePath)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

@@ -1,9 +1,8 @@
 package extractors
 
 import (
-	"strings"
-
 	"encoding/json"
+	"strings"
 
 	"github.com/antchfx/htmlquery"
 
@@ -34,8 +33,18 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 
 // ExtractKval extracts key value pairs from a data map
 func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{} {
-	results := make(map[string]struct{})
+	if e.CaseInsensitive {
+		inputData := data
+		data = make(map[string]interface{}, len(inputData))
+		for k, v := range inputData {
+			if s, ok := v.(string); ok {
+				v = strings.ToLower(s)
+			}
+			data[strings.ToLower(k)] = v
+		}
+	}
 
+	results := make(map[string]struct{})
 	for _, k := range e.KVal {
 		item, ok := data[k]
 		if !ok {

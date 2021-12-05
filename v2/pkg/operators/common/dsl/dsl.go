@@ -1,6 +1,8 @@
 package dsl
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -17,10 +19,11 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/spaolacci/murmur3"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/spaolacci/murmur3"
 )
 
 const (
@@ -31,21 +34,38 @@ const (
 	withMaxRandArgsSize  = withCutSetArgsSize
 )
 
+var ErrDSLArguments = errors.New("invalid arguments provided to dsl")
+
 var functions = map[string]govaluate.ExpressionFunction{
 	"len": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		length := len(types.ToString(args[0]))
 		return float64(length), nil
 	},
 	"toupper": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return strings.ToUpper(types.ToString(args[0])), nil
 	},
 	"tolower": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return strings.ToLower(types.ToString(args[0])), nil
 	},
 	"replace": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, ErrDSLArguments
+		}
 		return strings.ReplaceAll(types.ToString(args[0]), types.ToString(args[1]), types.ToString(args[2])), nil
 	},
 	"replace_regex": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, ErrDSLArguments
+		}
 		compiled, err := regexp.Compile(types.ToString(args[1]))
 		if err != nil {
 			return nil, err
@@ -53,66 +73,133 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return compiled.ReplaceAllString(types.ToString(args[0]), types.ToString(args[2])), nil
 	},
 	"trim": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.Trim(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimleft": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimright": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.TrimRight(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimspace": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return strings.TrimSpace(types.ToString(args[0])), nil
 	},
 	"trimprefix": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.TrimPrefix(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"trimsuffix": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.TrimSuffix(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"reverse": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return reverseString(types.ToString(args[0])), nil
 	},
 	// encoding
 	"base64": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 
 		return sEnc, nil
 	},
+	"gzip": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
+		buffer := &bytes.Buffer{}
+		writer := gzip.NewWriter(buffer)
+		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+			return "", err
+		}
+		_ = writer.Close()
+
+		return buffer.String(), nil
+	},
 	// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 	"base64_py": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		sEnc := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 		return deserialization.InsertInto(sEnc, 76, '\n'), nil
 	},
 	"base64_decode": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return base64.StdEncoding.DecodeString(types.ToString(args[0]))
 	},
 	"url_encode": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return url.QueryEscape(types.ToString(args[0])), nil
 	},
 	"url_decode": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return url.QueryUnescape(types.ToString(args[0]))
 	},
 	"hex_encode": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
 	},
 	"hex_decode": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		hx, _ := hex.DecodeString(types.ToString(args[0]))
 		return string(hx), nil
 	},
 	"html_escape": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return html.EscapeString(types.ToString(args[0])), nil
 	},
 	"html_unescape": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return html.UnescapeString(types.ToString(args[0])), nil
 	},
 	// hashing
 	"md5": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		hash := md5.Sum([]byte(types.ToString(args[0])))
 
 		return hex.EncodeToString(hash[:]), nil
 	},
 	"sha256": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		h := sha256.New()
 		if _, err := h.Write([]byte(types.ToString(args[0]))); err != nil {
 			return nil, err
@@ -120,6 +207,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return hex.EncodeToString(h.Sum(nil)), nil
 	},
 	"sha1": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		h := sha1.New()
 		if _, err := h.Write([]byte(types.ToString(args[0]))); err != nil {
 			return nil, err
@@ -127,13 +217,22 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return hex.EncodeToString(h.Sum(nil)), nil
 	},
 	"mmh3": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		return fmt.Sprintf("%d", int32(murmur3.Sum32WithSeed([]byte(types.ToString(args[0])), 0))), nil
 	},
 	// search
 	"contains": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 	},
 	"regex": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		compiled, err := regexp.Compile(types.ToString(args[0]))
 		if err != nil {
 			return nil, err
@@ -142,6 +241,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 	},
 	// random generators
 	"rand_char": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		chars := letters + numbers
 		bad := ""
 		if len(args) >= 1 {
@@ -154,6 +256,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return chars[rand.Intn(len(chars))], nil
 	},
 	"rand_base": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, ErrDSLArguments
+		}
 		l := 0
 		bad := ""
 		base := letters + numbers
@@ -171,6 +276,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return randSeq(base, l), nil
 	},
 	"rand_text_alphanumeric": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		l := 0
 		bad := ""
 		chars := letters + numbers
@@ -185,6 +293,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return randSeq(chars, l), nil
 	},
 	"rand_text_alpha": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		l := 0
 		bad := ""
 		chars := letters
@@ -199,6 +310,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return randSeq(chars, l), nil
 	},
 	"rand_text_numeric": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		l := 0
 		bad := ""
 		chars := numbers
@@ -213,6 +327,9 @@ var functions = map[string]govaluate.ExpressionFunction{
 		return randSeq(chars, l), nil
 	},
 	"rand_int": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, ErrDSLArguments
+		}
 		min := 0
 		max := math.MaxInt32
 
@@ -231,16 +348,22 @@ var functions = map[string]govaluate.ExpressionFunction{
 		}
 		now := time.Now()
 		offset := now.Add(time.Duration(seconds) * time.Second)
-		return offset.Unix(), nil
+		return float64(offset.Unix()), nil
 	},
 	// Time Functions
 	"waitfor": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 1 {
+			return nil, ErrDSLArguments
+		}
 		seconds := args[0].(float64)
 		time.Sleep(time.Duration(seconds) * time.Second)
 		return true, nil
 	},
 	// deserialization Functions
 	"generate_java_gadget": func(args ...interface{}) (interface{}, error) {
+		if len(args) != 3 {
+			return nil, ErrDSLArguments
+		}
 		gadget := args[0].(string)
 		cmd := args[1].(string)
 

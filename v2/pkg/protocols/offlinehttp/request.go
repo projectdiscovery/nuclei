@@ -15,11 +15,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 var _ protocols.Request = &Request{}
 
 const maxSize = 5 * 1024 * 1024
+
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.HTTPProtocol
+}
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -91,7 +97,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	})
 	wg.Wait()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplateID, input, "file", err)
+		request.options.Output.Request(request.options.TemplatePath, input, "file", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}

@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestFindResponses(t *testing.T) {
@@ -40,7 +40,7 @@ func TestFindResponses(t *testing.T) {
 		"test.txt":          "TEST",
 	}
 	for k, v := range files {
-		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), 0777)
+		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
 		require.Nil(t, err, "could not write temporary file")
 	}
 	expected := []string{"config.txt", "final.txt", "test.txt"}
