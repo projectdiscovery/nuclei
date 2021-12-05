@@ -279,7 +279,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
 			return err
 		}
-		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 {
+		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
 			gologger.Info().Msgf("All templates validated successfully\n")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -362,6 +362,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
+	stats.Display(parsers.RuntimeWarningsStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
