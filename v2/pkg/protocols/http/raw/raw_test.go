@@ -64,3 +64,24 @@ username=admin&password=login`, "https://test.com", false)
 	require.Equal(t, "POST", request.Method, "Could not parse POST method request correctly")
 	require.Equal(t, "username=admin&password=login", request.Data, "Could not parse request data correctly")
 }
+
+func TestParseUnsafeRequestWithPath(t *testing.T) {
+	request, err := Parse(`GET /manager/html HTTP/1.1
+Host: {{Hostname}}
+Authorization: Basic {{base64('username:password')}}
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0
+Accept-Language: en-US,en;q=0.9
+Connection: close`, "https://test.com/test/", true)
+	require.Nil(t, err, "could not parse unsafe request")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET /test/manager/html", "Could not parse unsafe method request path correctly")
+}
+
+func TestTryFillCustomHeaders(t *testing.T) {
+	testValue := "GET /manager/html HTTP/1.1\r\nHost: Test\r\n"
+	expected := "GET /test/manager/html HTTP/1.1\r\nHost: Test\r\ntest: test\r\n"
+	request, err := Parse(testValue, "https://test.com/test/", true)
+	require.Nil(t, err, "could not parse unsafe request")
+	err = request.TryFillCustomHeaders([]string{"test: test"})
+	require.Nil(t, err, "could not add custom headers")
+	require.Equal(t, expected, string(request.UnsafeRawBytes), "actual value and expected value are different")
+}

@@ -9,6 +9,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
@@ -27,7 +30,7 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520"`
+	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
@@ -56,6 +59,12 @@ type Template struct {
 	// description: |
 	//   Headless contains the headless request to make in the template.
 	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless,omitempty" jsonschema:"title=headless requests to make,description=Headless requests to make for the template"`
+	// description: |
+	//   SSL contains the SSL request to make in the template.
+	RequestsSSL []*ssl.Request `yaml:"ssl,omitempty" json:"ssl,omitempty" jsonschema:"title=ssl requests to make,description=SSL requests to make for the template"`
+	// description: |
+	//   Websocket contains the Websocket request to make in the template.
+	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
 
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
@@ -65,6 +74,9 @@ type Template struct {
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
 	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+	// description: |
+	//  Stop execution once first match is found
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
@@ -72,4 +84,40 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+}
+
+// TemplateProtocols is a list of accepted template protocols
+var TemplateProtocols = []string{
+	"dns",
+	"file",
+	"http",
+	"headless",
+	"network",
+	"workflow",
+	"ssl",
+	"websocket",
+}
+
+// Type returns the type of the template
+func (template *Template) Type() types.ProtocolType {
+	switch {
+	case len(template.RequestsDNS) > 0:
+		return types.DNSProtocol
+	case len(template.RequestsFile) > 0:
+		return types.FileProtocol
+	case len(template.RequestsHTTP) > 0:
+		return types.HTTPProtocol
+	case len(template.RequestsHeadless) > 0:
+		return types.HeadlessProtocol
+	case len(template.RequestsNetwork) > 0:
+		return types.NetworkProtocol
+	case len(template.Workflow.Workflows) > 0:
+		return types.WorkflowProtocol
+	case len(template.RequestsSSL) > 0:
+		return types.SSLProtocol
+	case len(template.RequestsWebsocket) > 0:
+		return types.WebsocketProtocol
+	default:
+		return types.InvalidProtocol
+	}
 }
