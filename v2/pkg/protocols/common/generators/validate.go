@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/folderutil"
@@ -27,11 +28,13 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 
 			changed := false
 
-			templatePathInfo, err := folderutil.NewPathInfo(templatePath)
+			dir, filename := filepath.Split(filepath.Join(templatePath, payloadType))
+
+			templatePathInfo, err := folderutil.NewPathInfo(dir)
 			if err != nil {
 				return err
 			}
-			payloadPathsToProbe, err := templatePathInfo.MeshWith(payloadType)
+			payloadPathsToProbe, err := templatePathInfo.MeshWith(filename)
 			if err != nil {
 				return err
 			}
