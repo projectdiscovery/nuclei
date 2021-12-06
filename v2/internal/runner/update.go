@@ -24,6 +24,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -401,7 +402,9 @@ func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory stri
 		return "", true, nil
 	}
 
-	directoryPathChunks := strings.Split(directory, string(os.PathSeparator))
+	pathInfo, _ := folderutil.NewPathInfo(directory)
+
+	directoryPathChunks := pathInfo.Parts
 	relativeDirectoryPathWithoutZipRoot := filepath.Join(directoryPathChunks[1:]...)
 
 	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
