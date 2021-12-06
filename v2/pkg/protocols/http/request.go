@@ -291,8 +291,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			requestCount++
 			request.options.Progress.IncrementRequests()
 
-			// If this was a match and we want to stop at first match, skip all further requests.
-			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
+			// If this was a match, and we want to stop at first match, skip all further requests.
+			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
 				return true, nil
 			}
 			return false, nil

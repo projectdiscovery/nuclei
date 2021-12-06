@@ -74,6 +74,9 @@ type Template struct {
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
 	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+	// description: |
+	//  Stop execution once first match is found
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
 	// description: |
 	//   Signature is the request signature method

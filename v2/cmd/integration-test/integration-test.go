@@ -29,6 +29,7 @@ func main() {
 		"workflow":  workflowTestcases,
 		"loader":    loaderTestcases,
 		"websocket": websocketTestCases,
+		"headless":  headlessTestcases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {
