@@ -402,10 +402,17 @@ func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory stri
 		return "", true, nil
 	}
 
-	pathInfo, _ := folderutil.NewPathInfo(directory)
-
-	directoryPathChunks := pathInfo.Parts
-	relativeDirectoryPathWithoutZipRoot := filepath.Join(directoryPathChunks[1:]...)
+	var (
+		directoryPathChunks                 []string
+		relativeDirectoryPathWithoutZipRoot string
+	)
+	if folderutil.IsUnixOS() {
+		directoryPathChunks = strings.Split(directory, string(os.PathSeparator))
+	} else if folderutil.IsWindowsOS() {
+		pathInfo, _ := folderutil.NewPathInfo(directory)
+		directoryPathChunks = pathInfo.Parts
+	}
+	relativeDirectoryPathWithoutZipRoot = filepath.Join(directoryPathChunks[1:]...)
 
 	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
 		return "", true, nil
