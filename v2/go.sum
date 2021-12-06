@@ -595,10 +595,8 @@ github.com/projectdiscovery/fileutil v0.0.0-20210914153648-31f843feaad4/go.mod h
 github.com/projectdiscovery/fileutil v0.0.0-20210926202739-6050d0acf73c/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5 h1:2dbm7UhrAKnccZttr78CAmG768sSCd+MBn4ayLVDeqA=
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
-github.com/projectdiscovery/folderutil v0.0.0-20210804143510-68474319fd84 h1:+VqGxv8ywpIHwGGSCOcGn/q5kkuB6F1AZtY42I8VnXc=
-github.com/projectdiscovery/folderutil v0.0.0-20210804143510-68474319fd84/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
-github.com/projectdiscovery/folderutil v0.0.0-20211203091551-e81604e6940e h1:ozfSeEc5j1f7NCEZAiAskP/KYfBD/TzPmFTIfh+CEwE=
-github.com/projectdiscovery/folderutil v0.0.0-20211203091551-e81604e6940e/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
+github.com/projectdiscovery/folderutil v0.0.0-20211206102047-d6bf8e7490ff h1:ci7/Pq9xvrVFb94jeARYb45oSzs85NWG+Fxp/kjgHVc=
+github.com/projectdiscovery/folderutil v0.0.0-20211206102047-d6bf8e7490ff/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a h1:EzwVm8i4zmzqZX55vrDtyfogwHh8AAZ3cWCJe4fEduk=
 github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
