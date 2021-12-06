@@ -108,8 +108,9 @@ var (
 )
 
 const (
-	SyntaxWarningStats = "syntax-warnings"
-	SyntaxErrorStats   = "syntax-errors"
+	SyntaxWarningStats   = "syntax-warnings"
+	SyntaxErrorStats     = "syntax-errors"
+	RuntimeWarningsStats = "runtime-warnings"
 )
 
 func init() {
@@ -118,6 +119,7 @@ func init() {
 
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
+	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
