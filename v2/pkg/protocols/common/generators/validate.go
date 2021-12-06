@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/folderutil"
@@ -20,14 +21,21 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 				return errors.New("invalid number of lines in payload")
 			}
 
-			// check if it's a worldlist file and try to load it
+			// check if it's a file and try to load it
 			if fileExists(payloadType) {
 				continue
 			}
 
 			changed := false
 
-			templatePathInfo, err := folderutil.NewPathInfo(templatePath)
+			var dir string
+			if folderutil.IsWindowsOS() {
+				dir, payloadType = filepath.Split(filepath.Join(templatePath, payloadType))
+			} else {
+				dir, _ = filepath.Split(templatePath)
+			}
+
+			templatePathInfo, err := folderutil.NewPathInfo(dir)
 			if err != nil {
 				return err
 			}
