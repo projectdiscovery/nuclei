@@ -67,7 +67,7 @@ require (
 
 require github.com/aws/aws-sdk-go v1.42.3
 
-require github.com/projectdiscovery/folderutil v0.0.0-20211203091551-e81604e6940e
+require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
