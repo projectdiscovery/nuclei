@@ -136,7 +136,7 @@ dns:
     type: CNAME
     class: inet
     retries: 2
-    recursion: true
+    recursion: false
 ```
 
 
@@ -266,6 +266,19 @@ Workflows is a list of workflows to execute for a template.
 <div class="dt">
 
 Self Contained marks Requests for the template as self-contained
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Stop execution once first match is found
 
 </div>
 
@@ -563,6 +576,38 @@ Appears in:
 
 
 
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>Severity</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>undefined</code>
+
+  - <code>info</code>
+
+  - <code>low</code>
+
+  - <code>medium</code>
+
+  - <code>high</code>
+
+  - <code>critical</code>
+</div>
+
+<hr />
+
+
+
 
 
 ## model.Classification
@@ -702,7 +747,25 @@ path:
 method: GET
 ```
 
+Part Definitions: 
 
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>request</code> - HTTP request made from the client
+- <code>response</code> - HTTP response recieved from server
+- <code>status_code</code> - Status Code received from the Server
+- <code>body</code> - HTTP response body received from server (default)
+- <code>content_length</code> - HTTP Response content length
+- <code>header,all_headers</code> - HTTP response headers
+- <code>duration</code> - HTTP request time duration
+- <code>all</code> - HTTP response body + headers
+- <code>cookies_from_response</code> - HTTP response cookies in name:value format
+- <code>headers_from_response</code> - HTTP response headers in name:value format
 
 <hr />
 
@@ -879,7 +942,7 @@ Valid values:
 
 <div class="dd">
 
-<code>method</code>  <i>HTTPMethodTypeHolder</i>
+<code>method</code>  <i><a href="#httpmethodtypeholder">HTTPMethodTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -1220,6 +1283,19 @@ SkipVariablesCheck skips the check for unresolved variables in request
 
 <hr />
 
+<div class="dd">
+
+<code>iterate-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+IterateAll iterates all the values extracted from internal extractors
+
+</div>
+
+<hr />
+
 
 
 
@@ -1252,7 +1328,7 @@ Appears in:
 
 <div class="dd">
 
-<code>type</code>  <i>MatcherTypeHolder</i>
+<code>type</code>  <i><a href="#matchertypeholder">MatcherTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -1571,6 +1647,52 @@ Valid values:
 
 
 
+## MatcherTypeHolder
+MatcherTypeHolder is used to hold internal type of the matcher
+
+Appears in:
+
+
+- <code><a href="#matchersmatcher">matchers.Matcher</a>.type</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>MatcherType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>word</code>
+
+  - <code>regex</code>
+
+  - <code>binary</code>
+
+  - <code>status</code>
+
+  - <code>size</code>
+
+  - <code>dsl</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## extractors.Extractor
 Extractor is used to extract part of response using a regex.
 
@@ -1623,7 +1745,7 @@ name: cookie-extractor
 
 <div class="dd">
 
-<code>type</code>  <i>ExtractorTypeHolder</i>
+<code>type</code>  <i><a href="#extractortypeholder">ExtractorTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -1865,6 +1987,48 @@ Valid values:
 
 
 
+## ExtractorTypeHolder
+ExtractorTypeHolder is used to hold internal type of the extractor
+
+Appears in:
+
+
+- <code><a href="#extractorsextractor">extractors.Extractor</a>.type</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>ExtractorType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>regex</code>
+
+  - <code>kval</code>
+
+  - <code>xpath</code>
+
+  - <code>json</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## generators.AttackTypeHolder
 AttackTypeHolder is used to hold internal type of the protocol
 
@@ -1878,6 +2042,86 @@ Appears in:
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
 
 
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>AttackType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>batteringram</code>
+
+  - <code>pitchfork</code>
+
+  - <code>clusterbomb</code>
+</div>
+
+<hr />
+
+
+
+
+
+## HTTPMethodTypeHolder
+HTTPMethodTypeHolder is used to hold internal type of the HTTP Method
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.method</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>HTTPMethodType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>GET</code>
+
+  - <code>GET</code>
+
+  - <code>POST</code>
+
+  - <code>PUT</code>
+
+  - <code>DELETE</code>
+
+  - <code>CONNECT</code>
+
+  - <code>OPTIONS</code>
+
+  - <code>TRACE</code>
+
+  - <code>PATCH</code>
+
+  - <code>PURGE</code>
+</div>
+
+<hr />
 
 
 
@@ -1902,10 +2146,26 @@ name: '{{FQDN}}'
 type: CNAME
 class: inet
 retries: 2
-recursion: true
+recursion: false
 ```
 
+Part Definitions: 
 
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>request</code> - Request contains the DNS request in text format
+- <code>type</code> - Type is the type of request made
+- <code>rcode</code> - Rcode field returned for the DNS request
+- <code>question</code> - Question contains the DNS question field
+- <code>extra</code> - Extra contains the DNS response extra field
+- <code>answer</code> - Answer contains the DNS response answer field
+- <code>ns</code> - NS contains the DNS response NS field
+- <code>raw,body,all</code> - Raw contains the raw DNS response (default)
+- <code>trace</code> - Trace contains trace data for DNS request if enabled
 
 <hr />
 
@@ -2001,7 +2261,7 @@ name: '{{FQDN}}'
 
 <div class="dd">
 
-<code>type</code>  <i>DNSRequestTypeHolder</i>
+<code>type</code>  <i><a href="#dnsrequesttypeholder">DNSRequestTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -2105,7 +2365,7 @@ trace-max-recursion: 100
 
 <div class="dd">
 
-<code>recursion</code>  <i>bool</i>
+<code>recursion</code>  <i>dns.bool</i>
 
 </div>
 <div class="dt">
@@ -2133,6 +2393,58 @@ Resolvers to use for the dns requests
 
 
 
+## DNSRequestTypeHolder
+DNSRequestTypeHolder is used to hold internal type of the DNS type
+
+Appears in:
+
+
+- <code><a href="#dnsrequest">dns.Request</a>.type</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>DNSRequestType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>A</code>
+
+  - <code>NS</code>
+
+  - <code>DS</code>
+
+  - <code>CNAME</code>
+
+  - <code>SOA</code>
+
+  - <code>PTR</code>
+
+  - <code>MX</code>
+
+  - <code>TXT</code>
+
+  - <code>AAAA</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## file.Request
 Request contains a File matching mechanism for local disk operations.
 
@@ -2151,7 +2463,16 @@ extensions:
     - all
 ```
 
+Part Definitions: 
 
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>path</code> - Path is the path of file on local filesystem
+- <code>type</code> - Type is the type of request made
+- <code>raw,body,all,data</code> - Raw contains the raw file contents
 
 <hr />
 
@@ -2340,7 +2661,18 @@ matchers:
         - zookeeper.version
 ```
 
+Part Definitions: 
 
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>request</code> - Network request made from the client
+- <code>body,all,data</code> - Network response recieved from server (default)
+- <code>raw</code> - Full Network protocol data
 
 <hr />
 
@@ -2580,7 +2912,7 @@ data: hex_decode('50494e47')
 
 <div class="dd">
 
-<code>type</code>  <i>NetworkInputTypeHolder</i>
+<code>type</code>  <i><a href="#networkinputtypeholder">NetworkInputTypeHolder</a></i>
 
 </div>
 <div class="dt">
@@ -2656,6 +2988,44 @@ name: prefix
 
 
 
+## NetworkInputTypeHolder
+NetworkInputTypeHolder is used to hold internal type of the Network type
+
+Appears in:
+
+
+- <code><a href="#networkinput">network.Input</a>.type</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>NetworkInputType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>hex</code>
+
+  - <code>text</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## headless.Request
 Request contains a Headless protocol request to be made from a template
 
@@ -2666,7 +3036,17 @@ Appears in:
 
 
 
+Part Definitions: 
 
+
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>req</code> - Headless request made from the client
+- <code>resp,body,data</code> - Headless response recieved from client (default)
 
 <hr />
 
@@ -2817,13 +3197,91 @@ Description is the optional description of the headless action
 
 <div class="dd">
 
-<code>action</code>  <i>ActionTypeHolder</i>
+<code>action</code>  <i><a href="#actiontypeholder">ActionTypeHolder</a></i>
 
 </div>
 <div class="dt">
 
 Action is the type of the action to perform.
 
+</div>
+
+<hr />
+
+
+
+
+
+## ActionTypeHolder
+ActionTypeHolder is used to hold internal type of the action
+
+Appears in:
+
+
+- <code><a href="#engineaction">engine.Action</a>.action</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>ActionType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>navigate</code>
+
+  - <code>script</code>
+
+  - <code>click</code>
+
+  - <code>rightclick</code>
+
+  - <code>text</code>
+
+  - <code>screenshot</code>
+
+  - <code>time</code>
+
+  - <code>select</code>
+
+  - <code>files</code>
+
+  - <code>waitload</code>
+
+  - <code>getresource</code>
+
+  - <code>extract</code>
+
+  - <code>setmethod</code>
+
+  - <code>addheader</code>
+
+  - <code>setheader</code>
+
+  - <code>deleteheader</code>
+
+  - <code>setbody</code>
+
+  - <code>waitevent</code>
+
+  - <code>keyboard</code>
+
+  - <code>debug</code>
+
+  - <code>sleep</code>
+
+  - <code>waitvisible</code>
 </div>
 
 <hr />
@@ -2842,7 +3300,14 @@ Appears in:
 
 
 
+Part Definitions: 
 
+
+- <code>type</code> - Type is the type of request made
+- <code>response</code> - JSON SSL protocol handshake details
+- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
 
 <hr />
 
@@ -2925,7 +3390,15 @@ Appears in:
 
 
 
+Part Definitions: 
 
+
+- <code>type</code> - Type is the type of request made
+- <code>success</code> - Success specifies whether websocket connection was successful
+- <code>request</code> - Websocket request made to the server
+- <code>response</code> - Websocket response recieved from the server
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
 
 <hr />
 

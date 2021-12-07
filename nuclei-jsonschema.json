@@ -780,6 +780,11 @@
           "type": "boolean",
           "title": "skip variable checks",
           "description": "Skips the check for unresolved variables in request"
+        },
+        "iterate-all": {
+          "type": "boolean",
+          "title": "iterate all the values",
+          "description": "Iterates all the values extracted from internal extractors"
         }
       },
       "additionalProperties": false,
@@ -1118,6 +1123,11 @@
           "type": "boolean",
           "title": "mark requests as self-contained",
           "description": "Mark Requests for the template as self-contained"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop at first match for the template"
         }
       },
       "additionalProperties": false,
