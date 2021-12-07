@@ -69,11 +69,16 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	if options.Validate {
 		parsers.ShouldValidate = true
+		// Does not update the templates when validate flag is used
+		options.NoUpdateTemplates = true
 	}
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Warning().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
+		if engine.MustDisableSandbox() {
+			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+		}
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
@@ -151,7 +156,7 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-	opts.ColldownPeriod = time.Duration(options.InteractionsCooldownPeriod) * time.Second
+	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 
@@ -231,10 +236,12 @@ func (r *Runner) RunEnumeration() error {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	ignoreFile := config.ReadIgnoreFile()
-	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
-	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
-
+	// Exclude ignored file for validation
+	if !r.options.Validate {
+		ignoreFile := config.ReadIgnoreFile()
+		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+	}
 	var cache *hosterrorscache.Cache
 	if r.options.MaxHostError > 0 {
 		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
@@ -275,7 +282,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
 			return err
 		}
-		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 {
+		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
 			gologger.Info().Msgf("All templates validated successfully\n")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -358,6 +365,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
+	stats.Display(parsers.RuntimeWarningsStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {

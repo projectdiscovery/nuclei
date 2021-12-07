@@ -32,7 +32,7 @@ func New(options *Options) (*Exporter, error) {
 		}
 		directory = dir
 	}
-	_ = os.MkdirAll(directory, os.ModePerm)
+	_ = os.MkdirAll(directory, 0755)
 	return &Exporter{options: options, directory: directory}, nil
 }
 

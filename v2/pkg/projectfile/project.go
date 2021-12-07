@@ -42,13 +42,13 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 		return nil, fmt.Errorf("not found")
 	}
 
-	var httprecord HTTPRecord
-	httprecord.Response = newInternalResponse()
-	if err := unmarshal(data, &httprecord); err != nil {
+	var httpRecord HTTPRecord
+	httpRecord.Response = newInternalResponse()
+	if err := unmarshal(data, &httpRecord); err != nil {
 		return nil, err
 	}
 
-	return fromInternalResponse(httprecord.Response), nil
+	return fromInternalResponse(httpRecord.Response), nil
 }
 
 func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
@@ -57,10 +57,10 @@ func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
 		return err
 	}
 
-	var httprecord HTTPRecord
-	httprecord.Request = req
-	httprecord.Response = toInternalResponse(resp, data)
-	data, err = marshal(httprecord)
+	var httpRecord HTTPRecord
+	httpRecord.Request = req
+	httpRecord.Response = toInternalResponse(resp, data)
+	data, err = marshal(httpRecord)
 	if err != nil {
 		return err
 	}

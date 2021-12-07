@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 )
@@ -15,14 +16,23 @@ import (
 type ProtocolType int
 
 // Supported values for the ProtocolType
+// name:ProtocolType
 const (
+	// name:dns
 	DNSProtocol ProtocolType = iota + 1
+	// name:file
 	FileProtocol
+	// name:http
 	HTTPProtocol
+	// name:headless
 	HeadlessProtocol
+	// name:network
 	NetworkProtocol
+	// name:workflow
 	WorkflowProtocol
+	// name:ssl
 	SSLProtocol
+	// name:websocket
 	WebsocketProtocol
 	limit
 	InvalidProtocol
@@ -69,7 +79,7 @@ func (t ProtocolType) String() string {
 
 // TypeHolder is used to hold internal type of the protocol
 type TypeHolder struct {
-	ProtocolType ProtocolType
+	ProtocolType ProtocolType `mapping:"true"`
 }
 
 func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {

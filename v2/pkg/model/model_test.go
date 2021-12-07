@@ -72,6 +72,7 @@ func TestUnmarshal(t *testing.T) {
 	}
 
 	assertUnmarshalledTemplateInfo := func(t *testing.T, yamlPayload string) Info {
+		t.Helper()
 		info := Info{}
 		err := yaml.Unmarshal([]byte(yamlPayload), &info)
 		assert.Nil(t, err)
