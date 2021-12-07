@@ -4,6 +4,7 @@ import (
 	"go.uber.org/ratelimit"
 
 	"github.com/logrusorgru/aurora"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -60,6 +61,8 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache *hosterrorscache.Cache
+	// Stop execution once first match is found
+	StopAtFirstMatch bool
 
 	Operators []*operators.Operators // only used by offlinehttp module
 

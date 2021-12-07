@@ -98,6 +98,10 @@ func (e *Executer) Execute(input string) (bool, error) {
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
+		// If a match was found and stop at first match is set, break out of the loop and return
+		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
+			break
+		}
 	}
 	return results, nil
 }
@@ -106,6 +110,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	previous := make(map[string]interface{})
+	var results bool
 
 	for _, req := range e.requests {
 		req := req
@@ -125,6 +130,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			if event.OperatorsResult == nil {
 				return
 			}
+			results = true
 			callback(event)
 		})
 		if err != nil {
@@ -134,6 +140,10 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 				}
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
+		}
+		// If a match was found and stop at first match is set, break out of the loop and return
+		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
+			break
 		}
 	}
 	return nil

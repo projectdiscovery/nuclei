@@ -28,7 +28,7 @@ func loadProxyServers(options *types.Options) error {
 		} else if fileutil.FileExists(p) {
 			file, err := os.Open(p)
 			if err != nil {
-				return fmt.Errorf("could not open proxy file: %s", err)
+				return fmt.Errorf("could not open proxy file: %w", err)
 			}
 			defer file.Close()
 			scanner := bufio.NewScanner(file)
@@ -117,7 +117,7 @@ func validateProxyURL(proxy string) (url.URL, error) {
 	return url.URL{}, errors.New("invalid proxy format (It should be http[s]/socks5://[username:password@]host:port)")
 }
 
-//isSupportedProtocol checks given protocols are supported
+// isSupportedProtocol checks given protocols are supported
 func isSupportedProtocol(value string) bool {
 	return value == types.HTTP || value == types.HTTPS || value == types.SOCKS5
 }

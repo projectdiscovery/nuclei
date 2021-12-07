@@ -159,7 +159,7 @@ Server: Google Frontend
 	t.Run("test-live-response-with-content-length", func(t *testing.T) {
 		var ts *httptest.Server
 		router := httprouter.New()
-		router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		router.GET("/", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 			w.Header().Add("Server", "Google Frontend")
 			fmt.Fprintf(w, "%s", `<!DOCTYPE html>
 			<html>
@@ -172,7 +172,7 @@ Server: Google Frontend
 			   <p>
 			</body>
 			</html>`)
-		}))
+		})
 		ts = httptest.NewServer(router)
 		defer ts.Close()
 
