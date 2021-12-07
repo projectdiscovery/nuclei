@@ -39,8 +39,8 @@ var MatcherTypes = map[MatcherType]string{
 }
 
 //GetType returns the type of the matcher
-func (e *Matcher) GetType() MatcherType {
-	return e.Type.MatcherType
+func (m *Matcher) GetType() MatcherType {
+	return m.Type.MatcherType
 }
 
 // GetSupportedMatcherTypes returns list of supported types
