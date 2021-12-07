@@ -3,6 +3,7 @@ package matchers
 import (
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 )
 
@@ -54,17 +55,19 @@ func (m *Matcher) MatchWords(corpus string, dynamicValues map[string]interface{}
 		var err error
 		word, err = expressions.Evaluate(word, dynamicValues)
 		if err != nil {
+			gologger.Warning().Msgf("Error while evaluating word matcher: %q", word)
 			continue
 		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
+			switch m.condition {
+			case ANDCondition:
 				return false, []string{}
+			case ORCondition:
+				continue
 			}
-			// Continue with the flow since it's an OR Condition.
-			continue
 		}
 
 		// If the condition was an OR, return on the first match.
@@ -91,11 +94,12 @@ func (m *Matcher) MatchRegex(corpus string) (bool, []string) {
 		if !regex.MatchString(corpus) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
+			switch m.condition {
+			case ANDCondition:
 				return false, []string{}
+			case ORCondition:
+				continue
 			}
-			// Continue with the flow since it's an OR Condition.
-			continue
 		}
 
 		currentMatches := regex.FindAllString(corpus, -1)
@@ -122,11 +126,12 @@ func (m *Matcher) MatchBinary(corpus string) (bool, []string) {
 		if !strings.Contains(corpus, binary) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
+			switch m.condition {
+			case ANDCondition:
 				return false, []string{}
+			case ORCondition:
+				continue
 			}
-			// Continue with the flow since it's an OR Condition.
-			continue
 		}
 
 		// If the condition was an OR, return on the first match.
@@ -150,21 +155,22 @@ func (m *Matcher) MatchDSL(data map[string]interface{}) bool {
 	for i, expression := range m.dslCompiled {
 		result, err := expression.Evaluate(data)
 		if err != nil {
+			gologger.Warning().Msgf(err.Error())
 			continue
 		}
 
-		var bResult bool
-		bResult, ok := result.(bool)
-
-		// Continue if the regex doesn't match
-		if !ok || !bResult {
+		if boolResult, ok := result.(bool); !ok {
+			gologger.Warning().Msgf("The return value of a DSL statement must return a boolean value.")
+			continue
+		} else if !boolResult {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
-			if m.condition == ANDCondition {
+			switch m.condition {
+			case ANDCondition:
 				return false
+			case ORCondition:
+				continue
 			}
-			// Continue with the flow since it's an OR Condition.
-			continue
 		}
 
 		// If the condition was an OR, return on the first match.
