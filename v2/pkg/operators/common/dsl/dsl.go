@@ -20,10 +20,12 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/logrusorgru/aurora"
+	"github.com/spaolacci/murmur3"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/spaolacci/murmur3"
 )
 
 const (
@@ -32,7 +34,7 @@ const (
 )
 
 var invalidDslFunctionError = errors.New("invalid DSL function signature")
-var invalidDslFunctionMessageTemplate = "correct method signature '%s'. %w"
+var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
 
@@ -47,10 +49,10 @@ func init() {
 			length := len(types.ToString(args[0]))
 			return float64(length), nil
 		}),
-		"toupper": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+		"to_upper": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToUpper(types.ToString(args[0])), nil
 		}),
-		"tolower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
 		"replace": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
@@ -66,19 +68,19 @@ func init() {
 		"trim": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Trim(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
-		"trimleft": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"trim_left": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimLeft(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
-		"trimright": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"trim_right": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimRight(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
-		"trimspace": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+		"trim_space": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimSpace(types.ToString(args[0])), nil
 		}),
-		"trimprefix": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"trim_prefix": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimPrefix(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
-		"trimsuffix": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"trim_suffix": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimSuffix(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
 		"reverse": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
@@ -98,6 +100,7 @@ func init() {
 			return buffer.String(), nil
 		}),
 		"base64_py": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 			stdBase64 := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 			return deserialization.InsertInto(stdBase64, 76, '\n'), nil
 		}),
@@ -154,33 +157,32 @@ func init() {
 			}
 			return compiled.MatchString(types.ToString(args[1])), nil
 		}),
+		"remove_bad_chars": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			input := types.ToString(args[0])
+			badChars := types.ToString(args[1])
+			return trimAll(input, badChars), nil
+		}),
 		"rand_char": makeDslWithOptionalArgsFunction(
-			"(optionalCharSet, optionalBachChars) string",
+			"(optionalCharSet string) string",
 			func(args ...interface{}) (interface{}, error) {
 				charSet := letters + numbers
-				badChars := ""
 
 				argSize := len(args)
-				if argSize != 1 && argSize != 2 {
+				if argSize != 0 && argSize != 1 {
 					return nil, invalidDslFunctionError
 				}
 
 				if argSize >= 1 {
 					charSet = types.ToString(args[0])
 				}
-				if argSize == 2 {
-					badChars = types.ToString(args[1])
-				}
 
-				charSet = trimAll(charSet, badChars)
 				return charSet[rand.Intn(len(charSet))], nil
 			},
 		),
 		"rand_base": makeDslWithOptionalArgsFunction(
-			"(length, optionalCharSet, optionalBadChars) string",
+			"(length uint, optionalCharSet string) string",
 			func(args ...interface{}) (interface{}, error) {
 				var length int
-				badChars := ""
 				charSet := letters + numbers
 
 				argSize := len(args)
@@ -190,18 +192,14 @@ func init() {
 
 				length = int(args[0].(float64))
 
-				if argSize >= 2 {
-					badChars = types.ToString(args[1])
+				if argSize == 2 {
+					charSet = types.ToString(args[1])
 				}
-				if argSize == 3 {
-					charSet = types.ToString(args[2])
-				}
-				charSet = trimAll(charSet, badChars)
 				return randSeq(charSet, length), nil
 			},
 		),
 		"rand_text_alphanumeric": makeDslWithOptionalArgsFunction(
-			"(length, optionalBadChars) string",
+			"(length uint, optionalBadChars string) string",
 			func(args ...interface{}) (interface{}, error) {
 				length := 0
 				badChars := ""
@@ -221,7 +219,7 @@ func init() {
 			},
 		),
 		"rand_text_alpha": makeDslWithOptionalArgsFunction(
-			"(length, optionalBadChars) string",
+			"(length uint, optionalBadChars string) string",
 			func(args ...interface{}) (interface{}, error) {
 				var length int
 				badChars := ""
@@ -241,7 +239,7 @@ func init() {
 			},
 		),
 		"rand_text_numeric": makeDslWithOptionalArgsFunction(
-			"(size int, optionalBadNumbers string) string",
+			"(length uint, optionalBadNumbers string) string",
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
 				if argSize != 1 && argSize != 2 {
@@ -249,7 +247,7 @@ func init() {
 				}
 
 				length := args[0].(int)
-				var badNumbers = ""
+				badNumbers := ""
 
 				if argSize == 2 {
 					badNumbers = types.ToString(args[1])
@@ -260,7 +258,7 @@ func init() {
 			},
 		),
 		"rand_int": makeDslWithOptionalArgsFunction(
-			"(optionalMin, optionalMax int) int",
+			"(optionalMin, optionalMax uint) int",
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
 				if argSize >= 2 {
@@ -286,7 +284,7 @@ func init() {
 			data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 			return data, nil
 		}),
-		"unixtime": makeDslWithOptionalArgsFunction(
+		"unix_time": makeDslWithOptionalArgsFunction(
 			"(optionalSeconds uint) float64",
 			func(args ...interface{}) (interface{}, error) {
 				seconds := 0
@@ -302,7 +300,7 @@ func init() {
 				return float64(offset.Unix()), nil
 			},
 		),
-		"waitfor": makeDslWithOptionalArgsFunction(
+		"wait_for": makeDslWithOptionalArgsFunction(
 			"(seconds uint)",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != 1 {
@@ -321,15 +319,6 @@ func init() {
 				}
 				gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
 				return true, nil
-			},
-		),
-		"time_now": makeDslWithOptionalArgsFunction(
-			"() float64",
-			func(args ...interface{}) (interface{}, error) {
-				if len(args) == 0 {
-					return nil, invalidDslFunctionError
-				}
-				return float64(time.Now().Unix()), nil
 			},
 		),
 	}
@@ -364,7 +353,7 @@ func makeDslFunction(numberOfParameters int, dslFunctionLogic govaluate.Expressi
 			signature,
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != numberOfParameters {
-					return nil, fmt.Errorf(invalidDslFunctionMessageTemplate, signature, invalidDslFunctionError)
+					return nil, fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature)
 				}
 				return dslFunctionLogic(args...)
 			},
@@ -378,12 +367,42 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 
 	for functionName, dslFunction := range dslFunctions {
 		helperFunctions[functionName] = dslFunction.expressFunc
+		helperFunctions[strings.ReplaceAll(functionName, "_", "")] = dslFunction.expressFunc // for backwards compatibility
 	}
 
 	return helperFunctions
 }
 
-func GetDslFunctionSignatures() []string {
+// AddHelperFunction allows creation of additional helper functions to be supported with templates
+//goland:noinspection GoUnusedExportedFunction
+func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
+	if _, ok := dslFunctions[key]; !ok {
+		dslFunction := dslFunctions[key]
+		dslFunction.signature = "(args ...interface{}) interface{}"
+		dslFunction.expressFunc = value
+		return nil
+	}
+	return errors.New("duplicate helper function key defined")
+}
+
+func GetPrintableDslFunctionSignatures(noColor bool) string {
+	aggregateSignatures := func(values []string) string {
+		builder := &strings.Builder{}
+		for _, value := range values {
+			builder.WriteRune('\t')
+			builder.WriteString(value)
+			builder.WriteRune('\n')
+		}
+		return builder.String()
+	}
+
+	if noColor {
+		return aggregateSignatures(getDslFunctionSignatures())
+	}
+	return aggregateSignatures(colorizeDslFunctionSignatures())
+}
+
+func getDslFunctionSignatures() []string {
 	result := make([]string, 0, len(dslFunctions))
 
 	for _, dslFunction := range dslFunctions {
@@ -393,15 +412,49 @@ func GetDslFunctionSignatures() []string {
 	return result
 }
 
-// AddHelperFunction allows creation of additional helper functions to be supported with templates
-func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
-	if _, ok := dslFunctions[key]; !ok {
-		dslFunction := dslFunctions[key]
-		dslFunction.signature = "(args ...interface{}) interface{}"
-		dslFunction.expressFunc = value
-		return nil
+var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+
+func colorizeDslFunctionSignatures() []string {
+	signatures := getDslFunctionSignatures()
+
+	colorToOrange := func(value string) string {
+		return aurora.Index(208, value).String()
 	}
-	return errors.New("duplicate helper function key defined")
+
+	result := make([]string, 0, len(signatures))
+
+	for _, signature := range signatures {
+		subMatchSlices := functionSignaturePattern.FindAllStringSubmatch(signature, -1)
+		if len(subMatchSlices) != 1 {
+			// TODO log when #1166 is implemented
+			return signatures
+		}
+		matches := subMatchSlices[0]
+		if len(matches) != 5 {
+			// TODO log when #1166 is implemented
+			return signatures
+		}
+
+		functionParameters := strings.Split(matches[2], ",")
+
+		var coloredParameterAndTypes []string
+		for _, functionParameter := range functionParameters {
+			functionParameter = strings.TrimSpace(functionParameter)
+			paramAndType := strings.Split(functionParameter, " ")
+			if len(paramAndType) == 1 {
+				coloredParameterAndTypes = append(coloredParameterAndTypes, paramAndType[0])
+			} else if len(paramAndType) == 2 {
+				coloredParameterAndTypes = append(coloredParameterAndTypes, fmt.Sprintf("%s %s", paramAndType[0], colorToOrange(paramAndType[1])))
+			}
+		}
+
+		highlightedParams := strings.TrimSpace(fmt.Sprintf("%s %s", strings.Join(coloredParameterAndTypes, ", "), colorToOrange(matches[3])))
+		colorizedDslSignature := fmt.Sprintf("%s(%s)%s", aurora.BrightYellow(matches[1]).String(), highlightedParams, colorToOrange(matches[4]))
+
+		result = append(result, colorizedDslSignature)
+	}
+
+	return result
 }
 
 func reverseString(s string) string {
