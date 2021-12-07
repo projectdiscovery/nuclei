@@ -11,11 +11,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 )
 
 type redirectedResponse struct {
@@ -97,13 +98,13 @@ func normalizeResponseBody(resp *http.Response, response *redirectedResponse) er
 	// gb18030 supersedes gb2312
 	responseContentType := resp.Header.Get("Content-Type")
 	if isContentTypeGbk(responseContentType) {
-		response.fullResponse, err = decodegbk(response.fullResponse)
+		response.fullResponse, err = decodeGBK(response.fullResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
 
 		// the uncompressed body needs to be decoded to standard utf8
-		response.body, err = decodegbk(response.body)
+		response.body, err = decodeGBK(response.body)
 		if err != nil {
 			return errors.Wrap(err, "could not gbk decode")
 		}
@@ -149,8 +150,8 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 	return bodyDec, nil
 }
 
-// decodegbk converts GBK to UTF-8
-func decodegbk(s []byte) ([]byte, error) {
+// decodeGBK converts GBK to UTF-8
+func decodeGBK(s []byte) ([]byte, error) {
 	I := bytes.NewReader(s)
 	O := transform.NewReader(I, simplifiedchinese.GBK.NewDecoder())
 	d, e := ioutil.ReadAll(O)

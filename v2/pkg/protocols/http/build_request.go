@@ -53,14 +53,9 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(dynamicValues)
-	}
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
+		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
 	}
 	ctx := context.Background()
 
@@ -107,12 +102,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
 }
 
-func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
-	}
+func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	ctx := context.Background()
 
 	isRawRequest := r.request.isRaw()
@@ -124,7 +114,7 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		reader := bufio.NewReader(strings.NewReader(data))
 		s, err := reader.ReadString('\n')
 		if err != nil {
-			return nil, fmt.Errorf("could not read request: %s", err)
+			return nil, fmt.Errorf("could not read request: %w", err)
 		}
 
 		parts := strings.Split(s, " ")
@@ -133,7 +123,7 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		}
 		parsed, err := url.Parse(parts[1])
 		if err != nil {
-			return nil, fmt.Errorf("could not parse request URL: %s", err)
+			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values := generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
@@ -307,10 +297,12 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}
-	setHeader(req, "User-Agent", uarand.GetRandom())
+	if !r.request.Unsafe {
+		setHeader(req, "User-Agent", uarand.GetRandom())
+	}
 
 	// Only set these headers on non-raw requests
-	if len(r.request.Raw) == 0 {
+	if len(r.request.Raw) == 0 && !r.request.Unsafe {
 		setHeader(req, "Accept", "*/*")
 		setHeader(req, "Accept-Language", "en")
 	}

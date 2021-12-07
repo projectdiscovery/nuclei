@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBaseURLWithTemplatePrefs(t *testing.T) {
@@ -86,7 +87,8 @@ func TestMakeRequestFromModal(t *testing.T) {
 	require.Nil(t, err, "could not compile http request")
 
 	generator := request.newGenerator()
-	req, err := generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
 	bodyBytes, _ := req.request.BodyBytes()
@@ -113,12 +115,14 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 	require.Nil(t, err, "could not compile http request")
 
 	generator := request.newGenerator()
-	req, err := generator.Make("https://example.com/test.php", map[string]interface{}{})
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make("https://example.com/test.php", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
 
 	generator = request.newGenerator()
-	req, err = generator.Make("https://example.com/test/", map[string]interface{}{})
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make("https://example.com/test/", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	require.Equal(t, "https://example.com/test/?query=example", req.request.URL.String(), "could not get correct request path")
 }
@@ -135,7 +139,7 @@ func TestMakeRequestFromRawWithPayloads(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -151,12 +155,14 @@ Accept-Encoding: gzip`},
 	require.Nil(t, err, "could not compile http request")
 
 	generator := request.newGenerator()
-	req, err := generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization := req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic admin:admin", authorization, "could not get correct authorization headers from raw")
 
-	req, err = generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization = req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic admin:guest", authorization, "could not get correct authorization headers from raw")
@@ -174,7 +180,7 @@ func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: generators.AttackTypeHolder{Value: generators.ClusterbombAttack},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -190,12 +196,14 @@ Accept-Encoding: gzip`},
 	require.Nil(t, err, "could not compile http request")
 
 	generator := request.newGenerator()
-	req, err := generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization := req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic YWRtaW46YWRtaW4=", authorization, "could not get correct authorization headers from raw")
 
-	req, err = generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization = req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
@@ -226,12 +234,13 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		ServerURL:      options.InteractshURL,
 		CacheSize:      int64(options.InteractionsCacheSize),
 		Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
-		ColldownPeriod: time.Duration(options.InteractionsCooldownPeriod) * time.Second,
+		ColldownPeriod: time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
 	})
 	require.Nil(t, err, "could not create interactsh client")
 
-	got, err := generator.Make("https://example.com", map[string]interface{}{})
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
 	// check if all the interactsh markers are replaced with unique urls

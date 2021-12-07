@@ -11,20 +11,20 @@ import (
 // MatcherType is the type of the matcher specified
 type MatcherType int
 
+// name:MatcherType
 const (
-	// WordsMatcher matches responses with words
+	// name:word
 	WordsMatcher MatcherType = iota + 1
-	// RegexMatcher matches responses with regexes
+	// name:regex
 	RegexMatcher
-	// BinaryMatcher matches responses with words
+	// name:binary
 	BinaryMatcher
-	// StatusMatcher matches responses with status codes
+	// name:status
 	StatusMatcher
-	// SizeMatcher matches responses with response size
+	// name:size
 	SizeMatcher
-	// DSLMatcher matches based upon dsl syntax
+	// name:dsl
 	DSLMatcher
-	//limit
 	limit
 )
 
@@ -39,8 +39,8 @@ var MatcherTypes = map[MatcherType]string{
 }
 
 //GetType returns the type of the matcher
-func (m *Matcher) GetType() MatcherType {
-	return m.Type.MatcherType
+func (matcher *Matcher) GetType() MatcherType {
+	return matcher.Type.MatcherType
 }
 
 // GetSupportedMatcherTypes returns list of supported types
@@ -72,7 +72,7 @@ func (t MatcherType) String() string {
 
 // MatcherTypeHolder is used to hold internal type of the matcher
 type MatcherTypeHolder struct {
-	MatcherType MatcherType
+	MatcherType MatcherType `mapping:"true"`
 }
 
 func (t MatcherTypeHolder) String() string {

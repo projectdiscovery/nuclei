@@ -80,11 +80,12 @@ func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
 	}
 
 	var result []string
-	if len(marshalledValuesAsSlice) > 0 {
+	switch {
+	case len(marshalledValuesAsSlice) > 0:
 		result = marshalledValuesAsSlice
-	} else if utils.IsNotBlank(marshalledValueAsString) {
+	case utils.IsNotBlank(marshalledValueAsString):
 		result = strings.Split(marshalledValueAsString, ",")
-	} else {
+	default:
 		result = []string{}
 	}
 

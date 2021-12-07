@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/go-playground/validator/v10"
+
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -66,15 +67,14 @@ func ParseOptions(options *types.Options) {
 
 // hasStdin returns true if we have stdin input
 func hasStdin() bool {
-	stat, err := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-
-	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) == 0
-	isPipedFromFIFO := (stat.Mode() & os.ModeNamedPipe) != 0
-
-	return isPipedFromChrDev || isPipedFromFIFO
+	if fi.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+	return true
 }
 
 // validateOptions validates the configuration options passed
@@ -93,7 +93,7 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	//loading the proxy server list from file or cli and test the connectivity
+	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func validateOptions(options *types.Options) error {
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose {
+	if options.Verbose || options.Validate {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {

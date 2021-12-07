@@ -11,16 +11,16 @@ import (
 // ExtractorType is the type of the extractor specified
 type ExtractorType int
 
+// name:ExtractorType
 const (
-	// RegexExtractor extracts responses with regexes
+	// name:regex
 	RegexExtractor ExtractorType = iota + 1
-	// KValExtractor extracts responses with key:value
+	// name:kval
 	KValExtractor
-	// XPathExtractor extracts responses with Xpath selectors
+	// name:xpath
 	XPathExtractor
-	// JSONExtractor extracts responses with json
+	// name:json
 	JSONExtractor
-	//limit
 	limit
 )
 
@@ -64,12 +64,12 @@ func (t ExtractorType) String() string {
 	return extractorMappings[t]
 }
 
-// TypeHolder is used to hold internal type of the extractor
-type TypeHolder struct {
-	ExtractorType ExtractorType
+// ExtractorTypeHolder is used to hold internal type of the extractor
+type ExtractorTypeHolder struct {
+	ExtractorType ExtractorType `mapping:"true"`
 }
 
-func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {
+func (holder ExtractorTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "type of the extractor",
@@ -81,7 +81,7 @@ func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {
 	return gotType
 }
 
-func (holder *TypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (holder *ExtractorTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var marshalledTypes string
 	if err := unmarshal(&marshalledTypes); err != nil {
 		return err
@@ -96,10 +96,10 @@ func (holder *TypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return nil
 }
 
-func (holder *TypeHolder) MarshalJSON() ([]byte, error) {
+func (holder *ExtractorTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.ExtractorType.String())
 }
 
-func (holder TypeHolder) MarshalYAML() (interface{}, error) {
+func (holder ExtractorTypeHolder) MarshalYAML() (interface{}, error) {
 	return holder.ExtractorType.String(), nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -52,10 +53,6 @@ type Request struct {
 	//
 	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
-	// values:
-	//   - "sniper"
-	//   - "pitchfork"
-	//   - "clusterbomb"
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
@@ -299,7 +296,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
 			return nil, "", errors.Wrap(err, "could not write request to server")
 		}
-		// Only perform matching and writes in case we recieve
+		// Only perform matching and writes in case we receive
 		// text or binary opcode from the websocket server.
 		if opCode != ws.OpText && opCode != ws.OpBinary {
 			continue
@@ -359,6 +356,18 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 // GetCompiledOperators returns a list of the compiled operators
 func (request *Request) GetCompiledOperators() []*operators.Operators {
 	return []*operators.Operators{request.CompiledOperators}
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":     "Type is the type of request made",
+	"success":  "Success specifies whether websocket connection was successful",
+	"request":  "Websocket request made to the server",
+	"response": "Websocket response recieved from the server",
+	"host":     "Host is the input to the template",
+	"matched":  "Matched is the input which was matched upon",
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {

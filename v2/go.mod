@@ -40,7 +40,7 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20210830151154-f567170afdd9
-	github.com/projectdiscovery/yamldoc-go v1.0.2
+	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0
 	github.com/segmentio/ksuid v1.0.4
@@ -64,6 +64,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
+
+require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
