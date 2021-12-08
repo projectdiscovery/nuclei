@@ -84,32 +84,6 @@ const (
 	limit
 )
 
-// ActionStringToAction converts an action from string to internal representation
-var ActionStringToAction = map[string]ActionType{
-	"navigate":     ActionNavigate,
-	"script":       ActionScript,
-	"click":        ActionClick,
-	"rightclick":   ActionRightClick,
-	"text":         ActionTextInput,
-	"screenshot":   ActionScreenshot,
-	"time":         ActionTimeInput,
-	"select":       ActionSelectInput,
-	"files":        ActionFilesInput,
-	"waitload":     ActionWaitLoad,
-	"getresource":  ActionGetResource,
-	"extract":      ActionExtract,
-	"setmethod":    ActionSetMethod,
-	"addheader":    ActionAddHeader,
-	"setheader":    ActionSetHeader,
-	"deleteheader": ActionDeleteHeader,
-	"setbody":      ActionSetBody,
-	"waitevent":    ActionWaitEvent,
-	"keyboard":     ActionKeyboard,
-	"debug":        ActionDebug,
-	"sleep":        ActionSleep,
-	"waitvisible":  ActionWaitVisible,
-}
-
 // ActionToActionString converts an action from  internal representation to string
 var ActionToActionString = map[ActionType]string{
 	ActionNavigate:     "navigate",

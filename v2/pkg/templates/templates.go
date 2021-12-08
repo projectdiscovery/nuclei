@@ -86,18 +86,6 @@ type Template struct {
 	Path string `yaml:"-" json:"-"`
 }
 
-// TemplateProtocols is a list of accepted template protocols
-var TemplateProtocols = []string{
-	"dns",
-	"file",
-	"http",
-	"headless",
-	"network",
-	"workflow",
-	"ssl",
-	"websocket",
-}
-
 // Type returns the type of the template
 func (template *Template) Type() types.ProtocolType {
 	switch {
