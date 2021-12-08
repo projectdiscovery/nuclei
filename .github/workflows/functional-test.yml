@@ -57,5 +57,5 @@ jobs:
       - name: Functional Tests
         run: |
           chmod +x run.sh
-          bash run.sh
+          bash run.sh windows
         working-directory: v2/cmd/functional-test
