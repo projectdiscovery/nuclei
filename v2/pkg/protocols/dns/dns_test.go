@@ -24,6 +24,7 @@ func TestGenerateDNSVariables(t *testing.T) {
 func TestDNSCompileMake(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	const templateID = "testing-dns"
 	request := &Request{
@@ -31,7 +32,7 @@ func TestDNSCompileMake(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{

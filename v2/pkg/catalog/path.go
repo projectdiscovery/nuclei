@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+
+	"github.com/projectdiscovery/folderutil"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.
@@ -15,11 +19,10 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 	if filepath.IsAbs(templateName) {
 		return templateName, nil
 	}
-
 	if second != "" {
 		secondBasePath := filepath.Join(filepath.Dir(second), templateName)
-		if _, err := os.Stat(secondBasePath); !os.IsNotExist(err) {
-			return secondBasePath, nil
+		if potentialPath, err := c.tryResolve(secondBasePath); err != errNoValidCombination {
+			return potentialPath, nil
 		}
 	}
 
@@ -29,15 +32,37 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 	}
 
 	templatePath := filepath.Join(curDirectory, templateName)
-	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		return templatePath, nil
+	if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
+		return potentialPath, nil
 	}
 
 	if c.templatesDirectory != "" {
 		templatePath := filepath.Join(c.templatesDirectory, templateName)
-		if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-			return templatePath, nil
+		if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
+			return potentialPath, nil
 		}
 	}
 	return "", fmt.Errorf("no such path found: %s", templateName)
+}
+
+var errNoValidCombination = errors.New("no valid combination found")
+
+// tryResolve attempts to load locate the target by iterating across all the folders tree
+func (c *Catalog) tryResolve(fullpath string) (string, error) {
+	dir, filename := filepath.Split(fullpath)
+	pathInfo, err := folderutil.NewPathInfo(dir)
+	if err != nil {
+		return "", err
+	}
+	pathInfoItems, err := pathInfo.MeshWith(filename)
+	if err != nil {
+		return "", err
+	}
+	for _, pathInfoItem := range pathInfoItems {
+		if _, err := os.Stat(pathInfoItem); !os.IsNotExist(err) {
+			return pathInfoItem, nil
+		}
+	}
+
+	return "", errNoValidCombination
 }

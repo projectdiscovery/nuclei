@@ -1,0 +1,24 @@
+id: headless-header-action
+info:
+  name: Headless Header Action
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+  - steps:
+    - action: setheader
+      args:
+        part: request
+        key: Test
+        value: test value
+
+    - action: navigate
+      args:
+        url: "{{BaseURL}}/"
+        
+    - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "test value"

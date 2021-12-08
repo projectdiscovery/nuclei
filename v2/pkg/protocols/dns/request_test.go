@@ -17,6 +17,7 @@ import (
 func TestDNSExecuteWithResults(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -24,7 +25,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
