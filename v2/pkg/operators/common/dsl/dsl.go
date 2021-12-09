@@ -388,7 +388,7 @@ func AddHelperFunction(key string, value func(args ...interface{}) (interface{},
 
 func GetPrintableDslFunctionSignatures(noColor bool) string {
 	aggregateSignatures := func(values []string) string {
-		sort.Sort(sort.StringSlice(values))
+		sort.Strings(values)
 
 		builder := &strings.Builder{}
 		for _, value := range values {
