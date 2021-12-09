@@ -82,14 +82,14 @@ func New(option *Options) (*Exporter, error) {
 }
 
 // Export exports a passed result event to elasticsearch
-func (i *Exporter) Export(event *output.ResultEvent) error {
+func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	// creating a request
-	req, err := http.NewRequest(http.MethodPost, i.url, nil)
+	req, err := http.NewRequest(http.MethodPost, exporter.url, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
-	if len(i.authentication) > 0 {
-		req.Header.Add("Authorization", i.authentication)
+	if len(exporter.authentication) > 0 {
+		req.Header.Add("Authorization", exporter.authentication)
 	}
 	req.Header.Add("Content-Type", "application/json")
 
@@ -103,7 +103,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	}
 	req.Body = ioutil.NopCloser(bytes.NewReader(b))
 
-	res, err := i.elasticsearch.Do(req)
+	res, err := exporter.elasticsearch.Do(req)
 	if err != nil {
 		return err
 	}
@@ -120,6 +120,6 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 }
 
 // Close closes the exporter after operation
-func (i *Exporter) Close() error {
+func (exporter *Exporter) Close() error {
 	return nil
 }
