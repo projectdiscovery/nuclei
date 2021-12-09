@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -92,47 +93,55 @@ func createSignatureError(signature string) string {
 	return fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature).Error()
 }
 
-func Test(t *testing.T) {
-	expectedColorizedSignatures := []string{
-		"\x1b[93mbase64_py\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mprint_debug\x1b[0m(args \x1b[38;5;208m...interface{}\x1b[0m)\x1b[38;5;208m\x1b[0m",
-		"\x1b[93mregex\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mmmh3\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mto_lower\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mmd5\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mreplace_regex\x1b[0m(arg1, arg2, arg3 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mhtml_unescape\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mhex_encode\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_base\x1b[0m(length \x1b[38;5;208muint\x1b[0m, optionalCharSet \x1b[38;5;208mstring\x1b[0m)\x1b[38;5;208m string\x1b[0m",
-		"\x1b[93msha1\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mtrim_right\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mwait_for\x1b[0m(seconds \x1b[38;5;208muint\x1b[0m)\x1b[38;5;208m\x1b[0m",
-		"\x1b[93mtrim\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93murl_encode\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mto_upper\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_text_alpha\x1b[0m(length \x1b[38;5;208muint\x1b[0m, optionalBadChars \x1b[38;5;208mstring\x1b[0m)\x1b[38;5;208m string\x1b[0m",
-		"\x1b[93msha256\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mgzip\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mlen\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mtrim_space\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_int\x1b[0m(optionalMin, optionalMax \x1b[38;5;208muint\x1b[0m)\x1b[38;5;208m int\x1b[0m",
-		"\x1b[93mremove_bad_chars\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_char\x1b[0m(optionalCharSet \x1b[38;5;208mstring\x1b[0m)\x1b[38;5;208m string\x1b[0m",
-		"\x1b[93mreverse\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mhtml_escape\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mbase64\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mbase64_decode\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mhex_decode\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mtrim_prefix\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93murl_decode\x1b[0m(arg1 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mreplace\x1b[0m(arg1, arg2, arg3 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mtrim_suffix\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_text_numeric\x1b[0m(length \x1b[38;5;208muint\x1b[0m, optionalBadNumbers \x1b[38;5;208mstring\x1b[0m)\x1b[38;5;208m string\x1b[0m",
-		"\x1b[93mcontains\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mgenerate_java_gadget\x1b[0m(arg1, arg2, arg3 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93munix_time\x1b[0m(optionalSeconds \x1b[38;5;208muint\x1b[0m)\x1b[38;5;208m float64\x1b[0m",
-		"\x1b[93mtrim_left\x1b[0m(arg1, arg2 \x1b[38;5;208minterface{}\x1b[0m)\x1b[38;5;208m interface{}\x1b[0m",
-		"\x1b[93mrand_text_alphanumeric\x1b[0m(length \x1b[38;5;208muint\x1b[0m, optionalBadChars \x1b[38;5;208mstring\x1b[0m)\x1b[38;5;208m string\x1b[0m",
-	}
-	assert.ElementsMatch(t, expectedColorizedSignatures, colorizeDslFunctionSignatures())
+func TestGetPrintableDslFunctionSignatures(t *testing.T) {
+	expected := `	[93mbase64[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mbase64_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhex_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhex_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mmd5[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mmmh3[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mprint_debug[0m(args [38;5;208m...interface{}[0m)[38;5;208m[0m
+	[93mrand_base[0m(length [38;5;208muint[0m, optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
+	[93mrand_char[0m(optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
+	[93mrand_int[0m(optionalMin, optionalMax [38;5;208muint[0m)[38;5;208m int[0m
+	[93mrand_text_alpha[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
+	[93mrand_text_alphanumeric[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
+	[93mrand_text_numeric[0m(length [38;5;208muint[0m, optionalBadNumbers [38;5;208mstring[0m)[38;5;208m string[0m
+	[93mregex[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mremove_bad_chars[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mreplace[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mreplace_regex[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mreverse[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mto_upper[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim_left[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim_prefix[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim_right[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim_space[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtrim_suffix[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93munix_time[0m(optionalSeconds [38;5;208muint[0m)[38;5;208m float64[0m
+	[93murl_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93murl_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mwait_for[0m(seconds [38;5;208muint[0m)[38;5;208m[0m
+`
+	t.Run("with coloring", func(t *testing.T) {
+		assert.Equal(t, expected, GetPrintableDslFunctionSignatures(false))
+	})
+
+	t.Run("without coloring", func(t *testing.T) {
+		var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
+		expectedSignaturesWithoutColor := decolorizerRegex.ReplaceAllString(expected, "")
+
+		assert.Equal(t, expectedSignaturesWithoutColor, GetPrintableDslFunctionSignatures(true))
+	})
 }
