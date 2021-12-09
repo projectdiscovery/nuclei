@@ -6,8 +6,6 @@ package dbsql
 import (
 	"context"
 	"database/sql"
-
-	"github.com/jackc/pgtype"
 )
 
 const addIssue = `-- name: AddIssue :exec
@@ -88,18 +86,23 @@ func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) error {
 
 const addTarget = `-- name: AddTarget :exec
 INSERT INTO public.targets
-	( name, createdat, updatedat, folder, filepaths) VALUES ($1, NOW(), NOW(), $2, $3)
-ON CONFLICT (name) DO UPDATE SET filepaths = $3
+	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4)
 `
 
 type AddTargetParams struct {
-	Name      sql.NullString
-	Folder    sql.NullBool
-	Filepaths pgtype.JSON
+	Name       sql.NullString
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
 }
 
 func (q *Queries) AddTarget(ctx context.Context, arg AddTargetParams) error {
-	_, err := q.db.Exec(ctx, addTarget, arg.Name, arg.Folder, arg.Filepaths)
+	_, err := q.db.Exec(ctx, addTarget,
+		arg.Name,
+		arg.Internalid,
+		arg.Filename,
+		arg.Total,
+	)
 	return err
 }
 
@@ -165,7 +168,7 @@ const getIssue = `-- name: GetIssue :one
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
 	issuedata, issuetemplate, remediation, debug, id, scanid
 FROM
-	"public".issues WHERE id=$1
+	"public".issues WHERE id=$1 LIMIT 1
 `
 
 func (q *Queries) GetIssue(ctx context.Context, id int64) (Issue, error) {
@@ -243,7 +246,7 @@ func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
 const getScan = `-- name: GetScan :one
 SELECT name, status, scantime, hosts, scansource, progress, templates, targets, debug, id
 FROM
-	"public".scans WHERE id=$1
+	"public".scans WHERE id=$1 LIMIT 1
 `
 
 func (q *Queries) GetScan(ctx context.Context, id int64) (Scan, error) {
@@ -309,24 +312,57 @@ func (q *Queries) GetScans(ctx context.Context) ([]GetScansRow, error) {
 }
 
 const getTarget = `-- name: GetTarget :one
-SELECT folder, filepaths, createdat, updatedat
+SELECT name, internalid, filename, total, createdat, updatedat
 FROM
-	public.targets WHERE ID=$1
+	public.targets WHERE ID=$1 LIMIT 1
 `
 
 type GetTargetRow struct {
-	Folder    sql.NullBool
-	Filepaths pgtype.JSON
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
+	Name       sql.NullString
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
+	Createdat  sql.NullTime
+	Updatedat  sql.NullTime
 }
 
 func (q *Queries) GetTarget(ctx context.Context, id int64) (GetTargetRow, error) {
 	row := q.db.QueryRow(ctx, getTarget, id)
 	var i GetTargetRow
 	err := row.Scan(
-		&i.Folder,
-		&i.Filepaths,
+		&i.Name,
+		&i.Internalid,
+		&i.Filename,
+		&i.Total,
+		&i.Createdat,
+		&i.Updatedat,
+	)
+	return i, err
+}
+
+const getTargetByName = `-- name: GetTargetByName :one
+SELECT id, internalid, filename, total, createdat, updatedat
+FROM
+	public.targets WHERE name=$1 LIMIT 1
+`
+
+type GetTargetByNameRow struct {
+	ID         int64
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
+	Createdat  sql.NullTime
+	Updatedat  sql.NullTime
+}
+
+func (q *Queries) GetTargetByName(ctx context.Context, name sql.NullString) (GetTargetByNameRow, error) {
+	row := q.db.QueryRow(ctx, getTargetByName, name)
+	var i GetTargetByNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Internalid,
+		&i.Filename,
+		&i.Total,
 		&i.Createdat,
 		&i.Updatedat,
 	)
@@ -334,27 +370,38 @@ func (q *Queries) GetTarget(ctx context.Context, id int64) (GetTargetRow, error)
 }
 
 const getTargets = `-- name: GetTargets :many
-SELECT id, name, createdat, updatedat, folder, filepaths
+SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
 	public.targets
 `
 
-func (q *Queries) GetTargets(ctx context.Context) ([]Target, error) {
+type GetTargetsRow struct {
+	ID         int64
+	Name       sql.NullString
+	Createdat  sql.NullTime
+	Updatedat  sql.NullTime
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
+}
+
+func (q *Queries) GetTargets(ctx context.Context) ([]GetTargetsRow, error) {
 	rows, err := q.db.Query(ctx, getTargets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Target
+	var items []GetTargetsRow
 	for rows.Next() {
-		var i Target
+		var i GetTargetsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Createdat,
 			&i.Updatedat,
-			&i.Folder,
-			&i.Filepaths,
+			&i.Internalid,
+			&i.Filename,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}
@@ -367,27 +414,38 @@ func (q *Queries) GetTargets(ctx context.Context) ([]Target, error) {
 }
 
 const getTargetsForSearch = `-- name: GetTargetsForSearch :many
-SELECT id, name, createdat, updatedat, folder, filepaths
+SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE $1
+	"public".targets WHERE name LIKE $1 OR filename LIKE $1
 `
 
-func (q *Queries) GetTargetsForSearch(ctx context.Context, name sql.NullString) ([]Target, error) {
+type GetTargetsForSearchRow struct {
+	ID         int64
+	Name       sql.NullString
+	Createdat  sql.NullTime
+	Updatedat  sql.NullTime
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
+}
+
+func (q *Queries) GetTargetsForSearch(ctx context.Context, name sql.NullString) ([]GetTargetsForSearchRow, error) {
 	rows, err := q.db.Query(ctx, getTargetsForSearch, name)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Target
+	var items []GetTargetsForSearchRow
 	for rows.Next() {
-		var i Target
+		var i GetTargetsForSearchRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Createdat,
 			&i.Updatedat,
-			&i.Folder,
-			&i.Filepaths,
+			&i.Internalid,
+			&i.Filename,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}
@@ -400,7 +458,7 @@ func (q *Queries) GetTargetsForSearch(ctx context.Context, name sql.NullString) 
 }
 
 const getTemplateContents = `-- name: GetTemplateContents :one
-SELECT contents FROM public.templates WHERE path=$1
+SELECT contents FROM public.templates WHERE path=$1 LIMIT 1
 `
 
 func (q *Queries) GetTemplateContents(ctx context.Context, path string) (string, error) {
@@ -540,6 +598,20 @@ UPDATE "public".issues SET issuestate='closed' WHERE id=$1
 
 func (q *Queries) UpdateIssue(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, updateIssue, id)
+	return err
+}
+
+const updateTargetMetadata = `-- name: UpdateTargetMetadata :exec
+UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2
+`
+
+type UpdateTargetMetadataParams struct {
+	Total sql.NullInt64
+	ID    int64
+}
+
+func (q *Queries) UpdateTargetMetadata(ctx context.Context, arg UpdateTargetMetadataParams) error {
+	_, err := q.db.Exec(ctx, updateTargetMetadata, arg.Total, arg.ID)
 	return err
 }
 

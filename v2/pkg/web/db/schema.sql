@@ -13,10 +13,11 @@ CREATE TABLE public.templates (
 CREATE  TABLE "public".targets ( 
 	id                   bigserial NOT NULL ,
 	name                 varchar(100)   ,
+    internalid           varchar,
+    filename             varchar,
+    total                bigint,
 	createdat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
 	updatedat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
-	folder               boolean   ,
-	filepaths            json   ,
 	CONSTRAINT pk_targets_id PRIMARY KEY ( id )
  );
 
@@ -82,7 +83,7 @@ FROM
 DELETE FROM public.templates WHERE path=$1;
 
 -- name: GetTemplateContents :one
-SELECT contents FROM public.templates WHERE path=$1;
+SELECT contents FROM public.templates WHERE path=$1 LIMIT 1;
 
 -- name: AddTemplate :exec
 INSERT INTO public.templates
@@ -96,23 +97,30 @@ DELETE FROM public.targets WHERE ID=$1;
 
 -- name: AddTarget :exec
 INSERT INTO public.targets
-	( name, createdat, updatedat, folder, filepaths) VALUES ($1, NOW(), NOW(), $2, $3)
-ON CONFLICT (name) DO UPDATE SET filepaths = $3;
+	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4);
 
 -- name: GetTarget :one
-SELECT folder, filepaths, createdat, updatedat
+SELECT name, internalid, filename, total, createdat, updatedat
 FROM
-	public.targets WHERE ID=$1;
+	public.targets WHERE ID=$1 LIMIT 1;
+
+-- name: GetTargetByName :one
+SELECT id, internalid, filename, total, createdat, updatedat
+FROM
+	public.targets WHERE name=$1 LIMIT 1;
 
 -- name: GetTargets :many
-SELECT id, name, createdat, updatedat, folder, filepaths
+SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
 	public.targets;
 
 -- name: GetTargetsForSearch :many
-SELECT id, name, createdat, updatedat, folder, filepaths
+SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE $1;
+	"public".targets WHERE name LIKE $1 OR filename LIKE $1;
+
+-- name: UpdateTargetMetadata :exec
+UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;
 
 -- name: AddScan :exec
 INSERT INTO "public".scans
@@ -124,7 +132,7 @@ DELETE FROM "public".scans WHERE id=$1;
 -- name: GetScan :one
 SELECT name, status, scantime, hosts, scansource, progress, templates, targets, debug, id
 FROM
-	"public".scans WHERE id=$1;
+	"public".scans WHERE id=$1 LIMIT 1;
 
 -- name: GetScans :many
 SELECT id, name, status, scantime, hosts, scansource, progress
@@ -144,7 +152,7 @@ DELETE FROM "public".issues WHERE id=$1;
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
 	issuedata, issuetemplate, remediation, debug, id, scanid
 FROM
-	"public".issues WHERE id=$1;
+	"public".issues WHERE id=$1 LIMIT 1;
 
 -- name: GetIssues :many
 SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource

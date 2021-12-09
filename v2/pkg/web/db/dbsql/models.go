@@ -48,12 +48,13 @@ type Setting struct {
 }
 
 type Target struct {
-	ID        int64
-	Name      sql.NullString
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Folder    sql.NullBool
-	Filepaths pgtype.JSON
+	ID         int64
+	Name       sql.NullString
+	Internalid sql.NullString
+	Filename   sql.NullString
+	Total      sql.NullInt64
+	Createdat  sql.NullTime
+	Updatedat  sql.NullTime
 }
 
 type Template struct {

@@ -55,18 +55,21 @@ func New(config *Config) *API {
 
 	apiGroup := e.Group("/api/v1")
 
+	// /templates endpoints
 	apiGroup.GET("/templates", config.Server.GetTemplates)
-	apiGroup.PUT("/templates", config.Server.UpdateTemplate)
 	apiGroup.POST("/templates", config.Server.AddTemplate)
+	apiGroup.PUT("/templates", config.Server.UpdateTemplate)
 	apiGroup.DELETE("/templates", config.Server.DeleteTemplate)
 	apiGroup.GET("/templates/raw", config.Server.GetTemplatesRaw)
 
+	// /targets endpoints
 	apiGroup.GET("/targets", config.Server.GetTargets)
-	apiGroup.PUT("/templates", config.Server.UpdateTemplate)
-	apiGroup.POST("/templates", config.Server.AddTemplate)
-	apiGroup.DELETE("/templates", config.Server.DeleteTemplate)
-	apiGroup.GET("/templates/raw", config.Server.GetTemplatesRaw)
+	apiGroup.POST("/targets", config.Server.AddTarget)
+	apiGroup.PUT("/targets/:id", config.Server.UpdateTarget)
+	apiGroup.DELETE("/targets/:id", config.Server.DeleteTarget)
+	apiGroup.GET("/targets/:id", config.Server.GetTargetContents)
 
+	// /scans endpoints
 	return nil
 }
 
