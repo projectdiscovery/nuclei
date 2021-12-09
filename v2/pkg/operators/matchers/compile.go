@@ -55,12 +55,12 @@ func (matcher *Matcher) CompileMatchers() error {
 	}
 
 	// Compile the dsl expressions
-	for _, expr := range matcher.DSL {
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
+	for _, dslExpression := range matcher.DSL {
+		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions())
 		if err != nil {
-			return fmt.Errorf("could not compile dsl: %s", expr)
+			return &DslCompilationError{DslSignature: dslExpression, WrappedError: err}
 		}
-		matcher.dslCompiled = append(matcher.dslCompiled, compiled)
+		matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
 	}
 
 	// Set up the condition type, if any.
@@ -82,4 +82,17 @@ func (matcher *Matcher) CompileMatchers() error {
 		}
 	}
 	return nil
+}
+
+type DslCompilationError struct {
+	DslSignature string
+	WrappedError error
+}
+
+func (e *DslCompilationError) Error() string {
+	return fmt.Sprintf("could not compile DSL expression: %s. %v", e.DslSignature, e.WrappedError)
+}
+
+func (e *DslCompilationError) Unwrap() error {
+	return e.WrappedError
 }
