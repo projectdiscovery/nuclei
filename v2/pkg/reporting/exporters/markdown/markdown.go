@@ -37,7 +37,7 @@ func New(options *Options) (*Exporter, error) {
 }
 
 // Export exports a passed result event to markdown
-func (i *Exporter) Export(event *output.ResultEvent) error {
+func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
 
@@ -66,11 +66,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	return ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
+	return ioutil.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation
-func (i *Exporter) Close() error {
+func (exporter *Exporter) Close() error {
 	return nil
 }
 
