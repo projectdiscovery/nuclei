@@ -37,7 +37,7 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 	}
 
 	generator := &PayloadGenerator{}
-	if err := generator.validate(payloads, templatePath); err != nil {
+	if err := generator.validate(payloadsFinal, templatePath); err != nil {
 		return nil, err
 	}
 
