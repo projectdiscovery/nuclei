@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/rdap"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -67,6 +68,9 @@ type Template struct {
 	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
 
 	// description: |
+	//   RDAP contains the RDAP request to make in the template.
+	RequestsRDAP []*rdap.Request `yaml:"rdap,omitempty" json:"rdap,omitempty" jsonschema:"title=rdap requests to make,description=RDAP requests to make for the template"`
+	// description: |
 	//   Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
@@ -96,6 +100,7 @@ var TemplateProtocols = []string{
 	"workflow",
 	"ssl",
 	"websocket",
+	"rdap",
 }
 
 // Type returns the type of the template
@@ -117,6 +122,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
 		return types.WebsocketProtocol
+	case len(template.RequestsRDAP) > 0:
+		return types.RDAPProtocol
 	default:
 		return types.InvalidProtocol
 	}

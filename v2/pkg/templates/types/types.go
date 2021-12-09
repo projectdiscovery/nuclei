@@ -34,6 +34,8 @@ const (
 	SSLProtocol
 	// name:websocket
 	WebsocketProtocol
+	// name:rdap
+	RDAPProtocol
 	limit
 	InvalidProtocol
 )
