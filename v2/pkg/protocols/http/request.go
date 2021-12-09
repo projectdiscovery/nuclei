@@ -562,6 +562,10 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
 		service := types.ToString(payloads["service"])
 		region := types.ToString(payloads["region"])
+		// if region is empty default to "us-east-2"
+		if region == "" {
+			region = "us-east-2"
+		}
 		awsSignatureArguments := signer.AwsSignatureArguments{
 			Service: types.ToString(service),
 			Region:  types.ToString(region),
