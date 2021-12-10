@@ -152,7 +152,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(types.DefaultResumeFile)
+		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
 		if err != nil {
 			return nil, err
 		}
@@ -486,8 +486,7 @@ func (r *Runner) SaveResumeConfig() error {
 		}
 		resumeCfg.TemplatesResumeFromIndex[templateId] = diff
 	}
-	resumeCfg.TemplatesResumeFromIndex = r.resumeCfg.TemplatesCurrentIndex
 	file, _ := json.MarshalIndent(resumeCfg, "", "\t")
 
-	return ioutil.WriteFile(types.DefaultResumeFile, file, 0644)
+	return ioutil.WriteFile(types.DefaultResumeFilePath(), file, 0644)
 }

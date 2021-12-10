@@ -40,7 +40,7 @@ func main() {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
-				gologger.Info().Msgf("Creating resume file: %s\n", types.DefaultResumeFile)
+				gologger.Info().Msgf("Creating resume file: %s\n", types.DefaultResumeFilePath())
 				err := nucleiRunner.SaveResumeConfig()
 				if err != nil {
 					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)

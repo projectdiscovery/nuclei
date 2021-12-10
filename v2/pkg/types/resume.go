@@ -1,7 +1,20 @@
 package types
 
+import (
+	"os"
+	"path/filepath"
+)
+
 // Default resume file
-const DefaultResumeFile = "resume.cfg"
+const DefaultResumeFileName = "resume.cfg"
+
+func DefaultResumeFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return DefaultResumeFileName
+	}
+	return filepath.Join(home, ".config", "nuclei", DefaultResumeFileName)
+}
 
 // ResumeCfg contains the scan progression
 type ResumeCfg struct {
