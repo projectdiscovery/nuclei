@@ -29,3 +29,8 @@ jobs:
       - name: Build
         run: go build .
         working-directory: v2/cmd/nuclei/
+      
+      # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
+      - name: Race Condition Tests
+        run: go build -race .
+        working-directory: v2/cmd/nuclei/
