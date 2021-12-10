@@ -245,16 +245,18 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	for k, v := range events {
 		data[k] = v
 	}
+	responseOutput := responseBuilder.String()
 
 	data["type"] = request.Type().String()
 	data["success"] = "true"
 	data["request"] = requestOutput
-	data["response"] = responseBuilder.String()
+	data["response"] = responseOutput
 	data["host"] = input
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+	debugEvent := output.DebugEvent{Request: requestOutput, Response: responseOutput}
 
-	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+	event := eventcreator.CreateEventWithAdditionalOptions(request, data, debugEvent, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
 	})
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {

@@ -53,11 +53,18 @@ var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 // InternalEvent is an internal output generation structure for nuclei.
 type InternalEvent map[string]interface{}
 
+// DebugEvent is an event containing debug info for request execution
+type DebugEvent struct {
+	Request  string
+	Response string
+}
+
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
 	InternalEvent   InternalEvent
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
+	Debug           *DebugEvent
 	UsesInteractsh  bool
 }
 

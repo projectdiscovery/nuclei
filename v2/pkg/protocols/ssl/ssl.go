@@ -136,8 +136,9 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["matched"] = addressToDial
 	data["not_after"] = float64(cert.NotAfter.Unix())
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+	debugEvent := output.DebugEvent{Request: "", Response: jsonDataString}
 
-	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, data, debugEvent, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))

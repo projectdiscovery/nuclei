@@ -62,6 +62,7 @@ func New(config *Config) *API {
 	apiGroup.PUT("/templates", config.Server.UpdateTemplate)
 	apiGroup.DELETE("/templates", config.Server.DeleteTemplate)
 	apiGroup.GET("/templates/raw", config.Server.GetTemplatesRaw)
+	apiGroup.POST("/templates/execute", config.Server.ExecuteTemplate)
 
 	// /targets endpoints
 	apiGroup.GET("/targets", config.Server.GetTargets)

@@ -82,12 +82,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, traceData)
+	reqString := compiledRequest.String()
+	respString := response.String()
+	outputEvent := request.responseToDSLMap(reqString, respString, response, input, input, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
+	debugEvent := output.DebugEvent{Request: reqString, Response: respString}
 
-	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, outputEvent, debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request.options, response.String(), domain)

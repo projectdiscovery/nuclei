@@ -6,14 +6,14 @@ import (
 )
 
 // CreateEvent wraps the outputEvent with the result of the operators defined on the request
-func CreateEvent(request protocols.Request, outputEvent output.InternalEvent, isResponseDebug bool) *output.InternalWrappedEvent {
-	return CreateEventWithAdditionalOptions(request, outputEvent, isResponseDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {})
+func CreateEvent(request protocols.Request, outputEvent output.InternalEvent, debugEvent output.DebugEvent, isResponseDebug bool) *output.InternalWrappedEvent {
+	return CreateEventWithAdditionalOptions(request, outputEvent, debugEvent, isResponseDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {})
 }
 
 // CreateEventWithAdditionalOptions wraps the outputEvent with the result of the operators defined on the request and enables extending the resulting event with additional attributes or values.
-func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent output.InternalEvent, isResponseDebug bool,
+func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent output.InternalEvent, debugEvent output.DebugEvent, isResponseDebug bool,
 	addAdditionalOptions func(internalWrappedEvent *output.InternalWrappedEvent)) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent, Debug: &debugEvent}
 	for _, compiledOperator := range request.GetCompiledOperators() {
 		if compiledOperator != nil {
 			result, ok := compiledOperator.Execute(outputEvent, request.Match, request.Extract, isResponseDebug)
@@ -24,6 +24,5 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 			}
 		}
 	}
-
 	return event
 }

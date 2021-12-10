@@ -85,13 +85,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				return
 			}
 
-			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), headersToString(resp.Header), 0, nil)
+			dumpedResponseString := tostring.UnsafeToString(dumpedResponse)
+			outputEvent := request.responseToDSLMap(resp, data, data, data, dumpedResponseString, tostring.UnsafeToString(body), headersToString(resp.Header), 0, nil)
 			outputEvent["ip"] = ""
 			for k, v := range previous {
 				outputEvent[k] = v
 			}
+			debugEvent := output.DebugEvent{Request: data, Response: dumpedResponseString}
 
-			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			event := eventcreator.CreateEvent(request, outputEvent, debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 			callback(event)
 		}(data)
 	})

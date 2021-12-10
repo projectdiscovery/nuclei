@@ -244,8 +244,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		responseBuilder.Write(final[:n])
 	}
 
+	reqString := reqBuilder.String()
 	response := responseBuilder.String()
-	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
+	outputEvent := request.responseToDSLMap(reqString, string(final[:n]), response, input, actualAddress)
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	for k, v := range previous {
 		outputEvent[k] = v
@@ -256,10 +257,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	for k, v := range inputEvents {
 		outputEvent[k] = v
 	}
+	debugEvent := output.DebugEvent{Request: reqString, Response: response}
 
 	var event *output.InternalWrappedEvent
 	if len(interactshURLs) == 0 {
-		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
 		callback(event)

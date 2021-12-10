@@ -66,12 +66,14 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 	if err == nil {
 		responseBody, _ = html.HTML()
 	}
-	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL)
+	reqBody := reqBuilder.String()
+	outputEvent := request.responseToDSLMap(responseBody, reqBody, inputURL, inputURL)
 	for k, v := range out {
 		outputEvent[k] = v
 	}
+	debugEvent := output.DebugEvent{Request: reqBody, Response: responseBody}
 
-	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, outputEvent, debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	dumpResponse(event, request.options, responseBody, inputURL)
 

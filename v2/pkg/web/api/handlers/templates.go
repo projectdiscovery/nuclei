@@ -4,11 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
@@ -161,4 +165,47 @@ func (s *Server) GetTemplatesRaw(ctx echo.Context) error {
 		return err
 	}
 	return ctx.String(200, contents)
+}
+
+// ExecuteTemplateRequest is a request for /templates execution
+type ExecuteTemplateRequest struct {
+	Path   string `json:"path"`
+	Target string `json:"target"`
+}
+
+// ExecuteTemplateResponse is a response for /templates execution
+type ExecuteTemplateResponse struct {
+	Output []*output.ResultEvent `json:"output,omitempty"`
+	Debug  map[string]string     `json:"debug"` // Contains debug request response kv pairs
+}
+
+// ExecuteTemplate handles /templates execution route
+func (s *Server) ExecuteTemplate(ctx echo.Context) error {
+	var body ExecuteTemplateRequest
+	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
+		return err
+	}
+
+	templateContents, err := s.db.Queries().GetTemplateContents(context.Background(), body.Path)
+	if err != nil {
+		return errors.Wrap(err, "could not get template")
+	}
+	template, err := templates.Parse(strings.NewReader(templateContents), "", nil, *testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{}))
+	if err != nil {
+		return errors.Wrap(err, "could not parse template")
+	}
+	var results []*output.ResultEvent
+	debugData := make(map[string]string)
+
+	err = template.Executer.ExecuteWithResults(body.Target, func(event *output.InternalWrappedEvent) {
+		results = append(results, event.Results...)
+		if event.Debug != nil {
+			debugData[event.Debug.Request] = event.Debug.Response
+		}
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not execute template")
+	}
+	resp := &ExecuteTemplateResponse{Debug: debugData, Output: results}
+	return ctx.JSON(200, resp)
 }

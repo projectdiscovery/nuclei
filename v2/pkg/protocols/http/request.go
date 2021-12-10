@@ -497,7 +497,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		finalEvent := make(output.InternalEvent)
 
-		outputEvent := request.responseToDSLMap(response.resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		dumpedRequestString := tostring.UnsafeToString(dumpedRequest)
+		dumpedFullResponse := tostring.UnsafeToString(response.fullResponse)
+
+		outputEvent := request.responseToDSLMap(response.resp, reqURL, matchedURL, dumpedRequestString, dumpedFullResponse, tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -517,8 +520,9 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				finalEvent[key] = v
 			}
 		}
+		debugEvent := output.DebugEvent{Request: dumpedRequestString, Response: dumpedFullResponse}
 
-		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
 		if hasInteractMarkers {

@@ -63,8 +63,9 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 			for k, v := range previous {
 				outputEvent[k] = v
 			}
+			debugEvent := output.DebugEvent{Request: "", Response: fileContent}
 
-			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			event := eventcreator.CreateEvent(request, outputEvent, debugEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 			dumpResponse(event, request.options, fileContent, filePath)
 

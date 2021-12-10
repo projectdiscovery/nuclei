@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -31,20 +32,22 @@ func init() {
 // Parse parses a yaml request template file
 //nolint:gocritic // this cannot be passed by pointer
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
-func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+func Parse(reader io.Reader, filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+	if value, err := parsedTemplatesCache.Has(filePath); value != nil && filePath != "" {
 		return value.(*Template), err
 	}
-
 	template := &Template{}
 
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+	if reader == nil {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
 
-	data, err := ioutil.ReadAll(f)
+		reader = file
+	}
+	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}

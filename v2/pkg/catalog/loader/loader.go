@@ -180,7 +180,7 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 			}
 		}
 
-		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+		template, err := templates.Parse(nil, templatePath, store.preprocessor, store.config.ExecutorOptions)
 		if err != nil {
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
@@ -217,7 +217,7 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+			parsed, err := templates.Parse(nil, templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
@@ -241,7 +241,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
+			parsed, err := templates.Parse(nil, workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
 			} else if parsed != nil {

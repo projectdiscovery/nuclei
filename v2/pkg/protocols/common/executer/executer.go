@@ -127,10 +127,9 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 					builder.Reset()
 				}
 			}
-			if event.OperatorsResult == nil {
-				return
+			if event.OperatorsResult != nil {
+				results = true
 			}
-			results = true
 			callback(event)
 		})
 		if err != nil {
