@@ -65,4 +65,5 @@ type Template struct {
 	Contents  string
 	Createdat sql.NullTime
 	Updatedat sql.NullTime
+	Hash      sql.NullString
 }

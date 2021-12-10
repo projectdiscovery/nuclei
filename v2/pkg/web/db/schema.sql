@@ -6,6 +6,7 @@ CREATE TABLE public.templates (
 	contents             text  NOT NULL,
 	createdat            timestamptz DEFAULT CURRENT_TIMESTAMP,
 	updatedat            date DEFAULT CURRENT_DATE,
+    hash                 varchar   ,
 	CONSTRAINT pk_templates_id PRIMARY KEY ( id ),
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
@@ -63,19 +64,23 @@ CREATE  TABLE "public".issues (
 	CONSTRAINT pk_issues_id PRIMARY KEY ( id )
 );
 
-
 -- name: GetTemplates :many
-SELECT id, name, folder, "path", createdat, updatedat
+SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates;
 
 -- name: GetTemplatesByFolder :many
-SELECT id, name, "path", createdat, updatedat
+SELECT id, name, "path", createdat, updatedat, hash
 FROM
 	"public".templates WHERE folder=$1;
 
+-- name: GetTemplatesByFolderOne :one
+SELECT id, name, "path", createdat, updatedat, hash
+FROM
+	"public".templates WHERE folder=$1 LIMIT 1;
+
 -- name: GetTemplatesBySearchKey :many
-SELECT id, name, folder, "path", createdat, updatedat
+SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates WHERE path LIKE $1;
 
@@ -87,10 +92,10 @@ SELECT contents FROM public.templates WHERE path=$1 LIMIT 1;
 
 -- name: AddTemplate :exec
 INSERT INTO public.templates
-( name, folder, "path", contents, createdat, updatedat) VALUES ($1, $2, $3 , $4, NOW(), NOW() );
+( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5);
 
 -- name: UpdateTemplate :exec
-UPDATE public.templates SET contents=$1, updatedat=$2 WHERE path=$3;
+UPDATE public.templates SET contents=$1, updatedat=$2, hash=$4 WHERE path=$3;
 
 -- name: DeleteTarget :exec
 DELETE FROM public.targets WHERE ID=$1;

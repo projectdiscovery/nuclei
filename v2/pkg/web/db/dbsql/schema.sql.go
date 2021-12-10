@@ -108,7 +108,7 @@ func (q *Queries) AddTarget(ctx context.Context, arg AddTargetParams) error {
 
 const addTemplate = `-- name: AddTemplate :exec
 INSERT INTO public.templates
-( name, folder, "path", contents, createdat, updatedat) VALUES ($1, $2, $3 , $4, NOW(), NOW() )
+( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5)
 `
 
 type AddTemplateParams struct {
@@ -116,6 +116,7 @@ type AddTemplateParams struct {
 	Folder   sql.NullString
 	Path     string
 	Contents string
+	Hash     sql.NullString
 }
 
 func (q *Queries) AddTemplate(ctx context.Context, arg AddTemplateParams) error {
@@ -124,6 +125,7 @@ func (q *Queries) AddTemplate(ctx context.Context, arg AddTemplateParams) error 
 		arg.Folder,
 		arg.Path,
 		arg.Contents,
+		arg.Hash,
 	)
 	return err
 }
@@ -469,7 +471,7 @@ func (q *Queries) GetTemplateContents(ctx context.Context, path string) (string,
 }
 
 const getTemplates = `-- name: GetTemplates :many
-SELECT id, name, folder, "path", createdat, updatedat
+SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates
 `
@@ -481,6 +483,7 @@ type GetTemplatesRow struct {
 	Path      string
 	Createdat sql.NullTime
 	Updatedat sql.NullTime
+	Hash      sql.NullString
 }
 
 func (q *Queries) GetTemplates(ctx context.Context) ([]GetTemplatesRow, error) {
@@ -499,6 +502,7 @@ func (q *Queries) GetTemplates(ctx context.Context) ([]GetTemplatesRow, error) {
 			&i.Path,
 			&i.Createdat,
 			&i.Updatedat,
+			&i.Hash,
 		); err != nil {
 			return nil, err
 		}
@@ -511,7 +515,7 @@ func (q *Queries) GetTemplates(ctx context.Context) ([]GetTemplatesRow, error) {
 }
 
 const getTemplatesByFolder = `-- name: GetTemplatesByFolder :many
-SELECT id, name, "path", createdat, updatedat
+SELECT id, name, "path", createdat, updatedat, hash
 FROM
 	"public".templates WHERE folder=$1
 `
@@ -522,6 +526,7 @@ type GetTemplatesByFolderRow struct {
 	Path      string
 	Createdat sql.NullTime
 	Updatedat sql.NullTime
+	Hash      sql.NullString
 }
 
 func (q *Queries) GetTemplatesByFolder(ctx context.Context, folder sql.NullString) ([]GetTemplatesByFolderRow, error) {
@@ -539,6 +544,7 @@ func (q *Queries) GetTemplatesByFolder(ctx context.Context, folder sql.NullStrin
 			&i.Path,
 			&i.Createdat,
 			&i.Updatedat,
+			&i.Hash,
 		); err != nil {
 			return nil, err
 		}
@@ -550,8 +556,37 @@ func (q *Queries) GetTemplatesByFolder(ctx context.Context, folder sql.NullStrin
 	return items, nil
 }
 
+const getTemplatesByFolderOne = `-- name: GetTemplatesByFolderOne :one
+SELECT id, name, "path", createdat, updatedat, hash
+FROM
+	"public".templates WHERE folder=$1 LIMIT 1
+`
+
+type GetTemplatesByFolderOneRow struct {
+	ID        int64
+	Name      sql.NullString
+	Path      string
+	Createdat sql.NullTime
+	Updatedat sql.NullTime
+	Hash      sql.NullString
+}
+
+func (q *Queries) GetTemplatesByFolderOne(ctx context.Context, folder sql.NullString) (GetTemplatesByFolderOneRow, error) {
+	row := q.db.QueryRow(ctx, getTemplatesByFolderOne, folder)
+	var i GetTemplatesByFolderOneRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Path,
+		&i.Createdat,
+		&i.Updatedat,
+		&i.Hash,
+	)
+	return i, err
+}
+
 const getTemplatesBySearchKey = `-- name: GetTemplatesBySearchKey :many
-SELECT id, name, folder, "path", createdat, updatedat
+SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates WHERE path LIKE $1
 `
@@ -563,6 +598,7 @@ type GetTemplatesBySearchKeyRow struct {
 	Path      string
 	Createdat sql.NullTime
 	Updatedat sql.NullTime
+	Hash      sql.NullString
 }
 
 func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, path string) ([]GetTemplatesBySearchKeyRow, error) {
@@ -581,6 +617,7 @@ func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, path string) ([]G
 			&i.Path,
 			&i.Createdat,
 			&i.Updatedat,
+			&i.Hash,
 		); err != nil {
 			return nil, err
 		}
@@ -616,16 +653,22 @@ func (q *Queries) UpdateTargetMetadata(ctx context.Context, arg UpdateTargetMeta
 }
 
 const updateTemplate = `-- name: UpdateTemplate :exec
-UPDATE public.templates SET contents=$1, updatedat=$2 WHERE path=$3
+UPDATE public.templates SET contents=$1, updatedat=$2, hash=$4 WHERE path=$3
 `
 
 type UpdateTemplateParams struct {
 	Contents  string
 	Updatedat sql.NullTime
 	Path      string
+	Hash      sql.NullString
 }
 
 func (q *Queries) UpdateTemplate(ctx context.Context, arg UpdateTemplateParams) error {
-	_, err := q.db.Exec(ctx, updateTemplate, arg.Contents, arg.Updatedat, arg.Path)
+	_, err := q.db.Exec(ctx, updateTemplate,
+		arg.Contents,
+		arg.Updatedat,
+		arg.Path,
+		arg.Hash,
+	)
 	return err
 }
