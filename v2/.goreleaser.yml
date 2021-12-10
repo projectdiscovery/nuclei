@@ -26,6 +26,9 @@ builds:
   binary: '{{ .ProjectName }}'
   main: cmd/nuclei/main.go
 
+  flags:
+    - -trimpath
+
 archives:
 - format: zip
   replacements:
