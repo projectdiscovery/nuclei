@@ -75,7 +75,7 @@ func (s *Server) getTemplatesWithFolder(ctx echo.Context, folder string) error {
 
 // getTemplatesWithSearchKey handles getting templates by a search key for path
 func (s *Server) getTemplatesWithSearchKey(ctx echo.Context, searchKey string) error {
-	rows, err := s.db.Queries().GetTemplatesBySearchKey(context.Background(), searchKey)
+	rows, err := s.db.Queries().GetTemplatesBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
 	if err != nil {
 		return errors.Wrap(err, "could not get templates by search key")
 	}

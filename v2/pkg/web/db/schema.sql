@@ -82,7 +82,7 @@ FROM
 -- name: GetTemplatesBySearchKey :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates WHERE path LIKE $1;
+	"public".templates WHERE path LIKE '%'||$1||'%';
 
 -- name: DeleteTemplate :exec
 DELETE FROM public.templates WHERE path=$1;
@@ -122,7 +122,7 @@ FROM
 -- name: GetTargetsForSearch :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE $1 OR filename LIKE $1;
+	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%';
 
 -- name: UpdateTargetMetadata :exec
 UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;

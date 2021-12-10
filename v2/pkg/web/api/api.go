@@ -13,6 +13,7 @@ import (
 
 // API is a REST API server structure
 type API struct {
+	echo *echo.Echo
 }
 
 // Config contains configuration options for REST API
@@ -70,7 +71,7 @@ func New(config *Config) *API {
 	apiGroup.GET("/targets/:id", config.Server.GetTargetContents)
 
 	// /scans endpoints
-	return nil
+	return &API{echo: e}
 }
 
 // JSONIterSerializer implements JSON encoding using jsoniter for echo.

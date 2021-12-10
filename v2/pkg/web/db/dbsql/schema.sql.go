@@ -418,7 +418,7 @@ func (q *Queries) GetTargets(ctx context.Context) ([]GetTargetsRow, error) {
 const getTargetsForSearch = `-- name: GetTargetsForSearch :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE $1 OR filename LIKE $1
+	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%'
 `
 
 type GetTargetsForSearchRow struct {
@@ -431,8 +431,8 @@ type GetTargetsForSearchRow struct {
 	Total      sql.NullInt64
 }
 
-func (q *Queries) GetTargetsForSearch(ctx context.Context, name sql.NullString) ([]GetTargetsForSearchRow, error) {
-	rows, err := q.db.Query(ctx, getTargetsForSearch, name)
+func (q *Queries) GetTargetsForSearch(ctx context.Context, dollar_1 sql.NullString) ([]GetTargetsForSearchRow, error) {
+	rows, err := q.db.Query(ctx, getTargetsForSearch, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +588,7 @@ func (q *Queries) GetTemplatesByFolderOne(ctx context.Context, folder sql.NullSt
 const getTemplatesBySearchKey = `-- name: GetTemplatesBySearchKey :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates WHERE path LIKE $1
+	"public".templates WHERE path LIKE '%'||$1||'%'
 `
 
 type GetTemplatesBySearchKeyRow struct {
@@ -601,8 +601,8 @@ type GetTemplatesBySearchKeyRow struct {
 	Hash      sql.NullString
 }
 
-func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, path string) ([]GetTemplatesBySearchKeyRow, error) {
-	rows, err := q.db.Query(ctx, getTemplatesBySearchKey, path)
+func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]GetTemplatesBySearchKeyRow, error) {
+	rows, err := q.db.Query(ctx, getTemplatesBySearchKey, dollar_1)
 	if err != nil {
 		return nil, err
 	}
