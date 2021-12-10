@@ -204,7 +204,7 @@ func (options *Options) VarsPayload() map[string]interface{} {
 
 // ShouldLoadResume resume file
 func (options *Options) ShouldLoadResume() bool {
-	return options.Resume && fileutil.FileExists(DefaultResumeFile)
+	return options.Resume && fileutil.FileExists(DefaultResumeFilePath())
 }
 
 // ShouldSaveResume file
