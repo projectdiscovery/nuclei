@@ -477,6 +477,15 @@ func (r *Runner) countNewTemplates() int {
 func (r *Runner) SaveResumeConfig() error {
 	resumeCfg := types.NewResumeCfg()
 	resumeCfg.TemplatesResumeFrom = r.resumeCfg.TemplatesCurrent
+	// Since the maximum number of concurrent targets is determined by bulk-size, calculate the current progress as
+	// CurrentIndex - BulkSize so that the starting point will not skip on-going scans
+	for templateId, currentIndex := range r.resumeCfg.TemplatesCurrentIndex {
+		var diff uint32
+		if d := int(currentIndex) - r.options.BulkSize; d > 0 {
+			diff = uint32(d)
+		}
+		resumeCfg.TemplatesResumeFromIndex[templateId] = diff
+	}
 	resumeCfg.TemplatesResumeFromIndex = r.resumeCfg.TemplatesCurrentIndex
 	file, _ := json.MarshalIndent(resumeCfg, "", "\t")
 
