@@ -28,21 +28,10 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 
 			changed := false
 
-			var dir string
-			if folderutil.IsWindowsOS() {
-				dir, payloadType = filepath.Split(filepath.Join(templatePath, payloadType))
-			} else {
-				dir, _ = filepath.Split(templatePath)
-			}
+			dir, _ := filepath.Split(templatePath)
+			templatePathInfo, _ := folderutil.NewPathInfo(dir)
+			payloadPathsToProbe, _ := templatePathInfo.MeshWith(payloadType)
 
-			templatePathInfo, err := folderutil.NewPathInfo(dir)
-			if err != nil {
-				return err
-			}
-			payloadPathsToProbe, err := templatePathInfo.MeshWith(payloadType)
-			if err != nil {
-				return err
-			}
 			for _, payloadPath := range payloadPathsToProbe {
 				if fileExists(payloadPath) {
 					payloads[name] = payloadPath
