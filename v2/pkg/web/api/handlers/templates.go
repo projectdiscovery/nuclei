@@ -3,14 +3,13 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"strings"
+	"path/filepath"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
-	"gopkg.in/yaml.v2"
 )
 
 // GetTemplatesResponse is a response for /templates listing
@@ -121,27 +120,17 @@ type AddTemplateRequest struct {
 	Folder   string `json:"folder"`
 }
 
-type templateNameInfoStructure struct {
-	Info struct {
-		Name string `yaml:"name"`
-	} `yaml:"info"`
-}
-
 // AddTemplate handles /templates addition route
 func (s *Server) AddTemplate(ctx echo.Context) error {
 	var body AddTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
 		return err
 	}
-	var templateNameInfo templateNameInfoStructure
-	if err := yaml.NewDecoder(strings.NewReader(body.Contents)).Decode(&templateNameInfo); err != nil {
-		return err
-	}
 	err := s.db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
 		Contents: body.Contents,
 		Folder:   sql.NullString{String: body.Folder, Valid: true},
 		Path:     body.Path,
-		Name:     sql.NullString{String: templateNameInfo.Info.Name, Valid: true},
+		Name:     sql.NullString{String: filepath.Base(body.Path), Valid: true},
 	})
 	return err
 }
