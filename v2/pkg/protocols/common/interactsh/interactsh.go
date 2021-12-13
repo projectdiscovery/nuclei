@@ -177,6 +177,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		data.Event.OperatorsResult = result
 	}
 	data.Event.Results = data.MakeResultFunc(data.Event)
+	for _, event := range data.Event.Results {
+		event.Interaction = interaction
+	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
