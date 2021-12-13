@@ -11,17 +11,18 @@ import (
 )
 
 var (
-	debug      = os.Getenv("DEBUG") == "true"
-	customTest = os.Getenv("TEST")
-	protocol   = os.Getenv("PROTO")
+	debug        = os.Getenv("DEBUG") == "true"
+	githubAction = os.Getenv("GH_ACTION") == "true"
+	customTest   = os.Getenv("TEST")
+	protocol     = os.Getenv("PROTO")
+
+	success = aurora.Green("[✓]").String()
+	failed  = aurora.Red("[✘]").String()
 
 	errored = false
 )
 
 func main() {
-	success := aurora.Green("[✓]").String()
-	failed := aurora.Red("[✘]").String()
-
 	protocolTests := map[string]map[string]testutils.TestCase{
 		"http":      httpTestcases,
 		"network":   networkTestcases,
@@ -31,25 +32,37 @@ func main() {
 		"websocket": websocketTestCases,
 		"headless":  headlessTestcases,
 	}
-	for proto, tests := range protocolTests {
+	for proto, testCases := range protocolTests {
 		if protocol == "" || protocol == proto {
 			fmt.Printf("Running test cases for \"%s\" protocol\n", aurora.Blue(proto))
 
-			for file, test := range tests {
-				if customTest != "" && !strings.Contains(file, customTest) {
+			for templatePath, testCase := range testCases {
+				if customTest != "" && !strings.Contains(templatePath, customTest) {
 					continue // only run tests user asked
 				}
-				if err := test.Execute(file); err != nil {
-					fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, file, err)
-					errored = true
-				} else {
-					fmt.Printf("%s Test \"%s\" passed!\n", success, file)
-				}
+
+				execute(testCase, templatePath)
 			}
 		}
 	}
 	if errored {
 		os.Exit(1)
+	}
+}
+
+func execute(testCase testutils.TestCase, templatePath string) {
+	ghActionGroupStart := ""
+	ghActionGroupEnd := ""
+	if githubAction {
+		ghActionGroupStart = "::group::"
+		ghActionGroupEnd = "::endgroup::"
+	}
+
+	if err := testCase.Execute(templatePath); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s%s Test \"%s\" failed: %s\n%s", ghActionGroupStart, failed, templatePath, err, ghActionGroupEnd)
+		errored = true
+	} else {
+		fmt.Printf("%s%s Test \"%s\" passed!\n%s", ghActionGroupStart, success, templatePath, ghActionGroupEnd)
 	}
 }
 
