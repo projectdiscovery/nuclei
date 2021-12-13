@@ -5,10 +5,12 @@ on:
   workflow_dispatch:
 
 
-jobs:  
+jobs:
   build:
     name: Test Builds
     runs-on: ubuntu-latest
+    env:
+      DEBUG: true
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
