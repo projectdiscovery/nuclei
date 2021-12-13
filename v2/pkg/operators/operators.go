@@ -178,13 +178,13 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 
-			if extractor.Internal {
-				if data, ok := result.DynamicValues[extractor.Name]; !ok {
-					result.DynamicValues[extractor.Name] = []string{match}
-				} else {
-					result.DynamicValues[extractor.Name] = append(data, match)
-				}
+			if data, ok := result.DynamicValues[extractor.Name]; !ok {
+				result.DynamicValues[extractor.Name] = []string{match}
 			} else {
+				result.DynamicValues[extractor.Name] = append(data, match)
+			}
+
+			if !extractor.Internal {
 				result.OutputExtracts = append(result.OutputExtracts, match)
 			}
 		}
