@@ -32,10 +32,18 @@ func main() {
 		"websocket": websocketTestCases,
 		"headless":  headlessTestcases,
 	}
+
+	ghActionGroupStart := ""
+	ghActionGroupEnd := ""
+	if githubAction {
+		ghActionGroupStart = "::group::"
+		ghActionGroupEnd = "::endgroup::"
+	}
+
 	for proto, testCases := range protocolTests {
 		if protocol == "" || protocol == proto {
-			fmt.Printf("Running test cases for \"%s\" protocol\n", aurora.Blue(proto))
 
+			fmt.Printf("%sRunning test cases for \"%s\" protocol\n", ghActionGroupStart, aurora.Blue(proto))
 			for templatePath, testCase := range testCases {
 				if customTest != "" && !strings.Contains(templatePath, customTest) {
 					continue // only run tests user asked
@@ -43,6 +51,7 @@ func main() {
 
 				execute(testCase, templatePath)
 			}
+			fmt.Println(ghActionGroupEnd)
 		}
 	}
 	if errored {
@@ -51,21 +60,12 @@ func main() {
 }
 
 func execute(testCase testutils.TestCase, templatePath string) {
-	ghActionGroupStart := ""
-	ghActionGroupEnd := ""
-	if githubAction {
-		ghActionGroupStart = "::group::"
-		ghActionGroupEnd = "::endgroup::"
-	}
-
-	fmt.Printf("%sExecuting test: %q\n", ghActionGroupStart, templatePath)
 	if err := testCase.Execute(templatePath); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, templatePath, err)
 		errored = true
 	} else {
 		fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
 	}
-	fmt.Printf(ghActionGroupEnd)
 }
 
 func errIncorrectResultsCount(results []string) error {

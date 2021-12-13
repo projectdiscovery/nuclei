@@ -71,7 +71,7 @@ func execute(testCase string) {
 	} else {
 		fmt.Printf("%s Test \"%s\" passed!\n", success, testCase)
 	}
-	fmt.Printf(ghActionGroupEnd)
+	fmt.Println(ghActionGroupEnd)
 
 }
 

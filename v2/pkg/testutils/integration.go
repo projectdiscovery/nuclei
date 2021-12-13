@@ -43,6 +43,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 
 func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
+	cmd.Args = append(cmd.Args, extra...)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -50,7 +51,6 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	cmd.Args = append(cmd.Args, extra...)
 	data, err := cmd.Output()
 	if err != nil {
 		return nil, err
