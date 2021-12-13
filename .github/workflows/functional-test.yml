@@ -20,7 +20,6 @@ jobs:
 
       - name: Functional Tests
         env:
-          DEBUG: true
           GH_ACTION: true
         run: |
           chmod +x run.sh

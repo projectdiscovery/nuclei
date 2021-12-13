@@ -71,6 +71,7 @@ var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
 	if debug {
+		cmd.Args = append(cmd.Args, "-debug")
 		fmt.Println(cmd.String())
 	}
 	data, err := cmd.CombinedOutput()
