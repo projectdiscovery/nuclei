@@ -27,7 +27,7 @@ jobs:
         working-directory: integration_tests/
 
       - name: Re-run Integration Tests in Debug Mode
-          if: steps.integrationTests.outcome == 'failure'
+          if: steps.integrationTests.result == 'failure'
           env:
             DEBUG: true
             GH_ACTION: true
