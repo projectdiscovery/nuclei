@@ -15,9 +15,7 @@ import (
 )
 
 var (
-	debug        = os.Getenv("DEBUG") == "true"
-	githubAction = os.Getenv("GH_ACTION") == "true"
-
+	debug   = os.Getenv("DEBUG") == "true"
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
 	errored = false
@@ -47,32 +45,18 @@ func runFunctionalTests() error {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		testCase := strings.TrimSpace(scanner.Text())
-		if testCase == "" {
+		text := strings.TrimSpace(scanner.Text())
+		if text == "" {
 			continue
 		}
-		execute(testCase)
+		if err := runIndividualTestCase(text); err != nil {
+			errored = true
+			fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, text, err)
+		} else {
+			fmt.Printf("%s Test \"%s\" passed!\n", success, text)
+		}
 	}
 	return nil
-}
-
-func execute(testCase string) {
-	ghActionGroupStart := ""
-	ghActionGroupEnd := ""
-	if githubAction {
-		ghActionGroupStart = "::group::"
-		ghActionGroupEnd = "::endgroup::"
-	}
-
-	fmt.Printf("%sExecuting test: %q\n", ghActionGroupStart, testCase)
-	if err := runIndividualTestCase(testCase); err != nil {
-		errored = true
-		fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, testCase, err)
-	} else {
-		fmt.Printf("%s Test \"%s\" passed!\n", success, testCase)
-	}
-	fmt.Println(ghActionGroupEnd)
-
 }
 
 func runIndividualTestCase(testcase string) error {

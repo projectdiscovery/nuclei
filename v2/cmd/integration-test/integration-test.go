@@ -30,7 +30,7 @@ var (
 )
 
 func main() {
-	failedTestTemplatePaths := runTests(toMap(strings.Split(customTests, ",")))
+	failedTestTemplatePaths := runTests(toMap(toSlice(customTests)))
 
 	if len(failedTestTemplatePaths) > 0 {
 		if githubAction {
@@ -76,6 +76,14 @@ func execute(testCase testutils.TestCase, templatePath string) (error, string) {
 
 func errIncorrectResultsCount(results []string) error {
 	return fmt.Errorf("incorrect number of results \n\t%s", strings.Join(results, "\n\t"))
+}
+
+func toSlice(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return []string{}
+	}
+
+	return strings.Split(value, ",")
 }
 
 func toMap(slice []string) map[string]struct{} {
