@@ -58,12 +58,14 @@ func execute(testCase testutils.TestCase, templatePath string) {
 		ghActionGroupEnd = "::endgroup::"
 	}
 
+	fmt.Printf("%sExecuting test: %q\n", ghActionGroupStart, templatePath)
 	if err := testCase.Execute(templatePath); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s%s Test \"%s\" failed: %s\n%s", ghActionGroupStart, failed, templatePath, err, ghActionGroupEnd)
+		_, _ = fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, templatePath, err)
 		errored = true
 	} else {
-		fmt.Printf("%s%s Test \"%s\" passed!\n%s", ghActionGroupStart, success, templatePath, ghActionGroupEnd)
+		fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
 	}
+	fmt.Printf(ghActionGroupEnd)
 }
 
 func errIncorrectResultsCount(results []string) error {

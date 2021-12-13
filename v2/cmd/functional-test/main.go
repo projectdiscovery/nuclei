@@ -56,7 +56,7 @@ func runFunctionalTests() error {
 	return nil
 }
 
-func execute(text string) {
+func execute(testCase string) {
 	ghActionGroupStart := ""
 	ghActionGroupEnd := ""
 	if githubAction {
@@ -64,12 +64,15 @@ func execute(text string) {
 		ghActionGroupEnd = "::endgroup::"
 	}
 
-	if err := runIndividualTestCase(text); err != nil {
+	fmt.Printf("%sExecuting test: %q\n", ghActionGroupStart, testCase)
+	if err := runIndividualTestCase(testCase); err != nil {
 		errored = true
-		fmt.Fprintf(os.Stderr, "%s%s Test \"%s\" failed: %s\n%s", ghActionGroupStart, failed, text, err, ghActionGroupEnd)
+		fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, testCase, err)
 	} else {
-		fmt.Printf("%s%s Test \"%s\" passed!\n%s", ghActionGroupStart, success, text, ghActionGroupEnd)
+		fmt.Printf("%s Test \"%s\" passed!\n", success, testCase)
 	}
+	fmt.Printf(ghActionGroupEnd)
+
 }
 
 func runIndividualTestCase(testcase string) error {
