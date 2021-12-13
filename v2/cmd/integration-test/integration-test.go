@@ -49,13 +49,16 @@ func runTests(customTemplatePaths string) []string {
 		"headless":  headlessTestcases,
 	}
 
+	fmt.Printf("Custom template paths: %s", customTemplatePaths) // TODO delete
+
 	for proto, testCases := range protocolTests {
+		fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
+
 		for templatePath, testCase := range testCases {
 			if customTemplatePaths != "" && !strings.Contains(customTemplatePaths, templatePath) {
 				continue // only run tests user asked
 			}
 
-			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
 			failedTemplatePath := execute(testCase, templatePath)
 			if failedTemplatePath != "" {
 				failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
@@ -71,9 +74,9 @@ func execute(testCase testutils.TestCase, templatePath string) string {
 	if err := testCase.Execute(templatePath); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, templatePath, err)
 		return templatePath
-	} else {
-		fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
 	}
+
+	fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
 	return ""
 }
 
