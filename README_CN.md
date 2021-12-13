@@ -133,7 +133,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -ev, env-vars                        在模板中使用环境变量
 
 交互：
-   -inserver, -ineractsh-server string  使用interactsh反连检测平台（默认为"https://interactsh.com"）
+   -inserver, -ineractsh-server string  使用interactsh反连检测平台（默认为"https://interact.sh"）
    -itoken, -interactsh-token string    指定反连检测平台的身份凭证
    -interactions-cache-size int         指定保存在交互缓存中的请求数（默认：5000）
    -interactions-eviction int           聪缓存中删除请求前等待的时间（默认为60秒）
