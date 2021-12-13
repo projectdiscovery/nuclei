@@ -45,7 +45,7 @@ func main() {
 }
 
 func runTests(customTemplatePaths map[string]struct{}) map[string]struct{} {
-	var failedTestTemplatePaths map[string]struct{}
+	failedTestTemplatePaths := map[string]struct{}{}
 
 	for proto, testCases := range protocolTests {
 		if len(customTemplatePaths) == 0 {
