@@ -142,7 +142,7 @@ CONFIGURATIONS:
    -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 
 INTERACTSH:
-   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interactsh.com")
+   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interact.sh")
    -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
    -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
