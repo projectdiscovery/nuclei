@@ -51,6 +51,7 @@ var protocolMappings = map[ProtocolType]string{
 	WorkflowProtocol:  "workflow",
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
+	RDAPProtocol:      "rdap",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {

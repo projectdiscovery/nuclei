@@ -94,6 +94,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	for k, v := range whoisResp.Data {
 		data[strings.ToLower(k)] = strings.Join(v, ",")
 	}
+	data["type"] = request.Type().String()
+	data["host"] = input
 	data["response"] = whoisResp
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
@@ -130,7 +132,6 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Info:             request.options.TemplateInfo,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
-		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
