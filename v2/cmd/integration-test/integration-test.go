@@ -10,16 +10,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
+const customTestsVariableName = "TESTS"
+
 var (
 	debug        = os.Getenv("DEBUG") == "true"
 	githubAction = os.Getenv("GH_ACTION") == "true"
-	customTest   = os.Getenv("TEST")
-	protocol     = os.Getenv("PROTO")
+	customTests  = os.Getenv(customTestsVariableName)
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
-
-	errored = false
 )
 
 func main() {
@@ -33,39 +32,43 @@ func main() {
 		"headless":  headlessTestcases,
 	}
 
-	ghActionGroupStart := ""
-	ghActionGroupEnd := ""
-	if githubAction {
-		ghActionGroupStart = "::group::"
-		ghActionGroupEnd = "::endgroup::"
-	}
+	errored := false
+	var failedTestTemplatePaths []string
 
 	for proto, testCases := range protocolTests {
-		if protocol == "" || protocol == proto {
-
-			fmt.Printf("%sRunning test cases for \"%s\" protocol\n", ghActionGroupStart, aurora.Blue(proto))
-			for templatePath, testCase := range testCases {
-				if customTest != "" && !strings.Contains(templatePath, customTest) {
-					continue // only run tests user asked
-				}
-
-				execute(testCase, templatePath)
+		for templatePath, testCase := range testCases {
+			fmt.Printf("Custom tests: %s\n", customTests) // TODO delete
+			if customTests != "" && !strings.Contains(customTests, templatePath) {
+				continue // only run tests user asked
 			}
-			fmt.Println(ghActionGroupEnd)
+
+			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
+			failedTemplatePath := execute(testCase, templatePath)
+			if failedTemplatePath != "" {
+				errored = true
+				failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
+			}
 		}
 	}
+
+	if githubAction && len(failedTestTemplatePaths) > 0 {
+		fmt.Printf("echo \"%s=%s\" > $GITHUB_ENV", customTestsVariableName, strings.Join(failedTestTemplatePaths, ","))
+	}
+
 	if errored {
 		os.Exit(1)
 	}
 }
 
-func execute(testCase testutils.TestCase, templatePath string) {
+func execute(testCase testutils.TestCase, templatePath string) string {
+	fmt.Printf("Running test case for %q template\n", templatePath)
 	if err := testCase.Execute(templatePath); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, templatePath, err)
-		errored = true
+		return templatePath
 	} else {
 		fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
 	}
+	return ""
 }
 
 func errIncorrectResultsCount(results []string) error {
