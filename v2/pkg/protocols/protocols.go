@@ -108,9 +108,9 @@ type Request interface {
 type OutputEventCallback func(result *output.InternalWrappedEvent)
 
 func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 && !wrapped.OperatorsResult.Matched {
-		return nil
-	}
+	// if len(wrapped.OperatorsResult.DynamicValues) > 0 && !wrapped.OperatorsResult.Matched {
+	// 	return nil
+	// }
 
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
