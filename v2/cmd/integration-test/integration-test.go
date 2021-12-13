@@ -22,6 +22,23 @@ var (
 )
 
 func main() {
+	failedTestTemplatePaths := runTests(customTests)
+
+	if len(failedTestTemplatePaths) > 0 {
+		if githubAction {
+			debug = true
+			fmt.Println("::group::Failed integration tests in debug mode")
+			runTests(strings.Join(failedTestTemplatePaths, ","))
+			fmt.Println("::endgroup::")
+		}
+
+		os.Exit(1)
+	}
+}
+
+func runTests(customTemplatePaths string) []string {
+	var failedTestTemplatePaths []string
+
 	protocolTests := map[string]map[string]testutils.TestCase{
 		"http":      httpTestcases,
 		"network":   networkTestcases,
@@ -32,32 +49,21 @@ func main() {
 		"headless":  headlessTestcases,
 	}
 
-	errored := false
-	var failedTestTemplatePaths []string
-
 	for proto, testCases := range protocolTests {
 		for templatePath, testCase := range testCases {
-			fmt.Printf("Custom tests: %s\n", customTests) // TODO delete
-			if customTests != "" && !strings.Contains(customTests, templatePath) {
+			if customTemplatePaths != "" && !strings.Contains(customTemplatePaths, templatePath) {
 				continue // only run tests user asked
 			}
 
 			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
 			failedTemplatePath := execute(testCase, templatePath)
 			if failedTemplatePath != "" {
-				errored = true
 				failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
 			}
 		}
 	}
 
-	if githubAction && len(failedTestTemplatePaths) > 0 {
-		fmt.Printf("echo \"%s=%s\" > $GITHUB_ENV", customTestsVariableName, strings.Join(failedTestTemplatePaths, ","))
-	}
-
-	if errored {
-		os.Exit(1)
-	}
+	return failedTestTemplatePaths
 }
 
 func execute(testCase testutils.TestCase, templatePath string) string {
