@@ -109,7 +109,7 @@ func New(options *Options) (*Client, error) {
 // NewDefaultOptions returns the default options for interactsh client
 func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
 	return &Options{
-		ServerURL:      "https://interactsh.com",
+		ServerURL:      "https://interact.sh",
 		CacheSize:      5000,
 		Eviction:       60 * time.Second,
 		ColldownPeriod: 5 * time.Second,
@@ -265,7 +265,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 // HasMatchers returns true if an operator has interactsh part
 // matchers or extractors.
 //
-// Used by requests to show result or not depending on presence of interactsh.com
+// Used by requests to show result or not depending on presence of interact.sh
 // data part matchers.
 func HasMatchers(op *operators.Operators) bool {
 	if op == nil {
