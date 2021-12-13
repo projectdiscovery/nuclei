@@ -27,12 +27,13 @@ jobs:
         working-directory: integration_tests/
 
       - name: Re-run Integration Tests in Debug Mode
-          if: steps.integrationTests.result == 'failure'
-          env:
-            DEBUG: true
-            GH_ACTION: true
-          run: bash run.sh
-          working-directory: integration_tests/
+        if: ${{ failure() }}
+#        if: steps.integrationTests.result == 'failure'
+        env:
+          DEBUG: true
+          GH_ACTION: true
+        run: bash run.sh
+        working-directory: integration_tests/
 
       # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
       - name: Race Condition Tests
