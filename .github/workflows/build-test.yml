@@ -26,7 +26,7 @@ jobs:
         working-directory: integration_tests/
 
       - name: Re-run Integration Tests in Debug Mode
-          if: ${{ failure() }}
+          if: failure()
           env:
             DEBUG: true
             GH_ACTION: true
