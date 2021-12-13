@@ -1,6 +1,7 @@
 package rdap
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,13 +28,28 @@ type Request struct {
 	//   Address contains address for the request
 	Host string `yaml:"host,omitempty" jsonschema:"title=host for the RDAP request,description=Host contains host for the request"`
 
+	// description: |
+	// 	 Optional RDAP server URL.
+	//
+	// 	 If present, specifies the RDAP server to execute the Request on.
+	//   Otherwise, nil enables bootstrapping
+	Server string `yaml:"server,omitempty" jsonschema:"title=server url to execute the RDAP request on,description=Server contains the server url to execute the RDAP request on"`
 	// cache any variables that may be needed for operation.
-	client  *rdap.Client
-	options *protocols.ExecuterOptions
+	client          *rdap.Client
+	options         *protocols.ExecuterOptions
+	parsedServerURL *url.URL
 }
 
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	var err error
+	if request.Server != "" {
+		request.parsedServerURL, err = url.Parse(request.Server)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse server URL")
+		}
+	}
+
 	request.options = options
 	request.client = &rdap.Client{}
 
@@ -59,15 +75,19 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// build an rdap request
 	rdapReq := &rdap.Request{
-		Type:  rdap.DomainRequest,
-		Query: input,
+		Type:   rdap.DomainRequest,
+		Query:  input,
+		Server: request.parsedServerURL,
 	}
 
 	res, err := request.client.Do(rdapReq)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not make an rdap request")
 	}
+
+	// convert the rdap response to a whois style response
 	whoisResp := res.ToWhoisStyleResponse()
 
 	data := make(map[string]interface{})

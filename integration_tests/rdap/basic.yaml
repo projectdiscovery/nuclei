@@ -1,0 +1,15 @@
+id: basic-rdap-example
+
+info:
+  name: test template for RDAP
+  author: pdteam
+  severity: info
+
+rdap:
+  - host:
+      "{{Hostname}}"
+    extractors:
+      - type: kval
+        kval:
+          - "expiration date"
+          - "registrar"

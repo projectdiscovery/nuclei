@@ -30,6 +30,7 @@ func main() {
 		"loader":    loaderTestcases,
 		"websocket": websocketTestCases,
 		"headless":  headlessTestcases,
+		"rdap":      rdapTestCases,
 	}
 	for proto, tests := range protocolTests {
 		if protocol == "" || protocol == proto {
