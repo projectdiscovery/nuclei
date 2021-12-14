@@ -7,7 +7,11 @@ on:
 jobs:
   build:
     name: Test Builds
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest, macos-11]
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -16,6 +20,10 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v2
+
+      - name: Build
+        run: go build .
+        working-directory: v2/cmd/nuclei/
 
       - name: Test
         run: go test ./...
