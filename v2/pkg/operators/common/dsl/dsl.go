@@ -247,7 +247,7 @@ func init() {
 					return nil, invalidDslFunctionError
 				}
 
-				length := args[0].(int)
+				length := int(args[0].(float64))
 				badNumbers := ""
 
 				if argSize == 2 {
@@ -262,7 +262,7 @@ func init() {
 			"(optionalMin, optionalMax uint) int",
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
-				if argSize >= 2 {
+				if argSize > 2 {
 					return nil, invalidDslFunctionError
 				}
 
@@ -270,10 +270,10 @@ func init() {
 				max := math.MaxInt32
 
 				if argSize >= 1 {
-					min = args[0].(int)
+					min = int(args[0].(float64))
 				}
 				if argSize == 2 {
-					max = args[1].(int)
+					max = int(args[1].(float64))
 				}
 				return rand.Intn(max-min) + min, nil
 			},
@@ -294,7 +294,7 @@ func init() {
 				if argSize != 0 && argSize != 1 {
 					return nil, invalidDslFunctionError
 				} else if argSize == 1 {
-					seconds = int(args[0].(uint))
+					seconds = int(args[0].(float64))
 				}
 
 				offset := time.Now().Add(time.Duration(seconds) * time.Second)
@@ -307,7 +307,7 @@ func init() {
 				if len(args) != 1 {
 					return nil, invalidDslFunctionError
 				}
-				seconds := args[0].(uint)
+				seconds := args[0].(float64)
 				time.Sleep(time.Duration(seconds) * time.Second)
 				return true, nil
 			},
