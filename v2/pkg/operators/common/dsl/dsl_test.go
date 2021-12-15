@@ -163,6 +163,7 @@ func TestDslExpressions(t *testing.T) {
 		`replace("Hello", "He", "Ha")`:                   "Hallo",
 		`repeat("a", 5)`:                                 "aaaaa",
 		`repeat("a", "5")`:                               "aaaaa",
+		`repeat("../", "5")`:                             "../../../../../",
 		`repeat(5, 5)`:                                   "55555",
 		`replace_regex("He123llo", "(\\d+)", "")`:        "Hello",
 		`reverse("abc")`:                                 "cba",
