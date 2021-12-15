@@ -180,7 +180,7 @@ func init() {
 					}
 				}
 
-				return charSet[rand.Intn(len(charSet))], nil
+				return string(charSet[rand.Intn(len(charSet))]), nil
 			},
 		),
 		"rand_base": makeDslWithOptionalArgsFunction(
