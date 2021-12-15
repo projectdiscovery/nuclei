@@ -56,6 +56,13 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			count, err := strconv.Atoi(types.ToString(args[1]))
+			if err != nil {
+				return nil, invalidDslFunctionError
+			}
+			return strings.Repeat(types.ToString(args[0]), count), nil
+		}),
 		"replace": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			return strings.ReplaceAll(types.ToString(args[0]), types.ToString(args[1]), types.ToString(args[2])), nil
 		}),
@@ -174,10 +181,13 @@ func init() {
 				}
 
 				if argSize >= 1 {
-					charSet = types.ToString(args[0])
+					inputCharSet := types.ToString(args[0])
+					if strings.TrimSpace(inputCharSet) != "" {
+						charSet = inputCharSet
+					}
 				}
 
-				return charSet[rand.Intn(len(charSet))], nil
+				return string(charSet[rand.Intn(len(charSet))]), nil
 			},
 		),
 		"rand_base": makeDslWithOptionalArgsFunction(
@@ -194,7 +204,10 @@ func init() {
 				length = int(args[0].(float64))
 
 				if argSize == 2 {
-					charSet = types.ToString(args[1])
+					inputCharSet := types.ToString(args[1])
+					if strings.TrimSpace(inputCharSet) != "" {
+						charSet = inputCharSet
+					}
 				}
 				return randSeq(charSet, length), nil
 			},
@@ -247,7 +260,7 @@ func init() {
 					return nil, invalidDslFunctionError
 				}
 
-				length := args[0].(int)
+				length := int(args[0].(float64))
 				badNumbers := ""
 
 				if argSize == 2 {
@@ -262,7 +275,7 @@ func init() {
 			"(optionalMin, optionalMax uint) int",
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
-				if argSize >= 2 {
+				if argSize > 2 {
 					return nil, invalidDslFunctionError
 				}
 
@@ -270,10 +283,10 @@ func init() {
 				max := math.MaxInt32
 
 				if argSize >= 1 {
-					min = args[0].(int)
+					min = int(args[0].(float64))
 				}
 				if argSize == 2 {
-					max = args[1].(int)
+					max = int(args[1].(float64))
 				}
 				return rand.Intn(max-min) + min, nil
 			},
@@ -294,7 +307,7 @@ func init() {
 				if argSize != 0 && argSize != 1 {
 					return nil, invalidDslFunctionError
 				} else if argSize == 1 {
-					seconds = int(args[0].(uint))
+					seconds = int(args[0].(float64))
 				}
 
 				offset := time.Now().Add(time.Duration(seconds) * time.Second)
@@ -307,7 +320,7 @@ func init() {
 				if len(args) != 1 {
 					return nil, invalidDslFunctionError
 				}
-				seconds := args[0].(uint)
+				seconds := args[0].(float64)
 				time.Sleep(time.Duration(seconds) * time.Second)
 				return true, nil
 			},
