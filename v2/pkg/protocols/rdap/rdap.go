@@ -5,15 +5,18 @@ import (
 	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/openrdap/rdap"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -76,29 +79,42 @@ func (request *Request) GetID() string {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// build an rdap request
-	rdapReq := &rdap.Request{
-		Type:   rdap.DomainRequest,
-		Query:  input,
-		Server: request.parsedServerURL,
-	}
-
+	rdapReq := rdap.NewAutoRequest(input)
 	res, err := request.client.Do(rdapReq)
 	if err != nil {
 		return errors.Wrap(err, "could not make an rdap request")
 	}
-
-	// convert the rdap response to a whois style response
-	whoisResp := res.ToWhoisStyleResponse()
+	gologger.Verbose().Msgf("Sent RDAP request to %s", input)
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Debug().Msgf("[%s] Dumped RDAP request for %s", request.options.TemplateID, input)
+	}
 
 	data := make(map[string]interface{})
-	for k, v := range whoisResp.Data {
-		data[strings.ToLower(k)] = strings.Join(v, ",")
+	var response interface{}
+	switch rdapReq.Type {
+	case rdap.DomainRequest:
+		// convert the rdap response to a whois style response (for domain request type only)
+		whoisResp := res.ToWhoisStyleResponse()
+		for k, v := range whoisResp.Data {
+			data[strings.ToLower(k)] = strings.Join(v, ",")
+		}
+		response = whoisResp
+	default:
+		response = res.Object
 	}
+	jsonData, _ := jsoniter.Marshal(response)
+	jsonDataString := string(jsonData)
+
 	data["type"] = request.Type().String()
 	data["host"] = input
-	data["response"] = whoisResp
+	data["response"] = jsonDataString
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		gologger.Debug().Msgf("[%s] Dumped RDAP response for %s", request.options.TemplateID, input)
+		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
+	}
+
 	callback(event)
 	return nil
 }
