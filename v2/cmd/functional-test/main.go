@@ -11,14 +11,13 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var (
-	debug   = os.Getenv("DEBUG") == "true"
-	success = aurora.Green("[✓]").String()
-	failed  = aurora.Red("[✘]").String()
-	errored = false
+	success      = aurora.Green("[✓]").String()
+	failed       = aurora.Red("[✘]").String()
+	githubAction = os.Getenv("GH_ACTION") == "true"
 
 	mainNucleiBinary = flag.String("main", "", "Main Branch Nuclei Binary")
 	devNucleiBinary  = flag.String("dev", "", "Dev Branch Nuclei Binary")
@@ -28,38 +27,64 @@ var (
 func main() {
 	flag.Parse()
 
-	if err := runFunctionalTests(); err != nil {
+	debug := os.Getenv("DEBUG") == "true"
+
+	if err, errored := runFunctionalTests(debug); err != nil {
 		log.Fatalf("Could not run functional tests: %s\n", err)
-	}
-	if errored {
+	} else if errored {
 		os.Exit(1)
 	}
 }
 
-func runFunctionalTests() error {
+func runFunctionalTests(debug bool) (error, bool) {
 	file, err := os.Open(*testcases)
 	if err != nil {
-		return errors.Wrap(err, "could not open test cases")
+		return errors.Wrap(err, "could not open test cases"), true
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
-		if text == "" {
-			continue
+	errored, failedTestCases := runTestCases(file, debug)
+
+	if githubAction {
+		fmt.Println("::group::Failed tests with debug")
+		for _, failedTestCase := range failedTestCases {
+			_ = runTestCase(failedTestCase, true)
 		}
-		if err := runIndividualTestCase(text); err != nil {
-			errored = true
-			fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, text, err)
-		} else {
-			fmt.Printf("%s Test \"%s\" passed!\n", success, text)
-		}
+		fmt.Println("::endgroup::")
 	}
-	return nil
+
+	return nil, errored
 }
 
-func runIndividualTestCase(testcase string) error {
+func runTestCases(file *os.File, debug bool) (bool, []string) {
+	errored := false
+	var failedTestCases []string
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		testCase := strings.TrimSpace(scanner.Text())
+		if testCase == "" {
+			continue
+		}
+		if runTestCase(testCase, debug) {
+			errored = true
+			failedTestCases = append(failedTestCases, testCase)
+		}
+	}
+	return errored, failedTestCases
+}
+
+func runTestCase(testCase string, debug bool) bool {
+	if err := runIndividualTestCase(testCase, debug); err != nil {
+		fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, testCase, err)
+		return true
+	} else {
+		fmt.Printf("%s Test \"%s\" passed!\n", success, testCase)
+	}
+	return false
+}
+
+func runIndividualTestCase(testcase string, debug bool) error {
 	parts := strings.Fields(testcase)
 
 	var finalArgs []string

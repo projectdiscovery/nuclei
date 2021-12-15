@@ -30,6 +30,7 @@ func TestGetSupportedSeverities(t *testing.T) {
 }
 
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
+	t.Helper()
 	payloads := [...]string{
 		payloadCreator("Info"),
 		payloadCreator("info"),
@@ -48,6 +49,7 @@ func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) e
 }
 
 func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
+	t.Helper()
 	assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
 }
 

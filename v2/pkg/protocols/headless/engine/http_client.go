@@ -4,20 +4,22 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+
+	"golang.org/x/net/proxy"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"golang.org/x/net/proxy"
 )
 
-// newhttpClient creates a new http client for headless communication with a timeout
-func newhttpClient(options *types.Options) *http.Client {
+// newHttpClient creates a new http client for headless communication with a timeout
+func newHttpClient(options *types.Options) (*http.Client, error) {
 	dialer := protocolstate.Dialer
 
 	// Set the base TLS configuration definition
@@ -27,7 +29,11 @@ func newhttpClient(options *types.Options) *http.Client {
 	}
 
 	// Add the client certificate authentication to the request if it's configured
-	tlsConfig = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	var err error
+	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, err
+	}
 
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
@@ -36,15 +42,13 @@ func newhttpClient(options *types.Options) *http.Client {
 		MaxConnsPerHost:     500,
 		TLSClientConfig:     tlsConfig,
 	}
-
-	if options.ProxyURL != "" {
-		if proxyURL, err := url.Parse(options.ProxyURL); err == nil {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if options.ProxySocksURL != "" {
+	} else if types.ProxySocksURL != "" {
 		var proxyAuth *proxy.Auth
-
-		socksURL, proxyErr := url.Parse(options.ProxySocksURL)
+		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
 		if proxyErr == nil {
 			proxyAuth = &proxy.Auth{}
 			proxyAuth.User = socksURL.User.Username()
@@ -71,5 +75,5 @@ func newhttpClient(options *types.Options) *http.Client {
 		},
 	}
 
-	return httpclient
+	return httpclient, nil
 }

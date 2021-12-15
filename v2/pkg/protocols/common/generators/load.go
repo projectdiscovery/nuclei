@@ -53,7 +53,7 @@ func loadPayloadsFromFile(filepath string) ([]string, error) {
 		}
 		lines = append(lines, text)
 	}
-	if err := scanner.Err(); err != nil && err != io.EOF {
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
 		return lines, scanner.Err()
 	}
 	return lines, nil

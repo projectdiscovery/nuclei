@@ -1,6 +1,7 @@
 package responsehighlighter
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,23 +15,40 @@ var colorFunction = aurora.Green
 func Highlight(operatorResult *operators.Result, response string, noColor, hexDump bool) string {
 	result := response
 	if operatorResult != nil && !noColor {
-		for _, matches := range operatorResult.Matches {
-			if len(matches) > 0 {
-				for _, currentMatch := range matches {
-					if hexDump {
-						highlightedHexDump, err := toHighLightedHexDump(result, currentMatch)
-						if err == nil {
-							result = highlightedHexDump.String()
-						}
-					} else {
-						result = strings.ReplaceAll(result, currentMatch, addColor(currentMatch))
-					}
+		for _, currentMatch := range getSortedMatches(operatorResult) {
+			if hexDump {
+				highlightedHexDump, err := toHighLightedHexDump(result, currentMatch)
+				if err == nil {
+					result = highlightedHexDump.String()
 				}
+			} else {
+				result = highlightASCII(currentMatch, result)
 			}
 		}
 	}
 
 	return result
+}
+
+func highlightASCII(currentMatch string, result string) string {
+	var coloredMatchBuilder strings.Builder
+	for _, char := range currentMatch {
+		coloredMatchBuilder.WriteString(addColor(string(char)))
+	}
+
+	return strings.ReplaceAll(result, currentMatch, coloredMatchBuilder.String())
+}
+
+func getSortedMatches(operatorResult *operators.Result) []string {
+	sortedMatches := make([]string, 0, len(operatorResult.Matches))
+	for _, matches := range operatorResult.Matches {
+		sortedMatches = append(sortedMatches, matches...)
+	}
+
+	sort.Slice(sortedMatches, func(i, j int) bool {
+		return len(sortedMatches[i]) > len(sortedMatches[j])
+	})
+	return sortedMatches
 }
 
 func CreateStatusCodeSnippet(response string, statusCode int) string {

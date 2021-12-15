@@ -11,7 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
@@ -35,21 +35,23 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/self-contained.yaml":                     &httpRequestSelContained{},
 	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
+	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
+	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
 }
 
 type httpInteractshRequest struct{}
 
-// Executes executes a test case and returns an error if occurred
+// Execute executes a test case and returns an error if occurred
 func (h *httpInteractshRequest) Execute(filePath string) error {
 	router := httprouter.New()
-	router.GET("/", httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.Header.Get("url")
 		if value != "" {
 			if resp, _ := http.DefaultClient.Get(value); resp != nil {
 				resp.Body.Close()
 			}
 		}
-	}))
+	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -149,6 +151,27 @@ func (h *httpGet) Execute(filePath string) error {
 		return err
 	}
 	if len(results) != 1 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpDSLVariable struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDSLVariable) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 5 {
 		return errIncorrectResultsCount(results)
 	}
 	return nil
@@ -595,6 +618,34 @@ func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
 		return err
 	}
 	if len(results) != 2 {
+		return errIncorrectResultsCount(results)
+	}
+	return nil
+}
+
+type httpGetRedirectsChainHeaders struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Secret", "TestRedirectHeaderMatch")
+		http.Redirect(w, r, "/final", http.StatusFound)
+	})
+	router.GET("/final", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("ok"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
 		return errIncorrectResultsCount(results)
 	}
 	return nil

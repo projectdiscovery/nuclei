@@ -7,6 +7,7 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -79,7 +80,7 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 }
 
 // convertPathToAbsolute resolves the paths provided to absolute paths
-// before doing any operations on them regardless of them being blob, folders, files, etc.
+// before doing any operations on them regardless of them being BLOB, folders, files, etc.
 func (c *Catalog) convertPathToAbsolute(t string) (string, error) {
 	if strings.Contains(t, "*") {
 		file := filepath.Base(t)

@@ -5,13 +5,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -35,7 +35,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	req := "test-data\r\n"
 	resp := "resp-data\r\n"
 	event := request.responseToDSLMap(req, resp, "test", "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 8, "could not get correct number of items in dsl map")
+	require.Len(t, event, 9, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["data"], "could not get correct resp")
 }
 
@@ -64,7 +64,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "body",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"STAT "},
 		}
 		err = matcher.CompileMatchers()
@@ -78,7 +78,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:     "data",
-			Type:     "word",
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Negative: true,
 			Words:    []string{"random"},
 		}
@@ -93,7 +93,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:  "data",
-			Type:  "word",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words: []string{"random"},
 		}
 		err := matcher.CompileMatchers()
@@ -107,7 +107,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	t.Run("caseInsensitive", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:            "body",
-			Type:            "word",
+			Type:            matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 			Words:           []string{"rESp-DAta"},
 			CaseInsensitive: true,
 		}
@@ -149,7 +149,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "data",
-			Type:  "regex",
+			Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -162,7 +162,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: "kval",
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"request"},
 		}
 		err = extractor.CompileExtractors()
@@ -188,12 +188,12 @@ func TestNetworkMakeResult(t *testing.T) {
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
 				Part:  "data",
-				Type:  "word",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
 				Words: []string{"STAT "},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "data",
-				Type:  "regex",
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

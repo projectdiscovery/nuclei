@@ -3,6 +3,8 @@ package matchers
 import (
 	"testing"
 
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +21,7 @@ func TestWordANDCondition(t *testing.T) {
 }
 
 func TestRegexANDCondition(t *testing.T) {
-	m := &Matcher{Type: "regex", Condition: "and", Regex: []string{"[a-z]{3}", "\\d{2}"}}
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "and", Regex: []string{"[a-z]{3}", "\\d{2}"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err)
 
@@ -49,7 +51,7 @@ func TestORCondition(t *testing.T) {
 }
 
 func TestRegexOrCondition(t *testing.T) {
-	m := &Matcher{Type: "regex", Condition: "or", Regex: []string{"[a-z]{3}", "\\d{2}"}}
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "or", Regex: []string{"[a-z]{3}", "\\d{2}"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err)
 
@@ -63,11 +65,27 @@ func TestRegexOrCondition(t *testing.T) {
 }
 
 func TestHexEncoding(t *testing.T) {
-	m := &Matcher{Encoding: "hex", Type: "word", Part: "body", Words: []string{"50494e47"}}
+	m := &Matcher{Encoding: "hex", Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Part: "body", Words: []string{"50494e47"}}
 	err := m.CompileMatchers()
 	require.Nil(t, err, "could not compile matcher")
 
 	isMatched, matched := m.MatchWords("PING", nil)
 	require.True(t, isMatched, "Could not match valid Hex condition")
 	require.Equal(t, m.Words, matched)
+}
+
+func TestMatcher_MatchDSL(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions())
+	require.Nil(t, err, "couldn't compile expression")
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
+	err = m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	values := []string{"PING", "pong"}
+
+	for value := range values {
+		isMatched := m.MatchDSL(map[string]interface{}{"body": value, "VARIABLE": value})
+		require.True(t, isMatched)
+	}
 }

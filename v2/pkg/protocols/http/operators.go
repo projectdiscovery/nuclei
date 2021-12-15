@@ -32,7 +32,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, request.dynamicValues))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
@@ -76,6 +76,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 
 // getMatchPart returns the match part honoring "all" matchers + others.
 func (request *Request) getMatchPart(part string, data output.InternalEvent) (string, bool) {
+	if part == "" {
+		part = "body"
+	}
 	if part == "header" {
 		part = "all_headers"
 	}
@@ -110,6 +113,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 		data[k] = strings.Join(v, " ")
 	}
 	data["host"] = host
+	data["type"] = request.Type().String()
 	data["matched"] = matched
 	data["request"] = rawReq
 	data["response"] = rawResp
@@ -138,12 +142,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             "http",
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
+		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),

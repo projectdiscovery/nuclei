@@ -27,6 +27,15 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
 		}
 
+		if w.matcherStatus {
+			builder.WriteString("] [")
+			if !output.MatcherStatus {
+				builder.WriteString(w.aurora.Red("failed").String())
+			} else {
+				builder.WriteString(w.aurora.Green("matched").String())
+			}
+		}
+
 		builder.WriteString("] [")
 		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
 		builder.WriteString("] ")
@@ -35,7 +44,11 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
 		builder.WriteString("] ")
 	}
-	builder.WriteString(output.Matched)
+	if output.Matched != "" {
+		builder.WriteString(output.Matched)
+	} else {
+		builder.WriteString(output.Host)
+	}
 
 	// If any extractors, write the results
 	if len(output.ExtractedResults) > 0 {
