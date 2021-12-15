@@ -12,7 +12,7 @@ type whoisBasic struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *whoisBasic) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "example.com", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://example.com", debug)
 	if err != nil {
 		return err
 	}

@@ -79,7 +79,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// generate variables 
+	// generate variables
 	variables := generateVariables(input)
 	// and replace placeholders
 	query := replacer.Replace(request.Query, variables)
@@ -170,8 +170,9 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // generateVariables will create default variables after parsing a url
 func generateVariables(input string) map[string]interface{} {
-	parsed, err := url.Parse(input)
 	var domain, port string
+
+	parsed, err := url.Parse(input)
 	if err != nil {
 		return map[string]interface{}{"Input": input}
 	}
