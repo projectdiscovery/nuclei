@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -37,6 +40,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
 	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
 	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
+	"http/dsl-functions.yaml":                      &httpDSLFunctions{},
 }
 
 type httpInteractshRequest struct{}
@@ -163,6 +167,58 @@ func (h *httpDSLVariable) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 5)
+}
+
+type httpDSLFunctions struct{}
+
+func (h *httpDSLFunctions) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		request, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			_, _ = fmt.Fprintf(w, err.Error())
+		} else {
+			_, _ = fmt.Fprintf(w, fmt.Sprintf("%s", request))
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-nc")
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+
+	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
+	submatch := resultPattern.FindStringSubmatch(results[0])
+	if len(submatch) != 2 {
+		return errors.New("could not parse the result")
+	}
+
+	totalExtracted := strings.Split(submatch[1], ",")
+	if len(totalExtracted) != 52 {
+		return errors.New("incorrect number of results")
+	}
+
+	for _, header := range totalExtracted {
+		parts := strings.Split(header, ": ")
+		index, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return err
+		}
+		if index < 0 || index > 52 {
+			return fmt.Errorf("incorrect header index found: %d", index)
+		}
+		if strings.TrimSpace(parts[1]) == "" {
+			return fmt.Errorf("the DSL expression with index %d was not evaluated correctly", index)
+		}
+	}
+
+	return nil
 }
 
 type httpPostBody struct{}
