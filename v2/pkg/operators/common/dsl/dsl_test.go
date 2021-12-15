@@ -188,8 +188,6 @@ func TestDslExpressions(t *testing.T) {
 
 	for dslExpression, expectedResult := range dslExpressions {
 		t.Run(dslExpression, func(t *testing.T) {
-			t.Parallel()
-
 			actualResult := evaluateExpression(t, dslExpression)
 
 			if expectedResult != nil {
@@ -203,14 +201,18 @@ func TestDslExpressions(t *testing.T) {
 
 func TestRandDslExpressions(t *testing.T) {
 	randDslExpressions := map[string]string{
+		`rand_base(10, "")`:   `[a-zA-Z0-9]{10}`,
 		`rand_base(5, "abc")`: `[abc]{5}`,
 		`rand_base(5)`:        `[a-zA-Z0-9]{5}`,
 		//`rand_char("abc")`:    `[abc]{1}`,       // TODO
+		//`rand_char("")`:    	 `[abc]{1}`,       // TODO
 		//`rand_char()`:         `[a-zA-Z0-9]{1}`, // TODO
 
 		`rand_text_alpha(10, "abc")`:         `[^abc]{10}`,
+		`rand_text_alpha(10, "")`:            `[a-zA-Z]{10}`,
 		`rand_text_alpha(10)`:                `[a-zA-Z]{10}`,
 		`rand_text_alphanumeric(10, "ab12")`: `[^ab12]{10}`,
+		`rand_text_alphanumeric(5, "")`:      `[a-zA-Z0-9]{5}`,
 		`rand_text_alphanumeric(10)`:         `[a-zA-Z0-9]{10}`,
 		`rand_text_numeric(10, 123)`:         `[^123]{10}`,
 		`rand_text_numeric(10)`:              `\d{10}`,
@@ -218,8 +220,6 @@ func TestRandDslExpressions(t *testing.T) {
 
 	for randDslExpression, regexTester := range randDslExpressions {
 		t.Run(randDslExpression, func(t *testing.T) {
-			t.Parallel()
-
 			actualResult := evaluateExpression(t, randDslExpression)
 
 			compiledTester := regexp.MustCompile(fmt.Sprintf("^%s$", regexTester))
@@ -248,8 +248,6 @@ func TestRandIntDslExpressions(t *testing.T) {
 
 	for randIntDslExpression, tester := range randIntDslExpressions {
 		t.Run(randIntDslExpression, func(t *testing.T) {
-			t.Parallel()
-
 			actualResult := evaluateExpression(t, randIntDslExpression)
 
 			actualIntResult := actualResult.(int)
@@ -264,6 +262,10 @@ func evaluateExpression(t *testing.T, dslExpression string) interface{} {
 
 	actualResult, err := compiledExpression.Evaluate(make(map[string]interface{}))
 	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
+
+	for _, negativeTestWord := range []string{"panic", "invalid", "error"} {
+		require.NotContains(t, fmt.Sprintf("%v", actualResult), negativeTestWord)
+	}
 
 	return actualResult
 }

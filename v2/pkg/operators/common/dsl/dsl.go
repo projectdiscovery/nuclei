@@ -174,7 +174,10 @@ func init() {
 				}
 
 				if argSize >= 1 {
-					charSet = types.ToString(args[0])
+					inputCharSet := types.ToString(args[0])
+					if strings.TrimSpace(inputCharSet) != "" {
+						charSet = inputCharSet
+					}
 				}
 
 				return charSet[rand.Intn(len(charSet))], nil
@@ -194,7 +197,10 @@ func init() {
 				length = int(args[0].(float64))
 
 				if argSize == 2 {
-					charSet = types.ToString(args[1])
+					inputCharSet := types.ToString(args[1])
+					if strings.TrimSpace(inputCharSet) != "" {
+						charSet = inputCharSet
+					}
 				}
 				return randSeq(charSet, length), nil
 			},
