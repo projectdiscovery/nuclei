@@ -1,4 +1,4 @@
-package rdap
+package whois
 
 import (
 	"net/url"
@@ -17,26 +17,27 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// Request is a request for the RDAP protocol
+// Request is a request for the WHOIS protocol
 type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	// description: |
-	//   Address contains address for the request
-	Host string `yaml:"host,omitempty" jsonschema:"title=host for the RDAP request,description=Host contains host for the request"`
+	//   Query contains query for the request
+	Query string `yaml:"query,omitempty" jsonschema:"title=query for the WHOIS request,description=Query contains query for the request"`
 
 	// description: |
-	// 	 Optional RDAP server URL.
+	// 	 Optional WHOIS server URL.
 	//
-	// 	 If present, specifies the RDAP server to execute the Request on.
+	// 	 If present, specifies the WHOIS server to execute the Request on.
 	//   Otherwise, nil enables bootstrapping
-	Server string `yaml:"server,omitempty" jsonschema:"title=server url to execute the RDAP request on,description=Server contains the server url to execute the RDAP request on"`
+	Server string `yaml:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
 	// cache any variables that may be needed for operation.
 	client          *rdap.Client
 	options         *protocols.ExecuterOptions
@@ -78,15 +79,19 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// generate variables 
+	variables := generateVariables(input)
+	// and replace placeholders
+	query := replacer.Replace(request.Query, variables)
 	// build an rdap request
-	rdapReq := rdap.NewAutoRequest(input)
+	rdapReq := rdap.NewAutoRequest(query)
 	res, err := request.client.Do(rdapReq)
 	if err != nil {
-		return errors.Wrap(err, "could not make an rdap request")
+		return errors.Wrap(err, "could not make whois request")
 	}
-	gologger.Verbose().Msgf("Sent RDAP request to %s", input)
+	gologger.Verbose().Msgf("Sent WHOIS request to %s", input)
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped RDAP request for %s", request.options.TemplateID, input)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, input)
 	}
 
 	data := make(map[string]interface{})
@@ -111,7 +116,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped RDAP response for %s", request.options.TemplateID, input)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, input)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
 	}
 
@@ -160,5 +165,31 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
-	return templateTypes.RDAPProtocol
+	return templateTypes.WHOISProtocol
+}
+
+// generateVariables will create default variables after parsing a url
+func generateVariables(input string) map[string]interface{} {
+	parsed, err := url.Parse(input)
+	var domain, port string
+	if err != nil {
+		return map[string]interface{}{"Input": input}
+	}
+	domain = parsed.Host
+	if strings.Contains(parsed.Host, ":") {
+		domain = strings.Split(parsed.Host, ":")[0]
+	}
+	port = parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else if parsed.Scheme == "http" {
+			port = "80"
+		}
+	}
+	return map[string]interface{}{
+		"Input":    input,
+		"Hostname": parsed.Host,
+		"Host":     domain,
+	}
 }

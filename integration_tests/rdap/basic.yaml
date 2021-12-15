@@ -1,13 +1,12 @@
-id: basic-rdap-example
+id: basic-whois-example
 
 info:
-  name: test template for RDAP
+  name: test template for WHOIS
   author: pdteam
   severity: info
 
-rdap:
-  - host:
-      "{{Hostname}}"
+whois:
+  - query: "{{Host}}"
     extractors:
       - type: kval
         kval:

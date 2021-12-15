@@ -4,14 +4,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var rdapTestCases = map[string]testutils.TestCase{
-	"rdap/basic.yaml": &rdapBasic{},
+var whoisTestCases = map[string]testutils.TestCase{
+	"whois/basic.yaml": &whoisBasic{},
 }
 
-type rdapBasic struct{}
+type whoisBasic struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *rdapBasic) Execute(filePath string) error {
+func (h *whoisBasic) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "example.com", debug)
 	if err != nil {
 		return err

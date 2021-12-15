@@ -129,7 +129,7 @@ func (template *Template) Requests() int {
 		len(template.Workflows) +
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
-		len(template.RequestsRDAP)
+		len(template.RequestsWHOIS)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -168,8 +168,8 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	case len(template.RequestsWebsocket) > 0:
 		requests = template.convertRequestToProtocolsRequest(template.RequestsWebsocket)
 
-	case len(template.RequestsRDAP) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsRDAP)
+	case len(template.RequestsWHOIS) > 0:
+		requests = template.convertRequestToProtocolsRequest(template.RequestsWHOIS)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
