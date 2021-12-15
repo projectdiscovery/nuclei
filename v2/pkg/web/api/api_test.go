@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/scans"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
@@ -31,7 +32,10 @@ func TestAPI(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	targets := targets.NewTargetsStorage(tempdir)
-	server := handlers.New(database, targets)
+	scans := scans.NewScanService(1, database, targets)
+	defer scans.Close()
+
+	server := handlers.New(database, targets, scans)
 
 	api := New(&Config{
 		Userame:  "user",

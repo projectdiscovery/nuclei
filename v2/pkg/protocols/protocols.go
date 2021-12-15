@@ -41,6 +41,7 @@ type ExecuterOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.

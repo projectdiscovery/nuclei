@@ -104,6 +104,7 @@ func DefaultSettings() *Settings {
 	}
 }
 
+// todo: add more fields
 func (s *Settings) ToTypesOptions() *types.Options {
 	return &types.Options{
 		RateLimit:                  s.RateLimit,

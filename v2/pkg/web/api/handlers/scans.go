@@ -37,7 +37,7 @@ func (s *Server) AddScan(ctx echo.Context) error {
 		targets[i] = value
 	}
 	hostCount := scans.CalculateTargetCount(req.Targets, s.db)
-	err := s.db.Queries().AddScan(context.Background(), dbsql.AddScanParams{
+	id, err := s.db.Queries().AddScan(context.Background(), dbsql.AddScanParams{
 		Name:              sql.NullString{String: req.Name, Valid: true},
 		Status:            sql.NullString{String: "scheduled", Valid: true},
 		Hosts:             sql.NullInt64{Int64: hostCount, Valid: true},
@@ -50,6 +50,17 @@ func (s *Server) AddScan(ctx echo.Context) error {
 		Scheduleoccurence: sql.NullString{String: req.ScheduleOccurence, Valid: true},
 		Scheduletime:      sql.NullString{String: req.ScheduleTime, Valid: true},
 	})
+
+	if req.RunNow {
+		s.scans.Queue(scans.ScanRequest{
+			ScanID:    id,
+			Templates: req.Templates,
+			Targets:   req.Targets,
+			Config:    req.Config,
+			RunNow:    req.RunNow,
+			Reporting: req.Reporting,
+		})
+	}
 	return err
 }
 
@@ -130,4 +141,9 @@ func (s *Server) GetScan(ctx echo.Context) error {
 		Hosts:             scan.Hosts.Int64,
 	}
 	return ctx.JSON(200, value)
+}
+
+// GetScanProgress handlers /scans/progress getting route
+func (s *Server) GetScanProgress(ctx echo.Context) error {
+	return ctx.JSON(200, s.scans.Progress())
 }

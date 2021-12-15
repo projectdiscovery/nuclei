@@ -54,9 +54,9 @@ func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) error {
 	return err
 }
 
-const addScan = `-- name: AddScan :exec
+const addScan = `-- name: AddScan :one
 INSERT INTO "public".scans
-	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 )
+	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 ) RETURNING id
 `
 
 type AddScanParams struct {
@@ -74,8 +74,8 @@ type AddScanParams struct {
 	Scheduletime      sql.NullString
 }
 
-func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) error {
-	_, err := q.db.Exec(ctx, addScan,
+func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addScan,
 		arg.Name,
 		arg.Status,
 		arg.Scantime,
@@ -89,7 +89,9 @@ func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) error {
 		arg.Scheduleoccurence,
 		arg.Scheduletime,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const addTarget = `-- name: AddTarget :exec

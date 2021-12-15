@@ -33,6 +33,8 @@ type Progress interface {
 	// IncrementFailedRequestsBy increments the number of requests counter by count
 	// along with errors.
 	IncrementFailedRequestsBy(count int64)
+	// Percent returns the percent completion for statticker instance
+	Percent() float64
 }
 
 var _ Progress = &StatsTicker{}
@@ -132,6 +134,16 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
+}
+
+// Percent returns the percent completion for statticker instance
+func (p *StatsTicker) Percent() float64 {
+	requests, _ := p.stats.GetCounter("requests")
+	total, _ := p.stats.GetCounter("total")
+
+	//nolint:gomnd // this is not a magic number
+	percentData := (float64(requests) * float64(100)) / float64(total)
+	return percentData
 }
 
 func printCallback(stats clistats.StatisticsClient) {

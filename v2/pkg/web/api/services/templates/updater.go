@@ -128,10 +128,10 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 		}
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to db\n", versions.Templates)
 
-		if _, err := downloadReleaseAndUnzip(ctx, db, versions.Nuclei, asset.GetZipballURL()); err != nil {
+		if _, err := downloadReleaseAndUnzip(ctx, db, versions.Templates, asset.GetZipballURL()); err != nil {
 			return semver.Version{}, err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", versions.Nuclei)
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", versions.Templates)
 		return parsed, nil
 	}
 

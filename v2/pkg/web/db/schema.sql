@@ -136,9 +136,9 @@ FROM
 -- name: UpdateTargetMetadata :exec
 UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;
 
--- name: AddScan :exec
+-- name: AddScan :one
 INSERT INTO "public".scans
-	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 );
+	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 ) RETURNING id;
 
 -- name: DeleteScan :exec
 DELETE FROM "public".scans WHERE id=$1;
