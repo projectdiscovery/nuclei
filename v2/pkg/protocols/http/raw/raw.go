@@ -30,7 +30,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	rawRequest := &Request{
 		Headers: make(map[string]string),
 	}
-
 	
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
