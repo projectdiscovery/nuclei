@@ -4,10 +4,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-
-jobs:  
-  build-linux:
-    name: Test Builds - linux
+jobs:
+  build:
+    name: Test Builds
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
@@ -18,62 +17,21 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Test
-        run: go test ./...
-        working-directory: v2/
-
-      - name: Integration Tests
-        run: bash run.sh
-        working-directory: integration_tests/
-
       - name: Build
         run: go build .
         working-directory: v2/cmd/nuclei/
 
-  build-mac:
-    name: Test Builds - macos
-    runs-on: macos-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
-      - name: Check out code
-        uses: actions/checkout@v2
-
       - name: Test
         run: go test ./...
         working-directory: v2/
 
       - name: Integration Tests
+        env:
+          GH_ACTION: true
         run: bash run.sh
         working-directory: integration_tests/
 
-      - name: Build
-        run: go build .
-        working-directory: v2/cmd/nuclei/
-
-  build-windows:
-    name: Test Builds - windows
-    runs-on: windows-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Test
-        run: go test ./...
-        working-directory: v2/
-
-      - name: Integration Tests
-        run: bash run.sh
-        working-directory: integration_tests/
-
-      - name: Build
-        run: go build .
+      # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
+      - name: Race Condition Tests
+        run: go build -race .
         working-directory: v2/cmd/nuclei/

@@ -19,6 +19,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Functional Tests
+        env:
+          GH_ACTION: true
         run: |
           chmod +x run.sh
           bash run.sh
