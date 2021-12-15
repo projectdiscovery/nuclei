@@ -30,10 +30,8 @@ func (h *headlessBasic) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type headlessHeaderActions struct{}
@@ -54,10 +52,8 @@ func (h *headlessHeaderActions) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type headlessExtractValues struct{}
@@ -74,8 +70,6 @@ func (h *headlessExtractValues) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 3 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 3)
 }
