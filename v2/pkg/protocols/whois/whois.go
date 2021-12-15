@@ -170,7 +170,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // generateVariables will create default variables after parsing a url
 func generateVariables(input string) map[string]interface{} {
-	var domain, port string
+	var domain string
 
 	parsed, err := url.Parse(input)
 	if err != nil {
@@ -179,14 +179,6 @@ func generateVariables(input string) map[string]interface{} {
 	domain = parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
-	}
-	port = parsed.Port()
-	if port == "" {
-		if parsed.Scheme == "https" {
-			port = "443"
-		} else if parsed.Scheme == "http" {
-			port = "80"
-		}
 	}
 	return map[string]interface{}{
 		"Input":    input,
