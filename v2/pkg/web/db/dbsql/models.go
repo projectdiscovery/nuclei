@@ -28,16 +28,19 @@ type Issue struct {
 }
 
 type Scan struct {
-	Name       sql.NullString
-	Status     sql.NullString
-	Scantime   sql.NullTime
-	Hosts      sql.NullInt64
-	Scansource sql.NullString
-	Progress   sql.NullFloat64
-	Templates  []string
-	Targets    []string
-	Debug      sql.NullBool
-	ID         int64
+	Name              sql.NullString
+	Status            sql.NullString
+	Scantime          sql.NullInt64
+	Hosts             sql.NullInt64
+	Scansource        sql.NullString
+	Templates         []string
+	Targets           []string
+	Config            sql.NullString
+	Runnow            sql.NullBool
+	Reporting         sql.NullString
+	Scheduleoccurence sql.NullString
+	Scheduletime      sql.NullString
+	ID                int64
 }
 
 type Setting struct {

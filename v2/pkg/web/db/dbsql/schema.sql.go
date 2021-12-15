@@ -56,30 +56,38 @@ func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) error {
 
 const addScan = `-- name: AddScan :exec
 INSERT INTO "public".scans
-	(name, status, hosts, scansource, progress, templates, targets, debug) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 )
 `
 
 type AddScanParams struct {
-	Name       sql.NullString
-	Status     sql.NullString
-	Hosts      sql.NullInt64
-	Scansource sql.NullString
-	Progress   sql.NullFloat64
-	Templates  []string
-	Targets    []string
-	Debug      sql.NullBool
+	Name              sql.NullString
+	Status            sql.NullString
+	Scantime          sql.NullInt64
+	Hosts             sql.NullInt64
+	Scansource        sql.NullString
+	Templates         []string
+	Targets           []string
+	Config            sql.NullString
+	Runnow            sql.NullBool
+	Reporting         sql.NullString
+	Scheduleoccurence sql.NullString
+	Scheduletime      sql.NullString
 }
 
 func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) error {
 	_, err := q.db.Exec(ctx, addScan,
 		arg.Name,
 		arg.Status,
+		arg.Scantime,
 		arg.Hosts,
 		arg.Scansource,
-		arg.Progress,
 		arg.Templates,
 		arg.Targets,
-		arg.Debug,
+		arg.Config,
+		arg.Runnow,
+		arg.Reporting,
+		arg.Scheduleoccurence,
+		arg.Scheduletime,
 	)
 	return err
 }
@@ -246,7 +254,8 @@ func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
 }
 
 const getScan = `-- name: GetScan :one
-SELECT name, status, scantime, hosts, scansource, progress, templates, targets, debug, id
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
 FROM
 	"public".scans WHERE id=$1 LIMIT 1
 `
@@ -260,48 +269,89 @@ func (q *Queries) GetScan(ctx context.Context, id int64) (Scan, error) {
 		&i.Scantime,
 		&i.Hosts,
 		&i.Scansource,
-		&i.Progress,
 		&i.Templates,
 		&i.Targets,
-		&i.Debug,
+		&i.Config,
+		&i.Runnow,
+		&i.Reporting,
+		&i.Scheduleoccurence,
+		&i.Scheduletime,
 		&i.ID,
 	)
 	return i, err
 }
 
 const getScans = `-- name: GetScans :many
-SELECT id, name, status, scantime, hosts, scansource, progress
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
 FROM
 	"public".scans
 `
 
-type GetScansRow struct {
-	ID         int64
-	Name       sql.NullString
-	Status     sql.NullString
-	Scantime   sql.NullTime
-	Hosts      sql.NullInt64
-	Scansource sql.NullString
-	Progress   sql.NullFloat64
-}
-
-func (q *Queries) GetScans(ctx context.Context) ([]GetScansRow, error) {
+func (q *Queries) GetScans(ctx context.Context) ([]Scan, error) {
 	rows, err := q.db.Query(ctx, getScans)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetScansRow
+	var items []Scan
 	for rows.Next() {
-		var i GetScansRow
+		var i Scan
 		if err := rows.Scan(
-			&i.ID,
 			&i.Name,
 			&i.Status,
 			&i.Scantime,
 			&i.Hosts,
 			&i.Scansource,
-			&i.Progress,
+			&i.Templates,
+			&i.Targets,
+			&i.Config,
+			&i.Runnow,
+			&i.Reporting,
+			&i.Scheduleoccurence,
+			&i.Scheduletime,
+			&i.ID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getScansBySearchKey = `-- name: GetScansBySearchKey :many
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
+FROM
+	"public".scans WHERE name LIKE '%'||$1||'%'
+`
+
+func (q *Queries) GetScansBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]Scan, error) {
+	rows, err := q.db.Query(ctx, getScansBySearchKey, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Scan
+	for rows.Next() {
+		var i Scan
+		if err := rows.Scan(
+			&i.Name,
+			&i.Status,
+			&i.Scantime,
+			&i.Hosts,
+			&i.Scansource,
+			&i.Templates,
+			&i.Targets,
+			&i.Config,
+			&i.Runnow,
+			&i.Reporting,
+			&i.Scheduleoccurence,
+			&i.Scheduletime,
+			&i.ID,
 		); err != nil {
 			return nil, err
 		}
@@ -663,6 +713,35 @@ func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.Null
 			&i.Updatedat,
 			&i.Hash,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTemplatesForScan = `-- name: GetTemplatesForScan :many
+SELECT path, contents FROM public.templates WHERE folder=$1 OR path=$1 OR path LIKE $1||'%'
+`
+
+type GetTemplatesForScanRow struct {
+	Path     string
+	Contents string
+}
+
+func (q *Queries) GetTemplatesForScan(ctx context.Context, folder sql.NullString) ([]GetTemplatesForScanRow, error) {
+	rows, err := q.db.Query(ctx, getTemplatesForScan, folder)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTemplatesForScanRow
+	for rows.Next() {
+		var i GetTemplatesForScanRow
+		if err := rows.Scan(&i.Path, &i.Contents); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

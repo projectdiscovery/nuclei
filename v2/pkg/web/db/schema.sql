@@ -1,4 +1,4 @@
-CREATE TABLE public.templates ( 
+CREATE TABLE "public".templates ( 
 	id                   bigserial  NOT NULL,
 	name                 varchar(100),
 	folder               varchar,
@@ -34,13 +34,16 @@ CREATE  TABLE "public".settings (
 CREATE  TABLE "public".scans ( 
 	name                 varchar(100),
 	status               varchar(30),
-	scantime             time,
+	scantime             bigint,
 	hosts                bigint,
 	scansource           varchar,
-	progress             float8,
 	templates            varchar[],
 	targets              varchar[],
-	debug                boolean,
+	config				 varchar,
+	runnow 				 boolean,
+	reporting 			 varchar,
+	scheduleoccurence 	 varchar,
+	scheduletime 		 varchar,
 	id                   bigserial NOT NULL,
 	CONSTRAINT pk_scans_id PRIMARY KEY ( id )
 );
@@ -93,6 +96,9 @@ DELETE FROM public.templates WHERE path=$1;
 -- name: GetTemplateContents :one
 SELECT contents FROM public.templates WHERE path=$1 LIMIT 1;
 
+-- name: GetTemplatesForScan :many
+SELECT path, contents FROM public.templates WHERE folder=$1 OR path=$1 OR path LIKE $1||'%';
+
 -- name: AddTemplate :exec
 INSERT INTO public.templates
 ( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5);
@@ -132,20 +138,28 @@ UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;
 
 -- name: AddScan :exec
 INSERT INTO "public".scans
-	(name, status, hosts, scansource, progress, templates, targets, debug) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+	( name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, scheduletime) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 );
 
 -- name: DeleteScan :exec
 DELETE FROM "public".scans WHERE id=$1;
 
 -- name: GetScan :one
-SELECT name, status, scantime, hosts, scansource, progress, templates, targets, debug, id
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
 FROM
 	"public".scans WHERE id=$1 LIMIT 1;
 
 -- name: GetScans :many
-SELECT id, name, status, scantime, hosts, scansource, progress
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
 FROM
 	"public".scans;
+
+-- name: GetScansBySearchKey :many
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
+	scheduletime, id
+FROM
+	"public".scans WHERE name LIKE '%'||$1||'%';
 
 -- name: AddIssue :exec
 INSERT INTO "public".issues

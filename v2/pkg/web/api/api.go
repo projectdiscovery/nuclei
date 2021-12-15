@@ -78,14 +78,13 @@ func New(config *Config) *API {
 	apiGroup.PUT("/settings/:name", config.Server.UpdateSettingByName)
 
 	// /scans endpoints
-	//apiGroup.GET("/scans", config.Server.GetScans)
-	//apiGroup.POST("/scans", config.Server.AddScan)
+	apiGroup.GET("/scans", config.Server.GetScans)
+	apiGroup.POST("/scans", config.Server.AddScan)
+	apiGroup.GET("/scans/:id", config.Server.GetScan)
 	//	apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
 	//	apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)
-	//	apiGroup.GET("/scans/:id", config.Server.GetScan)
 	//	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
 	//	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
-	//	apiGroup.GET("/scans/:id/debug", config.Server.GetScanDebug)
 
 	return &API{echo: e}
 }
