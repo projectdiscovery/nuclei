@@ -49,10 +49,8 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 2 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 2)
 }
 
 type remoteWorkflowList struct{}
@@ -85,10 +83,8 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 3 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 3)
 }
 
 type nonExistentTemplateList struct{}

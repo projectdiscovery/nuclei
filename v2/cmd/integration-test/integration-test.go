@@ -74,8 +74,11 @@ func execute(testCase testutils.TestCase, templatePath string) (error, string) {
 	return nil, ""
 }
 
-func errIncorrectResultsCount(results []string) error {
-	return fmt.Errorf("incorrect number of results \n\t%s", strings.Join(results, "\n\t"))
+func expectResultsCount(results []string, expectedNumber int) error {
+	if len(results) != expectedNumber {
+		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s\n", len(results), expectedNumber, strings.Join(results, "\n\t"))
+	}
+	return nil
 }
 
 func toSlice(value string) []string {
