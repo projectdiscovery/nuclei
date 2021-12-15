@@ -6,9 +6,12 @@ on:
 
 
 jobs:  
-  functional-linux:
-    name: Functional Test - linux
-    runs-on: ubuntu-latest
+  functional:
+    name: Functional Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest, macos-11.0]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -23,41 +26,5 @@ jobs:
           GH_ACTION: true
         run: |
           chmod +x run.sh
-          bash run.sh
-        working-directory: v2/cmd/functional-test
-  
-  functional-mac:
-    name: Functional Test - macos
-    runs-on: macos-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Functional Tests
-        run: |
-          chmod +x run.sh
-          bash run.sh
-        working-directory: v2/cmd/functional-test
-
-  functional-windows:
-    name: Functional Test - windows
-    runs-on: windows-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Functional Tests
-        run: |
-          chmod +x run.sh
-          bash run.sh windows
+          bash run.sh ${{ matrix.os }}
         working-directory: v2/cmd/functional-test
