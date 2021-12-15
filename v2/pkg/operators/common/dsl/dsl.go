@@ -56,6 +56,13 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			count, err := strconv.Atoi(types.ToString(args[1]))
+			if err != nil {
+				return nil, invalidDslFunctionError
+			}
+			return strings.Repeat(types.ToString(args[0]), count), nil
+		}),
 		"replace": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			return strings.ReplaceAll(types.ToString(args[0]), types.ToString(args[1]), types.ToString(args[2])), nil
 		}),

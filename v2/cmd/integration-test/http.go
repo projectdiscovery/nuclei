@@ -200,7 +200,8 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	}
 
 	totalExtracted := strings.Split(submatch[1], ",")
-	if len(totalExtracted) != 52 {
+	numberOfDslFunctions := 53
+	if len(totalExtracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
 
@@ -210,7 +211,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 		if err != nil {
 			return err
 		}
-		if index < 0 || index > 52 {
+		if index < 0 || index > numberOfDslFunctions {
 			return fmt.Errorf("incorrect header index found: %d", index)
 		}
 		if strings.TrimSpace(parts[1]) == "" {
