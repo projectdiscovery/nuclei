@@ -8,7 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
@@ -143,7 +143,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 }
 
 func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) []byte {
-	fixedPath := filepath.Join(baseURL.Path, requestPath)
+	fixedPath := path.Join(baseURL.Path, requestPath)
 	fixed := bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1)
 	return fixed
 }
