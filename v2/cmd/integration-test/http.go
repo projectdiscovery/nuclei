@@ -176,9 +176,9 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		request, err := httputil.DumpRequest(r, true)
 		if err != nil {
-			_, _ = fmt.Fprintf(w, err.Error())
+			_, _ = fmt.Fprint(w, err.Error())
 		} else {
-			_, _ = fmt.Fprintf(w, fmt.Sprintf("%s", request))
+			_, _ = fmt.Fprint(w, string(request))
 		}
 	})
 	ts := httptest.NewServer(router)
