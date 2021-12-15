@@ -89,9 +89,9 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")
 	}
-	gologger.Verbose().Msgf("Sent WHOIS request to %s", input)
+	gologger.Verbose().Msgf("Sent WHOIS request to %s", query)
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, input)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, query)
 	}
 
 	data := make(map[string]interface{})
@@ -111,12 +111,12 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	jsonDataString := string(jsonData)
 
 	data["type"] = request.Type().String()
-	data["host"] = input
+	data["host"] = query
 	data["response"] = jsonDataString
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, input)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
 	}
 
@@ -177,9 +177,13 @@ func generateVariables(input string) map[string]interface{} {
 		return map[string]interface{}{"Input": input}
 	}
 	domain = parsed.Host
-	if strings.Contains(parsed.Host, ":") {
-		domain = strings.Split(parsed.Host, ":")[0]
+	if domain == "" {
+		domain = input
 	}
+	if strings.Contains(domain, ":") {
+		domain = strings.Split(domain, ":")[0]
+	}
+
 	return map[string]interface{}{
 		"Input":    input,
 		"Hostname": parsed.Host,
