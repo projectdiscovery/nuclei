@@ -313,6 +313,50 @@ func (q *Queries) GetScans(ctx context.Context) ([]GetScansRow, error) {
 	return items, nil
 }
 
+const getSettingByName = `-- name: GetSettingByName :one
+SELECT settingdata, datatype
+FROM
+	"public".settings WHERE name=$1 LIMIT 1
+`
+
+type GetSettingByNameRow struct {
+	Settingdata sql.NullString
+	Datatype    sql.NullString
+}
+
+func (q *Queries) GetSettingByName(ctx context.Context, name sql.NullString) (GetSettingByNameRow, error) {
+	row := q.db.QueryRow(ctx, getSettingByName, name)
+	var i GetSettingByNameRow
+	err := row.Scan(&i.Settingdata, &i.Datatype)
+	return i, err
+}
+
+const getSettings = `-- name: GetSettings :many
+SELECT settingdata, datatype, name
+FROM
+	"public".settings
+`
+
+func (q *Queries) GetSettings(ctx context.Context) ([]Setting, error) {
+	rows, err := q.db.Query(ctx, getSettings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Setting
+	for rows.Next() {
+		var i Setting
+		if err := rows.Scan(&i.Settingdata, &i.Datatype, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTarget = `-- name: GetTarget :one
 SELECT name, internalid, filename, total, createdat, updatedat
 FROM
@@ -629,12 +673,42 @@ func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.Null
 	return items, nil
 }
 
+const setSettings = `-- name: SetSettings :exec
+INSERT INTO "public".settings
+	( settingdata, datatype, name) VALUES ( $1, $2, $3) ON CONFLICT (name) DO UPDATE SET settingdata=$1
+`
+
+type SetSettingsParams struct {
+	Settingdata sql.NullString
+	Datatype    sql.NullString
+	Name        sql.NullString
+}
+
+func (q *Queries) SetSettings(ctx context.Context, arg SetSettingsParams) error {
+	_, err := q.db.Exec(ctx, setSettings, arg.Settingdata, arg.Datatype, arg.Name)
+	return err
+}
+
 const updateIssue = `-- name: UpdateIssue :exec
 UPDATE "public".issues SET issuestate='closed' WHERE id=$1
 `
 
 func (q *Queries) UpdateIssue(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, updateIssue, id)
+	return err
+}
+
+const updateSettings = `-- name: UpdateSettings :exec
+UPDATE "public".settings SET settingdata=$1 WHERE name=$2
+`
+
+type UpdateSettingsParams struct {
+	Settingdata sql.NullString
+	Name        sql.NullString
+}
+
+func (q *Queries) UpdateSettings(ctx context.Context, arg UpdateSettingsParams) error {
+	_, err := q.db.Exec(ctx, updateSettings, arg.Settingdata, arg.Name)
 	return err
 }
 

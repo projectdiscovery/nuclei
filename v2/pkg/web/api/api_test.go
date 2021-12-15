@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,9 @@ func TestAPI(t *testing.T) {
 	database, err := db.New("postgres://postgres:mysecretpassword@localhost:5432/postgres")
 	require.Nil(t, err, "could not connect to db")
 	defer database.Close()
+
+	err = settings.InitializeDefaultSettings(database)
+	require.Nil(t, err, "could not init settings to db")
 
 	tempdir, err := ioutil.TempDir("", "test")
 	require.Nil(t, err, "could not create tempdir")

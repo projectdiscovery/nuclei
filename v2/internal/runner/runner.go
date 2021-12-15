@@ -156,7 +156,7 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
+	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 

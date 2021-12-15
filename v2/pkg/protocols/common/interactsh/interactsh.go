@@ -62,7 +62,7 @@ type Options struct {
 	Eviction time.Duration
 	// CooldownPeriod is additional time to wait for interactions after closing
 	// of the poller.
-	ColldownPeriod time.Duration
+	CooldownPeriod time.Duration
 	// PollDuration is the time to wait before each poll to the server for interactions.
 	PollDuration time.Duration
 	// Output is the output writer for nuclei
@@ -101,7 +101,7 @@ func New(options *Options) (*Client, error) {
 		options:          options,
 		requests:         cache,
 		pollDuration:     options.PollDuration,
-		cooldownDuration: options.ColldownPeriod,
+		cooldownDuration: options.CooldownPeriod,
 	}
 	return interactClient, nil
 }
@@ -112,7 +112,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 		ServerURL:      "https://interactsh.com",
 		CacheSize:      5000,
 		Eviction:       60 * time.Second,
-		ColldownPeriod: 5 * time.Second,
+		CooldownPeriod: 5 * time.Second,
 		PollDuration:   5 * time.Second,
 		Output:         output,
 		IssuesClient:   reporting,

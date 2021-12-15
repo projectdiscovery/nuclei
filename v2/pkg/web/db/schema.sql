@@ -24,9 +24,12 @@ CREATE  TABLE "public".targets (
 
 
 CREATE  TABLE "public".settings ( 
-	alerting             json,
-	config               json
-);
+	settingdata          varchar   ,
+	datatype             varchar   ,
+	name                 varchar(100)   ,
+	CONSTRAINT unq_settings UNIQUE ( name ) 
+ );
+
 
 CREATE  TABLE "public".scans ( 
 	name                 varchar(100),
@@ -166,3 +169,21 @@ FROM
 
 -- name: UpdateIssue :exec
 UPDATE "public".issues SET issuestate='closed' WHERE id=$1 ;
+
+-- name: SetSettings :exec
+INSERT INTO "public".settings
+	( settingdata, datatype, name) VALUES ( $1, $2, $3) ON CONFLICT (name) DO UPDATE SET settingdata=$1;
+
+-- name: GetSettings :many
+SELECT settingdata, datatype, name
+FROM
+	"public".settings;
+
+-- name: GetSettingByName :one
+SELECT settingdata, datatype
+FROM
+	"public".settings WHERE name=$1 LIMIT 1;
+
+
+-- name: UpdateSettings :exec
+UPDATE "public".settings SET settingdata=$1 WHERE name=$2;

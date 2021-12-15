@@ -71,15 +71,21 @@ func New(config *Config) *API {
 	apiGroup.DELETE("/targets/:id", config.Server.DeleteTarget)
 	apiGroup.GET("/targets/:id", config.Server.GetTargetContents)
 
+	// /settings endpoints
+	apiGroup.GET("/settings", config.Server.GetSettings)
+	apiGroup.POST("/settings", config.Server.SetSetting)
+	apiGroup.GET("/settings/:name", config.Server.GetSettingByName)
+	apiGroup.PUT("/settings/:name", config.Server.UpdateSettingByName)
+
 	// /scans endpoints
-	apiGroup.GET("/scans", config.Server.GetScans)
-	apiGroup.POST("/scans", config.Server.AddScan)
-	apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
-	apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)
-	apiGroup.GET("/scans/:id", config.Server.GetScan)
-	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
-	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
-	apiGroup.GET("/scans/:id/debug", config.Server.GetScanDebug)
+	//apiGroup.GET("/scans", config.Server.GetScans)
+	//apiGroup.POST("/scans", config.Server.AddScan)
+	//	apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
+	//	apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)
+	//	apiGroup.GET("/scans/:id", config.Server.GetScan)
+	//	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
+	//	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
+	//	apiGroup.GET("/scans/:id/debug", config.Server.GetScanDebug)
 
 	return &API{echo: e}
 }

@@ -4,8 +4,6 @@ package dbsql
 
 import (
 	"database/sql"
-
-	"github.com/jackc/pgtype"
 )
 
 type Issue struct {
@@ -43,8 +41,9 @@ type Scan struct {
 }
 
 type Setting struct {
-	Alerting pgtype.JSON
-	Config   pgtype.JSON
+	Settingdata sql.NullString
+	Datatype    sql.NullString
+	Name        sql.NullString
 }
 
 type Target struct {
