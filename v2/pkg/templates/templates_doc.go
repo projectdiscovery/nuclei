@@ -1139,8 +1139,8 @@ func init() {
 	FILERequestDoc.Fields[4].Name = "denylist"
 	FILERequestDoc.Fields[4].Type = "[]string"
 	FILERequestDoc.Fields[4].Note = ""
-	FILERequestDoc.Fields[4].Description = "ExtensionDenylist is the list of file extensions to deny during matching.\n\nBy default, it contains some non-interesting extensions that are hardcoded\nin nuclei."
-	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "ExtensionDenylist is the list of file extensions to deny during matching."
+	FILERequestDoc.Fields[4].Description = "DenyList is the list of file, directories or extensions to deny during matching.\n\nBy default, it contains some non-interesting extensions that are hardcoded\nin nuclei."
+	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "DenyList is the list of file, directories or extensions to deny during matching."
 
 	FILERequestDoc.Fields[4].AddExample("", []string{".avi", ".mov", ".mp3"})
 	FILERequestDoc.Fields[5].Name = "id"

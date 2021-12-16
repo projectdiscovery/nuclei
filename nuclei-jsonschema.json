@@ -472,8 +472,8 @@
             "type": "string"
           },
           "type": "array",
-          "title": "extensions to deny match",
-          "description": "List of file extensions to deny during matching"
+          "title": "denylist",
+          "description": "List of files"
         },
         "id": {
           "type": "string",
