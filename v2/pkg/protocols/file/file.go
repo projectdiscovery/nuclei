@@ -1,6 +1,7 @@
 package file
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -110,6 +111,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	for _, excludeItem := range request.DenyList {
 		request.denyList[excludeItem] = struct{}{}
+		// also add a cleaned version as the exclusion path can be dirty (eg. /a/b/c, /a/b/c/, a///b///c/../d)
+		request.denyList[filepath.Clean(excludeItem)] = struct{}{}
 	}
 	return nil
 }

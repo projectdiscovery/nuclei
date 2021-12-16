@@ -7,6 +7,7 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -163,10 +164,30 @@ func (request *Request) isInDenyList(absPath, item string) (string, bool) {
 		return fullPathWithoutFilename, true
 	}
 
-	// any progressive combined part of the relative path with filename matches any prefix of the rules
-	pathTree := strings.Split(relativePath, string(os.PathSeparator))
-	for i := range pathTree {
-		pathTreeItem := filepath.Join(pathTree[:i]...)
+	// check any progressive combined part of the relative and absolute path with filename for matches within rules prefixes
+	if pathTreeItem, ok := request.isAnyChunkInDenyList(relativePath, false); ok {
+		return pathTreeItem, true
+	}
+	if pathTreeItem, ok := request.isAnyChunkInDenyList(item, true); ok {
+		return pathTreeItem, true
+	}
+
+	return "", false
+}
+
+func (request *Request) isAnyChunkInDenyList(path string, splitWithUtils bool) (string, bool) {
+	var paths []string
+
+	if splitWithUtils {
+		pathInfo, _ := folderutil.NewPathInfo(path)
+		paths, _ = pathInfo.Paths()
+	} else {
+		pathTree := strings.Split(path, string(os.PathSeparator))
+		for i := range pathTree {
+			paths = append(paths, filepath.Join(pathTree[:i]...))
+		}
+	}
+	for _, pathTreeItem := range paths {
 		if _, ok := request.denyList[pathTreeItem]; ok {
 			return pathTreeItem, true
 		}
