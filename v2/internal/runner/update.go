@@ -200,10 +200,6 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 			return readErr
 		}
 		r.templatesConfig = configuration
-
-		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
-			r.options.TemplatesDirectory = configuration.TemplatesDirectory
-		}
 	}
 	return nil
 }
