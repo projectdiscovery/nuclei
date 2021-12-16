@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"go.uber.org/multierr"
@@ -72,6 +73,9 @@ type Template struct {
 	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
 
 	// description: |
+	//   WHOIS contains the WHOIS request to make in the template.
+	RequestsWHOIS []*whois.Request `yaml:"whois,omitempty" json:"whois,omitempty" jsonschema:"title=whois requests to make,description=WHOIS requests to make for the template"`
+	// description: |
 	//   Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
@@ -101,6 +105,7 @@ var TemplateProtocols = []string{
 	"workflow",
 	"ssl",
 	"websocket",
+	"whois",
 }
 
 // Type returns the type of the template
@@ -122,6 +127,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
 		return types.WebsocketProtocol
+	case len(template.RequestsWHOIS) > 0:
+		return types.WHOISProtocol
 	default:
 		return types.InvalidProtocol
 	}
