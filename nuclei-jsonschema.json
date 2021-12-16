@@ -1026,6 +1026,47 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "whois.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "query": {
+          "type": "string",
+          "title": "query for the WHOIS request",
+          "description": "Query contains query for the request"
+        },
+        "server": {
+          "type": "string",
+          "title": "server url to execute the WHOIS request on",
+          "description": "Server contains the server url to execute the WHOIS request on"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "templates.Template": {
       "required": [
         "id",
@@ -1109,6 +1150,15 @@
           "type": "array",
           "title": "websocket requests to make",
           "description": "Websocket requests to make for the template"
+        },
+        "whois": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/whois.Request"
+          },
+          "type": "array",
+          "title": "whois requests to make",
+          "description": "WHOIS requests to make for the template"
         },
         "workflows": {
           "items": {
