@@ -160,6 +160,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
+		resumeCfg.Compile()
 	}
 
 	runner.resumeCfg = resumeCfg
@@ -476,17 +477,8 @@ func (r *Runner) countNewTemplates() int {
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig() error {
 	resumeCfg := types.NewResumeCfg()
-	resumeCfg.TemplatesResumeFrom = r.resumeCfg.TemplatesCurrent
-	// Since the maximum number of concurrent targets is determined by bulk-size, calculate the current progress as
-	// CurrentIndex - BulkSize so that the starting point will not skip on-going scans
-	for templateId, currentIndex := range r.resumeCfg.TemplatesCurrentIndex {
-		var diff uint32
-		if d := int(currentIndex) - r.options.BulkSize; d > 0 {
-			diff = uint32(d)
-		}
-		resumeCfg.TemplatesResumeFromIndex[templateId] = diff
-	}
-	file, _ := json.MarshalIndent(resumeCfg, "", "\t")
+	resumeCfg.ResumeFrom = r.resumeCfg.Current
+	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
 
-	return ioutil.WriteFile(types.DefaultResumeFilePath(), file, 0644)
+	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
 }

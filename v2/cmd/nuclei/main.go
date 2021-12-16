@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
@@ -33,6 +34,7 @@ func main() {
 	}
 
 	// Setup graceful exits
+	resumeFileName := types.DefaultResumeFilePath()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -40,7 +42,7 @@ func main() {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
-				gologger.Info().Msgf("Creating resume file: %s\n", types.DefaultResumeFilePath())
+				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 				err := nucleiRunner.SaveResumeConfig()
 				if err != nil {
 					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
@@ -54,6 +56,10 @@ func main() {
 		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
 	}
 	nucleiRunner.Close()
+	// on successful execution remove the resume file in case it exists
+	if fileutil.FileExists(resumeFileName) {
+		os.Remove(resumeFileName)
+	}
 }
 
 func readConfig() {
