@@ -2,6 +2,9 @@
 package templates
 
 import (
+	"encoding/json"
+
+	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
@@ -13,6 +16,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"go.uber.org/multierr"
+	"gopkg.in/yaml.v2"
 )
 
 // Template is a YAML input file which defines all the requests and
@@ -120,4 +125,42 @@ func (template *Template) Type() types.ProtocolType {
 	default:
 		return types.InvalidProtocol
 	}
+}
+
+// MarshalYAML forces recursive struct validation during marshal operation
+func (template *Template) MarshalYAML() ([]byte, error) {
+	out, marshalErr := yaml.Marshal(template)
+	errValidate := validate.New().Struct(template)
+	return out, multierr.Append(marshalErr, errValidate)
+}
+
+// MarshalYAML forces recursive struct validation after unmarshal operation
+func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type Alias Template
+	alias := &Alias{}
+	err := unmarshal(alias)
+	if err != nil {
+		return err
+	}
+	*template = Template(*alias)
+	return validate.New().Struct(template)
+}
+
+// MarshalJSON forces recursive struct validation during marshal operation
+func (template *Template) MarshalJSON() ([]byte, error) {
+	out, marshalErr := json.Marshal(template)
+	errValidate := validate.New().Struct(template)
+	return out, multierr.Append(marshalErr, errValidate)
+}
+
+// UnmarshalJSON forces recursive struct validation after unmarshal operation
+func (template *Template) UnmarshalJSON(data []byte) error {
+	type Alias Template
+	alias := &Alias{}
+	err := json.Unmarshal(data, alias)
+	if err != nil {
+		return err
+	}
+	*template = Template(*alias)
+	return validate.New().Struct(template)
 }
