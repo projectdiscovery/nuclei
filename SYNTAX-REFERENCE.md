@@ -2561,7 +2561,7 @@ extensions:
 </div>
 <div class="dt">
 
-ExtensionDenylist is the list of file extensions to deny during matching.
+DenyList is the list of file, directories or extensions to deny during matching.
 
 By default, it contains some non-interesting extensions that are hardcoded
 in nuclei.
