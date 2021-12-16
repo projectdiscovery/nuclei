@@ -21,6 +21,7 @@ type Issue struct {
 	Labels        []string
 	Issuedata     sql.NullString
 	Issuetemplate sql.NullString
+	Templatename  sql.NullString
 	Remediation   sql.NullString
 	Debug         sql.NullString
 	ID            int64

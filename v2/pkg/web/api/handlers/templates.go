@@ -185,8 +185,6 @@ func (s *Server) ExecuteTemplate(ctx echo.Context) error {
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
 		return err
 	}
-
-	// TODO: replace testutils with core functionality.
 	templateContents, err := s.db.Queries().GetTemplateContents(context.Background(), body.Path)
 	if err != nil {
 		return errors.Wrap(err, "could not get template")

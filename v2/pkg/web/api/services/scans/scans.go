@@ -13,6 +13,8 @@ import (
 
 // ScanService is a service for controlling and launching scans
 type ScanService struct {
+	Logs *ErrorLogsService
+
 	db          *db.Database
 	concurrency int
 	cancel      context.CancelFunc
@@ -32,10 +34,11 @@ type ScanRequest struct {
 }
 
 // NewScanService returns a new scan service
-func NewScanService(concurrency int, db *db.Database, target *targets.TargetsStorage) *ScanService {
+func NewScanService(logs string, concurrency int, db *db.Database, target *targets.TargetsStorage) *ScanService {
 	context, cancel := context.WithCancel(context.Background())
 
 	service := &ScanService{
+		Logs:        NewErrorLogsService(logs),
 		db:          db,
 		concurrency: concurrency,
 		cancel:      cancel,

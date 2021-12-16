@@ -63,6 +63,7 @@ CREATE  TABLE "public".issues (
 	labels               varchar[],
 	issuedata            text,
 	issuetemplate        text,
+	templatename         varchar,
 	remediation          text,
 	debug                text,
 	id                   bigserial NOT NULL,
@@ -163,16 +164,20 @@ FROM
 
 -- name: AddIssue :exec
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, remediation, debug, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, debug, scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);
 
 -- name: DeleteIssue :exec
 DELETE FROM "public".issues WHERE id=$1;
 
+
+-- name: DeleteIssueByScanID :exec
+DELETE FROM "public".issues WHERE scanid=$1;
+
 -- name: GetIssue :one
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, remediation, debug, id, scanid
+	issuedata, issuetemplate, templatename, remediation, debug, id, scanid
 FROM
 	"public".issues WHERE id=$1 LIMIT 1;
 
@@ -180,6 +185,11 @@ FROM
 SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
 FROM
 	"public".issues;
+
+-- name: GetIssuesMatches :many
+SELECT id, matchedat, templatename, severity, author
+FROM
+	"public".issues WHERE scanid=$1;
 
 -- name: UpdateIssue :exec
 UPDATE "public".issues SET issuestate='closed' WHERE id=$1 ;

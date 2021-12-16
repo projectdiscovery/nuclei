@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"io"
 	"strconv"
 	"time"
 
@@ -146,4 +147,95 @@ func (s *Server) GetScan(ctx echo.Context) error {
 // GetScanProgress handlers /scans/progress getting route
 func (s *Server) GetScanProgress(ctx echo.Context) error {
 	return ctx.JSON(200, s.scans.Progress())
+}
+
+// GetScanMatchesResponse is a response for /scans/:id/matches response
+type GetScanMatchesResponse struct {
+	TemplateName string `json:"templateName"`
+	Severity     string `json:"severity"`
+	Author       string `json:"author"`
+	MatchedAt    string `json:"matchedAt"`
+}
+
+// GetScanMatches handlers /scans/:id/matches listing route
+func (s *Server) GetScanMatches(ctx echo.Context) error {
+	queryParam := ctx.Param("id")
+	id, err := strconv.ParseInt(queryParam, 10, 64)
+	if err != nil {
+		return err
+	}
+	rows, err := s.db.Queries().GetIssuesMatches(context.Background(), sql.NullInt64{Int64: id})
+	if err != nil {
+		return err
+	}
+	response := make([]GetScanMatchesResponse, len(rows))
+	for i, row := range rows {
+		response[i] = GetScanMatchesResponse{
+			TemplateName: row.Templatename.String,
+			Severity:     row.Severity.String,
+			Author:       row.Author.String,
+			MatchedAt:    row.Matchedat.String,
+		}
+	}
+	return ctx.JSON(200, response)
+}
+
+// UpdateScanRequest is a request for /scans/:id update request
+type UpdateScanRequest struct {
+	Pause        bool `json:"pause"`
+	Stop         bool `json:"stop"`
+	Resume       bool `json:"resume"`
+	ScheduleTime bool `json:"scheduleTime"`
+}
+
+// UpdateScan handlers /scans/:id updating route
+func (s *Server) UpdateScan(ctx echo.Context) error {
+	var req UpdateScanRequest
+	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+		return err
+	}
+	queryParam := ctx.Param("id")
+	id, err := strconv.ParseInt(queryParam, 10, 64)
+	if err != nil {
+		return err
+	}
+	_ = id
+	// todo: Handle pause resume update and time update
+	return nil
+}
+
+// DeleteScan handlers /scans/:id deletion route
+func (s *Server) DeleteScan(ctx echo.Context) error {
+	var req UpdateScanRequest
+	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+		return err
+	}
+	queryParam := ctx.Param("id")
+	id, err := strconv.ParseInt(queryParam, 10, 64)
+	if err != nil {
+		return err
+	}
+	err = s.db.Queries().DeleteScan(context.Background(), id)
+	deleteErr := s.db.Queries().DeleteIssueByScanID(context.Background(), sql.NullInt64{Int64: id, Valid: true})
+	if err != nil || deleteErr != nil {
+		return echo.NewHTTPError(500, err, deleteErr)
+	}
+	return nil
+}
+
+// GetScanErrors handlers /scans/:id/errors listing route
+func (s *Server) GetScanErrors(ctx echo.Context) error {
+	queryParam := ctx.Param("id")
+	id, err := strconv.ParseInt(queryParam, 10, 64)
+	if err != nil {
+		return err
+	}
+	logsReader, err := s.scans.Logs.Read(id)
+	if err != nil {
+		return err
+	}
+	defer logsReader.Close()
+
+	_, _ = io.Copy(ctx.Response().Writer, logsReader)
+	return nil
 }

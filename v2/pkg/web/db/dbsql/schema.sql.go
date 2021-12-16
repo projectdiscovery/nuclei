@@ -10,9 +10,9 @@ import (
 
 const addIssue = `-- name: AddIssue :exec
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, remediation, debug, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, debug, scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 `
 
 type AddIssueParams struct {
@@ -28,6 +28,7 @@ type AddIssueParams struct {
 	Labels        []string
 	Issuedata     sql.NullString
 	Issuetemplate sql.NullString
+	Templatename  sql.NullString
 	Remediation   sql.NullString
 	Debug         sql.NullString
 	Scanid        sql.NullInt64
@@ -47,6 +48,7 @@ func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) error {
 		arg.Labels,
 		arg.Issuedata,
 		arg.Issuetemplate,
+		arg.Templatename,
 		arg.Remediation,
 		arg.Debug,
 		arg.Scanid,
@@ -149,6 +151,15 @@ func (q *Queries) DeleteIssue(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteIssueByScanID = `-- name: DeleteIssueByScanID :exec
+DELETE FROM "public".issues WHERE scanid=$1
+`
+
+func (q *Queries) DeleteIssueByScanID(ctx context.Context, scanid sql.NullInt64) error {
+	_, err := q.db.Exec(ctx, deleteIssueByScanID, scanid)
+	return err
+}
+
 const deleteScan = `-- name: DeleteScan :exec
 DELETE FROM "public".scans WHERE id=$1
 `
@@ -178,7 +189,7 @@ func (q *Queries) DeleteTemplate(ctx context.Context, path string) error {
 
 const getIssue = `-- name: GetIssue :one
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, remediation, debug, id, scanid
+	issuedata, issuetemplate, templatename, remediation, debug, id, scanid
 FROM
 	"public".issues WHERE id=$1 LIMIT 1
 `
@@ -201,6 +212,7 @@ func (q *Queries) GetIssue(ctx context.Context, id int64) (Issue, error) {
 		&i.Labels,
 		&i.Issuedata,
 		&i.Issuetemplate,
+		&i.Templatename,
 		&i.Remediation,
 		&i.Debug,
 		&i.ID,
@@ -244,6 +256,46 @@ func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
 			&i.Createdat,
 			&i.Updatedat,
 			&i.Scansource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getIssuesMatches = `-- name: GetIssuesMatches :many
+SELECT id, matchedat, templatename, severity, author
+FROM
+	"public".issues WHERE scanid=$1
+`
+
+type GetIssuesMatchesRow struct {
+	ID           int64
+	Matchedat    sql.NullString
+	Templatename sql.NullString
+	Severity     sql.NullString
+	Author       sql.NullString
+}
+
+func (q *Queries) GetIssuesMatches(ctx context.Context, scanid sql.NullInt64) ([]GetIssuesMatchesRow, error) {
+	rows, err := q.db.Query(ctx, getIssuesMatches, scanid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetIssuesMatchesRow
+	for rows.Next() {
+		var i GetIssuesMatchesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Matchedat,
+			&i.Templatename,
+			&i.Severity,
+			&i.Author,
 		); err != nil {
 			return nil, err
 		}

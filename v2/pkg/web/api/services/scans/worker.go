@@ -1,6 +1,7 @@
 package scans
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
@@ -70,8 +72,18 @@ func (s *ScanService) worker(req ScanRequest) error {
 		// todo: Mark scan state as finished
 	}()
 
+	logWriter, err := s.Logs.Write(req.ScanID)
+	if err != nil {
+		return err
+	}
+	defer logWriter.Close()
+	buflogWriter := bufio.NewWriter(logWriter)
+	defer buflogWriter.Flush()
+
+	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, req.ScanID)
+
 	executerOpts := protocols.ExecuterOptions{
-		Output:       newWrappedOutputWriter(s.db, req.ScanID),
+		Output:       outputWriter,
 		IssuesClient: nil, //todo: load from config value
 		Options:      typesOptions,
 		Progress:     progressImpl,
@@ -175,11 +187,12 @@ func (s *ScanService) storeTemplatesFromRequest(templatesList []string) (string,
 type wrappedOutputWriter struct {
 	db        *db.Database
 	scanid    int64
+	logs      *bufio.Writer
 	colorizer aurora.Aurora
 }
 
-func newWrappedOutputWriter(db *db.Database, scanid int64) *wrappedOutputWriter {
-	return &wrappedOutputWriter{db: db, colorizer: aurora.NewAurora(false)}
+func newWrappedOutputWriter(db *db.Database, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
+	return &wrappedOutputWriter{db: db, logs: logWriter, colorizer: aurora.NewAurora(false)}
 }
 
 // Close closes the output writer interface
@@ -220,6 +233,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		Labels:        event.Info.Tags.ToSlice(),
 		Issuedata:     sql.NullString{String: format.MarkdownDescription(event), Valid: true},
 		Issuetemplate: sql.NullString{String: string(contents), Valid: true},
+		Templatename:  sql.NullString{String: event.Template, Valid: true},
 		Remediation:   sql.NullString{String: event.Info.Remediation, Valid: true},
 		Scanid:        sql.NullInt64{Int64: w.scanid, Valid: true},
 	})
@@ -231,10 +245,25 @@ func (w *wrappedOutputWriter) WriteFailure(event output.InternalEvent) error {
 	return nil
 }
 
+// ScanErrorLogEvent is a log event for scan error log
+type ScanErrorLogEvent struct {
+	Template string `json:"template"`
+	URL      string `json:"url"`
+	Type     string `json:"type"`
+	Error    string `json:"error"`
+}
+
 // Request logs a request in the trace log
 func (w *wrappedOutputWriter) Request(templateID, url, requestType string, err error) {
-	// todo: write somewhere scan error log
-
+	if err == nil {
+		return
+	}
+	_ = jsoniter.NewEncoder(w.logs).Encode(ScanErrorLogEvent{
+		Template: templateID,
+		URL:      url,
+		Type:     requestType,
+		Error:    err.Error(),
+	})
 }
 
 func convertCWEIDsToSlice(cweIDs stringslice.StringSlice) []int32 {

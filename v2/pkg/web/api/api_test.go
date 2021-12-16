@@ -31,8 +31,12 @@ func TestAPI(t *testing.T) {
 	require.Nil(t, err, "could not create tempdir")
 	defer os.RemoveAll(tempdir)
 
+	logsDir, err := ioutil.TempDir("", "logs")
+	require.Nil(t, err, "could not create tempdir")
+	defer os.RemoveAll(logsDir)
+
 	targets := targets.NewTargetsStorage(tempdir)
-	scans := scans.NewScanService(1, database, targets)
+	scans := scans.NewScanService(logsDir, 1, database, targets)
 	defer scans.Close()
 
 	server := handlers.New(database, targets, scans)
