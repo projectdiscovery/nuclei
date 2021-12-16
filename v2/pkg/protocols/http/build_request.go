@@ -125,7 +125,7 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 
 		// the url might contain placeholders
 		parts[1] = replacer.Replace(parts[1], generators.BuildPayloadFromOptions(r.request.options.Options))
-		if expressions.ContainsUnresolvedVariables(parts[1]) != nil {
+		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
 			return nil, err
 		}
 
