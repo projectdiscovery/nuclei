@@ -26,6 +26,7 @@ var (
 		"loader":    loaderTestcases,
 		"websocket": websocketTestCases,
 		"headless":  headlessTestcases,
+		"whois":     whoisTestCases,
 	}
 )
 
