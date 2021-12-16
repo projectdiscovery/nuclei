@@ -7,7 +7,10 @@ on:
 jobs:
   build:
     name: Test Builds
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest, macos-11.0]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
