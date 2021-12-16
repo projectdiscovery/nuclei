@@ -33,6 +33,7 @@ var (
 	SSLRequestDoc                 encoder.Doc
 	WEBSOCKETRequestDoc           encoder.Doc
 	WEBSOCKETInputDoc             encoder.Doc
+	WHOISRequestDoc               encoder.Doc
 	WORKFLOWSWorkflowTemplateDoc  encoder.Doc
 	WORKFLOWSMatcherDoc           encoder.Doc
 )
@@ -41,7 +42,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 12)
+	TemplateDoc.Fields = make([]encoder.Doc, 13)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -99,21 +100,26 @@ func init() {
 	TemplateDoc.Fields[8].Note = ""
 	TemplateDoc.Fields[8].Description = "Websocket contains the Websocket request to make in the template."
 	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[9].Name = "workflows"
-	TemplateDoc.Fields[9].Type = "[]workflows.WorkflowTemplate"
+	TemplateDoc.Fields[9].Name = "whois"
+	TemplateDoc.Fields[9].Type = "[]whois.Request"
 	TemplateDoc.Fields[9].Note = ""
-	TemplateDoc.Fields[9].Description = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[10].Name = "self-contained"
-	TemplateDoc.Fields[10].Type = "bool"
+	TemplateDoc.Fields[9].Description = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[10].Name = "workflows"
+	TemplateDoc.Fields[10].Type = "[]workflows.WorkflowTemplate"
 	TemplateDoc.Fields[10].Note = ""
-	TemplateDoc.Fields[10].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[11].Name = "stop-at-first-match"
+	TemplateDoc.Fields[10].Description = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[11].Name = "self-contained"
 	TemplateDoc.Fields[11].Type = "bool"
 	TemplateDoc.Fields[11].Note = ""
-	TemplateDoc.Fields[11].Description = "Stop execution once first match is found"
-	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[11].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[12].Name = "stop-at-first-match"
+	TemplateDoc.Fields[12].Type = "bool"
+	TemplateDoc.Fields[12].Note = ""
+	TemplateDoc.Fields[12].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "Stop execution once first match is found"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -570,6 +576,10 @@ func init() {
 			TypeName:  "websocket.Request",
 			FieldName: "matchers",
 		},
+		{
+			TypeName:  "whois.Request",
+			FieldName: "matchers",
+		},
 	}
 	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
@@ -729,6 +739,10 @@ func init() {
 		},
 		{
 			TypeName:  "websocket.Request",
+			FieldName: "extractors",
+		},
+		{
+			TypeName:  "whois.Request",
 			FieldName: "extractors",
 		},
 	}
@@ -1645,6 +1659,46 @@ func init() {
 
 	WEBSOCKETInputDoc.Fields[1].AddExample("", "prefix")
 
+	WHOISRequestDoc.Type = "whois.Request"
+	WHOISRequestDoc.Comments[encoder.LineComment] = " Request is a request for the WHOIS protocol"
+	WHOISRequestDoc.Description = "Request is a request for the WHOIS protocol"
+	WHOISRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "whois",
+		},
+	}
+	WHOISRequestDoc.Fields = make([]encoder.Doc, 5)
+	WHOISRequestDoc.Fields[0].Name = "matchers"
+	WHOISRequestDoc.Fields[0].Type = "[]matchers.Matcher"
+	WHOISRequestDoc.Fields[0].Note = ""
+	WHOISRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	WHOISRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	WHOISRequestDoc.Fields[1].Name = "extractors"
+	WHOISRequestDoc.Fields[1].Type = "[]extractors.Extractor"
+	WHOISRequestDoc.Fields[1].Note = ""
+	WHOISRequestDoc.Fields[1].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	WHOISRequestDoc.Fields[1].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	WHOISRequestDoc.Fields[2].Name = "matchers-condition"
+	WHOISRequestDoc.Fields[2].Type = "string"
+	WHOISRequestDoc.Fields[2].Note = ""
+	WHOISRequestDoc.Fields[2].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	WHOISRequestDoc.Fields[2].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	WHOISRequestDoc.Fields[2].Values = []string{
+		"and",
+		"or",
+	}
+	WHOISRequestDoc.Fields[3].Name = "query"
+	WHOISRequestDoc.Fields[3].Type = "string"
+	WHOISRequestDoc.Fields[3].Note = ""
+	WHOISRequestDoc.Fields[3].Description = "Query contains query for the request"
+	WHOISRequestDoc.Fields[3].Comments[encoder.LineComment] = "Query contains query for the request"
+	WHOISRequestDoc.Fields[4].Name = "server"
+	WHOISRequestDoc.Fields[4].Type = "string"
+	WHOISRequestDoc.Fields[4].Note = ""
+	WHOISRequestDoc.Fields[4].Description = "description: |\n 	 Optional WHOIS server URL.\n\n 	 If present, specifies the WHOIS server to execute the Request on.\n   Otherwise, nil enables bootstrapping"
+	WHOISRequestDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
+
 	WORKFLOWSWorkflowTemplateDoc.Type = "workflows.WorkflowTemplate"
 	WORKFLOWSWorkflowTemplateDoc.Comments[encoder.LineComment] = ""
 	WORKFLOWSWorkflowTemplateDoc.Description = ""
@@ -1740,6 +1794,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&SSLRequestDoc,
 			&WEBSOCKETRequestDoc,
 			&WEBSOCKETInputDoc,
+			&WHOISRequestDoc,
 			&WORKFLOWSWorkflowTemplateDoc,
 			&WORKFLOWSMatcherDoc,
 		},
