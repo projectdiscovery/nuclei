@@ -87,6 +87,13 @@ func New(config *Config) *API {
 	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
 	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
 
+	// /issues endpoints
+	apiGroup.GET("/issues", config.Server.GetIssues)
+	apiGroup.POST("/issues", config.Server.AddIssue)
+	apiGroup.GET("/issues/:id", config.Server.GetIssue)
+	apiGroup.PUT("/issues/:id", config.Server.UpdateIssue)
+	apiGroup.DELETE("/issues/:id", config.Server.DeleteIssue)
+
 	return &API{echo: e}
 }
 

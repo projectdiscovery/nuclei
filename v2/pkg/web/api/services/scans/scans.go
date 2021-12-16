@@ -65,6 +65,7 @@ func NewScanService(logs string, concurrency int, db *db.Database, target *targe
 
 func (s *ScanService) Close() {
 	s.cancel()
+	s.Logs.Close()
 }
 
 // Queue queues a scan request to the service

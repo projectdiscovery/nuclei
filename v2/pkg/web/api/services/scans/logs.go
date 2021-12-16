@@ -29,6 +29,10 @@ func NewErrorLogsService(directory string) *ErrorLogsService {
 	return service
 }
 
+func (e *ErrorLogsService) Close() {
+	e.cancel()
+}
+
 // Write returns handle to a file to write error logs to
 func (e *ErrorLogsService) Write(scanid int64) (io.WriteCloser, error) {
 	str := convertIDToString(scanid)

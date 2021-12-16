@@ -51,7 +51,9 @@ func (s *Server) AddScan(ctx echo.Context) error {
 		Scheduleoccurence: sql.NullString{String: req.ScheduleOccurence, Valid: true},
 		Scheduletime:      sql.NullString{String: req.ScheduleTime, Valid: true},
 	})
-
+	if err != nil {
+		return echo.NewHTTPError(500, err)
+	}
 	if req.RunNow {
 		s.scans.Queue(scans.ScanRequest{
 			ScanID:    id,
@@ -62,24 +64,24 @@ func (s *Server) AddScan(ctx echo.Context) error {
 			Reporting: req.Reporting,
 		})
 	}
-	return err
+	return ctx.JSON(200, map[string]int64{"id": id})
 }
 
 // GetScanResponse is a response for /scans request
 type GetScanResponse struct {
-	ID                int64         `json:"id"`
-	Status            string        `json:"status"`
-	Name              string        `json:"name"`
-	Templates         []string      `json:"templates"`
-	Targets           []string      `json:"targets"`
-	Config            string        `json:"config"` // nuclei config, default -> "default"
-	RunNow            bool          `json:"run-now"`
-	Reporting         string        `json:"reporting-config"`
-	ScheduleOccurence string        `json:"schedule-occurence"`
-	ScheduleTime      string        `json:"schedule-time"`
-	ScanSource        string        `json:"scanSource"`
-	ScanTime          time.Duration `json:"scanTime"`
-	Hosts             int64         `json:"hosts"`
+	ID                int64         `json:"id,omitempty"`
+	Status            string        `json:"status,omitempty"`
+	Name              string        `json:"name,omitempty"`
+	Templates         []string      `json:"templates,omitempty"`
+	Targets           []string      `json:"targets,omitempty"`
+	Config            string        `json:"config,omitempty"` // nuclei config, default -> "default"
+	RunNow            bool          `json:"runNow,omitempty"`
+	Reporting         string        `json:"reportingConfig,omitempty"`
+	ScheduleOccurence string        `json:"scheduleOccurence,omitempty"`
+	ScheduleTime      string        `json:"scheduleTime,omitempty"`
+	ScanSource        string        `json:"scanSource,omitempty"`
+	ScanTime          time.Duration `json:"scanTime,omitempty"`
+	Hosts             int64         `json:"hosts,omitempty"`
 }
 
 // GetScans handlers /scans getting route
@@ -151,10 +153,10 @@ func (s *Server) GetScanProgress(ctx echo.Context) error {
 
 // GetScanMatchesResponse is a response for /scans/:id/matches response
 type GetScanMatchesResponse struct {
-	TemplateName string `json:"templateName"`
-	Severity     string `json:"severity"`
-	Author       string `json:"author"`
-	MatchedAt    string `json:"matchedAt"`
+	TemplateName string `json:"templateName,omitempty"`
+	Severity     string `json:"severity,omitempty"`
+	Author       string `json:"author,omitempty"`
+	MatchedAt    string `json:"matchedAt,omitempty"`
 }
 
 // GetScanMatches handlers /scans/:id/matches listing route
@@ -206,10 +208,6 @@ func (s *Server) UpdateScan(ctx echo.Context) error {
 
 // DeleteScan handlers /scans/:id deletion route
 func (s *Server) DeleteScan(ctx echo.Context) error {
-	var req UpdateScanRequest
-	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return err
-	}
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {

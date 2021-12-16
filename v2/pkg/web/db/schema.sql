@@ -192,7 +192,7 @@ FROM
 	"public".issues WHERE scanid=$1;
 
 -- name: UpdateIssue :exec
-UPDATE "public".issues SET issuestate='closed' WHERE id=$1 ;
+UPDATE "public".issues SET issuestate=$2 WHERE id=$1 ;
 
 -- name: SetSettings :exec
 INSERT INTO "public".settings

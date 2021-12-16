@@ -823,11 +823,16 @@ func (q *Queries) SetSettings(ctx context.Context, arg SetSettingsParams) error 
 }
 
 const updateIssue = `-- name: UpdateIssue :exec
-UPDATE "public".issues SET issuestate='closed' WHERE id=$1
+UPDATE "public".issues SET issuestate=$2 WHERE id=$1
 `
 
-func (q *Queries) UpdateIssue(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, updateIssue, id)
+type UpdateIssueParams struct {
+	ID         int64
+	Issuestate sql.NullString
+}
+
+func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) error {
+	_, err := q.db.Exec(ctx, updateIssue, arg.ID, arg.Issuestate)
 	return err
 }
 
