@@ -16,8 +16,5 @@ func (h *whoisBasic) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return expectResultsCount(results, 1)
-	}
-	return nil
+	return expectResultsCount(results, 1)
 }
