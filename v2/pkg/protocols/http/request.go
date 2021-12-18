@@ -350,10 +350,16 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 
-		// Check if are there any unresolved variables. If yes, skip unless overridden by user.
-		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
-			return errStopExecution
+		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
+			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
+		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
+			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
 		}
 	}
 	var formedURL string
@@ -562,9 +568,9 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
 		service := types.ToString(payloads["service"])
 		region := types.ToString(payloads["region"])
-		// if region is empty default to "us-east-2"
+		// if region is empty use default value
 		if region == "" {
-			region = "us-east-2"
+			region = types.ToString(signer.AwsDefaultVars["region"])
 		}
 		awsSignatureArguments := signer.AwsSignatureArguments{
 			Service: types.ToString(service),

@@ -58,9 +58,7 @@ func NewAwsSigner(args AwsSignerArgs) (*AwsSigner, error) {
 	if creds == nil {
 		return nil, errors.New("couldn't create the credentials structure")
 	}
-
 	signer := v4.NewSigner(creds)
-
 	return &AwsSigner{creds: creds, signer: signer}, nil
 }
 
@@ -69,7 +67,8 @@ func NewAwsSignerFromEnv() (*AwsSigner, error) {
 	if creds == nil {
 		return nil, errors.New("couldn't create the credentials structure")
 	}
-	return &AwsSigner{creds: creds}, nil
+	signer := v4.NewSigner(creds)
+	return &AwsSigner{creds: creds, signer: signer}, nil
 }
 
 func NewAwsSignerFromFile() (*AwsSigner, error) {
@@ -77,7 +76,8 @@ func NewAwsSignerFromFile() (*AwsSigner, error) {
 	if creds == nil {
 		return nil, errors.New("couldn't create the credentials structure")
 	}
-	return &AwsSigner{creds: creds}, nil
+	signer := v4.NewSigner(creds)
+	return &AwsSigner{creds: creds, signer: signer}, nil
 }
 
 func (awsSigner *AwsSigner) SignHTTP(request *http.Request, args interface{}) error {
@@ -96,7 +96,6 @@ func (awsSigner *AwsSigner) SignHTTP(request *http.Request, args interface{}) er
 		request.Body.Close()
 		body = bytes.NewReader(bodyBytes)
 	}
-
 	if _, err := awsSigner.signer.Sign(request, body, signatureArgs.Service, signatureArgs.Region, signatureArgs.Time); err != nil {
 		return err
 	}
@@ -130,4 +129,12 @@ func (awsSigner *AwsSigner) checkSignatureArgs(args interface{}) (AwsSignatureAr
 
 func (awsSigner *AwsSigner) prepareRequest(request *http.Request) {
 	request.Header.Del("Host")
+}
+
+var AwsSkipList = map[string]interface{}{
+	"region": struct{}{},
+}
+
+var AwsDefaultVars = map[string]interface{}{
+	"region": "us-east-2",
 }
