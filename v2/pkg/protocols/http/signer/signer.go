@@ -23,11 +23,11 @@ func NewSigner(args SignerArgs) (signer Signer, err error) {
 	case AwsSignerArgs:
 		awsSigner, err := NewAwsSigner(signerArgs)
 		if err != nil {
-			// env variables
-			awsSigner, err = NewAwsSignerFromEnv()
+			// $HOME/.aws/credentials
+			awsSigner, err = NewAwsSignerFromFile()
 			if err != nil {
-				// $HOME/.aws/credentials
-				awsSigner, err = NewAwsSignerFromFile()
+				// env variables
+				awsSigner, err = NewAwsSignerFromEnv()
 				if err != nil {
 					return nil, err
 				}
