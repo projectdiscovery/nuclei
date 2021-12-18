@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 )
 
 // SignatureType is the type of signature
@@ -81,4 +82,26 @@ func (holder *SignatureTypeHolder) MarshalJSON() ([]byte, error) {
 
 func (holder SignatureTypeHolder) MarshalYAML() (interface{}, error) {
 	return holder.Value.String(), nil
+}
+
+var ErrNoIgnoreList = errors.New("uknown signature types")
+
+// GetVariablesNamesSkipList depending on the signature type
+func GetVariablesNamesSkipList(signature SignatureType) map[string]interface{} {
+	switch signature {
+	case AWSSignature:
+		return signer.AwsSkipList
+	default:
+		return nil
+	}
+}
+
+// GetVariablesNamesSkipList depending on the signature type
+func GetVariablesDefault(signature SignatureType) map[string]interface{} {
+	switch signature {
+	case AWSSignature:
+		return signer.AwsDefaultVars
+	default:
+		return nil
+	}
 }

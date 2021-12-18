@@ -123,10 +123,22 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		// the url might contain placeholders
-		parts[1] = replacer.Replace(parts[1], generators.BuildPayloadFromOptions(r.request.options.Options))
-		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
-			return nil, err
+		payloads := generators.BuildPayloadFromOptions(r.request.options.Options)
+		// in case cases (eg requests signing, some variables uses default values if missing)
+		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
+			payloads = generators.MergeMaps(defaultList, payloads)
+		}
+		parts[1] = replacer.Replace(parts[1], payloads)
+
+		// the url might contain placeholders with ignore list
+		if ignoreList := GetVariablesNamesSkipList(r.request.Signature.Value); ignoreList != nil {
+			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
+				return nil, err
+			}
+		} else { // the url might contain placeholders
+			if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
+				return nil, err
+			}
 		}
 
 		parsed, err := url.Parse(parts[1])
@@ -135,7 +147,7 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		}
 		values := generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
-			generators.BuildPayloadFromOptions(r.request.options.Options),
+			payloads,
 		)
 
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
