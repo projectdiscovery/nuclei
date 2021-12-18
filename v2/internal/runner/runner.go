@@ -73,7 +73,7 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+		gologger.Error().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
 		if engine.MustDisableSandbox() {

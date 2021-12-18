@@ -154,7 +154,7 @@ func (matcher *Matcher) MatchBinary(corpus string) (bool, []string) {
 
 // MatchDSL matches on a generic map result
 func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
-	logExpressionEvaluationFailure := func (matcherName string, err error) {
+	logExpressionEvaluationFailure := func(matcherName string, err error) {
 		gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", matcherName, err.Error())
 	}
 
