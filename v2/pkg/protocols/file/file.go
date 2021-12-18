@@ -1,6 +1,7 @@
 package file
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,13 +20,13 @@ type Request struct {
 	//   - value: '[]string{".txt", ".go", ".json"}'
 	Extensions []string `yaml:"extensions,omitempty" jsonschema:"title=extensions to match,description=List of extensions to perform matching on"`
 	// description: |
-	//   ExtensionDenylist is the list of file extensions to deny during matching.
+	//   DenyList is the list of file, directories or extensions to deny during matching.
 	//
 	//   By default, it contains some non-interesting extensions that are hardcoded
 	//   in nuclei.
 	// examples:
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
-	ExtensionDenylist []string `yaml:"denylist,omitempty" jsonschema:"title=extensions to deny match,description=List of file extensions to deny during matching"`
+	DenyList []string `yaml:"denylist,omitempty" jsonschema:"title=denylist, directories and extentions to deny match,description=List of files, directories and extensions to deny during matching"`
 
 	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID for the request"`
@@ -41,9 +42,9 @@ type Request struct {
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
-	options           *protocols.ExecuterOptions
-	extensions        map[string]struct{}
-	extensionDenylist map[string]struct{}
+	options    *protocols.ExecuterOptions
+	extensions map[string]struct{}
+	denyList   map[string]struct{}
 
 	// description: |
 	//   NoRecursive specifies whether to not do recursive checks if folders are provided.
@@ -89,7 +90,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 
 	request.extensions = make(map[string]struct{})
-	request.extensionDenylist = make(map[string]struct{})
+	request.denyList = make(map[string]struct{})
 
 	for _, extension := range request.Extensions {
 		if extension == "all" {
@@ -101,17 +102,17 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			request.extensions[extension] = struct{}{}
 		}
 	}
-	for _, extension := range defaultDenylist {
-		if !strings.HasPrefix(extension, ".") {
-			extension = "." + extension
+	// process default denylist (extensions)
+	for _, excludeItem := range defaultDenylist {
+		if !strings.HasPrefix(excludeItem, ".") {
+			excludeItem = "." + excludeItem
 		}
-		request.extensionDenylist[extension] = struct{}{}
+		request.denyList[excludeItem] = struct{}{}
 	}
-	for _, extension := range request.ExtensionDenylist {
-		if !strings.HasPrefix(extension, ".") {
-			extension = "." + extension
-		}
-		request.extensionDenylist[extension] = struct{}{}
+	for _, excludeItem := range request.DenyList {
+		request.denyList[excludeItem] = struct{}{}
+		// also add a cleaned version as the exclusion path can be dirty (eg. /a/b/c, /a/b/c/, a///b///c/../d)
+		request.denyList[filepath.Clean(excludeItem)] = struct{}{}
 	}
 	return nil
 }

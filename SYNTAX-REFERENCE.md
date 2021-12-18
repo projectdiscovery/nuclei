@@ -247,6 +247,19 @@ Websocket contains the Websocket request to make in the template.
 
 <div class="dd">
 
+<code>whois</code>  <i>[]<a href="#whoisrequest">whois.Request</a></i>
+
+</div>
+<div class="dt">
+
+WHOIS contains the WHOIS request to make in the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>workflows</code>  <i>[]<a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a></i>
 
 </div>
@@ -1320,6 +1333,8 @@ Appears in:
 
 - <code><a href="#websocketrequest">websocket.Request</a>.matchers</code>
 
+- <code><a href="#whoisrequest">whois.Request</a>.matchers</code>
+
 
 
 
@@ -1712,6 +1727,8 @@ Appears in:
 - <code><a href="#sslrequest">ssl.Request</a>.extractors</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.extractors</code>
+
+- <code><a href="#whoisrequest">whois.Request</a>.extractors</code>
 
 
 
@@ -2561,7 +2578,7 @@ extensions:
 </div>
 <div class="dt">
 
-ExtensionDenylist is the list of file extensions to deny during matching.
+DenyList is the list of file, directories or extensions to deny during matching.
 
 By default, it contains some non-interesting extensions that are hardcoded
 in nuclei.
@@ -3590,6 +3607,106 @@ Examples:
 name: prefix
 ```
 
+
+</div>
+
+<hr />
+
+
+
+
+
+## whois.Request
+Request is a request for the WHOIS protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.whois</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+
+</div>
+<div class="dt">
+
+Matchers contains the detection mechanism for the request to identify
+whether the request was successful by doing pattern matching
+on request/responses.
+
+Multiple matchers can be combined with `matcher-condition` flag
+which accepts either `and` or `or` as argument.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>extractors</code>  <i>[]<a href="#extractorsextractor">extractors.Extractor</a></i>
+
+</div>
+<div class="dt">
+
+Extractors contains the extraction mechanism for the request to identify
+and extract parts of the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>matchers-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+MatchersCondition is the condition between the matchers. Default is OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>query</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Query contains query for the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>server</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+ 	 Optional WHOIS server URL.
+
+ 	 If present, specifies the WHOIS server to execute the Request on.
+   Otherwise, nil enables bootstrapping
 
 </div>
 
