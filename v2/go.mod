@@ -33,7 +33,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v0.0.6
+	github.com/projectdiscovery/interactsh v0.0.7
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
