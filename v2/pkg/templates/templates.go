@@ -87,6 +87,12 @@ type Template struct {
 	//  Stop execution once first match is found
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
+	// description: |
+	//   Signature is the request signature method
+	// values:
+	//   - "AWS"
+	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
 	// Executer is the actual template executor for running template requests
