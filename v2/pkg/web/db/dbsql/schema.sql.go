@@ -6,36 +6,36 @@ package dbsql
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
-const addIssue = `-- name: AddIssue :exec
+const addIssue = `-- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, debug, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id
 `
 
 type AddIssueParams struct {
-	Matchedat     sql.NullString
-	Title         sql.NullString
-	Severity      sql.NullString
-	Scansource    sql.NullString
-	Issuestate    sql.NullString
-	Description   sql.NullString
-	Author        sql.NullString
+	Matchedat     string
+	Title         string
+	Severity      string
+	Scansource    string
+	Issuestate    string
+	Description   string
+	Author        string
 	Cvss          sql.NullFloat64
 	Cwe           []int32
 	Labels        []string
-	Issuedata     sql.NullString
-	Issuetemplate sql.NullString
-	Templatename  sql.NullString
+	Issuedata     string
+	Issuetemplate string
+	Templatename  string
 	Remediation   sql.NullString
-	Debug         sql.NullString
-	Scanid        sql.NullInt64
+	Scanid        int64
 }
 
-func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) error {
-	_, err := q.db.Exec(ctx, addIssue,
+func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addIssue,
 		arg.Matchedat,
 		arg.Title,
 		arg.Severity,
@@ -50,10 +50,11 @@ func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) error {
 		arg.Issuetemplate,
 		arg.Templatename,
 		arg.Remediation,
-		arg.Debug,
 		arg.Scanid,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const addScan = `-- name: AddScan :one
@@ -62,11 +63,11 @@ INSERT INTO "public".scans
 `
 
 type AddScanParams struct {
-	Name              sql.NullString
-	Status            sql.NullString
-	Scantime          sql.NullInt64
-	Hosts             sql.NullInt64
-	Scansource        sql.NullString
+	Name              string
+	Status            string
+	Scantime          int64
+	Hosts             int64
+	Scansource        string
 	Templates         []string
 	Targets           []string
 	Config            sql.NullString
@@ -96,50 +97,54 @@ func (q *Queries) AddScan(ctx context.Context, arg AddScanParams) (int64, error)
 	return id, err
 }
 
-const addTarget = `-- name: AddTarget :exec
+const addTarget = `-- name: AddTarget :one
 INSERT INTO public.targets
-	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4)
+	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4) RETURNING id
 `
 
 type AddTargetParams struct {
-	Name       sql.NullString
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
+	Name       string
+	Internalid string
+	Filename   string
+	Total      int64
 }
 
-func (q *Queries) AddTarget(ctx context.Context, arg AddTargetParams) error {
-	_, err := q.db.Exec(ctx, addTarget,
+func (q *Queries) AddTarget(ctx context.Context, arg AddTargetParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addTarget,
 		arg.Name,
 		arg.Internalid,
 		arg.Filename,
 		arg.Total,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
-const addTemplate = `-- name: AddTemplate :exec
+const addTemplate = `-- name: AddTemplate :one
 INSERT INTO public.templates
-( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5)
+( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5) RETURNING id
 `
 
 type AddTemplateParams struct {
-	Name     sql.NullString
-	Folder   sql.NullString
+	Name     string
+	Folder   string
 	Path     string
 	Contents string
-	Hash     sql.NullString
+	Hash     string
 }
 
-func (q *Queries) AddTemplate(ctx context.Context, arg AddTemplateParams) error {
-	_, err := q.db.Exec(ctx, addTemplate,
+func (q *Queries) AddTemplate(ctx context.Context, arg AddTemplateParams) (int64, error) {
+	row := q.db.QueryRow(ctx, addTemplate,
 		arg.Name,
 		arg.Folder,
 		arg.Path,
 		arg.Contents,
 		arg.Hash,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteIssue = `-- name: DeleteIssue :exec
@@ -155,7 +160,7 @@ const deleteIssueByScanID = `-- name: DeleteIssueByScanID :exec
 DELETE FROM "public".issues WHERE scanid=$1
 `
 
-func (q *Queries) DeleteIssueByScanID(ctx context.Context, scanid sql.NullInt64) error {
+func (q *Queries) DeleteIssueByScanID(ctx context.Context, scanid int64) error {
 	_, err := q.db.Exec(ctx, deleteIssueByScanID, scanid)
 	return err
 }
@@ -189,7 +194,7 @@ func (q *Queries) DeleteTemplate(ctx context.Context, path string) error {
 
 const getIssue = `-- name: GetIssue :one
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, templatename, remediation, debug, id, scanid
+	issuedata, issuetemplate, templatename, remediation, id, scanid
 FROM
 	"public".issues WHERE id=$1 LIMIT 1
 `
@@ -214,7 +219,6 @@ func (q *Queries) GetIssue(ctx context.Context, id int64) (Issue, error) {
 		&i.Issuetemplate,
 		&i.Templatename,
 		&i.Remediation,
-		&i.Debug,
 		&i.ID,
 		&i.Scanid,
 	)
@@ -229,13 +233,13 @@ FROM
 
 type GetIssuesRow struct {
 	ID         int64
-	Scanid     sql.NullInt64
-	Matchedat  sql.NullString
-	Title      sql.NullString
-	Severity   sql.NullString
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
-	Scansource sql.NullString
+	Scanid     int64
+	Matchedat  string
+	Title      string
+	Severity   string
+	Createdat  time.Time
+	Updatedat  time.Time
+	Scansource string
 }
 
 func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
@@ -275,13 +279,13 @@ FROM
 
 type GetIssuesMatchesRow struct {
 	ID           int64
-	Matchedat    sql.NullString
-	Templatename sql.NullString
-	Severity     sql.NullString
-	Author       sql.NullString
+	Matchedat    string
+	Templatename string
+	Severity     string
+	Author       string
 }
 
-func (q *Queries) GetIssuesMatches(ctx context.Context, scanid sql.NullInt64) ([]GetIssuesMatchesRow, error) {
+func (q *Queries) GetIssuesMatches(ctx context.Context, scanid int64) ([]GetIssuesMatchesRow, error) {
 	rows, err := q.db.Query(ctx, getIssuesMatches, scanid)
 	if err != nil {
 		return nil, err
@@ -424,11 +428,11 @@ FROM
 `
 
 type GetSettingByNameRow struct {
-	Settingdata sql.NullString
-	Datatype    sql.NullString
+	Settingdata string
+	Datatype    string
 }
 
-func (q *Queries) GetSettingByName(ctx context.Context, name sql.NullString) (GetSettingByNameRow, error) {
+func (q *Queries) GetSettingByName(ctx context.Context, name string) (GetSettingByNameRow, error) {
 	row := q.db.QueryRow(ctx, getSettingByName, name)
 	var i GetSettingByNameRow
 	err := row.Scan(&i.Settingdata, &i.Datatype)
@@ -468,12 +472,12 @@ FROM
 `
 
 type GetTargetRow struct {
-	Name       sql.NullString
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
+	Name       string
+	Internalid string
+	Filename   string
+	Total      int64
+	Createdat  time.Time
+	Updatedat  time.Time
 }
 
 func (q *Queries) GetTarget(ctx context.Context, id int64) (GetTargetRow, error) {
@@ -498,14 +502,14 @@ FROM
 
 type GetTargetByNameRow struct {
 	ID         int64
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
+	Internalid string
+	Filename   string
+	Total      int64
+	Createdat  time.Time
+	Updatedat  time.Time
 }
 
-func (q *Queries) GetTargetByName(ctx context.Context, name sql.NullString) (GetTargetByNameRow, error) {
+func (q *Queries) GetTargetByName(ctx context.Context, name string) (GetTargetByNameRow, error) {
 	row := q.db.QueryRow(ctx, getTargetByName, name)
 	var i GetTargetByNameRow
 	err := row.Scan(
@@ -527,12 +531,12 @@ FROM
 
 type GetTargetsRow struct {
 	ID         int64
-	Name       sql.NullString
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
+	Name       string
+	Createdat  time.Time
+	Updatedat  time.Time
+	Internalid string
+	Filename   string
+	Total      int64
 }
 
 func (q *Queries) GetTargets(ctx context.Context) ([]GetTargetsRow, error) {
@@ -571,12 +575,12 @@ FROM
 
 type GetTargetsForSearchRow struct {
 	ID         int64
-	Name       sql.NullString
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
+	Name       string
+	Createdat  time.Time
+	Updatedat  time.Time
+	Internalid string
+	Filename   string
+	Total      int64
 }
 
 func (q *Queries) GetTargetsForSearch(ctx context.Context, dollar_1 sql.NullString) ([]GetTargetsForSearchRow, error) {
@@ -626,12 +630,12 @@ FROM
 
 type GetTemplatesRow struct {
 	ID        int64
-	Name      sql.NullString
-	Folder    sql.NullString
+	Name      string
+	Folder    string
 	Path      string
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Hash      sql.NullString
+	Createdat time.Time
+	Updatedat time.Time
+	Hash      string
 }
 
 func (q *Queries) GetTemplates(ctx context.Context) ([]GetTemplatesRow, error) {
@@ -670,14 +674,14 @@ FROM
 
 type GetTemplatesByFolderRow struct {
 	ID        int64
-	Name      sql.NullString
+	Name      string
 	Path      string
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Hash      sql.NullString
+	Createdat time.Time
+	Updatedat time.Time
+	Hash      string
 }
 
-func (q *Queries) GetTemplatesByFolder(ctx context.Context, folder sql.NullString) ([]GetTemplatesByFolderRow, error) {
+func (q *Queries) GetTemplatesByFolder(ctx context.Context, folder string) ([]GetTemplatesByFolderRow, error) {
 	rows, err := q.db.Query(ctx, getTemplatesByFolder, folder)
 	if err != nil {
 		return nil, err
@@ -712,14 +716,14 @@ FROM
 
 type GetTemplatesByFolderOneRow struct {
 	ID        int64
-	Name      sql.NullString
+	Name      string
 	Path      string
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Hash      sql.NullString
+	Createdat time.Time
+	Updatedat time.Time
+	Hash      string
 }
 
-func (q *Queries) GetTemplatesByFolderOne(ctx context.Context, folder sql.NullString) (GetTemplatesByFolderOneRow, error) {
+func (q *Queries) GetTemplatesByFolderOne(ctx context.Context, folder string) (GetTemplatesByFolderOneRow, error) {
 	row := q.db.QueryRow(ctx, getTemplatesByFolderOne, folder)
 	var i GetTemplatesByFolderOneRow
 	err := row.Scan(
@@ -741,12 +745,12 @@ FROM
 
 type GetTemplatesBySearchKeyRow struct {
 	ID        int64
-	Name      sql.NullString
-	Folder    sql.NullString
+	Name      string
+	Folder    string
 	Path      string
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Hash      sql.NullString
+	Createdat time.Time
+	Updatedat time.Time
+	Hash      string
 }
 
 func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]GetTemplatesBySearchKeyRow, error) {
@@ -786,7 +790,7 @@ type GetTemplatesForScanRow struct {
 	Contents string
 }
 
-func (q *Queries) GetTemplatesForScan(ctx context.Context, folder sql.NullString) ([]GetTemplatesForScanRow, error) {
+func (q *Queries) GetTemplatesForScan(ctx context.Context, folder string) ([]GetTemplatesForScanRow, error) {
 	rows, err := q.db.Query(ctx, getTemplatesForScan, folder)
 	if err != nil {
 		return nil, err
@@ -812,9 +816,9 @@ INSERT INTO "public".settings
 `
 
 type SetSettingsParams struct {
-	Settingdata sql.NullString
-	Datatype    sql.NullString
-	Name        sql.NullString
+	Settingdata string
+	Datatype    string
+	Name        string
 }
 
 func (q *Queries) SetSettings(ctx context.Context, arg SetSettingsParams) error {
@@ -828,7 +832,7 @@ UPDATE "public".issues SET issuestate=$2 WHERE id=$1
 
 type UpdateIssueParams struct {
 	ID         int64
-	Issuestate sql.NullString
+	Issuestate string
 }
 
 func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) error {
@@ -841,8 +845,8 @@ UPDATE "public".settings SET settingdata=$1 WHERE name=$2
 `
 
 type UpdateSettingsParams struct {
-	Settingdata sql.NullString
-	Name        sql.NullString
+	Settingdata string
+	Name        string
 }
 
 func (q *Queries) UpdateSettings(ctx context.Context, arg UpdateSettingsParams) error {
@@ -855,7 +859,7 @@ UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2
 `
 
 type UpdateTargetMetadataParams struct {
-	Total sql.NullInt64
+	Total int64
 	ID    int64
 }
 
@@ -870,9 +874,9 @@ UPDATE public.templates SET contents=$1, updatedat=$2, hash=$4 WHERE path=$3
 
 type UpdateTemplateParams struct {
 	Contents  string
-	Updatedat sql.NullTime
+	Updatedat time.Time
 	Path      string
-	Hash      sql.NullString
+	Hash      string
 }
 
 func (q *Queries) UpdateTemplate(ctx context.Context, arg UpdateTemplateParams) error {

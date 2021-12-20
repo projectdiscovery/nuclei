@@ -37,28 +37,28 @@ type AddIssueRequest struct {
 func (s *Server) AddIssue(ctx echo.Context) error {
 	var req AddIssueRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
 
-	id, err := s.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
-		Scanid:        sql.NullInt64{Int64: req.ScanID, Valid: true},
-		Matchedat:     sql.NullString{String: req.Matchedat, Valid: true},
-		Title:         sql.NullString{String: req.Title, Valid: true},
-		Severity:      sql.NullString{String: req.Severity, Valid: true},
-		Scansource:    sql.NullString{String: req.Scansource, Valid: true},
-		Issuestate:    sql.NullString{String: req.Issuestate, Valid: true},
-		Description:   sql.NullString{String: req.Description, Valid: true},
-		Author:        sql.NullString{String: req.Author, Valid: true},
+	id, err := s.db.AddIssue(context.Background(), dbsql.AddIssueParams{
+		Scanid:        req.ScanID,
+		Matchedat:     req.Matchedat,
+		Title:         req.Title,
+		Severity:      req.Severity,
+		Scansource:    req.Scansource,
+		Issuestate:    req.Issuestate,
+		Description:   req.Description,
+		Author:        req.Author,
 		Cvss:          sql.NullFloat64{Float64: req.Cvss, Valid: true},
 		Cwe:           req.Cwe,
 		Labels:        req.Labels,
-		Issuedata:     sql.NullString{String: req.Issuedata, Valid: true},
-		Issuetemplate: sql.NullString{String: req.Issuetemplate, Valid: true},
-		Templatename:  sql.NullString{String: req.Templatename, Valid: true},
+		Issuedata:     req.Issuedata,
+		Issuetemplate: req.Issuetemplate,
+		Templatename:  req.Templatename,
 		Remediation:   sql.NullString{String: req.Remediation, Valid: true},
 	})
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not add issue to db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not add issue to db").Error())
 	}
 	return ctx.JSON(200, map[string]int64{"id": id})
 }
@@ -87,21 +87,21 @@ type GetIssuesResponse struct {
 
 // GetIssues handlers /issues getting route
 func (s *Server) GetIssues(ctx echo.Context) error {
-	response, err := s.db.Queries().GetIssues(context.Background())
+	response, err := s.db.GetIssues(context.Background())
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issues fromdb"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issues fromdb").Error())
 	}
 	targets := make([]GetIssuesResponse, len(response))
 	for i, value := range response {
 		targets[i] = GetIssuesResponse{
 			ID:         value.ID,
-			ScanID:     value.Scanid.Int64,
-			Matchedat:  value.Matchedat.String,
-			Title:      value.Title.String,
-			Severity:   value.Severity.String,
-			Createdat:  value.Createdat.Time,
-			Updatedat:  value.Updatedat.Time,
-			Scansource: value.Scansource.String,
+			ScanID:     value.Scanid,
+			Matchedat:  value.Matchedat,
+			Title:      value.Title,
+			Severity:   value.Severity,
+			Createdat:  value.Createdat,
+			Updatedat:  value.Updatedat,
+			Scansource: value.Scansource,
 		}
 	}
 	return ctx.JSON(200, targets)
@@ -112,31 +112,31 @@ func (s *Server) GetIssue(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id").Error())
 	}
-	scan, err := s.db.Queries().GetIssue(context.Background(), id)
+	scan, err := s.db.GetIssue(context.Background(), id)
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issue from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issue from db").Error())
 	}
 	value := GetIssuesResponse{
 		ID:            scan.ID,
-		ScanID:        scan.Scanid.Int64,
-		Matchedat:     scan.Matchedat.String,
-		Title:         scan.Title.String,
-		Severity:      scan.Severity.String,
-		Scansource:    scan.Scansource.String,
-		Issuestate:    scan.Issuestate.String,
-		Description:   scan.Description.String,
-		Author:        scan.Author.String,
+		ScanID:        scan.Scanid,
+		Matchedat:     scan.Matchedat,
+		Title:         scan.Title,
+		Severity:      scan.Severity,
+		Scansource:    scan.Scansource,
+		Issuestate:    scan.Issuestate,
+		Description:   scan.Description,
+		Author:        scan.Author,
 		Cvss:          scan.Cvss.Float64,
 		Cwe:           scan.Cwe,
 		Labels:        scan.Labels,
-		Issuedata:     scan.Issuedata.String,
-		Issuetemplate: scan.Issuetemplate.String,
-		Templatename:  scan.Templatename.String,
+		Issuedata:     scan.Issuedata,
+		Issuetemplate: scan.Issuetemplate,
+		Templatename:  scan.Templatename,
 		Remediation:   scan.Remediation.String,
-		Createdat:     scan.Createdat.Time,
-		Updatedat:     scan.Updatedat.Time,
+		Createdat:     scan.Createdat,
+		Updatedat:     scan.Updatedat,
 	}
 	return ctx.JSON(200, value)
 }
@@ -150,19 +150,19 @@ type UpdateIssueRequest struct {
 func (s *Server) UpdateIssue(ctx echo.Context) error {
 	var req UpdateIssueRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id").Error())
 	}
-	err = s.db.Queries().UpdateIssue(context.Background(), dbsql.UpdateIssueParams{
+	err = s.db.UpdateIssue(context.Background(), dbsql.UpdateIssueParams{
 		ID:         id,
-		Issuestate: sql.NullString{String: req.State, Valid: true},
+		Issuestate: req.State,
 	})
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not update issue"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update issue").Error())
 	}
 	return nil
 }
@@ -172,10 +172,10 @@ func (s *Server) DeleteIssue(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id").Error())
 	}
-	if err := s.db.Queries().DeleteIssue(context.Background(), id); err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete issue"))
+	if err := s.db.DeleteIssue(context.Background(), id); err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete issue").Error())
 	}
 	return nil
 }

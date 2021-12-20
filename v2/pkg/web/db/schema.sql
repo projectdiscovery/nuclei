@@ -1,44 +1,44 @@
 CREATE TABLE "public".templates ( 
-	id                   bigserial  NOT NULL,
-	name                 varchar(100),
-	folder               varchar,
+	id                   bigserial NOT NULL,
+	name                 varchar(100) NOT NULL,
+	folder               varchar NOT NULL,
 	"path"               varchar  NOT NULL,
 	contents             text  NOT NULL,
-	createdat            timestamptz DEFAULT CURRENT_TIMESTAMP,
-	updatedat            date DEFAULT CURRENT_DATE,
-    hash                 varchar   ,
+	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updatedat            date  NOT NULL DEFAULT CURRENT_DATE,
+    hash                 varchar  NOT NULL,
 	CONSTRAINT pk_templates_id PRIMARY KEY ( id ),
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
 
 CREATE  TABLE "public".targets ( 
 	id                   bigserial NOT NULL ,
-	name                 varchar(100)   ,
-    internalid           varchar,
-    filename             varchar,
-    total                bigint,
-	createdat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
-	updatedat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
+	name                 varchar(100) NOT NULL,
+    internalid           varchar NOT NULL,
+    filename             varchar NOT NULL,
+    total                bigint NOT NULL,
+	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
+	updatedat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	CONSTRAINT pk_targets_id PRIMARY KEY ( id )
  );
 
 
 CREATE  TABLE "public".settings ( 
-	settingdata          varchar   ,
-	datatype             varchar   ,
-	name                 varchar(100)   ,
+	settingdata          varchar NOT NULL,
+	datatype             varchar NOT NULL,
+	name                 varchar(100) NOT NULL,
 	CONSTRAINT unq_settings UNIQUE ( name ) 
  );
 
 
 CREATE  TABLE "public".scans ( 
-	name                 varchar(100),
-	status               varchar(30),
-	scantime             bigint,
-	hosts                bigint,
-	scansource           varchar,
-	templates            varchar[],
-	targets              varchar[],
+	name                 varchar(100) NOT NULL,
+	status               varchar(30) NOT NULL,
+	scantime             bigint NOT NULL,
+	hosts                bigint NOT NULL,
+	scansource           varchar NOT NULL,
+	templates            varchar[] NOT NULL,
+	targets              varchar[] NOT NULL,
 	config				 varchar,
 	runnow 				 boolean,
 	reporting 			 varchar,
@@ -49,25 +49,24 @@ CREATE  TABLE "public".scans (
 );
 
 CREATE  TABLE "public".issues ( 
-	matchedat            varchar,
-	title                varchar,
-	severity             varchar,
-	createdat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
-	updatedat            timestamptz DEFAULT CURRENT_TIMESTAMP  ,
-	scansource           varchar,
-	issuestate           varchar,
-	description          varchar,
-	author               varchar,
+	matchedat            varchar NOT NULL,
+	title                varchar NOT NULL,
+	severity             varchar NOT NULL,
+	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
+	updatedat            timestamptz  NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
+	scansource           varchar NOT NULL,
+	issuestate           varchar NOT NULL,
+	description          varchar NOT NULL,
+	author               varchar NOT NULL,
 	cvss                 float8,
 	cwe                  integer[],
 	labels               varchar[],
-	issuedata            text,
-	issuetemplate        text,
-	templatename         varchar,
+	issuedata            text NOT NULL,
+	issuetemplate        text NOT NULL,
+	templatename         varchar NOT NULL,
 	remediation          text,
-	debug                text,
 	id                   bigserial NOT NULL,
-	scanid               bigint,
+	scanid               bigint NOT NULL,
 	CONSTRAINT pk_issues_id PRIMARY KEY ( id )
 );
 
@@ -100,9 +99,9 @@ SELECT contents FROM public.templates WHERE path=$1 LIMIT 1;
 -- name: GetTemplatesForScan :many
 SELECT path, contents FROM public.templates WHERE folder=$1 OR path=$1 OR path LIKE $1||'%';
 
--- name: AddTemplate :exec
+-- name: AddTemplate :one
 INSERT INTO public.templates
-( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5);
+( name, folder, "path", contents, createdat, updatedat, hash) VALUES ($1, $2, $3 , $4, NOW(), NOW(), $5) RETURNING id;
 
 -- name: UpdateTemplate :exec
 UPDATE public.templates SET contents=$1, updatedat=$2, hash=$4 WHERE path=$3;
@@ -110,9 +109,9 @@ UPDATE public.templates SET contents=$1, updatedat=$2, hash=$4 WHERE path=$3;
 -- name: DeleteTarget :exec
 DELETE FROM public.targets WHERE ID=$1;
 
--- name: AddTarget :exec
+-- name: AddTarget :one
 INSERT INTO public.targets
-	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4);
+	( name, createdat, updatedat, internalid, filename, total) VALUES ($1, NOW(), NOW(), $2, $3, $4) RETURNING id;
 
 -- name: GetTarget :one
 SELECT name, internalid, filename, total, createdat, updatedat
@@ -162,11 +161,11 @@ SELECT name, status, scantime, hosts, scansource, templates, targets, config, ru
 FROM
 	"public".scans WHERE name LIKE '%'||$1||'%';
 
--- name: AddIssue :exec
+-- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, debug, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id;
 
 -- name: DeleteIssue :exec
 DELETE FROM "public".issues WHERE id=$1;
@@ -177,7 +176,7 @@ DELETE FROM "public".issues WHERE scanid=$1;
 
 -- name: GetIssue :one
 SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, templatename, remediation, debug, id, scanid
+	issuedata, issuetemplate, templatename, remediation, id, scanid
 FROM
 	"public".issues WHERE id=$1 LIMIT 1;
 

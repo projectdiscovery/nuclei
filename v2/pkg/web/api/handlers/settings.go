@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
@@ -26,16 +25,16 @@ const (
 
 // GetSettings handlers /settings listing route
 func (s *Server) GetSettings(ctx echo.Context) error {
-	settings, err := s.db.Queries().GetSettings(context.Background())
+	settings, err := s.db.GetSettings(context.Background())
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get settings from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get settings from db").Error())
 	}
 	response := make([]GetSettingsResponse, len(settings))
 	for i, setting := range settings {
 		response[i] = GetSettingsResponse{
-			Name:     setting.Name.String,
-			Type:     setting.Datatype.String,
-			Contents: setting.Settingdata.String,
+			Name:     setting.Name,
+			Type:     setting.Datatype,
+			Contents: setting.Settingdata,
 		}
 	}
 	return ctx.JSON(200, response)
@@ -45,14 +44,14 @@ func (s *Server) GetSettings(ctx echo.Context) error {
 func (s *Server) GetSettingByName(ctx echo.Context) error {
 	name := ctx.Param("name")
 
-	settings, err := s.db.Queries().GetSettingByName(context.Background(), sql.NullString{String: name, Valid: true})
+	settings, err := s.db.GetSettingByName(context.Background(), name)
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get setting from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get setting from db").Error())
 	}
 	response := GetSettingsResponse{
 		Name:     name,
-		Type:     settings.Datatype.String,
-		Contents: settings.Settingdata.String,
+		Type:     settings.Datatype,
+		Contents: settings.Settingdata,
 	}
 	return ctx.JSON(200, response)
 }
@@ -68,15 +67,15 @@ type SetSettingRequest struct {
 func (s *Server) SetSetting(ctx echo.Context) error {
 	var body SetSettingRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
-	err := s.db.Queries().SetSettings(context.Background(), dbsql.SetSettingsParams{
-		Settingdata: sql.NullString{String: body.Contents, Valid: true},
-		Datatype:    sql.NullString{String: body.Type, Valid: true},
-		Name:        sql.NullString{String: body.Name, Valid: true},
+	err := s.db.SetSettings(context.Background(), dbsql.SetSettingsParams{
+		Settingdata: body.Contents,
+		Datatype:    body.Type,
+		Name:        body.Name,
 	})
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not set settings to db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not set settings to db").Error())
 	}
 	return nil
 }
@@ -93,14 +92,14 @@ func (s *Server) UpdateSettingByName(ctx echo.Context) error {
 
 	var body UpdateSettingRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
-	err := s.db.Queries().UpdateSettings(context.Background(), dbsql.UpdateSettingsParams{
-		Settingdata: sql.NullString{String: body.Contents, Valid: true},
-		Name:        sql.NullString{String: name, Valid: true},
+	err := s.db.UpdateSettings(context.Background(), dbsql.UpdateSettingsParams{
+		Settingdata: body.Contents,
+		Name:        name,
 	})
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not update settings to db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update settings to db").Error())
 	}
 	return nil
 }

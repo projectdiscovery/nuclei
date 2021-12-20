@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
 // ScanService is a service for controlling and launching scans
 type ScanService struct {
 	Logs *ErrorLogsService
 
-	db          *db.Database
+	db          dbsql.Querier
 	concurrency int
 	cancel      context.CancelFunc
 	target      *targets.TargetsStorage
@@ -34,7 +34,7 @@ type ScanRequest struct {
 }
 
 // NewScanService returns a new scan service
-func NewScanService(logs string, concurrency int, db *db.Database, target *targets.TargetsStorage) *ScanService {
+func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targets.TargetsStorage) *ScanService {
 	context, cancel := context.WithCancel(context.Background())
 
 	service := &ScanService{
@@ -96,7 +96,7 @@ func (s *ScanService) pollDB(ctx context.Context) {
 }
 
 // CalculateTargetCount calculates target count from Target ID (int) or static targets.
-func CalculateTargetCount(targets []string, db *db.Database) int64 {
+func CalculateTargetCount(targets []string, db dbsql.Querier) int64 {
 	var targetCount int64
 
 	for _, target := range targets {
@@ -104,8 +104,8 @@ func CalculateTargetCount(targets []string, db *db.Database) int64 {
 		if err != nil {
 			targetCount++
 		} else {
-			resp, _ := db.Queries().GetTarget(context.Background(), targetID)
-			targetCount += resp.Total.Int64
+			resp, _ := db.GetTarget(context.Background(), targetID)
+			targetCount += resp.Total
 		}
 	}
 	return targetCount

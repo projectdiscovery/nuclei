@@ -28,7 +28,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v3"
@@ -44,12 +43,12 @@ func makePercentReturnFunc(stats progress.Progress) percentReturnFunc {
 
 // worker is a worker for executing a scan request
 func (s *ScanService) worker(req ScanRequest) error {
-	setting, err := s.db.Queries().GetSettingByName(context.Background(), sql.NullString{String: req.Config, Valid: true})
+	setting, err := s.db.GetSettingByName(context.Background(), req.Config)
 	if err != nil {
 		return err
 	}
 	settings := &settings.Settings{}
-	if yamlErr := yaml.NewDecoder(strings.NewReader(setting.Settingdata.String)).Decode(settings); yamlErr != nil {
+	if yamlErr := yaml.NewDecoder(strings.NewReader(setting.Settingdata)).Decode(settings); yamlErr != nil {
 		return yamlErr
 	}
 	typesOptions := settings.ToTypesOptions()
@@ -138,11 +137,11 @@ func (s *ScanService) inputProviderFromRequest(inputsList []string) (core.InputP
 			_, _ = tempfile.WriteString(input)
 			_, _ = tempfile.WriteString("\n")
 		} else {
-			target, err := s.db.Queries().GetTarget(context.Background(), parsedID)
+			target, err := s.db.GetTarget(context.Background(), parsedID)
 			if err != nil {
 				return nil, err
 			}
-			read, err := s.target.Read(target.Internalid.String)
+			read, err := s.target.Read(target.Internalid)
 			if err != nil {
 				return nil, err
 			}
@@ -162,7 +161,7 @@ func (s *ScanService) storeTemplatesFromRequest(templatesList []string) (string,
 	}
 	var templates, workflows []string
 	for _, template := range templatesList {
-		resp, err := s.db.Queries().GetTemplatesForScan(context.Background(), sql.NullString{String: template, Valid: true})
+		resp, err := s.db.GetTemplatesForScan(context.Background(), template)
 		if err != nil {
 			return "", nil, nil, err
 		}
@@ -185,13 +184,13 @@ func (s *ScanService) storeTemplatesFromRequest(templatesList []string) (string,
 }
 
 type wrappedOutputWriter struct {
-	db        *db.Database
+	db        dbsql.Querier
 	scanid    int64
 	logs      *bufio.Writer
 	colorizer aurora.Aurora
 }
 
-func newWrappedOutputWriter(db *db.Database, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
+func newWrappedOutputWriter(db dbsql.Querier, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
 	return &wrappedOutputWriter{db: db, logs: logWriter, colorizer: aurora.NewAurora(false)}
 }
 
@@ -220,22 +219,22 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		cvss = event.Info.Classification.CVSSScore
 		cweids = convertCWEIDsToSlice(event.Info.Classification.CWEID)
 	}
-	_, err = w.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
-		Matchedat:     sql.NullString{String: event.Matched, Valid: true},
-		Title:         sql.NullString{String: format.Summary(event), Valid: true},
-		Severity:      sql.NullString{String: event.Info.SeverityHolder.Severity.String(), Valid: true},
-		Scansource:    sql.NullString{String: event.Matched, Valid: true},
-		Issuestate:    sql.NullString{String: "open", Valid: true},
-		Description:   sql.NullString{String: description, Valid: true},
-		Author:        sql.NullString{String: event.Info.Authors.String(), Valid: true},
+	_, err = w.db.AddIssue(context.Background(), dbsql.AddIssueParams{
+		Matchedat:     event.Matched,
+		Title:         format.Summary(event),
+		Severity:      event.Info.SeverityHolder.Severity.String(),
+		Scansource:    event.Matched,
+		Issuestate:    "open",
+		Description:   description,
+		Author:        event.Info.Authors.String(),
 		Cvss:          sql.NullFloat64{Float64: cvss, Valid: true},
 		Cwe:           cweids,
 		Labels:        event.Info.Tags.ToSlice(),
-		Issuedata:     sql.NullString{String: format.MarkdownDescription(event), Valid: true},
-		Issuetemplate: sql.NullString{String: string(contents), Valid: true},
-		Templatename:  sql.NullString{String: event.Template, Valid: true},
+		Issuedata:     format.MarkdownDescription(event),
+		Issuetemplate: string(contents),
+		Templatename:  event.Template,
 		Remediation:   sql.NullString{String: event.Info.Remediation, Valid: true},
-		Scanid:        sql.NullInt64{Int64: w.scanid, Valid: true},
+		Scanid:        w.scanid,
 	})
 	return err
 }

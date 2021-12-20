@@ -2,7 +2,6 @@ package settings
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
@@ -125,7 +124,7 @@ func (s *Settings) ToTypesOptions() *types.Options {
 
 // InitializeDefaultSettings initializes default settings for the instance
 func InitializeDefaultSettings(db *db.Database) error {
-	_, err := db.Queries().GetSettingByName(context.Background(), sql.NullString{String: "default", Valid: true})
+	_, err := db.Queries().GetSettingByName(context.Background(), "default")
 	if err == nil {
 		return nil // already exists
 	}
@@ -135,9 +134,9 @@ func InitializeDefaultSettings(db *db.Database) error {
 		return err
 	}
 	err = db.Queries().SetSettings(context.Background(), dbsql.SetSettingsParams{
-		Datatype:    sql.NullString{String: "internal", Valid: true},
-		Name:        sql.NullString{String: "default", Valid: true},
-		Settingdata: sql.NullString{String: builder.String(), Valid: true},
+		Datatype:    "internal",
+		Name:        "default",
+		Settingdata: builder.String(),
 	})
 	return err
 }

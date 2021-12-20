@@ -7,6 +7,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
@@ -18,6 +21,9 @@ import (
 )
 
 func TestAPI(t *testing.T) {
+	gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+
 	protocolinit.Init(testutils.DefaultOptions)
 
 	database, err := db.New("postgres://postgres:mysecretpassword@localhost:5432/postgres")
@@ -35,11 +41,13 @@ func TestAPI(t *testing.T) {
 	require.Nil(t, err, "could not create tempdir")
 	defer os.RemoveAll(logsDir)
 
+	dbInstance := database.Queries()
+
 	targets := targets.NewTargetsStorage(tempdir)
-	scans := scans.NewScanService(logsDir, 1, database, targets)
+	scans := scans.NewScanService(logsDir, 1, dbInstance, targets)
 	defer scans.Close()
 
-	server := handlers.New(database, targets, scans)
+	server := handlers.New(dbInstance, targets, scans)
 
 	api := New(&Config{
 		Userame:  "user",

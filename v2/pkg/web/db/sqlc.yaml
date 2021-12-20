@@ -6,3 +6,4 @@ packages:
     schema: "schema.sql"
     engine: "postgresql"
     sql_package: "pgx/v4"
+    emit_interface: true

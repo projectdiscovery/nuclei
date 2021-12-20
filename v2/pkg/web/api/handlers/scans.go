@@ -31,7 +31,7 @@ type AddScanRequest struct {
 func (s *Server) AddScan(ctx echo.Context) error {
 	var req AddScanRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
 
 	targets := make([]string, len(req.Targets))
@@ -39,11 +39,11 @@ func (s *Server) AddScan(ctx echo.Context) error {
 		targets[i] = value
 	}
 	hostCount := scans.CalculateTargetCount(req.Targets, s.db)
-	id, err := s.db.Queries().AddScan(context.Background(), dbsql.AddScanParams{
-		Name:              sql.NullString{String: req.Name, Valid: true},
-		Status:            sql.NullString{String: "scheduled", Valid: true},
-		Hosts:             sql.NullInt64{Int64: hostCount, Valid: true},
-		Scansource:        sql.NullString{String: req.ScanSource, Valid: true},
+	id, err := s.db.AddScan(context.Background(), dbsql.AddScanParams{
+		Name:              req.Name,
+		Status:            "scheduled",
+		Hosts:             hostCount,
+		Scansource:        req.ScanSource,
 		Templates:         req.Templates,
 		Targets:           targets,
 		Config:            sql.NullString{String: req.Config, Valid: true},
@@ -53,7 +53,7 @@ func (s *Server) AddScan(ctx echo.Context) error {
 		Scheduletime:      sql.NullString{String: req.ScheduleTime, Valid: true},
 	})
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not add scan to db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not add scan to db").Error())
 	}
 	if req.RunNow {
 		s.scans.Queue(scans.ScanRequest{
@@ -90,19 +90,19 @@ func (s *Server) GetScans(ctx echo.Context) error {
 	var response []dbsql.Scan
 	var err error
 	if searchKey := ctx.QueryParam("search"); searchKey != "" {
-		response, err = s.db.Queries().GetScansBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
+		response, err = s.db.GetScansBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
 	} else {
-		response, err = s.db.Queries().GetScans(context.Background())
+		response, err = s.db.GetScans(context.Background())
 	}
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scans from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scans from db").Error())
 	}
 	targets := make([]GetScanResponse, len(response))
 	for i, value := range response {
 		targets[i] = GetScanResponse{
 			ID:                value.ID,
-			Status:            value.Status.String,
-			Name:              value.Name.String,
+			Status:            value.Status,
+			Name:              value.Name,
 			Templates:         value.Templates,
 			Targets:           value.Targets,
 			Config:            value.Config.String,
@@ -110,9 +110,9 @@ func (s *Server) GetScans(ctx echo.Context) error {
 			Reporting:         value.Reporting.String,
 			ScheduleOccurence: value.Scheduleoccurence.String,
 			ScheduleTime:      value.Scheduletime.String,
-			ScanSource:        value.Scansource.String,
-			ScanTime:          time.Duration(value.Scantime.Int64),
-			Hosts:             value.Hosts.Int64,
+			ScanSource:        value.Scansource,
+			ScanTime:          time.Duration(value.Scantime),
+			Hosts:             value.Hosts,
 		}
 	}
 	return ctx.JSON(200, targets)
@@ -123,16 +123,16 @@ func (s *Server) GetScan(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
-	scan, err := s.db.Queries().GetScan(context.Background(), id)
+	scan, err := s.db.GetScan(context.Background(), id)
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan from db").Error())
 	}
 	value := GetScanResponse{
 		ID:                scan.ID,
-		Status:            scan.Status.String,
-		Name:              scan.Name.String,
+		Status:            scan.Status,
+		Name:              scan.Name,
 		Templates:         scan.Templates,
 		Targets:           scan.Targets,
 		Config:            scan.Config.String,
@@ -140,9 +140,9 @@ func (s *Server) GetScan(ctx echo.Context) error {
 		Reporting:         scan.Reporting.String,
 		ScheduleOccurence: scan.Scheduleoccurence.String,
 		ScheduleTime:      scan.Scheduletime.String,
-		ScanSource:        scan.Scansource.String,
-		ScanTime:          time.Duration(scan.Scantime.Int64),
-		Hosts:             scan.Hosts.Int64,
+		ScanSource:        scan.Scansource,
+		ScanTime:          time.Duration(scan.Scantime),
+		Hosts:             scan.Hosts,
 	}
 	return ctx.JSON(200, value)
 }
@@ -165,19 +165,19 @@ func (s *Server) GetScanMatches(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
-	rows, err := s.db.Queries().GetIssuesMatches(context.Background(), sql.NullInt64{Int64: id})
+	rows, err := s.db.GetIssuesMatches(context.Background(), id)
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan matches from db"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan matches from db").Error())
 	}
 	response := make([]GetScanMatchesResponse, len(rows))
 	for i, row := range rows {
 		response[i] = GetScanMatchesResponse{
-			TemplateName: row.Templatename.String,
-			Severity:     row.Severity.String,
-			Author:       row.Author.String,
-			MatchedAt:    row.Matchedat.String,
+			TemplateName: row.Templatename,
+			Severity:     row.Severity,
+			Author:       row.Author,
+			MatchedAt:    row.Matchedat,
 		}
 	}
 	return ctx.JSON(200, response)
@@ -200,7 +200,7 @@ func (s *Server) UpdateScan(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
 	_ = id
 	// todo: Handle pause resume update and time update
@@ -212,15 +212,15 @@ func (s *Server) DeleteScan(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
-	err = s.db.Queries().DeleteScan(context.Background(), id)
-	deleteErr := s.db.Queries().DeleteIssueByScanID(context.Background(), sql.NullInt64{Int64: id, Valid: true})
+	err = s.db.DeleteScan(context.Background(), id)
+	deleteErr := s.db.DeleteIssueByScanID(context.Background(), id)
 	if deleteErr != nil {
-		return echo.NewHTTPError(500, errors.Wrap(deleteErr, "could not delete issues"))
+		return echo.NewHTTPError(500, errors.Wrap(deleteErr, "could not delete issues").Error())
 	}
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete scan"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete scan").Error())
 	}
 	return nil
 }
@@ -232,11 +232,11 @@ func (s *Server) GetScanErrors(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id"))
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
 	logsReader, err := s.scans.Logs.Read(id)
 	if err != nil {
-		return echo.NewHTTPError(500, errors.Wrap(err, "could not read scans errors"))
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not read scans errors").Error())
 	}
 	defer logsReader.Close()
 

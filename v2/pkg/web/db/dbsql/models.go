@@ -4,36 +4,36 @@ package dbsql
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Issue struct {
-	Matchedat     sql.NullString
-	Title         sql.NullString
-	Severity      sql.NullString
-	Createdat     sql.NullTime
-	Updatedat     sql.NullTime
-	Scansource    sql.NullString
-	Issuestate    sql.NullString
-	Description   sql.NullString
-	Author        sql.NullString
+	Matchedat     string
+	Title         string
+	Severity      string
+	Createdat     time.Time
+	Updatedat     time.Time
+	Scansource    string
+	Issuestate    string
+	Description   string
+	Author        string
 	Cvss          sql.NullFloat64
 	Cwe           []int32
 	Labels        []string
-	Issuedata     sql.NullString
-	Issuetemplate sql.NullString
-	Templatename  sql.NullString
+	Issuedata     string
+	Issuetemplate string
+	Templatename  string
 	Remediation   sql.NullString
-	Debug         sql.NullString
 	ID            int64
-	Scanid        sql.NullInt64
+	Scanid        int64
 }
 
 type Scan struct {
-	Name              sql.NullString
-	Status            sql.NullString
-	Scantime          sql.NullInt64
-	Hosts             sql.NullInt64
-	Scansource        sql.NullString
+	Name              string
+	Status            string
+	Scantime          int64
+	Hosts             int64
+	Scansource        string
 	Templates         []string
 	Targets           []string
 	Config            sql.NullString
@@ -45,28 +45,28 @@ type Scan struct {
 }
 
 type Setting struct {
-	Settingdata sql.NullString
-	Datatype    sql.NullString
-	Name        sql.NullString
+	Settingdata string
+	Datatype    string
+	Name        string
 }
 
 type Target struct {
 	ID         int64
-	Name       sql.NullString
-	Internalid sql.NullString
-	Filename   sql.NullString
-	Total      sql.NullInt64
-	Createdat  sql.NullTime
-	Updatedat  sql.NullTime
+	Name       string
+	Internalid string
+	Filename   string
+	Total      int64
+	Createdat  time.Time
+	Updatedat  time.Time
 }
 
 type Template struct {
 	ID        int64
-	Name      sql.NullString
-	Folder    sql.NullString
+	Name      string
+	Folder    string
 	Path      string
 	Contents  string
-	Createdat sql.NullTime
-	Updatedat sql.NullTime
-	Hash      sql.NullString
+	Createdat time.Time
+	Updatedat time.Time
+	Hash      string
 }

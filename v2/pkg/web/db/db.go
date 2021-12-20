@@ -23,7 +23,7 @@ func New(postgresURL string) (*Database, error) {
 }
 
 // Queries returns the dbsql queries structure
-func (d *Database) Queries() *dbsql.Queries {
+func (d *Database) Queries() dbsql.Querier {
 	return dbsql.New(d.pool)
 }
 

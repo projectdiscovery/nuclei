@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -95,30 +94,31 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 	if err != nil {
 		return semver.Version{}, err
 	}
+
 	mutex.RLock()
 	currentIgnoreHash := ignoreHash
 	mutex.RUnlock()
 
 	if versions.IgnoreHash != currentIgnoreHash {
-		//	data, err := client.GetLatestIgnoreFile()
-		//	if err != nil {
-		//		return semver.Version{}, err
-		//	}
-		//
-		//	mutex.Lock()
-		//	ignoreFile = data
-		//	ignoreHash = versions.IgnoreHash
-		//	mutex.Unlock()
+		data, err := client.GetLatestIgnoreFile()
+		if err != nil {
+			return semver.Version{}, err
+		}
+
+		mutex.Lock()
+		ignoreFile = data
+		ignoreHash = versions.IgnoreHash
+		mutex.Unlock()
 	}
 	ctx := context.Background()
 
-	parsed, err := semver.Parse(strings.TrimPrefix(versions.Templates, "v"))
+	parsed, err := semver.Parse(versions.Templates)
 	if err != nil {
 		return semver.Version{}, err
 	}
-	row, _ := db.Queries().GetTemplatesByFolderOne(context.Background(), sql.NullString{String: repoName, Valid: true})
+	row, _ := db.Queries().GetTemplatesByFolderOne(context.Background(), repoName)
 
-	notInstalledTemplates := row.Hash.String == ""
+	notInstalledTemplates := row.Hash == ""
 
 	if notInstalledTemplates {
 		// Download the repository and write the revision to a HEAD file.
@@ -215,16 +215,17 @@ type templateUpdateResults struct {
 
 // compareAndWriteTemplates compares and returns the stats of a template update operations.
 func compareAndWriteTemplates(zipReader *zip.Reader, db *db.Database) (*templateUpdateResults, error) {
-	templates, _ := db.Queries().GetTemplatesByFolder(context.Background(), sql.NullString{String: repoName})
+	templates, err := db.Queries().GetTemplatesByFolder(context.Background(), repoName)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get templates list")
+	}
 
 	templateChecksumsMap := make(map[string]string, len(templates))
 	for _, template := range templates {
-		templateChecksumsMap[template.Path] = template.Hash.String
+		templateChecksumsMap[template.Path] = template.Hash
 	}
 
 	results := &templateUpdateResults{}
-
-	var err error
 	// We use file-checksums that are md5 hashes to store the list of files->hashes
 	// that have been downloaded previously.
 	// If the path isn't found in new update after being read from the previous checksum,
@@ -258,20 +259,22 @@ func compareAndWriteTemplates(zipReader *zip.Reader, db *db.Database) (*template
 
 		if !checksumOk {
 			_, err = db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
-				Name:     sql.NullString{String: filepath.Base(templateAbsolutePath), Valid: true},
-				Folder:   sql.NullString{String: repoName, Valid: true},
+				Name:     filepath.Base(templateAbsolutePath),
+				Folder:   repoName,
 				Path:     templateAbsolutePath,
 				Contents: string(data),
-				Hash:     sql.NullString{String: newHash, Valid: true},
+				Hash:     newHash,
 			})
+			gologger.Info().Msgf("Added template: %s\n", templateAbsolutePath)
 			results.additions = append(results.additions, templateAbsolutePath)
 		} else if checksumOk && oldTemplateChecksum != newHash {
 			err = db.Queries().UpdateTemplate(context.Background(), dbsql.UpdateTemplateParams{
-				Updatedat: sql.NullTime{Time: time.Now()},
+				Updatedat: time.Now(),
 				Path:      templateAbsolutePath,
 				Contents:  string(data),
-				Hash:      sql.NullString{String: newHash, Valid: true},
+				Hash:      newHash,
 			})
+			gologger.Info().Msgf("Updated template: %s\n", templateAbsolutePath)
 			results.modifications = append(results.modifications, templateAbsolutePath)
 		}
 		if err != nil {
@@ -288,6 +291,7 @@ func compareAndWriteTemplates(zipReader *zip.Reader, db *db.Database) (*template
 			if err = db.Queries().DeleteTemplate(context.Background(), templatePath); err != nil {
 				return nil, err
 			}
+			gologger.Info().Msgf("Deleted template: %s\n", templatePath)
 			results.deletions = append(results.deletions, templatePath)
 		}
 	}
