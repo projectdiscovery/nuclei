@@ -3,32 +3,19 @@ package scans
 import (
 	"bufio"
 	"context"
-	"database/sql"
-	"io"
-	"io/ioutil"
 	"log"
 	"os"
-	"path"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v3"
 )
@@ -76,6 +63,7 @@ func (s *ScanService) worker(req ScanRequest) error {
 		return err
 	}
 	defer logWriter.Close()
+
 	buflogWriter := bufio.NewWriter(logWriter)
 	defer buflogWriter.Flush()
 
@@ -121,159 +109,4 @@ func (s *ScanService) worker(req ScanRequest) error {
 	_ = executer.Execute(finalTemplates, inputProvider)
 	log.Printf("Finish scan for ID: %d\n", req.ScanID)
 	return nil
-}
-
-// inputProviderFromRequest returns an input provider from scan request
-func (s *ScanService) inputProviderFromRequest(inputsList []string) (core.InputProvider, error) {
-	tempfile, err := ioutil.TempFile("", "nuclei-input-*")
-	if err != nil {
-		return nil, err
-	}
-	defer tempfile.Close()
-
-	for _, input := range inputsList {
-		parsedID, err := strconv.ParseInt(input, 10, 64)
-		if err != nil {
-			_, _ = tempfile.WriteString(input)
-			_, _ = tempfile.WriteString("\n")
-		} else {
-			target, err := s.db.GetTarget(context.Background(), parsedID)
-			if err != nil {
-				return nil, err
-			}
-			read, err := s.target.Read(target.Internalid)
-			if err != nil {
-				return nil, err
-			}
-			_, _ = io.Copy(tempfile, read)
-			_ = read.Close()
-		}
-	}
-	return &inputs.FileInputProvider{Path: tempfile.Name()}, nil
-}
-
-// storeTemplatesFromRequest writes templates from db to a temporary
-// on disk directory for the duration of the scan.
-func (s *ScanService) storeTemplatesFromRequest(templatesList []string) (string, []string, []string, error) {
-	directory, err := ioutil.TempDir("", "nuclei-templates-*")
-	if err != nil {
-		return "", nil, nil, err
-	}
-	var templates, workflows []string
-	for _, template := range templatesList {
-		resp, err := s.db.GetTemplatesForScan(context.Background(), template)
-		if err != nil {
-			return "", nil, nil, err
-		}
-
-		for _, value := range resp {
-			if strings.Contains(value.Contents, "workflow:") {
-				workflows = append(workflows, value.Path)
-			} else {
-				templates = append(templates, value.Path)
-			}
-			directoryBase := filepath.Dir(value.Path)
-			_ = os.MkdirAll(path.Join(directory, directoryBase), os.ModePerm)
-
-			if err = ioutil.WriteFile(path.Join(directory, value.Path), []byte(value.Contents), os.ModePerm); err != nil {
-				return "", nil, nil, err
-			}
-		}
-	}
-	return directory, templates, workflows, nil
-}
-
-type wrappedOutputWriter struct {
-	db        dbsql.Querier
-	scanid    int64
-	logs      *bufio.Writer
-	colorizer aurora.Aurora
-}
-
-func newWrappedOutputWriter(db dbsql.Querier, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
-	return &wrappedOutputWriter{db: db, logs: logWriter, colorizer: aurora.NewAurora(false)}
-}
-
-// Close closes the output writer interface
-func (w *wrappedOutputWriter) Close() {}
-
-// Colorizer returns the colorizer instance for writer
-func (w *wrappedOutputWriter) Colorizer() aurora.Aurora {
-	return w.colorizer
-}
-
-// Write writes the event to file and/or screen.
-func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
-	contents, err := ioutil.ReadFile(event.TemplatePath)
-	if err != nil {
-		return err
-	}
-	// TODO: deduplicate issues before writing to db
-	description := event.Info.Name
-	if event.Info.Description != "" {
-		description = event.Info.Description
-	}
-	var cweids []int32
-	var cvss float64
-	if event.Info.Classification != nil {
-		cvss = event.Info.Classification.CVSSScore
-		cweids = convertCWEIDsToSlice(event.Info.Classification.CWEID)
-	}
-	_, err = w.db.AddIssue(context.Background(), dbsql.AddIssueParams{
-		Matchedat:     event.Matched,
-		Title:         format.Summary(event),
-		Severity:      event.Info.SeverityHolder.Severity.String(),
-		Scansource:    event.Matched,
-		Issuestate:    "open",
-		Description:   description,
-		Author:        event.Info.Authors.String(),
-		Cvss:          sql.NullFloat64{Float64: cvss, Valid: true},
-		Cwe:           cweids,
-		Labels:        event.Info.Tags.ToSlice(),
-		Issuedata:     format.MarkdownDescription(event),
-		Issuetemplate: string(contents),
-		Templatename:  event.Template,
-		Remediation:   sql.NullString{String: event.Info.Remediation, Valid: true},
-		Scanid:        w.scanid,
-	})
-	return err
-}
-
-// WriteFailure writes the optional failure event for template to file and/or screen.
-func (w *wrappedOutputWriter) WriteFailure(event output.InternalEvent) error {
-	return nil
-}
-
-// ScanErrorLogEvent is a log event for scan error log
-type ScanErrorLogEvent struct {
-	Template string `json:"template"`
-	URL      string `json:"url"`
-	Type     string `json:"type"`
-	Error    string `json:"error"`
-}
-
-// Request logs a request in the trace log
-func (w *wrappedOutputWriter) Request(templateID, url, requestType string, err error) {
-	if err == nil {
-		return
-	}
-	_ = jsoniter.NewEncoder(w.logs).Encode(ScanErrorLogEvent{
-		Template: templateID,
-		URL:      url,
-		Type:     requestType,
-		Error:    err.Error(),
-	})
-}
-
-func convertCWEIDsToSlice(cweIDs stringslice.StringSlice) []int32 {
-	values := make([]int32, len(cweIDs.ToSlice()))
-	for i, value := range cweIDs.ToSlice() {
-		parts := strings.SplitN(value, "-", 2)
-		if len(parts) < 2 {
-			continue
-		}
-		parsed, _ := strconv.ParseInt(parts[1], 10, 32)
-		values[i] = int32(parsed)
-	}
-	return values
 }

@@ -1,4 +1,5 @@
 //go:generate sqlc generate
+//go:generate mockgen -source=dbsql/querier.go -destination=mock_db.go -package=db
 package db
 
 import (
