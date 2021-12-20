@@ -71,18 +71,19 @@ func isOlderThanSevenDays(t time.Time) bool {
 	return time.Since(t) > 7*24*time.Hour
 }
 
-func findAndRemoveFilesOlderThanSevenDay(dir string) (err error) {
+func findAndRemoveFilesOlderThanSevenDay(dir string) error {
 	tmpfiles, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, file := range tmpfiles {
-		if file.Mode().IsRegular() {
-			if isOlderThanSevenDays(file.ModTime()) {
-				os.Remove(file.Name())
-			}
+		if !file.Mode().IsRegular() {
+			continue
+		}
+		if isOlderThanSevenDays(file.ModTime()) {
+			os.Remove(file.Name())
 		}
 	}
-	return
+	return nil
 }
