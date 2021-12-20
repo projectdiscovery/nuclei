@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -355,6 +356,18 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 			gologger.Print().Msgf("%s", dumpedRequestString)
 		}
+		if request.options.Options.Debug || request.options.Options.DebugCorrelations {
+			corrEvent := output.CorrelationEvent{
+				InteractshURLs: generatedRequest.interactshURLs,
+				ReqURL:         reqURL,
+				TemplateID:     request.options.TemplateID,
+			}
+			if bts, err := json.Marshal(corrEvent); err == nil {
+				gologger.Info().Msgf("[%s] Correlation for %s\n", request.options.TemplateID, reqURL)
+				gologger.Print().Msg(string(bts))
+			}
+		}
+
 	}
 	var formedURL string
 	var hostname string

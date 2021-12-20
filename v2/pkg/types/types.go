@@ -132,6 +132,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// DebugCorrelations mode allows outputting of generated URLs in stderr logs
+	DebugCorrelations bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit

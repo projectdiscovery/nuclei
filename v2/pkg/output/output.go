@@ -108,6 +108,15 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
+type CorrelationEvent struct {
+	// InteractshURLs contains all generated URLs
+	InteractshURLs []string
+	// ReqURL is the target URL
+	ReqURL string
+	// TemplateID is the ID of the template for the result.
+	TemplateID string
+}
+
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
