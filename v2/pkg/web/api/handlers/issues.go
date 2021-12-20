@@ -8,6 +8,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
@@ -36,10 +37,10 @@ type AddIssueRequest struct {
 func (s *Server) AddIssue(ctx echo.Context) error {
 	var req AddIssueRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 
-	err := s.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
+	id, err := s.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
 		Scanid:        sql.NullInt64{Int64: req.ScanID, Valid: true},
 		Matchedat:     sql.NullString{String: req.Matchedat, Valid: true},
 		Title:         sql.NullString{String: req.Title, Valid: true},
@@ -56,7 +57,10 @@ func (s *Server) AddIssue(ctx echo.Context) error {
 		Templatename:  sql.NullString{String: req.Templatename, Valid: true},
 		Remediation:   sql.NullString{String: req.Remediation, Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not add issue to db"))
+	}
+	return ctx.JSON(200, map[string]int64{"id": id})
 }
 
 // GetIssuesResponse is a response for /issues request
@@ -85,7 +89,7 @@ type GetIssuesResponse struct {
 func (s *Server) GetIssues(ctx echo.Context) error {
 	response, err := s.db.Queries().GetIssues(context.Background())
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issues fromdb"))
 	}
 	targets := make([]GetIssuesResponse, len(response))
 	for i, value := range response {
@@ -108,11 +112,11 @@ func (s *Server) GetIssue(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
 	}
 	scan, err := s.db.Queries().GetIssue(context.Background(), id)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issue from db"))
 	}
 	value := GetIssuesResponse{
 		ID:            scan.ID,
@@ -146,17 +150,20 @@ type UpdateIssueRequest struct {
 func (s *Server) UpdateIssue(ctx echo.Context) error {
 	var req UpdateIssueRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
 	}
-	s.db.Queries().UpdateIssue(context.Background(), dbsql.UpdateIssueParams{
+	err = s.db.Queries().UpdateIssue(context.Background(), dbsql.UpdateIssueParams{
 		ID:         id,
 		Issuestate: sql.NullString{String: req.State, Valid: true},
 	})
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update issue"))
+	}
 	return nil
 }
 
@@ -165,10 +172,10 @@ func (s *Server) DeleteIssue(ctx echo.Context) error {
 	queryParam := ctx.Param("id")
 	id, err := strconv.ParseInt(queryParam, 10, 64)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse issue id"))
 	}
 	if err := s.db.Queries().DeleteIssue(context.Background(), id); err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete issue"))
 	}
 	return nil
 }

@@ -257,7 +257,7 @@ func compareAndWriteTemplates(zipReader *zip.Reader, db *db.Database) (*template
 		oldTemplateChecksum, checksumOk := templateChecksumsMap[templateAbsolutePath]
 
 		if !checksumOk {
-			err = db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
+			_, err = db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
 				Name:     sql.NullString{String: filepath.Base(templateAbsolutePath), Valid: true},
 				Folder:   sql.NullString{String: repoName, Valid: true},
 				Path:     templateAbsolutePath,

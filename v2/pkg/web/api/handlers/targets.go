@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
@@ -35,7 +36,7 @@ func (s *Server) GetTargets(ctx echo.Context) error {
 func (s *Server) getTargets(ctx echo.Context) error {
 	targets, err := s.db.Queries().GetTargets(context.Background())
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db"))
 	}
 	targetsList := make([]GetTargetsResponse, 0, len(targets))
 	for _, target := range targets {
@@ -56,7 +57,7 @@ func (s *Server) getTargets(ctx echo.Context) error {
 func (s *Server) getTargetsWithSearchKey(ctx echo.Context, searchKey string) error {
 	targets, err := s.db.Queries().GetTargetsForSearch(context.Background(), sql.NullString{String: searchKey, Valid: true})
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db"))
 	}
 	targetsList := make([]GetTargetsResponse, 0, len(targets))
 	for _, target := range targets {
@@ -81,17 +82,17 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents"))
 	}
 	file, err := targetContents.Open()
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not open file contents"))
 	}
 	defer file.Close()
 
 	writer, id, err := s.targets.Create()
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not create target file"))
 	}
 	defer writer.Close()
 
@@ -101,16 +102,19 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 	finalWriter := io.MultiWriter(writer, newlineCounter)
 	_, err = io.Copy(finalWriter, file)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not write to target file"))
 	}
 
-	err = s.db.Queries().AddTarget(context.Background(), dbsql.AddTargetParams{
+	gotID, err := s.db.Queries().AddTarget(context.Background(), dbsql.AddTargetParams{
 		Name:       sql.NullString{String: targetName, Valid: true},
 		Internalid: sql.NullString{String: id, Valid: true},
 		Filename:   sql.NullString{String: targetPath, Valid: true},
 		Total:      sql.NullInt64{Int64: newlineCounter.Total, Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not add target to db"))
+	}
+	return ctx.JSON(200, map[string]int64{"id": gotID})
 }
 
 // UpdateTarget handles /targets update route
@@ -122,17 +126,17 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents"))
 	}
 	file, err := targetContents.Open()
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not open file contents"))
 	}
 	defer file.Close()
 
 	writer, err := s.targets.Update(targetId)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not open target file"))
 	}
 	defer writer.Close()
 
@@ -142,47 +146,62 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 	finalWriter := io.MultiWriter(writer, newlineCounter)
 	_, err = io.Copy(finalWriter, file)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not write to target file"))
 	}
 
 	err = s.db.Queries().UpdateTargetMetadata(context.Background(), dbsql.UpdateTargetMetadataParams{
 		ID:    parsedId,
 		Total: sql.NullInt64{Int64: newlineCounter.Total, Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update target metadata"))
+	}
+	return nil
 }
 
 // DeleteTarget handles /targets delete route
 func (s *Server) DeleteTarget(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedId, _ := strconv.ParseInt(idParam, 10, 64)
+	parsedId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse target id"))
+	}
 
 	targetID, err := s.db.Queries().GetTarget(context.Background(), parsedId)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get target from db"))
 	}
 	err = s.targets.Delete(targetID.Internalid.String)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete target from db"))
 	}
 
 	err = s.db.Queries().DeleteTarget(context.Background(), parsedId)
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete target file"))
+	}
+	return nil
 }
 
 // GetTargetContents handles /targets get contents route
 func (s *Server) GetTargetContents(ctx echo.Context) error {
 	idParam := ctx.Param("id")
-	parsedId, _ := strconv.ParseInt(idParam, 10, 64)
+	parsedId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse target id"))
+	}
 
 	targetID, err := s.db.Queries().GetTarget(context.Background(), parsedId)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get target from db"))
 	}
 	reader, err := s.targets.Read(targetID.Internalid.String)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not read target file"))
 	}
 	_, err = io.Copy(ctx.Response().Writer, reader)
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not copy target file"))
+	}
+	return nil
 }

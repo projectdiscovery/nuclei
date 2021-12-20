@@ -41,7 +41,7 @@ func (s *Server) GetTemplates(ctx echo.Context) error {
 func (s *Server) getTemplates(ctx echo.Context) error {
 	rows, err := s.db.Queries().GetTemplates(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "could not get templates by folder")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get templates from db"))
 	}
 	response := make([]GetTemplatesResponse, 0, len(rows))
 	for _, row := range rows {
@@ -61,7 +61,7 @@ func (s *Server) getTemplates(ctx echo.Context) error {
 func (s *Server) getTemplatesWithFolder(ctx echo.Context, folder string) error {
 	rows, err := s.db.Queries().GetTemplatesByFolder(context.Background(), sql.NullString{String: folder, Valid: true})
 	if err != nil {
-		return errors.Wrap(err, "could not get templates by folder")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get templates from db"))
 	}
 	response := make([]GetTemplatesResponse, 0, len(rows))
 	for _, row := range rows {
@@ -81,7 +81,7 @@ func (s *Server) getTemplatesWithFolder(ctx echo.Context, folder string) error {
 func (s *Server) getTemplatesWithSearchKey(ctx echo.Context, searchKey string) error {
 	rows, err := s.db.Queries().GetTemplatesBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
 	if err != nil {
-		return errors.Wrap(err, "could not get templates by search key")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get templates from db"))
 	}
 	response := make([]GetTemplatesResponse, 0, len(rows))
 	for _, row := range rows {
@@ -107,14 +107,17 @@ type UpdateTemplateRequest struct {
 func (s *Server) UpdateTemplate(ctx echo.Context) error {
 	var body UpdateTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	err := s.db.Queries().UpdateTemplate(context.Background(), dbsql.UpdateTemplateParams{
 		Contents:  body.Contents,
 		Updatedat: sql.NullTime{Time: time.Now(), Valid: true},
 		Path:      body.Path,
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update template to db"))
+	}
+	return nil
 }
 
 // AddTemplateRequest is a request for /templates addition
@@ -128,15 +131,18 @@ type AddTemplateRequest struct {
 func (s *Server) AddTemplate(ctx echo.Context) error {
 	var body AddTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
-	err := s.db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
+	id, err := s.db.Queries().AddTemplate(context.Background(), dbsql.AddTemplateParams{
 		Contents: body.Contents,
 		Folder:   sql.NullString{String: body.Folder, Valid: true},
 		Path:     body.Path,
 		Name:     sql.NullString{String: filepath.Base(body.Path), Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not add template to db"))
+	}
+	return ctx.JSON(200, map[string]int64{"id": id})
 }
 
 // DeleteTemplateRequest is a request for /templates deletion
@@ -148,9 +154,12 @@ type DeleteTemplateRequest struct {
 func (s *Server) DeleteTemplate(ctx echo.Context) error {
 	var body DeleteTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	err := s.db.Queries().DeleteTemplate(context.Background(), body.Path)
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not delete template to db"))
+	}
 	return err
 }
 
@@ -158,11 +167,11 @@ func (s *Server) DeleteTemplate(ctx echo.Context) error {
 func (s *Server) GetTemplatesRaw(ctx echo.Context) error {
 	templatePath := ctx.QueryParam("path")
 	if templatePath == "" {
-		return errors.New("no path parameter specified for template")
+		return echo.NewHTTPError(500, "no path specified for template")
 	}
 	contents, err := s.db.Queries().GetTemplateContents(context.Background(), templatePath)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get template from db"))
 	}
 	return ctx.String(200, contents)
 }
@@ -183,15 +192,15 @@ type ExecuteTemplateResponse struct {
 func (s *Server) ExecuteTemplate(ctx echo.Context) error {
 	var body ExecuteTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	templateContents, err := s.db.Queries().GetTemplateContents(context.Background(), body.Path)
 	if err != nil {
-		return errors.Wrap(err, "could not get template")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get template"))
 	}
 	template, err := templates.Parse(strings.NewReader(templateContents), "", nil, *testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{}))
 	if err != nil {
-		return errors.Wrap(err, "could not parse template")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not parse template"))
 	}
 	var results []*output.ResultEvent
 	debugData := make(map[string]string)
@@ -203,7 +212,7 @@ func (s *Server) ExecuteTemplate(ctx echo.Context) error {
 		}
 	})
 	if err != nil {
-		return errors.Wrap(err, "could not execute template")
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not execute template"))
 	}
 	resp := &ExecuteTemplateResponse{Debug: debugData, Output: results}
 	return ctx.JSON(200, resp)

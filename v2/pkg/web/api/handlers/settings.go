@@ -6,6 +6,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
@@ -27,7 +28,7 @@ const (
 func (s *Server) GetSettings(ctx echo.Context) error {
 	settings, err := s.db.Queries().GetSettings(context.Background())
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get settings from db"))
 	}
 	response := make([]GetSettingsResponse, len(settings))
 	for i, setting := range settings {
@@ -46,7 +47,7 @@ func (s *Server) GetSettingByName(ctx echo.Context) error {
 
 	settings, err := s.db.Queries().GetSettingByName(context.Background(), sql.NullString{String: name, Valid: true})
 	if err != nil {
-		return err
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get setting from db"))
 	}
 	response := GetSettingsResponse{
 		Name:     name,
@@ -67,14 +68,17 @@ type SetSettingRequest struct {
 func (s *Server) SetSetting(ctx echo.Context) error {
 	var body SetSettingRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	err := s.db.Queries().SetSettings(context.Background(), dbsql.SetSettingsParams{
 		Settingdata: sql.NullString{String: body.Contents, Valid: true},
 		Datatype:    sql.NullString{String: body.Type, Valid: true},
 		Name:        sql.NullString{String: body.Name, Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not set settings to db"))
+	}
+	return nil
 }
 
 // UpdateSettingRequest is a request for /settings updation
@@ -89,11 +93,14 @@ func (s *Server) UpdateSettingByName(ctx echo.Context) error {
 
 	var body UpdateSettingRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
-		return err
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body"))
 	}
 	err := s.db.Queries().UpdateSettings(context.Background(), dbsql.UpdateSettingsParams{
 		Settingdata: sql.NullString{String: body.Contents, Valid: true},
 		Name:        sql.NullString{String: name, Valid: true},
 	})
-	return err
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not update settings to db"))
+	}
+	return nil
 }

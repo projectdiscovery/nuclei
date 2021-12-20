@@ -220,7 +220,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		cvss = event.Info.Classification.CVSSScore
 		cweids = convertCWEIDsToSlice(event.Info.Classification.CWEID)
 	}
-	err = w.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
+	_, err = w.db.Queries().AddIssue(context.Background(), dbsql.AddIssueParams{
 		Matchedat:     sql.NullString{String: event.Matched, Valid: true},
 		Title:         sql.NullString{String: format.Summary(event), Valid: true},
 		Severity:      sql.NullString{String: event.Info.SeverityHolder.Severity.String(), Valid: true},
