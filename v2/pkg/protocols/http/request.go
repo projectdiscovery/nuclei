@@ -30,7 +30,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/stringsutil"
 )
@@ -337,24 +340,27 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		err           error
 	)
 
+	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
 		var dumpError error
+		// TODO: dump is currently not working with post-processors - somehow it alters the signature
 		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
 		if dumpError != nil {
 			return dumpError
 		}
 		dumpedRequestString := string(dumpedRequest)
 
-		// Check if are there any unresolved variables. If yes, skip unless overridden by user.
-		if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-			gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
-			return errStopExecution
-		}
-
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", dumpedRequestString)
+		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
+			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
+		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
+			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
 		}
 		if request.options.Options.Debug || request.options.Options.DebugCorrelations {
 			corrEvent := output.CorrelationEvent{
@@ -404,9 +410,27 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 		if resp == nil {
+			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
+				return errSignature
+			}
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
+
+	// Dump the requests containing all headers
+	if !generatedRequest.original.Race {
+		var dumpError error
+		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
+		if dumpError != nil {
+			return dumpError
+		}
+		dumpedRequestString := string(dumpedRequest)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			gologger.Print().Msgf("%s", dumpedRequestString)
+		}
+	}
+
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil {
@@ -543,6 +567,40 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 		callback(event)
 	}
+	return nil
+}
+
+// handleSignature of the http request
+func (request *Request) handleSignature(generatedRequest *generatedRequest) error {
+	switch request.Signature.Value {
+	case AWSSignature:
+		var awsSigner signer.Signer
+		payloads := request.options.Options.Vars.AsMap()
+		awsAccessKeyId := types.ToString(payloads["aws-id"])
+		awsSecretAccessKey := types.ToString(payloads["aws-secret"])
+		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
+		service := types.ToString(payloads["service"])
+		region := types.ToString(payloads["region"])
+		// if region is empty use default value
+		if region == "" {
+			region = types.ToString(signer.AwsDefaultVars["region"])
+		}
+		awsSignatureArguments := signer.AwsSignatureArguments{
+			Service: types.ToString(service),
+			Region:  types.ToString(region),
+			Time:    time.Now(),
+		}
+
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
+		if err != nil {
+			return err
+		}
+		err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
