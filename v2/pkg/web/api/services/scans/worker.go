@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v3"
@@ -28,17 +29,26 @@ func makePercentReturnFunc(stats progress.Progress) percentReturnFunc {
 	})
 }
 
-// worker is a worker for executing a scan request
-func (s *ScanService) worker(req ScanRequest) error {
-	setting, err := s.db.GetSettingByName(context.Background(), req.Config)
+// getSettingsForName gets settings for name and returns a types.Options structure
+func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
+	setting, err := s.db.GetSettingByName(context.Background(), name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	settings := &settings.Settings{}
 	if yamlErr := yaml.NewDecoder(strings.NewReader(setting.Settingdata)).Decode(settings); yamlErr != nil {
-		return yamlErr
+		return nil, yamlErr
 	}
 	typesOptions := settings.ToTypesOptions()
+	return typesOptions, nil
+}
+
+// worker is a worker for executing a scan request
+func (s *ScanService) worker(req ScanRequest) error {
+	typesOptions, err := s.getSettingsForName(req.Config)
+	if err != nil {
+		return err
+	}
 
 	templatesDirectory, templatesList, workflowsList, err := s.storeTemplatesFromRequest(req.Templates)
 	if err != nil {
@@ -51,11 +61,10 @@ func (s *ScanService) worker(req ScanRequest) error {
 	typesOptions.Workflows = workflowsList
 
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
 	s.running.Store(req.ScanID, makePercentReturnFunc(progressImpl))
 	defer func() {
 		s.running.Delete(req.ScanID)
-
-		// todo: Mark scan state as finished
 	}()
 
 	logWriter, err := s.Logs.Write(req.ScanID)
@@ -106,6 +115,8 @@ func (s *ScanService) worker(req ScanRequest) error {
 	if err != nil {
 		return err
 	}
+	progressImpl.Init(inputProvider.Count(), len(finalTemplates), int64(len(finalTemplates)*int(inputProvider.Count())))
+
 	_ = executer.Execute(finalTemplates, inputProvider)
 	log.Printf("Finish scan for ID: %d\n", req.ScanID)
 	return nil

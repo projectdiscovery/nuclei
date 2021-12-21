@@ -24,7 +24,12 @@ type wrappedOutputWriter struct {
 }
 
 func newWrappedOutputWriter(db dbsql.Querier, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
-	return &wrappedOutputWriter{db: db, logs: logWriter, colorizer: aurora.NewAurora(false)}
+	return &wrappedOutputWriter{
+		db:        db,
+		scanid:    scanid,
+		logs:      logWriter,
+		colorizer: aurora.NewAurora(false),
+	}
 }
 
 // Close closes the output writer interface
