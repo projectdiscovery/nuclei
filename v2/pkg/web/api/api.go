@@ -26,6 +26,8 @@ type Config struct {
 	Server   *handlers.Server
 }
 
+const defaultCacheSize = 100 * 1024 * 1024 // 100MB server side cache.
+
 // New returns a new REST API server structure
 func New(config *Config) *API {
 	// Echo instance
@@ -37,7 +39,10 @@ func New(config *Config) *API {
 		scheme = "https"
 	}
 
-	// Middleware
+	// Use a fixed side server-side cache with 1m ttl
+	//c := freecache.NewCache(defaultCacheSize)
+	//e.Use(cache.New(&cache.Config{}, c))
+
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

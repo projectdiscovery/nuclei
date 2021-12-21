@@ -43,7 +43,7 @@ func TestAddTemplateHandler(t *testing.T) {
 	server := New(querier, nil, nil)
 
 	err := server.AddTemplate(c)
-	require.NoError(t, err)
+	require.NoError(t, err, "could not add template")
 
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 }
@@ -60,7 +60,7 @@ func TestUpdateTemplateHandler(t *testing.T) {
 	_ = jsoniter.NewEncoder(&buf).Encode(&jsonBody)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodPost, "/", &buf)
+	req := httptest.NewRequest(http.MethodPut, "/", &buf)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -74,7 +74,7 @@ func TestUpdateTemplateHandler(t *testing.T) {
 	server := New(querier, nil, nil)
 
 	err := server.UpdateTemplate(c)
-	require.NoError(t, err)
+	require.NoError(t, err, "could not update template")
 
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 }
@@ -90,7 +90,7 @@ func TestDeleteTemplateHandler(t *testing.T) {
 	_ = jsoniter.NewEncoder(&buf).Encode(&jsonBody)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodPost, "/", &buf)
+	req := httptest.NewRequest(http.MethodDelete, "/", &buf)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -104,7 +104,7 @@ func TestDeleteTemplateHandler(t *testing.T) {
 	server := New(querier, nil, nil)
 
 	err := server.DeleteTemplate(c)
-	require.NoError(t, err)
+	require.NoError(t, err, "could not delete template")
 
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 }
@@ -127,7 +127,7 @@ func TestGetTemplatesRawHandler(t *testing.T) {
 	server := New(querier, nil, nil)
 
 	err := server.GetTemplatesRaw(c)
-	require.NoError(t, err)
+	require.NoError(t, err, "could not get raw template")
 
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 	data, _ := ioutil.ReadAll(rec.Result().Body)
@@ -183,7 +183,7 @@ network:
 	server := New(querier, nil, nil)
 
 	err := server.ExecuteTemplate(c)
-	require.NoError(t, err)
+	require.NoError(t, err, "could not execute template")
 
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 	data, _ := ioutil.ReadAll(rec.Result().Body)

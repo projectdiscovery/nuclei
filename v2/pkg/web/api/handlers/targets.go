@@ -121,8 +121,12 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 // It accepts multipart-form format.
 func (s *Server) UpdateTarget(ctx echo.Context) error {
 	targetId := ctx.FormValue("id")
+
 	idParam := ctx.Param("id")
-	parsedId, _ := strconv.ParseInt(idParam, 10, 64)
+	parsedId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse target id").Error())
+	}
 
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
@@ -139,6 +143,8 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not open target file").Error())
 	}
 	defer writer.Close()
+
+	_, _ = writer.Write([]byte("\n"))
 
 	newlineCounter := &targets.NewLineCountWriter{}
 
