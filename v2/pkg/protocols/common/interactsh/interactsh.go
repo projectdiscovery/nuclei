@@ -75,6 +75,8 @@ type Options struct {
 	Debug bool
 
 	NoInteractsh bool
+
+	StopAtFirstMatch bool
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -135,6 +137,9 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.interactsh = interactsh
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+		if c.options.StopAtFirstMatch && c.matched {
+			return
+		}
 		if c.options.Debug {
 			debugPrintInteraction(interaction)
 		}
@@ -228,6 +233,11 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 	return data, interactshURLs
 }
 
+// SetStopAtFirstMatch sets StopAtFirstMatch for interactsh client options
+func (c *Client) SetStopAtFirstMatch(stopAtFirstMatch bool) {
+	c.options.StopAtFirstMatch = stopAtFirstMatch
+}
+
 // MakeResultEventFunc is a result making function for nuclei
 type MakeResultEventFunc func(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
 
@@ -243,6 +253,9 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
+		if c.options.StopAtFirstMatch && c.matched {
+			break
+		}
 		id := strings.TrimSuffix(interactshURL, c.dotHostname)
 
 		interaction := c.interactions.Get(id)
@@ -256,6 +269,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 			for _, interaction := range interactions {
 				if c.processInteractionForRequest(interaction, data) {
 					c.interactions.Delete(id)
+					c.matched = true
 					break
 				}
 			}
