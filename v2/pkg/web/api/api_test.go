@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
@@ -21,7 +20,7 @@ import (
 )
 
 func TestAPI(t *testing.T) {
-	gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
+	//	gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 
 	protocolinit.Init(testutils.DefaultOptions)

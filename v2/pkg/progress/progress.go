@@ -35,6 +35,8 @@ type Progress interface {
 	IncrementFailedRequestsBy(count int64)
 	// Percent returns the percent completion for statticker instance
 	Percent() float64
+	// GetMetrics returns the metrics in a standard go map
+	GetMetrics() map[string]interface{}
 }
 
 var _ Progress = &StatsTicker{}
@@ -70,7 +72,7 @@ func NewStatsTicker(duration int, active, outputJSON, metrics bool, port int) (P
 
 	if metrics {
 		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
-			metrics := progress.getMetrics()
+			metrics := progress.GetMetrics()
 			_ = json.NewEncoder(w).Encode(metrics)
 		})
 		progress.server = &http.Server{
@@ -226,8 +228,8 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	return results
 }
 
-// getMetrics returns a map of important metrics for client
-func (p *StatsTicker) getMetrics() map[string]interface{} {
+// GetMetrics returns a map of important metrics for client
+func (p *StatsTicker) GetMetrics() map[string]interface{} {
 	return metricsMap(p.stats)
 }
 

@@ -40,7 +40,7 @@ func (s *ScanService) inputProviderFromRequest(inputsList []string) (core.InputP
 			_ = read.Close()
 		}
 	}
-	return &inputs.FileInputProvider{Path: tempfile.Name()}, nil
+	return inputs.NewFileInputProvider(tempfile.Name()), nil
 }
 
 // storeTemplatesFromRequest writes templates from db to a temporary

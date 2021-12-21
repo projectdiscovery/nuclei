@@ -22,12 +22,34 @@ func (s *SimpleInputProvider) Scan(callback func(value string)) {
 }
 
 type FileInputProvider struct {
-	Path string
+	Path  string
+	count int64
+}
+
+func NewFileInputProvider(filepath string) *FileInputProvider {
+	fp := &FileInputProvider{Path: filepath}
+	fp.count = fp.getFileLineCount(filepath)
+	return fp
+}
+
+func (s *FileInputProvider) getFileLineCount(path string) int64 {
+	file, err := os.Open(s.Path)
+	if err != nil {
+		return 0
+	}
+	defer file.Close()
+
+	var count int64
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		count++
+	}
+	return count
 }
 
 // Count returns the number of items for input provider
 func (s *FileInputProvider) Count() int64 {
-	return 0
+	return s.count
 }
 
 // Scan calls a callback function till the input provider is exhausted

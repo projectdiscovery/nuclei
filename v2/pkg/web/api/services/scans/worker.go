@@ -3,11 +3,12 @@ package scans
 import (
 	"bufio"
 	"context"
-	"log"
+	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
@@ -43,40 +44,18 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 	return typesOptions, nil
 }
 
-// worker is a worker for executing a scan request
-func (s *ScanService) worker(req ScanRequest) error {
-	typesOptions, err := s.getSettingsForName(req.Config)
-	if err != nil {
-		return err
-	}
-
-	templatesDirectory, templatesList, workflowsList, err := s.storeTemplatesFromRequest(req.Templates)
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(templatesDirectory)
-
-	typesOptions.TemplatesDirectory = templatesDirectory
-	typesOptions.Templates = templatesList
-	typesOptions.Workflows = workflowsList
-
+func (s *ScanService) createExecuterOpts(scanID int64, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
+	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	s.running.Store(scanID, makePercentReturnFunc(progressImpl))
 
-	s.running.Store(req.ScanID, makePercentReturnFunc(progressImpl))
-	defer func() {
-		s.running.Delete(req.ScanID)
-	}()
-
-	logWriter, err := s.Logs.Write(req.ScanID)
+	logWriter, err := s.Logs.Write(scanID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer logWriter.Close()
-
 	buflogWriter := bufio.NewWriter(logWriter)
-	defer buflogWriter.Flush()
 
-	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, req.ScanID)
+	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, scanID)
 
 	executerOpts := protocols.ExecuterOptions{
 		Output:       outputWriter,
@@ -84,40 +63,115 @@ func (s *ScanService) worker(req ScanRequest) error {
 		Options:      typesOptions,
 		Progress:     progressImpl,
 		Catalog:      catalog.New(templatesDirectory),
-		RateLimiter:  ratelimit.New(typesOptions.RateLimit),
 	}
 	if typesOptions.RateLimitMinute > 0 {
 		executerOpts.RateLimiter = ratelimit.New(typesOptions.RateLimitMinute, ratelimit.Per(60*time.Second))
 	} else {
 		executerOpts.RateLimiter = ratelimit.New(typesOptions.RateLimit)
 	}
+	scanContext := &scanContext{
+		logs:         buflogWriter,
+		logsFile:     logWriter,
+		scanID:       scanID,
+		scanService:  s,
+		typesOptions: typesOptions,
+		executerOpts: executerOpts,
+	}
+	return scanContext, nil
+}
 
-	store, err := loader.New(loader.NewConfig(typesOptions, catalog.New(templatesDirectory), executerOpts))
+// scanContext contains context information for a scan
+type scanContext struct {
+	scanID       int64
+	executer     *core.Engine
+	store        *loader.Store
+	logs         *bufio.Writer
+	logsFile     io.WriteCloser
+	typesOptions *types.Options
+	scanService  *ScanService
+	executerOpts protocols.ExecuterOptions
+}
+
+// Close closes the scan context performing cleanup operations
+func (s *scanContext) Close() {
+	s.logs.Flush()
+	s.logsFile.Close()
+	s.scanService.running.Delete(s.scanID)
+}
+
+// createExecuterFromOpts creates executer from scanContext
+func (s *ScanService) createExecuterFromOpts(scanCtx *scanContext) error {
+	workflowLoader, err := parsers.NewLoader(&scanCtx.executerOpts)
+	if err != nil {
+		return err
+	}
+	scanCtx.executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := loader.New(loader.NewConfig(scanCtx.typesOptions, scanCtx.executerOpts.Catalog, scanCtx.executerOpts))
 	if err != nil {
 		return err
 	}
 	store.Load()
+	scanCtx.store = store
 
-	executer := core.New(typesOptions)
-	executer.SetExecuterOptions(executerOpts)
+	executer := core.New(scanCtx.typesOptions)
+	executer.SetExecuterOptions(scanCtx.executerOpts)
+	scanCtx.executer = executer
+	return nil
+}
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+// worker is a worker for executing a scan request
+func (s *ScanService) worker(req ScanRequest) error {
+	gologger.Info().Msgf("[scans] [worker] [%d] got new scan request", req.ScanID)
+
+	typesOptions, err := s.getSettingsForName(req.Config)
 	if err != nil {
 		return err
 	}
-	executerOpts.WorkflowLoader = workflowLoader
+	gologger.Info().Msgf("[scans] [worker] [%d] loaded settings for config %s", req.ScanID, req.Config)
+
+	templatesDirectory, templatesList, workflowsList, err := s.storeTemplatesFromRequest(req.Templates)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(templatesDirectory)
+
+	gologger.Info().Msgf("[scans] [worker] [%d] loaded templates and workflows from req %v", req.ScanID, req.Templates)
+
+	typesOptions.TemplatesDirectory = templatesDirectory
+	typesOptions.Templates = templatesList
+	typesOptions.Workflows = workflowsList
+
+	scanCtx, err := s.createExecuterOpts(req.ScanID, templatesDirectory, typesOptions)
+	if err != nil {
+		return err
+	}
+	defer scanCtx.Close()
+
+	err = s.createExecuterFromOpts(scanCtx)
+	if err != nil {
+		return err
+	}
 
 	var finalTemplates []*templates.Template
-	finalTemplates = append(finalTemplates, store.Templates()...)
-	finalTemplates = append(finalTemplates, store.Workflows()...)
+	finalTemplates = append(finalTemplates, scanCtx.store.Templates()...)
+	finalTemplates = append(finalTemplates, scanCtx.store.Workflows()...)
+
+	gologger.Info().Msgf("[scans] [worker] [%d] total loaded templates count: %d", req.ScanID, len(finalTemplates))
 
 	inputProvider, err := s.inputProviderFromRequest(req.Targets)
 	if err != nil {
 		return err
 	}
-	progressImpl.Init(inputProvider.Count(), len(finalTemplates), int64(len(finalTemplates)*int(inputProvider.Count())))
+	gologger.Info().Msgf("[scans] [worker] [%d] total loaded input count: %d", req.ScanID, inputProvider.Count())
 
-	_ = executer.Execute(finalTemplates, inputProvider)
-	log.Printf("Finish scan for ID: %d\n", req.ScanID)
+	scanCtx.executerOpts.Progress.Init(inputProvider.Count(), len(finalTemplates), int64(len(finalTemplates)*int(inputProvider.Count())))
+	_ = scanCtx.executer.Execute(finalTemplates, inputProvider)
+
+	gologger.Info().Msgf("[scans] [worker] [%d] finished scan for ID", req.ScanID)
+
+	for k, v := range scanCtx.executerOpts.Progress.GetMetrics() {
+		gologger.Info().Msgf("[scans] [worker] [%d] \tmetric '%s': %v", req.ScanID, k, v)
+	}
 	return nil
 }
