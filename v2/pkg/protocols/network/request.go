@@ -143,7 +143,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 		if request.options.Interactsh != nil {
 			if request.options.StopAtFirstMatch {
-				request.options.Interactsh.SetStopAtFirstMatch(true)
+				request.options.Interactsh.SetStopAtFirstMatch()
 			}
 			var transformedData string
 			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})

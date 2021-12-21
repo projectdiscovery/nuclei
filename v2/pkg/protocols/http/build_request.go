@@ -62,7 +62,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 
 	if r.options.Interactsh != nil {
 		if r.options.StopAtFirstMatch || r.request.StopAtFirstMatch {
-			r.options.Interactsh.SetStopAtFirstMatch(true)
+			r.options.Interactsh.SetStopAtFirstMatch()
 		}
 
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
