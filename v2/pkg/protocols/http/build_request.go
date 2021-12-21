@@ -61,6 +61,10 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	ctx := context.Background()
 
 	if r.options.Interactsh != nil {
+		if r.options.StopAtFirstMatch || r.request.StopAtFirstMatch {
+			r.options.Interactsh.SetStopAtFirstMatch(true)
+		}
+
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)

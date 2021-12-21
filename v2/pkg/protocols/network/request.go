@@ -142,6 +142,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		reqBuilder.Grow(len(input.Data))
 
 		if request.options.Interactsh != nil {
+			if request.options.StopAtFirstMatch {
+				request.options.Interactsh.SetStopAtFirstMatch(true)
+			}
 			var transformedData string
 			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})
 			data = []byte(transformedData)
