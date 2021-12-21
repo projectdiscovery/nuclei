@@ -35,6 +35,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/request-condition.yaml":                  &httpRequestCondition{},
 	"http/request-condition-new.yaml":              &httpRequestCondition{},
 	"http/interactsh.yaml":                         &httpInteractshRequest{},
+	"http/interactsh-stop-at-first-match.yaml":     &httpInteractshStopAtFirstMatchRequest{},
 	"http/self-contained.yaml":                     &httpRequestSelContained{},
 	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
@@ -64,6 +65,29 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 		return err
 	}
 
+	return expectResultsCount(results, 1)
+}
+
+type httpInteractshStopAtFirstMatchRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+				resp.Body.Close()
+			}
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
 	return expectResultsCount(results, 1)
 }
 

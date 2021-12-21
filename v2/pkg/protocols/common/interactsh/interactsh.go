@@ -233,9 +233,9 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 	return data, interactshURLs
 }
 
-// SetStopAtFirstMatch sets StopAtFirstMatch for interactsh client options
-func (c *Client) SetStopAtFirstMatch(stopAtFirstMatch bool) {
-	c.options.StopAtFirstMatch = stopAtFirstMatch
+// SetStopAtFirstMatch sets StopAtFirstMatch true for interactsh client options
+func (c *Client) SetStopAtFirstMatch() {
+	c.options.StopAtFirstMatch = true
 }
 
 // MakeResultEventFunc is a result making function for nuclei
