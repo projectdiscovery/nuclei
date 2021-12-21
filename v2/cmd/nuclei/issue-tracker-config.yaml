@@ -30,8 +30,8 @@
 #  username: ""
 #  # token is the token for GitLab account.
 #  token: ""
-#  # project-id is the ID of the repository.
-#  project-id: ""
+#  # project-name is the name of the repository.
+#  project-name: ""
 #  # issue-label (optional) is the label of the created issue type
 #  issue-label: ""
 #  # severity-as-label (optional) sets the severity as the label of the created issue type
