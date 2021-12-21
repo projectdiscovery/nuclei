@@ -119,7 +119,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Equal(t, "base.yaml", results.deletions[0], "could not get correct new deletions")
 }
 
-func TestCalculateTemplateAbsolutePath(t *testing.T) {
+func TestCalculateTemplateAbsolutePathPositiveScenario(t *testing.T) {
 	configuredTemplateDirectory := filepath.Join(os.TempDir(), "templates")
 	defer os.RemoveAll(configuredTemplateDirectory)
 
@@ -134,24 +134,6 @@ func TestCalculateTemplateAbsolutePath(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, expectedTemplateAbsPath, calculatedTemplateAbsPath)
 			require.False(t, skipFile)
-		}
-	})
-
-	t.Run("negative scenarios", func(t *testing.T) {
-		filePathsFromZip := []string{
-			"./../nuclei-templates/../cve/test.yaml",
-			"nuclei-templates/../cve/test.yaml",
-			"nuclei-templates/cve/../test.yaml",
-			"nuclei-templates/././../cve/test.yaml",
-			"nuclei-templates/.././../cve/test.yaml",
-			"nuclei-templates/.././../cve/../test.yaml",
-		}
-
-		for _, filePathFromZip := range filePathsFromZip {
-			calculatedTemplateAbsPath, skipFile, err := calculateTemplateAbsolutePath(filePathFromZip, configuredTemplateDirectory)
-			require.Nil(t, err)
-			require.True(t, skipFile)
-			require.Equal(t, "", calculatedTemplateAbsPath)
 		}
 	})
 }
