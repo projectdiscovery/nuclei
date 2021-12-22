@@ -65,9 +65,12 @@ func TestGetScanProgressHandler(t *testing.T) {
 
 	scanService := scans.NewScanService("", 1, nil, nil)
 	server := New(nil, nil, scanService)
-	scanService.Running.Store(int64(1), scans.PercentReturnFunc(func() float64 {
-		return 10.0
-	}))
+	scanService.Running.Store(int64(1), &scans.RunningScan{
+		ProgressFunc: scans.PercentReturnFunc(func() float64 {
+			return 10.0
+		}),
+	})
+
 	err := server.GetScanProgress(c)
 	require.NoError(t, err, "could not get scan errors")
 

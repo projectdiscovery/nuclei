@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/atomic"
 
@@ -14,12 +16,12 @@ import (
 //
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
-func (e *Engine) Execute(templates []*templates.Template, target InputProvider) *atomic.Bool {
-	return e.ExecuteWithOpts(templates, target, false)
+func (e *Engine) Execute(ctx context.Context, templates []*templates.Template, target InputProvider) *atomic.Bool {
+	return e.ExecuteWithOpts(ctx, templates, target, false)
 }
 
 // ExecuteWithOpts executes with the full options
-func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
+func (e *Engine) ExecuteWithOpts(ctx context.Context, templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	var finalTemplates []*templates.Template
 	if !noCluster {
 		finalTemplates, _ = templates.ClusterTemplates(templatesList, e.executerOpts)
@@ -29,6 +31,9 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 
 	results := &atomic.Bool{}
 	for _, template := range finalTemplates {
+		if ctx.Err() != nil {
+			break
+		}
 		templateType := template.Type()
 
 		var wg *sizedwaitgroup.SizedWaitGroup
@@ -46,7 +51,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 				e.executeSelfContainedTemplateWithInput(tpl, results)
 			default:
 				// All other request types are executed here
-				e.executeModelWithInput(templateType, tpl, target, results)
+				e.executeModelWithInput(ctx, templateType, tpl, target, results)
 			}
 			wg.Done()
 		}(template)
@@ -65,13 +70,16 @@ func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Templ
 }
 
 // executeModelWithInput executes a type of template with input
-func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool) {
+func (e *Engine) executeModelWithInput(ctx context.Context, templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool) {
 	wg := e.workPool.InputPool(templateType)
 
-	target.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue string) bool {
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
-			return
+			return true
+		}
+		if ctx.Err() != nil {
+			return false
 		}
 
 		wg.WaitGroup.Add()
@@ -91,6 +99,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			}
 			results.CAS(false, match)
 		}(scannedValue)
+		return true
 	})
 	wg.WaitGroup.Wait()
 }

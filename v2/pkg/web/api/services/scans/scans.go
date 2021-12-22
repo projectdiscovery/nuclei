@@ -26,6 +26,17 @@ type ScanService struct {
 	Finished chan int64
 }
 
+type RunningScan struct {
+	ctx          context.Context
+	cancel       context.CancelFunc
+	ProgressFunc PercentReturnFunc
+}
+
+// Stop stops a running scan context
+func (r *RunningScan) Stop() {
+	r.cancel()
+}
+
 type ScanRequest struct {
 	ScanID    int64
 	Templates []string
@@ -83,8 +94,8 @@ func (s *ScanService) Progress() map[int64]float64 {
 	values := make(map[int64]float64)
 	s.Running.Range(func(key interface{}, value interface{}) bool {
 		keyValue := key.(int64)
-		valueFunc := value.(PercentReturnFunc)
-		values[keyValue] = valueFunc()
+		valueFunc := value.(*RunningScan)
+		values[keyValue] = valueFunc.ProgressFunc()
 		return true
 	})
 	return values

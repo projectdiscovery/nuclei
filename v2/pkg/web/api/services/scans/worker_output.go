@@ -46,7 +46,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	// TODO: deduplicate issues before writing to db
+
 	description := event.Info.Name
 	if event.Info.Description != "" {
 		description = event.Info.Description
@@ -71,6 +71,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		Issuedata:     format.MarkdownDescription(event),
 		Issuetemplate: string(contents),
 		Templatename:  event.Template,
+		Hash:          event.Hash(),
 		Remediation:   sql.NullString{String: event.Info.Remediation, Valid: true},
 		Scanid:        w.scanid,
 	})

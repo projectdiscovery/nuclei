@@ -29,8 +29,9 @@ func TestInputProviderFromRequest(t *testing.T) {
 		require.NoError(t, err, "could not get input provider from url")
 
 		var got string
-		provider.Scan(func(value string) {
+		provider.Scan(func(value string) bool {
 			got = value
+			return true
 		})
 		require.Equal(t, "https://uber.com", got, "could not get correct target from url provider")
 	})
@@ -51,8 +52,9 @@ func TestInputProviderFromRequest(t *testing.T) {
 		require.NoError(t, err, "could not get input provider from url")
 
 		var got []string
-		provider.Scan(func(value string) {
+		provider.Scan(func(value string) bool {
 			got = append(got, value)
+			return true
 		})
 		require.ElementsMatch(t, []string{"1.1.1.1", "1.0.0.1"}, got, "could not get correct target from storage")
 	})

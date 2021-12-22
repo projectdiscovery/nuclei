@@ -1,10 +1,14 @@
 package output
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"io"
 	"os"
+	"reflect"
 	"regexp"
 	"time"
+	"unsafe"
 
 	"github.com/pkg/errors"
 
@@ -113,6 +117,48 @@ type ResultEvent struct {
 	// MatcherStatus is the status of the match
 	MatcherStatus       bool           `json:"matcher-status"`
 	FileToIndexPosition map[string]int `json:"-"`
+}
+
+func (result *ResultEvent) Hash() string {
+	hasher := sha1.New()
+	if result.TemplateID != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.TemplateID))
+	}
+	if result.MatcherName != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.MatcherName))
+	}
+	if result.ExtractorName != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.ExtractorName))
+	}
+	if result.Type != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.Type))
+	}
+	if result.Host != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.Host))
+	}
+	if result.Matched != "" {
+		_, _ = hasher.Write(unsafeToBytes(result.Matched))
+	}
+	for _, v := range result.ExtractedResults {
+		_, _ = hasher.Write(unsafeToBytes(v))
+	}
+	for k, v := range result.Metadata {
+		_, _ = hasher.Write(unsafeToBytes(k))
+		_, _ = hasher.Write(unsafeToBytes(types.ToString(v)))
+	}
+	hash := hasher.Sum(nil)
+
+	return hex.EncodeToString(hash)
+}
+
+// unsafeToBytes converts a string to byte slice and does it with
+// zero allocations.
+//
+// Reference - https://stackoverflow.com/questions/59209493/how-to-use-unsafe-get-a-byte-slice-from-a-string-without-memory-copy
+func unsafeToBytes(data string) []byte {
+	var buf = *(*[]byte)(unsafe.Pointer(&data))
+	(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(data)
+	return buf
 }
 
 // NewStandardWriter creates a new output writer based on user configurations

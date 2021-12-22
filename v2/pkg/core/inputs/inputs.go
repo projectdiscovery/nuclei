@@ -53,7 +53,7 @@ func (s *FileInputProvider) Count() int64 {
 }
 
 // Scan calls a callback function till the input provider is exhausted
-func (s *FileInputProvider) Scan(callback func(value string)) {
+func (s *FileInputProvider) Scan(callback func(value string) bool) {
 	file, err := os.Open(s.Path)
 	if err != nil {
 		return
@@ -62,6 +62,8 @@ func (s *FileInputProvider) Scan(callback func(value string)) {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		callback(scanner.Text())
+		if !callback(scanner.Text()) {
+			break
+		}
 	}
 }

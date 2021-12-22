@@ -24,6 +24,7 @@ type Issue struct {
 	Issuetemplate string
 	Templatename  string
 	Remediation   sql.NullString
+	Hash          string
 	ID            int64
 	Scanid        int64
 }

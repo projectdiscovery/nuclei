@@ -65,9 +65,11 @@ CREATE  TABLE "public".issues (
 	issuetemplate        text NOT NULL,
 	templatename         varchar NOT NULL,
 	remediation          text,
+	hash				 varchar NOT NULL,
 	id                   bigserial NOT NULL,
 	scanid               bigint NOT NULL,
-	CONSTRAINT pk_issues_id PRIMARY KEY ( id )
+	CONSTRAINT pk_issues_id PRIMARY KEY ( id ),
+	CONSTRAINT unq_hash UNIQUE ( hash ) 
 );
 
 -- name: GetTemplates :many
@@ -163,9 +165,9 @@ FROM
 
 -- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id;
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id;
 
 -- name: DeleteIssue :exec
 DELETE FROM "public".issues WHERE id=$1;

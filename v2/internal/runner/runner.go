@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -338,7 +339,7 @@ func (r *Runner) RunEnumeration() error {
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
-	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
+	results := engine.ExecuteWithOpts(context.Background(), finalTemplates, r.hmapInputProvider, true)
 
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()

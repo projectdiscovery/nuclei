@@ -11,9 +11,9 @@ import (
 
 const addIssue = `-- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid) 
+	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id
+    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id
 `
 
 type AddIssueParams struct {
@@ -32,6 +32,7 @@ type AddIssueParams struct {
 	Templatename  string
 	Remediation   sql.NullString
 	Scanid        int64
+	Hash          string
 }
 
 func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) (int64, error) {
@@ -51,6 +52,7 @@ func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) (int64, erro
 		arg.Templatename,
 		arg.Remediation,
 		arg.Scanid,
+		arg.Hash,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -199,9 +201,30 @@ FROM
 	"public".issues WHERE id=$1 LIMIT 1
 `
 
-func (q *Queries) GetIssue(ctx context.Context, id int64) (Issue, error) {
+type GetIssueRow struct {
+	Matchedat     string
+	Title         string
+	Severity      string
+	Createdat     time.Time
+	Updatedat     time.Time
+	Scansource    string
+	Issuestate    string
+	Description   string
+	Author        string
+	Cvss          sql.NullFloat64
+	Cwe           []int32
+	Labels        []string
+	Issuedata     string
+	Issuetemplate string
+	Templatename  string
+	Remediation   sql.NullString
+	ID            int64
+	Scanid        int64
+}
+
+func (q *Queries) GetIssue(ctx context.Context, id int64) (GetIssueRow, error) {
 	row := q.db.QueryRow(ctx, getIssue, id)
-	var i Issue
+	var i GetIssueRow
 	err := row.Scan(
 		&i.Matchedat,
 		&i.Title,

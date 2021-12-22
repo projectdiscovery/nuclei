@@ -167,10 +167,10 @@ func (mr *MockQuerierMockRecorder) DeleteTemplate(ctx, path interface{}) *gomock
 }
 
 // GetIssue mocks base method.
-func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.Issue, error) {
+func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.GetIssueRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIssue", ctx, id)
-	ret0, _ := ret[0].(dbsql.Issue)
+	ret0, _ := ret[0].(dbsql.GetIssueRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

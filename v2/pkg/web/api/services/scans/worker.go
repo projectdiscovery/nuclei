@@ -44,10 +44,14 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 	return typesOptions, nil
 }
 
-func (s *ScanService) createExecuterOpts(scanID int64, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
+func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.CancelFunc, scanID int64, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
 	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	s.Running.Store(scanID, makePercentReturnFunc(progressImpl))
+	s.Running.Store(scanID, &RunningScan{
+		ctx:          ctx,
+		cancel:       cancel,
+		ProgressFunc: makePercentReturnFunc(progressImpl),
+	})
 
 	logWriter, err := s.Logs.Write(scanID)
 	if err != nil {
@@ -124,6 +128,9 @@ func (s *ScanService) createExecuterFromOpts(scanCtx *scanContext) error {
 
 // worker is a worker for executing a scan request
 func (s *ScanService) worker(req ScanRequest) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	gologger.Info().Msgf("[scans] [worker] [%d] got new scan request", req.ScanID)
 
 	typesOptions, err := s.getSettingsForName(req.Config)
@@ -144,7 +151,7 @@ func (s *ScanService) worker(req ScanRequest) error {
 	typesOptions.Templates = templatesList
 	typesOptions.Workflows = workflowsList
 
-	scanCtx, err := s.createExecuterOpts(req.ScanID, templatesDirectory, typesOptions)
+	scanCtx, err := s.createExecuterOpts(ctx, cancel, req.ScanID, templatesDirectory, typesOptions)
 	if err != nil {
 		return err
 	}
@@ -168,7 +175,7 @@ func (s *ScanService) worker(req ScanRequest) error {
 	gologger.Info().Msgf("[scans] [worker] [%d] total loaded input count: %d", req.ScanID, inputProvider.Count())
 
 	scanCtx.executerOpts.Progress.Init(inputProvider.Count(), len(finalTemplates), int64(len(finalTemplates)*int(inputProvider.Count())))
-	_ = scanCtx.executer.Execute(finalTemplates, inputProvider)
+	_ = scanCtx.executer.Execute(ctx, finalTemplates, inputProvider)
 
 	gologger.Info().Msgf("[scans] [worker] [%d] finished scan for ID", req.ScanID)
 

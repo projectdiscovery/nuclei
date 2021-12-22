@@ -185,10 +185,11 @@ func (s *Server) GetScanMatches(ctx echo.Context) error {
 
 // UpdateScanRequest is a request for /scans/:id update request
 type UpdateScanRequest struct {
-	Pause        bool `json:"pause"`
-	Stop         bool `json:"stop"`
-	Resume       bool `json:"resume"`
-	ScheduleTime bool `json:"scheduleTime"`
+	Stop bool `json:"stop"`
+
+	// Pause        bool `json:"pause"`
+	// Resume       bool `json:"resume"`
+	// ScheduleTime bool `json:"scheduleTime"`
 }
 
 // UpdateScan handlers /scans/:id updating route
@@ -202,8 +203,15 @@ func (s *Server) UpdateScan(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
-	_ = id
-	// todo: Handle pause resume update and time update
+	value, ok := s.scans.Running.Load(id)
+	if !ok {
+		return echo.NewHTTPError(400, errors.New("could not get running scan").Error())
+	}
+	runningScan := value.(*scans.RunningScan)
+
+	if req.Stop {
+		runningScan.Stop()
+	}
 	return nil
 }
 
