@@ -38,9 +38,10 @@ type Client struct {
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
-	firstTimeGroup sync.Once
-	generated      uint32 // decide to wait if we have a generated url
-	matched        bool
+	firstTimeGroup   sync.Once
+	generated        uint32 // decide to wait if we have a generated url
+	matched          bool
+	matchedTemplates []string
 }
 
 var (
@@ -160,6 +161,10 @@ func (c *Client) firstTimeInitializeClient() error {
 		if !ok {
 			return
 		}
+
+		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok && contains(c.matchedTemplates, request.Event.InternalEvent["template-id"].(string)) {
+			return
+		}
 		_ = c.processInteractionForRequest(interaction, request)
 	})
 	return nil
@@ -189,6 +194,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
+		c.matchedTemplates = append(c.matchedTemplates, data.Event.InternalEvent["template-id"].(string))
 	}
 	return true
 }
@@ -269,7 +275,6 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 			for _, interaction := range interactions {
 				if c.processInteractionForRequest(interaction, data) {
 					c.interactions.Delete(id)
-					c.matched = true
 					break
 				}
 			}
@@ -323,4 +328,14 @@ func debugPrintInteraction(interaction *server.Interaction) {
 		builder.WriteString(fmt.Sprintf("\n------------\nSMTP Interaction\n------------\n\n%s\n\n", interaction.RawRequest))
 	}
 	fmt.Fprint(os.Stderr, builder.String())
+}
+
+// contains returns true if the given string is in the given array
+func contains(array []string, str string) bool {
+	for _, s := range array {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }

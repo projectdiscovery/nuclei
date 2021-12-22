@@ -142,9 +142,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		reqBuilder.Grow(len(input.Data))
 
 		if request.options.Interactsh != nil {
-			if request.options.StopAtFirstMatch {
-				request.options.Interactsh.SetStopAtFirstMatch()
-			}
 			var transformedData string
 			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})
 			data = []byte(transformedData)
@@ -250,6 +247,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	if request.options.StopAtFirstMatch {
+		outputEvent["stop-at-first-match"] = true
+	}
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
