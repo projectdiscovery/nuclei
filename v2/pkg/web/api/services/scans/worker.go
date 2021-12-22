@@ -22,10 +22,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type percentReturnFunc func() float64
+type PercentReturnFunc func() float64
 
-func makePercentReturnFunc(stats progress.Progress) percentReturnFunc {
-	return percentReturnFunc(func() float64 {
+func makePercentReturnFunc(stats progress.Progress) PercentReturnFunc {
+	return PercentReturnFunc(func() float64 {
 		return stats.Percent()
 	})
 }
@@ -47,7 +47,7 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 func (s *ScanService) createExecuterOpts(scanID int64, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
 	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	s.running.Store(scanID, makePercentReturnFunc(progressImpl))
+	s.Running.Store(scanID, makePercentReturnFunc(progressImpl))
 
 	logWriter, err := s.Logs.Write(scanID)
 	if err != nil {
@@ -96,7 +96,9 @@ type scanContext struct {
 func (s *scanContext) Close() {
 	s.logs.Flush()
 	s.logsFile.Close()
-	s.scanService.running.Delete(s.scanID)
+	s.scanService.Running.Delete(s.scanID)
+
+	gologger.Info().Msgf("[scans] [worker] [%d] Closed scan resources", s.scanID)
 }
 
 // createExecuterFromOpts creates executer from scanContext

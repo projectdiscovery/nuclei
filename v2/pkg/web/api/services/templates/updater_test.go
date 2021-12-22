@@ -12,6 +12,6 @@ func TestNew(t *testing.T) {
 	require.Nil(t, err, "could not connect to db")
 	defer database.Close()
 
-	close := RunUpdateChecker(database)
-	close()
+	//close := RunUpdateChecker(database)
+	//close()
 }

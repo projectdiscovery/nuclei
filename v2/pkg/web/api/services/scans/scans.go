@@ -20,7 +20,7 @@ type ScanService struct {
 	cancel      context.CancelFunc
 	target      *targets.TargetsStorage
 
-	running     *sync.Map // Map of running scan with their status
+	Running     *sync.Map // Map of running scan with their status
 	scanRequest chan ScanRequest
 }
 
@@ -43,7 +43,7 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 		concurrency: concurrency,
 		cancel:      cancel,
 		target:      target,
-		running:     &sync.Map{},
+		Running:     &sync.Map{},
 		scanRequest: make(chan ScanRequest),
 	}
 	for i := 0; i < concurrency; i++ {
@@ -76,9 +76,9 @@ func (s *ScanService) Queue(req ScanRequest) {
 // Progress returns the progress map for all scan ids
 func (s *ScanService) Progress() map[int64]float64 {
 	values := make(map[int64]float64)
-	s.running.Range(func(key interface{}, value interface{}) bool {
+	s.Running.Range(func(key interface{}, value interface{}) bool {
 		keyValue := key.(int64)
-		valueFunc := value.(percentReturnFunc)
+		valueFunc := value.(PercentReturnFunc)
 		values[keyValue] = valueFunc()
 		return true
 	})
