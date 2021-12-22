@@ -125,6 +125,10 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
 	data["template-path"] = request.options.TemplatePath
+
+	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
+		data["stop-at-first-match"] = true
+	}
 	return data
 }
 
