@@ -22,6 +22,8 @@ type ScanService struct {
 
 	Running     *sync.Map // Map of running scan with their status
 	scanRequest chan ScanRequest
+
+	Finished chan int64
 }
 
 type ScanRequest struct {
@@ -45,6 +47,7 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 		target:      target,
 		Running:     &sync.Map{},
 		scanRequest: make(chan ScanRequest),
+		Finished:    make(chan int64),
 	}
 	for i := 0; i < concurrency; i++ {
 		go func() {
@@ -54,6 +57,7 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 					if err := service.worker(req); err != nil {
 						log.Printf("Could not run worker: %s (%d)\n", err, req.ScanID)
 					}
+					service.Finished <- req.ScanID
 				case <-context.Done():
 					return
 				}
@@ -66,6 +70,7 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 func (s *ScanService) Close() {
 	s.cancel()
 	s.Logs.Close()
+	close(s.Finished)
 }
 
 // Queue queues a scan request to the service

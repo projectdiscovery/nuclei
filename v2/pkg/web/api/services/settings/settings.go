@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Settings contains internal nuclei engine configuration settings
