@@ -1,7 +1,6 @@
 package network
 
 import (
-	"net"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -36,10 +35,6 @@ type Request struct {
 	//
 	//   Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
-	// values:
-	//   - "batteringram"
-	//   - "pitchfork"
-	//   - "clusterbomb"
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
@@ -77,15 +72,28 @@ type Request struct {
 
 	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
-	dialer        *fastdialer.Dialer
-	options       *protocols.ExecuterOptions
-	dynamicValues map[string]interface{}
+	dialer  *fastdialer.Dialer
+	options *protocols.ExecuterOptions
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"template-id":   "ID of the template executed",
+	"template-info": "Info Block of the template executed",
+	"template-path": "Path of the template executed",
+	"host":          "Host is the input to the template",
+	"matched":       "Matched is the input which was matched upon",
+	"type":          "Type is the type of request made",
+	"request":       "Network request made from the client",
+	"body,all,data": "Network response recieved from server (default)",
+	"raw":           "Full Network protocol data",
 }
 
 type addressKV struct {
-	ip   string
-	port string
-	tls  bool
+	address string
+	tls     bool
 }
 
 // Input is the input to send on the network
@@ -141,15 +149,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			shouldUseTLS = true
 			address = strings.TrimPrefix(address, "tls://")
 		}
-		if strings.Contains(address, ":") {
-			addressHost, addressPort, portErr := net.SplitHostPort(address)
-			if portErr != nil {
-				return errors.Wrap(portErr, "could not parse address")
-			}
-			request.addresses = append(request.addresses, addressKV{ip: addressHost, port: addressPort, tls: shouldUseTLS})
-		} else {
-			request.addresses = append(request.addresses, addressKV{ip: address, tls: shouldUseTLS})
-		}
+		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
 	}
 	// Pre-compile any input dsl functions before executing the request.
 	for _, input := range request.Inputs {

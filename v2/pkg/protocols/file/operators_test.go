@@ -20,11 +20,11 @@ func TestResponseToDSLMap(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -45,11 +45,11 @@ func TestFileOperatorMatch(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -133,11 +133,11 @@ func TestFileOperatorExtract(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -154,7 +154,7 @@ func TestFileOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "raw",
-			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+			Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -167,7 +167,7 @@ func TestFileOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"raw"},
 		}
 		err = extractor.CompileExtractors()
@@ -240,17 +240,17 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"*", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"*", ".lock"},
+		DenyList:    []string{".go"},
 		Operators: operators.Operators{
 			MatchersCondition: matcherCondition,
 			Matchers:          matchers,
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

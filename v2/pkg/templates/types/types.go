@@ -16,15 +16,26 @@ import (
 type ProtocolType int
 
 // Supported values for the ProtocolType
+// name:ProtocolType
 const (
+	// name:dns
 	DNSProtocol ProtocolType = iota + 1
+	// name:file
 	FileProtocol
+	// name:http
 	HTTPProtocol
+	// name:headless
 	HeadlessProtocol
+	// name:network
 	NetworkProtocol
+	// name:workflow
 	WorkflowProtocol
+	// name:ssl
 	SSLProtocol
+	// name:websocket
 	WebsocketProtocol
+	// name:whois
+	WHOISProtocol
 	limit
 	InvalidProtocol
 )
@@ -40,6 +51,7 @@ var protocolMappings = map[ProtocolType]string{
 	WorkflowProtocol:  "workflow",
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
+	WHOISProtocol:     "whois",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {
@@ -70,7 +82,7 @@ func (t ProtocolType) String() string {
 
 // TypeHolder is used to hold internal type of the protocol
 type TypeHolder struct {
-	ProtocolType ProtocolType
+	ProtocolType ProtocolType `mapping:"true"`
 }
 
 func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {

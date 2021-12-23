@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
 
 // Config contains the configuration options for the loader
@@ -141,6 +142,10 @@ func (store *Store) Load() {
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
+	// consider all the templates by default if no templates passed by user
+	if len(templatesList) == 0 {
+		templatesList = store.finalTemplates
+	}
 	templatePaths := store.config.Catalog.GetTemplatesPath(templatesList)
 	workflowPaths := store.config.Catalog.GetTemplatesPath(workflowsList)
 
@@ -214,6 +219,7 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 		if loaded {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
+				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				loadedTemplates = append(loadedTemplates, parsed)

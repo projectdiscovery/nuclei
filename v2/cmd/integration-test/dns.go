@@ -21,8 +21,5 @@ func (h *dnsBasic) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+	return expectResultsCount(results, 1)
 }

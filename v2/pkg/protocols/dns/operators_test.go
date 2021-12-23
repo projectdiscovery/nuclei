@@ -20,6 +20,7 @@ import (
 func TestResponseToDSLMap(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -27,7 +28,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -52,6 +53,7 @@ func TestResponseToDSLMap(t *testing.T) {
 func TestDNSOperatorMatch(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -59,7 +61,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -163,6 +165,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 func TestDNSOperatorExtract(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -170,7 +173,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -192,7 +195,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
 			Part:  "raw",
-			Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+			Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 			Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 		}
 		err = extractor.CompileExtractors()
@@ -205,7 +208,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 
 	t.Run("kval", func(t *testing.T) {
 		extractor := &extractors.Extractor{
-			Type: extractors.TypeHolder{ExtractorType: extractors.KValExtractor},
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.KValExtractor},
 			KVal: []string{"rcode"},
 		}
 		err = extractor.CompileExtractors()
@@ -220,6 +223,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 func TestDNSMakeResult(t *testing.T) {
 	options := testutils.DefaultOptions
 
+	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
 	request := &Request{
@@ -227,7 +231,7 @@ func TestDNSMakeResult(t *testing.T) {
 		Class:       "INET",
 		Retries:     5,
 		ID:          templateID,
-		Recursion:   false,
+		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
@@ -238,7 +242,7 @@ func TestDNSMakeResult(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

@@ -42,10 +42,8 @@ func (h *networkBasic) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type networkMultiStep struct{}
@@ -92,10 +90,8 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	} else {
 		expectedResultsSize = 1
 	}
-	if len(results) != expectedResultsSize {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, expectedResultsSize)
 }
 
 type networkRequestSelContained struct{}
@@ -117,8 +113,6 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }

@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -36,6 +39,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
 	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
+	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
+	"http/dsl-functions.yaml":                      &httpDSLFunctions{},
 }
 
 type httpInteractshRequest struct{}
@@ -58,10 +63,8 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetHeaders struct{}
@@ -81,10 +84,8 @@ func (h *httpGetHeaders) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetQueryString struct{}
@@ -104,10 +105,8 @@ func (h *httpGetQueryString) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetRedirects struct{}
@@ -128,10 +127,8 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGet struct{}
@@ -149,9 +146,79 @@ func (h *httpGet) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
+
+	return expectResultsCount(results, 1)
+}
+
+type httpDSLVariable struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDSLVariable) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
+
+	return expectResultsCount(results, 5)
+}
+
+type httpDSLFunctions struct{}
+
+func (h *httpDSLFunctions) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		request, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			_, _ = fmt.Fprint(w, err.Error())
+		} else {
+			_, _ = fmt.Fprint(w, string(request))
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-nc")
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+
+	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
+	submatch := resultPattern.FindStringSubmatch(results[0])
+	if len(submatch) != 2 {
+		return errors.New("could not parse the result")
+	}
+
+	totalExtracted := strings.Split(submatch[1], ",")
+	numberOfDslFunctions := 53
+	if len(totalExtracted) != numberOfDslFunctions {
+		return errors.New("incorrect number of results")
+	}
+
+	for _, header := range totalExtracted {
+		parts := strings.Split(header, ": ")
+		index, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return err
+		}
+		if index < 0 || index > numberOfDslFunctions {
+			return fmt.Errorf("incorrect header index found: %d", index)
+		}
+		if strings.TrimSpace(parts[1]) == "" {
+			return fmt.Errorf("the DSL expression with index %d was not evaluated correctly", index)
+		}
+	}
+
 	return nil
 }
 
@@ -181,10 +248,8 @@ func (h *httpPostBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpPostJSONBody struct{}
@@ -218,10 +283,8 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpPostMultipartBody struct{}
@@ -260,10 +323,8 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawDynamicExtractor struct{}
@@ -297,10 +358,8 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawGetQuery struct{}
@@ -325,10 +384,8 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawGet struct{}
@@ -351,10 +408,8 @@ func (h *httpRawGet) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawPayload struct{}
@@ -386,10 +441,8 @@ func (h *httpRawPayload) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 2 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 2)
 }
 
 type httpRawPostBody struct{}
@@ -418,10 +471,8 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawCookieReuse struct{}
@@ -465,10 +516,8 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawUnsafeRequest struct{}
@@ -490,10 +539,8 @@ func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRequestCondition struct{}
@@ -519,10 +566,8 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRequestSelContained struct{}
@@ -551,10 +596,8 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetCaseInsensitive struct{}
@@ -572,10 +615,8 @@ func (h *httpGetCaseInsensitive) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetCaseInsensitiveCluster struct{}
@@ -595,10 +636,8 @@ func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 2 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 2)
 }
 
 type httpGetRedirectsChainHeaders struct{}
@@ -623,8 +662,6 @@ func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }

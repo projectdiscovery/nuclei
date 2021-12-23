@@ -109,7 +109,7 @@ func New(options *Options) (*Client, error) {
 // NewDefaultOptions returns the default options for interactsh client
 func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
 	return &Options{
-		ServerURL:      "https://interactsh.com",
+		ServerURL:      "https://interact.sh",
 		CacheSize:      5000,
 		Eviction:       60 * time.Second,
 		ColldownPeriod: 5 * time.Second,
@@ -165,6 +165,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
+	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, false)
 	if !matched || result == nil {
 		return false // if we don't match, return
@@ -177,6 +178,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		data.Event.OperatorsResult = result
 	}
 	data.Event.Results = data.MakeResultFunc(data.Event)
+	for _, event := range data.Event.Results {
+		event.Interaction = interaction
+	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
@@ -265,7 +269,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 // HasMatchers returns true if an operator has interactsh part
 // matchers or extractors.
 //
-// Used by requests to show result or not depending on presence of interactsh.com
+// Used by requests to show result or not depending on presence of interact.sh
 // data part matchers.
 func HasMatchers(op *operators.Operators) bool {
 	if op == nil {
