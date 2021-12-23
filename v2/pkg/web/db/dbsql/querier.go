@@ -23,6 +23,7 @@ type Querier interface {
 	GetScan(ctx context.Context, id int64) (Scan, error)
 	GetScans(ctx context.Context) ([]Scan, error)
 	GetScansBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]Scan, error)
+	GetScansForSchedule(ctx context.Context, scheduleoccurence sql.NullString) ([]GetScansForScheduleRow, error)
 	GetSettingByName(ctx context.Context, name string) (GetSettingByNameRow, error)
 	GetSettings(ctx context.Context) ([]Setting, error)
 	GetTarget(ctx context.Context, id int64) (GetTargetRow, error)

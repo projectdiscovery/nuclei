@@ -256,6 +256,21 @@ func (mr *MockQuerierMockRecorder) GetScansBySearchKey(ctx, dollar_1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScansBySearchKey", reflect.TypeOf((*MockQuerier)(nil).GetScansBySearchKey), ctx, dollar_1)
 }
 
+// GetScansForSchedule mocks base method.
+func (m *MockQuerier) GetScansForSchedule(ctx context.Context, scheduleoccurence sql.NullString) ([]dbsql.GetScansForScheduleRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetScansForSchedule", ctx, scheduleoccurence)
+	ret0, _ := ret[0].([]dbsql.GetScansForScheduleRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetScansForSchedule indicates an expected call of GetScansForSchedule.
+func (mr *MockQuerierMockRecorder) GetScansForSchedule(ctx, scheduleoccurence interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScansForSchedule", reflect.TypeOf((*MockQuerier)(nil).GetScansForSchedule), ctx, scheduleoccurence)
+}
+
 // GetSettingByName mocks base method.
 func (m *MockQuerier) GetSettingByName(ctx context.Context, name string) (dbsql.GetSettingByNameRow, error) {
 	m.ctrl.T.Helper()

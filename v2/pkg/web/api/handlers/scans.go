@@ -20,10 +20,10 @@ type AddScanRequest struct {
 	Templates         []string `json:"templates"`
 	Targets           []string `json:"targets"`
 	Config            string   `json:"config"` // nuclei config, default -> "default"
-	RunNow            bool     `json:"run-now"`
-	Reporting         string   `json:"reporting-config"`
-	ScheduleOccurence string   `json:"schedule-occurence"`
-	ScheduleTime      string   `json:"schedule-time"`
+	RunNow            bool     `json:"runNow"`
+	Reporting         string   `json:"reportingConfig"`
+	ScheduleOccurence string   `json:"scheduleOccurence"`
+	ScheduleTime      string   `json:"scheduleTime"`
 	ScanSource        string   `json:"scanSource"`
 }
 
@@ -150,6 +150,27 @@ func (s *Server) GetScan(ctx echo.Context) error {
 // GetScanProgress handlers /scans/progress getting route
 func (s *Server) GetScanProgress(ctx echo.Context) error {
 	return ctx.JSON(200, s.scans.Progress())
+}
+
+// ExecuteScan handlers /scans/:id/execute execution route
+func (s *Server) ExecuteScan(ctx echo.Context) error {
+	queryParam := ctx.Param("id")
+	id, err := strconv.ParseInt(queryParam, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
+	}
+	scan, err := s.db.GetScan(context.Background(), id)
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan from db").Error())
+	}
+	s.scans.Queue(scans.ScanRequest{
+		ScanID:    id,
+		Templates: scan.Templates,
+		Targets:   scan.Targets,
+		Config:    scan.Config.String,
+		Reporting: scan.Reporting.String,
+	})
+	return nil
 }
 
 // GetScanMatchesResponse is a response for /scans/:id/matches response

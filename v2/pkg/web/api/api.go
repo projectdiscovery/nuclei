@@ -87,8 +87,9 @@ func New(config *Config) *API {
 	apiGroup.POST("/scans", config.Server.AddScan)
 	apiGroup.POST("/scans/progress", config.Server.GetScanProgress)
 	apiGroup.GET("/scans/:id", config.Server.GetScan)
-	apiGroup.PUT("/scans/:id", config.Server.UpdateScan) // todo: finish
+	apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
 	apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)
+	apiGroup.GET("/scans/:id/execute", config.Server.ExecuteScan)
 	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
 	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
 

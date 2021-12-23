@@ -2,11 +2,13 @@ package scans
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
@@ -75,6 +77,7 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 			}
 		}()
 	}
+	go service.pollDB(context)
 	return service
 }
 
@@ -101,13 +104,43 @@ func (s *ScanService) Progress() map[int64]float64 {
 	return values
 }
 
+// pollDB polls db for schedule scans and runs them
 func (s *ScanService) pollDB(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Hour)
-	for range ticker.C {
-		if ctx.Err() != nil {
-			return
-		}
-		// todo: schedule tasks based on time here.
+	scheduler := gocron.NewScheduler(time.UTC)
+
+	// We have three types of scheduled tasks - daily, weekly, monthly
+	// which can be scheduled at any specified time.
+	scheduler.Every(1).Day().Do(func() {
+		s.queueScansForSchedule("daily")
+	})
+	scheduler.Every(1).Week().Do(func() {
+		s.queueScansForSchedule("weekly")
+	})
+	scheduler.Every(1).Month().Do(func() {
+		s.queueScansForSchedule("monthly")
+	})
+	scheduler.StartAsync()
+
+	for range ctx.Done() {
+		scheduler.Stop()
+		break
+	}
+}
+
+// queueScansForSchedule takes a schedule and queues scans based on that
+func (s *ScanService) queueScansForSchedule(schedule string) {
+	scans, err := s.db.GetScansForSchedule(context.Background(), sql.NullString{String: schedule, Valid: true})
+	if err != nil {
+		return
+	}
+	for _, scan := range scans {
+		s.Queue(ScanRequest{
+			ScanID:    scan.ID,
+			Templates: scan.Templates,
+			Targets:   scan.Targets,
+			Config:    scan.Config.String,
+			Reporting: scan.Reporting.String,
+		})
 	}
 }
 

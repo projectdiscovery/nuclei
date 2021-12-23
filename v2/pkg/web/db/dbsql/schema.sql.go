@@ -444,6 +444,61 @@ func (q *Queries) GetScansBySearchKey(ctx context.Context, dollar_1 sql.NullStri
 	return items, nil
 }
 
+const getScansForSchedule = `-- name: GetScansForSchedule :many
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, 
+	scheduletime, id
+FROM
+	"public".scans WHERE scheduleoccurence=$1
+`
+
+type GetScansForScheduleRow struct {
+	Name         string
+	Status       string
+	Scantime     int64
+	Hosts        int64
+	Scansource   string
+	Templates    []string
+	Targets      []string
+	Config       sql.NullString
+	Runnow       sql.NullBool
+	Reporting    sql.NullString
+	Scheduletime sql.NullString
+	ID           int64
+}
+
+func (q *Queries) GetScansForSchedule(ctx context.Context, scheduleoccurence sql.NullString) ([]GetScansForScheduleRow, error) {
+	rows, err := q.db.Query(ctx, getScansForSchedule, scheduleoccurence)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetScansForScheduleRow
+	for rows.Next() {
+		var i GetScansForScheduleRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Status,
+			&i.Scantime,
+			&i.Hosts,
+			&i.Scansource,
+			&i.Templates,
+			&i.Targets,
+			&i.Config,
+			&i.Runnow,
+			&i.Reporting,
+			&i.Scheduletime,
+			&i.ID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSettingByName = `-- name: GetSettingByName :one
 SELECT settingdata, datatype
 FROM

@@ -157,6 +157,12 @@ SELECT name, status, scantime, hosts, scansource, templates, targets, config, ru
 FROM
 	"public".scans;
 
+-- name: GetScansForSchedule :many
+SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, 
+	scheduletime, id
+FROM
+	"public".scans WHERE scheduleoccurence=$1;
+
 -- name: GetScansBySearchKey :many
 SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
 	scheduletime, id
