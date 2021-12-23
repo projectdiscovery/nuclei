@@ -34,16 +34,6 @@ type Request struct {
 	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	// values:
-	//   - "A"
-	//   - "NS"
-	//   - "DS"
-	//   - "CNAME"
-	//   - "SOA"
-	//   - "PTR"
-	//   - "MX"
-	//   - "TXT"
-	//   - "AAAA"
 	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
@@ -83,9 +73,29 @@ type Request struct {
 
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
-	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	Recursion *bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 	// Resolvers to use for the dns requests
 	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"template-id":   "ID of the template executed",
+	"template-info": "Info Block of the template executed",
+	"template-path": "Path of the template executed",
+	"host":          "Host is the input to the template",
+	"matched":       "Matched is the input which was matched upon",
+	"request":       "Request contains the DNS request in text format",
+	"type":          "Type is the type of request made",
+	"rcode":         "Rcode field returned for the DNS request",
+	"question":      "Question contains the DNS question field",
+	"extra":         "Extra contains the DNS response extra field",
+	"answer":        "Answer contains the DNS response answer field",
+	"ns":            "NS contains the DNS response NS field",
+	"raw,body,all":  "Raw contains the raw DNS response (default)",
+	"trace":         "Trace contains trace data for DNS request if enabled",
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -99,6 +109,13 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if request.Retries == 0 {
+		request.Retries = 3
+	}
+	if request.Recursion == nil {
+		recursion := true
+		request.Recursion = &recursion
+	}
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 	}
@@ -162,7 +179,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
-	req.RecursionDesired = request.Recursion
+	req.RecursionDesired = *request.Recursion
 
 	var q dns.Question
 

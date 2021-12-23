@@ -51,8 +51,8 @@ func New(options *Options) (*Exporter, error) {
 }
 
 // Export exports a passed result event to sarif structure
-func (i *Exporter) Export(event *output.ResultEvent) error {
-	templatePath := strings.TrimPrefix(event.TemplatePath, i.home)
+func (exporter *Exporter) Export(event *output.ResultEvent) error {
+	templatePath := strings.TrimPrefix(event.TemplatePath, exporter.home)
 
 	h := sha1.New()
 	_, _ = h.Write([]byte(event.Host))
@@ -67,7 +67,7 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	var templateURL string
-	if strings.HasPrefix(event.TemplatePath, i.home) {
+	if strings.HasPrefix(event.TemplatePath, exporter.home) {
 		templateURL = "https://github.com/projectdiscovery/nuclei-templates/blob/master" + templatePath
 	} else {
 		templateURL = "https://github.com/projectdiscovery/nuclei-templates"
@@ -78,19 +78,20 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 		ruleDescription = event.Info.Description
 	}
 
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
+	exporter.mutex.Lock()
+	defer exporter.mutex.Unlock()
 
-	_ = i.run.AddRule(templateID).
+	_ = exporter.run.AddRule(templateID).
 		WithDescription(ruleName).
 		WithHelp(fullDescription).
 		WithHelpURI(templateURL).
 		WithFullDescription(sarif.NewMultiformatMessageString(ruleDescription))
-	result := i.run.AddResult(templateID).
+
+	result := exporter.run.AddResult(templateID).
 		WithMessage(sarif.NewMessage().WithText(event.Host)).
 		WithLevel(sarifSeverity)
 
-		// Also write file match metadata to file
+	// Also write file match metadata to file
 	if event.Type == "file" && (event.FileToIndexPosition != nil && len(event.FileToIndexPosition) > 0) {
 		for file, line := range event.FileToIndexPosition {
 			result.WithLocation(sarif.NewLocation().WithMessage(sarif.NewMessage().WithText(ruleName)).WithPhysicalLocation(
@@ -124,18 +125,18 @@ func getSarifSeverity(event *output.ResultEvent) string {
 }
 
 // Close closes the exporter after operation
-func (i *Exporter) Close() error {
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
+func (exporter *Exporter) Close() error {
+	exporter.mutex.Lock()
+	defer exporter.mutex.Unlock()
 
-	i.sarif.AddRun(i.run)
-	if len(i.run.Results) == 0 {
+	exporter.sarif.AddRun(exporter.run)
+	if len(exporter.run.Results) == 0 {
 		return nil // do not write when no results
 	}
-	file, err := os.Create(i.options.File)
+	file, err := os.Create(exporter.options.File)
 	if err != nil {
 		return errors.Wrap(err, "could not create sarif output file")
 	}
 	defer file.Close()
-	return i.sarif.Write(file)
+	return exporter.sarif.Write(file)
 }

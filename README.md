@@ -26,6 +26,11 @@
   <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a>
+</p>
+
 ---
 
 Nuclei is used to send requests across targets based on a template leading to zero false positives and providing fast scanning on large number of hosts. Nuclei offers scanning for a variety of protocols including TCP, DNS, HTTP, File, etc. With powerful and flexible templating, all kinds of security checks can be modelled with Nuclei.
@@ -90,20 +95,24 @@ TARGET:
    -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
 
 TEMPLATES:
-   -t, -templates string[]  template or template directory paths to include in the scan
-   -nt, -new-templates      run only new templates added in latest nuclei-templates release
-   -w, -workflows string[]  workflow or workflow directory paths to include in the scan
-   -validate                validate the passed templates to nuclei
-   -tl                      list all available templates
+   -t, -templates string[]      template or template directory paths to include in the scan
+   -tu, -template-url string[]  URL containing list of templates to run
+   -nt, -new-templates          run only new templates added in latest nuclei-templates release
+   -w, -workflows string[]      workflow or workflow directory paths to include in the scan
+   -wu, -workflow-url string[]  URL containing list of workflows to run
+   -validate                    validate the passed templates to nuclei
+   -tl                          list all available templates
 
 FILTERING:
    -tags string[]                    execute a subset of templates that contain the provided tags
-   -etags, -exclude-tags string[]    exclude templates with the provided tags
    -itags, -include-tags string[]    tags from the default deny list that permit executing more intrusive templates
-   -et, -exclude-templates string[]  template or template directory paths to exclude
+   -etags, -exclude-tags string[]    exclude templates with the provided tags
    -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
-   -s, -severity value[]             Templates to run based on severity. Possible values - info,low,medium,high,critical
-   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values - info,low,medium,high,critical
+   -et, -exclude-templates string[]  template or template directory paths to exclude
+   -s, -severity value[]             Templates to run based on severity. Possible values info,low,medium,high,critical
+   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values info,low,medium,high,critical
+   -pt, -type value[]                protocol types to be executed. Possible values dns,file,http,headless,network,workflow,ssl,websocket
+   -ept, -exclude-type value[]       protocol types to not be executed. Possible values dns,file,http,headless,network,workflow,ssl,websocket
    -a, -author string[]              execute templates that are (co-)created by the specified authors
 
 OUTPUT:
@@ -115,6 +124,7 @@ OUTPUT:
    -nm, -no-meta                 don't display match metadata
    -nts, -no-timestamp           don't display timestamp metadata in CLI output
    -rdb, -report-db string       local nuclei reporting database (always use this to persist report data)
+   -ms, -matcher-status          show optional match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
 
@@ -126,13 +136,13 @@ CONFIGURATIONS:
    -r, -resolvers string       file containing resolver list for nuclei
    -sr, -system-resolvers      use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
-   -ev, -env-vars              enable environment variables support to be used in template
-   -cc, -client-cert           client certificate file (PEM-encoded) used for authenticating against scanned hosts
-   -ck, -client-key            client key file (PEM-encoded) used for authenticating against scanned hosts
-   -ca, -client-ca             client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+   -ev, -env-vars              enable environment variables to be used in template
+   -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
+   -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
+   -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 
 INTERACTSH:
-   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interactsh.com")
+   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interact.sh")
    -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
    -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
@@ -141,10 +151,12 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 RATE-LIMIT:
-   -rl, -rate-limit int          maximum number of requests to send per second (default 150)
-   -rlm, -rate-limit-minute int  maximum number of requests to send per minute
-   -bs, -bulk-size int           maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int          maximum number of templates to be executed in parallel (default 25)
+   -rl, -rate-limit int            maximum number of requests to send per second (default 150)
+   -rlm, -rate-limit-minute int    maximum number of requests to send per minute
+   -bs, -bulk-size int             maximum number of hosts to be analyzed in parallel per template (default 25)
+   -c, -concurrency int            maximum number of templates to be executed in parallel (default 25)
+   -hbs, -headless-bulk-size int   maximum number of headless hosts to be analyzed in parallel per template (default 10)
+   -hc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
    -timeout int               time to wait in seconds before timeout (default 5)

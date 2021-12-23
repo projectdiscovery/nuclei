@@ -24,6 +24,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -118,7 +119,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 		return nil
 	}
 
@@ -134,13 +135,13 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return config.WriteConfiguration(r.templatesConfig)
 	}
 
-	if err := updateTemplates(latestVersion, currentVersion, r, ctx); err != nil {
+	if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateTemplates(latestVersion semver.Version, currentVersion semver.Version, runner *Runner, ctx context.Context) error {
+func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, currentVersion semver.Version, runner *Runner, ctx context.Context) error {
 	if latestVersion.GT(currentVersion) {
 		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", currentVersion, latestVersion.String())
 		gologger.Info().Msgf("Downloading latest release...")
@@ -162,7 +163,7 @@ func updateTemplates(latestVersion semver.Version, currentVersion semver.Version
 		if err := config.WriteConfiguration(runner.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", latestVersion.String())
+		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s) to %s. GoodLuck!\n", latestVersion.String(), r.templatesConfig.TemplatesDirectory)
 	}
 	return nil
 }
@@ -199,10 +200,6 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 			return readErr
 		}
 		r.templatesConfig = configuration
-
-		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
-			r.options.TemplatesDirectory = configuration.TemplatesDirectory
-		}
 	}
 	return nil
 }
@@ -401,8 +398,17 @@ func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory stri
 		return "", true, nil
 	}
 
-	directoryPathChunks := strings.Split(directory, string(os.PathSeparator))
-	relativeDirectoryPathWithoutZipRoot := filepath.Join(directoryPathChunks[1:]...)
+	var (
+		directoryPathChunks                 []string
+		relativeDirectoryPathWithoutZipRoot string
+	)
+	if folderutil.IsUnixOS() {
+		directoryPathChunks = strings.Split(directory, string(os.PathSeparator))
+	} else if folderutil.IsWindowsOS() {
+		pathInfo, _ := folderutil.NewPathInfo(directory)
+		directoryPathChunks = pathInfo.Parts
+	}
+	relativeDirectoryPathWithoutZipRoot = filepath.Join(directoryPathChunks[1:]...)
 
 	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
 		return "", true, nil
