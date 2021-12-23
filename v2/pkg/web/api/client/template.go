@@ -193,7 +193,7 @@ type GetTemplateRawRequest struct {
 
 // GetTemplateRaw returns raw content for a template
 func (c *TemplatesService) GetTemplateRaw(req GetTemplateRawRequest) (string, error) {
-	reqURL := fmt.Sprintf("%s/templates/raw?path=%s", req.Path, c.baseURL)
+	reqURL := fmt.Sprintf("%s/templates/raw?path=%s", c.baseURL, req.Path)
 
 	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
 	if err != nil {

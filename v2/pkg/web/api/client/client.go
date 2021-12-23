@@ -7,6 +7,7 @@ import (
 // Client is a client for nuclei REST API
 type Client struct {
 	Templates Templates
+	Targets   Targets
 
 	username string
 	password string
@@ -39,6 +40,7 @@ func New(opts ...Option) *Client {
 
 	c := &Client{baseURL: defaultBaseURL}
 	c.Templates = &TemplatesService{Client: c}
+	c.Targets = &TargetsService{Client: c}
 
 	for _, opt := range opts {
 		opt(c)
@@ -47,12 +49,6 @@ func New(opts ...Option) *Client {
 	return c
 }
 
-// // /targets endpoints
-// apiGroup.GET("/targets", config.Server.GetTargets)
-// apiGroup.POST("/targets", config.Server.AddTarget)
-// apiGroup.PUT("/targets/:id", config.Server.UpdateTarget)
-// apiGroup.DELETE("/targets/:id", config.Server.DeleteTarget)
-// apiGroup.GET("/targets/:id", config.Server.GetTargetContents)
 //
 // // /settings endpoints
 // apiGroup.GET("/settings", config.Server.GetSettings)
