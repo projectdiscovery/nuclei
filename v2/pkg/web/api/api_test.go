@@ -52,9 +52,9 @@ func TestAPI(t *testing.T) {
 		Userame:  "user",
 		Password: "pass",
 		Host:     "localhost",
-		Port:     8082,
+		Port:     8822,
 		TLS:      false,
 		Server:   server,
 	})
-	http.ListenAndServe(fmt.Sprintf("%s:%d", "localhost", 8082), api.echo)
+	http.ListenAndServe(fmt.Sprintf("%s:%d", "localhost", 8822), api.echo)
 }
