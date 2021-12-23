@@ -39,10 +39,8 @@ func (h *websocketBasic) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type websocketCswsh struct{}
@@ -62,10 +60,8 @@ func (h *websocketCswsh) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type websocketNoCswsh struct{}
@@ -85,10 +81,8 @@ func (h *websocketNoCswsh) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 0 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 0)
 }
 
 type websocketWithPath struct{}
@@ -108,8 +102,6 @@ func (h *websocketWithPath) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 0 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 0)
 }

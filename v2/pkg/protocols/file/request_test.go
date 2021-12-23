@@ -23,11 +23,11 @@ func TestFileExecuteWithResults(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"all"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     1024,
+		NoRecursive: false,
+		Extensions:  []string{"all"},
+		DenyList:    []string{".go"},
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Name:  "test",
@@ -37,7 +37,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
-				Type:  extractors.TypeHolder{ExtractorType: extractors.RegexExtractor},
+				Type:  extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},

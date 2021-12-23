@@ -69,6 +69,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	options.TemplateID = template.ID
 	options.TemplateInfo = template.Info
 	options.TemplatePath = filePath
+	options.StopAtFirstMatch = template.StopAtFirstMatch
 
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
@@ -107,6 +108,11 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 // parseSelfContainedRequests parses the self contained template requests.
 func (template *Template) parseSelfContainedRequests() {
+	if template.Signature.Value.String() != "" {
+		for _, request := range template.RequestsHTTP {
+			request.Signature = template.Signature
+		}
+	}
 	if !template.SelfContained {
 		return
 	}
@@ -127,7 +133,8 @@ func (template *Template) Requests() int {
 		len(template.RequestsHeadless) +
 		len(template.Workflows) +
 		len(template.RequestsSSL) +
-		len(template.RequestsWebsocket)
+		len(template.RequestsWebsocket) +
+		len(template.RequestsWHOIS)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -165,6 +172,9 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 
 	case len(template.RequestsWebsocket) > 0:
 		requests = template.convertRequestToProtocolsRequest(template.RequestsWebsocket)
+
+	case len(template.RequestsWHOIS) > 0:
+		requests = template.convertRequestToProtocolsRequest(template.RequestsWHOIS)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil

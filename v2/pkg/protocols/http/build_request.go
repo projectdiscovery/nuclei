@@ -19,6 +19,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -53,14 +54,9 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(dynamicValues)
-	}
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
+		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
 	}
 	ctx := context.Background()
 
@@ -107,12 +103,7 @@ func (r *requestGenerator) Make(baseURL string, dynamicValues map[string]interfa
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
 }
 
-func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	// We get the next payload for the request.
-	data, payloads, ok := r.nextValue()
-	if !ok {
-		return nil, io.EOF
-	}
+func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	ctx := context.Background()
 
 	isRawRequest := r.request.isRaw()
@@ -131,13 +122,32 @@ func (r *requestGenerator) makeSelfContainedRequest(dynamicValues map[string]int
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("malformed request supplied")
 		}
+
+		payloads := generators.BuildPayloadFromOptions(r.request.options.Options)
+		// in case cases (eg requests signing, some variables uses default values if missing)
+		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
+			payloads = generators.MergeMaps(defaultList, payloads)
+		}
+		parts[1] = replacer.Replace(parts[1], payloads)
+
+		// the url might contain placeholders with ignore list
+		if ignoreList := GetVariablesNamesSkipList(r.request.Signature.Value); ignoreList != nil {
+			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
+				return nil, err
+			}
+		} else { // the url might contain placeholders
+			if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
+				return nil, err
+			}
+		}
+
 		parsed, err := url.Parse(parts[1])
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values := generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
-			generators.BuildPayloadFromOptions(r.request.options.Options),
+			payloads,
 		)
 
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)

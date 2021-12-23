@@ -29,6 +29,10 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
+	if !filepath.IsAbs(options.TemplatesDirectory) {
+		cwd, _ := os.Getwd()
+		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
+	}
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
@@ -67,15 +71,14 @@ func ParseOptions(options *types.Options) {
 
 // hasStdin returns true if we have stdin input
 func hasStdin() bool {
-	stat, err := os.Stdin.Stat()
+	fi, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-
-	isPipedFromChrDev := (stat.Mode() & os.ModeCharDevice) == 0
-	isPipedFromFIFO := (stat.Mode() & os.ModeNamedPipe) != 0
-
-	return isPipedFromChrDev || isPipedFromFIFO
+	if fi.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+	return true
 }
 
 // validateOptions validates the configuration options passed
@@ -117,7 +120,7 @@ func validateOptions(options *types.Options) error {
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose {
+	if options.Verbose || options.Validate {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.Debug {
