@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"log"
 	"os"
 
+	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client"
+	"github.com/tidwall/pretty"
 	"github.com/urfave/cli/v2"
 )
 
@@ -23,11 +27,19 @@ var issues = &cli.Command{
 			},
 			Action: func(c *cli.Context) error {
 				if id := c.Int64("id"); id != 0 {
-					nucleiClient.Issues.GetIssue(id)
+					if resp, err := nucleiClient.Issues.GetIssue(id); err != nil {
+						return errors.Wrap(err, "could not get issue for id")
+					} else {
+						renderJSON(resp)
+					}
+					return nil
 				}
-				if search := c.String("search"); search != "" {
-					nucleiClient.Issues.GetIssues(client.GetIssuesRequest{Search: search})
+				search := c.String("search")
+				response, err := nucleiClient.Issues.GetIssues(client.GetIssuesRequest{Search: search})
+				if err != nil {
+					return errors.Wrap(err, "could not get issues")
 				}
+				renderJSON(response)
 				return nil
 			},
 		},
@@ -204,7 +216,21 @@ var templates = &cli.Command{
 		{
 			Name:  "get",
 			Usage: "returns template(s) from server",
+			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "search", Usage: "value to search in templates"},
+				&cli.StringFlag{Name: "folder", Usage: "folder to search in templates"},
+			},
 			Action: func(c *cli.Context) error {
+				search := c.String("search")
+				folder := c.String("folder")
+				response, err := nucleiClient.Templates.GetTemplates(client.GetTemplatesRequest{
+					Search: search,
+					Folder: folder,
+				})
+				if err != nil {
+					return errors.Wrap(err, "could not get templates")
+				}
+				renderJSON(response)
 				return nil
 			},
 		},
@@ -249,16 +275,34 @@ var templates = &cli.Command{
 	},
 }
 
+var noColor bool
+
+func renderJSON(item interface{}) {
+	var buf bytes.Buffer
+	_ = jsoniter.NewEncoder(&buf).Encode(item)
+
+	var got []byte
+	if !noColor {
+		got = pretty.Color(buf.Bytes(), nil)
+	} else {
+		got = pretty.Pretty(buf.Bytes())
+	}
+	os.Stdout.Write(got)
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Usage = "Nuclei REST API Client"
 	app.Flags = []cli.Flag{
+		&cli.BoolFlag{Name: "no-color", Aliases: []string{"nc"}, Usage: "Do not print colors"},
 		&cli.StringFlag{Name: "url", Usage: "Base URL of the Nuclei Server"},
-		&cli.StringFlag{Name: "username", Usage: "Username of the Nuclei Server"},
-		&cli.StringFlag{Name: "password", Usage: "Password of the Nuclei Server"},
+		&cli.StringFlag{Name: "username", Usage: "Username of the Nuclei Server", Value: "user"},
+		&cli.StringFlag{Name: "password", Usage: "Password of the Nuclei Server", Value: "pass"},
 	}
 	// Initialize nuclei client before being used
 	app.Before = cli.BeforeFunc(func(ctx *cli.Context) error {
+		noColor = ctx.Bool("no-color")
+
 		var opts []client.Option
 		if url := ctx.String("url"); url != "" {
 			opts = append(opts, client.WithBaseURL(url))
