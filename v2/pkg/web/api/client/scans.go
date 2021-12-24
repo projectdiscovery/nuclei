@@ -73,7 +73,7 @@ func (c *ScansService) GetScans(req GetScansRequest) ([]GetScansResponse, error)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get templates")
 	}
-	var values url.Values
+	values := make(url.Values)
 	if req.Search != "" {
 		values.Set("search", req.Search)
 	}

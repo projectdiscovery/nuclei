@@ -60,7 +60,7 @@ func (c *TargetsService) GetTargets(req GetTargetsRequest) ([]GetTargetsResponse
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get templates")
 	}
-	var values url.Values
+	values := make(url.Values)
 	if req.Search != "" {
 		values.Set("search", req.Search)
 	}

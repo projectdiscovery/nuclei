@@ -61,7 +61,7 @@ func (c *TemplatesService) GetTemplates(req GetTemplatesRequest) ([]GetTemplates
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get templates")
 	}
-	var values url.Values
+	values := make(url.Values)
 	if req.Folder != "" {
 		values.Set("folder", req.Folder)
 	}
@@ -248,7 +248,10 @@ type ExecuteTemplateResponse struct {
 func (c *TemplatesService) ExecuteTemplate(req ExecuteTemplateRequest) (ExecuteTemplateResponse, error) {
 	reqURL := fmt.Sprintf("%s/templates/execute", c.baseURL)
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
+	var buf bytes.Buffer
+	_ = jsoniter.NewEncoder(&buf).Encode(req)
+
+	httpreq, err := retryablehttp.NewRequest(http.MethodPost, reqURL, &buf)
 	if err != nil {
 		return ExecuteTemplateResponse{}, errors.Wrap(err, "could not make http request")
 	}
