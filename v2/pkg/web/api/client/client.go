@@ -1,6 +1,8 @@
 package client
 
 import (
+	"time"
+
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -8,6 +10,9 @@ import (
 type Client struct {
 	Templates Templates
 	Targets   Targets
+	Settings  Settings
+	Scans     Scans
+	Issues    Issues
 
 	username string
 	password string
@@ -41,35 +46,16 @@ func New(opts ...Option) *Client {
 	c := &Client{baseURL: defaultBaseURL}
 	c.Templates = &TemplatesService{Client: c}
 	c.Targets = &TargetsService{Client: c}
+	c.Settings = &SettingsService{Client: c}
+	c.Scans = &ScansService{Client: c}
+	c.Issues = &IssuesService{Client: c}
 
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.httpclient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	clientOpts := retryablehttp.DefaultOptionsSingle
+	clientOpts.RetryMax = 0
+	clientOpts.Timeout = 15 * time.Second
+	c.httpclient = retryablehttp.NewClient(clientOpts)
 	return c
 }
-
-//
-// // /settings endpoints
-// apiGroup.GET("/settings", config.Server.GetSettings)
-// apiGroup.POST("/settings", config.Server.SetSetting)
-// apiGroup.GET("/settings/:name", config.Server.GetSettingByName)
-// apiGroup.PUT("/settings/:name", config.Server.UpdateSettingByName)
-//
-// // /scans endpoints
-// apiGroup.GET("/scans", config.Server.GetScans)
-// apiGroup.POST("/scans", config.Server.AddScan)
-// apiGroup.POST("/scans/progress", config.Server.GetScanProgress)
-// apiGroup.GET("/scans/:id", config.Server.GetScan)
-// apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
-// apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)
-// apiGroup.GET("/scans/:id/execute", config.Server.ExecuteScan)
-// apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
-// apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
-//
-// // /issues endpoints
-// apiGroup.GET("/issues", config.Server.GetIssues)
-// apiGroup.POST("/issues", config.Server.AddIssue)
-// apiGroup.GET("/issues/:id", config.Server.GetIssue)
-// apiGroup.PUT("/issues/:id", config.Server.UpdateIssue)
-// apiGroup.DELETE("/issues/:id", config.Server.DeleteIssue)

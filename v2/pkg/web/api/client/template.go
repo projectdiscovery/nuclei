@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -25,7 +26,7 @@ type Templates interface {
 	// DeleteTemplate deletes a template from storage
 	DeleteTemplate(DeleteTemplateRequest) error
 	// GetTemplateRaw returns contents for a template path
-	GetTemplateRaw(GetTemplateRawRequest) (string, error)
+	GetTemplateRaw(Path string) (string, error)
 	// ExecuteTemplate executes a template with target
 	ExecuteTemplate(ExecuteTemplateRequest) (ExecuteTemplateResponse, error)
 }
@@ -81,6 +82,10 @@ func (c *TemplatesService) GetTemplates(req GetTemplatesRequest) ([]GetTemplates
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -116,6 +121,10 @@ func (c *TemplatesService) AddTemplate(req AddTemplateRequest) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return 0, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -150,6 +159,10 @@ func (c *TemplatesService) UpdateTemplate(req UpdateTemplateRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -179,6 +192,10 @@ func (c *TemplatesService) DeleteTemplate(req DeleteTemplateRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -186,14 +203,9 @@ func (c *TemplatesService) DeleteTemplate(req DeleteTemplateRequest) error {
 	return nil
 }
 
-// GetTemplateRawRequest is a request for template raw content fetching
-type GetTemplateRawRequest struct {
-	Path string
-}
-
 // GetTemplateRaw returns raw content for a template
-func (c *TemplatesService) GetTemplateRaw(req GetTemplateRawRequest) (string, error) {
-	reqURL := fmt.Sprintf("%s/templates/raw?path=%s", c.baseURL, req.Path)
+func (c *TemplatesService) GetTemplateRaw(Path string) (string, error) {
+	reqURL := fmt.Sprintf("%s/templates/raw?path=%s", c.baseURL, Path)
 
 	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
 	if err != nil {
@@ -205,6 +217,10 @@ func (c *TemplatesService) GetTemplateRaw(req GetTemplateRawRequest) (string, er
 	if err != nil {
 		return "", errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return "", fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -242,6 +258,10 @@ func (c *TemplatesService) ExecuteTemplate(req ExecuteTemplateRequest) (ExecuteT
 	if err != nil {
 		return ExecuteTemplateResponse{}, errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return ExecuteTemplateResponse{}, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))

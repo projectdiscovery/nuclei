@@ -24,9 +24,9 @@ type Targets interface {
 	// UpdateTarget updates a target contents
 	UpdateTarget(UpdateTargetRequest) error
 	// DeleteTarget deletes a target from storage
-	DeleteTarget(DeleteTargetRequest) error
+	DeleteTarget(ID int64) error
 	// GetTemplateRaw returns contents for a template path
-	GetTargetContents(GetTargetContentsRequest) (io.Reader, error)
+	GetTargetContents(ID int64) (io.Reader, error)
 }
 
 var _ Targets = &TargetsService{}
@@ -82,6 +82,10 @@ func (c *TargetsService) GetTargets(req GetTargetsRequest) ([]GetTargetsResponse
 		data, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	var data []GetTargetsResponse
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, errors.Wrap(err, "could not json decode response")
@@ -126,6 +130,10 @@ func (c *TargetsService) AddTarget(req AddTargetRequest) (int64, error) {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return 0, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	var data map[string]int64
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return 0, errors.Wrap(err, "could not json decode response")
@@ -164,6 +172,10 @@ func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -171,19 +183,11 @@ func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	return nil
 }
 
-// DeleteTargetRequest is a request for target deletion
-type DeleteTargetRequest struct {
-	ID int64
-}
-
 // DeleteTemplate deletes a template from storage
-func (c *TargetsService) DeleteTarget(req DeleteTargetRequest) error {
-	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, req.ID)
+func (c *TargetsService) DeleteTarget(ID int64) error {
+	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, ID)
 
-	var buf bytes.Buffer
-	_ = jsoniter.NewEncoder(&buf).Encode(req)
-
-	httpreq, err := retryablehttp.NewRequest(http.MethodDelete, reqURL, &buf)
+	httpreq, err := retryablehttp.NewRequest(http.MethodDelete, reqURL, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
@@ -193,6 +197,10 @@ func (c *TargetsService) DeleteTarget(req DeleteTargetRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
@@ -200,14 +208,9 @@ func (c *TargetsService) DeleteTarget(req DeleteTargetRequest) error {
 	return nil
 }
 
-// GetTargetContentsRequest is a request for target content fetching
-type GetTargetContentsRequest struct {
-	ID int64
-}
-
 // GetTargetContents returns contents for a target
-func (c *TargetsService) GetTargetContents(req GetTargetContentsRequest) (io.Reader, error) {
-	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, req.ID)
+func (c *TargetsService) GetTargetContents(ID int64) (io.Reader, error) {
+	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, ID)
 
 	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
 	if err != nil {
@@ -219,6 +222,10 @@ func (c *TargetsService) GetTargetContents(req GetTargetContentsRequest) (io.Rea
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))
