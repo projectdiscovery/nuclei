@@ -120,8 +120,6 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 // UpdateTarget handles /targets update route
 // It accepts multipart-form format.
 func (s *Server) UpdateTarget(ctx echo.Context) error {
-	targetId := ctx.FormValue("id")
-
 	idParam := ctx.Param("id")
 	parsedId, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
@@ -138,7 +136,12 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 	}
 	defer file.Close()
 
-	writer, err := s.targets.Update(targetId)
+	targetID, err := s.db.GetTarget(context.Background(), parsedId)
+	if err != nil {
+		return echo.NewHTTPError(500, errors.Wrap(err, "could not get target from db").Error())
+	}
+
+	writer, err := s.targets.Update(targetID.Internalid)
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not open target file").Error())
 	}

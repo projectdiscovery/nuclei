@@ -33,25 +33,42 @@ var issues = &cli.Command{
 				return renderJSON(response)
 			},
 		},
-		{
-			Name:  "add",
-			Usage: "add a new issue to list",
-			Action: func(c *cli.Context) error {
-				return nil
-			},
-		},
+		//	{
+		//		Name:  "add",
+		//		Usage: "add a new issue to list",
+		//		Action: func(c *cli.Context) error {
+		//			return nil
+		//		},
+		//	},
 		{
 			Name:  "update",
 			Usage: "update an existing issue",
+			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "state", Usage: "updated state of the issue"},
+				&cli.Int64Flag{Name: "id", Usage: "ID of the issue"},
+			},
 			Action: func(c *cli.Context) error {
-				return nil
+				err := nucleiClient.Issues.UpdateIssue(c.Int64("id"), client.UpdateIssueRequest{
+					State: c.String("state"),
+				})
+				if err != nil {
+					return errors.Wrap(err, "could not update issue")
+				}
+				return renderJSON("updated issue successfully")
 			},
 		},
 		{
 			Name:  "delete",
 			Usage: "delete an existing issue",
+			Flags: []cli.Flag{
+				&cli.Int64Flag{Name: "id", Usage: "ID of the issue"},
+			},
 			Action: func(c *cli.Context) error {
-				return nil
+				err := nucleiClient.Issues.DeleteIssue(c.Int64("id"))
+				if err != nil {
+					return errors.Wrap(err, "could not delete issue")
+				}
+				return renderJSON("deleted issue successfully")
 			},
 		},
 	},
