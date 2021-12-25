@@ -34,7 +34,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v0.0.6
+	github.com/projectdiscovery/interactsh v0.0.8-0.20211224182220-0ccc732df380
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
@@ -69,6 +69,7 @@ require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
+	github.com/Mzack9999/ldapserver v1.0.2-0.20211214172138-8f1cdd128383 // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/akrylysov/pogreb v0.10.1 // indirect
@@ -106,6 +107,7 @@ require (
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -125,6 +127,7 @@ require (
 	github.com/ysmood/goob v0.3.0 // indirect
 	github.com/zclconf/go-cty v1.8.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
