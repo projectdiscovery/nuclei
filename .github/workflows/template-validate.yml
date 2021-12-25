@@ -19,10 +19,9 @@ jobs:
           key: ${{ runner.os }}-go
 
       - name: Installing Nuclei
-        if: steps.cache-go.outputs.cache-hit != 'true'
+#        if: steps.cache-go.outputs.cache-hit != 'true'
         run: |
           go install github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
-
       - name: Template Validation
         run: |
           nuclei -validate
