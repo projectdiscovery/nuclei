@@ -29,6 +29,10 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
+	if !filepath.IsAbs(options.TemplatesDirectory) {
+		cwd, _ := os.Getwd()
+		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
+	}
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
