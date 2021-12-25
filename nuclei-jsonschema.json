@@ -472,8 +472,8 @@
             "type": "string"
           },
           "type": "array",
-          "title": "extensions to deny match",
-          "description": "List of file extensions to deny during matching"
+          "title": "denylist",
+          "description": "List of files"
         },
         "id": {
           "type": "string",
@@ -741,6 +741,12 @@
           "title": "maximum http response body size",
           "description": "Maximum size of http response body to read in bytes"
         },
+        "signature": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/http.SignatureTypeHolder",
+          "title": "signature is the http request signature method",
+          "description": "Signature is the HTTP Request signature Method"
+        },
         "cookie-reuse": {
           "type": "boolean",
           "title": "optional cookie reuse enable",
@@ -789,6 +795,14 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "http.SignatureTypeHolder": {
+      "enum": [
+        "AWS"
+      ],
+      "type": "string",
+      "title": "type of the signature",
+      "description": "Type of the signature"
     },
     "network.Input": {
       "properties": {
@@ -1026,6 +1040,47 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "whois.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "query": {
+          "type": "string",
+          "title": "query for the WHOIS request",
+          "description": "Query contains query for the request"
+        },
+        "server": {
+          "type": "string",
+          "title": "server url to execute the WHOIS request on",
+          "description": "Server contains the server url to execute the WHOIS request on"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "templates.Template": {
       "required": [
         "id",
@@ -1110,6 +1165,15 @@
           "title": "websocket requests to make",
           "description": "Websocket requests to make for the template"
         },
+        "whois": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/whois.Request"
+          },
+          "type": "array",
+          "title": "whois requests to make",
+          "description": "WHOIS requests to make for the template"
+        },
         "workflows": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1128,6 +1192,11 @@
           "type": "boolean",
           "title": "stop at first match",
           "description": "Stop at first match for the template"
+        },
+        "signature": {
+          "$ref": "#/definitions/http.SignatureTypeHolder",
+          "title": "signature is the http request signature method",
+          "description": "Signature is the HTTP Request signature Method"
         }
       },
       "additionalProperties": false,

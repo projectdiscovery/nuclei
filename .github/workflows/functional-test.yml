@@ -8,7 +8,10 @@ on:
 jobs:  
   functional:
     name: Functional Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -23,5 +26,5 @@ jobs:
           GH_ACTION: true
         run: |
           chmod +x run.sh
-          bash run.sh
+          bash run.sh ${{ matrix.os }}
         working-directory: v2/cmd/functional-test
