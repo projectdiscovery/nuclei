@@ -1,4 +1,4 @@
-package templates
+package updater
 
 import (
 	"archive/zip"
@@ -53,6 +53,15 @@ func RunUpdateChecker(db *db.Database) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 	ticker := time.NewTicker(24 * time.Hour)
 	go func() {
+		// First startup requirements
+		if version, err := UpdateTemplates(db, semver.Version{}); err == nil {
+			mutex.Lock()
+			currentTemplates = version
+			mutex.Unlock()
+		} else {
+			gologger.Error().Msgf("Could not update template: %s\n", err)
+		}
+
 		for {
 			select {
 			case <-ticker.C:
@@ -73,13 +82,6 @@ func RunUpdateChecker(db *db.Database) context.CancelFunc {
 			}
 		}
 	}()
-	if version, err := UpdateTemplates(db, semver.Version{}); err == nil {
-		mutex.Lock()
-		currentTemplates = version
-		mutex.Unlock()
-	} else {
-		gologger.Error().Msgf("Could not update template: %s\n", err)
-	}
 	return cancel
 }
 

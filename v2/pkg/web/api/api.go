@@ -32,6 +32,7 @@ const defaultCacheSize = 100 * 1024 * 1024 // 100MB server side cache.
 func New(config *Config) *API {
 	// Echo instance
 	e := echo.New()
+	e.Debug = true // todo: disable before prod
 	e.JSONSerializer = &JSONIterSerializer{}
 
 	scheme := "http"
@@ -101,6 +102,11 @@ func New(config *Config) *API {
 	apiGroup.DELETE("/issues/:id", config.Server.DeleteIssue)
 
 	return &API{echo: e}
+}
+
+// Echo returns the echo router
+func (a *API) Echo() *echo.Echo {
+	return a.echo
 }
 
 // JSONIterSerializer implements JSON encoding using jsoniter for echo.

@@ -124,6 +124,7 @@ func (s *Settings) ToTypesOptions() *types.Options {
 
 // InitializeDefaultSettings initializes default settings for the instance
 func InitializeDefaultSettings(db *db.Database) error {
+	// Also create the queries.
 	_, err := db.Queries().GetSettingByName(context.Background(), "default")
 	if err == nil {
 		return nil // already exists

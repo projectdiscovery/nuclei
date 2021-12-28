@@ -1,4 +1,4 @@
-CREATE TABLE "public".templates ( 
+CREATE TABLE IF NOT EXISTS "public".templates ( 
 	id                   bigserial NOT NULL,
 	name                 varchar(100) NOT NULL,
 	folder               varchar NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE "public".templates (
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
 
-CREATE  TABLE "public".targets ( 
+CREATE TABLE IF NOT EXISTS "public".targets ( 
 	id                   bigserial NOT NULL ,
 	name                 varchar(100) NOT NULL,
     internalid           varchar NOT NULL,
@@ -23,7 +23,7 @@ CREATE  TABLE "public".targets (
  );
 
 
-CREATE  TABLE "public".settings ( 
+CREATE TABLE IF NOT EXISTS "public".settings ( 
 	settingdata          varchar NOT NULL,
 	datatype             varchar NOT NULL,
 	name                 varchar(100) NOT NULL,
@@ -31,7 +31,7 @@ CREATE  TABLE "public".settings (
  );
 
 
-CREATE  TABLE "public".scans ( 
+CREATE TABLE IF NOT EXISTS "public".scans ( 
 	name                 varchar(100) NOT NULL,
 	status               varchar(30) NOT NULL,
 	scantime             bigint NOT NULL,
@@ -48,7 +48,7 @@ CREATE  TABLE "public".scans (
 	CONSTRAINT pk_scans_id PRIMARY KEY ( id )
 );
 
-CREATE  TABLE "public".issues ( 
+CREATE TABLE IF NOT EXISTS "public".issues ( 
 	matchedat            varchar NOT NULL,
 	title                varchar NOT NULL,
 	severity             varchar NOT NULL,
