@@ -26,7 +26,7 @@ type Targets interface {
 	// DeleteTarget deletes a target from storage
 	DeleteTarget(ID int64) error
 	// GetTemplateRaw returns contents for a template path
-	GetTargetContents(ID int64) (io.Reader, error)
+	GetTargetContents(ID int64) (io.ReadCloser, error)
 }
 
 var _ Targets = &TargetsService{}
@@ -102,7 +102,7 @@ type AddTargetRequest struct {
 
 // AddTarget adds a target to storage
 func (c *TargetsService) AddTarget(req AddTargetRequest) (int64, error) {
-	reqURL := fmt.Sprintf("%s/templates", c.baseURL)
+	reqURL := fmt.Sprintf("%s/targets", c.baseURL)
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -209,7 +209,7 @@ func (c *TargetsService) DeleteTarget(ID int64) error {
 }
 
 // GetTargetContents returns contents for a target
-func (c *TargetsService) GetTargetContents(ID int64) (io.Reader, error) {
+func (c *TargetsService) GetTargetContents(ID int64) (io.ReadCloser, error) {
 	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, ID)
 
 	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
@@ -222,10 +222,6 @@ func (c *TargetsService) GetTargetContents(ID int64) (io.Reader, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	defer func() {
-		_, _ = io.Copy(ioutil.Discard, resp.Body)
-		_ = resp.Body.Close()
-	}()
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected status code: %d: %s", resp.StatusCode, string(data))

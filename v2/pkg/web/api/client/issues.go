@@ -168,7 +168,7 @@ func (c *IssuesService) UpdateIssue(ID int64, req UpdateIssueRequest) error {
 	var buf bytes.Buffer
 	_ = jsoniter.NewEncoder(&buf).Encode(req)
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodPost, reqURL, &buf)
+	httpreq, err := retryablehttp.NewRequest(http.MethodPut, reqURL, &buf)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
@@ -215,7 +215,7 @@ func (c *IssuesService) DeleteIssue(ID int64) error {
 
 // GetIssue returns a issue from database
 func (c *IssuesService) GetIssue(ID int64) (GetIssuesResponse, error) {
-	reqURL := fmt.Sprintf("%s/scans/%d", c.baseURL, ID)
+	reqURL := fmt.Sprintf("%s/issues/%d", c.baseURL, ID)
 
 	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
 	if err != nil {

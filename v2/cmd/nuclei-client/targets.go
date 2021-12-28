@@ -106,6 +106,7 @@ var targets = &cli.Command{
 					return errors.Wrap(err, "could not get target")
 				}
 				_, _ = io.Copy(os.Stdout, contents)
+				contents.Close()
 				return nil
 			},
 		},

@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	datadir = flag.String("data-dir", "", "Data directory for nuclei server")
-	logsdir = flag.String("logs-dir", "", "Logs directory for nuclei server")
+	datadir = flag.String("data-dir", "data", "Data directory for nuclei server")
+	logsdir = flag.String("logs-dir", "logs", "Logs directory for nuclei server")
 
 	username = flag.String("user", "user", "Username for nuclei REST API")
 	password = flag.String("password", "pass", "Password for nuclei REST API")
