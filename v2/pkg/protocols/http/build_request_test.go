@@ -236,6 +236,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
 		ColldownPeriod: time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
+		HttpFallback:   true,
 	})
 	require.Nil(t, err, "could not create interactsh client")
 
