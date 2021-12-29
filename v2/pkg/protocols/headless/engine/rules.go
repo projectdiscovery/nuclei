@@ -2,6 +2,8 @@ package engine
 
 import (
 	"fmt"
+	"net/http/httputil"
+	"strings"
 
 	"github.com/go-rod/rod"
 )
@@ -10,7 +12,6 @@ import (
 func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 	// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
 	ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
-
 	for _, rule := range p.rules {
 		if rule.Part != "request" {
 			continue
@@ -51,4 +52,30 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 			ctx.Response.SetBody(rule.Args["body"])
 		}
 	}
+
+	// store history
+	req := ctx.Request.Req()
+	var rawReq string
+	if raw, err := httputil.DumpRequestOut(req, true); err == nil {
+		rawReq = string(raw)
+	}
+
+	// attempts to rebuild the response
+	var rawResp strings.Builder
+	respPayloads := ctx.Response.Payload()
+	if respPayloads != nil {
+		rawResp.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", respPayloads.ResponseCode, respPayloads.ResponsePhrase))
+		for _, header := range respPayloads.ResponseHeaders {
+			rawResp.WriteString(fmt.Sprintf("%s: %s\n", header.Name, header.Value))
+		}
+		rawResp.WriteString("\n")
+		rawResp.WriteString(ctx.Response.Body())
+	}
+
+	// dump request
+	historyData := HistoryData{
+		RawRequest:  rawReq,
+		RawResponse: rawResp.String(),
+	}
+	p.History = append(p.History, historyData)
 }

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -14,6 +15,12 @@ type Page struct {
 	rules    []requestRule
 	instance *Instance
 	router   *rod.HijackRouter
+	History  []HistoryData
+}
+
+type HistoryData struct {
+	RawRequest  string
+	RawResponse string
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -80,4 +87,13 @@ func (p *Page) URL() string {
 		return ""
 	}
 	return info.URL
+}
+
+func (p *Page) DumpHistory() string {
+	var historyDump strings.Builder
+	for _, historyData := range p.History {
+		historyDump.WriteString(historyData.RawRequest)
+		historyDump.WriteString(historyData.RawResponse)
+	}
+	return historyDump.String()
 }
