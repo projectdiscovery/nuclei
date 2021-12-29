@@ -18,6 +18,7 @@ type Page struct {
 	History  []HistoryData
 }
 
+// HistoryData contains the page request/response pairs
 type HistoryData struct {
 	RawRequest  string
 	RawResponse string
@@ -89,6 +90,7 @@ func (p *Page) URL() string {
 	return info.URL
 }
 
+// DumpHistory returns the full page navigation history
 func (p *Page) DumpHistory() string {
 	var historyDump strings.Builder
 	for _, historyData := range p.History {
