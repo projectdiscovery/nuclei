@@ -180,12 +180,6 @@ func (c *Client) firstTimeInitializeClient() error {
 	return nil
 }
 
-func hash(s string) string {
-	h := sha1.New()
-	h.Write([]byte(s))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
 // processInteractionForRequest processes an interaction for a request
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
@@ -348,12 +342,8 @@ func debugPrintInteraction(interaction *server.Interaction) {
 	fmt.Fprint(os.Stderr, builder.String())
 }
 
-// contains returns true if the given string is in the given array
-func contains(array []string, str string) bool {
-	for _, s := range array {
-		if s == str {
-			return true
-		}
-	}
-	return false
+func hash(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }
