@@ -66,7 +66,7 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 	if err == nil {
 		responseBody, _ = html.HTML()
 	}
-	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL)
+	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
 	for k, v := range out {
 		outputEvent[k] = v
 	}
