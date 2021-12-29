@@ -169,7 +169,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		}
 
 		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok {
-			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string) + request.Event.InternalEvent["host"].(string)))
+			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string), request.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				return
 			}
@@ -205,7 +205,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
 		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok {
-			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string)+data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -342,8 +342,9 @@ func debugPrintInteraction(interaction *server.Interaction) {
 	fmt.Fprint(os.Stderr, builder.String())
 }
 
-func hash(s string) string {
+func hash(templateID, host string) string {
 	h := sha1.New()
-	h.Write([]byte(s))
+	h.Write([]byte(templateID))
+	h.Write([]byte(host))
 	return hex.EncodeToString(h.Sum(nil))
 }
