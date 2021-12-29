@@ -40,12 +40,13 @@ func (r *RunningScan) Stop() {
 }
 
 type ScanRequest struct {
-	ScanID    int64
-	Templates []string
-	Targets   []string
-	Config    string
-	RunNow    bool
-	Reporting string
+	ScanID     int64
+	ScanSource string
+	Templates  []string
+	Targets    []string
+	Config     string
+	RunNow     bool
+	Reporting  string
 }
 
 // NewScanService returns a new scan service
@@ -135,11 +136,12 @@ func (s *ScanService) queueScansForSchedule(schedule string) {
 	}
 	for _, scan := range scans {
 		s.Queue(ScanRequest{
-			ScanID:    scan.ID,
-			Templates: scan.Templates,
-			Targets:   scan.Targets,
-			Config:    scan.Config.String,
-			Reporting: scan.Reporting.String,
+			ScanID:     scan.ID,
+			ScanSource: scan.Scansource,
+			Templates:  scan.Templates,
+			Targets:    scan.Targets,
+			Config:     scan.Config.String,
+			Reporting:  scan.Reporting.String,
 		})
 	}
 }

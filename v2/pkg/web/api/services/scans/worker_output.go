@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"io/ioutil"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,18 +18,20 @@ import (
 )
 
 type wrappedOutputWriter struct {
-	db        dbsql.Querier
-	scanid    int64
-	logs      *bufio.Writer
-	colorizer aurora.Aurora
+	db         dbsql.Querier
+	scanid     int64
+	scanSource string
+	logs       *bufio.Writer
+	colorizer  aurora.Aurora
 }
 
-func newWrappedOutputWriter(db dbsql.Querier, logWriter *bufio.Writer, scanid int64) *wrappedOutputWriter {
+func newWrappedOutputWriter(db dbsql.Querier, logWriter *bufio.Writer, scanid int64, scanSource string) *wrappedOutputWriter {
 	return &wrappedOutputWriter{
-		db:        db,
-		scanid:    scanid,
-		logs:      logWriter,
-		colorizer: aurora.NewAurora(false),
+		db:         db,
+		scanid:     scanid,
+		scanSource: scanSource,
+		logs:       logWriter,
+		colorizer:  aurora.NewAurora(false),
 	}
 }
 
@@ -61,7 +64,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		Matchedat:     event.Matched,
 		Title:         format.Summary(event),
 		Severity:      event.Info.SeverityHolder.Severity.String(),
-		Scansource:    event.Matched,
+		Scansource:    w.scanSource,
 		Issuestate:    "open",
 		Description:   description,
 		Author:        event.Info.Authors.String(),
@@ -70,7 +73,7 @@ func (w *wrappedOutputWriter) Write(event *output.ResultEvent) error {
 		Labels:        event.Info.Tags.ToSlice(),
 		Issuedata:     format.MarkdownDescription(event),
 		Issuetemplate: string(contents),
-		Templatename:  event.Template,
+		Templatename:  filepath.Base(event.TemplatePath),
 		Hash:          event.Hash(),
 		Remediation:   sql.NullString{String: event.Info.Remediation, Valid: true},
 		Scanid:        w.scanid,

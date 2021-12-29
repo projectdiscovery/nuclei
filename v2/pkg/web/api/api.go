@@ -86,7 +86,7 @@ func New(config *Config) *API {
 	// /scans endpoints
 	apiGroup.GET("/scans", config.Server.GetScans)
 	apiGroup.POST("/scans", config.Server.AddScan)
-	apiGroup.POST("/scans/progress", config.Server.GetScanProgress)
+	apiGroup.GET("/scans/progress", config.Server.GetScanProgress)
 	apiGroup.GET("/scans/:id", config.Server.GetScan)
 	apiGroup.PUT("/scans/:id", config.Server.UpdateScan)
 	apiGroup.DELETE("/scans/:id", config.Server.DeleteScan)

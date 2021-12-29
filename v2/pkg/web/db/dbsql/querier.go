@@ -38,6 +38,7 @@ type Querier interface {
 	GetTemplatesForScan(ctx context.Context, folder string) ([]GetTemplatesForScanRow, error)
 	SetSettings(ctx context.Context, arg SetSettingsParams) error
 	UpdateIssue(ctx context.Context, arg UpdateIssueParams) error
+	UpdateScanState(ctx context.Context, arg UpdateScanStateParams) error
 	UpdateSettings(ctx context.Context, arg UpdateSettingsParams) error
 	UpdateTargetMetadata(ctx context.Context, arg UpdateTargetMetadataParams) error
 	UpdateTemplate(ctx context.Context, arg UpdateTemplateParams) error

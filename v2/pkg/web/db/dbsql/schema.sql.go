@@ -918,6 +918,20 @@ func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) error 
 	return err
 }
 
+const updateScanState = `-- name: UpdateScanState :exec
+UPDATE "public".scans SET status=$2 WHERE id=$1
+`
+
+type UpdateScanStateParams struct {
+	ID     int64
+	Status string
+}
+
+func (q *Queries) UpdateScanState(ctx context.Context, arg UpdateScanStateParams) error {
+	_, err := q.db.Exec(ctx, updateScanState, arg.ID, arg.Status)
+	return err
+}
+
 const updateSettings = `-- name: UpdateSettings :exec
 UPDATE "public".settings SET settingdata=$1 WHERE name=$2
 `

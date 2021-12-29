@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -31,6 +32,9 @@ var (
 
 func main() {
 	flag.Parse()
+
+	_ = os.Mkdir(*datadir, 0600)
+	_ = os.Mkdir(*logsdir, 0600)
 
 	//	gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)

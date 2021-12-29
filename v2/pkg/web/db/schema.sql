@@ -169,6 +169,9 @@ SELECT name, status, scantime, hosts, scansource, templates, targets, config, ru
 FROM
 	"public".scans WHERE name LIKE '%'||$1||'%';
 
+-- name: UpdateScanState :exec
+UPDATE "public".scans SET status=$2 WHERE id=$1 ;
+
 -- name: AddIssue :one
 INSERT INTO "public".issues
 	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 

@@ -31,7 +31,7 @@ func TestWrappedOutputWriter(t *testing.T) {
 	require.NoError(t, err, "could not write log file")
 
 	bufwriter := bufio.NewWriter(writer)
-	wrappedOutputWriter := newWrappedOutputWriter(querier, bufwriter, scanID)
+	wrappedOutputWriter := newWrappedOutputWriter(querier, bufwriter, scanID, "")
 
 	t.Run("result", func(t *testing.T) {
 		querier.EXPECT().

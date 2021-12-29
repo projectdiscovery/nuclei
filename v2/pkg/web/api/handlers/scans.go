@@ -57,12 +57,13 @@ func (s *Server) AddScan(ctx echo.Context) error {
 	}
 	if req.RunNow {
 		s.scans.Queue(scans.ScanRequest{
-			ScanID:    id,
-			Templates: req.Templates,
-			Targets:   req.Targets,
-			Config:    req.Config,
-			RunNow:    req.RunNow,
-			Reporting: req.Reporting,
+			ScanID:     id,
+			ScanSource: req.ScanSource,
+			Templates:  req.Templates,
+			Targets:    req.Targets,
+			Config:     req.Config,
+			RunNow:     req.RunNow,
+			Reporting:  req.Reporting,
 		})
 	}
 	return ctx.JSON(200, map[string]int64{"id": id})

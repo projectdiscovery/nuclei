@@ -479,6 +479,20 @@ func (mr *MockQuerierMockRecorder) UpdateIssue(ctx, arg interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIssue", reflect.TypeOf((*MockQuerier)(nil).UpdateIssue), ctx, arg)
 }
 
+// UpdateScanState mocks base method.
+func (m *MockQuerier) UpdateScanState(ctx context.Context, arg dbsql.UpdateScanStateParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateScanState", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateScanState indicates an expected call of UpdateScanState.
+func (mr *MockQuerierMockRecorder) UpdateScanState(ctx, arg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateScanState", reflect.TypeOf((*MockQuerier)(nil).UpdateScanState), ctx, arg)
+}
+
 // UpdateSettings mocks base method.
 func (m *MockQuerier) UpdateSettings(ctx context.Context, arg dbsql.UpdateSettingsParams) error {
 	m.ctrl.T.Helper()

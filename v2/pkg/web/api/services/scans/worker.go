@@ -2,14 +2,17 @@ package scans
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -18,6 +21,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/updater"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v3"
 )
@@ -41,10 +46,20 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 		return nil, yamlErr
 	}
 	typesOptions := settings.ToTypesOptions()
+
+	// Merge the default ignore config with types.Options
+	ignoreFile := &config.IgnoreFile{}
+
+	ignoreFileData := updater.GetIgnoreFile()
+	if yamlErr := yaml.NewDecoder(bytes.NewReader(ignoreFileData)).Decode(ignoreFile); yamlErr != nil {
+		return nil, yamlErr
+	}
+	typesOptions.ExcludeTags = append(typesOptions.ExcludeTags, ignoreFile.Tags...)
+	typesOptions.ExcludedTemplates = append(typesOptions.ExcludedTemplates, ignoreFile.Files...)
 	return typesOptions, nil
 }
 
-func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.CancelFunc, scanID int64, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
+func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.CancelFunc, scanID int64, reportingConfig, scanSource, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
 	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	s.Running.Store(scanID, &RunningScan{
@@ -59,8 +74,11 @@ func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.Can
 	}
 	buflogWriter := bufio.NewWriter(logWriter)
 
-	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, scanID)
+	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, scanID, scanSource)
 
+	if reportingConfig != "" {
+		// TODO: Implement reporting using a global unique tracker for issues
+	}
 	executerOpts := protocols.ExecuterOptions{
 		Output:       outputWriter,
 		IssuesClient: nil, //todo: load from config value
@@ -113,7 +131,8 @@ func (s *ScanService) createExecuterFromOpts(scanCtx *scanContext) error {
 	}
 	scanCtx.executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(scanCtx.typesOptions, scanCtx.executerOpts.Catalog, scanCtx.executerOpts))
+	loaderConfig := loader.NewConfig(scanCtx.typesOptions, scanCtx.executerOpts.Catalog, scanCtx.executerOpts)
+	store, err := loader.New(loaderConfig)
 	if err != nil {
 		return err
 	}
@@ -130,6 +149,15 @@ func (s *ScanService) createExecuterFromOpts(scanCtx *scanContext) error {
 func (s *ScanService) worker(req ScanRequest) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Mark the scan state as finished in db.
+	upateErr := s.db.UpdateScanState(context.Background(), dbsql.UpdateScanStateParams{
+		ID:     req.ScanID,
+		Status: "started",
+	})
+	if upateErr != nil {
+		return errors.Wrap(upateErr, "could not update started scan state")
+	}
 
 	gologger.Info().Msgf("[scans] [worker] [%d] got new scan request", req.ScanID)
 
@@ -151,7 +179,7 @@ func (s *ScanService) worker(req ScanRequest) error {
 	typesOptions.Templates = templatesList
 	typesOptions.Workflows = workflowsList
 
-	scanCtx, err := s.createExecuterOpts(ctx, cancel, req.ScanID, templatesDirectory, typesOptions)
+	scanCtx, err := s.createExecuterOpts(ctx, cancel, req.ScanID, req.Reporting, req.ScanSource, templatesDirectory, typesOptions)
 	if err != nil {
 		return err
 	}
@@ -181,6 +209,15 @@ func (s *ScanService) worker(req ScanRequest) error {
 
 	for k, v := range scanCtx.executerOpts.Progress.GetMetrics() {
 		gologger.Info().Msgf("[scans] [worker] [%d] \tmetric '%s': %v", req.ScanID, k, v)
+	}
+
+	// Mark the scan state as finished in db.
+	upateErr = s.db.UpdateScanState(context.Background(), dbsql.UpdateScanStateParams{
+		ID:     scanCtx.scanID,
+		Status: "done",
+	})
+	if upateErr != nil {
+		return errors.Wrap(upateErr, "could not update finished scan state")
 	}
 	return nil
 }
