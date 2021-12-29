@@ -2,6 +2,8 @@ package interactsh
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
@@ -32,16 +34,17 @@ type Client struct {
 	requests *ccache.Cache
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
 	interactions *ccache.Cache
+	// matchedTemplates is a stored cache to track matched templates
+	matchedTemplates *ccache.Cache
 
 	options          *Options
 	eviction         time.Duration
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
-	firstTimeGroup   sync.Once
-	generated        uint32 // decide to wait if we have a generated url
-	matched          bool
-	matchedTemplates []string
+	firstTimeGroup sync.Once
+	generated      uint32 // decide to wait if we have a generated url
+	matched        bool
 }
 
 var (
@@ -97,9 +100,12 @@ func New(options *Options) (*Client, error) {
 	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
 	interactionsCache := ccache.New(interactionsCfg)
 
+	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
+		matchedTemplates: matchedTemplateCache,
 		dotHostname:      "." + parsed.Host,
 		options:          options,
 		requests:         cache,
@@ -162,12 +168,22 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok && contains(c.matchedTemplates, request.Event.InternalEvent["template-id"].(string)) {
-			return
+		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok {
+			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string) + request.Event.InternalEvent["host"].(string)))
+			if gotItem != nil {
+				return
+			}
 		}
+
 		_ = c.processInteractionForRequest(interaction, request)
 	})
 	return nil
+}
+
+func hash(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // processInteractionForRequest processes an interaction for a request
@@ -194,7 +210,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
-		c.matchedTemplates = append(c.matchedTemplates, data.Event.InternalEvent["template-id"].(string))
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok {
+			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string)+data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+		}
 	}
 	return true
 }
