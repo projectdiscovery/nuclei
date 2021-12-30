@@ -2,6 +2,8 @@ package engine
 
 import (
 	"net/url"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -10,10 +12,18 @@ import (
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	page     *rod.Page
-	rules    []requestRule
-	instance *Instance
-	router   *rod.HijackRouter
+	page         *rod.Page
+	rules        []requestRule
+	instance     *Instance
+	router       *rod.HijackRouter
+	historyMutex *sync.RWMutex
+	History      []HistoryData
+}
+
+// HistoryData contains the page request/response pairs
+type HistoryData struct {
+	RawRequest  string
+	RawResponse string
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -30,7 +40,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 		}
 	}
 
-	createdPage := &Page{page: page, instance: i}
+	createdPage := &Page{page: page, instance: i, historyMutex: &sync.RWMutex{}}
 	router := page.HijackRequests()
 	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
 		return nil, nil, routerErr
@@ -80,4 +90,25 @@ func (p *Page) URL() string {
 		return ""
 	}
 	return info.URL
+}
+
+// DumpHistory returns the full page navigation history
+func (p *Page) DumpHistory() string {
+	p.historyMutex.RLock()
+	defer p.historyMutex.RUnlock()
+
+	var historyDump strings.Builder
+	for _, historyData := range p.History {
+		historyDump.WriteString(historyData.RawRequest)
+		historyDump.WriteString(historyData.RawResponse)
+	}
+	return historyDump.String()
+}
+
+// addToHistory adds a request/response pair to the page history
+func (p *Page) addToHistory(historyData HistoryData) {
+	p.historyMutex.Lock()
+	defer p.historyMutex.Unlock()
+
+	p.History = append(p.History, historyData)
 }
