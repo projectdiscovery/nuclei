@@ -64,9 +64,11 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 	var rawResp strings.Builder
 	respPayloads := ctx.Response.Payload()
 	if respPayloads != nil {
-		rawResp.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", respPayloads.ResponseCode, respPayloads.ResponsePhrase))
+		rawResp.WriteString("HTTP/1.1 ")
+		rawResp.WriteString(fmt.Sprint(respPayloads.ResponseCode))
+		rawResp.WriteString(" " + respPayloads.ResponsePhrase + "+\n")
 		for _, header := range respPayloads.ResponseHeaders {
-			rawResp.WriteString(fmt.Sprintf("%s: %s\n", header.Name, header.Value))
+			rawResp.WriteString(header.Name + ": " + header.Value + "\n")
 		}
 		rawResp.WriteString("\n")
 		rawResp.WriteString(ctx.Response.Body())
@@ -77,5 +79,5 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 		RawRequest:  rawReq,
 		RawResponse: rawResp.String(),
 	}
-	p.History = append(p.History, historyData)
+	p.addToHistory(historyData)
 }

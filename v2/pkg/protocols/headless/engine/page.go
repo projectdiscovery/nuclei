@@ -3,6 +3,7 @@ package engine
 import (
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -11,11 +12,12 @@ import (
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	page     *rod.Page
-	rules    []requestRule
-	instance *Instance
-	router   *rod.HijackRouter
-	History  []HistoryData
+	page         *rod.Page
+	rules        []requestRule
+	instance     *Instance
+	router       *rod.HijackRouter
+	historyMutex sync.RWMutex
+	History      []HistoryData
 }
 
 // HistoryData contains the page request/response pairs
@@ -92,10 +94,21 @@ func (p *Page) URL() string {
 
 // DumpHistory returns the full page navigation history
 func (p *Page) DumpHistory() string {
+	p.historyMutex.RLock()
+	defer p.historyMutex.RUnlock()
+
 	var historyDump strings.Builder
 	for _, historyData := range p.History {
 		historyDump.WriteString(historyData.RawRequest)
 		historyDump.WriteString(historyData.RawResponse)
 	}
 	return historyDump.String()
+}
+
+// addToHistory adds a request/response pair to the page history
+func (p *Page) addToHistory(historyData HistoryData) {
+	p.historyMutex.Lock()
+	defer p.historyMutex.Unlock()
+
+	p.History = append(p.History, historyData)
 }
