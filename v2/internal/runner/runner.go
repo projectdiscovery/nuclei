@@ -159,7 +159,7 @@ func New(options *types.Options) (*Runner, error) {
 	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
-
+	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
