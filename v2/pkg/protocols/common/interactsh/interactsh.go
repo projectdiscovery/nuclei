@@ -77,7 +77,9 @@ type Options struct {
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
 	Debug bool
-
+	// HttpFallback controls http retry in case of https failure for server url
+	HttpFallback bool
+	// NoInteractsh disables the engine
 	NoInteractsh bool
 
 	StopAtFirstMatch bool
@@ -126,6 +128,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 		Output:         output,
 		IssuesClient:   reporting,
 		Progress:       progress,
+		HttpFallback:   true,
 	}
 }
 
@@ -137,6 +140,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		ServerURL:         c.options.ServerURL,
 		Token:             c.options.Authorization,
 		PersistentSession: false,
+		HTTPFallback:      c.options.HttpFallback,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not create client")
