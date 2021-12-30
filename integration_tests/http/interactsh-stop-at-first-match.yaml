@@ -1,0 +1,23 @@
+id: interactsh-stop-at-first-match-integration-test
+
+info:
+  name: Interactsh StopAtFirstMatch Integration Test
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}"
+      - "{{BaseURL}}"
+    headers:
+      url: 'http://{{interactsh-url}}'
+
+    stop-at-first-match: true
+
+    matchers:
+      - type: word
+        part: interactsh_protocol # Confirms the HTTP Interaction
+        words:
+          - "http"
