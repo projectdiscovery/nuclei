@@ -16,7 +16,7 @@ type Page struct {
 	rules        []requestRule
 	instance     *Instance
 	router       *rod.HijackRouter
-	historyMutex sync.RWMutex
+	historyMutex *sync.RWMutex
 	History      []HistoryData
 }
 
@@ -40,7 +40,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 		}
 	}
 
-	createdPage := &Page{page: page, instance: i}
+	createdPage := &Page{page: page, instance: i, historyMutex: &sync.RWMutex{}}
 	router := page.HijackRequests()
 	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
 		return nil, nil, routerErr
