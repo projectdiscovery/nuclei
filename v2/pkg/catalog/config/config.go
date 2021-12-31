@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -105,9 +106,26 @@ func ReadIgnoreFile() IgnoreFile {
 	return ignore
 }
 
+// customIgnoreFilePath contains a custom path for the ignore file
+var customIgnoreFilePath string
+
+// OverrideIgnoreFilePath with a custom existing folder
+func OverrideIgnoreFilePath(customPath string) error {
+	if !fileutil.FolderExists(customPath) {
+		return errors.Errorf("the path doesn't exist: %s", customPath)
+	}
+	customIgnoreFilePath = customPath
+	return nil
+}
+
 // getIgnoreFilePath returns the ignore file path for the runner
 func getIgnoreFilePath() string {
 	var defIgnoreFilePath string
+
+	if customIgnoreFilePath != "" {
+		defIgnoreFilePath = filepath.Join(customIgnoreFilePath, nucleiIgnoreFile)
+		return defIgnoreFilePath
+	}
 
 	home, err := os.UserHomeDir()
 	if err == nil {
