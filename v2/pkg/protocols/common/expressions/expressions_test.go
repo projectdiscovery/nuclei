@@ -12,6 +12,7 @@ func TestEvaluate(t *testing.T) {
 		expected string
 		extra    map[string]interface{}
 	}{
+		{input: "{{url_encode('test}aaa')}}", expected: "test%7Daaa", extra: map[string]interface{}{}},
 		{input: "{{hex_encode('PING')}}", expected: "50494e47", extra: map[string]interface{}{}},
 		{input: "test", expected: "test", extra: map[string]interface{}{}},
 		{input: "{{hex_encode(Item)}}", expected: "50494e47", extra: map[string]interface{}{"Item": "PING"}},
