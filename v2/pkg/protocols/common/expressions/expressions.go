@@ -1,16 +1,15 @@
 package expressions
 
 import (
-	"regexp"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/stringsutil"
 )
-
-var templateExpressionRegex = regexp.MustCompile(`(?m){{[^}]+}}["')}]*`)
 
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
@@ -37,7 +36,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	data = replacer.Replace(data, base)
 
 	dynamicValues := make(map[string]interface{})
-	for _, match := range templateExpressionRegex.FindAllString(data, -1) {
+	for _, match := range findMatches(data) {
 		expr := generators.TrimDelimiters(match)
 
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
@@ -52,4 +51,22 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	}
 	// Replacer dynamic values if any in raw request and parse  it
 	return replacer.Replace(data, dynamicValues), nil
+}
+
+func findMatches(data string) []string {
+	var matches []string
+	tokens := strings.Split(data, "{{")
+	for _, token := range tokens {
+		closingToken := strings.LastIndex(token, "}}")
+		var match string
+		if closingToken > 0 {
+			match = token[:closingToken]
+		} else {
+			match = stringsutil.Before(token, "}}")
+		}
+
+		matches = append(matches, match)
+	}
+
+	return matches
 }
