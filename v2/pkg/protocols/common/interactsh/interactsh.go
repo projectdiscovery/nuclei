@@ -2,6 +2,8 @@ package interactsh
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
@@ -32,6 +34,8 @@ type Client struct {
 	requests *ccache.Cache
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
 	interactions *ccache.Cache
+	// matchedTemplates is a stored cache to track matched templates
+	matchedTemplates *ccache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -73,8 +77,12 @@ type Options struct {
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
 	Debug bool
-
+	// HttpFallback controls http retry in case of https failure for server url
+	HttpFallback bool
+	// NoInteractsh disables the engine
 	NoInteractsh bool
+
+	StopAtFirstMatch bool
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -94,9 +102,12 @@ func New(options *Options) (*Client, error) {
 	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
 	interactionsCache := ccache.New(interactionsCfg)
 
+	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
+		matchedTemplates: matchedTemplateCache,
 		dotHostname:      "." + parsed.Host,
 		options:          options,
 		requests:         cache,
@@ -117,6 +128,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 		Output:         output,
 		IssuesClient:   reporting,
 		Progress:       progress,
+		HttpFallback:   true,
 	}
 }
 
@@ -128,6 +140,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		ServerURL:         c.options.ServerURL,
 		Token:             c.options.Authorization,
 		PersistentSession: false,
+		HTTPFallback:      c.options.HttpFallback,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not create client")
@@ -135,6 +148,9 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.interactsh = interactsh
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+		if c.options.StopAtFirstMatch && c.matched {
+			return
+		}
 		if c.options.Debug {
 			debugPrintInteraction(interaction)
 		}
@@ -155,6 +171,14 @@ func (c *Client) firstTimeInitializeClient() error {
 		if !ok {
 			return
 		}
+
+		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok {
+			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string), request.Event.InternalEvent["host"].(string)))
+			if gotItem != nil {
+				return
+			}
+		}
+
 		_ = c.processInteractionForRequest(interaction, request)
 	})
 	return nil
@@ -184,6 +208,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok {
+			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+		}
 	}
 	return true
 }
@@ -228,6 +255,11 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 	return data, interactshURLs
 }
 
+// SetStopAtFirstMatch sets StopAtFirstMatch true for interactsh client options
+func (c *Client) SetStopAtFirstMatch() {
+	c.options.StopAtFirstMatch = true
+}
+
 // MakeResultEventFunc is a result making function for nuclei
 type MakeResultEventFunc func(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
 
@@ -243,6 +275,9 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
+		if c.options.StopAtFirstMatch && c.matched {
+			break
+		}
 		id := strings.TrimSuffix(interactshURL, c.dotHostname)
 
 		interaction := c.interactions.Get(id)
@@ -312,4 +347,11 @@ func debugPrintInteraction(interaction *server.Interaction) {
 		builder.WriteString(fmt.Sprintf("\n------------\nLDAP Interaction\n------------\n\n%s\n\n", interaction.RawRequest))
 	}
 	fmt.Fprint(os.Stderr, builder.String())
+}
+
+func hash(templateID, host string) string {
+	h := sha1.New()
+	h.Write([]byte(templateID))
+	h.Write([]byte(host))
+	return hex.EncodeToString(h.Sum(nil))
 }

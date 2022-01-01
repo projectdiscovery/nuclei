@@ -247,6 +247,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	if request.options.StopAtFirstMatch {
+		outputEvent["stop-at-first-match"] = true
+	}
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
