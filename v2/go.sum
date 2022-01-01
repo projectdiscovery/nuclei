@@ -52,8 +52,8 @@ github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go
 github.com/Masterminds/glide v0.13.2/go.mod h1:STyF5vcenH/rUqTEv+/hBXlSTo7KYwg2oc2f4tzPWic=
 github.com/Masterminds/semver v1.4.2/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/vcs v1.13.0/go.mod h1:N09YCmOQr6RLxC6UNHzuVwAdodYbbnycGHSmwVJjcKA=
-github.com/Mzack9999/ldapserver v1.0.2-0.20211214172138-8f1cdd128383 h1:nCClkytmADCDqZ8Tft97RGSClbHeHyp+k7TRCm5jAyU=
-github.com/Mzack9999/ldapserver v1.0.2-0.20211214172138-8f1cdd128383/go.mod h1:AqtPw7WNT0O69k+AbPKWVGYeW94TqgMW/g+Ppc8AZr4=
+github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd h1:RTWs+wEY9efxTKK5aFic5C5KybqQelGcX+JdM69KoTo=
+github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd/go.mod h1:AqtPw7WNT0O69k+AbPKWVGYeW94TqgMW/g+Ppc8AZr4=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/OneOfOne/xxhash v1.2.8/go.mod h1:eZbhyaAYD41SGSSsnmcpxVoRiQ/MPUTjUdIIOT9Um7Q=
 github.com/PuerkitoBio/goquery v1.6.0 h1:j7taAbelrdcsOlGeMenZxc2AWXD5fieT1/znArdnx94=
@@ -632,8 +632,8 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210825180603-fca7166c158f/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v0.0.8-0.20211227063714-8dfbea4feaa6 h1:WIW9yk3Oj8TdpInAIPqINUF9sTl56mSl+IoAJ/4yp90=
-github.com/projectdiscovery/interactsh v0.0.8-0.20211227063714-8dfbea4feaa6/go.mod h1:YktypUMgjVb8dQD1DAEk8Pe4CZdPg2xGx4Al1kNaRAY=
+github.com/projectdiscovery/interactsh v0.0.8-0.20211231143029-74e9182d2cbe h1:04Jyuv+O83rdCWeyTfOTTJhS2qaFt4PBAnsLaAF9buM=
+github.com/projectdiscovery/interactsh v0.0.8-0.20211231143029-74e9182d2cbe/go.mod h1:t5RepR7pl8DhJqk2ntmKlDX69w2zx3CcEuS8QO5aSWg=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
 github.com/projectdiscovery/iputil v0.0.0-20210414194613-4b4d2517acf0/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
 github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
