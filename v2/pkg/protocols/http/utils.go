@@ -117,8 +117,27 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
 		// Create a copy on the fly of the request body - ignore errors
 		bodyBytes, _ := req.request.BodyBytes()
-		req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
-		return httputil.DumpRequestOut(req.request.Request, true)
+		if len(bodyBytes) > 0 {
+			req.request.Request.ContentLength = int64(len(bodyBytes))
+			req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+		} else {
+			req.request.Request.ContentLength = 0
+			req.request.Request.Body = nil
+		}
+
+		dumpBytes, err := httputil.DumpRequestOut(req.request.Request, true)
+		if err != nil {
+			return nil, err
+		}
+
+		// The original req.Body gets modified indirectly by httputil.DumpRequestOut so we set it again to nil if it was empty
+		// Otherwise redirects like 307/308 would fail (as they require the body to be sent along)
+		if len(bodyBytes) == 0 {
+			req.request.Request.ContentLength = int64(len(bodyBytes))
+			req.request.Request.Body = nil
+		}
+
+		return dumpBytes, nil
 	}
 	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes})
 }
