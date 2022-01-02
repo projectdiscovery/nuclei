@@ -124,7 +124,11 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		payloads := generators.BuildPayloadFromOptions(r.request.options.Options)
+		payloads = generators.MergeMaps(
+			payloads,
+			generators.BuildPayloadFromOptions(r.request.options.Options),
+		)
+
 		// in case cases (eg requests signing, some variables uses default values if missing)
 		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
 			payloads = generators.MergeMaps(defaultList, payloads)

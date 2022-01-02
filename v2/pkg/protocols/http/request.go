@@ -562,12 +562,12 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	switch request.Signature.Value {
 	case AWSSignature:
 		var awsSigner signer.Signer
-		payloads := request.options.Options.Vars.AsMap()
-		awsAccessKeyId := types.ToString(payloads["aws-id"])
-		awsSecretAccessKey := types.ToString(payloads["aws-secret"])
+		vars := request.options.Options.Vars.AsMap()
+		awsAccessKeyId := types.ToString(vars["aws-id"])
+		awsSecretAccessKey := types.ToString(vars["aws-secret"])
 		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
-		service := types.ToString(payloads["service"])
-		region := types.ToString(payloads["region"])
+		service := types.ToString(generatedRequest.dynamicValues["service"])
+		region := types.ToString(generatedRequest.dynamicValues["region"])
 		// if region is empty use default value
 		if region == "" {
 			region = types.ToString(signer.AwsDefaultVars["region"])
