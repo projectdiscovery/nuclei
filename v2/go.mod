@@ -41,7 +41,7 @@ require (
 	github.com/projectdiscovery/stringsutil v0.0.0-20210830151154-f567170afdd9
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
-	github.com/rs/xid v1.3.0
+	github.com/rs/xid v1.3.0 // indirect
 	github.com/segmentio/ksuid v1.0.4
 	github.com/shirou/gopsutil/v3 v3.21.9
 	github.com/spaolacci/murmur3 v1.1.0
