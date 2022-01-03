@@ -542,6 +542,9 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 
+		// prune signature internal values if any
+		request.pruneSignatureInternalValues(generatedRequest.meta)
+
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
@@ -636,5 +639,21 @@ func createResponseHexDump(event *output.InternalWrappedEvent, response string, 
 		return fmt.Sprintf("%s\n%s", highlightedHeaders, highlightedResponse)
 	} else {
 		return responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), noColor, true)
+	}
+}
+
+func (request *Request) pruneSignatureInternalValues(maps ...map[string]interface{}) {
+	var signatureFieldsToSkip map[string]interface{}
+	switch request.Signature.Value {
+	case AWSSignature:
+		signatureFieldsToSkip = signer.AwsInternaOnlyVars
+	default:
+		return
+	}
+
+	for _, m := range maps {
+		for fieldName := range signatureFieldsToSkip {
+			delete(m, fieldName)
+		}
 	}
 }
