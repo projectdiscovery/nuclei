@@ -2,9 +2,10 @@ package templates
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
-	"github.com/rs/xid"
-
+	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -58,6 +59,17 @@ func Cluster(list map[string]*Template) [][]*Template {
 	return final
 }
 
+// ClusterID transforms clusterization into a matemathical hash repetible across executions with the same templates
+func ClusterID(templates []*Template) string {
+	allIDS := make([]string, len(templates))
+	for tplIndex, tpl := range templates {
+		allIDS[tplIndex] = tpl.ID
+	}
+	sort.Strings(allIDS)
+	ids := strings.Join(allIDS, ",")
+	return cryptoutil.SHA256Sum(ids)
+}
+
 func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptions) ([]*Template, int) {
 	if options.Options.OfflineHTTP {
 		return templatesList, 0
@@ -75,7 +87,7 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptio
 		if len(cluster) > 1 {
 			executerOpts := options
 
-			clusterID := fmt.Sprintf("cluster-%s", xid.New().String())
+			clusterID := fmt.Sprintf("cluster-%s", ClusterID(cluster))
 
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
