@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
@@ -18,6 +19,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
@@ -34,6 +39,8 @@ func makePercentReturnFunc(stats progress.Progress) PercentReturnFunc {
 		return stats.Percent()
 	})
 }
+
+const defaultMaxHostErrors = 30
 
 // getSettingsForName gets settings for name and returns a types.Options structure
 func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
@@ -59,6 +66,7 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 	return typesOptions, nil
 }
 
+// createExecuterOpts creates executer options for the scan
 func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.CancelFunc, scanID int64, reportingConfig, scanSource, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
 	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
@@ -76,15 +84,53 @@ func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.Can
 
 	outputWriter := newWrappedOutputWriter(s.db, buflogWriter, scanID, scanSource)
 
+	var reportingClient *reporting.Client
 	if reportingConfig != "" {
-		// TODO: Implement reporting using a global unique tracker for issues
+		settings, err := s.db.GetSettingByName(context.Background(), reportingConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not load reporting config")
+		}
+		var reportingOptions reporting.Options
+		if err := yaml.NewDecoder(strings.NewReader(settings.Settingdata)).Decode(&reportingOptions); err != nil {
+			return nil, errors.Wrap(err, "could not decode reporting config")
+		}
+		reportingClient, err = reporting.New(&reportingOptions, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create reporting client")
+		}
+	}
+
+	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, progressImpl)
+	if typesOptions.InteractshURL != "" {
+		interactOpts.ServerURL = typesOptions.InteractshURL
+		interactOpts.ServerURL = typesOptions.InteractshURL
+		interactOpts.Authorization = typesOptions.InteractshToken
+		interactOpts.CacheSize = int64(typesOptions.InteractionsCacheSize)
+		interactOpts.Eviction = time.Duration(typesOptions.InteractionsEviction) * time.Second
+		interactOpts.CooldownPeriod = time.Duration(typesOptions.InteractionsCoolDownPeriod) * time.Second
+		interactOpts.PollDuration = time.Duration(typesOptions.InteractionsPollDuration) * time.Second
+	}
+	interactClient, err := interactsh.New(interactOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create interactsh client")
+	}
+	var headlessEngine *engine.Browser
+	if typesOptions.Headless {
+		headlessEngine, err = engine.New(typesOptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create headless engine")
+		}
 	}
 	executerOpts := protocols.ExecuterOptions{
-		Output:       outputWriter,
-		IssuesClient: nil, //todo: load from config value
-		Options:      typesOptions,
-		Progress:     progressImpl,
-		Catalog:      catalog.New(templatesDirectory),
+		Output:          outputWriter,
+		IssuesClient:    reportingClient,
+		Options:         typesOptions,
+		Progress:        progressImpl,
+		Catalog:         catalog.New(templatesDirectory),
+		Browser:         headlessEngine,
+		Interactsh:      interactClient,
+		HostErrorsCache: hosterrorscache.New(defaultMaxHostErrors, hosterrorscache.DefaultMaxHostsCount),
+		Colorizer:       aurora.NewAurora(false),
 	}
 	if typesOptions.RateLimitMinute > 0 {
 		executerOpts.RateLimiter = ratelimit.New(typesOptions.RateLimitMinute, ratelimit.Per(60*time.Second))
@@ -118,6 +164,19 @@ type scanContext struct {
 func (s *scanContext) Close() {
 	s.logs.Flush()
 	s.logsFile.Close()
+	if s.executerOpts.Interactsh != nil {
+		s.executerOpts.Interactsh.Close()
+	}
+	if s.executerOpts.Browser != nil {
+		s.executerOpts.Browser.Close()
+	}
+	if s.executerOpts.IssuesClient != nil {
+		s.executerOpts.IssuesClient.Close()
+	}
+	if s.executerOpts.HostErrorsCache != nil {
+		s.executerOpts.HostErrorsCache.Close()
+	}
+
 	s.scanService.Running.Delete(s.scanID)
 
 	gologger.Info().Msgf("[scans] [worker] [%d] Closed scan resources", s.scanID)
