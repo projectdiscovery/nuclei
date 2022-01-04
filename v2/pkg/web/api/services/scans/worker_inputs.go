@@ -10,8 +10,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
 // inputProviderFromRequest returns an input provider from scan request
@@ -72,4 +74,18 @@ func (s *ScanService) storeTemplatesFromRequest(templatesList []string) (string,
 		}
 	}
 	return directory, templates, workflows, nil
+}
+
+// dbPayloadLoader loads payloads from db
+type dbPayloadLoader struct {
+	db dbsql.Querier
+}
+
+func (d *dbPayloadLoader) Load(name string) ([]string, error) {
+	contents, err := d.db.GetTemplateContents(context.Background(), name)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get payload contents from db")
+	}
+	parts := strings.Split(contents, "\n")
+	return parts, nil
 }
