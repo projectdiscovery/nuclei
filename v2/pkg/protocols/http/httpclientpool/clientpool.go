@@ -116,7 +116,6 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	var proxyURL *url.URL
 	var err error
 
 	if Dialer == nil {
@@ -130,12 +129,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-	if types.ProxyURL != "" {
-		proxyURL, err = url.Parse(types.ProxyURL)
-	}
-	if err != nil {
-		return nil, err
-	}
 
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
@@ -182,23 +175,24 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		TLSClientConfig:     tlsConfig,
 		DisableKeepAlives:   disableKeepAlives,
 	}
-	if proxyURL != nil {
-		// Attempts to overwrite the dial function with the socks proxied version
-		if proxyURL.Scheme == types.SOCKS5 {
-			var proxyAuth = &proxy.Auth{}
-			proxyAuth.User = proxyURL.User.Username()
-			proxyAuth.Password, _ = proxyURL.User.Password()
-
-			dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", proxyURL.Hostname(), proxyURL.Port()), proxyAuth, proxy.Direct)
-
-			dc := dialer.(interface {
-				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-			})
-			if proxyErr == nil {
-				transport.DialContext = dc.DialContext
-			}
-		} else {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	} else if types.ProxySocksURL != "" {
+		var proxyAuth *proxy.Auth
+		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+		if proxyErr == nil {
+			proxyAuth = &proxy.Auth{}
+			proxyAuth.User = socksURL.User.Username()
+			proxyAuth.Password, _ = socksURL.User.Password()
+		}
+		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+		dc := dialer.(interface {
+			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+		})
+		if proxyErr == nil {
+			transport.DialContext = dc.DialContext
 		}
 	}
 
