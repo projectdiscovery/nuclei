@@ -7,8 +7,8 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
-	"github.com/projectdiscovery/stringsutil"
 )
 
 // Evaluate checks if the match contains a dynamic variable, for each
@@ -55,18 +55,11 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 
 func findMatches(data string) []string {
 	var matches []string
-	tokens := strings.Split(data, "{{")
-	for _, token := range tokens {
-		closingToken := strings.LastIndex(token, "}}")
-		var match string
+	for _, token := range strings.Split(data, marker.ParenthesisOpen) {
+		closingToken := strings.LastIndex(token, marker.ParenthesisClose)
 		if closingToken > 0 {
-			match = token[:closingToken]
-		} else {
-			match = stringsutil.Before(token, "}}")
+			matches = append(matches, token[:closingToken])
 		}
-
-		matches = append(matches, match)
 	}
-
 	return matches
 }
