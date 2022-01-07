@@ -66,7 +66,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 	if respPayloads != nil {
 		rawResp.WriteString("HTTP/1.1 ")
 		rawResp.WriteString(fmt.Sprint(respPayloads.ResponseCode))
-		rawResp.WriteString(" " + respPayloads.ResponsePhrase + "+\n")
+		rawResp.WriteString(" " + respPayloads.ResponsePhrase + "\n")
 		for _, header := range respPayloads.ResponseHeaders {
 			rawResp.WriteString(header.Name + ": " + header.Value + "\n")
 		}
