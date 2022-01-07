@@ -45,6 +45,10 @@ type Options struct {
 	IncludeTags goflags.NormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
 	IncludeTemplates goflags.StringSlice
+	// IncludeIds includes specified ids to be run even while being in denylist
+	IncludeIds goflags.NormalizedStringSlice
+	// ExcludeIds contains templates ids to not be executed
+	ExcludeIds goflags.NormalizedStringSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder

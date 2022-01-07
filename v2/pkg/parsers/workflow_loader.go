@@ -21,6 +21,8 @@ func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error)
 		Authors:     options.Options.Authors,
 		Severities:  options.Options.Severities,
 		IncludeTags: options.Options.IncludeTags,
+		IncludeIds:  options.Options.IncludeIds,
+		ExcludeIds:  options.Options.ExcludeIds,
 	})
 	pathFilter := filter.NewPathFilter(&filter.PathFilterConfig{
 		IncludedTemplates: options.Options.IncludeTemplates,
