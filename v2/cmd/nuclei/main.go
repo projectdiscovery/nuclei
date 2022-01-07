@@ -101,6 +101,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("protocol types to be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("protocol types to not be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.NormalizedStringSliceVarP(&options.Authors, "author", "a", []string{}, "execute templates that are (co-)created by the specified authors"),
+		flagSet.NormalizedStringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "List of template IDs to run (comma-separated, file)"),
+		flagSet.NormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "List of template IDs to exclude (comma-separated, file)"),
 	)
 
 	createGroup(flagSet, "output", "Output",
