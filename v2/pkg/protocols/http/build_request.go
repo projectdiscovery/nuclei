@@ -133,7 +133,11 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
 			payloads = generators.MergeMaps(defaultList, payloads)
 		}
+
 		parts[1] = replacer.Replace(parts[1], payloads)
+		if len(dynamicValues) > 0 {
+			parts[1] = replacer.Replace(parts[1], dynamicValues)
+		}
 
 		// the url might contain placeholders with ignore list
 		if ignoreList := GetVariablesNamesSkipList(r.request.Signature.Value); ignoreList != nil {
