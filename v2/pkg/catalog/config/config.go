@@ -106,13 +106,24 @@ func ReadIgnoreFile() IgnoreFile {
 	return ignore
 }
 
-// customIgnoreFilePath contains a custom path for the ignore file
-var customIgnoreFilePath string
+var (
+	// customIgnoreFilePath contains a custom path for the ignore file
+	customIgnoreFilePath string
+	// ErrCustomIgnoreFilePathNotExist is raised when the ignore file doesn't exist in the custom path
+	ErrCustomIgnoreFilePathNotExist = errors.New("Ignore file doesn't exist in custom path")
+	// ErrCustomFolderNotExist is raised when the custom ignore folder doesn't exist
+	ErrCustomFolderNotExist = errors.New("The custom ignore path doesn't exist")
+)
 
 // OverrideIgnoreFilePath with a custom existing folder
 func OverrideIgnoreFilePath(customPath string) error {
+	// custom path does not exist
 	if !fileutil.FolderExists(customPath) {
-		return errors.Errorf("the path doesn't exist: %s", customPath)
+		return ErrCustomFolderNotExist
+	}
+	// ignore file within the custom path does not exist
+	if !fileutil.FileExists(filepath.Join(customPath, nucleiIgnoreFile)) {
+		return ErrCustomIgnoreFilePathNotExist
 	}
 	customIgnoreFilePath = customPath
 	return nil
