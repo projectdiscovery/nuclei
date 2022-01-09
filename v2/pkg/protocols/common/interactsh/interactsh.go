@@ -148,9 +148,6 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.interactsh = interactsh
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		if c.options.StopAtFirstMatch && c.matched {
-			return
-		}
 		if c.options.Debug {
 			debugPrintInteraction(interaction)
 		}
@@ -172,7 +169,7 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok {
+		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
 			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string), request.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				return
@@ -208,7 +205,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
-		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok {
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
 			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
 	}
@@ -275,8 +272,11 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
-		if c.options.StopAtFirstMatch && c.matched {
-			break
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)))
+			if gotItem != nil {
+				break
+			}
 		}
 		id := strings.TrimSuffix(interactshURL, c.dotHostname)
 
