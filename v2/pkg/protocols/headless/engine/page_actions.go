@@ -14,6 +14,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/segmentio/ksuid"
 	"github.com/valyala/fasttemplate"
 )
@@ -254,7 +255,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.UR
 	parsedString := parsed.String()
 	values["BaseURL"] = parsedString
 
-	final := fasttemplate.ExecuteStringStd(URL, "{{", "}}", values)
+	final := fasttemplate.ExecuteStringStd(URL, marker.ParenthesisOpen, marker.ParenthesisClose, values)
 	if err := p.page.Navigate(final); err != nil {
 		return errors.Wrap(err, "could not navigate")
 	}
