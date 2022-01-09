@@ -23,7 +23,9 @@ func ContainsUnresolvedVariables(items ...string) error {
 			}
 			unresolvedVariables = append(unresolvedVariables, match[1])
 		}
-		return errors.New("unresolved variables found: " + strings.Join(unresolvedVariables, ","))
+		if len(unresolvedVariables) > 0 {
+			return errors.New("unresolved variables found: " + strings.Join(unresolvedVariables, ","))
+		}
 	}
 
 	return nil
@@ -47,7 +49,9 @@ func ContainsVariablesWithNames(names map[string]interface{}, items ...string) e
 				unresolvedVariables = append(unresolvedVariables, matchName)
 			}
 		}
-		return errors.New("unresolved variables with values found: " + strings.Join(unresolvedVariables, ","))
+		if len(unresolvedVariables) > 0 {
+			return errors.New("unresolved variables with values found: " + strings.Join(unresolvedVariables, ","))
+		}
 	}
 
 	return nil
@@ -77,5 +81,6 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 	if len(unresolvedVariables) > 0 {
 		return errors.New("unresolved variables with values found: " + strings.Join(unresolvedVariables, ","))
 	}
+
 	return nil
 }
