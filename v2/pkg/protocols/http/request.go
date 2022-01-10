@@ -527,12 +527,17 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		outputEvent["curl-command"] = curlCommand
 		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+		if request.options.Interactsh != nil {
+			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
+		}
 		for k, v := range previousEvent {
 			finalEvent[k] = v
 		}
 		for k, v := range outputEvent {
 			finalEvent[k] = v
 		}
+
 		// Add to history the current request number metadata if asked by the user.
 		if request.ReqCondition {
 			for k, v := range outputEvent {

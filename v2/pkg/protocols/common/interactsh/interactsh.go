@@ -42,6 +42,7 @@ type Client struct {
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
+	hostname       string
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
 	matched        bool
@@ -93,6 +94,7 @@ func New(options *Options) (*Client, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse server url")
 	}
+	hostanme := parsed.Hostname()
 
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
@@ -111,6 +113,7 @@ func New(options *Options) (*Client, error) {
 		dotHostname:      "." + parsed.Host,
 		options:          options,
 		requests:         cache,
+		hostname:         hostanme,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.ColldownPeriod,
 	}
@@ -253,6 +256,15 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 		data = strings.Replace(data, interactshURLMarker, url, 1)
 	}
 	return data, interactshURLs
+}
+
+// MakePlaceholders does placeholders for interact URLs and other data to a map
+func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
+	data["interactsh-server"] = c.hostname
+	if len(urls) == 1 {
+		data["interactsh-url"] = urls[0]
+		data["interactsh-id"] = urls[0][:strings.Index(urls[0], ".")]
+	}
 }
 
 // SetStopAtFirstMatch sets StopAtFirstMatch true for interactsh client options
