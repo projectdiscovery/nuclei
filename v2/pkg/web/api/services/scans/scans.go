@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron"
+	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
@@ -53,6 +55,10 @@ type ScanRequest struct {
 // NewScanService returns a new scan service
 func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targets.TargetsStorage) *ScanService {
 	context, cancel := context.WithCancel(context.Background())
+
+	// Do not use cache as the template contents depend upon db
+	templates.NoCacheUsage = true
+	parsers.NoCacheUsage = true
 
 	// Use the db based loader
 	generators.DefaultLoader = &dbPayloadLoader{db: db}

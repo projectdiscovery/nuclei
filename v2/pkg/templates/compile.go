@@ -24,8 +24,10 @@ var (
 )
 
 var parsedTemplatesCache *cache.Templates
+var NoCacheUsage bool
 
 func init() {
+	NoCacheUsage = false
 	parsedTemplatesCache = cache.New()
 }
 
@@ -33,7 +35,7 @@ func init() {
 //nolint:gocritic // this cannot be passed by pointer
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(reader io.Reader, filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := parsedTemplatesCache.Has(filePath); value != nil && filePath != "" {
+	if value, err := parsedTemplatesCache.Has(filePath); value != nil && filePath != "" && !NoCacheUsage {
 		return value.(*Template), err
 	}
 	template := &Template{}
@@ -105,7 +107,9 @@ func Parse(reader io.Reader, filePath string, preprocessor Preprocessor, options
 
 	template.parseSelfContainedRequests()
 
-	parsedTemplatesCache.Store(filePath, template, err)
+	if !NoCacheUsage {
+		parsedTemplatesCache.Store(filePath, template, err)
+	}
 	return template, nil
 }
 

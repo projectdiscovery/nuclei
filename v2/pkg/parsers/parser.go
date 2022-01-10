@@ -102,6 +102,7 @@ func validateTemplateFields(template *templates.Template) error {
 
 var (
 	parsedTemplatesCache *cache.Templates
+	NoCacheUsage         bool
 	ShouldValidate       bool
 	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
 	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
@@ -114,7 +115,7 @@ const (
 )
 
 func init() {
-
+	NoCacheUsage = false
 	parsedTemplatesCache = cache.New()
 
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
@@ -124,7 +125,7 @@ func init() {
 
 // ParseTemplate parses a template and returns a *templates.Template structure
 func ParseTemplate(templatePath string) (*templates.Template, error) {
-	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
+	if value, err := parsedTemplatesCache.Has(templatePath); value != nil && !NoCacheUsage {
 		return value.(*templates.Template), err
 	}
 
@@ -153,6 +154,8 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 			gologger.Warning().Msgf("Syntax warnings for template %s: %s", templatePath, err)
 		}
 	}
-	parsedTemplatesCache.Store(templatePath, template, nil)
+	if !NoCacheUsage {
+		parsedTemplatesCache.Store(templatePath, template, nil)
+	}
 	return template, nil
 }
