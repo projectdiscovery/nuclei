@@ -2,6 +2,10 @@ package catalog
 
 // Catalog is a template catalog helper implementation
 type Catalog struct {
+	// RestrictScope restricts the scope of templates being loaded
+	// to the templatesDirectory and does not do lookups on relative paths.
+	RestrictScope bool
+
 	templatesDirectory string
 }
 

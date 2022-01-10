@@ -132,6 +132,7 @@ func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.Can
 		HostErrorsCache: hosterrorscache.New(defaultMaxHostErrors, hosterrorscache.DefaultMaxHostsCount),
 		Colorizer:       aurora.NewAurora(false),
 	}
+	executerOpts.Catalog.RestrictScope = true // restrict templates directory scope
 	if typesOptions.RateLimitMinute > 0 {
 		executerOpts.RateLimiter = ratelimit.New(typesOptions.RateLimitMinute, ratelimit.Per(60*time.Second))
 	} else {

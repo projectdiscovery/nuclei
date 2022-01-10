@@ -16,26 +16,29 @@ import (
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
 func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
-	if filepath.IsAbs(templateName) {
-		return templateName, nil
-	}
-	if second != "" {
-		secondBasePath := filepath.Join(filepath.Dir(second), templateName)
-		if potentialPath, err := c.tryResolve(secondBasePath); err != errNoValidCombination {
+	// only perform relative paths or current directory if the scope is not
+	// restricted.
+	if !c.RestrictScope {
+		if filepath.IsAbs(templateName) {
+			return templateName, nil
+		}
+		if second != "" {
+			secondBasePath := filepath.Join(filepath.Dir(second), templateName)
+			if potentialPath, err := c.tryResolve(secondBasePath); err != errNoValidCombination {
+				return potentialPath, nil
+			}
+		}
+
+		curDirectory, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+
+		templatePath := filepath.Join(curDirectory, templateName)
+		if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
 			return potentialPath, nil
 		}
 	}
-
-	curDirectory, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	templatePath := filepath.Join(curDirectory, templateName)
-	if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
-		return potentialPath, nil
-	}
-
 	if c.templatesDirectory != "" {
 		templatePath := filepath.Join(c.templatesDirectory, templateName)
 		if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
