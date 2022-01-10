@@ -418,6 +418,11 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 	}
 
+	// use request url as matched url if empty
+	if formedURL == "" {
+		formedURL = reqURL
+	}
+
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil {
