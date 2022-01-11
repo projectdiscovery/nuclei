@@ -129,6 +129,12 @@ type Request struct {
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
+	//   Signature is the request signature method
+	// values:
+	//   - "AWS"
+	Signature SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`

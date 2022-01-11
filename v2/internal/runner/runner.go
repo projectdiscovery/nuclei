@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,6 +56,7 @@ type Runner struct {
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
+	resumeCfg         *types.ResumeCfg
 }
 
 // New creates a new client for running enumeration process.
@@ -150,6 +153,23 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	// create the resume configuration structure
+	resumeCfg := types.NewResumeCfg()
+	if runner.options.ShouldLoadResume() {
+		gologger.Info().Msg("Resuming from save checkpoint")
+		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(file), &resumeCfg)
+		if err != nil {
+			return nil, err
+		}
+		resumeCfg.Compile()
+	}
+
+	runner.resumeCfg = resumeCfg
+
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
 	opts.ServerURL = options.InteractshURL
@@ -159,7 +179,7 @@ func New(options *types.Options) (*Runner, error) {
 	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
-
+	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -262,6 +282,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
+		ResumeCfg:       r.resumeCfg,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -459,4 +480,13 @@ func (r *Runner) countNewTemplates() int {
 		count++
 	}
 	return count
+}
+
+// SaveResumeConfig to file
+func (r *Runner) SaveResumeConfig() error {
+	resumeCfg := types.NewResumeCfg()
+	resumeCfg.ResumeFrom = r.resumeCfg.Current
+	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+
+	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
 }
