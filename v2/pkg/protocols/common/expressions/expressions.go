@@ -2,6 +2,7 @@ package expressions
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 
@@ -42,11 +43,14 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
-			continue
+			return "", err
 		}
 		result, err := compiled.Evaluate(base)
 		if err != nil {
-			continue
+			if strings.HasPrefix(err.Error(), "No parameter '") && strings.HasSuffix(err.Error(), "' found.") {
+				continue
+			}
+			return "", err
 		}
 		dynamicValues[expr] = result
 	}
