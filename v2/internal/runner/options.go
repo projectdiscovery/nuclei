@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // ParseOptions parses the command line flags provided by a user
@@ -114,7 +115,35 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 
+	// expand include/exclude templates id filenames
+	if includeIds, err := processIdsFiltering(options.IncludeIds); err != nil {
+		return err
+	} else {
+		options.IncludeIds = includeIds
+	}
+	if excludeIds, err := processIdsFiltering(options.ExcludeIds); err != nil {
+		return err
+	} else {
+		options.ExcludeIds = excludeIds
+	}
+
 	return nil
+}
+
+func processIdsFiltering(ids []string) ([]string, error) {
+	var finalIds []string
+	for _, id := range ids {
+		if fileutil.FileExists(id) {
+			fileIds, err := utils.LoadFile(id)
+			if err != nil {
+				return nil, err
+			}
+			finalIds = append(finalIds, fileIds...)
+		} else {
+			finalIds = append(finalIds, id)
+		}
+	}
+	return finalIds, nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen

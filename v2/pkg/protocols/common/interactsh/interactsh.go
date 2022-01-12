@@ -168,7 +168,7 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok {
+		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
 			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string), request.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				return
@@ -205,7 +205,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
-		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok {
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
 			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
 	}
@@ -282,6 +282,14 @@ type RequestData struct {
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
+    
+		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)))
+			if gotItem != nil {
+				break
+			}
+		}
+
 
 		interaction := c.interactions.Get(id)
 		if interaction != nil {
