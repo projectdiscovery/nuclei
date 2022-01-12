@@ -18,7 +18,7 @@ import (
 // Match matches a generic data response again a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := getMatchPart(matcher.Part, data)
-	if !ok {
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
 		return false, []string{}
 	}
 

@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -27,7 +26,6 @@ import (
 
 // Client is a wrapped client for interactsh server.
 type Client struct {
-	dotHostname string
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
@@ -90,12 +88,6 @@ const defaultMaxInteractionsCount = 5000
 
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
-	parsed, err := url.Parse(options.ServerURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not parse server url")
-	}
-	hostanme := parsed.Hostname()
-
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
 	cache := ccache.New(configure)
@@ -110,10 +102,8 @@ func New(options *Options) (*Client, error) {
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
 		matchedTemplates: matchedTemplateCache,
-		dotHostname:      "." + parsed.Host,
 		options:          options,
 		requests:         cache,
-		hostname:         hostanme,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.ColldownPeriod,
 	}
@@ -151,16 +141,16 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.interactsh = interactsh
 
 	interactURL := interactsh.URL()
-	gologger.Info().Msgf("Using Interactsh Server %s", interactURL[strings.Index(interactURL, ".")+1:])
+	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
+	gologger.Info().Msgf("Using Interactsh Server %s", interactDomain)
+	c.hostname = interactDomain
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		if c.options.StopAtFirstMatch && c.matched {
-			return
-		}
 		if c.options.Debug {
 			debugPrintInteraction(interaction)
 		}
 		item := c.requests.Get(interaction.UniqueID)
+
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -196,6 +186,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
+
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, false)
 	if !matched || result == nil {
 		return false // if we don't match, return
@@ -290,10 +281,7 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
-		if c.options.StopAtFirstMatch && c.matched {
-			break
-		}
-		id := strings.TrimSuffix(interactshURL, c.dotHostname)
+		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
 		interaction := c.interactions.Get(id)
 		if interaction != nil {
@@ -313,7 +301,6 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 			c.requests.Set(id, data, c.eviction)
 		}
 	}
-
 }
 
 // HasMatchers returns true if an operator has interactsh part
