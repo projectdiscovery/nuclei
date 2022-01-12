@@ -17,12 +17,13 @@ import (
 
 // Config contains the configuration options for the loader
 type Config struct {
-	Templates        []string
-	TemplateURLs     []string
-	Workflows        []string
-	WorkflowURLs     []string
-	ExcludeTemplates []string
-	IncludeTemplates []string
+	Templates                []string
+	TemplateURLs             []string
+	Workflows                []string
+	WorkflowURLs             []string
+	ExcludeTemplates         []string
+	IncludeTemplates         []string
+	RemoteTemplateDomainList []string
 
 	Tags              []string
 	ExcludeTags       []string
@@ -57,25 +58,26 @@ type Store struct {
 // NewConfig returns a new loader config
 func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
-		Templates:          options.Templates,
-		Workflows:          options.Workflows,
-		TemplateURLs:       options.TemplateURLs,
-		WorkflowURLs:       options.WorkflowURLs,
-		ExcludeTemplates:   options.ExcludedTemplates,
-		Tags:               options.Tags,
-		ExcludeTags:        options.ExcludeTags,
-		IncludeTemplates:   options.IncludeTemplates,
-		Authors:            options.Authors,
-		Severities:         options.Severities,
-		ExcludeSeverities:  options.ExcludeSeverities,
-		IncludeTags:        options.IncludeTags,
-		IncludeIds:         options.IncludeIds,
-		ExcludeIds:         options.ExcludeIds,
-		TemplatesDirectory: options.TemplatesDirectory,
-		Protocols:          options.Protocols,
-		ExcludeProtocols:   options.ExcludeProtocols,
-		Catalog:            catalog,
-		ExecutorOptions:    executerOpts,
+		Templates:                options.Templates,
+		Workflows:                options.Workflows,
+		RemoteTemplateDomainList: options.RemoteTemplateDomainList,
+		TemplateURLs:             options.TemplateURLs,
+		WorkflowURLs:             options.WorkflowURLs,
+		ExcludeTemplates:         options.ExcludedTemplates,
+		Tags:                     options.Tags,
+		ExcludeTags:              options.ExcludeTags,
+		IncludeTemplates:         options.IncludeTemplates,
+		Authors:                  options.Authors,
+		Severities:               options.Severities,
+		ExcludeSeverities:        options.ExcludeSeverities,
+		IncludeTags:              options.IncludeTags,
+		IncludeIds:               options.IncludeIds,
+		ExcludeIds:               options.ExcludeIds,
+		TemplatesDirectory:       options.TemplatesDirectory,
+		Protocols:                options.Protocols,
+		ExcludeProtocols:         options.ExcludeProtocols,
+		Catalog:                  catalog,
+		ExecutorOptions:          executerOpts,
 	}
 	return &loaderConfig
 }
@@ -107,7 +109,7 @@ func New(config *Config) (*Store, error) {
 
 	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
 	if urlBasedTemplatesProvided {
-		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
+		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs, config.RemoteTemplateDomainList)
 		if err != nil {
 			return store, err
 		}

@@ -3,6 +3,7 @@ package parsers
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -129,14 +130,7 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-
-	f, err := os.Open(templatePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
+	data, err := readFromTemplatePath(templatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -157,4 +151,29 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	}
 	parsedTemplatesCache.Store(templatePath, template, nil)
 	return template, nil
+}
+
+func readFromTemplatePath(templatePath string) (data []byte, err error) {
+	if utils.IsURL(templatePath) {
+		resp, err := http.Get(templatePath)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		data, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		f, err := os.Open(templatePath)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		data, err = ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return
 }
