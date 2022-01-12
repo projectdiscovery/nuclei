@@ -172,7 +172,9 @@ func New(options *types.Options) (*Runner, error) {
 
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
-	opts.ServerURL = options.InteractshURL
+	if options.InteractshURL != "" {
+		opts.ServerURL = options.InteractshURL
+	}
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
@@ -421,9 +423,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	if r.templatesConfig != nil {
 		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
-	}
-	if r.interactsh != nil {
-		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
 	}
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())

@@ -33,7 +33,7 @@ require (
 	github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v0.0.8-0.20211231143029-74e9182d2cbe
+	github.com/projectdiscovery/interactsh v0.0.8-0.20220112083504-b0b3b2f359a5
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
@@ -87,15 +87,16 @@ require (
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.0.1 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
+	github.com/caddyserver/certmagic v0.15.2 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
-	github.com/eggsampler/acme/v3 v3.2.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/goburrow/cache v0.1.4 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
@@ -110,15 +111,16 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
-	github.com/jasonlvhit/gocron v0.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mholt/acmez v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -137,10 +139,11 @@ require (
 	github.com/ysmood/goob v0.3.0 // indirect
 	github.com/zclconf/go-cty v1.8.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	go.uber.org/zap v1.20.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
+	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

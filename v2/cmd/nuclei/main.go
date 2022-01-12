@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -132,7 +133,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
-		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "https://interact.sh", "interactsh server url for self-hosted instance"),
+		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "", fmt.Sprintf("interactsh server url for self-hosted instance (default: %s)", client.DefaultOptions.ServerURL)),
 		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),

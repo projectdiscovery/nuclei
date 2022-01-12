@@ -78,8 +78,8 @@ type Options struct {
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
 	Debug bool
-	// HttpFallback controls http retry in case of https failure for server url
-	HttpFallback bool
+	// DisableHttpFallback controls http retry in case of https failure for server url
+	DisableHttpFallback bool
 	// NoInteractsh disables the engine
 	NoInteractsh bool
 
@@ -123,15 +123,15 @@ func New(options *Options) (*Client, error) {
 // NewDefaultOptions returns the default options for interactsh client
 func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
 	return &Options{
-		ServerURL:      "https://interact.sh",
-		CacheSize:      5000,
-		Eviction:       60 * time.Second,
-		ColldownPeriod: 5 * time.Second,
-		PollDuration:   5 * time.Second,
-		Output:         output,
-		IssuesClient:   reporting,
-		Progress:       progress,
-		HttpFallback:   true,
+		ServerURL:           client.DefaultOptions.ServerURL,
+		CacheSize:           5000,
+		Eviction:            60 * time.Second,
+		ColldownPeriod:      5 * time.Second,
+		PollDuration:        5 * time.Second,
+		Output:              output,
+		IssuesClient:        reporting,
+		Progress:            progress,
+		DisableHttpFallback: true,
 	}
 }
 
@@ -140,15 +140,18 @@ func (c *Client) firstTimeInitializeClient() error {
 		return nil // do not init if disabled
 	}
 	interactsh, err := client.New(&client.Options{
-		ServerURL:         c.options.ServerURL,
-		Token:             c.options.Authorization,
-		PersistentSession: false,
-		HTTPFallback:      c.options.HttpFallback,
+		ServerURL:           c.options.ServerURL,
+		Token:               c.options.Authorization,
+		PersistentSession:   false,
+		DisableHTTPFallback: c.options.DisableHttpFallback,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not create client")
 	}
 	c.interactsh = interactsh
+
+	interactURL := interactsh.URL()
+	gologger.Info().Msgf("Using Interactsh Server %s", interactURL[strings.Index(interactURL, ".")+1:])
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		if c.options.StopAtFirstMatch && c.matched {
