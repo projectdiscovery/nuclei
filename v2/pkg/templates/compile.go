@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -38,13 +39,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	template := &Template{}
 
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
+	data, err := readFromTemplatePath(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +99,30 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
+}
+func readFromTemplatePath(templatePath string) (data []byte, err error) {
+	if utils.IsURL(templatePath) {
+		resp, err := http.Get(templatePath)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		data, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		f, err := os.Open(templatePath)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		data, err = ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return
 }
 
 // parseSelfContainedRequests parses the self contained template requests.
