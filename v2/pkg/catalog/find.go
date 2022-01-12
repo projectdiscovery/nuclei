@@ -18,14 +18,21 @@ func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	allTemplates := []string{}
 
 	for _, t := range definitions {
-		paths, err := c.GetTemplatePath(t)
-		if err != nil {
-			gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
-		}
-		for _, path := range paths {
-			if _, ok := processed[path]; !ok {
-				processed[path] = true
-				allTemplates = append(allTemplates, path)
+		if strings.HasPrefix(t, "http") && (strings.HasSuffix(t, ".yaml") || strings.HasSuffix(t, ".yml")) {
+			if _, ok := processed[t]; !ok {
+				processed[t] = true
+				allTemplates = append(allTemplates, t)
+			}
+		} else {
+			paths, err := c.GetTemplatePath(t)
+			if err != nil {
+				gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
+			}
+			for _, path := range paths {
+				if _, ok := processed[path]; !ok {
+					processed[path] = true
+					allTemplates = append(allTemplates, path)
+				}
 			}
 		}
 	}

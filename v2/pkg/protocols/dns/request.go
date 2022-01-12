@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 )
 
@@ -27,7 +28,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
-	if isURL(input) {
+	if utils.IsURL(input) {
 		domain = extractDomain(input)
 	} else {
 		domain = input
@@ -123,18 +124,6 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
-}
-
-// isURL tests a string to determine if it is a well-structured url or not.
-func isURL(toTest string) bool {
-	if _, err := url.ParseRequestURI(toTest); err != nil {
-		return false
-	}
-	u, err := url.Parse(toTest)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-	return true
 }
 
 // extractDomain extracts the domain name of a URL
