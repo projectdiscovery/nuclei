@@ -255,9 +255,14 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.hostname
+
 	if len(urls) == 1 {
+		urlIndex := strings.Index(urls[0], ".")
+		if urlIndex == -1 {
+			return
+		}
 		data["interactsh-url"] = urls[0]
-		data["interactsh-id"] = urls[0][:strings.Index(urls[0], ".")]
+		data["interactsh-id"] = urls[0][:urlIndex]
 	}
 }
 
