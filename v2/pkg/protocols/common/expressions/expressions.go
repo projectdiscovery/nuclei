@@ -1,16 +1,15 @@
 package expressions
 
 import (
-	"regexp"
+	"strings"
 
 	"github.com/Knetic/govaluate"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 )
-
-var templateExpressionRegex = regexp.MustCompile(`(?m){{[^}]+}}["')}]*`)
 
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
@@ -37,7 +36,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	data = replacer.Replace(data, base)
 
 	dynamicValues := make(map[string]interface{})
-	for _, match := range templateExpressionRegex.FindAllString(data, -1) {
+	for _, match := range findMatches(data) {
 		expr := generators.TrimDelimiters(match)
 
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
@@ -52,4 +51,15 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	}
 	// Replacer dynamic values if any in raw request and parse  it
 	return replacer.Replace(data, dynamicValues), nil
+}
+
+func findMatches(data string) []string {
+	var matches []string
+	for _, token := range strings.Split(data, marker.ParenthesisOpen) {
+		closingToken := strings.LastIndex(token, marker.ParenthesisClose)
+		if closingToken > 0 {
+			matches = append(matches, token[:closingToken])
+		}
+	}
+	return matches
 }

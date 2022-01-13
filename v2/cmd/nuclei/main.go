@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -102,6 +103,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("protocol types to be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("protocol types to not be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.NormalizedStringSliceVarP(&options.Authors, "author", "a", []string{}, "execute templates that are (co-)created by the specified authors"),
+		flagSet.NormalizedStringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "List of template IDs to run (comma-separated, file)"),
+		flagSet.NormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "List of template IDs to exclude (comma-separated, file)"),
 	)
 
 	createGroup(flagSet, "output", "Output",
@@ -201,6 +204,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
+		}
+		cfgFileFolder := filepath.Dir(cfgFile)
+		if err := config.OverrideIgnoreFilePath(cfgFileFolder); err != nil {
+			gologger.Warning().Msgf("Could not read ignore file from custom path: %s\n", err)
 		}
 	}
 }
