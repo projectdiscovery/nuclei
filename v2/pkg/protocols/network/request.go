@@ -259,6 +259,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	for k, v := range inputEvents {
 		outputEvent[k] = v
 	}
+	if request.options.Interactsh != nil {
+		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
+	}
 
 	var event *output.InternalWrappedEvent
 	if len(interactshURLs) == 0 {

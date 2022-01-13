@@ -54,7 +54,7 @@ type Options struct {
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
-	InteractshURL string `validate:"omitempty,url"`
+	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
 	// Target URLs/Domains to scan using a template
