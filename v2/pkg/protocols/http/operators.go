@@ -58,7 +58,7 @@ func getStatusCode(data map[string]interface{}) (int, bool) {
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	item, ok := request.getMatchPart(extractor.Part, data)
-	if !ok {
+	if !ok && extractor.Type.ExtractorType != extractors.KValExtractor {
 		return nil
 	}
 	switch extractor.GetType() {

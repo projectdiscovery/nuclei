@@ -287,14 +287,13 @@ type RequestData struct {
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
-    
+
 		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
 			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				break
 			}
 		}
-
 
 		interaction := c.interactions.Get(id)
 		if interaction != nil {
