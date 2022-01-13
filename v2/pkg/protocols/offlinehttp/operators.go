@@ -18,7 +18,7 @@ import (
 // Match matches a generic data response again a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := getMatchPart(matcher.Part, data)
-	if !ok {
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
 		return false, []string{}
 	}
 
@@ -58,7 +58,7 @@ func getStatusCode(data map[string]interface{}) (int, bool) {
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	item, ok := getMatchPart(extractor.Part, data)
-	if !ok {
+	if !ok && extractor.Type.ExtractorType != extractors.KValExtractor {
 		return nil
 	}
 	switch extractor.GetType() {

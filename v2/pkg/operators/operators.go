@@ -71,6 +71,8 @@ type Result struct {
 	Extracts map[string][]string
 	// OutputExtracts is the list of extracts to be displayed on screen.
 	OutputExtracts []string
+	outputUnique   map[string]struct{}
+
 	// DynamicValues contains any dynamic values to be templated
 	DynamicValues map[string][]string
 	// PayloadValues contains payload values provided by user. (Optional)
@@ -145,7 +147,28 @@ func (r *Result) Merge(result *Result) {
 	for k, v := range result.Extracts {
 		r.Extracts[k] = v
 	}
-	r.OutputExtracts = append(r.OutputExtracts, result.OutputExtracts...)
+
+	r.outputUnique = make(map[string]struct{})
+	output := r.OutputExtracts
+	r.OutputExtracts = make([]string, 0, len(output))
+	for _, v := range output {
+		if _, ok := r.outputUnique[v]; !ok {
+			r.outputUnique[v] = struct{}{}
+			r.OutputExtracts = append(r.OutputExtracts, v)
+		}
+	}
+	for _, v := range result.OutputExtracts {
+		if _, ok := r.outputUnique[v]; !ok {
+			r.outputUnique[v] = struct{}{}
+			r.OutputExtracts = append(r.OutputExtracts, v)
+		}
+	}
+	for _, v := range result.OutputExtracts {
+		if _, ok := r.outputUnique[v]; !ok {
+			r.outputUnique[v] = struct{}{}
+			r.OutputExtracts = append(r.OutputExtracts, v)
+		}
+	}
 	for k, v := range result.DynamicValues {
 		r.DynamicValues[k] = v
 	}
@@ -169,6 +192,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string][]string),
+		outputUnique:  make(map[string]struct{}),
 	}
 
 	// Start with the extractors first and evaluate them.
@@ -185,7 +209,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 					result.DynamicValues[extractor.Name] = append(data, match)
 				}
 			} else {
-				result.OutputExtracts = append(result.OutputExtracts, match)
+				if _, ok := result.outputUnique[match]; !ok {
+					result.OutputExtracts = append(result.OutputExtracts, match)
+					result.outputUnique[match] = struct{}{}
+				}
 			}
 		}
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
