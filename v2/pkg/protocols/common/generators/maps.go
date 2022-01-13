@@ -3,6 +3,8 @@ package generators
 import (
 	"reflect"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 )
 
 // MergeMapsMany merges many maps into a new map
@@ -85,5 +87,5 @@ func CopyMapWithDefaultValue(originalMap map[string][]string, defaultValue inter
 
 // TrimDelimiters removes trailing brackets
 func TrimDelimiters(s string) string {
-	return strings.TrimSuffix(strings.TrimPrefix(s, "{{"), "}}")
+	return strings.TrimSuffix(strings.TrimPrefix(s, marker.ParenthesisOpen), marker.ParenthesisClose)
 }

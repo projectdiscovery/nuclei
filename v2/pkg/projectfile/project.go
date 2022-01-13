@@ -1,10 +1,18 @@
 package projectfile
 
 import (
-	"fmt"
 	"net/http"
+	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
+)
+
+var (
+	ErrNotFound          = errors.New("not found")
+	regexUserAgent       = regexp.MustCompile(`(?mi)\r\nUser-Agent: .+\r\n`)
+	regexDefaultInteract = regexp.MustCompile(`(?mi)[a-zA-Z1-9%.]+interact.sh`)
 )
 
 type Options struct {
@@ -31,15 +39,22 @@ func New(options *Options) (*ProjectFile, error) {
 	return &p, nil
 }
 
+func (pf *ProjectFile) cleanupData(data []byte) []byte {
+	// ignore all user agents
+	data = regexUserAgent.ReplaceAll(data, []byte("\r\n"))
+	// ignore interact markers
+	return regexDefaultInteract.ReplaceAll(data, []byte(""))
+}
+
 func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
-	reqHash, err := hash(req)
+	reqHash, err := hash(pf.cleanupData(req))
 	if err != nil {
 		return nil, err
 	}
 
 	data, ok := pf.hm.Get(reqHash)
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, ErrNotFound
 	}
 
 	var httpRecord HTTPRecord
@@ -52,7 +67,7 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 }
 
 func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
-	reqHash, err := hash(req)
+	reqHash, err := hash(pf.cleanupData(req))
 	if err != nil {
 		return err
 	}

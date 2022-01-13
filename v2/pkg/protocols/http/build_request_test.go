@@ -231,11 +231,12 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	generator := request.newGenerator()
 
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
-		ServerURL:      options.InteractshURL,
-		CacheSize:      int64(options.InteractionsCacheSize),
-		Eviction:       time.Duration(options.InteractionsEviction) * time.Second,
-		ColldownPeriod: time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
-		PollDuration:   time.Duration(options.InteractionsPollDuration) * time.Second,
+		ServerURL:           options.InteractshURL,
+		CacheSize:           int64(options.InteractionsCacheSize),
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		ColldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
 	})
 	require.Nil(t, err, "could not create interactsh client")
 

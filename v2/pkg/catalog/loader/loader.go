@@ -32,6 +32,8 @@ type Config struct {
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
 	IncludeTags       []string
+	IncludeIds        []string
+	ExcludeIds        []string
 
 	Catalog            *catalog.Catalog
 	ExecutorOptions    protocols.ExecuterOptions
@@ -67,6 +69,8 @@ func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts pr
 		Severities:         options.Severities,
 		ExcludeSeverities:  options.ExcludeSeverities,
 		IncludeTags:        options.IncludeTags,
+		IncludeIds:         options.IncludeIds,
+		ExcludeIds:         options.ExcludeIds,
 		TemplatesDirectory: options.TemplatesDirectory,
 		Protocols:          options.Protocols,
 		ExcludeProtocols:   options.ExcludeProtocols,
@@ -88,6 +92,8 @@ func New(config *Config) (*Store, error) {
 			Severities:        config.Severities,
 			ExcludeSeverities: config.ExcludeSeverities,
 			IncludeTags:       config.IncludeTags,
+			IncludeIds:        config.IncludeIds,
+			ExcludeIds:        config.ExcludeIds,
 			Protocols:         config.Protocols,
 			ExcludeProtocols:  config.ExcludeProtocols,
 		}),

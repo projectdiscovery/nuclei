@@ -297,6 +297,24 @@ Stop execution once first match is found
 
 <hr />
 
+<div class="dd">
+
+<code>signature</code>  <i><a href="#httpsignaturetypeholder">http.SignatureTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Signature is the request signature method
+
+
+Valid values:
+
+
+  - <code>AWS</code>
+</div>
+
+<hr />
+
 
 
 
@@ -1176,6 +1194,24 @@ max-size: 2048
 ```
 
 
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>signature</code>  <i><a href="#signaturetypeholder">SignatureTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Signature is the request signature method
+
+
+Valid values:
+
+
+  - <code>AWS</code>
 </div>
 
 <hr />
@@ -2139,6 +2175,20 @@ Enum Values:
 </div>
 
 <hr />
+
+
+
+
+
+## SignatureTypeHolder
+SignatureTypeHolder is used to hold internal type of the signature
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.signature</code>
+
+
 
 
 
@@ -3843,6 +3893,20 @@ Subtemplates are run if the name of matcher matches.
 </div>
 
 <hr />
+
+
+
+
+
+## http.SignatureTypeHolder
+SignatureTypeHolder is used to hold internal type of the signature
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.signature</code>
+
+
 
 
 
