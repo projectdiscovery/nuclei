@@ -142,7 +142,7 @@ func (c *Client) firstTimeInitializeClient() error {
 
 	interactURL := interactsh.URL()
 	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
-	gologger.Info().Msgf("Using Interactsh Server %s", interactDomain)
+	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
 	c.hostname = interactDomain
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
