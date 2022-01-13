@@ -41,6 +41,9 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions())
 		if err != nil {
+			if err.Error() == "Unexpected end of expression" {
+				continue
+			}
 			return "", err
 		}
 		result, err := compiled.Evaluate(base)
