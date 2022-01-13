@@ -30,7 +30,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	rawRequest := &Request{
 		Headers: make(map[string]string),
 	}
-	
+
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse request URL: %w", err)
@@ -116,18 +116,21 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	if parsedURL.Path != rawRequest.Path {
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-	if strings.HasSuffix(rawRequest.Path, "//") {
-		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
-	}
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
-	// If raw request doesn't have a Host header and isn't marked unsafe,
-	// this will generate the Host header from the parsed baseURL
-	if !unsafe && rawRequest.Headers["Host"] == "" {
-		rawRequest.Headers["Host"] = hostURL
+	if !unsafe {
+		if parsedURL.Path != rawRequest.Path {
+			rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+		}
+		if strings.HasSuffix(rawRequest.Path, "//") {
+			rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
+		}
+		rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+
+		// If raw request doesn't have a Host header and isn't marked unsafe,
+		// this will generate the Host header from the parsed baseURL
+		if rawRequest.Headers["Host"] == "" {
+			rawRequest.Headers["Host"] = hostURL
+		}
 	}
 
 	// Set the request body

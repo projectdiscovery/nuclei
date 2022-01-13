@@ -15,7 +15,7 @@ import (
 // Match matches a generic data response again a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	itemStr, ok := request.getMatchPart(matcher.Part, data)
-	if !ok {
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
 		return false, []string{}
 	}
 
@@ -37,7 +37,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
 	itemStr, ok := request.getMatchPart(extractor.Part, data)
-	if !ok {
+	if !ok && extractor.Type.ExtractorType != extractors.KValExtractor {
 		return nil
 	}
 
@@ -54,6 +54,8 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 	switch part {
 	case "body", "resp", "":
 		part = "data"
+	case "history":
+		part = "history"
 	}
 
 	item, ok := data[part]
@@ -66,12 +68,13 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 }
 
 // responseToDSLMap converts a headless response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(resp, req, host, matched string) output.InternalEvent {
+func (request *Request) responseToDSLMap(resp, req, host, matched string, history string) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
 		"req":           req,
 		"data":          resp,
+		"history":       history,
 		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,

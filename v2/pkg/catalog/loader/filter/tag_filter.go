@@ -18,6 +18,8 @@ type TagFilter struct {
 	matchAllows       map[string]struct{}
 	types             map[types.ProtocolType]struct{}
 	excludeTypes      map[types.ProtocolType]struct{}
+	allowedIds        map[string]struct{}
+	excludeIds        map[string]struct{}
 }
 
 // ErrExcluded is returned for excluded templates
@@ -28,7 +30,7 @@ var ErrExcluded = errors.New("the template was excluded")
 // unless it is explicitly specified by user using the includeTags (matchAllows field).
 // Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
 // Returns true if the template matches the filter criteria, false otherwise.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string, templateType types.ProtocolType) (bool, error) {
+func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string, templateType types.ProtocolType, templateId string) (bool, error) {
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -57,6 +59,11 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 	if !isTemplateTypeMatch(tagFilter, templateType) {
 		return false, nil
 	}
+
+	if !isIdMatch(tagFilter, templateId) {
+		return false, nil
+	}
+
 	return true, nil
 }
 
@@ -143,6 +150,23 @@ func isTemplateTypeMatch(tagFilter *TagFilter, templateType types.ProtocolType) 
 	return included && !excluded
 }
 
+func isIdMatch(tagFilter *TagFilter, templateId string) bool {
+	if len(tagFilter.excludeIds) == 0 && len(tagFilter.allowedIds) == 0 {
+		return true
+	}
+	included := true
+	if len(tagFilter.allowedIds) > 0 {
+		_, included = tagFilter.allowedIds[templateId]
+	}
+
+	excluded := false
+	if len(tagFilter.excludeIds) > 0 {
+		_, excluded = tagFilter.excludeIds[templateId]
+	}
+
+	return included && !excluded
+}
+
 type Config struct {
 	Tags              []string
 	ExcludeTags       []string
@@ -150,6 +174,8 @@ type Config struct {
 	Severities        severity.Severities
 	ExcludeSeverities severity.Severities
 	IncludeTags       []string
+	IncludeIds        []string
+	ExcludeIds        []string
 	Protocols         types.ProtocolTypes
 	ExcludeProtocols  types.ProtocolTypes
 }
@@ -167,6 +193,8 @@ func New(config *Config) *TagFilter {
 		matchAllows:       make(map[string]struct{}),
 		types:             make(map[types.ProtocolType]struct{}),
 		excludeTypes:      make(map[types.ProtocolType]struct{}),
+		allowedIds:        make(map[string]struct{}),
+		excludeIds:        make(map[string]struct{}),
 	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
@@ -216,6 +244,21 @@ func New(config *Config) *TagFilter {
 	for _, tag := range config.ExcludeProtocols {
 		if _, ok := filter.excludeTypes[tag]; !ok {
 			filter.excludeTypes[tag] = struct{}{}
+		}
+	}
+	for _, id := range config.ExcludeIds {
+		for _, val := range splitCommaTrim(id) {
+			if _, ok := filter.block[val]; !ok {
+				filter.excludeIds[val] = struct{}{}
+			}
+		}
+	}
+	for _, id := range config.IncludeIds {
+		for _, val := range splitCommaTrim(id) {
+			if _, ok := filter.allowedIds[val]; !ok {
+				filter.allowedIds[val] = struct{}{}
+			}
+			delete(filter.excludeIds, val)
 		}
 	}
 	return filter
