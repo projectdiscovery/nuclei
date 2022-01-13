@@ -68,6 +68,7 @@ type ExecuterOptions struct {
 
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
+	ResumeCfg      *types.ResumeCfg
 }
 
 // Copy returns a copy of the executeroptions structure
@@ -143,7 +144,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	}
 
 	item, ok := data[part]
-	if !ok {
+	if !ok && extractor.Type.ExtractorType != extractors.KValExtractor {
 		return nil
 	}
 	itemStr := types.ToString(item)
@@ -169,7 +170,7 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 	}
 
 	partItem, ok := data[part]
-	if !ok && len(matcher.DSL) == 0 {
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
 		return false, nil
 	}
 	item := types.ToString(partItem)

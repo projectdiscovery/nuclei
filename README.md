@@ -93,6 +93,7 @@ Flags:
 TARGET:
    -u, -target string[]  target URLs/hosts to scan
    -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
+   -resume               Resume scan using resume.cfg (clustering will be disabled)
 
 TEMPLATES:
    -t, -templates string[]      template or template directory paths to include in the scan
@@ -109,11 +110,13 @@ FILTERING:
    -etags, -exclude-tags string[]    exclude templates with the provided tags
    -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
    -et, -exclude-templates string[]  template or template directory paths to exclude
-   -s, -severity value[]             Templates to run based on severity. Possible values info,low,medium,high,critical
-   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values info,low,medium,high,critical
-   -pt, -type value[]                protocol types to be executed. Possible values dns,file,http,headless,network,workflow,ssl,websocket
-   -ept, -exclude-type value[]       protocol types to not be executed. Possible values dns,file,http,headless,network,workflow,ssl,websocket
+   -s, -severity value[]             Templates to run based on severity. Possible values: info, low, medium, high, critical
+   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values: info, low, medium, high, critical
+   -pt, -type value[]                protocol types to be executed. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]       protocol types to not be executed. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
    -a, -author string[]              execute templates that are (co-)created by the specified authors
+   -id, -template-id string[]        List of template IDs to run (comma-separated, file)
+   -eid, -exclude-id string[]        List of template IDs to exclude (comma-separated, file)
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
@@ -142,7 +145,7 @@ CONFIGURATIONS:
    -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 
 INTERACTSH:
-   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default "https://interact.sh")
+   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
    -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
    -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
@@ -168,7 +171,7 @@ OPTIMIZATIONS:
    -stream                    Stream mode - start elaborating without sorting the input
 
 HEADLESS:
-   -headless            enable templates that require headless browser support
+   -headless            enable templates that require headless browser support (root user on linux will disable sandbox)
    -page-timeout int    seconds to wait for each page in headless mode (default 20)
    -sb, -show-browser   show the browser on the screen when running templates with headless mode
    -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed

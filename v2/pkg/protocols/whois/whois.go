@@ -85,6 +85,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	query := replacer.Replace(request.Query, variables)
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
+	rdapReq.Server = request.parsedServerURL
 	res, err := request.client.Do(rdapReq)
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")

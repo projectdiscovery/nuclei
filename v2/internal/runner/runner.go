@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,6 +56,7 @@ type Runner struct {
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
+	resumeCfg         *types.ResumeCfg
 }
 
 // New creates a new client for running enumeration process.
@@ -150,16 +153,35 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	// create the resume configuration structure
+	resumeCfg := types.NewResumeCfg()
+	if runner.options.ShouldLoadResume() {
+		gologger.Info().Msg("Resuming from save checkpoint")
+		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(file), &resumeCfg)
+		if err != nil {
+			return nil, err
+		}
+		resumeCfg.Compile()
+	}
+
+	runner.resumeCfg = resumeCfg
+
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
-	opts.ServerURL = options.InteractshURL
+	if options.InteractshURL != "" {
+		opts.ServerURL = options.InteractshURL
+	}
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
 	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
-
+	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -262,6 +284,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
+		ResumeCfg:       r.resumeCfg,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -401,9 +424,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.templatesConfig != nil {
 		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
-	if r.interactsh != nil {
-		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
-	}
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
 		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
@@ -459,4 +479,13 @@ func (r *Runner) countNewTemplates() int {
 		count++
 	}
 	return count
+}
+
+// SaveResumeConfig to file
+func (r *Runner) SaveResumeConfig() error {
+	resumeCfg := types.NewResumeCfg()
+	resumeCfg.ResumeFrom = r.resumeCfg.Current
+	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+
+	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
 }
