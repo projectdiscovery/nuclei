@@ -183,7 +183,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	final := replacer.Replace(request.Name, generateDNSVariables(domain))
+	final := replacer.Replace(request.Name, GenerateDNSVariables(domain))
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -250,7 +250,8 @@ func classToInt(class string) uint16 {
 	return uint16(result)
 }
 
-func generateDNSVariables(domain string) map[string]interface{} {
+// GenerateDNSVariables from a dns name
+func GenerateDNSVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}
