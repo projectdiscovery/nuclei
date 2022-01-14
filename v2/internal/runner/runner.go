@@ -38,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Runner is a client for running the enumeration process.
@@ -452,7 +453,9 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		if text == "" {
 			continue
 		}
-		templatesList = append(templatesList, text)
+		if isNewTemplate(text) {
+			templatesList = append(templatesList, text)
+		}
 	}
 	return templatesList, nil
 }
@@ -476,9 +479,17 @@ func (r *Runner) countNewTemplates() int {
 		if text == "" {
 			continue
 		}
-		count++
+
+		if isNewTemplate(text) {
+			count++
+		}
+
 	}
 	return count
+}
+
+func isNewTemplate(filename string) bool {
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
 }
 
 // SaveResumeConfig to file

@@ -21,6 +21,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	// TemplateExtension defines the template default file extension
+	TemplateExtension = ".yaml"
+)
+
 // Template is a YAML input file which defines all the requests and
 // other metadata for a template.
 type Template struct {
