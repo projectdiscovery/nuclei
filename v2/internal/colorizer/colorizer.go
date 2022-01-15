@@ -5,7 +5,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
@@ -27,7 +26,6 @@ func GetColor(colorizer aurora.Aurora, templateSeverity fmt.Stringer) string {
 	case severity.Critical:
 		method = colorizer.Red
 	default:
-		gologger.Warning().Msgf("The '%s' severity does not have an color associated!", templateSeverity)
 		method = colorizer.White
 	}
 
