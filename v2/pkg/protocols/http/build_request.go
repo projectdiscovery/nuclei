@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -377,7 +378,7 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 	if base == "." {
 		base = ""
 	}
-	return map[string]interface{}{
+	httpVariables := map[string]interface{}{
 		"BaseURL":  parsed.String(),
 		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
 		"Hostname": parsed.Host,
@@ -387,4 +388,5 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
+	return generators.MergeMaps(httpVariables, dns.GenerateDNSVariables(domain))
 }
