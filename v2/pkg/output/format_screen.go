@@ -64,6 +64,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("]")
 	}
 
+	if output.LineCount != "" {
+		builder.WriteString(" [Lines: ")
+		builder.WriteString(output.LineCount)
+		builder.WriteString("]")
+	}
+
 	// Write meta if any
 	if len(output.Metadata) > 0 {
 		builder.WriteString(" [")

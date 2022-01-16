@@ -77,3 +77,8 @@ func TestFileExecuteWithResults(t *testing.T) {
 	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
 }
+
+func TestApproximateLineCount(t *testing.T) {
+	lines := approximateLineFromOperatorMatch([]string{"test"}, "data\nhello\ntest\nworld")
+	require.Equal(t, []int{3}, lines, "could not get correct lines")
+}
