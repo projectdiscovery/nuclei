@@ -98,6 +98,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	expected := `	[93mbase64[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mbase64_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -161,6 +162,7 @@ func TestDslExpressions(t *testing.T) {
 		`mmh3("Hello")`:                                  "316307400",
 		`remove_bad_chars("abcd", "bc")`:                 "ad",
 		`replace("Hello", "He", "Ha")`:                   "Hallo",
+		`concat("Hello", 123, "world")`:                  "Hello123world",
 		`repeat("a", 5)`:                                 "aaaaa",
 		`repeat("a", "5")`:                               "aaaaa",
 		`repeat("../", "5")`:                             "../../../../../",
