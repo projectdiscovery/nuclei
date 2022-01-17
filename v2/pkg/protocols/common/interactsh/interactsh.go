@@ -380,7 +380,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 }
 
 func formatInteractionHeader(protocol, ID, address string, at time.Time) string {
-	return fmt.Sprintf("[%s] Received %s interaction from %s at %s", protocol, ID, address, at.Format("2006-01-02 15:04:05"))
+	return fmt.Sprintf("[%s] Received %s interaction from %s at %s", ID, protocol, address, at.Format("2006-01-02 15:04:05"))
 }
 
 func formatInteractionMessage(key, value string) string {
