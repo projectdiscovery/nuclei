@@ -30,7 +30,7 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.13
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5
-	github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a
+	github.com/projectdiscovery/goflags v0.0.8-0.20220117072744-aa5d42bd5994
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v0.0.8-0.20211231143029-74e9182d2cbe
