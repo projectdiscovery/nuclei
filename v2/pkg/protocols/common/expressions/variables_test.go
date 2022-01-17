@@ -13,6 +13,7 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 		err  error
 	}{
 		{"{{test}}", errors.New("unresolved variables found: test")},
+		{"{{1+1}}", nil},
 		{"{{test}}/{{another}}", errors.New("unresolved variables found: test,another")},
 		{"test", nil},
 		{"%7b%7btest%7d%7d", errors.New("unresolved variables found: test")},
