@@ -14,8 +14,8 @@ requests:
         02: {{base64(1234)}}
         03: {{base64_decode("SGVsbG8=")}}
         04: {{base64_py("Hello")}}
-        05: {{contains("Hello", "lo")}}
-        06: {{concat("Hello", "world")}}
+        05: {{concat("Hello", "world")}}
+        06: {{contains("Hello", "lo")}}
         07: {{generate_java_gadget("commons-collections3.1", "wget http://{{interactsh-url}}", "base64")}}
         08: {{gzip("Hello")}}
         09: {{hex_decode("6161")}}
