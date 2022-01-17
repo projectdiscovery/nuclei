@@ -350,7 +350,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 
 	switch interaction.Protocol {
 	case "dns":
-		builder.WriteString(fmt.Sprintf("[%s] Received DNS interaction (%s) from %s at %s", interaction.FullId, interaction.QType, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(formatInteractionHeader("DNS", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug {
 			builder.WriteString(formatInteractionMessage("DNS Request", interaction.RawRequest))
 		}
@@ -358,7 +358,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 			builder.WriteString(formatInteractionMessage("DNS Response", interaction.RawResponse))
 		}
 	case "http":
-		builder.WriteString(fmt.Sprintf("[%s] Received HTTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(formatInteractionHeader("HTTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug {
 			builder.WriteString(formatInteractionMessage("HTTP Request", interaction.RawRequest))
 		}
@@ -366,12 +366,12 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 			builder.WriteString(formatInteractionMessage("HTTP Response", interaction.RawResponse))
 		}
 	case "smtp":
-		builder.WriteString(fmt.Sprintf("[%s] Received SMTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(formatInteractionHeader("SMTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
 			builder.WriteString(formatInteractionMessage("SMTP Interaction", interaction.RawRequest))
 		}
 	case "ldap":
-		builder.WriteString(fmt.Sprintf("[%s] Received LDAP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
+		builder.WriteString(formatInteractionHeader("LDAP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
 			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest))
 		}
@@ -379,8 +379,12 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 	fmt.Fprint(os.Stderr, builder.String())
 }
 
-func formatInteractionMessage(header, value string) string {
-	return fmt.Sprintf("\n------------\n%s\n------------\n\n%s\n\n", header, value)
+func formatInteractionHeader(protocol, ID, address string, at time.Time) string {
+	return fmt.Sprintf("[%s] Received %s interaction from %s at %s", protocol, ID, address, at.Format("2006-01-02 15:04:05"))
+}
+
+func formatInteractionMessage(key, value string) string {
+	return fmt.Sprintf("\n------------\n%s\n------------\n\n%s\n\n", key, value)
 }
 
 func hash(templateID, host string) string {
