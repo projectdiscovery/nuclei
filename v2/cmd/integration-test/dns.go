@@ -28,7 +28,7 @@ func (h *dnsBasic) Execute(filePath string) error {
 type dnsPtr struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *dnsBasic) dnsPtr(filePath string) error {
+func (h *dnsPtr) Execute(filePath string) error {
 	var routerErr error
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "1.1.1.1", debug)
