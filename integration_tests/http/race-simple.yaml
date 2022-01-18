@@ -1,0 +1,23 @@
+id: race-condition-testing
+
+info:
+  name: Race Condition testing
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        test      
+
+    race: true
+    race_count: 10
+
+    matchers:
+      - type: status
+        part: header
+        status:
+          - 200
