@@ -70,6 +70,7 @@ require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36
 require (
 	github.com/Ice3man543/nvd v1.0.8
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
+	github.com/projectdiscovery/wappalyzergo v0.0.25
 	github.com/stretchr/testify v1.7.0
 )
 
