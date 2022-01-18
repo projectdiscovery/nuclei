@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/smartworkflow"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -87,6 +88,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "URL containing list of templates to run"),
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "workflow or workflow directory paths to include in the scan"),
+		flagSet.StringVarP(&options.SmartWorkflow, "smart-workflow", "sw", "", fmt.Sprintf("enable smart workflow mode (%s)", smartworkflow.Modes())),
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "URL containing list of workflows to run"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),

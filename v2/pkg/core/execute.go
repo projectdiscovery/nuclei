@@ -5,6 +5,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -154,4 +155,104 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 	currentInfo.Lock()
 	currentInfo.Completed = true
 	currentInfo.Unlock()
+}
+
+// ExecuteWithResults a list of templates with results
+func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target InputProvider, callback func(*output.ResultEvent)) *atomic.Bool {
+	results := &atomic.Bool{}
+	for _, template := range templatesList {
+		templateType := template.Type()
+
+		var wg *sizedwaitgroup.SizedWaitGroup
+		if templateType == types.HeadlessProtocol {
+			wg = e.workPool.Headless
+		} else {
+			wg = e.workPool.Default
+		}
+
+		wg.Add()
+		go func(tpl *templates.Template) {
+			e.executeModelWithInputAndResult(templateType, tpl, target, results, callback)
+			wg.Done()
+		}(template)
+	}
+	e.workPool.Wait()
+	return results
+}
+
+// executeModelWithInputAndResult executes a type of template with input and result
+func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool, callback func(*output.ResultEvent)) {
+	wg := e.workPool.InputPool(templateType)
+
+	target.Scan(func(scannedValue string) {
+		// Skip if the host has had errors
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
+			return
+		}
+
+		wg.WaitGroup.Add()
+		go func(value string) {
+			defer wg.WaitGroup.Done()
+
+			var match bool
+			var err error
+			switch templateType {
+			case types.WorkflowProtocol:
+				match = e.executeWorkflow(value, template.CompiledWorkflow)
+			default:
+				err = template.Executer.ExecuteWithResults(value, func(event *output.InternalWrappedEvent) {
+					for _, result := range event.Results {
+						callback(result)
+					}
+				})
+			}
+			if err != nil {
+				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+			}
+			results.CAS(false, match)
+		}(scannedValue)
+	})
+	wg.WaitGroup.Wait()
+}
+
+type ChildExecuter struct {
+	e *Engine
+
+	results *atomic.Bool
+}
+
+// Close closes the executer returning bool results
+func (e *ChildExecuter) Close() *atomic.Bool {
+	e.e.workPool.Wait()
+	return e.results
+}
+
+// Execute executes a template and URLs
+func (e *ChildExecuter) Execute(template *templates.Template, URL string) {
+	templateType := template.Type()
+
+	var wg *sizedwaitgroup.SizedWaitGroup
+	if templateType == types.HeadlessProtocol {
+		wg = e.e.workPool.Headless
+	} else {
+		wg = e.e.workPool.Default
+	}
+
+	wg.Add()
+	go func(tpl *templates.Template) {
+		match, err := template.Executer.Execute(URL)
+		if err != nil {
+			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+		}
+		e.results.CAS(false, match)
+		wg.Done()
+	}(template)
+}
+
+// ExecuteWithOpts executes with the full options
+func (e *Engine) ChildExecuter() *ChildExecuter {
+	return &ChildExecuter{
+		e:       e,
+		results: &atomic.Bool{},
+	}
 }
