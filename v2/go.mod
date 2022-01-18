@@ -11,7 +11,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.1.1
-	github.com/go-playground/validator/v10 v10.9.0
+	github.com/go-playground/validator/v10 v10.10.0
 	github.com/go-rod/rod v0.101.8
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
@@ -43,7 +43,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0 // indirect
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.21.9
+	github.com/shirou/gopsutil/v3 v3.21.12
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.4.1
 	github.com/syndtr/goleveldb v1.0.0
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.42.33
+require github.com/aws/aws-sdk-go v1.42.35
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
@@ -77,7 +77,6 @@ require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
 	github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/akrylysov/pogreb v0.10.1 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
@@ -93,7 +92,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/goburrow/cache v0.1.4 // indirect
@@ -118,6 +117,7 @@ require (
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
+	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mholt/acmez v1.0.1 // indirect
@@ -125,6 +125,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e // indirect
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.8 // indirect
@@ -137,6 +138,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.3.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/zap v1.20.0 // indirect

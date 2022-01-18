@@ -614,11 +614,12 @@
         "OPTIONS",
         "TRACE",
         "PATCH",
-        "PURGE"
+        "PURGE",
+        "DEBUG"
       ],
       "type": "string",
       "title": "method is the HTTP request method",
-      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
+      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE,enum=DEBUG"
     },
     "http.Request": {
       "properties": {
