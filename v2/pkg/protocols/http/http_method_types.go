@@ -93,7 +93,7 @@ func (holder HTTPMethodTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "method is the HTTP request method",
-		Description: "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE,enum=DEBUG",
+		Description: "Method is the HTTP Request Method",
 	}
 	for _, types := range GetSupportedHTTPMethodTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())
