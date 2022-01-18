@@ -208,21 +208,18 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 }
 
 func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemplate) bool {
-	areTemplatesValid := true
 	for _, workflow := range workflows {
 		if !areWorkflowTemplatesValid(store, workflow.Subtemplates) {
-			areTemplatesValid = false
-			continue
+			return false
 		}
 		_, err := store.config.Catalog.GetTemplatePath(workflow.Template)
 		if err != nil {
 			if isParsingError("Error occurred loading template %s: %s\n", workflow.Template, err) {
-				areTemplatesValid = false
-				continue
+				return false
 			}
 		}
 	}
-	return areTemplatesValid
+	return true
 }
 
 func isParsingError(message string, template string, err error) bool {
