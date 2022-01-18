@@ -922,6 +922,7 @@ func init() {
 		"TRACE",
 		"PATCH",
 		"PURGE",
+		"Debug",
 	}
 
 	SignatureTypeHolderDoc.Type = "SignatureTypeHolder"
