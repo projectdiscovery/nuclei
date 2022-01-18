@@ -175,7 +175,7 @@ func (holder ActionTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "action to perform",
-		Description: "Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep",
+		Description: "Type of actions to perform",
 	}
 	for _, types := range GetSupportedActionTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())
