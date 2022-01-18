@@ -229,7 +229,7 @@ func (s *Service) executeWappalyzerTechDetection() (map[string][]string, error) 
 		fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
 		items := make([]string, 0, len(fingerprints))
 		for k := range fingerprints {
-			items = append(items, k)
+			items = append(items, strings.ToLower(k))
 		}
 		hostTagsMappings[value] = items
 	})
@@ -256,7 +256,7 @@ func (s *Service) executeDiscoveredHostTags(data map[string][]string) error {
 	for k, v := range data {
 		templates := s.store.LoadTemplatesWithTags(allTemplates, v)
 
-		gologger.Debug().Msgf("Executing tags %v for host %s (%d templates)", v, k, len(templates))
+		gologger.Info().Msgf("Executing tags %v for host %s (%d templates)", v, k, len(templates))
 		for _, template := range templates {
 			childExecuter.Execute(template, k)
 		}
