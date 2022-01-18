@@ -42,6 +42,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
 	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
 	"http/dsl-functions.yaml":                      &httpDSLFunctions{},
+	"http/race-simple.yaml":                        &httpRaceSimple{},
+	"http/race-multiple.yaml":                      &httpRaceMultiple{},
 }
 
 type httpInteractshRequest struct{}
@@ -688,4 +690,40 @@ func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type httpRaceSimple struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRaceSimple) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 10)
+}
+
+type httpRaceMultiple struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRaceMultiple) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 5)
 }
