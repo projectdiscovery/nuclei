@@ -33,11 +33,14 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
+	data = replacer.Replace(data, base)
+
 	// expressions can be:
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := findExpressions(data, mergeFunctions(dsl.HelperFunctions(), mapToFunctions(base)))
+	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, mergeFunctions(dsl.HelperFunctions(), mapToFunctions(base)))
 	dynamicValues := make(map[string]interface{})
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
@@ -60,7 +63,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 // maxIterations to avoid infinite loop
 const maxIterations = 250
 
-func findExpressions(data string, functions map[string]govaluate.ExpressionFunction) []string {
+func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]govaluate.ExpressionFunction) []string {
 	var (
 		iterations int
 		exps       []string
@@ -72,13 +75,13 @@ func findExpressions(data string, functions map[string]govaluate.ExpressionFunct
 		}
 		iterations++
 		// attempt to find open markers
-		indexOpenMarker := strings.Index(data, marker.ParenthesisOpen)
+		indexOpenMarker := strings.Index(data, OpenMarker)
 		// exits if not found
 		if indexOpenMarker < 0 {
 			break
 		}
 
-		indexOpenMarkerOffset := indexOpenMarker + len(marker.ParenthesisOpen)
+		indexOpenMarkerOffset := indexOpenMarker + len(OpenMarker)
 
 		shouldSearchCloseMarker := true
 		closeMarkerFound := false
@@ -88,13 +91,13 @@ func findExpressions(data string, functions map[string]govaluate.ExpressionFunct
 		skip := indexOpenMarkerOffset
 		for shouldSearchCloseMarker {
 			// attempt to find close marker
-			indexCloseMarker = stringsutil.IndexAt(innerData, marker.ParenthesisClose, skip)
+			indexCloseMarker = stringsutil.IndexAt(innerData, CloseMarker, skip)
 			// if no close markers are found exit
 			if indexCloseMarker < 0 {
 				shouldSearchCloseMarker = false
 				continue
 			}
-			indexCloseMarkerOffset = indexCloseMarker + len(marker.ParenthesisClose)
+			indexCloseMarkerOffset = indexCloseMarker + len(CloseMarker)
 
 			potentialMatch = innerData[indexOpenMarkerOffset:indexCloseMarker]
 			if isExpression(potentialMatch, functions) {
@@ -151,4 +154,12 @@ func getFunctionsNames(m map[string]govaluate.ExpressionFunction) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+func getMapKeysAsValues(m map[string]interface{}) map[string]interface{} {
+	mapOut := make(map[string]interface{})
+	for k := range m {
+		mapOut[k] = k
+	}
+	return mapOut
 }
