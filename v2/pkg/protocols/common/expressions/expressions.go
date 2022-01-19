@@ -155,11 +155,3 @@ func getFunctionsNames(m map[string]govaluate.ExpressionFunction) []string {
 	}
 	return keys
 }
-
-func getMapKeysAsValues(m map[string]interface{}) map[string]interface{} {
-	mapOut := make(map[string]interface{})
-	for k := range m {
-		mapOut[k] = k
-	}
-	return mapOut
-}
