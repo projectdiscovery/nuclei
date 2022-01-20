@@ -346,7 +346,7 @@ func (r *Runner) RunEnumeration() error {
 		if len(t.Workflows) > 0 {
 			continue
 		}
-		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
+		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
