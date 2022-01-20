@@ -63,13 +63,14 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.42.36
+require github.com/aws/aws-sdk-go v1.42.37
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
 require (
 	github.com/Ice3man543/nvd v1.0.8
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
+	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
 	github.com/stretchr/testify v1.7.0
 )
 
@@ -127,7 +128,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e // indirect
-	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3 // indirect
 	github.com/projectdiscovery/mapcidr v0.0.8 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
