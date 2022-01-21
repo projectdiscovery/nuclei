@@ -23,14 +23,14 @@ type RemoteContentError struct {
 	Error   error
 }
 
-func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, rtdl []string) ([]string, []string, error) {
+func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDomainList []string) ([]string, []string, error) {
 	remoteContentErrorChannel := make(chan RemoteContentError)
 
 	for _, templateURL := range templateURLs {
-		go getRemoteContent(templateURL, rtdl, remoteContentErrorChannel, Template)
+		go getRemoteContent(templateURL, remoteTemplateDomainList, remoteContentErrorChannel, Template)
 	}
 	for _, workflowURL := range workflowURLs {
-		go getRemoteContent(workflowURL, rtdl, remoteContentErrorChannel, Workflow)
+		go getRemoteContent(workflowURL, remoteTemplateDomainList, remoteContentErrorChannel, Workflow)
 	}
 
 	var remoteTemplateList []string
@@ -56,7 +56,7 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, rtdl []string) (
 	return remoteTemplateList, remoteWorkFlowList, err
 }
 
-func getRemoteContent(URL string, rtdl []string, w chan<- RemoteContentError, contentType ContentType) {
+func getRemoteContent(URL string, remoteTemplateDomainList []string, w chan<- RemoteContentError, contentType ContentType) {
 	if strings.HasPrefix(URL, "http") && (strings.HasSuffix(URL, ".yaml") || strings.HasSuffix(URL, ".yml")) {
 		parsed, err := url.Parse(URL)
 		if err != nil {
@@ -65,7 +65,7 @@ func getRemoteContent(URL string, rtdl []string, w chan<- RemoteContentError, co
 			}
 			return
 		}
-		if !stringSliceContains(rtdl, parsed.Host) {
+		if !stringSliceContains(remoteTemplateDomainList, parsed.Host) {
 			w <- RemoteContentError{
 				Error: errors.Errorf("Remote template URL host (%s) is not present in the `remote-template-domain` list in nuclei config", parsed.Host),
 			}
