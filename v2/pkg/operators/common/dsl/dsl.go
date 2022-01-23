@@ -160,6 +160,16 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"concat": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) string",
+			func(arguments ...interface{}) (interface{}, error) {
+				builder := &strings.Builder{}
+				for _, argument := range arguments {
+					builder.WriteString(types.ToString(argument))
+				}
+				return builder.String(), nil
+			},
+		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			compiled, err := regexp.Compile(types.ToString(args[0]))
 			if err != nil {
