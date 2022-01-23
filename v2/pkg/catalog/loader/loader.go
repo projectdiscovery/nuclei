@@ -13,6 +13,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
 // Config contains the configuration options for the loader
@@ -196,8 +197,29 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 				return true
 			}
 		}
+		if isWorkflow {
+			if !areWorkflowTemplatesValid(store, template.Workflows) {
+				areTemplatesValid = false
+				continue
+			}
+		}
 	}
 	return areTemplatesValid
+}
+
+func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemplate) bool {
+	for _, workflow := range workflows {
+		if !areWorkflowTemplatesValid(store, workflow.Subtemplates) {
+			return false
+		}
+		_, err := store.config.Catalog.GetTemplatePath(workflow.Template)
+		if err != nil {
+			if isParsingError("Error occurred loading template %s: %s\n", workflow.Template, err) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func isParsingError(message string, template string, err error) bool {

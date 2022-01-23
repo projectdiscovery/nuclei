@@ -2172,6 +2172,8 @@ Enum Values:
   - <code>PATCH</code>
 
   - <code>PURGE</code>
+
+  - <code>Debug</code>
 </div>
 
 <hr />
