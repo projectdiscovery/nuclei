@@ -26,8 +26,8 @@ require (
 	github.com/owenrumney/go-sarif v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
-	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345
-	github.com/projectdiscovery/fastdialer v0.0.14
+	github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143
+	github.com/projectdiscovery/fastdialer v0.0.15-0.20220124150833-4b108b8258de
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5
 	github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a
@@ -72,6 +72,7 @@ require (
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
 	github.com/stretchr/testify v1.7.0
+	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 )
 
 require (
@@ -140,6 +141,7 @@ require (
 	github.com/ysmood/goob v0.3.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
+	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/zap v1.20.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
