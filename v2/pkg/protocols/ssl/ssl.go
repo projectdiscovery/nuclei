@@ -34,7 +34,10 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 	// description: |
 	//   Address contains address for the request
-	Address string `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
+	Address     string   `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
+	MinVersion  string   `yaml:"min_version,omitempty"`
+	MaxVersion  string   `yaml:"max_version,omitempty"`
+	CiperSuites []string `yaml:"cipher_suites,omitempty"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -97,6 +100,28 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 
 	addressToDial := string(finalAddress)
 	config := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+
+	if request.MinVersion != "" {
+		version, err := toVersion(request.MinVersion)
+		if err != nil {
+			return err
+		}
+		config.MinVersion = version
+	}
+	if request.MaxVersion != "" {
+		version, err := toVersion(request.MaxVersion)
+		if err != nil {
+			return err
+		}
+		config.MaxVersion = version
+	}
+	if len(config.CipherSuites) > 0 {
+		cipherSuites, err := toCiphers(request.CiperSuites)
+		if err != nil {
+			return err
+		}
+		config.CipherSuites = cipherSuites
+	}
 
 	conn, err := request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	if err != nil {
