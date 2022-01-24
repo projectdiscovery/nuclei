@@ -2,7 +2,6 @@ package ssl
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"net/url"
 	"strings"
@@ -25,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	ztls "github.com/zmap/zcrypto/tls"
 )
 
 // Request is a request for the SSL protocol
@@ -96,9 +96,9 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 
 	addressToDial := string(finalAddress)
-	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	config := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
 
-	conn, err := request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	conn, err := request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -107,7 +107,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(requestOptions.Options.Timeout) * time.Second))
 
-	connTLS, ok := conn.(*tls.Conn)
+	connTLS, ok := conn.(*ztls.Conn)
 	if !ok {
 		return nil
 	}
@@ -123,8 +123,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		return nil
 	}
 
-	tlsData := cryptoutil.TLSGrab(&state)
-	jsonData, _ := jsoniter.Marshal(tlsData)
+	ztlsData := cryptoutil.ZTLSGrab(connTLS)
+	jsonData, _ := jsoniter.Marshal(ztlsData)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
