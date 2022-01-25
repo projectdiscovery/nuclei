@@ -2,6 +2,7 @@ package ssl
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/url"
 	"strings"
@@ -34,9 +35,27 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 	// description: |
 	//   Address contains address for the request
-	Address     string   `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
-	MinVersion  string   `yaml:"min_version,omitempty"`
-	MaxVersion  string   `yaml:"max_version,omitempty"`
+	Address string `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
+	// description: |
+	//   Minimum tls version - auto if not specified.
+	// values:
+	//   - "sslv3"
+	//   - "tls10"
+	//   - "tls11"
+	//   - "tls12"
+	//   - "tls13"
+	MinVersion string `yaml:"min_version,omitempty" jsonschema:"title=TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	// description: |
+	//   Max tls version - auto if not specified.
+	// values:
+	//   - "sslv3"
+	//   - "tls10"
+	//   - "tls11"
+	//   - "tls12"
+	//   - "tls13"
+	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	// description: |
+	//   Client Cipher Suites - auto if not specified.
 	CiperSuites []string `yaml:"cipher_suites,omitempty"`
 
 	// cache any variables that may be needed for operation.
@@ -99,31 +118,55 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 
 	addressToDial := string(finalAddress)
-	config := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	shouldUseZTLS := true
 
+	var minVersion, maxVersion uint16
 	if request.MinVersion != "" {
 		version, err := toVersion(request.MinVersion)
 		if err != nil {
 			return err
 		}
-		config.MinVersion = version
+		minVersion = version
+		shouldUseZTLS = minVersion != tls.VersionTLS13
 	}
 	if request.MaxVersion != "" {
 		version, err := toVersion(request.MaxVersion)
 		if err != nil {
 			return err
 		}
-		config.MaxVersion = version
+		maxVersion = version
 	}
-	if len(config.CipherSuites) > 0 {
-		cipherSuites, err := toCiphers(request.CiperSuites)
-		if err != nil {
-			return err
+	cipherSuites, err := toCiphers(request.CiperSuites)
+	if err != nil {
+		return err
+	}
+	var conn net.Conn
+	if shouldUseZTLS {
+		config := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			config.MinVersion = minVersion
 		}
-		config.CipherSuites = cipherSuites
+		if maxVersion > 0 {
+			config.MaxVersion = maxVersion
+		}
+		if len(config.CipherSuites) > 0 {
+			config.CipherSuites = cipherSuites
+		}
+		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	} else {
+		config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			config.MinVersion = minVersion
+		}
+		if maxVersion > 0 {
+			config.MaxVersion = maxVersion
+		}
+		if len(config.CipherSuites) > 0 {
+			config.CipherSuites = cipherSuites
+		}
+		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	}
 
-	conn, err := request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
