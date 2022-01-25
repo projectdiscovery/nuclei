@@ -412,6 +412,8 @@ github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143/go.mod
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
 github.com/projectdiscovery/fastdialer v0.0.15-0.20220124150833-4b108b8258de h1:9vQIzE3cDZvgLoxeGSHrR6gK8F3Grs6Kb0hDzdZdoiQ=
 github.com/projectdiscovery/fastdialer v0.0.15-0.20220124150833-4b108b8258de/go.mod h1:Mex24omi3RxrmhA8Ote7rw+6LWMiaBvbJq8CNp0ksII=
+github.com/projectdiscovery/fastdialer v0.0.15-0.20220125194529-ae3cd418e3e7 h1:Q0vxiaBjfXDhdhPOZeuq5DypHxr1g9VMagtVt1YUZCs=
+github.com/projectdiscovery/fastdialer v0.0.15-0.20220125194529-ae3cd418e3e7/go.mod h1:Mex24omi3RxrmhA8Ote7rw+6LWMiaBvbJq8CNp0ksII=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08 h1:NwD1R/du1dqrRKN3SJl9kT6tN3K9puuWFXEvYF2ihew=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08/go.mod h1:paLCnwV8sL7ppqIwVQodQrk3F6mnWafwTDwRd7ywZwQ=
 github.com/projectdiscovery/fileutil v0.0.0-20210804142714-ebba15fa53ca/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
