@@ -55,7 +55,7 @@ type Request struct {
 	//   - "tls13"
 	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
-	//   Client Cipher Suites - auto if not specified.
+	//   Client Cipher Suites  - auto if not specified.
 	CiperSuites []string `yaml:"cipher_suites,omitempty"`
 
 	// cache any variables that may be needed for operation.
@@ -118,8 +118,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 
 	addressToDial := string(finalAddress)
-	shouldUseZTLS := true
-
 	var minVersion, maxVersion uint16
 	if request.MinVersion != "" {
 		version, err := toVersion(request.MinVersion)
@@ -127,7 +125,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 			return err
 		}
 		minVersion = version
-		shouldUseZTLS = minVersion != tls.VersionTLS13
 	}
 	if request.MaxVersion != "" {
 		version, err := toVersion(request.MaxVersion)
@@ -141,28 +138,24 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		return err
 	}
 	var conn net.Conn
-	if shouldUseZTLS {
-		config := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
-		if minVersion > 0 {
-			config.MinVersion = minVersion
-		}
-		if maxVersion > 0 {
-			config.MaxVersion = maxVersion
-		}
-		if len(config.CipherSuites) > 0 {
-			config.CipherSuites = cipherSuites
-		}
-		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	zconfig := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	if minVersion > 0 {
+		zconfig.MinVersion = minVersion
+	}
+	if maxVersion > 0 {
+		zconfig.MaxVersion = maxVersion
+	}
+	if len(zconfig.CipherSuites) > 0 {
+		zconfig.CipherSuites = cipherSuites
+	}
+
+	if request.options.Options.ZTLS {
+		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
 	} else {
-		config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
-		if minVersion > 0 {
-			config.MinVersion = minVersion
-		}
-		if maxVersion > 0 {
-			config.MaxVersion = maxVersion
-		}
-		if len(config.CipherSuites) > 0 {
-			config.CipherSuites = cipherSuites
+		var config *tls.Config
+		config, err = fastdialer.AsTLSConfig(zconfig)
+		if err != nil {
+			return err
 		}
 		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	}
@@ -175,10 +168,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(requestOptions.Options.Timeout) * time.Second))
 
-	connTLS, ok := conn.(*ztls.Conn)
-	if !ok {
-		return nil
-	}
 	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
@@ -186,23 +175,47 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		gologger.Debug().Str("address", input).Msgf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input)
 	}
 
-	state := connTLS.ConnectionState()
-	if len(state.PeerCertificates) == 0 {
-		return nil
+	var (
+		tlsData      interface{}
+		certNotAfter int64
+	)
+	if request.options.Options.ZTLS {
+		connTLS, ok := conn.(*ztls.Conn)
+		if !ok {
+			return nil
+		}
+		state := connTLS.ConnectionState()
+		if len(state.PeerCertificates) == 0 {
+			return nil
+		}
+
+		tlsData = cryptoutil.ZTLSGrab(connTLS)
+		cert := connTLS.ConnectionState().PeerCertificates[0]
+		certNotAfter = cert.NotAfter.Unix()
+	} else {
+		connTLS, ok := conn.(*tls.Conn)
+		if !ok {
+			return nil
+		}
+		state := connTLS.ConnectionState()
+		if len(state.PeerCertificates) == 0 {
+			return nil
+		}
+		tlsData = cryptoutil.TLSGrab(&state)
+		cert := connTLS.ConnectionState().PeerCertificates[0]
+		certNotAfter = cert.NotAfter.Unix()
 	}
 
-	ztlsData := cryptoutil.ZTLSGrab(connTLS)
-	jsonData, _ := jsoniter.Marshal(ztlsData)
+	jsonData, _ := jsoniter.Marshal(tlsData)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-	cert := connTLS.ConnectionState().PeerCertificates[0]
 
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["not_after"] = float64(cert.NotAfter.Unix())
+	data["not_after"] = float64(certNotAfter)
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
