@@ -138,24 +138,29 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		return err
 	}
 	var conn net.Conn
-	zconfig := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
-	if minVersion > 0 {
-		zconfig.MinVersion = minVersion
-	}
-	if maxVersion > 0 {
-		zconfig.MaxVersion = maxVersion
-	}
-	if len(zconfig.CipherSuites) > 0 {
-		zconfig.CipherSuites = cipherSuites
-	}
 
 	if request.options.Options.ZTLS {
+		zconfig := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			zconfig.MinVersion = minVersion
+		}
+		if maxVersion > 0 {
+			zconfig.MaxVersion = maxVersion
+		}
+		if len(zconfig.CipherSuites) > 0 {
+			zconfig.CipherSuites = cipherSuites
+		}
 		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
 	} else {
-		var config *tls.Config
-		config, err = fastdialer.AsTLSConfig(zconfig)
-		if err != nil {
-			return err
+		config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			config.MinVersion = minVersion
+		}
+		if maxVersion > 0 {
+			config.MaxVersion = maxVersion
+		}
+		if len(config.CipherSuites) > 0 {
+			config.CipherSuites = cipherSuites
 		}
 		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	}
