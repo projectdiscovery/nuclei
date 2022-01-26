@@ -38,7 +38,7 @@ require (
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
-	github.com/projectdiscovery/stringsutil v0.0.0-20210830151154-f567170afdd9
+	github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0 // indirect
