@@ -152,7 +152,7 @@ func configureOutput(options *types.Options) {
 	if options.Verbose || options.Validate {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
-	if options.Debug {
+	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	}
 	if options.NoColor {
