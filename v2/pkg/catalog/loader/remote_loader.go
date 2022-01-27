@@ -58,20 +58,13 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDo
 }
 
 func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteContentChannel chan<- RemoteContent, contentType ContentType) {
+	if err := validateRemoteRemplateURL(URL, remoteTemplateDomainList); err != nil {
+		remoteContentChannel <- RemoteContent{
+			Error: err,
+		}
+		return
+	}
 	if strings.HasPrefix(URL, "http") && (strings.HasSuffix(URL, ".yaml") || strings.HasSuffix(URL, ".yml")) {
-		parsedURL, err := url.Parse(URL)
-		if err != nil {
-			remoteContentChannel <- RemoteContent{
-				Error: err,
-			}
-			return
-		}
-		if !utils.StringSliceContains(remoteTemplateDomainList, parsedURL.Host) {
-			remoteContentChannel <- RemoteContent{
-				Error: errors.Errorf("Remote template URL host (%s) is not present in the `remote-template-domain` list in nuclei config", parsedURL.Host),
-			}
-			return
-		}
 		remoteContentChannel <- RemoteContent{
 			Content: []string{URL},
 			Type:    contentType,
@@ -100,6 +93,14 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		if text == "" {
 			continue
 		}
+		if utils.IsURL(text) {
+			if err := validateRemoteRemplateURL(text, remoteTemplateDomainList); err != nil {
+				remoteContentChannel <- RemoteContent{
+					Error: err,
+				}
+				return
+			}
+		}
 		templateList = append(templateList, text)
 	}
 
@@ -114,4 +115,15 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		Content: templateList,
 		Type:    contentType,
 	}
+}
+
+func validateRemoteRemplateURL(inputURL string, remoteTemplateDomainList []string) error {
+	parsedURL, err := url.Parse(inputURL)
+	if err != nil {
+		return err
+	}
+	if !utils.StringSliceContains(remoteTemplateDomainList, parsedURL.Host) {
+		return errors.Errorf("Remote template URL host (%s) is not present in the `remote-template-domain` list in nuclei config", parsedURL.Host)
+	}
+	return nil
 }
