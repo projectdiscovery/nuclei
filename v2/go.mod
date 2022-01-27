@@ -136,6 +136,7 @@ require (
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
+	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.3.0 // indirect
