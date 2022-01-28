@@ -82,8 +82,8 @@ github.com/aphistic/sweet v0.2.0/go.mod h1:fWDlIh/isSE9n6EPsRmC0det+whmX6dJid3st
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.42.42 h1:2K61yu5BApC9ExAwC5Vk6ljWzBGbiRGRQYLW7adhP5U=
-github.com/aws/aws-sdk-go v1.42.42/go.mod h1:OGr6lGMAKGlG9CVrYnWYDKIyb829c6EVBRjxqjmPepc=
+github.com/aws/aws-sdk-go v1.42.43 h1:rLcxH9YgI3zN7TnjBn1Z6V62GPjOEW1IQd0m11Y/nXE=
+github.com/aws/aws-sdk-go v1.42.43/go.mod h1:OGr6lGMAKGlG9CVrYnWYDKIyb829c6EVBRjxqjmPepc=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -418,10 +418,6 @@ github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h
 github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e h1:RJJuYyuwskYtzZi2gziy6SE/b7saWEzyskaA252E0VY=
 github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
-github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a h1:EzwVm8i4zmzqZX55vrDtyfogwHh8AAZ3cWCJe4fEduk=
-github.com/projectdiscovery/goflags v0.0.8-0.20211028121123-edf02bc05b1a/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
-github.com/projectdiscovery/goflags v0.0.8-0.20220117072744-aa5d42bd5994 h1:4EuhJ+YTGA1eqMnR7zI9BLV0Wu0BvHaDKE9LbxSUFb8=
-github.com/projectdiscovery/goflags v0.0.8-0.20220117072744-aa5d42bd5994/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/goflags v0.0.8-0.20220121110825-48035ad3ffe0 h1:KtCp/dCsxXNdT8m0yyWc/4ou4YaKWVakAr3G03TjQCk=
 github.com/projectdiscovery/goflags v0.0.8-0.20220121110825-48035ad3ffe0/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
