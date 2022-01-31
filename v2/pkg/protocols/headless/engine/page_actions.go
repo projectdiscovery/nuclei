@@ -627,5 +627,11 @@ func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string 
 
 func (p *Page) getActionArgWithValues(action *Action, arg string, values map[string]interface{}) string {
 	argValue := action.GetArg(arg)
-	return replaceWithValues(argValue, values)
+	argValue = replaceWithValues(argValue, values)
+	if p.instance.interactsh != nil {
+		var interactshURLs []string
+		argValue, interactshURLs = p.instance.interactsh.ReplaceMarkers(argValue, p.InteractshURLs)
+		p.addInteractshURL(interactshURLs...)
+	}
+	return argValue
 }

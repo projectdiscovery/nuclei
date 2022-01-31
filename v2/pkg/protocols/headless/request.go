@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -31,6 +32,8 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 		return errors.Wrap(err, "could get html element")
 	}
 	defer instance.Close()
+
+	instance.SetInteractsh(request.options.Interactsh)
 
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
@@ -66,16 +69,32 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 	if err == nil {
 		responseBody, _ = html.HTML()
 	}
+
 	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
 	for k, v := range out {
 		outputEvent[k] = v
 	}
 
-	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	var event *output.InternalWrappedEvent
+	if len(page.InteractshURLs) == 0 {
+		event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+		callback(event)
+	} else if request.options.Interactsh != nil {
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
+			MakeResultFunc: request.MakeResultEvent,
+			Event:          event,
+			Operators:      request.CompiledOperators,
+			MatchFunc:      request.Match,
+			ExtractFunc:    request.Extract,
+		})
+	}
+	if len(page.InteractshURLs) > 0 {
+		event.UsesInteractsh = true
+	}
 
 	dumpResponse(event, request.options, responseBody, inputURL)
 
-	callback(event)
 	return nil
 }
 
