@@ -239,9 +239,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMarkers := interactsh.HasMarkers(data)
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -250,6 +248,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 				return true, err
 			}
+			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if reqURL == "" {
 				reqURL = generatedHttpRequest.URL()
 			}
