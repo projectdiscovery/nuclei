@@ -41,7 +41,6 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
 	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, mergeFunctions(dsl.HelperFunctions(), mapToFunctions(base)))
-	dynamicValues := make(map[string]interface{})
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
@@ -54,10 +53,11 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		if err != nil {
 			continue
 		}
-		dynamicValues[expression] = result
+		// replace incrementally
+		data = replacer.ReplaceOne(data, expression, result)
 	}
-	// Replacer dynamic values if any in raw request and parse it
-	return replacer.Replace(data, dynamicValues), nil
+
+	return data, nil
 }
 
 // maxIterations to avoid infinite loop
