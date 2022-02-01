@@ -256,13 +256,13 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
 				return true, nil
 			}
-			var gotOutput bool
+			var gotMatches bool
 			request.options.RateLimiter.Take()
 
 			err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
-					gotOutput = true
+					gotMatches = event.OperatorsResult.Matched
 					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
 				}
 				if hasInteractMarkers && request.options.Interactsh != nil {
@@ -292,7 +292,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
-			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotOutput {
+			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
 				return true, nil
 			}
 			return false, nil
