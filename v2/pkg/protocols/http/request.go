@@ -239,7 +239,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMarkers := interactsh.HasMatchers(request.CompiledOperators)
+			hasInteractMarkers := interactsh.HasMarkers(data)
+			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {
@@ -259,13 +260,13 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			var gotOutput bool
 			request.options.RateLimiter.Take()
 
-			err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMarkers, func(event *output.InternalWrappedEvent) {
+			err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
 					gotOutput = true
 					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
 				}
-				if hasInteractMarkers && request.options.Interactsh != nil {
+				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
 					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
@@ -329,7 +330,7 @@ const drainReqSize = int64(8 * 1024)
 var errStopExecution = errors.New("stop execution due to unresolved variables")
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMarkers bool, callback protocols.OutputEventCallback, requestCount int) error {
+func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	request.setCustomHeaders(generatedRequest)
 
 	var (
@@ -434,7 +435,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 		// If we have interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
-		if hasInteractMarkers {
+		if hasInteractMatchers {
 			outputEvent := request.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
 			if i := strings.LastIndex(hostname, ":"); i != -1 {
 				hostname = hostname[:i]
@@ -558,7 +559,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
-		if hasInteractMarkers {
+		if hasInteractMatchers {
 			event.UsesInteractsh = true
 		}
 
