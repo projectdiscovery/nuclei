@@ -345,6 +345,11 @@ func HasMatchers(op *operators.Operators) bool {
 	return false
 }
 
+// HasMarkers checks if the text contains interactsh markers
+func HasMarkers(data string) bool {
+	return strings.Contains(data, interactshURLMarker)
+}
+
 func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 	builder := &bytes.Buffer{}
 
