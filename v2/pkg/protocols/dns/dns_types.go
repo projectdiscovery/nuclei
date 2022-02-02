@@ -31,6 +31,8 @@ const (
 	TXT
 	// name:AAAA
 	AAAA
+	// name:CAA
+	CAA
 	limit
 )
 
@@ -45,6 +47,7 @@ var DNSRequestTypeMapping = map[DNSRequestType]string{
 	MX:    "MX",
 	TXT:   "TXT",
 	AAAA:  "AAAA",
+	CAA:   "CAA",
 }
 
 // GetSupportedDNSRequestTypes returns list of supported types
