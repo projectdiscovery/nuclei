@@ -1,0 +1,18 @@
+id: stop-at-first-match-with-extractors
+
+info:
+  name: Stop at first match Request with extractors
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}?a=1"
+      - "{{BaseURL}}?a=2"
+    stop-at-first-match: true
+    extractors:
+      - type: kval
+        part: header
+        kval:
+          - "date"
