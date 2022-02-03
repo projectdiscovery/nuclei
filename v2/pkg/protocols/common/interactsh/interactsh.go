@@ -75,7 +75,9 @@ type Options struct {
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
-	Debug bool
+	Debug         bool
+	DebugRequest  bool
+	DebugResponse bool
 	// DisableHttpFallback controls http retry in case of https failure for server url
 	DisableHttpFallback bool
 	// NoInteractsh disables the engine
@@ -146,8 +148,8 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.hostname = interactDomain
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		if c.options.Debug {
-			debugPrintInteraction(interaction)
+		if c.options.Debug || c.options.DebugRequest || c.options.DebugResponse {
+			c.debugPrintInteraction(interaction)
 		}
 		item := c.requests.Get(interaction.UniqueID)
 
@@ -343,24 +345,51 @@ func HasMatchers(op *operators.Operators) bool {
 	return false
 }
 
-func debugPrintInteraction(interaction *server.Interaction) {
+// HasMarkers checks if the text contains interactsh markers
+func HasMarkers(data string) bool {
+	return strings.Contains(data, interactshURLMarker)
+}
+
+func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
 	builder := &bytes.Buffer{}
 
 	switch interaction.Protocol {
 	case "dns":
-		builder.WriteString(fmt.Sprintf("[%s] Received DNS interaction (%s) from %s at %s", interaction.FullId, interaction.QType, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
-		builder.WriteString(fmt.Sprintf("\n-----------\nDNS Request\n-----------\n\n%s\n\n------------\nDNS Response\n------------\n\n%s\n\n", interaction.RawRequest, interaction.RawResponse))
+		builder.WriteString(formatInteractionHeader("DNS", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
+		if c.options.DebugRequest || c.options.Debug {
+			builder.WriteString(formatInteractionMessage("DNS Request", interaction.RawRequest))
+		}
+		if c.options.DebugResponse || c.options.Debug {
+			builder.WriteString(formatInteractionMessage("DNS Response", interaction.RawResponse))
+		}
 	case "http":
-		builder.WriteString(fmt.Sprintf("[%s] Received HTTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
-		builder.WriteString(fmt.Sprintf("\n------------\nHTTP Request\n------------\n\n%s\n\n-------------\nHTTP Response\n-------------\n\n%s\n\n", interaction.RawRequest, interaction.RawResponse))
+		builder.WriteString(formatInteractionHeader("HTTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
+		if c.options.DebugRequest || c.options.Debug {
+			builder.WriteString(formatInteractionMessage("HTTP Request", interaction.RawRequest))
+		}
+		if c.options.DebugResponse || c.options.Debug {
+			builder.WriteString(formatInteractionMessage("HTTP Response", interaction.RawResponse))
+		}
 	case "smtp":
-		builder.WriteString(fmt.Sprintf("[%s] Received SMTP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
-		builder.WriteString(fmt.Sprintf("\n------------\nSMTP Interaction\n------------\n\n%s\n\n", interaction.RawRequest))
+		builder.WriteString(formatInteractionHeader("SMTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
+		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
+			builder.WriteString(formatInteractionMessage("SMTP Interaction", interaction.RawRequest))
+		}
 	case "ldap":
-		builder.WriteString(fmt.Sprintf("[%s] Received LDAP interaction from %s at %s", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp.Format("2006-01-02 15:04:05")))
-		builder.WriteString(fmt.Sprintf("\n------------\nLDAP Interaction\n------------\n\n%s\n\n", interaction.RawRequest))
+		builder.WriteString(formatInteractionHeader("LDAP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
+		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
+			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest))
+		}
 	}
 	fmt.Fprint(os.Stderr, builder.String())
+}
+
+func formatInteractionHeader(protocol, ID, address string, at time.Time) string {
+	return fmt.Sprintf("[%s] Received %s interaction from %s at %s", ID, protocol, address, at.Format("2006-01-02 15:04:05"))
+}
+
+func formatInteractionMessage(key, value string) string {
+	return fmt.Sprintf("\n------------\n%s\n------------\n\n%s\n\n", key, value)
 }
 
 func hash(templateID, host string) string {

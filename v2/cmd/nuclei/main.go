@@ -91,6 +91,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "URL containing list of workflows to run"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
+		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)
 
 	createGroup(flagSet, "filters", "Filtering",
