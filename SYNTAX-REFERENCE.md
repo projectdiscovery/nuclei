@@ -2506,6 +2506,8 @@ Enum Values:
   - <code>TXT</code>
 
   - <code>AAAA</code>
+
+  - <code>CAA</code>
 </div>
 
 <hr />
