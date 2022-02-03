@@ -338,7 +338,8 @@
         "PTR",
         "MX",
         "TXT",
-        "AAAA"
+        "AAAA",
+        "CAA"
       ],
       "type": "string",
       "title": "type of DNS request to make",
