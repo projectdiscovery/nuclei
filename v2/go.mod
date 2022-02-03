@@ -30,11 +30,10 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.14
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5
-	github.com/projectdiscovery/goflags v0.0.8-0.20220121110825-48035ad3ffe0
+	github.com/projectdiscovery/goflags v0.0.7-0.20220203150254-4326757380b2
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v0.0.8-0.20220112083504-b0b3b2f359a5
-	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.7
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
