@@ -147,7 +147,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		if maxVersion > 0 {
 			zconfig.MaxVersion = maxVersion
 		}
-		if len(zconfig.CipherSuites) > 0 {
+		if len(cipherSuites) > 0 {
 			zconfig.CipherSuites = cipherSuites
 		}
 		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
@@ -159,7 +159,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		if maxVersion > 0 {
 			config.MaxVersion = maxVersion
 		}
-		if len(config.CipherSuites) > 0 {
+		if len(cipherSuites) > 0 {
 			config.CipherSuites = cipherSuites
 		}
 		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
