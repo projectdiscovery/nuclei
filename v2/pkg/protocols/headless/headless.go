@@ -74,8 +74,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	for name, payload := range options.Options.VarsPayload() {
 		payloadStr, ok := payload.(string)
 		// check if inputs contains the payload
-		var hasPayloadName bool
-		if ok && hasPayloadName && fileutil.FileExists(payloadStr) {
+		if ok && fileutil.FileExists(payloadStr) {
 			if request.Payloads == nil {
 				request.Payloads = make(map[string]interface{})
 			}
