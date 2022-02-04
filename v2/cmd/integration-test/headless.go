@@ -90,6 +90,5 @@ func (h *headlessPayloads) Execute(filePath string) error {
 		return err
 	}
 
-	// 2 actions per 4 results => 8
-	return expectResultsCount(results, 8)
+	return expectResultsCount(results, 4)
 }
