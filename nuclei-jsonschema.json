@@ -502,6 +502,21 @@
           "title": "id of the request",
           "description": "Optional ID of the headless request"
         },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the headless request",
+          "description": "Payloads contains any payloads for the current request"
+        },
         "steps": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",

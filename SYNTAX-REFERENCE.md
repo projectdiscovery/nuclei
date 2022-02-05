@@ -2092,6 +2092,8 @@ Appears in:
 
 - <code><a href="#networkrequest">network.Request</a>.attack</code>
 
+- <code><a href="#headlessrequest">headless.Request</a>.attack</code>
+
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
 
 
@@ -3129,6 +3131,39 @@ Part Definitions:
 <div class="dt">
 
 ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Attack is the type of payload combinations to perform.
+
+Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+permutations and combinations for all payloads.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>payloads</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Payloads contains any payloads for the current request.
+
+Payloads support both key-values combinations where a list
+of payloads is provided, or optionally a single file can also
+be provided as payload which will be read on run-time.
 
 </div>
 
