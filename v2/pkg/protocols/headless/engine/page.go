@@ -19,6 +19,7 @@ type Page struct {
 	mutex          *sync.RWMutex
 	History        []HistoryData
 	InteractshURLs []string
+	payloads       map[string]interface{}
 }
 
 // HistoryData contains the page request/response pairs
@@ -28,7 +29,7 @@ type HistoryData struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duration) (map[string]string, *Page, error) {
+func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]interface{}, timeout time.Duration) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
@@ -41,7 +42,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 		}
 	}
 
-	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}}
+	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}, payloads: payloads}
 	router := page.HijackRequests()
 	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
 		return nil, nil, routerErr
