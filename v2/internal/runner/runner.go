@@ -183,6 +183,9 @@ func New(options *types.Options) (*Runner, error) {
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
+	opts.Debug = runner.options.Debug
+	opts.DebugRequest = runner.options.DebugRequests
+	opts.DebugResponse = runner.options.DebugResponse
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)

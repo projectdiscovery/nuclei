@@ -338,7 +338,8 @@
         "PTR",
         "MX",
         "TXT",
-        "AAAA"
+        "AAAA",
+        "CAA"
       ],
       "type": "string",
       "title": "type of DNS request to make",
@@ -500,6 +501,21 @@
           "type": "string",
           "title": "id of the request",
           "description": "Optional ID of the headless request"
+        },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the headless request",
+          "description": "Payloads contains any payloads for the current request"
         },
         "steps": {
           "items": {
@@ -950,6 +966,36 @@
           "type": "string",
           "title": "address for the ssl request",
           "description": "Address contains address for the request"
+        },
+        "min_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Minimum tls version - automatic if not specified."
+        },
+        "max_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Max tls version - automatic if not specified."
+        },
+        "cipher_suites": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

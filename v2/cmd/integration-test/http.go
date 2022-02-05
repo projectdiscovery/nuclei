@@ -18,32 +18,34 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	"http/get-headers.yaml":                        &httpGetHeaders{},
-	"http/get-query-string.yaml":                   &httpGetQueryString{},
-	"http/get-redirects.yaml":                      &httpGetRedirects{},
-	"http/get.yaml":                                &httpGet{},
-	"http/post-body.yaml":                          &httpPostBody{},
-	"http/post-json-body.yaml":                     &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":                &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":                   &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml":              &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":                      &httpRawGetQuery{},
-	"http/raw-get.yaml":                            &httpRawGet{},
-	"http/raw-payload.yaml":                        &httpRawPayload{},
-	"http/raw-post-body.yaml":                      &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                 &httpRawUnsafeRequest{},
-	"http/request-condition.yaml":                  &httpRequestCondition{},
-	"http/request-condition-new.yaml":              &httpRequestCondition{},
-	"http/interactsh.yaml":                         &httpInteractshRequest{},
-	"http/interactsh-stop-at-first-match.yaml":     &httpInteractshStopAtFirstMatchRequest{},
-	"http/self-contained.yaml":                     &httpRequestSelContained{},
-	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
-	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
-	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
-	"http/dsl-matcher-variable.yaml":               &httpDSLVariable{},
-	"http/dsl-functions.yaml":                      &httpDSLFunctions{},
-	"http/race-simple.yaml":                        &httpRaceSimple{},
-	"http/race-multiple.yaml":                      &httpRaceMultiple{},
+	"http/get-headers.yaml":                         &httpGetHeaders{},
+	"http/get-query-string.yaml":                    &httpGetQueryString{},
+	"http/get-redirects.yaml":                       &httpGetRedirects{},
+	"http/get.yaml":                                 &httpGet{},
+	"http/post-body.yaml":                           &httpPostBody{},
+	"http/post-json-body.yaml":                      &httpPostJSONBody{},
+	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
+	"http/raw-cookie-reuse.yaml":                    &httpRawCookieReuse{},
+	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
+	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
+	"http/raw-get.yaml":                             &httpRawGet{},
+	"http/raw-payload.yaml":                         &httpRawPayload{},
+	"http/raw-post-body.yaml":                       &httpRawPostBody{},
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
+	"http/request-condition.yaml":                   &httpRequestCondition{},
+	"http/request-condition-new.yaml":               &httpRequestCondition{},
+	"http/interactsh.yaml":                          &httpInteractshRequest{},
+	"http/interactsh-stop-at-first-match.yaml":      &httpInteractshStopAtFirstMatchRequest{},
+	"http/self-contained.yaml":                      &httpRequestSelContained{},
+	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
+	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
+	"http/get-redirects-chain-headers.yaml":         &httpGetRedirectsChainHeaders{},
+	"http/dsl-matcher-variable.yaml":                &httpDSLVariable{},
+	"http/dsl-functions.yaml":                       &httpDSLFunctions{},
+	"http/race-simple.yaml":                         &httpRaceSimple{},
+	"http/race-multiple.yaml":                       &httpRaceMultiple{},
+	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
+	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
 }
 
 type httpInteractshRequest struct{}
@@ -552,7 +554,7 @@ type httpRawUnsafeRequest struct{}
 func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	var routerErr error
 
-	ts := testutils.NewTCPServer(func(conn net.Conn) {
+	ts := testutils.NewTCPServer(false, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
 	})
@@ -726,4 +728,42 @@ func (h *httpRaceMultiple) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 5)
+}
+
+type httpStopAtFirstMatch struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpStopAtFirstMatch) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpStopAtFirstMatchWithExtractors struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpStopAtFirstMatchWithExtractors) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 2)
 }

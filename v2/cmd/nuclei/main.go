@@ -91,6 +91,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "URL containing list of workflows to run"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
+		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)
 
 	createGroup(flagSet, "filters", "Filtering",
@@ -134,6 +135,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.BoolVar(&options.ZTLS, "ztls", false, "Use ztls library with autofallback to standard one for tls13"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
