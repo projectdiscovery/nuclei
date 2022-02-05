@@ -83,9 +83,9 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
-	// By default, use 5 MB as max size to read.
+	// By default, use 1GB (1024 MB) as max size to read.
 	if request.MaxSize == 0 {
-		request.MaxSize = 5 * 1024 * 1024
+		request.MaxSize = 1024 * 1024 * 1024
 	}
 	request.options = options
 
