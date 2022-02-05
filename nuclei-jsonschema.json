@@ -951,6 +951,36 @@
           "type": "string",
           "title": "address for the ssl request",
           "description": "Address contains address for the request"
+        },
+        "min_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Minimum tls version - automatic if not specified."
+        },
+        "max_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Max tls version - automatic if not specified."
+        },
+        "cipher_suites": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

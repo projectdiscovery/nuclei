@@ -1556,7 +1556,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 4)
+	SSLRequestDoc.Fields = make([]encoder.Doc, 7)
 	SSLRequestDoc.Fields[0].Name = "matchers"
 	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	SSLRequestDoc.Fields[0].Note = ""
@@ -1581,6 +1581,35 @@ func init() {
 	SSLRequestDoc.Fields[3].Note = ""
 	SSLRequestDoc.Fields[3].Description = "Address contains address for the request"
 	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Address contains address for the request"
+	SSLRequestDoc.Fields[4].Name = "min_version"
+	SSLRequestDoc.Fields[4].Type = "string"
+	SSLRequestDoc.Fields[4].Note = ""
+	SSLRequestDoc.Fields[4].Description = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Comments[encoder.LineComment] = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[5].Name = "max_version"
+	SSLRequestDoc.Fields[5].Type = "string"
+	SSLRequestDoc.Fields[5].Note = ""
+	SSLRequestDoc.Fields[5].Description = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Comments[encoder.LineComment] = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[6].Name = "cipher_suites"
+	SSLRequestDoc.Fields[6].Type = "[]string"
+	SSLRequestDoc.Fields[6].Note = ""
+	SSLRequestDoc.Fields[6].Description = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[6].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
