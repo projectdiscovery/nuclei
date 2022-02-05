@@ -621,8 +621,10 @@ func (p *Page) getActionArg(action *Action, arg string) string {
 }
 
 func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string {
-	values := generators.BuildPayloadFromOptions(p.instance.browser.options)
-	return p.getActionArgWithValues(action, arg, values)
+	return p.getActionArgWithValues(action, arg, generators.MergeMaps(
+		generators.BuildPayloadFromOptions(p.instance.browser.options),
+		p.payloads,
+	))
 }
 
 func (p *Page) getActionArgWithValues(action *Action, arg string, values map[string]interface{}) string {
