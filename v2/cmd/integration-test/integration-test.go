@@ -27,6 +27,7 @@ var (
 		"websocket": websocketTestCases,
 		"headless":  headlessTestcases,
 		"whois":     whoisTestCases,
+		"ssl":       sslTestcases,
 	}
 )
 

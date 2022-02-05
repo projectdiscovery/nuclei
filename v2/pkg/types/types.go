@@ -23,6 +23,8 @@ type Options struct {
 	Templates goflags.StringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
 	TemplateURLs goflags.StringSlice
+	// RemoteTemplates specifies list of allowed URLs to load remote templates from
+	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
@@ -194,6 +196,8 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
+	// Use ZTLS library
+	ZTLS bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

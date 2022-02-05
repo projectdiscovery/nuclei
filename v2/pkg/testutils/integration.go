@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -97,20 +98,50 @@ type TCPServer struct {
 	listener net.Listener
 }
 
+// keys taken from https://pascal.bach.ch/2015/12/17/from-tcp-to-tls-in-go/
+const serverKey = `-----BEGIN EC PARAMETERS-----
+BgUrgQQAIg==
+-----END EC PARAMETERS-----
+-----BEGIN EC PRIVATE KEY-----
+MIGkAgEBBDBJazGwuqgOLsCMr7P56w26JBEHQokiuAy2iCQfCnmOWm7S9FveQ/DP
+qB69zvUPs26gBwYFK4EEACKhZANiAARehvy96ygCAsJ6iQvthzl/Nvq4P3c4MGyx
+UMLMe0L10OCxeCl5ZY2CuFf8UnBgV1u414U4+yjIrS57w1/3utBKC9TVRGj+Vcls
+2NZ4+8Jh6/M/Jf/Mpd8QyIy0WesEUM4=
+-----END EC PRIVATE KEY-----
+`
+
+const serverCert = `-----BEGIN CERTIFICATE-----
+MIICJDCCAakCCQDFa0/D9jJw6DAKBggqhkjOPQQDAjB7MQswCQYDVQQGEwJVUzEP
+MA0GA1UECAwGcGRsYW5kMQ8wDQYDVQQHDAZwZGNpdHkxCzAJBgNVBAoMAnBkMQsw
+CQYDVQQLDAJwZDELMAkGA1UEAwwCcGQxIzAhBgkqhkiG9w0BCQEWFGFueXRoaW5n
+QGFueXRoaW5nLnBkMB4XDTIyMDEyNzIyMDUwNFoXDTMyMDEyNTIyMDUwNFowezEL
+MAkGA1UEBhMCVVMxDzANBgNVBAgMBnBkbGFuZDEPMA0GA1UEBwwGcGRjaXR5MQsw
+CQYDVQQKDAJwZDELMAkGA1UECwwCcGQxCzAJBgNVBAMMAnBkMSMwIQYJKoZIhvcN
+AQkBFhRhbnl0aGluZ0Bhbnl0aGluZy5wZDB2MBAGByqGSM49AgEGBSuBBAAiA2IA
+BF6G/L3rKAICwnqJC+2HOX82+rg/dzgwbLFQwsx7QvXQ4LF4KXlljYK4V/xScGBX
+W7jXhTj7KMitLnvDX/e60EoL1NVEaP5VyWzY1nj7wmHr8z8l/8yl3xDIjLRZ6wRQ
+zjAKBggqhkjOPQQDAgNpADBmAjEAgxGPbjRlhz+1Scmr6RU9VbzVJWN8KCsTTpx7
+pqfmKpJ29UYReZN+fm/6fc5vkv1rAjEAkTuTf8ARSn1UiKlCTTDQVtCoRcMVLQQp
+TCxxGzcAlUAAJE6+SJpY7fPRe+n2EvPS
+-----END CERTIFICATE-----
+`
+
 // NewTCPServer creates a new TCP server from a handler
-func NewTCPServer(handler func(conn net.Conn), port ...int) *TCPServer {
+func NewTCPServer(withTls bool, port int, handler func(conn net.Conn)) *TCPServer {
 	server := &TCPServer{}
 
-	var gotPort int
-	if len(port) > 0 {
-		gotPort = port[0]
-	}
-	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", gotPort))
+	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		panic(err)
 	}
 	server.URL = l.Addr().String()
 	server.listener = l
+
+	cer, err := tls.X509KeyPair([]byte(serverCert), []byte(serverKey))
+	if err != nil {
+		panic(err)
+	}
+	config := &tls.Config{Certificates: []tls.Certificate{cer}}
 
 	go func() {
 		for {
@@ -120,7 +151,12 @@ func NewTCPServer(handler func(conn net.Conn), port ...int) *TCPServer {
 				continue
 			}
 			// Handle connections in a new goroutine.
-			go handler(conn)
+			if withTls {
+				connTls := tls.Server(conn, config)
+				go handler(connTls)
+			} else {
+				go handler(conn)
+			}
 		}
 	}()
 	return server

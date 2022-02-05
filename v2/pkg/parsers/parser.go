@@ -2,8 +2,6 @@ package parsers
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 
@@ -129,14 +127,7 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-
-	f, err := os.Open(templatePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
+	data, err := utils.ReadFromPathOrURL(templatePath)
 	if err != nil {
 		return nil, err
 	}

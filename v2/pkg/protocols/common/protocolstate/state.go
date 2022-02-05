@@ -20,6 +20,7 @@ func Init(options *types.Options) error {
 		opts.BaseResolvers = options.InternalResolversList
 	}
 	opts.WithDialerHistory = true
+	opts.WithZTLS = options.ZTLS
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
