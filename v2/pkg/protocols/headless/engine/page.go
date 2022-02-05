@@ -12,12 +12,14 @@ import (
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	page         *rod.Page
-	rules        []requestRule
-	instance     *Instance
-	router       *rod.HijackRouter
-	historyMutex *sync.RWMutex
-	History      []HistoryData
+	page           *rod.Page
+	rules          []requestRule
+	instance       *Instance
+	router         *rod.HijackRouter
+	mutex          *sync.RWMutex
+	History        []HistoryData
+	InteractshURLs []string
+	payloads       map[string]interface{}
 }
 
 // HistoryData contains the page request/response pairs
@@ -27,7 +29,7 @@ type HistoryData struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duration) (map[string]string, *Page, error) {
+func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]interface{}, timeout time.Duration) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
@@ -40,7 +42,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, timeout time.Duratio
 		}
 	}
 
-	createdPage := &Page{page: page, instance: i, historyMutex: &sync.RWMutex{}}
+	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}, payloads: payloads}
 	router := page.HijackRequests()
 	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
 		return nil, nil, routerErr
@@ -94,8 +96,8 @@ func (p *Page) URL() string {
 
 // DumpHistory returns the full page navigation history
 func (p *Page) DumpHistory() string {
-	p.historyMutex.RLock()
-	defer p.historyMutex.RUnlock()
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
 
 	var historyDump strings.Builder
 	for _, historyData := range p.History {
@@ -106,9 +108,16 @@ func (p *Page) DumpHistory() string {
 }
 
 // addToHistory adds a request/response pair to the page history
-func (p *Page) addToHistory(historyData HistoryData) {
-	p.historyMutex.Lock()
-	defer p.historyMutex.Unlock()
+func (p *Page) addToHistory(historyData ...HistoryData) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
-	p.History = append(p.History, historyData)
+	p.History = append(p.History, historyData...)
+}
+
+func (p *Page) addInteractshURL(URLs ...string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.InteractshURLs = append(p.InteractshURLs, URLs...)
 }
