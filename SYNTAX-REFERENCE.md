@@ -3447,6 +3447,71 @@ Address contains address for the request
 
 <hr />
 
+<div class="dd">
+
+<code>min_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Minimum tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Max tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cipher_suites</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Client Cipher Suites  - auto if not specified.
+
+</div>
+
+<hr />
+
 
 
 
