@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -112,23 +113,39 @@ func approximateLineFromOperatorMatch(words []string, contents string) string {
 	return buf.String()
 }
 
+func getAllStringSubmatchIndex(content string, word string) []int {
+	indexes := []int{}
+
+	start := 0
+	for {
+		v := strings.Index(content[start:], word)
+		if v == -1 {
+			break
+		}
+		indexes = append(indexes, v+start)
+		start += len(word) + v
+	}
+	return indexes
+}
+
 func calculateLineFunc(contents string, words []string) []int {
 	var lines []int
 
 	for _, word := range words {
-		firstIndex := strings.Index(contents, word)
-		if firstIndex == -1 {
-			return nil
-		}
-		lineCount := int(0)
-		for _, c := range contents[:firstIndex] {
-			if c == '\n' {
-				lineCount++
+		matches := getAllStringSubmatchIndex(contents, word)
+
+		for _, index := range matches {
+			lineCount := int(0)
+			for _, c := range contents[:index] {
+				if c == '\n' {
+					lineCount++
+				}
+			}
+			if lineCount > 0 {
+				lines = append(lines, lineCount+1)
 			}
 		}
-		if lineCount > 0 {
-			lines = append(lines, lineCount+1)
-		}
 	}
+	sort.Ints(lines)
 	return lines
 }

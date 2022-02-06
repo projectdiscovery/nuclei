@@ -95,7 +95,17 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 	}
 
 	for _, result := range results {
-		result.LineCount = approximateLineFromOperatorMatch(result.ExtractedResults, rawStr)
+		var lineWords []string
+		if wrapped.OperatorsResult != nil {
+			for _, value := range wrapped.OperatorsResult.Matches {
+				lineWords = append(lineWords, value...)
+			}
+		}
+		if len(result.ExtractedResults) > 0 {
+			lineWords = append(lineWords, result.ExtractedResults...)
+		}
+
+		result.LineCount = approximateLineFromOperatorMatch(lineWords, rawStr)
 	}
 
 	// Identify the position of match in file using a dirty hack.
