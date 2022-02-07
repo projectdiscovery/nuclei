@@ -59,7 +59,7 @@ func Cluster(list map[string]*Template) [][]*Template {
 	return final
 }
 
-// ClusterID transforms clusterization into a matemathical hash repetible across executions with the same templates
+// ClusterID transforms clusterization into a mathematical hash repeatable across executions with the same templates
 func ClusterID(templates []*Template) string {
 	allIDS := make([]string, len(templates))
 	for tplIndex, tpl := range templates {
