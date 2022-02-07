@@ -656,7 +656,7 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 	var signatureFieldsToSkip map[string]interface{}
 	switch request.Signature.Value {
 	case AWSSignature:
-		signatureFieldsToSkip = signer.AwsInternaOnlyVars
+		signatureFieldsToSkip = signer.AwsInternalOnlyVars
 	default:
 		return
 	}
