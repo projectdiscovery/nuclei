@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
@@ -58,7 +59,7 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDo
 }
 
 func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteContentChannel chan<- RemoteContent, contentType ContentType) {
-	if err := validateRemoteRemplateURL(URL, remoteTemplateDomainList); err != nil {
+	if err := validateRemoteTemplateURL(URL, remoteTemplateDomainList); err != nil {
 		remoteContentChannel <- RemoteContent{
 			Error: err,
 		}
@@ -94,7 +95,7 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 			continue
 		}
 		if utils.IsURL(text) {
-			if err := validateRemoteRemplateURL(text, remoteTemplateDomainList); err != nil {
+			if err := validateRemoteTemplateURL(text, remoteTemplateDomainList); err != nil {
 				remoteContentChannel <- RemoteContent{
 					Error: err,
 				}
@@ -117,7 +118,7 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 	}
 }
 
-func validateRemoteRemplateURL(inputURL string, remoteTemplateDomainList []string) error {
+func validateRemoteTemplateURL(inputURL string, remoteTemplateDomainList []string) error {
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
 		return err
