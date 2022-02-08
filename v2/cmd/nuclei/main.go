@@ -24,7 +24,9 @@ var (
 )
 
 func main() {
-	runner.ConfigureOptions()
+	if err := runner.ConfigureOptions(); err != nil {
+		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
+	}
 
 	readConfig()
 
