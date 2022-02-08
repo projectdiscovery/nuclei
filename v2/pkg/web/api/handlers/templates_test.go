@@ -140,7 +140,7 @@ func TestExecuteTemplateHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	tcpserver := testutils.NewTCPServer(func(conn net.Conn) {
+	tcpserver := testutils.NewTCPServer(false, 8084, func(conn net.Conn) {
 		_, _ = conn.Write([]byte("test"))
 		conn.Close()
 	})
