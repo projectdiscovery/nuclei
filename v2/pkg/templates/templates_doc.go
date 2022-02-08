@@ -880,6 +880,10 @@ func init() {
 			FieldName: "attack",
 		},
 		{
+			TypeName:  "headless.Request",
+			FieldName: "attack",
+		},
+		{
 			TypeName:  "websocket.Request",
 			FieldName: "attack",
 		},
@@ -1423,33 +1427,43 @@ func init() {
 			Value: "Headless response recieved from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 5)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
 	HEADLESSRequestDoc.Fields[0].Description = "ID is the optional id of the request"
 	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
-	HEADLESSRequestDoc.Fields[1].Name = "steps"
-	HEADLESSRequestDoc.Fields[1].Type = "[]engine.Action"
+	HEADLESSRequestDoc.Fields[1].Name = "attack"
+	HEADLESSRequestDoc.Fields[1].Type = "generators.AttackTypeHolder"
 	HEADLESSRequestDoc.Fields[1].Note = ""
-	HEADLESSRequestDoc.Fields[1].Description = "Steps is the list of actions to run for headless request"
-	HEADLESSRequestDoc.Fields[1].Comments[encoder.LineComment] = "Steps is the list of actions to run for headless request"
-	HEADLESSRequestDoc.Fields[2].Name = "matchers"
-	HEADLESSRequestDoc.Fields[2].Type = "[]matchers.Matcher"
+	HEADLESSRequestDoc.Fields[1].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HEADLESSRequestDoc.Fields[1].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	HEADLESSRequestDoc.Fields[2].Name = "payloads"
+	HEADLESSRequestDoc.Fields[2].Type = "map[string]interface{}"
 	HEADLESSRequestDoc.Fields[2].Note = ""
-	HEADLESSRequestDoc.Fields[2].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	HEADLESSRequestDoc.Fields[2].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[3].Name = "extractors"
-	HEADLESSRequestDoc.Fields[3].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[2].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	HEADLESSRequestDoc.Fields[2].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	HEADLESSRequestDoc.Fields[3].Name = "steps"
+	HEADLESSRequestDoc.Fields[3].Type = "[]engine.Action"
 	HEADLESSRequestDoc.Fields[3].Note = ""
-	HEADLESSRequestDoc.Fields[3].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	HEADLESSRequestDoc.Fields[3].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[4].Name = "matchers-condition"
-	HEADLESSRequestDoc.Fields[4].Type = "string"
+	HEADLESSRequestDoc.Fields[3].Description = "Steps is the list of actions to run for headless request"
+	HEADLESSRequestDoc.Fields[3].Comments[encoder.LineComment] = "Steps is the list of actions to run for headless request"
+	HEADLESSRequestDoc.Fields[4].Name = "matchers"
+	HEADLESSRequestDoc.Fields[4].Type = "[]matchers.Matcher"
 	HEADLESSRequestDoc.Fields[4].Note = ""
-	HEADLESSRequestDoc.Fields[4].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[4].Values = []string{
+	HEADLESSRequestDoc.Fields[4].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[5].Name = "extractors"
+	HEADLESSRequestDoc.Fields[5].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[5].Note = ""
+	HEADLESSRequestDoc.Fields[5].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	HEADLESSRequestDoc.Fields[5].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[6].Name = "matchers-condition"
+	HEADLESSRequestDoc.Fields[6].Type = "string"
+	HEADLESSRequestDoc.Fields[6].Note = ""
+	HEADLESSRequestDoc.Fields[6].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[6].Values = []string{
 		"and",
 		"or",
 	}
@@ -1556,7 +1570,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 4)
+	SSLRequestDoc.Fields = make([]encoder.Doc, 7)
 	SSLRequestDoc.Fields[0].Name = "matchers"
 	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	SSLRequestDoc.Fields[0].Note = ""
@@ -1581,6 +1595,35 @@ func init() {
 	SSLRequestDoc.Fields[3].Note = ""
 	SSLRequestDoc.Fields[3].Description = "Address contains address for the request"
 	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Address contains address for the request"
+	SSLRequestDoc.Fields[4].Name = "min_version"
+	SSLRequestDoc.Fields[4].Type = "string"
+	SSLRequestDoc.Fields[4].Note = ""
+	SSLRequestDoc.Fields[4].Description = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Comments[encoder.LineComment] = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[5].Name = "max_version"
+	SSLRequestDoc.Fields[5].Type = "string"
+	SSLRequestDoc.Fields[5].Note = ""
+	SSLRequestDoc.Fields[5].Description = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Comments[encoder.LineComment] = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[6].Name = "cipher_suites"
+	SSLRequestDoc.Fields[6].Type = "[]string"
+	SSLRequestDoc.Fields[6].Note = ""
+	SSLRequestDoc.Fields[6].Description = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[6].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"

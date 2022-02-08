@@ -529,7 +529,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	parsed, err := url.Parse(ts.URL)
 	require.Nil(t, err, "could not parse URL")
-	extractedData, page, err := instance.Run(parsed, actions, timeout)
+	extractedData, page, err := instance.Run(parsed, actions, nil, timeout)
 	assert(page, err, extractedData)
 
 	if page != nil {

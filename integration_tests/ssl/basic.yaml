@@ -1,0 +1,13 @@
+id: expired-ssl
+
+info:
+  name: Basic SSL Request
+  author: pdteam
+  severity: info
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    matchers:
+      - type: dsl
+        dsl:
+          - "not_after>=0"
