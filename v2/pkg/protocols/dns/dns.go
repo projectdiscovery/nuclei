@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/weppos/publicsuffix-go/publicsuffix"
 
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -170,11 +170,21 @@ func (request *Request) Requests() int {
 }
 
 // Make returns the request to be sent for the protocol
-func (request *Request) Make(domain string) (*dns.Msg, error) {
-	if request.question != dns.TypePTR && net.ParseIP(domain) != nil {
-		return nil, errors.New("cannot use IP address as DNS input")
+func (request *Request) Make(host string) (*dns.Msg, error) {
+	isIP := iputil.IsIP(host)
+	switch {
+	case request.question == dns.TypePTR && isIP:
+		var err error
+		host, err = dns.ReverseAddr(host)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		if isIP {
+			return nil, errors.New("cannot use IP address as DNS input")
+		}
+		host = dns.Fqdn(host)
 	}
-	domain = dns.Fqdn(domain)
 
 	// Build a request on the specified URL
 	req := new(dns.Msg)
@@ -183,7 +193,7 @@ func (request *Request) Make(domain string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	final := replacer.Replace(request.Name, generateDNSVariables(domain))
+	final := replacer.Replace(request.Name, GenerateDNSVariables(host))
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -224,6 +234,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
+	case "CAA":
+		question = dns.TypeCAA
 	}
 	return question
 }
@@ -250,7 +262,8 @@ func classToInt(class string) uint16 {
 	return uint16(result)
 }
 
-func generateDNSVariables(domain string) map[string]interface{} {
+// GenerateDNSVariables from a dns name
+func GenerateDNSVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}

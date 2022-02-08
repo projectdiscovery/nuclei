@@ -62,12 +62,13 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	if label := i.options.IssueLabel; label != "" {
 		labels = append(labels, label)
 	}
-
+	customLabels := gitlab.Labels(labels)
+	assigneeIDs := []int{i.userID}
 	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
-		Labels:      labels,
-		AssigneeIDs: []int{i.userID},
+		Labels:      &customLabels,
+		AssigneeIDs: &assigneeIDs,
 	})
 
 	return err

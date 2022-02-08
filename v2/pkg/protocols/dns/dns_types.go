@@ -31,6 +31,8 @@ const (
 	TXT
 	// name:AAAA
 	AAAA
+	// name:CAA
+	CAA
 	limit
 )
 
@@ -45,6 +47,7 @@ var DNSRequestTypeMapping = map[DNSRequestType]string{
 	MX:    "MX",
 	TXT:   "TXT",
 	AAAA:  "AAAA",
+	CAA:   "CAA",
 }
 
 // GetSupportedDNSRequestTypes returns list of supported types
@@ -87,7 +90,7 @@ func (holder DNSRequestTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "type of DNS request to make",
-		Description: "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA",
+		Description: "Type is the type of DNS request to make",
 	}
 	for _, types := range GetSupportedDNSRequestTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())

@@ -247,6 +247,19 @@ Websocket contains the Websocket request to make in the template.
 
 <div class="dd">
 
+<code>whois</code>  <i>[]<a href="#whoisrequest">whois.Request</a></i>
+
+</div>
+<div class="dt">
+
+WHOIS contains the WHOIS request to make in the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>workflows</code>  <i>[]<a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a></i>
 
 </div>
@@ -280,6 +293,24 @@ Self Contained marks Requests for the template as self-contained
 
 Stop execution once first match is found
 
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>signature</code>  <i><a href="#httpsignaturetypeholder">http.SignatureTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Signature is the request signature method
+
+
+Valid values:
+
+
+  - <code>AWS</code>
 </div>
 
 <hr />
@@ -757,7 +788,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - HTTP request made from the client
-- <code>response</code> - HTTP response recieved from server
+- <code>response</code> - HTTP response received from server
 - <code>status_code</code> - Status Code received from the Server
 - <code>body</code> - HTTP response body received from server (default)
 - <code>content_length</code> - HTTP Response content length
@@ -1169,6 +1200,24 @@ max-size: 2048
 
 <div class="dd">
 
+<code>signature</code>  <i><a href="#signaturetypeholder">SignatureTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Signature is the request signature method
+
+
+Valid values:
+
+
+  - <code>AWS</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>cookie-reuse</code>  <i>bool</i>
 
 </div>
@@ -1319,6 +1368,8 @@ Appears in:
 - <code><a href="#sslrequest">ssl.Request</a>.matchers</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.matchers</code>
+
+- <code><a href="#whoisrequest">whois.Request</a>.matchers</code>
 
 
 
@@ -1713,6 +1764,8 @@ Appears in:
 
 - <code><a href="#websocketrequest">websocket.Request</a>.extractors</code>
 
+- <code><a href="#whoisrequest">whois.Request</a>.extractors</code>
+
 
 
 
@@ -2039,6 +2092,8 @@ Appears in:
 
 - <code><a href="#networkrequest">network.Request</a>.attack</code>
 
+- <code><a href="#headlessrequest">headless.Request</a>.attack</code>
+
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
 
 
@@ -2119,9 +2174,25 @@ Enum Values:
   - <code>PATCH</code>
 
   - <code>PURGE</code>
+
+  - <code>Debug</code>
 </div>
 
 <hr />
+
+
+
+
+
+## SignatureTypeHolder
+SignatureTypeHolder is used to hold internal type of the signature
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.signature</code>
+
+
 
 
 
@@ -2437,6 +2508,8 @@ Enum Values:
   - <code>TXT</code>
 
   - <code>AAAA</code>
+
+  - <code>CAA</code>
 </div>
 
 <hr />
@@ -2561,7 +2634,7 @@ extensions:
 </div>
 <div class="dt">
 
-ExtensionDenylist is the list of file extensions to deny during matching.
+DenyList is the list of file, directories or extensions to deny during matching.
 
 By default, it contains some non-interesting extensions that are hardcoded
 in nuclei.
@@ -2671,7 +2744,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - Network request made from the client
-- <code>body,all,data</code> - Network response recieved from server (default)
+- <code>body,all,data</code> - Network response received from server (default)
 - <code>raw</code> - Full Network protocol data
 
 <hr />
@@ -3046,7 +3119,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>req</code> - Headless request made from the client
-- <code>resp,body,data</code> - Headless response recieved from client (default)
+- <code>resp,body,data</code> - Headless response received from client (default)
 
 <hr />
 
@@ -3058,6 +3131,39 @@ Part Definitions:
 <div class="dt">
 
 ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Attack is the type of payload combinations to perform.
+
+Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+permutations and combinations for all payloads.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>payloads</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Payloads contains any payloads for the current request.
+
+Payloads support both key-values combinations where a list
+of payloads is provided, or optionally a single file can also
+be provided as payload which will be read on run-time.
 
 </div>
 
@@ -3376,6 +3482,71 @@ Address contains address for the request
 
 <hr />
 
+<div class="dd">
+
+<code>min_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Minimum tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Max tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cipher_suites</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Client Cipher Suites  - auto if not specified.
+
+</div>
+
+<hr />
+
 
 
 
@@ -3396,7 +3567,7 @@ Part Definitions:
 - <code>type</code> - Type is the type of request made
 - <code>success</code> - Success specifies whether websocket connection was successful
 - <code>request</code> - Websocket request made to the server
-- <code>response</code> - Websocket response recieved from the server
+- <code>response</code> - Websocket response received from the server
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
 
@@ -3599,6 +3770,106 @@ name: prefix
 
 
 
+## whois.Request
+Request is a request for the WHOIS protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.whois</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+
+</div>
+<div class="dt">
+
+Matchers contains the detection mechanism for the request to identify
+whether the request was successful by doing pattern matching
+on request/responses.
+
+Multiple matchers can be combined with `matcher-condition` flag
+which accepts either `and` or `or` as argument.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>extractors</code>  <i>[]<a href="#extractorsextractor">extractors.Extractor</a></i>
+
+</div>
+<div class="dt">
+
+Extractors contains the extraction mechanism for the request to identify
+and extract parts of the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>matchers-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+MatchersCondition is the condition between the matchers. Default is OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>query</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Query contains query for the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>server</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+ 	 Optional WHOIS server URL.
+
+ 	 If present, specifies the WHOIS server to execute the Request on.
+   Otherwise, nil enables bootstrapping
+
+</div>
+
+<hr />
+
+
+
+
+
 ## workflows.WorkflowTemplate
 
 Appears in:
@@ -3726,6 +3997,20 @@ Subtemplates are run if the name of matcher matches.
 </div>
 
 <hr />
+
+
+
+
+
+## http.SignatureTypeHolder
+SignatureTypeHolder is used to hold internal type of the signature
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.signature</code>
+
+
 
 
 

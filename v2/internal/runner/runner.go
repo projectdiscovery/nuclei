@@ -3,6 +3,8 @@ package runner
 import (
 	"bufio"
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Runner is a client for running the enumeration process.
@@ -55,6 +58,7 @@ type Runner struct {
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
+	resumeCfg         *types.ResumeCfg
 }
 
 // New creates a new client for running enumeration process.
@@ -74,7 +78,7 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+		gologger.Error().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
 		if engine.MustDisableSandbox() {
@@ -151,16 +155,38 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	// create the resume configuration structure
+	resumeCfg := types.NewResumeCfg()
+	if runner.options.ShouldLoadResume() {
+		gologger.Info().Msg("Resuming from save checkpoint")
+		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(file), &resumeCfg)
+		if err != nil {
+			return nil, err
+		}
+		resumeCfg.Compile()
+	}
+
+	runner.resumeCfg = resumeCfg
+
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
-	opts.ServerURL = options.InteractshURL
+	if options.InteractshURL != "" {
+		opts.ServerURL = options.InteractshURL
+	}
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
 	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
-
+	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
+	opts.Debug = runner.options.Debug
+	opts.DebugRequest = runner.options.DebugRequests
+	opts.DebugResponse = runner.options.DebugResponse
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -263,6 +289,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
+		ResumeCfg:       r.resumeCfg,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -323,7 +350,7 @@ func (r *Runner) RunEnumeration() error {
 		if len(t.Workflows) > 0 {
 			continue
 		}
-		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
+		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
@@ -402,9 +429,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.templatesConfig != nil {
 		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
-	if r.interactsh != nil {
-		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
-	}
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
 		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
@@ -433,7 +457,9 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		if text == "" {
 			continue
 		}
-		templatesList = append(templatesList, text)
+		if isNewTemplate(text) {
+			templatesList = append(templatesList, text)
+		}
 	}
 	return templatesList, nil
 }
@@ -457,7 +483,24 @@ func (r *Runner) countNewTemplates() int {
 		if text == "" {
 			continue
 		}
-		count++
+
+		if isNewTemplate(text) {
+			count++
+		}
+
 	}
 	return count
+}
+
+func isNewTemplate(filename string) bool {
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
+}
+
+// SaveResumeConfig to file
+func (r *Runner) SaveResumeConfig() error {
+	resumeCfg := types.NewResumeCfg()
+	resumeCfg.ResumeFrom = r.resumeCfg.Current
+	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+
+	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
 }

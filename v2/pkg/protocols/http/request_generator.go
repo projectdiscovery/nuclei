@@ -19,6 +19,9 @@ type requestGenerator struct {
 	interactshURLs  []string
 }
 
+// LeaveDefaultPorts skips normalization of default standard ports
+var LeaveDefaultPorts = false
+
 // newGenerator creates a new request generator instance
 func (request *Request) newGenerator() *requestGenerator {
 	generator := &requestGenerator{request: request, options: request.options}

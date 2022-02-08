@@ -106,8 +106,8 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -itags, -include-tags string[]       不执行具有攻击性的模板
    -et, -exclude-templates string[]     要排除的模板或者模板目录
    -it, -include-templates string[]     执行默认或配置中排除的模板
-   -s, -severity value[]                根据严重性运行模板，允许的值有：info,low,medium,high,critical   
-   -es, -exclude-severity value[]       根据严重性排除模板，允许的值有：info,low,medium,high,critical   
+   -s, -severity value[]                根据严重程度运行模板，可候选的值有：info,low,medium,high,critical   
+   -es, -exclude-severity value[]       根据严重程度排除模板，可候选的值有：info,low,medium,high,critical   
    -a, -author string[]                 执行指定作者的模板
 
 输出：
@@ -133,10 +133,10 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -ev, env-vars                        在模板中使用环境变量
 
 交互：
-   -inserver, -ineractsh-server string  使用interactsh反连检测平台（默认为"https://interactsh.com"）
+   -inserver, -ineractsh-server string  使用interactsh反连检测平台（默认为"https://interact.sh"）
    -itoken, -interactsh-token string    指定反连检测平台的身份凭证
    -interactions-cache-size int         指定保存在交互缓存中的请求数（默认：5000）
-   -interactions-eviction int           聪缓存中删除请求前等待的时间（默认为60秒）
+   -interactions-eviction int           从缓存中删除请求前等待的时间（默认为60秒）
    -interactions-poll-duration int      每个轮询前等待时间（默认为5秒）
    -interactions-cooldown-period int    退出轮询前的等待时间（默认为5秒）
    -ni, -no-interactsh                  禁用反连检测平台，同时排除基于反连检测的模板

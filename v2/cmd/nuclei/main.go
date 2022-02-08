@@ -3,12 +3,17 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -30,10 +35,34 @@ func main() {
 	if nucleiRunner == nil {
 		return
 	}
+
+	// Setup graceful exits
+	resumeFileName := types.DefaultResumeFilePath()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
+			nucleiRunner.Close()
+			if options.ShouldSaveResume() {
+				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+				err := nucleiRunner.SaveResumeConfig()
+				if err != nil {
+					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
+				}
+			}
+			os.Exit(1)
+		}
+	}()
+
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
 	}
 	nucleiRunner.Close()
+	// on successful execution remove the resume file in case it exists
+	if fileutil.FileExists(resumeFileName) {
+		os.Remove(resumeFileName)
+	}
 }
 
 func readConfig() {
@@ -51,6 +80,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.BoolVar(&options.Resume, "resume", false, "Resume scan using resume.cfg (clustering will be disabled)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",
@@ -61,6 +91,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "URL containing list of workflows to run"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
+		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)
 
 	createGroup(flagSet, "filters", "Filtering",
@@ -74,6 +105,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("protocol types to be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("protocol types to not be executed. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.NormalizedStringSliceVarP(&options.Authors, "author", "a", []string{}, "execute templates that are (co-)created by the specified authors"),
+		flagSet.NormalizedStringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "List of template IDs to run (comma-separated, file)"),
+		flagSet.NormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "List of template IDs to exclude (comma-separated, file)"),
 	)
 
 	createGroup(flagSet, "output", "Output",
@@ -102,10 +135,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.BoolVar(&options.ZTLS, "ztls", false, "Use ztls library with autofallback to standard one for tls13"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
-		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "https://interactsh.com", "interactsh server url for self-hosted instance"),
+		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "", fmt.Sprintf("interactsh server url for self-hosted instance (default: %s)", client.DefaultOptions.ServerURL)),
 		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
 		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
 		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
@@ -126,6 +160,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
+		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "Leave default HTTP/HTTPS ports (eg. host:80,host:443"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
@@ -170,9 +205,17 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	_ = flagSet.Parse()
 
+	if options.LeaveDefaultPorts {
+		http.LeaveDefaultPorts = true
+	}
+
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
+		}
+		cfgFileFolder := filepath.Dir(cfgFile)
+		if err := config.OverrideIgnoreFilePath(cfgFileFolder); err != nil {
+			gologger.Warning().Msgf("Could not read ignore file from custom path: %s\n", err)
 		}
 	}
 }

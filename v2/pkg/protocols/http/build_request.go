@@ -19,6 +19,8 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -60,7 +62,8 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	ctx := context.Background()
 
 	if r.options.Interactsh != nil {
-		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
+
+		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, []string{})
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
 		}
@@ -121,13 +124,40 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("malformed request supplied")
 		}
+
+		payloads = generators.MergeMaps(
+			payloads,
+			generators.BuildPayloadFromOptions(r.request.options.Options),
+		)
+
+		// in case cases (eg requests signing, some variables uses default values if missing)
+		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
+			payloads = generators.MergeMaps(defaultList, payloads)
+		}
+
+		parts[1] = replacer.Replace(parts[1], payloads)
+		if len(dynamicValues) > 0 {
+			parts[1] = replacer.Replace(parts[1], dynamicValues)
+		}
+
+		// the url might contain placeholders with ignore list
+		if ignoreList := GetVariablesNamesSkipList(r.request.Signature.Value); ignoreList != nil {
+			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
+				return nil, err
+			}
+		} else { // the url might contain placeholders
+			if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
+				return nil, err
+			}
+		}
+
 		parsed, err := url.Parse(parts[1])
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values := generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
-			generators.BuildPayloadFromOptions(r.request.options.Options),
+			payloads,
 		)
 
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
@@ -306,6 +336,15 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		setHeader(req, "Accept", "*/*")
 		setHeader(req, "Accept-Language", "en")
 	}
+
+	if !LeaveDefaultPorts {
+		switch {
+		case req.URL.Scheme == "http" && strings.HasSuffix(req.Host, ":80"):
+			req.Host = strings.TrimSuffix(req.Host, ":80")
+		case req.URL.Scheme == "https" && strings.HasSuffix(req.Host, ":443"):
+			req.Host = strings.TrimSuffix(req.Host, ":443")
+		}
+	}
 	return retryablehttp.FromRequest(req)
 }
 
@@ -348,7 +387,7 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 	if base == "." {
 		base = ""
 	}
-	return map[string]interface{}{
+	httpVariables := map[string]interface{}{
 		"BaseURL":  parsed.String(),
 		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
 		"Hostname": parsed.Host,
@@ -358,4 +397,5 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
+	return generators.MergeMaps(httpVariables, dns.GenerateDNSVariables(domain))
 }

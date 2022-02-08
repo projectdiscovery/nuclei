@@ -8,7 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
@@ -116,18 +116,21 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	if parsedURL.Path != rawRequest.Path {
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-	if strings.HasSuffix(rawRequest.Path, "//") {
-		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
-	}
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
-	// If raw request doesn't have a Host header and isn't marked unsafe,
-	// this will generate the Host header from the parsed baseURL
-	if !unsafe && rawRequest.Headers["Host"] == "" {
-		rawRequest.Headers["Host"] = hostURL
+	if !unsafe {
+		if parsedURL.Path != rawRequest.Path {
+			rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+		}
+		if strings.HasSuffix(rawRequest.Path, "//") {
+			rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
+		}
+		rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+
+		// If raw request doesn't have a Host header and isn't marked unsafe,
+		// this will generate the Host header from the parsed baseURL
+		if rawRequest.Headers["Host"] == "" {
+			rawRequest.Headers["Host"] = hostURL
+		}
 	}
 
 	// Set the request body
@@ -143,7 +146,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 }
 
 func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) []byte {
-	fixedPath := filepath.Join(baseURL.Path, requestPath)
+	fixedPath := path.Join(baseURL.Path, requestPath)
 	fixed := bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1)
 	return fixed
 }

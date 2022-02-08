@@ -21,7 +21,7 @@ type networkBasic struct{}
 func (h *networkBasic) Execute(filePath string) error {
 	var routerErr error
 
-	ts := testutils.NewTCPServer(func(conn net.Conn) {
+	ts := testutils.NewTCPServer(false, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
 		data := make([]byte, 4)
@@ -42,10 +42,8 @@ func (h *networkBasic) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type networkMultiStep struct{}
@@ -54,7 +52,7 @@ type networkMultiStep struct{}
 func (h *networkMultiStep) Execute(filePath string) error {
 	var routerErr error
 
-	ts := testutils.NewTCPServer(func(conn net.Conn) {
+	ts := testutils.NewTCPServer(false, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
 		data := make([]byte, 5)
@@ -92,10 +90,8 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	} else {
 		expectedResultsSize = 1
 	}
-	if len(results) != expectedResultsSize {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, expectedResultsSize)
 }
 
 type networkRequestSelContained struct{}
@@ -104,11 +100,11 @@ type networkRequestSelContained struct{}
 func (h *networkRequestSelContained) Execute(filePath string) error {
 	var routerErr error
 
-	ts := testutils.NewTCPServer(func(conn net.Conn) {
+	ts := testutils.NewTCPServer(false, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
 		_, _ = conn.Write([]byte("Authentication successful"))
-	}, defaultStaticPort)
+	})
 	defer ts.Close()
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
@@ -117,8 +113,6 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
