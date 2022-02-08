@@ -788,7 +788,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - HTTP request made from the client
-- <code>response</code> - HTTP response recieved from server
+- <code>response</code> - HTTP response received from server
 - <code>status_code</code> - Status Code received from the Server
 - <code>body</code> - HTTP response body received from server (default)
 - <code>content_length</code> - HTTP Response content length
@@ -2744,7 +2744,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - Network request made from the client
-- <code>body,all,data</code> - Network response recieved from server (default)
+- <code>body,all,data</code> - Network response received from server (default)
 - <code>raw</code> - Full Network protocol data
 
 <hr />
@@ -3119,7 +3119,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>req</code> - Headless request made from the client
-- <code>resp,body,data</code> - Headless response recieved from client (default)
+- <code>resp,body,data</code> - Headless response received from client (default)
 
 <hr />
 
@@ -3567,7 +3567,7 @@ Part Definitions:
 - <code>type</code> - Type is the type of request made
 - <code>success</code> - Success specifies whether websocket connection was successful
 - <code>request</code> - Websocket request made to the server
-- <code>response</code> - Websocket response recieved from the server
+- <code>response</code> - Websocket response received from the server
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
 
