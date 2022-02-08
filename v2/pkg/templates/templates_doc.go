@@ -353,7 +353,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "HTTP response recieved from server",
+			Value: "HTTP response received from server",
 		},
 		{
 			Key:   "status_code",
@@ -1252,7 +1252,7 @@ func init() {
 		},
 		{
 			Key:   "body,all,data",
-			Value: "Network response recieved from server (default)",
+			Value: "Network response received from server (default)",
 		},
 		{
 			Key:   "raw",
@@ -1424,7 +1424,7 @@ func init() {
 		},
 		{
 			Key:   "resp,body,data",
-			Value: "Headless response recieved from client (default)",
+			Value: "Headless response received from client (default)",
 		},
 	}
 	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
@@ -1649,7 +1649,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "Websocket response recieved from the server",
+			Value: "Websocket response received from the server",
 		},
 		{
 			Key:   "host",
