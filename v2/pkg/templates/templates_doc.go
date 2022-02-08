@@ -21,6 +21,7 @@ var (
 	ExtractorTypeHolderDoc        encoder.Doc
 	GENERATORSAttackTypeHolderDoc encoder.Doc
 	HTTPMethodTypeHolderDoc       encoder.Doc
+	SignatureTypeHolderDoc        encoder.Doc
 	DNSRequestDoc                 encoder.Doc
 	DNSRequestTypeHolderDoc       encoder.Doc
 	FILERequestDoc                encoder.Doc
@@ -33,15 +34,17 @@ var (
 	SSLRequestDoc                 encoder.Doc
 	WEBSOCKETRequestDoc           encoder.Doc
 	WEBSOCKETInputDoc             encoder.Doc
+	WHOISRequestDoc               encoder.Doc
 	WORKFLOWSWorkflowTemplateDoc  encoder.Doc
 	WORKFLOWSMatcherDoc           encoder.Doc
+	HTTPSignatureTypeHolderDoc    encoder.Doc
 )
 
 func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 12)
+	TemplateDoc.Fields = make([]encoder.Doc, 14)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -99,21 +102,34 @@ func init() {
 	TemplateDoc.Fields[8].Note = ""
 	TemplateDoc.Fields[8].Description = "Websocket contains the Websocket request to make in the template."
 	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[9].Name = "workflows"
-	TemplateDoc.Fields[9].Type = "[]workflows.WorkflowTemplate"
+	TemplateDoc.Fields[9].Name = "whois"
+	TemplateDoc.Fields[9].Type = "[]whois.Request"
 	TemplateDoc.Fields[9].Note = ""
-	TemplateDoc.Fields[9].Description = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
-	TemplateDoc.Fields[10].Name = "self-contained"
-	TemplateDoc.Fields[10].Type = "bool"
+	TemplateDoc.Fields[9].Description = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[10].Name = "workflows"
+	TemplateDoc.Fields[10].Type = "[]workflows.WorkflowTemplate"
 	TemplateDoc.Fields[10].Note = ""
-	TemplateDoc.Fields[10].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[11].Name = "stop-at-first-match"
+	TemplateDoc.Fields[10].Description = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Workflows is a list of workflows to execute for a template."
+	TemplateDoc.Fields[11].Name = "self-contained"
 	TemplateDoc.Fields[11].Type = "bool"
 	TemplateDoc.Fields[11].Note = ""
-	TemplateDoc.Fields[11].Description = "Stop execution once first match is found"
-	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[11].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[12].Name = "stop-at-first-match"
+	TemplateDoc.Fields[12].Type = "bool"
+	TemplateDoc.Fields[12].Note = ""
+	TemplateDoc.Fields[12].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[13].Name = "signature"
+	TemplateDoc.Fields[13].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[13].Note = ""
+	TemplateDoc.Fields[13].Description = "Signature is the request signature method"
+	TemplateDoc.Fields[13].Comments[encoder.LineComment] = "Signature is the request signature method"
+	TemplateDoc.Fields[13].Values = []string{
+		"AWS",
+	}
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -337,7 +353,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "HTTP response recieved from server",
+			Value: "HTTP response received from server",
 		},
 		{
 			Key:   "status_code",
@@ -372,7 +388,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 27)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 28)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -492,51 +508,59 @@ func init() {
 	HTTPRequestDoc.Fields[17].Comments[encoder.LineComment] = "MaxSize is the maximum size of http response body to read in bytes."
 
 	HTTPRequestDoc.Fields[17].AddExample("Read max 2048 bytes of the response", 2048)
-	HTTPRequestDoc.Fields[18].Name = "cookie-reuse"
-	HTTPRequestDoc.Fields[18].Type = "bool"
+	HTTPRequestDoc.Fields[18].Name = "signature"
+	HTTPRequestDoc.Fields[18].Type = "SignatureTypeHolder"
 	HTTPRequestDoc.Fields[18].Note = ""
-	HTTPRequestDoc.Fields[18].Description = "CookieReuse is an optional setting that enables cookie reuse for\nall requests defined in raw section."
-	HTTPRequestDoc.Fields[18].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse for"
-	HTTPRequestDoc.Fields[19].Name = "redirects"
+	HTTPRequestDoc.Fields[18].Description = "Signature is the request signature method"
+	HTTPRequestDoc.Fields[18].Comments[encoder.LineComment] = "Signature is the request signature method"
+	HTTPRequestDoc.Fields[18].Values = []string{
+		"AWS",
+	}
+	HTTPRequestDoc.Fields[19].Name = "cookie-reuse"
 	HTTPRequestDoc.Fields[19].Type = "bool"
 	HTTPRequestDoc.Fields[19].Note = ""
-	HTTPRequestDoc.Fields[19].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
-	HTTPRequestDoc.Fields[19].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[20].Name = "pipeline"
+	HTTPRequestDoc.Fields[19].Description = "CookieReuse is an optional setting that enables cookie reuse for\nall requests defined in raw section."
+	HTTPRequestDoc.Fields[19].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse for"
+	HTTPRequestDoc.Fields[20].Name = "redirects"
 	HTTPRequestDoc.Fields[20].Type = "bool"
 	HTTPRequestDoc.Fields[20].Note = ""
-	HTTPRequestDoc.Fields[20].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
-	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-	HTTPRequestDoc.Fields[21].Name = "unsafe"
+	HTTPRequestDoc.Fields[20].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[21].Name = "pipeline"
 	HTTPRequestDoc.Fields[21].Type = "bool"
 	HTTPRequestDoc.Fields[21].Note = ""
-	HTTPRequestDoc.Fields[21].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
-	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
-	HTTPRequestDoc.Fields[22].Name = "race"
+	HTTPRequestDoc.Fields[21].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
+	HTTPRequestDoc.Fields[22].Name = "unsafe"
 	HTTPRequestDoc.Fields[22].Type = "bool"
 	HTTPRequestDoc.Fields[22].Note = ""
-	HTTPRequestDoc.Fields[22].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
-	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
-	HTTPRequestDoc.Fields[23].Name = "req-condition"
+	HTTPRequestDoc.Fields[22].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
+	HTTPRequestDoc.Fields[23].Name = "race"
 	HTTPRequestDoc.Fields[23].Type = "bool"
 	HTTPRequestDoc.Fields[23].Note = ""
-	HTTPRequestDoc.Fields[23].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
-	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[24].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[23].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
+	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
+	HTTPRequestDoc.Fields[24].Name = "req-condition"
 	HTTPRequestDoc.Fields[24].Type = "bool"
 	HTTPRequestDoc.Fields[24].Note = ""
-	HTTPRequestDoc.Fields[24].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[25].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[24].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
+	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[25].Name = "stop-at-first-match"
 	HTTPRequestDoc.Fields[25].Type = "bool"
 	HTTPRequestDoc.Fields[25].Note = ""
-	HTTPRequestDoc.Fields[25].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[26].Name = "iterate-all"
+	HTTPRequestDoc.Fields[25].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[26].Name = "skip-variables-check"
 	HTTPRequestDoc.Fields[26].Type = "bool"
 	HTTPRequestDoc.Fields[26].Note = ""
-	HTTPRequestDoc.Fields[26].Description = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[26].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[27].Name = "iterate-all"
+	HTTPRequestDoc.Fields[27].Type = "bool"
+	HTTPRequestDoc.Fields[27].Note = ""
+	HTTPRequestDoc.Fields[27].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -568,6 +592,10 @@ func init() {
 		},
 		{
 			TypeName:  "websocket.Request",
+			FieldName: "matchers",
+		},
+		{
+			TypeName:  "whois.Request",
 			FieldName: "matchers",
 		},
 	}
@@ -731,6 +759,10 @@ func init() {
 			TypeName:  "websocket.Request",
 			FieldName: "extractors",
 		},
+		{
+			TypeName:  "whois.Request",
+			FieldName: "extractors",
+		},
 	}
 	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 11)
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
@@ -848,6 +880,10 @@ func init() {
 			FieldName: "attack",
 		},
 		{
+			TypeName:  "headless.Request",
+			FieldName: "attack",
+		},
+		{
 			TypeName:  "websocket.Request",
 			FieldName: "attack",
 		},
@@ -890,7 +926,19 @@ func init() {
 		"TRACE",
 		"PATCH",
 		"PURGE",
+		"Debug",
 	}
+
+	SignatureTypeHolderDoc.Type = "SignatureTypeHolder"
+	SignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
+	SignatureTypeHolderDoc.Description = "SignatureTypeHolder is used to hold internal type of the signature"
+	SignatureTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "http.Request",
+			FieldName: "signature",
+		},
+	}
+	SignatureTypeHolderDoc.Fields = make([]encoder.Doc, 0)
 
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
@@ -1066,6 +1114,7 @@ func init() {
 		"MX",
 		"TXT",
 		"AAAA",
+		"CAA",
 	}
 
 	FILERequestDoc.Type = "file.Request"
@@ -1139,8 +1188,8 @@ func init() {
 	FILERequestDoc.Fields[4].Name = "denylist"
 	FILERequestDoc.Fields[4].Type = "[]string"
 	FILERequestDoc.Fields[4].Note = ""
-	FILERequestDoc.Fields[4].Description = "ExtensionDenylist is the list of file extensions to deny during matching.\n\nBy default, it contains some non-interesting extensions that are hardcoded\nin nuclei."
-	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "ExtensionDenylist is the list of file extensions to deny during matching."
+	FILERequestDoc.Fields[4].Description = "DenyList is the list of file, directories or extensions to deny during matching.\n\nBy default, it contains some non-interesting extensions that are hardcoded\nin nuclei."
+	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "DenyList is the list of file, directories or extensions to deny during matching."
 
 	FILERequestDoc.Fields[4].AddExample("", []string{".avi", ".mov", ".mp3"})
 	FILERequestDoc.Fields[5].Name = "id"
@@ -1203,7 +1252,7 @@ func init() {
 		},
 		{
 			Key:   "body,all,data",
-			Value: "Network response recieved from server (default)",
+			Value: "Network response received from server (default)",
 		},
 		{
 			Key:   "raw",
@@ -1375,36 +1424,46 @@ func init() {
 		},
 		{
 			Key:   "resp,body,data",
-			Value: "Headless response recieved from client (default)",
+			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 5)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
 	HEADLESSRequestDoc.Fields[0].Description = "ID is the optional id of the request"
 	HEADLESSRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
-	HEADLESSRequestDoc.Fields[1].Name = "steps"
-	HEADLESSRequestDoc.Fields[1].Type = "[]engine.Action"
+	HEADLESSRequestDoc.Fields[1].Name = "attack"
+	HEADLESSRequestDoc.Fields[1].Type = "generators.AttackTypeHolder"
 	HEADLESSRequestDoc.Fields[1].Note = ""
-	HEADLESSRequestDoc.Fields[1].Description = "Steps is the list of actions to run for headless request"
-	HEADLESSRequestDoc.Fields[1].Comments[encoder.LineComment] = "Steps is the list of actions to run for headless request"
-	HEADLESSRequestDoc.Fields[2].Name = "matchers"
-	HEADLESSRequestDoc.Fields[2].Type = "[]matchers.Matcher"
+	HEADLESSRequestDoc.Fields[1].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	HEADLESSRequestDoc.Fields[1].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	HEADLESSRequestDoc.Fields[2].Name = "payloads"
+	HEADLESSRequestDoc.Fields[2].Type = "map[string]interface{}"
 	HEADLESSRequestDoc.Fields[2].Note = ""
-	HEADLESSRequestDoc.Fields[2].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	HEADLESSRequestDoc.Fields[2].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[3].Name = "extractors"
-	HEADLESSRequestDoc.Fields[3].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[2].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	HEADLESSRequestDoc.Fields[2].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	HEADLESSRequestDoc.Fields[3].Name = "steps"
+	HEADLESSRequestDoc.Fields[3].Type = "[]engine.Action"
 	HEADLESSRequestDoc.Fields[3].Note = ""
-	HEADLESSRequestDoc.Fields[3].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	HEADLESSRequestDoc.Fields[3].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[4].Name = "matchers-condition"
-	HEADLESSRequestDoc.Fields[4].Type = "string"
+	HEADLESSRequestDoc.Fields[3].Description = "Steps is the list of actions to run for headless request"
+	HEADLESSRequestDoc.Fields[3].Comments[encoder.LineComment] = "Steps is the list of actions to run for headless request"
+	HEADLESSRequestDoc.Fields[4].Name = "matchers"
+	HEADLESSRequestDoc.Fields[4].Type = "[]matchers.Matcher"
 	HEADLESSRequestDoc.Fields[4].Note = ""
-	HEADLESSRequestDoc.Fields[4].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[4].Values = []string{
+	HEADLESSRequestDoc.Fields[4].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[5].Name = "extractors"
+	HEADLESSRequestDoc.Fields[5].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[5].Note = ""
+	HEADLESSRequestDoc.Fields[5].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	HEADLESSRequestDoc.Fields[5].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[6].Name = "matchers-condition"
+	HEADLESSRequestDoc.Fields[6].Type = "string"
+	HEADLESSRequestDoc.Fields[6].Note = ""
+	HEADLESSRequestDoc.Fields[6].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[6].Values = []string{
 		"and",
 		"or",
 	}
@@ -1511,7 +1570,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 4)
+	SSLRequestDoc.Fields = make([]encoder.Doc, 7)
 	SSLRequestDoc.Fields[0].Name = "matchers"
 	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	SSLRequestDoc.Fields[0].Note = ""
@@ -1536,6 +1595,35 @@ func init() {
 	SSLRequestDoc.Fields[3].Note = ""
 	SSLRequestDoc.Fields[3].Description = "Address contains address for the request"
 	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Address contains address for the request"
+	SSLRequestDoc.Fields[4].Name = "min_version"
+	SSLRequestDoc.Fields[4].Type = "string"
+	SSLRequestDoc.Fields[4].Note = ""
+	SSLRequestDoc.Fields[4].Description = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Comments[encoder.LineComment] = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[4].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[5].Name = "max_version"
+	SSLRequestDoc.Fields[5].Type = "string"
+	SSLRequestDoc.Fields[5].Note = ""
+	SSLRequestDoc.Fields[5].Description = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Comments[encoder.LineComment] = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[5].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[6].Name = "cipher_suites"
+	SSLRequestDoc.Fields[6].Type = "[]string"
+	SSLRequestDoc.Fields[6].Note = ""
+	SSLRequestDoc.Fields[6].Description = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[6].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
@@ -1561,7 +1649,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "Websocket response recieved from the server",
+			Value: "Websocket response received from the server",
 		},
 		{
 			Key:   "host",
@@ -1645,6 +1733,46 @@ func init() {
 
 	WEBSOCKETInputDoc.Fields[1].AddExample("", "prefix")
 
+	WHOISRequestDoc.Type = "whois.Request"
+	WHOISRequestDoc.Comments[encoder.LineComment] = " Request is a request for the WHOIS protocol"
+	WHOISRequestDoc.Description = "Request is a request for the WHOIS protocol"
+	WHOISRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "whois",
+		},
+	}
+	WHOISRequestDoc.Fields = make([]encoder.Doc, 5)
+	WHOISRequestDoc.Fields[0].Name = "matchers"
+	WHOISRequestDoc.Fields[0].Type = "[]matchers.Matcher"
+	WHOISRequestDoc.Fields[0].Note = ""
+	WHOISRequestDoc.Fields[0].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	WHOISRequestDoc.Fields[0].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	WHOISRequestDoc.Fields[1].Name = "extractors"
+	WHOISRequestDoc.Fields[1].Type = "[]extractors.Extractor"
+	WHOISRequestDoc.Fields[1].Note = ""
+	WHOISRequestDoc.Fields[1].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	WHOISRequestDoc.Fields[1].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	WHOISRequestDoc.Fields[2].Name = "matchers-condition"
+	WHOISRequestDoc.Fields[2].Type = "string"
+	WHOISRequestDoc.Fields[2].Note = ""
+	WHOISRequestDoc.Fields[2].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	WHOISRequestDoc.Fields[2].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	WHOISRequestDoc.Fields[2].Values = []string{
+		"and",
+		"or",
+	}
+	WHOISRequestDoc.Fields[3].Name = "query"
+	WHOISRequestDoc.Fields[3].Type = "string"
+	WHOISRequestDoc.Fields[3].Note = ""
+	WHOISRequestDoc.Fields[3].Description = "Query contains query for the request"
+	WHOISRequestDoc.Fields[3].Comments[encoder.LineComment] = "Query contains query for the request"
+	WHOISRequestDoc.Fields[4].Name = "server"
+	WHOISRequestDoc.Fields[4].Type = "string"
+	WHOISRequestDoc.Fields[4].Note = ""
+	WHOISRequestDoc.Fields[4].Description = "description: |\n 	 Optional WHOIS server URL.\n\n 	 If present, specifies the WHOIS server to execute the Request on.\n   Otherwise, nil enables bootstrapping"
+	WHOISRequestDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
+
 	WORKFLOWSWorkflowTemplateDoc.Type = "workflows.WorkflowTemplate"
 	WORKFLOWSWorkflowTemplateDoc.Comments[encoder.LineComment] = ""
 	WORKFLOWSWorkflowTemplateDoc.Description = ""
@@ -1708,6 +1836,17 @@ func init() {
 	WORKFLOWSMatcherDoc.Fields[1].Note = ""
 	WORKFLOWSMatcherDoc.Fields[1].Description = "Subtemplates are run if the name of matcher matches."
 	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
+
+	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
+	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
+	HTTPSignatureTypeHolderDoc.Description = "SignatureTypeHolder is used to hold internal type of the signature"
+	HTTPSignatureTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "signature",
+		},
+	}
+	HTTPSignatureTypeHolderDoc.Fields = make([]encoder.Doc, 0)
 }
 
 // GetTemplateDoc returns documentation for the file templates_doc.go.
@@ -1728,6 +1867,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&ExtractorTypeHolderDoc,
 			&GENERATORSAttackTypeHolderDoc,
 			&HTTPMethodTypeHolderDoc,
+			&SignatureTypeHolderDoc,
 			&DNSRequestDoc,
 			&DNSRequestTypeHolderDoc,
 			&FILERequestDoc,
@@ -1740,8 +1880,10 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&SSLRequestDoc,
 			&WEBSOCKETRequestDoc,
 			&WEBSOCKETInputDoc,
+			&WHOISRequestDoc,
 			&WORKFLOWSWorkflowTemplateDoc,
 			&WORKFLOWSMatcherDoc,
+			&HTTPSignatureTypeHolderDoc,
 		},
 	}
 }

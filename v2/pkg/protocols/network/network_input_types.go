@@ -70,7 +70,7 @@ func (holder NetworkInputTypeHolder) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		Type:        "string",
 		Title:       "type is the type of input data",
-		Description: "description=Type of input specified in data field,enum=hex,enum=text",
+		Description: "description=Type of input specified in data field",
 	}
 	for _, types := range GetSupportedNetworkInputTypes() {
 		gotType.Enum = append(gotType.Enum, types.String())

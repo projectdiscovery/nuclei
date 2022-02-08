@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -26,7 +27,7 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.5.5-dev`
+const Version = `2.6.1-dev`
 
 func getConfigDetails() (string, error) {
 	homeDir, err := os.UserHomeDir()
@@ -105,9 +106,37 @@ func ReadIgnoreFile() IgnoreFile {
 	return ignore
 }
 
+var (
+	// customIgnoreFilePath contains a custom path for the ignore file
+	customIgnoreFilePath string
+	// ErrCustomIgnoreFilePathNotExist is raised when the ignore file doesn't exist in the custom path
+	ErrCustomIgnoreFilePathNotExist = errors.New("Ignore file doesn't exist in custom path")
+	// ErrCustomFolderNotExist is raised when the custom ignore folder doesn't exist
+	ErrCustomFolderNotExist = errors.New("The custom ignore path doesn't exist")
+)
+
+// OverrideIgnoreFilePath with a custom existing folder
+func OverrideIgnoreFilePath(customPath string) error {
+	// custom path does not exist
+	if !fileutil.FolderExists(customPath) {
+		return ErrCustomFolderNotExist
+	}
+	// ignore file within the custom path does not exist
+	if !fileutil.FileExists(filepath.Join(customPath, nucleiIgnoreFile)) {
+		return ErrCustomIgnoreFilePathNotExist
+	}
+	customIgnoreFilePath = customPath
+	return nil
+}
+
 // getIgnoreFilePath returns the ignore file path for the runner
 func getIgnoreFilePath() string {
 	var defIgnoreFilePath string
+
+	if customIgnoreFilePath != "" {
+		defIgnoreFilePath = filepath.Join(customIgnoreFilePath, nucleiIgnoreFile)
+		return defIgnoreFilePath
+	}
 
 	home, err := os.UserHomeDir()
 	if err == nil {

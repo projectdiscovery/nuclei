@@ -1,12 +1,13 @@
 name: 🎉 Release Binary
 on:
-  create:
+  push:
+    tags:
+      - '*'
   workflow_dispatch:
 
 jobs: 
   release: 
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
 
     steps: 
       - uses: actions/checkout@v2
