@@ -26,7 +26,7 @@ type Request struct {
 	//   in nuclei.
 	// examples:
 	//   - value: '[]string{".avi", ".mov", ".mp3"}'
-	DenyList []string `yaml:"denylist,omitempty" jsonschema:"title=denylist, directories and extentions to deny match,description=List of files, directories and extensions to deny during matching"`
+	DenyList []string `yaml:"denylist,omitempty" jsonschema:"title=denylist, directories and extensions to deny match,description=List of files, directories and extensions to deny during matching"`
 
 	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID for the request"`

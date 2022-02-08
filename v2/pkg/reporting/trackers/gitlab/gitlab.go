@@ -3,9 +3,10 @@ package gitlab
 import (
 	"fmt"
 
+	"github.com/xanzy/go-gitlab"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/xanzy/go-gitlab"
 )
 
 // Integration is a client for an issue tracker integration
@@ -62,12 +63,12 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 		labels = append(labels, label)
 	}
 	customLabels := gitlab.Labels(labels)
-	assigneIDs := []int{i.userID}
+	assigneeIDs := []int{i.userID}
 	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
 		Labels:      &customLabels,
-		AssigneeIDs: &assigneIDs,
+		AssigneeIDs: &assigneeIDs,
 	})
 
 	return err

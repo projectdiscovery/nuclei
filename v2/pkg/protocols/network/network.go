@@ -87,7 +87,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":       "Matched is the input which was matched upon",
 	"type":          "Type is the type of request made",
 	"request":       "Network request made from the client",
-	"body,all,data": "Network response recieved from server (default)",
+	"body,all,data": "Network response received from server (default)",
 	"raw":           "Full Network protocol data",
 }
 
