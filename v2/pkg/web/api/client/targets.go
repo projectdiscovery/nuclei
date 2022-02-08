@@ -151,7 +151,6 @@ type UpdateTargetRequest struct {
 // UpdateTemplate updates a target content by path
 func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, req.ID)
-
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 	writer.WriteField("id", req.TargetID)
