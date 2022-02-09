@@ -12,21 +12,21 @@ type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
-	Tags goflags.NormalizedStringSlice
+	Tags goflags.FileNormalizedStringSlice
 	// ExcludeTags is the list of tags to exclude
-	ExcludeTags goflags.NormalizedStringSlice
+	ExcludeTags goflags.FileNormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.StringSlice
+	Workflows goflags.FileNormalizedStringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
-	WorkflowURLs goflags.StringSlice
+	WorkflowURLs goflags.FileNormalizedStringSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.StringSlice
+	Templates goflags.FileNormalizedStringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
-	TemplateURLs goflags.StringSlice
+	TemplateURLs goflags.FileNormalizedStringSlice
 	// RemoteTemplates specifies list of allowed URLs to load remote templates from
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.StringSlice
+	ExcludedTemplates goflags.FileNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
@@ -38,19 +38,19 @@ type Options struct {
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
 	// Authors filters templates based on their author and only run the matching ones.
-	Authors goflags.NormalizedStringSlice
+	Authors goflags.FileNormalizedStringSlice
 	// Protocols contains the protocols to be allowed executed
 	Protocols types.ProtocolTypes
 	// ExcludeProtocols contains protocols to not be executed
 	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
-	IncludeTags goflags.NormalizedStringSlice
+	IncludeTags goflags.FileNormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.StringSlice
+	IncludeTemplates goflags.FileNormalizedStringSlice
 	// IncludeIds includes specified ids to be run even while being in denylist
-	IncludeIds goflags.NormalizedStringSlice
+	IncludeIds goflags.FileNormalizedStringSlice
 	// ExcludeIds contains templates ids to not be executed
-	ExcludeIds goflags.NormalizedStringSlice
+	ExcludeIds goflags.FileNormalizedStringSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
