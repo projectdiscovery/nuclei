@@ -424,9 +424,12 @@ github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5 h1:2dbm7
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e h1:RJJuYyuwskYtzZi2gziy6SE/b7saWEzyskaA252E0VY=
 github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
+github.com/projectdiscovery/goflags v0.0.7 h1:aykmRkrOgDyRwcvGrK3qp+9aqcjGfAMs/+LtRmtyxwk=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
-github.com/projectdiscovery/goflags v0.0.8-0.20220121110825-48035ad3ffe0 h1:KtCp/dCsxXNdT8m0yyWc/4ou4YaKWVakAr3G03TjQCk=
-github.com/projectdiscovery/goflags v0.0.8-0.20220121110825-48035ad3ffe0/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
+github.com/projectdiscovery/goflags v0.0.8-0.20220208064206-3e5adbf0b79e h1:34CL3AUFnZlV2HiraTiOq0mVo0GVMqsllhkhmYXfVcQ=
+github.com/projectdiscovery/goflags v0.0.8-0.20220208064206-3e5adbf0b79e/go.mod h1:37KhVbVLllyuIAgpXGqcvE/hsFEwJ+ctEUSHawjhsBY=
+github.com/projectdiscovery/goflags v0.0.8-0.20220208065736-e1d58bce8ce5 h1:IoDOKD+ZWctt0yGMwgGSCjWmSAaaMds7J9Tbxy6zv+A=
+github.com/projectdiscovery/goflags v0.0.8-0.20220208065736-e1d58bce8ce5/go.mod h1:37KhVbVLllyuIAgpXGqcvE/hsFEwJ+ctEUSHawjhsBY=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/gologger v1.1.4 h1:qWxGUq7ukHWT849uGPkagPKF3yBPYAsTtMKunQ8O2VI=
 github.com/projectdiscovery/gologger v1.1.4/go.mod h1:Bhb6Bdx2PV1nMaFLoXNBmHIU85iROS9y1tBuv7T5pMY=
