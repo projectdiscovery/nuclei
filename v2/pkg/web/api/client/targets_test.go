@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -30,12 +31,12 @@ func TestTarget(t *testing.T) {
 		require.NoError(t, err, "could not get targets")
 		require.NotEmpty(t, resp)
 	})
-	//t.Run("GetTargetContents", func(t *testing.T) {
-	//	resp, err := svc.GetTargetContents(targetID)
-	//	require.NoError(t, err, "could not get target contents")
-	//	content, _ := ioutil.ReadAll(resp)
-	//	require.NotEmpty(t, string(content))
-	//})
+	t.Run("GetTargetContents", func(t *testing.T) {
+		resp, err := svc.GetTargetContents(targetID)
+		require.NoError(t, err, "could not get target contents")
+		content, _ := ioutil.ReadAll(resp)
+		require.NotEmpty(t, string(content))
+	})
 	t.Run("UpdateTarget", func(t *testing.T) {
 		err := svc.UpdateTarget(UpdateTargetRequest{
 			ID:       targetID,
