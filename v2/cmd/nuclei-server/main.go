@@ -74,7 +74,7 @@ func process() error {
 	_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
 
 	targets := targets.NewTargetsStorage(*datadir)
-	scans := scans.NewScanService(*logsdir, 1, dbInstance, targets)
+	scans := scans.NewScanService(*logsdir, false, 1, dbInstance, targets)
 	defer scans.Close()
 
 	server := handlers.New(dbInstance, targets, scans)

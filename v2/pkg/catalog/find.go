@@ -18,7 +18,7 @@ func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	allTemplates := []string{}
 
 	for _, t := range definitions {
-		if strings.HasPrefix(t, "http") && (strings.HasSuffix(t, ".yaml") || strings.HasSuffix(t, ".yml")) {
+		if strings.HasPrefix(t, "http") && strings.Contains(t, "://") && (strings.HasSuffix(t, ".yaml") || strings.HasSuffix(t, ".yml")) {
 			if _, ok := processed[t]; !ok {
 				processed[t] = true
 				allTemplates = append(allTemplates, t)

@@ -58,11 +58,13 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 	ignoreFile := &config.IgnoreFile{}
 
 	ignoreFileData := updater.GetIgnoreFile()
-	if yamlErr := yaml.NewDecoder(bytes.NewReader(ignoreFileData)).Decode(ignoreFile); yamlErr != nil {
-		return nil, yamlErr
+	if len(ignoreFileData) > 0 {
+		if yamlErr := yaml.NewDecoder(bytes.NewReader(ignoreFileData)).Decode(ignoreFile); yamlErr != nil {
+			return nil, yamlErr
+		}
+		typesOptions.ExcludeTags = append(typesOptions.ExcludeTags, ignoreFile.Tags...)
+		typesOptions.ExcludedTemplates = append(typesOptions.ExcludedTemplates, ignoreFile.Files...)
 	}
-	typesOptions.ExcludeTags = append(typesOptions.ExcludeTags, ignoreFile.Tags...)
-	typesOptions.ExcludedTemplates = append(typesOptions.ExcludedTemplates, ignoreFile.Files...)
 	return typesOptions, nil
 }
 
@@ -223,13 +225,13 @@ func (s *ScanService) worker(req ScanRequest) error {
 
 	typesOptions, err := s.getSettingsForName(req.Config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not get setting")
 	}
 	gologger.Info().Msgf("[scans] [worker] [%d] loaded settings for config %s", req.ScanID, req.Config)
 
 	templatesDirectory, templatesList, workflowsList, err := s.storeTemplatesFromRequest(req.Templates)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not get templates")
 	}
 	defer os.RemoveAll(templatesDirectory)
 
@@ -241,13 +243,13 @@ func (s *ScanService) worker(req ScanRequest) error {
 
 	scanCtx, err := s.createExecuterOpts(ctx, cancel, req.ScanID, req.Reporting, req.ScanSource, templatesDirectory, typesOptions)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not create executer opts")
 	}
 	defer scanCtx.Close()
 
 	err = s.createExecuterFromOpts(scanCtx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not create executer")
 	}
 
 	var finalTemplates []*templates.Template
@@ -258,7 +260,7 @@ func (s *ScanService) worker(req ScanRequest) error {
 
 	inputProvider, err := s.inputProviderFromRequest(req.Targets)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not create input provider")
 	}
 	gologger.Info().Msgf("[scans] [worker] [%d] total loaded input count: %d", req.ScanID, inputProvider.Count())
 

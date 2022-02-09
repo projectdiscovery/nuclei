@@ -74,55 +74,63 @@ func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Templ
 func (e *Engine) executeModelWithInput(ctx context.Context, templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool) {
 	wg := e.workPool.InputPool(templateType)
 
-	var (
-		index uint32
-	)
+	var index uint32
+	var currentInfoData *generalTypes.ResumeInfo
+	var cleanupInFlight func(index uint32)
+	var resumeFromInfoData *generalTypes.ResumeInfo
 
-	e.executerOpts.ResumeCfg.Lock()
-	currentInfo, ok := e.executerOpts.ResumeCfg.Current[template.ID]
-	if !ok {
-		currentInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.Current[template.ID] = currentInfo
-	}
-	if currentInfo.InFlight == nil {
-		currentInfo.InFlight = make(map[uint32]struct{})
-	}
-	resumeFromInfo, ok := e.executerOpts.ResumeCfg.ResumeFrom[template.ID]
-	if !ok {
-		resumeFromInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.ResumeFrom[template.ID] = resumeFromInfo
-	}
-	e.executerOpts.ResumeCfg.Unlock()
+	if e.executerOpts.ResumeCfg != nil {
+		e.executerOpts.ResumeCfg.Lock()
+		currentInfo, ok := e.executerOpts.ResumeCfg.Current[template.ID]
+		if !ok {
+			currentInfo = &generalTypes.ResumeInfo{}
+			e.executerOpts.ResumeCfg.Current[template.ID] = currentInfo
+		}
+		if currentInfo.InFlight == nil {
+			currentInfo.InFlight = make(map[uint32]struct{})
+		}
+		resumeFromInfo, ok := e.executerOpts.ResumeCfg.ResumeFrom[template.ID]
+		if !ok {
+			resumeFromInfo = &generalTypes.ResumeInfo{}
+			e.executerOpts.ResumeCfg.ResumeFrom[template.ID] = resumeFromInfo
+		}
+		e.executerOpts.ResumeCfg.Unlock()
 
-	// track progression
-	cleanupInFlight := func(index uint32) {
-		currentInfo.Lock()
-		delete(currentInfo.InFlight, index)
-		currentInfo.Unlock()
+		// track progression
+		cleanupInFlight = func(index uint32) {
+			currentInfo.Lock()
+			delete(currentInfo.InFlight, index)
+			currentInfo.Unlock()
+		}
+		currentInfoData = currentInfo
+		resumeFromInfoData = resumeFromInfo
 	}
 
 	target.Scan(func(scannedValue string) bool {
+		var skip bool
+
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
-		var skip bool
-		if resumeFromInfo.Completed { // the template was completed
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed\n", template.ID, scannedValue)
-			skip = true
-		} else if index < resumeFromInfo.SkipUnder { // index lower than the sliding window (bulk-size)
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed\n", template.ID, scannedValue)
-			skip = true
-		} else if _, isInFlight := resumeFromInfo.InFlight[index]; isInFlight { // the target wasn't completed successfully
-			gologger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed\n", template.ID, scannedValue)
-			// skip is already false, but leaving it here for clarity
-			skip = false
-		} else if index > resumeFromInfo.DoAbove { // index above the sliding window (bulk-size)
-			// skip is already false - but leaving it here for clarity
-			skip = false
-		}
+		if resumeFromInfoData != nil {
+			if resumeFromInfoData.Completed { // the template was completed
+				gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed\n", template.ID, scannedValue)
+				skip = true
+			} else if index < resumeFromInfoData.SkipUnder { // index lower than the sliding window (bulk-size)
+				gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed\n", template.ID, scannedValue)
+				skip = true
+			} else if _, isInFlight := resumeFromInfoData.InFlight[index]; isInFlight { // the target wasn't completed successfully
+				gologger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed\n", template.ID, scannedValue)
+				// skip is already false, but leaving it here for clarity
+				skip = false
+			} else if index > resumeFromInfoData.DoAbove { // index above the sliding window (bulk-size)
+				// skip is already false - but leaving it here for clarity
+				skip = false
+			}
 
-		currentInfo.Lock()
-		currentInfo.InFlight[index] = struct{}{}
-		currentInfo.Unlock()
+			currentInfoData.Lock()
+			currentInfoData.InFlight[index] = struct{}{}
+			currentInfoData.Unlock()
+		}
 
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
@@ -135,7 +143,9 @@ func (e *Engine) executeModelWithInput(ctx context.Context, templateType types.P
 		wg.WaitGroup.Add()
 		go func(index uint32, skip bool, value string) {
 			defer wg.WaitGroup.Done()
-			defer cleanupInFlight(index)
+			if cleanupInFlight != nil {
+				defer cleanupInFlight(index)
+			}
 			if skip {
 				return
 			}
@@ -160,7 +170,9 @@ func (e *Engine) executeModelWithInput(ctx context.Context, templateType types.P
 	wg.WaitGroup.Wait()
 
 	// on completion marks the template as completed
-	currentInfo.Lock()
-	currentInfo.Completed = true
-	currentInfo.Unlock()
+	if currentInfoData != nil {
+		currentInfoData.Lock()
+		currentInfoData.Completed = true
+		currentInfoData.Unlock()
+	}
 }

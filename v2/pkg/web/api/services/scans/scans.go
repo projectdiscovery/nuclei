@@ -27,8 +27,6 @@ type ScanService struct {
 
 	Running     *sync.Map // Map of running scan with their status
 	scanRequest chan ScanRequest
-
-	Finished chan int64
 }
 
 type RunningScan struct {
@@ -53,7 +51,7 @@ type ScanRequest struct {
 }
 
 // NewScanService returns a new scan service
-func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targets.TargetsStorage) *ScanService {
+func NewScanService(logs string, noPoll bool, concurrency int, db dbsql.Querier, target *targets.TargetsStorage) *ScanService {
 	context, cancel := context.WithCancel(context.Background())
 
 	// Do not use cache as the template contents depend upon db
@@ -70,7 +68,6 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 		target:      target,
 		Running:     &sync.Map{},
 		scanRequest: make(chan ScanRequest),
-		Finished:    make(chan int64),
 	}
 	for i := 0; i < concurrency; i++ {
 		go func() {
@@ -80,21 +77,21 @@ func NewScanService(logs string, concurrency int, db dbsql.Querier, target *targ
 					if err := service.worker(req); err != nil {
 						log.Printf("Could not run worker: %s (%d)\n", err, req.ScanID)
 					}
-					service.Finished <- req.ScanID
 				case <-context.Done():
 					return
 				}
 			}
 		}()
 	}
-	go service.pollDB(context)
+	if !noPoll {
+		go service.pollDB(context)
+	}
 	return service
 }
 
 func (s *ScanService) Close() {
 	s.cancel()
 	s.Logs.Close()
-	close(s.Finished)
 }
 
 // Queue queues a scan request to the service

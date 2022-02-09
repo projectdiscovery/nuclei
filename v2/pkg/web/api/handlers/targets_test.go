@@ -122,6 +122,10 @@ func TestUpdateTargetHandler(t *testing.T) {
 	c.SetParamValues("1")
 
 	querier.EXPECT().
+		GetTarget(gomock.Any(), gomock.Eq(int64(1))).
+		Times(1).
+		Return(dbsql.GetTargetRow{Internalid: files[0].Name()}, nil)
+	querier.EXPECT().
 		UpdateTargetMetadata(gomock.Any(), gomock.Eq(dbsql.UpdateTargetMetadataParams{Total: 1, ID: 1})).
 		Times(1).
 		Return(nil)
