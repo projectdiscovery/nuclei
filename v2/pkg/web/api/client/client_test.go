@@ -11,6 +11,9 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, client)
 }
 func TestClient(t *testing.T) {
+	setup := NewMockHttpServer(t)
+	defer setup()
+
 	client := New(WithBasicAuth("user", "pass"))
 	result, err := client.Templates.GetTemplates(GetTemplatesRequest{
 		Search: "jira",

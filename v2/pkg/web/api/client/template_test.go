@@ -2,13 +2,15 @@ package client
 
 import (
 	//mocks "github.com/projectdiscovery/nuclei/v2/pkg/web/api/client/mocks"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestTemplates(t *testing.T) {
 	setup := NewMockHttpServer(t)
 	defer setup()
+
 	client := New(WithBasicAuth("user", "pass"))
 	svc := TemplatesService{Client: client}
 	t.Run("AddTemplate", func(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 )
 
 type TemplateMockHandler struct {
@@ -17,12 +18,10 @@ func NewTemplateMockHandler(mockParam *db.MockQuerier) TemplateMockHandler {
 }
 
 func (m *TemplateMockHandler) GetTemplates(ctx echo.Context) error {
-	response := []GetTemplatesResponse{}
-	response = append(response, GetTemplatesResponse{ID: 1, Name: "test1"})
+	second := []dbsql.GetTemplatesBySearchKeyRow{{ID: 1, Name: "test"}}
+
 	server := handlers.New(m.mockDb, nil, nil)
-	m.mockDb.EXPECT().GetTemplates(gomock.Any()).Times(1).Return(response, nil)
-	m.mockDb.EXPECT().GetTemplatesByFolderOne(gomock.Any(), gomock.Any()).Times(1).Return(response, nil)
-	m.mockDb.EXPECT().GetTemplatesBySearchKey(gomock.Any(), gomock.Any()).Times(1).Return(response, nil)
+	m.mockDb.EXPECT().GetTemplatesBySearchKey(gomock.Any(), gomock.Any()).Times(1).Return(second, nil)
 	return server.GetTemplates(ctx)
 }
 
@@ -55,11 +54,41 @@ func (m *TemplateMockHandler) GetTemplatesRaw(c echo.Context) error {
 	return server.GetTemplatesRaw(c)
 }
 
+const templateContents = `id: ibm-http-server
+
+info:
+  name: Default IBM HTTP Server
+  author: dhiyaneshDK,pussycat0x
+  severity: info
+  reference: https://www.shodan.io/search?query=http.title%3A%22IBM-HTTP-Server%22
+  tags: tech,ibm
+
+requests:
+  - method: GET
+    path:
+      - '{{BaseURL}}'
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - '<title>IBM HTTP Server</title>'
+
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "IBM HTTP Server ([0-9.]+)"`
+
 func (m *TemplateMockHandler) ExecuteTemplate(c echo.Context) error {
 	m.mockDb.EXPECT().
 		GetTemplateContents(gomock.Any(), gomock.Any()).
 		Times(1).
-		Return("test-contents", nil)
+		Return(templateContents, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.ExecuteTemplate(c)
 }
