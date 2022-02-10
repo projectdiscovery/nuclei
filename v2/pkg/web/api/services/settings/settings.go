@@ -11,6 +11,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var DefaultSettingsYAML string
+
+func init() {
+	if DefaultSettingsYAML == "" {
+		data, err := yaml.Marshal(DefaultSettings())
+		if err != nil {
+			panic(err)
+		}
+		DefaultSettingsYAML = string(data)
+	}
+}
+
 // Settings contains internal nuclei engine configuration settings
 // for nuclei REST API interface
 type Settings struct {

@@ -161,7 +161,7 @@ func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	_, _ = io.Copy(fileWriter, req.Contents)
 	writer.Close()
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodPost, reqURL, &buf)
+	httpreq, err := retryablehttp.NewRequest(http.MethodPut, reqURL, &buf)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
