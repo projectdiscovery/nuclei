@@ -18,10 +18,9 @@ func NewTemplateMockHandler(mockParam *db.MockQuerier) TemplateMockHandler {
 }
 
 func (m *TemplateMockHandler) GetTemplates(ctx echo.Context) error {
-	second := []dbsql.GetTemplatesBySearchKeyRow{{ID: 1, Name: "test"}}
-
 	server := handlers.New(m.mockDb, nil, nil)
-	m.mockDb.EXPECT().GetTemplatesBySearchKey(gomock.Any(), gomock.Any()).Times(1).Return(second, nil)
+	m.mockDb.EXPECT().GetTemplatesByFolder(gomock.Any(), gomock.Any()).Times(1).Return(
+		[]dbsql.GetTemplatesByFolderRow{{ID: 1, Name: "test"}}, nil)
 	return server.GetTemplates(ctx)
 }
 
@@ -85,10 +84,24 @@ requests:
           - "IBM HTTP Server ([0-9.]+)"`
 
 func (m *TemplateMockHandler) ExecuteTemplate(c echo.Context) error {
+	const testTemplate = `
+id: test-template
+info:
+  name: test-template
+  author: pdteam
+  severity: info
+network:
+  - host: 
+      - "{{Hostname}}"
+    matchers:
+      - type: word
+        words:
+          - "test"
+        part: raw`
 	m.mockDb.EXPECT().
 		GetTemplateContents(gomock.Any(), gomock.Any()).
 		Times(1).
-		Return(templateContents, nil)
+		Return(testTemplate, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.ExecuteTemplate(c)
 }
