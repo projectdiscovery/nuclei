@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -64,9 +65,16 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("]")
 	}
 
-	if output.LineCount != "" {
-		builder.WriteString(" [Lines: ")
-		builder.WriteString(output.LineCount)
+	if len(output.LineCount) > 0 {
+		builder.WriteString(" [LN: ")
+
+		for i, line := range output.LineCount {
+			builder.WriteString(strconv.Itoa(line))
+
+			if i != len(output.LineCount)-1 {
+				builder.WriteString(",")
+			}
+		}
 		builder.WriteString("]")
 	}
 

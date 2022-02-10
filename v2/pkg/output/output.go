@@ -106,7 +106,7 @@ type ResultEvent struct {
 	// MatcherStatus is the status of the match
 	MatcherStatus bool `json:"matcher-status"`
 	// LineCount is the line count for the specified match
-	LineCount string `json:"line-count"`
+	LineCount []int `json:"matched-line"`
 
 	FileToIndexPosition map[string]int `json:"-"`
 }

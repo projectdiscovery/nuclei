@@ -88,6 +88,6 @@ eeee
 RequestDataTooBig
 dd
 RequestDataTooBig3
-SuspiciousOperation`, []string{"SuspiciousOperation", "RequestDataTooBig"})
+SuspiciousOperation`, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
 	require.ElementsMatch(t, []int{4, 7, 9, 10}, lines, "could not calculate correct lines")
 }

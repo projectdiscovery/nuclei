@@ -104,6 +104,12 @@ type Matcher struct {
 	//   - false
 	//   - true
 	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
+	// description: |
+	//   MatchAll enables matching for all matcher values. Default is false.
+	// values:
+	//   - false
+	//   - true
+	MatchAll bool `yaml:"match-all,omitempty" jsonschema:"title=match all values,description=match all matcher values ignoring condition"`
 
 	// cached data for the compiled matcher
 	condition     ConditionType

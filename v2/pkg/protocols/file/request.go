@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -98,21 +97,6 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 	}
 }
 
-// approximateLineFromOperatorMatch returns approximate line count from match
-func approximateLineFromOperatorMatch(words []string, contents string) string {
-	lines := calculateLineFunc(contents, words)
-
-	var buf strings.Builder
-
-	for i, line := range lines {
-		buf.WriteString(strconv.Itoa(line))
-		if i != len(lines)-1 {
-			buf.WriteString(",")
-		}
-	}
-	return buf.String()
-}
-
 func getAllStringSubmatchIndex(content string, word string) []int {
 	indexes := []int{}
 
@@ -128,10 +112,10 @@ func getAllStringSubmatchIndex(content string, word string) []int {
 	return indexes
 }
 
-func calculateLineFunc(contents string, words []string) []int {
+func calculateLineFunc(contents string, words map[string]struct{}) []int {
 	var lines []int
 
-	for _, word := range words {
+	for word := range words {
 		matches := getAllStringSubmatchIndex(contents, word)
 
 		for _, index := range matches {
