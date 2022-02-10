@@ -300,6 +300,11 @@
           "type": "boolean",
           "title": "use case insensitive match",
           "description": "use case insensitive match"
+        },
+        "match-all": {
+          "type": "boolean",
+          "title": "match all values",
+          "description": "match all matcher values ignoring condition"
         }
       },
       "additionalProperties": false,
