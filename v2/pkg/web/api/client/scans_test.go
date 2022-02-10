@@ -36,7 +36,7 @@ func TestScans(t *testing.T) {
 		err := svc.UpdateScan(scanID, UpdateScanRequest{
 			Stop: false,
 		})
-		require.NoError(t, err, "could not add scan")
+		require.NoError(t, err, "could not update scan")
 	})
 	t.Run("DeleteScan", func(t *testing.T) {
 		err := svc.DeleteScan(scanID)
