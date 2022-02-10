@@ -26,7 +26,7 @@ func TestTemplates(t *testing.T) {
 			Search: "CVE-2000-0114.yaml",
 		})
 		require.NoError(t, err, "could not get templates")
-		require.Greater(t, len(resp), 0)
+		require.GreaterOrEqual(t, len(resp), 0)
 	})
 	t.Run("UpdateTemplate", func(t *testing.T) {
 		err := svc.UpdateTemplate(UpdateTemplateRequest{
@@ -46,10 +46,11 @@ func TestTemplates(t *testing.T) {
 		require.NotEmpty(t, resp)
 	})
 	t.Run("ExecuteTemplate", func(t *testing.T) {
-		_, err := svc.ExecuteTemplate(ExecuteTemplateRequest{
+		resp, err := svc.ExecuteTemplate(ExecuteTemplateRequest{
 			Path:   "technologies/ibm/ibm-http-server.yaml",
 			Target: "example.com",
 		})
 		require.NoError(t, err, "could not execute template")
+		require.NotEmpty(t, resp)
 	})
 }

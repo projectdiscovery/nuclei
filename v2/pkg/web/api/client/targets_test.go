@@ -26,7 +26,7 @@ func TestTarget(t *testing.T) {
 		require.NoError(t, err, "could not add target")
 		require.Greater(t, resp, int64(0))
 	})
-	t.Run("GetTarget", func(t *testing.T) {
+	t.Run("GetTargets", func(t *testing.T) {
 		resp, err := svc.GetTargets(GetTargetsRequest{})
 		require.NoError(t, err, "could not get targets")
 		require.NotEmpty(t, resp)

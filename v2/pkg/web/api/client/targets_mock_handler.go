@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 type TargetsMockHandler struct {
@@ -51,17 +52,23 @@ func (m *TargetsMockHandler) UpdateTarget(ctx echo.Context) error {
 
 func (m *TargetsMockHandler) DeleteTarget(c echo.Context) error {
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
+	ioutil.WriteFile(filepath.Join(tempdir, "1"), []byte("example.com"), os.ModePerm)
 	defer os.RemoveAll(tempdir)
 	m.mockDb.EXPECT().DeleteTarget(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	m.mockDb.EXPECT().GetTarget(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetTargetRow{
+		Internalid: "1", Name: "test"}, nil)
 	target := targets.NewTargetsStorage(tempdir)
 	server := handlers.New(m.mockDb, target, nil)
 	return server.DeleteTarget(c)
 }
 
 func (m *TargetsMockHandler) GetTargetContents(c echo.Context) error {
-	response := make([]GetTargetsResponse, 0, 1)
-	response = append(response, GetTargetsResponse{ID: 1, Name: "test1"})
-	m.mockDb.EXPECT().GetTarget(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	server := handlers.New(m.mockDb, nil, nil)
+	tempdir, _ := ioutil.TempDir("", "test-dir-*")
+	ioutil.WriteFile(filepath.Join(tempdir, "1"), []byte("example.com"), os.ModePerm)
+	defer os.RemoveAll(tempdir)
+	m.mockDb.EXPECT().GetTarget(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetTargetRow{
+		Internalid: "1", Name: "test"}, nil)
+	target := targets.NewTargetsStorage(tempdir)
+	server := handlers.New(m.mockDb, target, nil)
 	return server.GetTargetContents(c)
 }

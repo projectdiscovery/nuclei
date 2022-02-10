@@ -35,11 +35,12 @@ func (m *SettingsMockHandler) SetSetting(c echo.Context) error {
 
 func (m *SettingsMockHandler) UpdateSettingByName(c echo.Context) error {
 	m.mockDb.EXPECT().UpdateSettings(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: `{"test":"test"}`, Datatype: "test"}, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.UpdateSettingByName(c)
 }
-func (m *SettingsMockHandler) GetSettingByName(c echo.Context) error {
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+func (m *SettingsMockHandler) GetSetting(c echo.Context) error {
+	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: `{"test":"test"}`, Datatype: "test"}, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetSettingByName(c)
 }

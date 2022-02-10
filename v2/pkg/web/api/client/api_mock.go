@@ -55,7 +55,7 @@ func NewMockHttpServer(t *testing.T) func() {
 	//settings
 	apiGroup.GET("/settings", handler.settings.GetSettings)
 	apiGroup.POST("/settings", handler.settings.SetSetting)
-	apiGroup.GET("/settings/:name", handler.settings.GetSettingByName)
+	apiGroup.GET("/settings/:name", handler.settings.GetSetting)
 	apiGroup.PUT("/settings/:name", handler.settings.UpdateSettingByName)
 	//scans
 	apiGroup.GET("/scans", handler.scans.GetScans)
