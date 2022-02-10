@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -68,8 +69,12 @@ func process() error {
 
 	dbInstance := database.Queries()
 
+	cwd, _ := os.Getwd()
+	_ = os.MkdirAll(path.Join(cwd, *datadir), os.ModePerm)
+	_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
+
 	targets := targets.NewTargetsStorage(*datadir)
-	scans := scans.NewScanService(*logsdir, 1, dbInstance, targets)
+	scans := scans.NewScanService(*logsdir, false, 1, dbInstance, targets)
 	defer scans.Close()
 
 	server := handlers.New(dbInstance, targets, scans)

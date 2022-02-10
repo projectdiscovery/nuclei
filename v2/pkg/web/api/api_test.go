@@ -43,7 +43,7 @@ func TestAPI(t *testing.T) {
 	dbInstance := database.Queries()
 
 	targets := targets.NewTargetsStorage(tempdir)
-	scans := scans.NewScanService(logsDir, 1, dbInstance, targets)
+	scans := scans.NewScanService(logsDir, false, 1, dbInstance, targets)
 	defer scans.Close()
 
 	server := handlers.New(dbInstance, targets, scans)

@@ -22,7 +22,7 @@ func TestInputProviderFromRequest(t *testing.T) {
 
 	targetsStorage := targets.NewTargetsStorage(tempdir)
 	querier := db.NewMockQuerier(ctrl)
-	s := NewScanService(tempdir, 1, querier, targetsStorage)
+	s := NewScanService(tempdir, true, 1, querier, targetsStorage)
 
 	t.Run("url", func(t *testing.T) {
 		provider, err := s.inputProviderFromRequest([]string{"https://uber.com"})
@@ -70,7 +70,7 @@ func TestStoreTemplatesFromRequest(t *testing.T) {
 
 	targetsStorage := targets.NewTargetsStorage(tempdir)
 	querier := db.NewMockQuerier(ctrl)
-	s := NewScanService(tempdir, 1, querier, targetsStorage)
+	s := NewScanService(tempdir, true, 1, querier, targetsStorage)
 
 	results := []dbsql.GetTemplatesForScanRow{
 		{Path: "cves/2021/test.yaml", Contents: "id: test"},

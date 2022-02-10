@@ -8,10 +8,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/scans"
@@ -41,7 +44,7 @@ func TestGetScanErrorsHandler(t *testing.T) {
 	require.Nil(t, err, "could not create temporary directory")
 	defer os.RemoveAll(tempDir)
 
-	scanService := scans.NewScanService(tempDir, 1, querier, nil)
+	scanService := scans.NewScanService(tempDir, true, 1, querier, nil)
 	writer, err := scanService.Logs.Write(1)
 	require.NoError(t, err, "could not write scan error log")
 	_, _ = writer.Write([]byte("test\ndata"))
@@ -63,7 +66,7 @@ func TestGetScanProgressHandler(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	scanService := scans.NewScanService("", 1, nil, nil)
+	scanService := scans.NewScanService("", true, 1, nil, nil)
 	server := New(nil, nil, scanService)
 	scanService.Running.Store(int64(1), &scans.RunningScan{
 		ProgressFunc: scans.PercentReturnFunc(func() float64 {
@@ -80,6 +83,7 @@ func TestGetScanProgressHandler(t *testing.T) {
 
 func TestAddScanHandler(t *testing.T) {
 	_ = protocolinit.Init(types.DefaultOptions())
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -141,28 +145,22 @@ requests:
 		AddIssue(gomock.Any(), gomock.Any()).
 		Times(1).
 		Return(int64(1), nil)
+	querier.EXPECT().
+		UpdateScanState(gomock.Any(), gomock.Any()).
+		Times(2).
+		Return(nil)
 
 	tempDir, err := ioutil.TempDir("", "test-*")
 	require.Nil(t, err, "could not create temporary directory")
 	defer os.RemoveAll(tempDir)
 
 	targetsService := targets.NewTargetsStorage(tempDir)
-	scanService := scans.NewScanService(tempDir, 1, querier, targetsService)
+	scanService := scans.NewScanService(tempDir, true, 1, querier, targetsService)
 	server := New(querier, targetsService, scanService)
 
 	err = server.AddScan(c)
 	require.NoError(t, err, "could not add scan")
 	require.Equal(t, http.StatusOK, rec.Result().StatusCode, "could not get correct status code")
 
-	scanID := <-server.scans.Finished // wait for a finished scan
-
-	t.Run("error-logs", func(t *testing.T) {
-		logs, err := scanService.Logs.Read(scanID)
-		require.NoError(t, err, "could not read scan logs")
-
-		data, _ := ioutil.ReadAll(logs)
-		logs.Close()
-
-		require.NotEmpty(t, string(data), "could not get scan error logs")
-	})
+	time.Sleep(5 * time.Second)
 }
