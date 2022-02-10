@@ -599,7 +599,7 @@ func init() {
 			FieldName: "matchers",
 		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 14)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
 	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
@@ -699,6 +699,15 @@ func init() {
 	MATCHERSMatcherDoc.Fields[12].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
 	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
 	MATCHERSMatcherDoc.Fields[12].Values = []string{
+		"false",
+		"true",
+	}
+	MATCHERSMatcherDoc.Fields[13].Name = "match-all"
+	MATCHERSMatcherDoc.Fields[13].Type = "bool"
+	MATCHERSMatcherDoc.Fields[13].Note = ""
+	MATCHERSMatcherDoc.Fields[13].Description = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Values = []string{
 		"false",
 		"true",
 	}

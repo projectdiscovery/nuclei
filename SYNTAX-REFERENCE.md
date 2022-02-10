@@ -1694,6 +1694,26 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>match-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+MatchAll enables matching for all matcher values. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
