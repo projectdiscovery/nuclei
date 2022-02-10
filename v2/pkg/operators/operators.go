@@ -77,6 +77,9 @@ type Result struct {
 	DynamicValues map[string][]string
 	// PayloadValues contains payload values provided by user. (Optional)
 	PayloadValues map[string]interface{}
+
+	// Optional lineCounts for file protocol
+	LineCount string
 }
 
 // MakeDynamicValuesCallback takes an input dynamic values map and calls

@@ -94,6 +94,24 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 		return results
 	}
 
+	for _, result := range results {
+		lineWords := make(map[string]struct{})
+
+		if wrapped.OperatorsResult != nil {
+			for _, value := range wrapped.OperatorsResult.Matches {
+				for _, v := range value {
+					lineWords[v] = struct{}{}
+				}
+			}
+		}
+		if len(result.ExtractedResults) > 0 {
+			for _, v := range result.ExtractedResults {
+				lineWords[v] = struct{}{}
+			}
+		}
+		result.LineCount = calculateLineFunc(rawStr, lineWords)
+	}
+
 	// Identify the position of match in file using a dirty hack.
 	for _, result := range results {
 		for _, extraction := range result.ExtractedResults {
