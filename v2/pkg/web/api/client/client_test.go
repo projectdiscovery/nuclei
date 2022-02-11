@@ -3,6 +3,7 @@ package client
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client/mocks"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,7 +12,7 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, client)
 }
 func TestClient(t *testing.T) {
-	setup := NewMockHttpServer(t)
+	setup := mocks.NewMockHttpServer(t)
 	defer setup()
 
 	client := New(WithBasicAuth("user", "pass"))

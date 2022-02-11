@@ -6,11 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTarget(t *testing.T) {
-	setup := NewMockHttpServer(t)
+	setup := mocks.NewMockHttpServer(t)
 	defer setup()
 	client := New(WithBasicAuth("user", "pass"))
 	svc := TargetsService{Client: client}

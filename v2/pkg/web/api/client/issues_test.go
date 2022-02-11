@@ -3,11 +3,12 @@ package client
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestIssues(t *testing.T) {
-	setup := NewMockHttpServer(t)
+	setup := mocks.NewMockHttpServer(t)
 	defer setup()
 	client := New(WithBasicAuth("user", "pass"))
 	svc := IssuesService{Client: client}

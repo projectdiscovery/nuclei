@@ -1,14 +1,14 @@
 package client
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestScans(t *testing.T) {
-	setup := NewMockHttpServer(t)
+	setup := mocks.NewMockHttpServer(t)
 	defer setup()
 	client := New(WithBasicAuth("user", "pass"))
 	svc := ScansService{Client: client}
@@ -29,8 +29,8 @@ func TestScans(t *testing.T) {
 		resp, err := svc.GetScans(GetScansRequest{
 			Search: "scans.txt",
 		})
-		fmt.Println(resp)
 		require.NoError(t, err, "could not get scans")
+		require.Greater(t, len(resp), 0)
 	})
 	t.Run("UpdateScan", func(t *testing.T) {
 		err := svc.UpdateScan(scanID, UpdateScanRequest{
