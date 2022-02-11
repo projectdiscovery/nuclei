@@ -1,11 +1,12 @@
-package client
+package mocks
 
 import (
 	"context"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
-	"testing"
 )
 
 type MockApiHandler struct {

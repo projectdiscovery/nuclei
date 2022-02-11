@@ -1,7 +1,11 @@
-package client
+package mocks
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/golang/mock/gomock"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/labstack/echo/v4"
@@ -10,9 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 type ScanMockHandler struct {
@@ -25,8 +26,7 @@ func NewScanMockHandler(mockParam *db.MockQuerier) ScanMockHandler {
 }
 
 func (m *ScanMockHandler) GetScans(c echo.Context) error {
-	var r1 = []dbsql.Scan{dbsql.Scan{ID: 1, Name: "test1"}}
-	//	m.mockDb.EXPECT().GetScans(gomock.Any()).Times(1).Return(r1, nil)
+	var r1 = []dbsql.Scan{{ID: 1, Name: "test1"}}
 	m.mockDb.EXPECT().GetScansBySearchKey(gomock.Any(), gomock.Any()).Times(1).Return(r1, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetScans(c)
@@ -115,9 +115,13 @@ func (m *ScanMockHandler) GetScanMatches(c echo.Context) error {
 
 }
 
+type GetScanErrorsTestResponse struct {
+	ID int64
+}
+
 func (m *ScanMockHandler) GetScanErrors(c echo.Context) error {
 	bf := new(bytes.Buffer)
-	jsoniter.NewEncoder(bf).Encode([]GetScanErrorsResponse{{ID: 1}, {ID: 2}})
+	jsoniter.NewEncoder(bf).Encode([]GetScanErrorsTestResponse{{ID: 1}, {ID: 2}})
 	scanID := c.Param("id")
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
 	ioutil.WriteFile(filepath.Join(tempdir, scanID), bf.Bytes(), os.ModePerm)

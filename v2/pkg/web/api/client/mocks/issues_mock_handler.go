@@ -1,4 +1,4 @@
-package client
+package mocks
 
 import (
 	"github.com/golang/mock/gomock"
@@ -17,7 +17,7 @@ func NewIssuesMockHandler(mockParam *db.MockQuerier) IssuesMockHandler {
 	return handler
 }
 func (m *IssuesMockHandler) GetIssues(c echo.Context) error {
-	var r = []dbsql.GetIssuesRow{dbsql.GetIssuesRow{ID: 1}}
+	var r = []dbsql.GetIssuesRow{{ID: 1}}
 	m.mockDb.EXPECT().GetIssues(gomock.Any()).Times(1).Return(r, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetIssues(c)

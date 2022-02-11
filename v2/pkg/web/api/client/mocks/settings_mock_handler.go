@@ -1,4 +1,4 @@
-package client
+package mocks
 
 import (
 	"github.com/golang/mock/gomock"
@@ -17,9 +17,7 @@ func NewSettingsMockHandler(mockParam *db.MockQuerier) SettingsMockHandler {
 	return handler
 }
 func (m *SettingsMockHandler) GetSettings(ctx echo.Context) error {
-	var r = []dbsql.Setting{dbsql.Setting{Name: "test1"}}
-	response := make([]GetSettingsResponse, 0, 1)
-	response = append(response, GetSettingsResponse{Name: "test1"})
+	var r = []dbsql.Setting{{Name: "test1"}}
 	m.mockDb.EXPECT().GetSettings(gomock.Any()).Times(1).Return(r, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetSettings(ctx)

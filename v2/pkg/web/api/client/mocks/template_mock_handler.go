@@ -1,4 +1,4 @@
-package client
+package mocks
 
 import (
 	"github.com/golang/mock/gomock"

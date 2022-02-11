@@ -1,15 +1,16 @@
-package client
+package mocks
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 type TargetsMockHandler struct {
@@ -23,7 +24,7 @@ func NewTargetsMockHandler(mockParam *db.MockQuerier) TargetsMockHandler {
 func (m *TargetsMockHandler) GetTargets(ctx echo.Context) error {
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
 	defer os.RemoveAll(tempdir)
-	var r = []dbsql.GetTargetsRow{dbsql.GetTargetsRow{ID: 1, Name: "test1"}}
+	var r = []dbsql.GetTargetsRow{{ID: 1, Name: "test1"}}
 	m.mockDb.EXPECT().GetTargets(gomock.Any()).Times(1).Return(r, nil)
 	target := targets.NewTargetsStorage(tempdir)
 	server := handlers.New(m.mockDb, target, nil)
