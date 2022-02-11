@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -15,12 +14,12 @@ func TestTarget(t *testing.T) {
 	defer setup()
 	client := New(WithBasicAuth("user", "pass"))
 	svc := TargetsService{Client: client}
-	reader := strings.NewReader("example")
+	reader := strings.NewReader("example.com")
 	var targetID int64 = 1
 	t.Run("AddTarget", func(t *testing.T) {
 		resp, err := svc.AddTarget(AddTargetRequest{
 			Name:     "targets",
-			Path:     "example.yaml",
+			Path:     "test",
 			Contents: reader,
 		})
 		targetID = resp
@@ -39,10 +38,11 @@ func TestTarget(t *testing.T) {
 		require.NotEmpty(t, string(content))
 	})
 	t.Run("UpdateTarget", func(t *testing.T) {
+		newReader := strings.NewReader("test.com")
+
 		err := svc.UpdateTarget(UpdateTargetRequest{
 			ID:       targetID,
-			TargetID: fmt.Sprint(targetID),
-			Contents: reader,
+			Contents: newReader,
 		})
 		require.NoError(t, err, "could not update target")
 	})

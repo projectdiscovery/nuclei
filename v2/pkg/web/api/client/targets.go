@@ -144,7 +144,6 @@ func (c *TargetsService) AddTarget(req AddTargetRequest) (int64, error) {
 // UpdateTargetRequest is a request for target update
 type UpdateTargetRequest struct {
 	ID       int64
-	TargetID string
 	Contents io.Reader
 }
 
@@ -153,7 +152,6 @@ func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, req.ID)
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("id", req.TargetID)
 	fileWriter, err := writer.CreateFormFile("contents", "contents.txt")
 	if err != nil {
 		return errors.Wrap(err, "could not create form file")

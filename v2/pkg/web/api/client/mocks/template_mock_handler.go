@@ -53,25 +53,26 @@ func (m *TemplateMockHandler) GetTemplatesRaw(c echo.Context) error {
 	return server.GetTemplatesRaw(c)
 }
 
-func (m *TemplateMockHandler) ExecuteTemplate(c echo.Context) error {
-	const testTemplate = `
-id: test-template
+const templateContents = `id: basic-example
 info:
-  name: test-template
+  name: Test HTTP Template
   author: pdteam
   severity: info
-network:
-  - host: 
-      - "{{Hostname}}"
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
     matchers:
       - type: word
         words:
-          - "test"
-        part: raw`
+          - "Example Domain"`
+
+func (m *TemplateMockHandler) ExecuteTemplate(c echo.Context) error {
 	m.mockDb.EXPECT().
 		GetTemplateContents(gomock.Any(), gomock.Any()).
 		Times(1).
-		Return(testTemplate, nil)
+		Return(templateContents, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.ExecuteTemplate(c)
 }

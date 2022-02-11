@@ -45,8 +45,13 @@ func (m *TargetsMockHandler) AddTarget(ctx echo.Context) error {
 func (m *TargetsMockHandler) UpdateTarget(ctx echo.Context) error {
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
 	defer os.RemoveAll(tempdir)
-	m.mockDb.EXPECT().UpdateTargetMetadata(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+
 	target := targets.NewTargetsStorage(tempdir)
+	writer, id, _ := target.Create()
+	_, _ = writer.Write([]byte("example.com"))
+
+	m.mockDb.EXPECT().GetTarget(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetTargetRow{Internalid: id}, nil)
+	m.mockDb.EXPECT().UpdateTargetMetadata(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	server := handlers.New(m.mockDb, target, nil)
 	return server.UpdateTarget(ctx)
 }

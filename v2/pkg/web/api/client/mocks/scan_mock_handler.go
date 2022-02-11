@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
 	scans2 "github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/scans"
+	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/web/db/dbsql"
@@ -27,7 +28,7 @@ func NewScanMockHandler(mockParam *db.MockQuerier) ScanMockHandler {
 
 func (m *ScanMockHandler) GetScans(c echo.Context) error {
 	var r1 = []dbsql.Scan{{ID: 1, Name: "test1"}}
-	m.mockDb.EXPECT().GetScansBySearchKey(gomock.Any(), gomock.Any()).Times(1).Return(r1, nil)
+	m.mockDb.EXPECT().GetScans(gomock.Any()).Times(1).Return(r1, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetScans(c)
 }
@@ -38,14 +39,12 @@ func (m *ScanMockHandler) AddScan(c echo.Context) error {
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService("", true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
-	var schedules = []dbsql.GetScansForScheduleRow{{Name: "test-scan", ID: 1}}
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{}, nil)
-	m.mockDb.EXPECT().GetScansForSchedule(gomock.Any(), gomock.Any()).Times(2).Return(schedules, nil)
-	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	m.mockDb.EXPECT().AddScan(gomock.Any(), gomock.Any()).
-		Times(1).
-		Return(int64(1), nil)
 
+	m.mockDb.EXPECT().AddScan(gomock.Any(), gomock.Any()).Times(1).Return(int64(1), nil)
+	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: settings.DefaultSettingsYAML, Datatype: "internal"}, nil)
+	m.mockDb.EXPECT().GetTemplatesForScan(gomock.Any(), gomock.Any()).Times(1).Return([]dbsql.GetTemplatesForScanRow{{Path: "http-add-scan-test.yaml", Contents: templateContents}}, nil)
+	m.mockDb.EXPECT().AddIssue(gomock.Any(), gomock.Any()).Times(1).Return(int64(1), nil)
+	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 	return server.AddScan(c)
 }
 
@@ -55,15 +54,11 @@ func (m *ScanMockHandler) GetScanProgress(c echo.Context) error {
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService("", true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
-	var schedules = []dbsql.GetScansForScheduleRow{{Name: "test-scan", ID: 1}}
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{}, nil)
-	m.mockDb.EXPECT().GetScansForSchedule(gomock.Any(), gomock.Any()).Times(2).Return(schedules, nil)
-	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	return server.GetScanProgress(c)
 }
 
 func (m *ScanMockHandler) GetScan(c echo.Context) error {
-	m.mockDb.EXPECT().GetScan(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	m.mockDb.EXPECT().GetScan(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.Scan{Name: "test"}, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetScan(c)
 }
@@ -74,9 +69,6 @@ func (m *ScanMockHandler) UpdateScan(c echo.Context) error {
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService("", true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
-	var schedules = []dbsql.GetScansForScheduleRow{{Name: "test-scan", ID: 1}}
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: `{"test":"test"}`, Datatype: "test"}, nil)
-	m.mockDb.EXPECT().GetScansForSchedule(gomock.Any(), gomock.Any()).Times(2).Return(schedules, nil)
 	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	return server.UpdateScan(c)
 }
@@ -94,17 +86,7 @@ func (m *ScanMockHandler) ExecuteScan(c echo.Context) error {
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService("", true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
-	r := dbsql.Scan{
-		ID:   1,
-		Name: "test-scan",
-	}
-	var schedules = []dbsql.GetScansForScheduleRow{{Name: "test-scan", ID: 1}}
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: `{"test":"test"}`, Datatype: "test"}, nil)
-	m.mockDb.EXPECT().GetScansForSchedule(gomock.Any(), gomock.Any()).Times(2).Return(schedules, nil)
-	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-	m.mockDb.EXPECT().GetScan(gomock.Any(), gomock.Any()).Times(1).Return(r, nil)
 	return server.ExecuteScan(c)
-
 }
 
 func (m *ScanMockHandler) GetScanMatches(c echo.Context) error {
@@ -129,9 +111,5 @@ func (m *ScanMockHandler) GetScanErrors(c echo.Context) error {
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService(tempdir, true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
-	var schedules = []dbsql.GetScansForScheduleRow{{Name: "test-scan", ID: 1}}
-	m.mockDb.EXPECT().GetSettingByName(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetSettingByNameRow{Settingdata: `{"test":"test"}`, Datatype: "test"}, nil)
-	m.mockDb.EXPECT().GetScansForSchedule(gomock.Any(), gomock.Any()).Times(2).Return(schedules, nil)
-	m.mockDb.EXPECT().UpdateScanState(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	return server.GetScanErrors(c)
 }

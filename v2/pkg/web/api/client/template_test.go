@@ -25,7 +25,6 @@ func TestTemplates(t *testing.T) {
 	t.Run("GetTemplates", func(t *testing.T) {
 		resp, err := svc.GetTemplates(GetTemplatesRequest{
 			Folder: "nuclei-templates",
-			Search: "CVE-2000-0114.yaml",
 		})
 		require.NoError(t, err, "could not get templates")
 		require.GreaterOrEqual(t, len(resp), 0)
