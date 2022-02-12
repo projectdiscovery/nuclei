@@ -1,10 +1,12 @@
 package client
 
-import "testing"
+import (
+	"testing"
 
-func TestClient(t *testing.T) {
+	"github.com/stretchr/testify/require"
+)
+
+func TestNew(t *testing.T) {
 	client := New(WithBasicAuth("user", "pass"))
-	client.Templates.GetTemplates(GetTemplatesRequest{
-		Search: "jira",
-	})
+	require.NotNil(t, client)
 }

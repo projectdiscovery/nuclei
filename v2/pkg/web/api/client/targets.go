@@ -144,17 +144,14 @@ func (c *TargetsService) AddTarget(req AddTargetRequest) (int64, error) {
 // UpdateTargetRequest is a request for target update
 type UpdateTargetRequest struct {
 	ID       int64
-	TargetID string
 	Contents io.Reader
 }
 
 // UpdateTemplate updates a target content by path
 func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	reqURL := fmt.Sprintf("%s/targets/%d", c.baseURL, req.ID)
-
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("id", req.TargetID)
 	fileWriter, err := writer.CreateFormFile("contents", "contents.txt")
 	if err != nil {
 		return errors.Wrap(err, "could not create form file")
@@ -162,7 +159,7 @@ func (c *TargetsService) UpdateTarget(req UpdateTargetRequest) error {
 	_, _ = io.Copy(fileWriter, req.Contents)
 	writer.Close()
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodPost, reqURL, &buf)
+	httpreq, err := retryablehttp.NewRequest(http.MethodPut, reqURL, &buf)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}

@@ -116,7 +116,7 @@ func (c *SettingsService) UpdateSetting(req UpdateSettingRequest) error {
 	var buf bytes.Buffer
 	_ = jsoniter.NewEncoder(&buf).Encode(req)
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodPost, reqURL, &buf)
+	httpreq, err := retryablehttp.NewRequest(http.MethodPut, reqURL, &buf)
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
