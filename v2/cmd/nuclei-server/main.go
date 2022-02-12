@@ -37,8 +37,8 @@ var (
 func main() {
 	flag.Parse()
 
-	_ = os.Mkdir(*datadir, 0600)
-	_ = os.Mkdir(*logsdir, 0600)
+	_ = os.Mkdir(*datadir, os.ModePerm)
+	_ = os.Mkdir(*logsdir, os.ModePerm)
 
 	if *json {
 		gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
