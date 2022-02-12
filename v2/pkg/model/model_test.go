@@ -45,11 +45,11 @@ func TestInfoYamlMarshal(t *testing.T) {
 
 	expected := `name: Test Template Name
 author:
-- forgedhallpass
-- ice3man
+    - forgedhallpass
+    - ice3man
 tags:
-- cve
-- misc
+    - cve
+    - misc
 description: Test description
 reference: reference1
 severity: high
