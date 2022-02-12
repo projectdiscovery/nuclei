@@ -11,14 +11,14 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/handlers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/services/scans"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/services/settings"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/services/targets"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/services/updater"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/db"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/handlers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/scans"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/settings"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/targets"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/services/updater"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/db"
 )
 
 var (

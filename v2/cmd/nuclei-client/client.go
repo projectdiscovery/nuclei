@@ -6,7 +6,7 @@ import (
 	"os"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/client"
 	"github.com/tidwall/pretty"
 	"github.com/urfave/cli/v2"
 )

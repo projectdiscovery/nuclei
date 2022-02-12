@@ -394,7 +394,7 @@ func formatInteractionMessage(key, value string) string {
 
 func hash(templateID, host string) string {
 	h := sha1.New()
-	h.Write([]byte(templateID))
-	h.Write([]byte(host))
+	_, _ = h.Write([]byte(templateID))
+	_, _ = h.Write([]byte(host))
 	return hex.EncodeToString(h.Sum(nil))
 }

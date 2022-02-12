@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/web/api/client"
+	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api/client"
 	"github.com/urfave/cli/v2"
 )
 
