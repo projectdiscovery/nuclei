@@ -35,9 +35,9 @@ func (m *ScanMockHandler) GetScans(c echo.Context) error {
 
 func (m *ScanMockHandler) AddScan(c echo.Context) error {
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
-	defer os.RemoveAll(tempdir)
+
 	targets := targets.NewTargetsStorage(tempdir)
-	scans := scans2.NewScanService("", true, 1, m.mockDb, targets)
+	scans := scans2.NewScanService(tempdir, true, 1, m.mockDb, targets)
 	server := handlers.New(m.mockDb, nil, scans)
 
 	m.mockDb.EXPECT().AddScan(gomock.Any(), gomock.Any()).Times(1).Return(int64(1), nil)
@@ -106,7 +106,7 @@ func (m *ScanMockHandler) GetScanErrors(c echo.Context) error {
 	_ = jsoniter.NewEncoder(bf).Encode([]GetScanErrorsTestResponse{{ID: 1}, {ID: 2}})
 	scanID := c.Param("id")
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
-	_ = ioutil.WriteFile(filepath.Join(tempdir, scanID), bf.Bytes(), os.ModePerm)
+	_ = ioutil.WriteFile(filepath.Join(tempdir, scanID+"-scan.log"), bf.Bytes(), os.ModePerm)
 	defer os.RemoveAll(tempdir)
 	targets := targets.NewTargetsStorage(tempdir)
 	scans := scans2.NewScanService(tempdir, true, 1, m.mockDb, targets)

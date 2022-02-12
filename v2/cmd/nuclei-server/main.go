@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/rest/api"
@@ -24,11 +25,13 @@ import (
 var (
 	datadir = flag.String("data-dir", "data", "Data directory for nuclei server")
 	logsdir = flag.String("logs-dir", "logs", "Logs directory for nuclei server")
+	json    = flag.Bool("json", false, "show json logs")
 
 	username = flag.String("user", "user", "Username for nuclei REST API")
 	password = flag.String("password", "pass", "Password for nuclei REST API")
 	host     = flag.String("host", "localhost", "Host to listen REST API on")
 	port     = flag.Int("port", 8822, "Port to listen REST API on")
+	dburl    = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
 )
 
 func main() {
@@ -37,7 +40,9 @@ func main() {
 	_ = os.Mkdir(*datadir, 0600)
 	_ = os.Mkdir(*logsdir, 0600)
 
-	//	gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
+	if *json {
+		gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
+	}
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 
 	_ = protocolinit.Init(testutils.DefaultOptions)
@@ -48,7 +53,7 @@ func main() {
 }
 
 func process() error {
-	database, err := db.New("postgres://postgres:mysecretpassword@localhost:5432/postgres")
+	database, err := db.New(*dburl)
 	if err != nil {
 		return errors.Wrap(err, "could not connect to db")
 	}

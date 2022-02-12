@@ -111,7 +111,7 @@ requests:
 	scanRequest := AddScanRequest{
 		Name:      "test-scan",
 		Templates: []string{"http-add-scan-test.yaml"},
-		Targets:   []string{"https://deadnxdomaintest.com", testserver.URL},
+		Targets:   []string{testserver.URL},
 		Config:    "default",
 		RunNow:    true,
 	}

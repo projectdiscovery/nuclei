@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -51,8 +52,14 @@ func (e *ErrorLogsService) Read(scanid int64) (io.ReadCloser, error) {
 	return file, err
 }
 
+const loggingFileSuffix = "-scan.log"
+
 func convertIDToString(scanid int64) string {
-	return strconv.FormatInt(scanid, 10)
+	var builder strings.Builder
+	builder.WriteString(strconv.FormatInt(scanid, 10))
+	builder.WriteString(loggingFileSuffix)
+	final := builder.String()
+	return final
 }
 
 func (e *ErrorLogsService) garbageCollect(ctx context.Context) {
