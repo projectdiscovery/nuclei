@@ -75,7 +75,9 @@ CREATE TABLE IF NOT EXISTS "public".issues (
 -- name: GetTemplates :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates;
+	"public".templates
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetTemplatesByFolder :many
 SELECT id, name, "path", createdat, updatedat, hash
@@ -90,7 +92,9 @@ FROM
 -- name: GetTemplatesBySearchKey :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates WHERE path LIKE '%'||$1||'%';
+	"public".templates WHERE path LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: DeleteTemplate :exec
 DELETE FROM public.templates WHERE path=$1;
@@ -128,12 +132,16 @@ FROM
 -- name: GetTargets :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	public.targets;
+	public.targets
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetTargetsForSearch :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%';
+	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: UpdateTargetMetadata :exec
 UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;
@@ -155,7 +163,9 @@ FROM
 SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
 	scheduletime, id
 FROM
-	"public".scans;
+	"public".scans
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetScansForSchedule :many
 SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, 
@@ -194,12 +204,23 @@ FROM
 -- name: GetIssues :many
 SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
 FROM
-	"public".issues;
+	"public".issues
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
+
+-- name: GetIssuesByScanID :many
+SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
+FROM
+	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetIssuesMatches :many
 SELECT id, matchedat, templatename, severity, author
 FROM
-	"public".issues WHERE scanid=$1;
+	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: UpdateIssue :exec
 UPDATE "public".issues SET issuestate=$2 WHERE id=$1 ;

@@ -25,7 +25,7 @@ func (m *TargetsMockHandler) GetTargets(ctx echo.Context) error {
 	tempdir, _ := ioutil.TempDir("", "test-dir-*")
 	defer os.RemoveAll(tempdir)
 	var r = []dbsql.GetTargetsRow{{ID: 1, Name: "test1"}}
-	m.mockDb.EXPECT().GetTargets(gomock.Any()).Times(1).Return(r, nil)
+	m.mockDb.EXPECT().GetTargets(gomock.Any(), gomock.Any()).Times(1).Return(r, nil)
 	target := targets.NewTargetsStorage(tempdir)
 	server := handlers.New(m.mockDb, target, nil)
 	return server.GetTargets(ctx)

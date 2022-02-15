@@ -37,9 +37,6 @@ var (
 func main() {
 	flag.Parse()
 
-	_ = os.Mkdir(*datadir, 0600)
-	_ = os.Mkdir(*logsdir, 0600)
-
 	if *json {
 		gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
 	}
@@ -74,9 +71,14 @@ func process() error {
 
 	dbInstance := database.Queries()
 
-	cwd, _ := os.Getwd()
-	_ = os.MkdirAll(path.Join(cwd, *datadir), os.ModePerm)
-	_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
+	if *datadir == "" {
+		cwd, _ := os.Getwd()
+		_ = os.MkdirAll(path.Join(cwd, *datadir), os.ModePerm)
+		_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
+	} else {
+		_ = os.Mkdir(*datadir, os.ModePerm)
+		_ = os.Mkdir(*logsdir, os.ModePerm)
+	}
 
 	targets := targets.NewTargetsStorage(*datadir)
 	scans := scans.NewScanService(*logsdir, false, 1, dbInstance, targets)

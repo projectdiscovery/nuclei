@@ -87,7 +87,12 @@ type GetIssuesResponse struct {
 
 // GetIssues handlers /issues getting route
 func (s *Server) GetIssues(ctx echo.Context) error {
-	response, err := s.db.GetIssues(context.Background())
+	page, size := paginationDataFromContext(ctx)
+
+	response, err := s.db.GetIssues(context.Background(), dbsql.GetIssuesParams{
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get issues fromdb").Error())
 	}

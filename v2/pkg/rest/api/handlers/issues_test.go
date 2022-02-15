@@ -51,7 +51,7 @@ func TestGetIssuesHandler(t *testing.T) {
 
 	querier := db.NewMockQuerier(ctrl)
 	querier.EXPECT().
-		GetIssues(gomock.Any()).
+		GetIssues(gomock.Any(), gomock.Any()).
 		Times(1).
 		Return([]dbsql.GetIssuesRow{{ID: 1}}, nil)
 

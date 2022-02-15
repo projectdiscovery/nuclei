@@ -28,7 +28,7 @@ func NewScanMockHandler(mockParam *db.MockQuerier) ScanMockHandler {
 
 func (m *ScanMockHandler) GetScans(c echo.Context) error {
 	var r1 = []dbsql.Scan{{ID: 1, Name: "test1"}}
-	m.mockDb.EXPECT().GetScans(gomock.Any()).Times(1).Return(r1, nil)
+	m.mockDb.EXPECT().GetScans(gomock.Any(), gomock.Any()).Times(1).Return(r1, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetScans(c)
 }

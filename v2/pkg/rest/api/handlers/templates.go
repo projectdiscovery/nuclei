@@ -39,7 +39,12 @@ func (s *Server) GetTemplates(ctx echo.Context) error {
 
 // getTemplates handles getting templates
 func (s *Server) getTemplates(ctx echo.Context) error {
-	rows, err := s.db.GetTemplates(context.Background())
+	page, size := paginationDataFromContext(ctx)
+
+	rows, err := s.db.GetTemplates(context.Background(), dbsql.GetTemplatesParams{
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get templates from db").Error())
 	}
@@ -79,7 +84,13 @@ func (s *Server) getTemplatesWithFolder(ctx echo.Context, folder string) error {
 
 // getTemplatesWithSearchKey handles getting templates by a search key for path
 func (s *Server) getTemplatesWithSearchKey(ctx echo.Context, searchKey string) error {
-	rows, err := s.db.GetTemplatesBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
+	page, size := paginationDataFromContext(ctx)
+
+	rows, err := s.db.GetTemplatesBySearchKey(context.Background(), dbsql.GetTemplatesBySearchKeyParams{
+		Column1:   sql.NullString{String: searchKey, Valid: true},
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get templates from db").Error())
 	}

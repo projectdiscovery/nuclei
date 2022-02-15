@@ -18,7 +18,7 @@ func NewIssuesMockHandler(mockParam *db.MockQuerier) IssuesMockHandler {
 }
 func (m *IssuesMockHandler) GetIssues(c echo.Context) error {
 	var r = []dbsql.GetIssuesRow{{ID: 1}}
-	m.mockDb.EXPECT().GetIssues(gomock.Any()).Times(1).Return(r, nil)
+	m.mockDb.EXPECT().GetIssues(gomock.Any(), gomock.Any()).Times(1).Return(r, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetIssues(c)
 }

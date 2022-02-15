@@ -34,7 +34,12 @@ func (s *Server) GetTargets(ctx echo.Context) error {
 
 // getTargets returns targets list
 func (s *Server) getTargets(ctx echo.Context) error {
-	targets, err := s.db.GetTargets(context.Background())
+	page, size := paginationDataFromContext(ctx)
+
+	targets, err := s.db.GetTargets(context.Background(), dbsql.GetTargetsParams{
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db").Error())
 	}
@@ -55,7 +60,13 @@ func (s *Server) getTargets(ctx echo.Context) error {
 
 // getTargetsWithSearchKey returns targets for a search key
 func (s *Server) getTargetsWithSearchKey(ctx echo.Context, searchKey string) error {
-	targets, err := s.db.GetTargetsForSearch(context.Background(), sql.NullString{String: searchKey, Valid: true})
+	page, size := paginationDataFromContext(ctx)
+
+	targets, err := s.db.GetTargetsForSearch(context.Background(), dbsql.GetTargetsForSearchParams{
+		Column1:   sql.NullString{String: searchKey, Valid: true},
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db").Error())
 	}

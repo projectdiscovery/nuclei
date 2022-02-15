@@ -90,10 +90,16 @@ type GetScanResponse struct {
 func (s *Server) GetScans(ctx echo.Context) error {
 	var response []dbsql.Scan
 	var err error
+
+	page, size := paginationDataFromContext(ctx)
+
 	if searchKey := ctx.QueryParam("search"); searchKey != "" {
 		response, err = s.db.GetScansBySearchKey(context.Background(), sql.NullString{String: searchKey, Valid: true})
 	} else {
-		response, err = s.db.GetScans(context.Background())
+		response, err = s.db.GetScans(context.Background(), dbsql.GetScansParams{
+			SqlOffset: page,
+			SqlLimit:  size,
+		})
 	}
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scans from db").Error())
@@ -189,7 +195,13 @@ func (s *Server) GetScanMatches(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse scan id").Error())
 	}
-	rows, err := s.db.GetIssuesMatches(context.Background(), id)
+	page, size := paginationDataFromContext(ctx)
+
+	rows, err := s.db.GetIssuesMatches(context.Background(), dbsql.GetIssuesMatchesParams{
+		Scanid:    id,
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get scan matches from db").Error())
 	}
