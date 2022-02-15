@@ -16,6 +16,8 @@ var scans = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
 				&cli.StringFlag{Name: "search", Usage: "search key for the scans"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				if id := c.Int64("id"); id != 0 {
@@ -27,6 +29,8 @@ var scans = &cli.Command{
 				}
 				scans, err := nucleiClient.Scans.GetScans(client.GetScansRequest{
 					Search: c.String("search"),
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not get scans")
@@ -128,9 +132,15 @@ var scans = &cli.Command{
 			Usage: "matches for an existing scan",
 			Flags: []cli.Flag{
 				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
-				matches, err := nucleiClient.Scans.GetScanMatches(c.Int64("id"))
+				matches, err := nucleiClient.Scans.GetScanMatches(client.GetScanMatchesRequest{
+					ID:   c.Int64("id"),
+					Page: c.Int("page"),
+					Size: c.Int("size"),
+				})
 				if err != nil {
 					return errors.Wrap(err, "could not get scan matches")
 				}

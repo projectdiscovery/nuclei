@@ -10,7 +10,7 @@ import (
 func TestIssues(t *testing.T) {
 	setup := mocks.NewMockHttpServer(t)
 	defer setup()
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	svc := IssuesService{Client: client}
 	var issueID int64
 	t.Run("AddIssue", func(t *testing.T) {

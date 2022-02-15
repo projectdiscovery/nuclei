@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -27,11 +28,10 @@ var (
 	logsdir = flag.String("logs-dir", "logs", "Logs directory for nuclei server")
 	json    = flag.Bool("json", false, "show json logs")
 
-	username = flag.String("user", "user", "Username for nuclei REST API")
-	password = flag.String("password", "pass", "Password for nuclei REST API")
-	host     = flag.String("host", "localhost", "Host to listen REST API on")
-	port     = flag.Int("port", 8822, "Port to listen REST API on")
-	dburl    = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
+	token = flag.String("token", "", "Token for nuclei REST API")
+	host  = flag.String("host", "localhost", "Host to listen REST API on")
+	port  = flag.Int("port", 8822, "Port to listen REST API on")
+	dburl = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
 )
 
 func main() {
@@ -86,13 +86,18 @@ func process() error {
 
 	server := handlers.New(dbInstance, targets, scans)
 
+	authToken := *token
+	if authToken == "" {
+		authToken = uuid.NewString()
+	}
+	gologger.Info().Msgf("Using authentication token: %s", authToken)
+
 	api := api.New(&api.Config{
-		Userame:  *username,
-		Password: *password,
-		Host:     *host,
-		Port:     *port,
-		TLS:      false,
-		Server:   server,
+		Token:  authToken,
+		Host:   *host,
+		Port:   *port,
+		TLS:    false,
+		Server: server,
 	})
 	gologger.Info().Msgf("Listening on %s:%d", *host, *port)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), api.Echo())

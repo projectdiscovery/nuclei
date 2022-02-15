@@ -7,6 +7,6 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	require.NotNil(t, client)
 }

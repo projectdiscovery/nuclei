@@ -18,10 +18,14 @@ var targets = &cli.Command{
 			Usage: "returns list of targets",
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "search", Usage: "search key for the targets"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				targets, err := nucleiClient.Targets.GetTargets(client.GetTargetsRequest{
 					Search: c.String("search"),
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not get targets")

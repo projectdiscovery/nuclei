@@ -46,7 +46,7 @@ func (c *SettingsService) GetSettings() ([]GetSettingsResponse, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *SettingsService) AddSetting(req AddSettingRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -144,7 +144,7 @@ func (c *SettingsService) GetSetting(Name string) (GetSettingsResponse, error) {
 	if err != nil {
 		return GetSettingsResponse{}, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {

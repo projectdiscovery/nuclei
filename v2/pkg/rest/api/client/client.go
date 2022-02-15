@@ -14,21 +14,21 @@ type Client struct {
 	Scans     Scans
 	Issues    Issues
 
-	username string
-	password string
-	baseURL  string
+	token   string
+	baseURL string
 
 	httpclient *retryablehttp.Client
 }
 
+const HeaderAuthKey = "X-API-Token"
+
 // Option represents an options for the API Client
 type Option func(*Client)
 
-// WithBasicAuth returns a client with basic auth parameters set
-func WithBasicAuth(username, password string) Option {
+// WithToken returns a client with token auth parameters set
+func WithToken(token string) Option {
 	return func(c *Client) {
-		c.username = username
-		c.password = password
+		c.token = token
 	}
 }
 

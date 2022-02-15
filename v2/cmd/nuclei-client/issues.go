@@ -16,6 +16,8 @@ var issues = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "search", Usage: "value to search in issues"},
 				&cli.Int64Flag{Name: "id", Usage: "ID of the issue to retrieve"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				if id := c.Int64("id"); id != 0 {
@@ -26,7 +28,11 @@ var issues = &cli.Command{
 					return renderJSON(resp)
 				}
 				search := c.String("search")
-				response, err := nucleiClient.Issues.GetIssues(client.GetIssuesRequest{Search: search})
+				response, err := nucleiClient.Issues.GetIssues(client.GetIssuesRequest{
+					Search: search,
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
+				})
 				if err != nil {
 					return errors.Wrap(err, "could not get issues")
 				}

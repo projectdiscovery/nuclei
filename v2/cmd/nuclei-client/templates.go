@@ -19,6 +19,8 @@ var templates = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "search", Usage: "value to search in templates"},
 				&cli.StringFlag{Name: "folder", Usage: "folder to search in templates"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				search := c.String("search")
@@ -26,6 +28,8 @@ var templates = &cli.Command{
 				response, err := nucleiClient.Templates.GetTemplates(client.GetTemplatesRequest{
 					Search: search,
 					Folder: folder,
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not get templates")

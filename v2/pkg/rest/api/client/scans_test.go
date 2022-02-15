@@ -15,7 +15,7 @@ import (
 func TestScans(t *testing.T) {
 	setup := mocks.NewMockHttpServer(t)
 	defer setup()
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	svc := ScansService{Client: client}
 	var scanID int64 = 0
 	t.Run("AddScan", func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestScans(t *testing.T) {
 		require.GreaterOrEqual(t, len(resp.Name), 0)
 	})
 	t.Run("GetScanMatches", func(t *testing.T) {
-		resp, err := svc.GetScanMatches(scanID)
+		resp, err := svc.GetScanMatches(GetScanMatchesRequest{ID: scanID})
 		require.NoError(t, err, "could not get scan matches")
 		require.GreaterOrEqual(t, len(resp), 0)
 	})
