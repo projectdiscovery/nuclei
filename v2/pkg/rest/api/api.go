@@ -134,7 +134,6 @@ func HeaderAuthenticator(token string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			auth := c.Request().Header.Get(HeaderAuthKey)
-			fmt.Printf("%v auth token %v\n", auth, token)
 			if auth == token {
 				return next(c)
 			}
