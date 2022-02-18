@@ -50,8 +50,8 @@ var issues = &cli.Command{
 			Name:  "update",
 			Usage: "update an existing issue",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "state", Usage: "updated state of the issue"},
-				&cli.Int64Flag{Name: "id", Usage: "ID of the issue"},
+				&cli.StringFlag{Name: "state", Usage: "updated state of the issue", Required: true},
+				&cli.Int64Flag{Name: "id", Usage: "ID of the issue", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Issues.UpdateIssue(c.Int64("id"), client.UpdateIssueRequest{
@@ -67,7 +67,7 @@ var issues = &cli.Command{
 			Name:  "delete",
 			Usage: "delete an existing issue",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "ID of the issue"},
+				&cli.Int64Flag{Name: "id", Usage: "ID of the issue", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Issues.DeleteIssue(c.Int64("id"))

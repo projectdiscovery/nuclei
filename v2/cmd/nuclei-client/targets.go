@@ -37,9 +37,9 @@ var targets = &cli.Command{
 			Name:  "add",
 			Usage: "add a new target",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path of the target"},
-				&cli.StringFlag{Name: "name", Usage: "name of the target"},
-				&cli.StringFlag{Name: "filepath", Usage: "filepath of the target list"},
+				&cli.StringFlag{Name: "path", Usage: "path of the target", Required: true},
+				&cli.StringFlag{Name: "name", Usage: "name of the target", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "filepath of the target list", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				file, err := os.Open(c.String("filepath"))
@@ -64,8 +64,8 @@ var targets = &cli.Command{
 			Name:  "update",
 			Usage: "update an existing target",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the target"},
-				&cli.StringFlag{Name: "filepath", Usage: "filepath of the target list"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the target", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "filepath of the target list", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				file, err := os.Open(c.String("filepath"))
@@ -88,7 +88,7 @@ var targets = &cli.Command{
 			Name:  "delete",
 			Usage: "delete an existing target",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the target"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the target", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Targets.DeleteTarget(c.Int64("id"))
@@ -102,7 +102,7 @@ var targets = &cli.Command{
 			Name:  "contents",
 			Usage: "contents for an existing target",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the target"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the target", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				contents, err := nucleiClient.Targets.GetTargetContents(c.Int64("id"))

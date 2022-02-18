@@ -95,6 +95,9 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents").Error())
 	}
+	if targetContents.Size == 0 {
+		return echo.NewHTTPError(500, errors.New("blank target file provided").Error())
+	}
 	file, err := targetContents.Open()
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not open file contents").Error())
@@ -140,6 +143,9 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents").Error())
+	}
+	if targetContents.Size == 0 {
+		return echo.NewHTTPError(500, errors.New("blank target file provided").Error())
 	}
 	file, err := targetContents.Open()
 	if err != nil {
