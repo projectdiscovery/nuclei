@@ -167,10 +167,10 @@ func (mr *MockQuerierMockRecorder) DeleteTemplate(ctx, path interface{}) *gomock
 }
 
 // GetIssue mocks base method.
-func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.GetIssueRow, error) {
+func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIssue", ctx, id)
-	ret0, _ := ret[0].(dbsql.GetIssueRow)
+	ret0, _ := ret[0].(dbsql.Issue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -182,33 +182,48 @@ func (mr *MockQuerierMockRecorder) GetIssue(ctx, id interface{}) *gomock.Call {
 }
 
 // GetIssues mocks base method.
-func (m *MockQuerier) GetIssues(ctx context.Context) ([]dbsql.GetIssuesRow, error) {
+func (m *MockQuerier) GetIssues(ctx context.Context, arg dbsql.GetIssuesParams) ([]dbsql.GetIssuesRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIssues", ctx)
+	ret := m.ctrl.Call(m, "GetIssues", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetIssuesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetIssues indicates an expected call of GetIssues.
-func (mr *MockQuerierMockRecorder) GetIssues(ctx interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetIssues(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssues", reflect.TypeOf((*MockQuerier)(nil).GetIssues), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssues", reflect.TypeOf((*MockQuerier)(nil).GetIssues), ctx, arg)
+}
+
+// GetIssuesByScanID mocks base method.
+func (m *MockQuerier) GetIssuesByScanID(ctx context.Context, arg dbsql.GetIssuesByScanIDParams) ([]dbsql.GetIssuesByScanIDRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIssuesByScanID", ctx, arg)
+	ret0, _ := ret[0].([]dbsql.GetIssuesByScanIDRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIssuesByScanID indicates an expected call of GetIssuesByScanID.
+func (mr *MockQuerierMockRecorder) GetIssuesByScanID(ctx, arg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssuesByScanID", reflect.TypeOf((*MockQuerier)(nil).GetIssuesByScanID), ctx, arg)
 }
 
 // GetIssuesMatches mocks base method.
-func (m *MockQuerier) GetIssuesMatches(ctx context.Context, scanid int64) ([]dbsql.GetIssuesMatchesRow, error) {
+func (m *MockQuerier) GetIssuesMatches(ctx context.Context, arg dbsql.GetIssuesMatchesParams) ([]dbsql.GetIssuesMatchesRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIssuesMatches", ctx, scanid)
+	ret := m.ctrl.Call(m, "GetIssuesMatches", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetIssuesMatchesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetIssuesMatches indicates an expected call of GetIssuesMatches.
-func (mr *MockQuerierMockRecorder) GetIssuesMatches(ctx, scanid interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetIssuesMatches(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssuesMatches", reflect.TypeOf((*MockQuerier)(nil).GetIssuesMatches), ctx, scanid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssuesMatches", reflect.TypeOf((*MockQuerier)(nil).GetIssuesMatches), ctx, arg)
 }
 
 // GetScan mocks base method.
@@ -227,18 +242,18 @@ func (mr *MockQuerierMockRecorder) GetScan(ctx, id interface{}) *gomock.Call {
 }
 
 // GetScans mocks base method.
-func (m *MockQuerier) GetScans(ctx context.Context) ([]dbsql.Scan, error) {
+func (m *MockQuerier) GetScans(ctx context.Context, arg dbsql.GetScansParams) ([]dbsql.Scan, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetScans", ctx)
+	ret := m.ctrl.Call(m, "GetScans", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.Scan)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetScans indicates an expected call of GetScans.
-func (mr *MockQuerierMockRecorder) GetScans(ctx interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetScans(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScans", reflect.TypeOf((*MockQuerier)(nil).GetScans), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetScans", reflect.TypeOf((*MockQuerier)(nil).GetScans), ctx, arg)
 }
 
 // GetScansBySearchKey mocks base method.
@@ -332,33 +347,33 @@ func (mr *MockQuerierMockRecorder) GetTargetByName(ctx, name interface{}) *gomoc
 }
 
 // GetTargets mocks base method.
-func (m *MockQuerier) GetTargets(ctx context.Context) ([]dbsql.GetTargetsRow, error) {
+func (m *MockQuerier) GetTargets(ctx context.Context, arg dbsql.GetTargetsParams) ([]dbsql.GetTargetsRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTargets", ctx)
+	ret := m.ctrl.Call(m, "GetTargets", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetTargetsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTargets indicates an expected call of GetTargets.
-func (mr *MockQuerierMockRecorder) GetTargets(ctx interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetTargets(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTargets", reflect.TypeOf((*MockQuerier)(nil).GetTargets), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTargets", reflect.TypeOf((*MockQuerier)(nil).GetTargets), ctx, arg)
 }
 
 // GetTargetsForSearch mocks base method.
-func (m *MockQuerier) GetTargetsForSearch(ctx context.Context, dollar_1 sql.NullString) ([]dbsql.GetTargetsForSearchRow, error) {
+func (m *MockQuerier) GetTargetsForSearch(ctx context.Context, arg dbsql.GetTargetsForSearchParams) ([]dbsql.GetTargetsForSearchRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTargetsForSearch", ctx, dollar_1)
+	ret := m.ctrl.Call(m, "GetTargetsForSearch", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetTargetsForSearchRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTargetsForSearch indicates an expected call of GetTargetsForSearch.
-func (mr *MockQuerierMockRecorder) GetTargetsForSearch(ctx, dollar_1 interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetTargetsForSearch(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTargetsForSearch", reflect.TypeOf((*MockQuerier)(nil).GetTargetsForSearch), ctx, dollar_1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTargetsForSearch", reflect.TypeOf((*MockQuerier)(nil).GetTargetsForSearch), ctx, arg)
 }
 
 // GetTemplateContents mocks base method.
@@ -377,18 +392,18 @@ func (mr *MockQuerierMockRecorder) GetTemplateContents(ctx, path interface{}) *g
 }
 
 // GetTemplates mocks base method.
-func (m *MockQuerier) GetTemplates(ctx context.Context) ([]dbsql.GetTemplatesRow, error) {
+func (m *MockQuerier) GetTemplates(ctx context.Context, arg dbsql.GetTemplatesParams) ([]dbsql.GetTemplatesRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTemplates", ctx)
+	ret := m.ctrl.Call(m, "GetTemplates", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetTemplatesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTemplates indicates an expected call of GetTemplates.
-func (mr *MockQuerierMockRecorder) GetTemplates(ctx interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetTemplates(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplates", reflect.TypeOf((*MockQuerier)(nil).GetTemplates), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplates", reflect.TypeOf((*MockQuerier)(nil).GetTemplates), ctx, arg)
 }
 
 // GetTemplatesByFolder mocks base method.
@@ -422,18 +437,18 @@ func (mr *MockQuerierMockRecorder) GetTemplatesByFolderOne(ctx, folder interface
 }
 
 // GetTemplatesBySearchKey mocks base method.
-func (m *MockQuerier) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]dbsql.GetTemplatesBySearchKeyRow, error) {
+func (m *MockQuerier) GetTemplatesBySearchKey(ctx context.Context, arg dbsql.GetTemplatesBySearchKeyParams) ([]dbsql.GetTemplatesBySearchKeyRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTemplatesBySearchKey", ctx, dollar_1)
+	ret := m.ctrl.Call(m, "GetTemplatesBySearchKey", ctx, arg)
 	ret0, _ := ret[0].([]dbsql.GetTemplatesBySearchKeyRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTemplatesBySearchKey indicates an expected call of GetTemplatesBySearchKey.
-func (mr *MockQuerierMockRecorder) GetTemplatesBySearchKey(ctx, dollar_1 interface{}) *gomock.Call {
+func (mr *MockQuerierMockRecorder) GetTemplatesBySearchKey(ctx, arg interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplatesBySearchKey", reflect.TypeOf((*MockQuerier)(nil).GetTemplatesBySearchKey), ctx, dollar_1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplatesBySearchKey", reflect.TypeOf((*MockQuerier)(nil).GetTemplatesBySearchKey), ctx, arg)
 }
 
 // GetTemplatesForScan mocks base method.
@@ -449,6 +464,35 @@ func (m *MockQuerier) GetTemplatesForScan(ctx context.Context, folder string) ([
 func (mr *MockQuerierMockRecorder) GetTemplatesForScan(ctx, folder interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplatesForScan", reflect.TypeOf((*MockQuerier)(nil).GetTemplatesForScan), ctx, folder)
+}
+
+// GetVersion mocks base method.
+func (m *MockQuerier) GetVersion(ctx context.Context) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVersion", ctx)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVersion indicates an expected call of GetVersion.
+func (mr *MockQuerierMockRecorder) GetVersion(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersion", reflect.TypeOf((*MockQuerier)(nil).GetVersion), ctx)
+}
+
+// InsertOrUpdateVersion mocks base method.
+func (m *MockQuerier) InsertOrUpdateVersion(ctx context.Context, templates string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertOrUpdateVersion", ctx, templates)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertOrUpdateVersion indicates an expected call of InsertOrUpdateVersion.
+func (mr *MockQuerierMockRecorder) InsertOrUpdateVersion(ctx, templates interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOrUpdateVersion", reflect.TypeOf((*MockQuerier)(nil).InsertOrUpdateVersion), ctx, templates)
 }
 
 // SetSettings mocks base method.

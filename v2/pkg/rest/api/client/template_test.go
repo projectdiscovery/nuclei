@@ -11,7 +11,7 @@ func TestTemplates(t *testing.T) {
 	setup := mocks.NewMockHttpServer(t)
 	defer setup()
 
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	svc := TemplatesService{Client: client}
 	t.Run("AddTemplate", func(t *testing.T) {
 		resp, err := svc.AddTemplate(AddTemplateRequest{

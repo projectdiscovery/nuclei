@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -31,7 +32,7 @@ type Scans interface {
 	// ExecuteScan executes a scan
 	ExecuteScan(ID int64) error
 	// GetScanMatches returns matches for a scan
-	GetScanMatches(ID int64) ([]GetScanMatchesResponse, error)
+	GetScanMatches(req GetScanMatchesRequest) ([]GetScanMatchesResponse, error)
 	// GetScanErrors returns errors for a scan
 	GetScanErrors(ID int64) ([]GetScanErrorsResponse, error)
 }
@@ -46,6 +47,8 @@ type ScansService struct {
 // GetScansRequest is a request for scans list
 type GetScansRequest struct {
 	Search string
+	Page   int
+	Size   int
 }
 
 // GetScansResponse is a response for scans list
@@ -77,6 +80,12 @@ func (c *ScansService) GetScans(req GetScansRequest) ([]GetScansResponse, error)
 	if req.Search != "" {
 		values.Set("search", req.Search)
 	}
+	if req.Page != 0 {
+		values.Set("page", strconv.Itoa(req.Page))
+	}
+	if req.Size != 0 {
+		values.Set("size", strconv.Itoa(req.Size))
+	}
 	if len(values) > 0 {
 		parsed.RawQuery = values.Encode()
 	}
@@ -85,7 +94,7 @@ func (c *ScansService) GetScans(req GetScansRequest) ([]GetScansResponse, error)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -130,7 +139,7 @@ func (c *ScansService) AddScan(req AddScanRequest) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -191,7 +200,7 @@ func (c *ScansService) DeleteScan(ID int64) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -216,7 +225,7 @@ func (c *ScansService) GetScanProgress() (map[int64]float64, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -245,7 +254,7 @@ func (c *ScansService) GetScan(ID int64) (GetScansResponse, error) {
 	if err != nil {
 		return GetScansResponse{}, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -274,7 +283,7 @@ func (c *ScansService) ExecuteScan(ID int64) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -291,6 +300,13 @@ func (c *ScansService) ExecuteScan(ID int64) error {
 	return nil
 }
 
+// GetScanMatchesRequest is a request for get matches endpoint
+type GetScanMatchesRequest struct {
+	ID   int64
+	Page int
+	Size int
+}
+
 // GetScanMatchesResponse is a response for get matches endpoint
 type GetScanMatchesResponse struct {
 	TemplateName string `json:"templateName,omitempty"`
@@ -300,14 +316,28 @@ type GetScanMatchesResponse struct {
 }
 
 // GetScanMatches returns scan matches from server
-func (c *ScansService) GetScanMatches(ID int64) ([]GetScanMatchesResponse, error) {
-	reqURL := fmt.Sprintf("%s/scans/%d/matches", c.baseURL, ID)
+func (c *ScansService) GetScanMatches(req GetScanMatchesRequest) ([]GetScanMatchesResponse, error) {
+	reqURL := fmt.Sprintf("%s/scans/%d/matches", c.baseURL, req.ID)
+	parsed, err := url.Parse(reqURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get templates")
+	}
+	values := make(url.Values)
+	if req.Page != 0 {
+		values.Set("page", strconv.Itoa(req.Page))
+	}
+	if req.Size != 0 {
+		values.Set("size", strconv.Itoa(req.Size))
+	}
+	if len(values) > 0 {
+		parsed.RawQuery = values.Encode()
+	}
 
-	httpreq, err := retryablehttp.NewRequest(http.MethodGet, reqURL, nil)
+	httpreq, err := retryablehttp.NewRequest(http.MethodGet, parsed.String(), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -341,7 +371,7 @@ func (c *ScansService) GetScanErrors(ID int64) ([]GetScanErrorsResponse, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {

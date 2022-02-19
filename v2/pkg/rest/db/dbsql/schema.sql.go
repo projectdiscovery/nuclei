@@ -11,48 +11,86 @@ import (
 
 const addIssue = `-- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 
+	(template,templateurl,templateid,templatepath,templatename,author,labels,description,reference,severity,templatemetadata,cvss,cwe,cveid,cvssmetrics,remediation,matchername,extractorname,resulttype,host,path,matchedat,extractedresults,request,response,metadata,ip,interaction,curlcommand,matcherstatus,title,createdat,updatedat,scansource,issuestate,hash,scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW(), NOW(), $32, $33, $34, $35) RETURNING id
 `
 
 type AddIssueParams struct {
-	Matchedat     string
-	Title         string
-	Severity      string
-	Scansource    string
-	Issuestate    string
-	Description   string
-	Author        string
-	Cvss          sql.NullFloat64
-	Cwe           []int32
-	Labels        []string
-	Issuedata     string
-	Issuetemplate string
-	Templatename  string
-	Remediation   sql.NullString
-	Scanid        int64
-	Hash          string
+	Template         string
+	Templateurl      sql.NullString
+	Templateid       sql.NullString
+	Templatepath     sql.NullString
+	Templatename     string
+	Author           sql.NullString
+	Labels           []string
+	Description      string
+	Reference        []string
+	Severity         string
+	Templatemetadata sql.NullString
+	Cvss             sql.NullFloat64
+	Cwe              []int32
+	Cveid            sql.NullString
+	Cvssmetrics      sql.NullString
+	Remediation      sql.NullString
+	Matchername      sql.NullString
+	Extractorname    sql.NullString
+	Resulttype       string
+	Host             string
+	Path             sql.NullString
+	Matchedat        string
+	Extractedresults []string
+	Request          sql.NullString
+	Response         sql.NullString
+	Metadata         sql.NullString
+	Ip               sql.NullString
+	Interaction      sql.NullString
+	Curlcommand      sql.NullString
+	Matcherstatus    sql.NullBool
+	Title            string
+	Scansource       string
+	Issuestate       string
+	Hash             string
+	Scanid           int64
 }
 
 func (q *Queries) AddIssue(ctx context.Context, arg AddIssueParams) (int64, error) {
 	row := q.db.QueryRow(ctx, addIssue,
-		arg.Matchedat,
-		arg.Title,
-		arg.Severity,
-		arg.Scansource,
-		arg.Issuestate,
-		arg.Description,
+		arg.Template,
+		arg.Templateurl,
+		arg.Templateid,
+		arg.Templatepath,
+		arg.Templatename,
 		arg.Author,
+		arg.Labels,
+		arg.Description,
+		arg.Reference,
+		arg.Severity,
+		arg.Templatemetadata,
 		arg.Cvss,
 		arg.Cwe,
-		arg.Labels,
-		arg.Issuedata,
-		arg.Issuetemplate,
-		arg.Templatename,
+		arg.Cveid,
+		arg.Cvssmetrics,
 		arg.Remediation,
-		arg.Scanid,
+		arg.Matchername,
+		arg.Extractorname,
+		arg.Resulttype,
+		arg.Host,
+		arg.Path,
+		arg.Matchedat,
+		arg.Extractedresults,
+		arg.Request,
+		arg.Response,
+		arg.Metadata,
+		arg.Ip,
+		arg.Interaction,
+		arg.Curlcommand,
+		arg.Matcherstatus,
+		arg.Title,
+		arg.Scansource,
+		arg.Issuestate,
 		arg.Hash,
+		arg.Scanid,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -195,53 +233,51 @@ func (q *Queries) DeleteTemplate(ctx context.Context, path string) error {
 }
 
 const getIssue = `-- name: GetIssue :one
-SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, templatename, remediation, id, scanid
+SELECT template, templateurl, templateid, templatepath, templatename, author, labels, description, reference, severity, templatemetadata, cvss, cwe, cveid, cvssmetrics, remediation, matchername, extractorname, resulttype, host, path, matchedat, extractedresults, request, response, metadata, ip, interaction, curlcommand, matcherstatus, title, createdat, updatedat, scansource, issuestate, hash, id, scanid
 FROM
 	"public".issues WHERE id=$1 LIMIT 1
 `
 
-type GetIssueRow struct {
-	Matchedat     string
-	Title         string
-	Severity      string
-	Createdat     time.Time
-	Updatedat     time.Time
-	Scansource    string
-	Issuestate    string
-	Description   string
-	Author        string
-	Cvss          sql.NullFloat64
-	Cwe           []int32
-	Labels        []string
-	Issuedata     string
-	Issuetemplate string
-	Templatename  string
-	Remediation   sql.NullString
-	ID            int64
-	Scanid        int64
-}
-
-func (q *Queries) GetIssue(ctx context.Context, id int64) (GetIssueRow, error) {
+func (q *Queries) GetIssue(ctx context.Context, id int64) (Issue, error) {
 	row := q.db.QueryRow(ctx, getIssue, id)
-	var i GetIssueRow
+	var i Issue
 	err := row.Scan(
-		&i.Matchedat,
-		&i.Title,
+		&i.Template,
+		&i.Templateurl,
+		&i.Templateid,
+		&i.Templatepath,
+		&i.Templatename,
+		&i.Author,
+		&i.Labels,
+		&i.Description,
+		&i.Reference,
 		&i.Severity,
+		&i.Templatemetadata,
+		&i.Cvss,
+		&i.Cwe,
+		&i.Cveid,
+		&i.Cvssmetrics,
+		&i.Remediation,
+		&i.Matchername,
+		&i.Extractorname,
+		&i.Resulttype,
+		&i.Host,
+		&i.Path,
+		&i.Matchedat,
+		&i.Extractedresults,
+		&i.Request,
+		&i.Response,
+		&i.Metadata,
+		&i.Ip,
+		&i.Interaction,
+		&i.Curlcommand,
+		&i.Matcherstatus,
+		&i.Title,
 		&i.Createdat,
 		&i.Updatedat,
 		&i.Scansource,
 		&i.Issuestate,
-		&i.Description,
-		&i.Author,
-		&i.Cvss,
-		&i.Cwe,
-		&i.Labels,
-		&i.Issuedata,
-		&i.Issuetemplate,
-		&i.Templatename,
-		&i.Remediation,
+		&i.Hash,
 		&i.ID,
 		&i.Scanid,
 	)
@@ -252,7 +288,14 @@ const getIssues = `-- name: GetIssues :many
 SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
 FROM
 	"public".issues
+ORDER BY id
+LIMIT $2 offset $1
 `
+
+type GetIssuesParams struct {
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetIssuesRow struct {
 	ID         int64
@@ -265,8 +308,8 @@ type GetIssuesRow struct {
 	Scansource string
 }
 
-func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
-	rows, err := q.db.Query(ctx, getIssues)
+func (q *Queries) GetIssues(ctx context.Context, arg GetIssuesParams) ([]GetIssuesRow, error) {
+	rows, err := q.db.Query(ctx, getIssues, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -294,22 +337,84 @@ func (q *Queries) GetIssues(ctx context.Context) ([]GetIssuesRow, error) {
 	return items, nil
 }
 
+const getIssuesByScanID = `-- name: GetIssuesByScanID :many
+SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
+FROM
+	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT $3 offset $2
+`
+
+type GetIssuesByScanIDParams struct {
+	Scanid    int64
+	SqlOffset int32
+	SqlLimit  int32
+}
+
+type GetIssuesByScanIDRow struct {
+	ID         int64
+	Scanid     int64
+	Matchedat  string
+	Title      string
+	Severity   string
+	Createdat  time.Time
+	Updatedat  time.Time
+	Scansource string
+}
+
+func (q *Queries) GetIssuesByScanID(ctx context.Context, arg GetIssuesByScanIDParams) ([]GetIssuesByScanIDRow, error) {
+	rows, err := q.db.Query(ctx, getIssuesByScanID, arg.Scanid, arg.SqlOffset, arg.SqlLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetIssuesByScanIDRow
+	for rows.Next() {
+		var i GetIssuesByScanIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Scanid,
+			&i.Matchedat,
+			&i.Title,
+			&i.Severity,
+			&i.Createdat,
+			&i.Updatedat,
+			&i.Scansource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getIssuesMatches = `-- name: GetIssuesMatches :many
 SELECT id, matchedat, templatename, severity, author
 FROM
 	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT $3 offset $2
 `
+
+type GetIssuesMatchesParams struct {
+	Scanid    int64
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetIssuesMatchesRow struct {
 	ID           int64
 	Matchedat    string
 	Templatename string
 	Severity     string
-	Author       string
+	Author       sql.NullString
 }
 
-func (q *Queries) GetIssuesMatches(ctx context.Context, scanid int64) ([]GetIssuesMatchesRow, error) {
-	rows, err := q.db.Query(ctx, getIssuesMatches, scanid)
+func (q *Queries) GetIssuesMatches(ctx context.Context, arg GetIssuesMatchesParams) ([]GetIssuesMatchesRow, error) {
+	rows, err := q.db.Query(ctx, getIssuesMatches, arg.Scanid, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -367,10 +472,17 @@ SELECT name, status, scantime, hosts, scansource, templates, targets, config, ru
 	scheduletime, id
 FROM
 	"public".scans
+ORDER BY id
+LIMIT $2 offset $1
 `
 
-func (q *Queries) GetScans(ctx context.Context) ([]Scan, error) {
-	rows, err := q.db.Query(ctx, getScans)
+type GetScansParams struct {
+	SqlOffset int32
+	SqlLimit  int32
+}
+
+func (q *Queries) GetScans(ctx context.Context, arg GetScansParams) ([]Scan, error) {
+	rows, err := q.db.Query(ctx, getScans, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +717,14 @@ const getTargets = `-- name: GetTargets :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
 	public.targets
+ORDER BY id
+LIMIT $2 offset $1
 `
+
+type GetTargetsParams struct {
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetTargetsRow struct {
 	ID         int64
@@ -617,8 +736,8 @@ type GetTargetsRow struct {
 	Total      int64
 }
 
-func (q *Queries) GetTargets(ctx context.Context) ([]GetTargetsRow, error) {
-	rows, err := q.db.Query(ctx, getTargets)
+func (q *Queries) GetTargets(ctx context.Context, arg GetTargetsParams) ([]GetTargetsRow, error) {
+	rows, err := q.db.Query(ctx, getTargets, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -649,7 +768,15 @@ const getTargetsForSearch = `-- name: GetTargetsForSearch :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
 	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT $3 offset $2
 `
+
+type GetTargetsForSearchParams struct {
+	Column1   sql.NullString
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetTargetsForSearchRow struct {
 	ID         int64
@@ -661,8 +788,8 @@ type GetTargetsForSearchRow struct {
 	Total      int64
 }
 
-func (q *Queries) GetTargetsForSearch(ctx context.Context, dollar_1 sql.NullString) ([]GetTargetsForSearchRow, error) {
-	rows, err := q.db.Query(ctx, getTargetsForSearch, dollar_1)
+func (q *Queries) GetTargetsForSearch(ctx context.Context, arg GetTargetsForSearchParams) ([]GetTargetsForSearchRow, error) {
+	rows, err := q.db.Query(ctx, getTargetsForSearch, arg.Column1, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +831,14 @@ const getTemplates = `-- name: GetTemplates :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates
+ORDER BY id
+LIMIT $2 offset $1
 `
+
+type GetTemplatesParams struct {
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetTemplatesRow struct {
 	ID        int64
@@ -716,8 +850,8 @@ type GetTemplatesRow struct {
 	Hash      string
 }
 
-func (q *Queries) GetTemplates(ctx context.Context) ([]GetTemplatesRow, error) {
-	rows, err := q.db.Query(ctx, getTemplates)
+func (q *Queries) GetTemplates(ctx context.Context, arg GetTemplatesParams) ([]GetTemplatesRow, error) {
+	rows, err := q.db.Query(ctx, getTemplates, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -819,7 +953,15 @@ const getTemplatesBySearchKey = `-- name: GetTemplatesBySearchKey :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
 	"public".templates WHERE path LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT $3 offset $2
 `
+
+type GetTemplatesBySearchKeyParams struct {
+	Column1   sql.NullString
+	SqlOffset int32
+	SqlLimit  int32
+}
 
 type GetTemplatesBySearchKeyRow struct {
 	ID        int64
@@ -831,8 +973,8 @@ type GetTemplatesBySearchKeyRow struct {
 	Hash      string
 }
 
-func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]GetTemplatesBySearchKeyRow, error) {
-	rows, err := q.db.Query(ctx, getTemplatesBySearchKey, dollar_1)
+func (q *Queries) GetTemplatesBySearchKey(ctx context.Context, arg GetTemplatesBySearchKeyParams) ([]GetTemplatesBySearchKeyRow, error) {
+	rows, err := q.db.Query(ctx, getTemplatesBySearchKey, arg.Column1, arg.SqlOffset, arg.SqlLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -886,6 +1028,28 @@ func (q *Queries) GetTemplatesForScan(ctx context.Context, folder string) ([]Get
 		return nil, err
 	}
 	return items, nil
+}
+
+const getVersion = `-- name: GetVersion :one
+SELECT templates FROM "public".versions WHERE id=1 LIMIT 1
+`
+
+func (q *Queries) GetVersion(ctx context.Context) (string, error) {
+	row := q.db.QueryRow(ctx, getVersion)
+	var templates string
+	err := row.Scan(&templates)
+	return templates, err
+}
+
+const insertOrUpdateVersion = `-- name: InsertOrUpdateVersion :exec
+INSERT INTO "public".versions 
+(id, templates) VALUES
+(1, $1) ON CONFLICT (id) DO UPDATE set templates=$1
+`
+
+func (q *Queries) InsertOrUpdateVersion(ctx context.Context, templates string) error {
+	_, err := q.db.Exec(ctx, insertOrUpdateVersion, templates)
+	return err
 }
 
 const setSettings = `-- name: SetSettings :exec

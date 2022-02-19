@@ -18,12 +18,11 @@ type API struct {
 
 // Config contains configuration options for REST API
 type Config struct {
-	Userame  string
-	Password string
-	Host     string
-	Port     int
-	TLS      bool
-	Server   *handlers.Server
+	Token  string
+	Host   string
+	Port   int
+	TLS    bool
+	Server *handlers.Server
 }
 
 //const defaultCacheSize = 100 * 1024 * 1024 // 100MB server side cache.
@@ -50,15 +49,10 @@ func New(config *Config) *API {
 		AllowOrigins:     []string{fmt.Sprintf("%s://%s:%d", scheme, config.Host, config.Port)},
 		AllowMethods:     []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"Authorization"},
+		AllowHeaders:     []string{HeaderAuthKey},
 	}))
 	// Use basic auth
-	e.Use(middleware.BasicAuth(func(user, password string, ctx echo.Context) (bool, error) {
-		if user != config.Userame || password != config.Password {
-			return false, nil
-		}
-		return true, nil
-	}))
+	e.Use(HeaderAuthenticator(config.Token))
 
 	apiGroup := e.Group("/api/v1")
 
@@ -131,4 +125,19 @@ func (d JSONIterSerializer) Deserialize(c echo.Context, i interface{}) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Syntax error: offset=%v, error=%v", se.Offset, se.Error())).SetInternal(err)
 	}
 	return err
+}
+
+const HeaderAuthKey = "X-API-Token"
+
+// HeaderAuthenticator returns header token validator
+func HeaderAuthenticator(token string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			auth := c.Request().Header.Get(HeaderAuthKey)
+			if auth == token {
+				return next(c)
+			}
+			return echo.ErrUnauthorized
+		}
+	}
 }

@@ -19,6 +19,8 @@ var templates = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "search", Usage: "value to search in templates"},
 				&cli.StringFlag{Name: "folder", Usage: "folder to search in templates"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				search := c.String("search")
@@ -26,6 +28,8 @@ var templates = &cli.Command{
 				response, err := nucleiClient.Templates.GetTemplates(client.GetTemplatesRequest{
 					Search: search,
 					Folder: folder,
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not get templates")
@@ -37,9 +41,9 @@ var templates = &cli.Command{
 			Name:  "add",
 			Usage: "add new template",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path for the template"},
-				&cli.StringFlag{Name: "filepath", Usage: "local path to the template"},
-				&cli.StringFlag{Name: "folder", Usage: "folder for the template"},
+				&cli.StringFlag{Name: "path", Usage: "path for the template", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "local path to the template", Required: true},
+				&cli.StringFlag{Name: "folder", Usage: "folder for the template", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				data, err := ioutil.ReadFile(c.String("filepath"))
@@ -61,8 +65,8 @@ var templates = &cli.Command{
 			Name:  "update",
 			Usage: "update an existing template",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path for the template"},
-				&cli.StringFlag{Name: "filepath", Usage: "local path to the template"},
+				&cli.StringFlag{Name: "path", Usage: "path for the template", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "local path to the template", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				data, err := ioutil.ReadFile(c.String("filepath"))
@@ -83,7 +87,7 @@ var templates = &cli.Command{
 			Name:  "delete",
 			Usage: "delete an existing template",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path for the template"},
+				&cli.StringFlag{Name: "path", Usage: "path for the template", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Templates.DeleteTemplate(client.DeleteTemplateRequest{
@@ -99,7 +103,7 @@ var templates = &cli.Command{
 			Name:  "raw",
 			Usage: "returns raw template contents",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path for the template"},
+				&cli.StringFlag{Name: "path", Usage: "path for the template", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				contents, err := nucleiClient.Templates.GetTemplateRaw(c.String("path"))
@@ -114,8 +118,8 @@ var templates = &cli.Command{
 			Name:  "execute",
 			Usage: "executes an existing template",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "path", Usage: "path for the template"},
-				&cli.StringFlag{Name: "target", Usage: "target for the template"},
+				&cli.StringFlag{Name: "path", Usage: "path for the template", Required: true},
+				&cli.StringFlag{Name: "target", Usage: "target for the template", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				data, err := nucleiClient.Templates.ExecuteTemplate(client.ExecuteTemplateRequest{

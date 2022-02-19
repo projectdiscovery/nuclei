@@ -12,7 +12,7 @@ import (
 func TestTarget(t *testing.T) {
 	setup := mocks.NewMockHttpServer(t)
 	defer setup()
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	svc := TargetsService{Client: client}
 	reader := strings.NewReader("example.com")
 	var targetID int64 = 1

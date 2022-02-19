@@ -17,25 +17,28 @@ type Querier interface {
 	DeleteScan(ctx context.Context, id int64) error
 	DeleteTarget(ctx context.Context, id int64) error
 	DeleteTemplate(ctx context.Context, path string) error
-	GetIssue(ctx context.Context, id int64) (GetIssueRow, error)
-	GetIssues(ctx context.Context) ([]GetIssuesRow, error)
-	GetIssuesMatches(ctx context.Context, scanid int64) ([]GetIssuesMatchesRow, error)
+	GetIssue(ctx context.Context, id int64) (Issue, error)
+	GetIssues(ctx context.Context, arg GetIssuesParams) ([]GetIssuesRow, error)
+	GetIssuesByScanID(ctx context.Context, arg GetIssuesByScanIDParams) ([]GetIssuesByScanIDRow, error)
+	GetIssuesMatches(ctx context.Context, arg GetIssuesMatchesParams) ([]GetIssuesMatchesRow, error)
 	GetScan(ctx context.Context, id int64) (Scan, error)
-	GetScans(ctx context.Context) ([]Scan, error)
+	GetScans(ctx context.Context, arg GetScansParams) ([]Scan, error)
 	GetScansBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]Scan, error)
 	GetScansForSchedule(ctx context.Context, scheduleoccurence sql.NullString) ([]GetScansForScheduleRow, error)
 	GetSettingByName(ctx context.Context, name string) (GetSettingByNameRow, error)
 	GetSettings(ctx context.Context) ([]Setting, error)
 	GetTarget(ctx context.Context, id int64) (GetTargetRow, error)
 	GetTargetByName(ctx context.Context, name string) (GetTargetByNameRow, error)
-	GetTargets(ctx context.Context) ([]GetTargetsRow, error)
-	GetTargetsForSearch(ctx context.Context, dollar_1 sql.NullString) ([]GetTargetsForSearchRow, error)
+	GetTargets(ctx context.Context, arg GetTargetsParams) ([]GetTargetsRow, error)
+	GetTargetsForSearch(ctx context.Context, arg GetTargetsForSearchParams) ([]GetTargetsForSearchRow, error)
 	GetTemplateContents(ctx context.Context, path string) (string, error)
-	GetTemplates(ctx context.Context) ([]GetTemplatesRow, error)
+	GetTemplates(ctx context.Context, arg GetTemplatesParams) ([]GetTemplatesRow, error)
 	GetTemplatesByFolder(ctx context.Context, folder string) ([]GetTemplatesByFolderRow, error)
 	GetTemplatesByFolderOne(ctx context.Context, folder string) (GetTemplatesByFolderOneRow, error)
-	GetTemplatesBySearchKey(ctx context.Context, dollar_1 sql.NullString) ([]GetTemplatesBySearchKeyRow, error)
+	GetTemplatesBySearchKey(ctx context.Context, arg GetTemplatesBySearchKeyParams) ([]GetTemplatesBySearchKeyRow, error)
 	GetTemplatesForScan(ctx context.Context, folder string) ([]GetTemplatesForScanRow, error)
+	GetVersion(ctx context.Context) (string, error)
+	InsertOrUpdateVersion(ctx context.Context, templates string) error
 	SetSettings(ctx context.Context, arg SetSettingsParams) error
 	UpdateIssue(ctx context.Context, arg UpdateIssueParams) error
 	UpdateScanState(ctx context.Context, arg UpdateScanStateParams) error

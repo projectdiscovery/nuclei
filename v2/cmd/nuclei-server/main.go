@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"path"
 
+	"github.com/blang/semver"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -27,18 +30,14 @@ var (
 	logsdir = flag.String("logs-dir", "logs", "Logs directory for nuclei server")
 	json    = flag.Bool("json", false, "show json logs")
 
-	username = flag.String("user", "user", "Username for nuclei REST API")
-	password = flag.String("password", "pass", "Password for nuclei REST API")
-	host     = flag.String("host", "localhost", "Host to listen REST API on")
-	port     = flag.Int("port", 8822, "Port to listen REST API on")
-	dburl    = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
+	token = flag.String("token", "", "Token for nuclei REST API")
+	host  = flag.String("host", "localhost", "Host to listen REST API on")
+	port  = flag.Int("port", 8822, "Port to listen REST API on")
+	dburl = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
 )
 
 func main() {
 	flag.Parse()
-
-	_ = os.Mkdir(*datadir, os.ModePerm)
-	_ = os.Mkdir(*logsdir, os.ModePerm)
 
 	if *json {
 		gologger.DefaultLogger.SetFormatter(&formatter.JSON{})
@@ -59,6 +58,21 @@ func process() error {
 	}
 	defer database.Close()
 
+	version, _ := database.Queries().GetVersion(context.Background())
+	parsed, _ := semver.Parse(version)
+	updater.SetTemplatesVersion(parsed)
+
+	if version != "" {
+		gologger.Info().Msgf("Using templates version: %s\n", version)
+	}
+
+	// First startup requirements
+	if version, err := updater.UpdateTemplates(database, semver.Version{}); err == nil {
+		updater.SetTemplatesVersion(version)
+	} else {
+		gologger.Error().Msgf("Could not update template: %s\n", err)
+	}
+
 	close := updater.RunUpdateChecker(database)
 	defer close()
 
@@ -74,9 +88,14 @@ func process() error {
 
 	dbInstance := database.Queries()
 
-	cwd, _ := os.Getwd()
-	_ = os.MkdirAll(path.Join(cwd, *datadir), os.ModePerm)
-	_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
+	if *datadir == "" {
+		cwd, _ := os.Getwd()
+		_ = os.MkdirAll(path.Join(cwd, *datadir), os.ModePerm)
+		_ = os.MkdirAll(path.Join(cwd, *logsdir), os.ModePerm)
+	} else {
+		_ = os.Mkdir(*datadir, os.ModePerm)
+		_ = os.Mkdir(*logsdir, os.ModePerm)
+	}
 
 	targets := targets.NewTargetsStorage(*datadir)
 	scans := scans.NewScanService(*logsdir, false, 1, dbInstance, targets)
@@ -84,13 +103,18 @@ func process() error {
 
 	server := handlers.New(dbInstance, targets, scans)
 
+	authToken := *token
+	if authToken == "" {
+		authToken = uuid.NewString()
+	}
+	gologger.Info().Msgf("Using authentication token: %s", authToken)
+
 	api := api.New(&api.Config{
-		Userame:  *username,
-		Password: *password,
-		Host:     *host,
-		Port:     *port,
-		TLS:      false,
-		Server:   server,
+		Token:  authToken,
+		Host:   *host,
+		Port:   *port,
+		TLS:    false,
+		Server: server,
 	})
 	gologger.Info().Msgf("Listening on %s:%d", *host, *port)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), api.Echo())

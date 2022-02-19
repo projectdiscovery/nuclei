@@ -15,6 +15,12 @@ const migrationData = `CREATE TABLE IF NOT EXISTS "public".templates (
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
 
+CREATE TABLE IF NOT EXISTS "public".versions ( 
+	id                   int NOT NULL,
+	templates            varchar NOT NULL,
+	CONSTRAINT idx_unique_id UNIQUE ( "id" ) 
+);
+
 CREATE TABLE IF NOT EXISTS "public".targets ( 
 	id                   bigserial NOT NULL ,
 	name                 varchar(100) NOT NULL,
@@ -53,22 +59,41 @@ CREATE TABLE IF NOT EXISTS "public".scans (
 );
 
 CREATE TABLE IF NOT EXISTS "public".issues ( 
-	matchedat            varchar NOT NULL,
-	title                varchar NOT NULL,
+	template			 varchar NOT NULL,
+	templateurl          varchar,
+	templateid           varchar,
+	templatepath         varchar,
+	templatename         varchar NOT NULL,
+	author      		 varchar,
+	labels               varchar[],
+	description          varchar NOT NULL,
+	reference            varchar[],
 	severity             varchar NOT NULL,
+	templatemetadata     varchar,
+	cvss                 float8,
+	cwe                  integer[],
+	cveid                varchar,
+	cvssmetrics          varchar,
+	remediation          varchar,
+	matchername			 varchar,
+	extractorname        varchar,
+    resulttype           varchar NOT NULL,
+	host				 varchar NOT NULL,
+	path				 varchar,
+	matchedat            varchar NOT NULL,
+	extractedresults     varchar[],
+	request              varchar,
+	response             varchar,
+	metadata             varchar,
+	ip                   varchar,
+	interaction          varchar,
+	curlcommand          varchar,
+	matcherstatus        boolean,
+	title                varchar NOT NULL,
 	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	updatedat            timestamptz  NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	scansource           varchar NOT NULL,
 	issuestate           varchar NOT NULL,
-	description          varchar NOT NULL,
-	author               varchar NOT NULL,
-	cvss                 float8,
-	cwe                  integer[],
-	labels               varchar[],
-	issuedata            text NOT NULL,
-	issuetemplate        text NOT NULL,
-	templatename         varchar NOT NULL,
-	remediation          text,
 	hash				 varchar NOT NULL,
 	id                   bigserial NOT NULL,
 	scanid               bigint NOT NULL,

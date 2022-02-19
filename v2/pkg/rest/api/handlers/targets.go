@@ -34,7 +34,12 @@ func (s *Server) GetTargets(ctx echo.Context) error {
 
 // getTargets returns targets list
 func (s *Server) getTargets(ctx echo.Context) error {
-	targets, err := s.db.GetTargets(context.Background())
+	page, size := paginationDataFromContext(ctx)
+
+	targets, err := s.db.GetTargets(context.Background(), dbsql.GetTargetsParams{
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db").Error())
 	}
@@ -55,7 +60,13 @@ func (s *Server) getTargets(ctx echo.Context) error {
 
 // getTargetsWithSearchKey returns targets for a search key
 func (s *Server) getTargetsWithSearchKey(ctx echo.Context, searchKey string) error {
-	targets, err := s.db.GetTargetsForSearch(context.Background(), sql.NullString{String: searchKey, Valid: true})
+	page, size := paginationDataFromContext(ctx)
+
+	targets, err := s.db.GetTargetsForSearch(context.Background(), dbsql.GetTargetsForSearchParams{
+		Column1:   sql.NullString{String: searchKey, Valid: true},
+		SqlOffset: page,
+		SqlLimit:  size,
+	})
 	if err != nil {
 		return echo.NewHTTPError(500, errors.Wrap(err, "could not get targets from db").Error())
 	}
@@ -83,6 +94,9 @@ func (s *Server) AddTarget(ctx echo.Context) error {
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents").Error())
+	}
+	if targetContents.Size == 0 {
+		return echo.NewHTTPError(500, errors.New("blank target file provided").Error())
 	}
 	file, err := targetContents.Open()
 	if err != nil {
@@ -129,6 +143,9 @@ func (s *Server) UpdateTarget(ctx echo.Context) error {
 	targetContents, err := ctx.FormFile("contents")
 	if err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse file contents").Error())
+	}
+	if targetContents.Size == 0 {
+		return echo.NewHTTPError(500, errors.New("blank target file provided").Error())
 	}
 	file, err := targetContents.Open()
 	if err != nil {

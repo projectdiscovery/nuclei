@@ -10,7 +10,7 @@ import (
 func TestSettings(t *testing.T) {
 	setup := mocks.NewMockHttpServer(t)
 	defer setup()
-	client := New(WithBasicAuth("user", "pass"))
+	client := New(WithToken("test"))
 	svc := SettingsService{Client: client}
 	t.Run("SetSetting", func(t *testing.T) {
 		err := svc.AddSetting(AddSettingRequest{

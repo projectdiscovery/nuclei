@@ -8,25 +8,44 @@ import (
 )
 
 type Issue struct {
-	Matchedat     string
-	Title         string
-	Severity      string
-	Createdat     time.Time
-	Updatedat     time.Time
-	Scansource    string
-	Issuestate    string
-	Description   string
-	Author        string
-	Cvss          sql.NullFloat64
-	Cwe           []int32
-	Labels        []string
-	Issuedata     string
-	Issuetemplate string
-	Templatename  string
-	Remediation   sql.NullString
-	Hash          string
-	ID            int64
-	Scanid        int64
+	Template         string
+	Templateurl      sql.NullString
+	Templateid       sql.NullString
+	Templatepath     sql.NullString
+	Templatename     string
+	Author           sql.NullString
+	Labels           []string
+	Description      string
+	Reference        []string
+	Severity         string
+	Templatemetadata sql.NullString
+	Cvss             sql.NullFloat64
+	Cwe              []int32
+	Cveid            sql.NullString
+	Cvssmetrics      sql.NullString
+	Remediation      sql.NullString
+	Matchername      sql.NullString
+	Extractorname    sql.NullString
+	Resulttype       string
+	Host             string
+	Path             sql.NullString
+	Matchedat        string
+	Extractedresults []string
+	Request          sql.NullString
+	Response         sql.NullString
+	Metadata         sql.NullString
+	Ip               sql.NullString
+	Interaction      sql.NullString
+	Curlcommand      sql.NullString
+	Matcherstatus    sql.NullBool
+	Title            string
+	Createdat        time.Time
+	Updatedat        time.Time
+	Scansource       string
+	Issuestate       string
+	Hash             string
+	ID               int64
+	Scanid           int64
 }
 
 type Scan struct {
@@ -70,4 +89,9 @@ type Template struct {
 	Createdat time.Time
 	Updatedat time.Time
 	Hash      string
+}
+
+type Version struct {
+	ID        int32
+	Templates string
 }

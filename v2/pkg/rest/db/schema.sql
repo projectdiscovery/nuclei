@@ -11,6 +11,12 @@ CREATE TABLE IF NOT EXISTS "public".templates (
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
 
+CREATE TABLE IF NOT EXISTS "public".versions ( 
+	id                   int NOT NULL,
+	templates            varchar NOT NULL,
+	CONSTRAINT idx_unique_id UNIQUE ( "id" ) 
+);
+
 CREATE TABLE IF NOT EXISTS "public".targets ( 
 	id                   bigserial NOT NULL ,
 	name                 varchar(100) NOT NULL,
@@ -49,22 +55,41 @@ CREATE TABLE IF NOT EXISTS "public".scans (
 );
 
 CREATE TABLE IF NOT EXISTS "public".issues ( 
-	matchedat            varchar NOT NULL,
-	title                varchar NOT NULL,
+	template			 varchar NOT NULL,
+	templateurl          varchar,
+	templateid           varchar,
+	templatepath         varchar,
+	templatename         varchar NOT NULL,
+	author      		 varchar,
+	labels               varchar[],
+	description          varchar NOT NULL,
+	reference            varchar[],
 	severity             varchar NOT NULL,
+	templatemetadata     varchar,
+	cvss                 float8,
+	cwe                  integer[],
+	cveid                varchar,
+	cvssmetrics          varchar,
+	remediation          varchar,
+	matchername			 varchar,
+	extractorname        varchar,
+    resulttype           varchar NOT NULL,
+	host				 varchar NOT NULL,
+	path				 varchar,
+	matchedat            varchar NOT NULL,
+	extractedresults     varchar[],
+	request              varchar,
+	response             varchar,
+	metadata             varchar,
+	ip                   varchar,
+	interaction          varchar,
+	curlcommand          varchar,
+	matcherstatus        boolean,
+	title                varchar NOT NULL,
 	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	updatedat            timestamptz  NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	scansource           varchar NOT NULL,
 	issuestate           varchar NOT NULL,
-	description          varchar NOT NULL,
-	author               varchar NOT NULL,
-	cvss                 float8,
-	cwe                  integer[],
-	labels               varchar[],
-	issuedata            text NOT NULL,
-	issuetemplate        text NOT NULL,
-	templatename         varchar NOT NULL,
-	remediation          text,
 	hash				 varchar NOT NULL,
 	id                   bigserial NOT NULL,
 	scanid               bigint NOT NULL,
@@ -72,10 +97,20 @@ CREATE TABLE IF NOT EXISTS "public".issues (
 	CONSTRAINT unq_hash UNIQUE ( hash ) 
 );
 
+-- name: InsertOrUpdateVersion :exec
+INSERT INTO "public".versions 
+(id, templates) VALUES
+(1, $1) ON CONFLICT (id) DO UPDATE set templates=$1;
+
+-- name: GetVersion :one
+SELECT templates FROM "public".versions WHERE id=1 LIMIT 1;
+
 -- name: GetTemplates :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates;
+	"public".templates
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetTemplatesByFolder :many
 SELECT id, name, "path", createdat, updatedat, hash
@@ -90,7 +125,9 @@ FROM
 -- name: GetTemplatesBySearchKey :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
 FROM
-	"public".templates WHERE path LIKE '%'||$1||'%';
+	"public".templates WHERE path LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: DeleteTemplate :exec
 DELETE FROM public.templates WHERE path=$1;
@@ -128,12 +165,16 @@ FROM
 -- name: GetTargets :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	public.targets;
+	public.targets
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetTargetsForSearch :many
 SELECT id, name, createdat, updatedat, internalid, filename, total
 FROM
-	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%';
+	"public".targets WHERE name LIKE '%'||$1||'%' OR filename LIKE '%'||$1||'%'
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: UpdateTargetMetadata :exec
 UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2;
@@ -155,7 +196,9 @@ FROM
 SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, scheduleoccurence, 
 	scheduletime, id
 FROM
-	"public".scans;
+	"public".scans
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetScansForSchedule :many
 SELECT name, status, scantime, hosts, scansource, templates, targets, config, runnow, reporting, 
@@ -174,9 +217,9 @@ UPDATE "public".scans SET status=$2 WHERE id=$1 ;
 
 -- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 
+	(template,templateurl,templateid,templatepath,templatename,author,labels,description,reference,severity,templatemetadata,cvss,cwe,cveid,cvssmetrics,remediation,matchername,extractorname,resulttype,host,path,matchedat,extractedresults,request,response,metadata,ip,interaction,curlcommand,matcherstatus,title,createdat,updatedat,scansource,issuestate,hash,scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id;
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW(), NOW(), $32, $33, $34, $35) RETURNING id;
 
 -- name: DeleteIssue :exec
 DELETE FROM "public".issues WHERE id=$1;
@@ -186,20 +229,30 @@ DELETE FROM "public".issues WHERE id=$1;
 DELETE FROM "public".issues WHERE scanid=$1;
 
 -- name: GetIssue :one
-SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, templatename, remediation, id, scanid
+SELECT *
 FROM
 	"public".issues WHERE id=$1 LIMIT 1;
 
 -- name: GetIssues :many
 SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
 FROM
-	"public".issues;
+	"public".issues
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
+
+-- name: GetIssuesByScanID :many
+SELECT id, scanid, matchedat, title, severity, createdat, updatedat, scansource
+FROM
+	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: GetIssuesMatches :many
 SELECT id, matchedat, templatename, severity, author
 FROM
-	"public".issues WHERE scanid=$1;
+	"public".issues WHERE scanid=$1
+ORDER BY id
+LIMIT @sql_limit offset @sql_offset;
 
 -- name: UpdateIssue :exec
 UPDATE "public".issues SET issuestate=$2 WHERE id=$1 ;

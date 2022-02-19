@@ -16,6 +16,8 @@ var scans = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
 				&cli.StringFlag{Name: "search", Usage: "search key for the scans"},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
 				if id := c.Int64("id"); id != 0 {
@@ -27,6 +29,8 @@ var scans = &cli.Command{
 				}
 				scans, err := nucleiClient.Scans.GetScans(client.GetScansRequest{
 					Search: c.String("search"),
+					Page:   c.Int("page"),
+					Size:   c.Int("size"),
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not get scans")
@@ -38,9 +42,9 @@ var scans = &cli.Command{
 			Name:  "add",
 			Usage: "adds a new scan to queue",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "name", Usage: "name of scan to add"},
-				&cli.StringSliceFlag{Name: "templates", Usage: "templates for the scan"},
-				&cli.StringSliceFlag{Name: "targets", Usage: "targets for the scan"},
+				&cli.StringFlag{Name: "name", Usage: "name of scan to add", Required: true},
+				&cli.StringSliceFlag{Name: "templates", Usage: "templates for the scan", Required: true},
+				&cli.StringSliceFlag{Name: "targets", Usage: "targets for the scan", Required: true},
 				&cli.StringFlag{Name: "config", Usage: "config for the scan", Value: "default"},
 				&cli.BoolFlag{Name: "run", Usage: "run the scan instantly"},
 				&cli.StringFlag{Name: "reporting", Usage: "reporting config for the scan"},
@@ -81,8 +85,8 @@ var scans = &cli.Command{
 			Name:  "update",
 			Usage: "update an existing scan",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
-				&cli.BoolFlag{Name: "stop", Usage: "stop a specific scan"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the scan", Required: true},
+				&cli.BoolFlag{Name: "stop", Usage: "stop a specific scan", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Scans.UpdateScan(c.Int64("id"), client.UpdateScanRequest{
@@ -98,7 +102,7 @@ var scans = &cli.Command{
 			Name:  "delete",
 			Usage: "delete an existing scan",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the scan", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Scans.DeleteScan(c.Int64("id"))
@@ -113,7 +117,7 @@ var scans = &cli.Command{
 			Name:  "execute",
 			Usage: "execute an existing scan",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the scan", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				err := nucleiClient.Scans.ExecuteScan(c.Int64("id"))
@@ -127,10 +131,16 @@ var scans = &cli.Command{
 			Name:  "matches",
 			Usage: "matches for an existing scan",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the scan", Required: true},
+				&cli.IntFlag{Name: "page", Usage: "page for the db query pagination"},
+				&cli.IntFlag{Name: "size", Usage: "size for the db query pagination"},
 			},
 			Action: func(c *cli.Context) error {
-				matches, err := nucleiClient.Scans.GetScanMatches(c.Int64("id"))
+				matches, err := nucleiClient.Scans.GetScanMatches(client.GetScanMatchesRequest{
+					ID:   c.Int64("id"),
+					Page: c.Int("page"),
+					Size: c.Int("size"),
+				})
 				if err != nil {
 					return errors.Wrap(err, "could not get scan matches")
 				}
@@ -141,7 +151,7 @@ var scans = &cli.Command{
 			Name:  "errors",
 			Usage: "errors for an existing scan",
 			Flags: []cli.Flag{
-				&cli.Int64Flag{Name: "id", Usage: "id of the scan"},
+				&cli.Int64Flag{Name: "id", Usage: "id of the scan", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				errorsList, err := nucleiClient.Scans.GetScanErrors(c.Int64("id"))

@@ -16,7 +16,7 @@ var settings = &cli.Command{
 			Name:  "get",
 			Usage: "returns setting(s) from server",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "name", Usage: "name of setting to retrieve"},
+				&cli.StringFlag{Name: "name", Usage: "name of setting to retrieve", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				if name := c.String("name"); name != "" {
@@ -37,9 +37,9 @@ var settings = &cli.Command{
 			Name:  "update",
 			Usage: "updates an existing setting",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "name", Usage: "name of setting to add"},
-				&cli.StringFlag{Name: "filepath", Usage: "path of setting to add"},
-				&cli.StringFlag{Name: "type", Usage: "type of setting to add"},
+				&cli.StringFlag{Name: "name", Usage: "name of setting to add", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "path of setting to add", Required: true},
+				&cli.StringFlag{Name: "type", Usage: "type of setting to add", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				data, err := ioutil.ReadFile(c.String("filepath"))
@@ -61,9 +61,9 @@ var settings = &cli.Command{
 			Name:  "add",
 			Usage: "add a new setting to storage",
 			Flags: []cli.Flag{
-				&cli.StringFlag{Name: "name", Usage: "name of setting to add"},
-				&cli.StringFlag{Name: "filepath", Usage: "path of setting to add"},
-				&cli.StringFlag{Name: "type", Usage: "type of setting to add"},
+				&cli.StringFlag{Name: "name", Usage: "name of setting to add", Required: true},
+				&cli.StringFlag{Name: "filepath", Usage: "path of setting to add", Required: true},
+				&cli.StringFlag{Name: "type", Usage: "type of setting to add", Required: true},
 			},
 			Action: func(c *cli.Context) error {
 				data, err := ioutil.ReadFile(c.String("filepath"))

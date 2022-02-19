@@ -36,22 +36,26 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{Name: "no-color", Aliases: []string{"nc"}, Usage: "Do not print colors"},
 		&cli.StringFlag{Name: "url", Usage: "Base URL of the Nuclei Server"},
-		&cli.StringFlag{Name: "username", Usage: "Username of the Nuclei Server", Value: "user"},
-		&cli.StringFlag{Name: "password", Usage: "Password of the Nuclei Server", Value: "pass"},
+		&cli.StringFlag{Name: "token", Usage: "Token for the Nuclei Server"},
 	}
 	// Initialize nuclei client before being used
 	app.Before = cli.BeforeFunc(func(ctx *cli.Context) error {
 		noColor = ctx.Bool("no-color")
 
+		if server := os.Getenv("NUCLEI_API_SERVER"); server != "" && !ctx.IsSet("url") {
+			ctx.Set("url", server)
+		}
+		if token := os.Getenv("NUCLEI_API_TOKEN"); token != "" && !ctx.IsSet("token") {
+			ctx.Set("token", token)
+		}
 		var opts []client.Option
 		if url := ctx.String("url"); url != "" {
 			opts = append(opts, client.WithBaseURL(url))
 		}
-		username := ctx.String("username")
-		password := ctx.String("password")
+		token := ctx.String("token")
 
-		if username != "" && password != "" {
-			opts = append(opts, client.WithBasicAuth(username, password))
+		if token != "" {
+			opts = append(opts, client.WithToken(token))
 		}
 		nucleiClient = client.New(opts...)
 		return nil

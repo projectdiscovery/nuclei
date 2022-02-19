@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -39,6 +40,8 @@ type TargetsService struct {
 // GetTargetsRequest is a request for targets list
 type GetTargetsRequest struct {
 	Search string
+	Page   int
+	Size   int
 }
 
 // GetTargetsResponse is a response for targets list
@@ -64,6 +67,12 @@ func (c *TargetsService) GetTargets(req GetTargetsRequest) ([]GetTargetsResponse
 	if req.Search != "" {
 		values.Set("search", req.Search)
 	}
+	if req.Page != 0 {
+		values.Set("page", strconv.Itoa(req.Page))
+	}
+	if req.Size != 0 {
+		values.Set("size", strconv.Itoa(req.Size))
+	}
 	if len(values) > 0 {
 		parsed.RawQuery = values.Encode()
 	}
@@ -72,7 +81,7 @@ func (c *TargetsService) GetTargets(req GetTargetsRequest) ([]GetTargetsResponse
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -120,7 +129,7 @@ func (c *TargetsService) AddTarget(req AddTargetRequest) (int64, error) {
 		return 0, errors.Wrap(err, "could not make http request")
 	}
 	httpreq.Header.Set("Content-Type", writer.FormDataContentType())
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -188,7 +197,7 @@ func (c *TargetsService) DeleteTarget(ID int64) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -213,7 +222,7 @@ func (c *TargetsService) GetTargetContents(ID int64) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {

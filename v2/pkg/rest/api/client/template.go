@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -42,6 +43,8 @@ type TemplatesService struct {
 type GetTemplatesRequest struct {
 	Folder string
 	Search string
+	Page   int
+	Size   int
 }
 
 // GetTemplatesResponse is a response for /templates list
@@ -68,6 +71,12 @@ func (c *TemplatesService) GetTemplates(req GetTemplatesRequest) ([]GetTemplates
 	if req.Search != "" {
 		values.Set("search", req.Search)
 	}
+	if req.Page != 0 {
+		values.Set("page", strconv.Itoa(req.Page))
+	}
+	if req.Size != 0 {
+		values.Set("size", strconv.Itoa(req.Size))
+	}
 	if len(values) > 0 {
 		parsed.RawQuery = values.Encode()
 	}
@@ -76,7 +85,7 @@ func (c *TemplatesService) GetTemplates(req GetTemplatesRequest) ([]GetTemplates
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -115,7 +124,7 @@ func (c *TemplatesService) AddTemplate(req AddTemplateRequest) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -153,7 +162,7 @@ func (c *TemplatesService) UpdateTemplate(req UpdateTemplateRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -186,7 +195,7 @@ func (c *TemplatesService) DeleteTemplate(req DeleteTemplateRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -211,7 +220,7 @@ func (c *TemplatesService) GetTemplateRaw(Path string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
@@ -255,7 +264,7 @@ func (c *TemplatesService) ExecuteTemplate(req ExecuteTemplateRequest) (ExecuteT
 	if err != nil {
 		return ExecuteTemplateResponse{}, errors.Wrap(err, "could not make http request")
 	}
-	httpreq.SetBasicAuth(c.username, c.password)
+	httpreq.Header.Set(HeaderAuthKey, c.token)
 
 	resp, err := c.httpclient.Do(httpreq)
 	if err != nil {
