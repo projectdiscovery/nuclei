@@ -167,10 +167,10 @@ func (mr *MockQuerierMockRecorder) DeleteTemplate(ctx, path interface{}) *gomock
 }
 
 // GetIssue mocks base method.
-func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.GetIssueRow, error) {
+func (m *MockQuerier) GetIssue(ctx context.Context, id int64) (dbsql.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIssue", ctx, id)
-	ret0, _ := ret[0].(dbsql.GetIssueRow)
+	ret0, _ := ret[0].(dbsql.Issue)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -464,6 +464,35 @@ func (m *MockQuerier) GetTemplatesForScan(ctx context.Context, folder string) ([
 func (mr *MockQuerierMockRecorder) GetTemplatesForScan(ctx, folder interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTemplatesForScan", reflect.TypeOf((*MockQuerier)(nil).GetTemplatesForScan), ctx, folder)
+}
+
+// GetVersion mocks base method.
+func (m *MockQuerier) GetVersion(ctx context.Context) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVersion", ctx)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVersion indicates an expected call of GetVersion.
+func (mr *MockQuerierMockRecorder) GetVersion(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVersion", reflect.TypeOf((*MockQuerier)(nil).GetVersion), ctx)
+}
+
+// InsertOrUpdateVersion mocks base method.
+func (m *MockQuerier) InsertOrUpdateVersion(ctx context.Context, templates string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertOrUpdateVersion", ctx, templates)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertOrUpdateVersion indicates an expected call of InsertOrUpdateVersion.
+func (mr *MockQuerierMockRecorder) InsertOrUpdateVersion(ctx, templates interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOrUpdateVersion", reflect.TypeOf((*MockQuerier)(nil).InsertOrUpdateVersion), ctx, templates)
 }
 
 // SetSettings mocks base method.

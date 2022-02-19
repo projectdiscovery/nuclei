@@ -44,7 +44,7 @@ func (m *IssuesMockHandler) DeleteIssue(c echo.Context) error {
 }
 
 func (m *IssuesMockHandler) GetIssue(c echo.Context) error {
-	m.mockDb.EXPECT().GetIssue(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.GetIssueRow{ID: 1}, nil)
+	m.mockDb.EXPECT().GetIssue(gomock.Any(), gomock.Any()).Times(1).Return(dbsql.Issue{ID: 1}, nil)
 	server := handlers.New(m.mockDb, nil, nil)
 	return server.GetIssue(c)
 }

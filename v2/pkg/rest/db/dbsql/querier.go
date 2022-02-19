@@ -17,7 +17,7 @@ type Querier interface {
 	DeleteScan(ctx context.Context, id int64) error
 	DeleteTarget(ctx context.Context, id int64) error
 	DeleteTemplate(ctx context.Context, path string) error
-	GetIssue(ctx context.Context, id int64) (GetIssueRow, error)
+	GetIssue(ctx context.Context, id int64) (Issue, error)
 	GetIssues(ctx context.Context, arg GetIssuesParams) ([]GetIssuesRow, error)
 	GetIssuesByScanID(ctx context.Context, arg GetIssuesByScanIDParams) ([]GetIssuesByScanIDRow, error)
 	GetIssuesMatches(ctx context.Context, arg GetIssuesMatchesParams) ([]GetIssuesMatchesRow, error)
@@ -37,6 +37,8 @@ type Querier interface {
 	GetTemplatesByFolderOne(ctx context.Context, folder string) (GetTemplatesByFolderOneRow, error)
 	GetTemplatesBySearchKey(ctx context.Context, arg GetTemplatesBySearchKeyParams) ([]GetTemplatesBySearchKeyRow, error)
 	GetTemplatesForScan(ctx context.Context, folder string) ([]GetTemplatesForScanRow, error)
+	GetVersion(ctx context.Context) (string, error)
+	InsertOrUpdateVersion(ctx context.Context, templates string) error
 	SetSettings(ctx context.Context, arg SetSettingsParams) error
 	UpdateIssue(ctx context.Context, arg UpdateIssueParams) error
 	UpdateScanState(ctx context.Context, arg UpdateScanStateParams) error

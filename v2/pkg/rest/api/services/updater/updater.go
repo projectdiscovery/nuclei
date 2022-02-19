@@ -41,6 +41,13 @@ func GetIgnoreFile() []byte {
 	return data
 }
 
+// SetTemplatesVersion sets the current templates version
+func SetTemplatesVersion(version semver.Version) {
+	mutex.Lock()
+	currentTemplates = version
+	mutex.Unlock()
+}
+
 func init() {
 	mutex = &sync.RWMutex{}
 }
@@ -53,15 +60,6 @@ func RunUpdateChecker(db *db.Database) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 	ticker := time.NewTicker(24 * time.Hour)
 	go func() {
-		// First startup requirements
-		if version, err := UpdateTemplates(db, semver.Version{}); err == nil {
-			mutex.Lock()
-			currentTemplates = version
-			mutex.Unlock()
-		} else {
-			gologger.Error().Msgf("Could not update template: %s\n", err)
-		}
-
 		for {
 			select {
 			case <-ticker.C:
@@ -133,6 +131,8 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 		if _, err := downloadReleaseAndUnzip(ctx, db, versions.Templates, asset.GetZipballURL()); err != nil {
 			return semver.Version{}, err
 		}
+		_ = db.Queries().InsertOrUpdateVersion(context.Background(), parsed.String())
+
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", versions.Templates)
 		return parsed, nil
 	}
@@ -155,6 +155,7 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 		if _, err := downloadReleaseAndUnzip(ctx, db, parsed.String(), asset.GetZipballURL()); err != nil {
 			return currentTemplates, err
 		}
+		_ = db.Queries().InsertOrUpdateVersion(context.Background(), parsed.String())
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", parsed.String())
 	}
 	return parsed, nil

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"path"
 
+	"github.com/blang/semver"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -55,6 +57,21 @@ func process() error {
 		return errors.Wrap(err, "could not connect to db")
 	}
 	defer database.Close()
+
+	version, _ := database.Queries().GetVersion(context.Background())
+	parsed, _ := semver.Parse(version)
+	updater.SetTemplatesVersion(parsed)
+
+	if version != "" {
+		gologger.Info().Msgf("Using templates version: %s\n", version)
+	}
+
+	// First startup requirements
+	if version, err := updater.UpdateTemplates(database, semver.Version{}); err == nil {
+		updater.SetTemplatesVersion(version)
+	} else {
+		gologger.Error().Msgf("Could not update template: %s\n", err)
+	}
 
 	close := updater.RunUpdateChecker(database)
 	defer close()

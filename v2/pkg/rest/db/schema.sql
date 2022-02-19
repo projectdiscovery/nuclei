@@ -11,6 +11,12 @@ CREATE TABLE IF NOT EXISTS "public".templates (
 	CONSTRAINT idx_unique_paths UNIQUE ( "path" ) 
 );
 
+CREATE TABLE IF NOT EXISTS "public".versions ( 
+	id                   int NOT NULL,
+	templates            varchar NOT NULL,
+	CONSTRAINT idx_unique_id UNIQUE ( "id" ) 
+);
+
 CREATE TABLE IF NOT EXISTS "public".targets ( 
 	id                   bigserial NOT NULL ,
 	name                 varchar(100) NOT NULL,
@@ -49,28 +55,55 @@ CREATE TABLE IF NOT EXISTS "public".scans (
 );
 
 CREATE TABLE IF NOT EXISTS "public".issues ( 
-	matchedat            varchar NOT NULL,
-	title                varchar NOT NULL,
+	template			 varchar NOT NULL,
+	templateurl          varchar,
+	templateid           varchar,
+	templatepath         varchar,
+	templatename         varchar NOT NULL,
+	author      		 varchar,
+	labels               varchar[],
+	description          varchar NOT NULL,
+	reference            varchar[],
 	severity             varchar NOT NULL,
+	templatemetadata     varchar,
+	cvss                 float8,
+	cwe                  integer[],
+	cveid                varchar,
+	cvssmetrics          varchar,
+	remediation          varchar,
+	matchername			 varchar,
+	extractorname        varchar,
+    resulttype           varchar NOT NULL,
+	host				 varchar NOT NULL,
+	path				 varchar,
+	matchedat            varchar NOT NULL,
+	extractedresults     varchar[],
+	request              varchar,
+	response             varchar,
+	metadata             varchar,
+	ip                   varchar,
+	interaction          varchar,
+	curlcommand          varchar,
+	matcherstatus        boolean,
+	title                varchar NOT NULL,
 	createdat            timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	updatedat            timestamptz  NOT NULL DEFAULT CURRENT_TIMESTAMP  ,
 	scansource           varchar NOT NULL,
 	issuestate           varchar NOT NULL,
-	description          varchar NOT NULL,
-	author               varchar NOT NULL,
-	cvss                 float8,
-	cwe                  integer[],
-	labels               varchar[],
-	issuedata            text NOT NULL,
-	issuetemplate        text NOT NULL,
-	templatename         varchar NOT NULL,
-	remediation          text,
 	hash				 varchar NOT NULL,
 	id                   bigserial NOT NULL,
 	scanid               bigint NOT NULL,
 	CONSTRAINT pk_issues_id PRIMARY KEY ( id ),
 	CONSTRAINT unq_hash UNIQUE ( hash ) 
 );
+
+-- name: InsertOrUpdateVersion :exec
+INSERT INTO "public".versions 
+(id, templates) VALUES
+(1, $1) ON CONFLICT (id) DO UPDATE set templates=$1;
+
+-- name: GetVersion :one
+SELECT templates FROM "public".versions WHERE id=1 LIMIT 1;
 
 -- name: GetTemplates :many
 SELECT id, name, folder, "path", createdat, updatedat, hash
@@ -184,9 +217,9 @@ UPDATE "public".scans SET status=$2 WHERE id=$1 ;
 
 -- name: AddIssue :one
 INSERT INTO "public".issues
-	(matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, issuedata, issuetemplate, templatename, remediation, scanid, hash) 
+	(template,templateurl,templateid,templatepath,templatename,author,labels,description,reference,severity,templatemetadata,cvss,cwe,cveid,cvssmetrics,remediation,matchername,extractorname,resulttype,host,path,matchedat,extractedresults,request,response,metadata,ip,interaction,curlcommand,matcherstatus,title,createdat,updatedat,scansource,issuestate,hash,scanid) 
 VALUES 
-    ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id;
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW(), NOW(), $32, $33, $34, $35) RETURNING id;
 
 -- name: DeleteIssue :exec
 DELETE FROM "public".issues WHERE id=$1;
@@ -196,8 +229,7 @@ DELETE FROM "public".issues WHERE id=$1;
 DELETE FROM "public".issues WHERE scanid=$1;
 
 -- name: GetIssue :one
-SELECT matchedat, title, severity, createdat, updatedat, scansource, issuestate, description, author, cvss, cwe, labels, 
-	issuedata, issuetemplate, templatename, remediation, id, scanid
+SELECT *
 FROM
 	"public".issues WHERE id=$1 LIMIT 1;
 

@@ -210,7 +210,7 @@ func (s *Server) GetScanMatches(ctx echo.Context) error {
 		response[i] = GetScanMatchesResponse{
 			TemplateName: row.Templatename,
 			Severity:     row.Severity,
-			Author:       row.Author,
+			Author:       row.Author.String,
 			MatchedAt:    row.Matchedat,
 		}
 	}

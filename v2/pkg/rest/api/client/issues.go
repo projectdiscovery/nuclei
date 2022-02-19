@@ -45,24 +45,44 @@ type GetIssuesRequest struct {
 
 // GetIssuesResponse is a response for issues list
 type GetIssuesResponse struct {
-	ID            int64     `json:"id,omitempty"`
-	ScanID        int64     `json:"scanId,omitempty"`
-	Matchedat     string    `json:"matchedAt,omitempty"`
-	Title         string    `json:"title,omitempty"`
-	Severity      string    `json:"severity,omitempty"`
-	Scansource    string    `json:"scanSource,omitempty"`
-	Issuestate    string    `json:"issueState,omitempty"`
-	Description   string    `json:"description,omitempty"`
-	Author        string    `json:"author,omitempty"`
-	Cvss          float64   `json:"cvss,omitempty"`
-	Cwe           []int32   `json:"cwe,omitempty"`
-	Labels        []string  `json:"labels,omitempty"`
-	Issuedata     string    `json:"issueData,omitempty"`
-	Issuetemplate string    `json:"issueTemplate,omitempty"`
-	Templatename  string    `json:"templateName,omitempty"`
-	Remediation   string    `json:"remediation,omitempty"`
-	Createdat     time.Time `json:"createdAt,omitempty"`
-	Updatedat     time.Time `json:"updatedAt,omitempty"`
+	Template         string    `json:"template,omitempty"`
+	Templateurl      string    `json:"templateUrl,omitempty"`
+	Templateid       string    `json:"templateId,omitempty"`
+	Templatepath     string    `json:"templatePath,omitempty"`
+	Templatename     string    `json:"templateName,omitempty"`
+	Author           string    `json:"author,omitempty"`
+	Labels           []string  `json:"labels,omitempty"`
+	Description      string    `json:"description,omitempty"`
+	Reference        []string  `json:"reference,omitempty"`
+	Severity         string    `json:"severity,omitempty"`
+	Templatemetadata string    `json:"templatemetadata,omitempty"`
+	Cvss             float64   `json:"cvss,omitempty"`
+	Cwe              []int32   `json:"cwe,omitempty"`
+	Cveid            string    `json:"cveid,omitempty"`
+	Cvssmetrics      string    `json:"cvssmetrics,omitempty"`
+	Remediation      string    `json:"remediation,omitempty"`
+	Matchername      string    `json:"matcherName,omitempty"`
+	Extractorname    string    `json:"extractorName,omitempty"`
+	Resulttype       string    `json:"resultType,omitempty"`
+	Host             string    `json:"host,omitempty"`
+	Path             string    `json:"path,omitempty"`
+	Matchedat        string    `json:"matchedAt,omitempty"`
+	Extractedresults []string  `json:"extractedResults,omitempty"`
+	Request          string    `json:"request,omitempty"`
+	Response         string    `json:"response,omitempty"`
+	Metadata         string    `json:"metadata,omitempty"`
+	Ip               string    `json:"ip,omitempty"`
+	Interaction      string    `json:"interaction,omitempty"`
+	Curlcommand      string    `json:"curlCommand,omitempty"`
+	Matcherstatus    bool      `json:"matcherStatus,omitempty"`
+	Title            string    `json:"title,omitempty"`
+	Createdat        time.Time `json:"createdAt,omitempty"`
+	Updatedat        time.Time `json:"updatedAt,omitempty"`
+	Scansource       string    `json:"scanSource,omitempty"`
+	Issuestate       string    `json:"issueState,omitempty"`
+	Hash             string    `json:"hash,omitempty"`
+	ID               int64     `json:"id,omitempty"`
+	Scanid           int64     `json:"scanId,omitempty"`
 }
 
 // GetIssues returns the list of scans
