@@ -68,7 +68,7 @@ type Options struct {
 	// Output is the file to write found results to.
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
-	Proxy goflags.NormalizedStringSlice
+	Proxy goflags.StringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
