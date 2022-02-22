@@ -139,7 +139,7 @@ var AwsDefaultVars = map[string]interface{}{
 	"region": "us-east-2",
 }
 
-var AwsInternaOnlyVars = map[string]interface{}{
+var AwsInternalOnlyVars = map[string]interface{}{
 	"aws-id":     struct{}{},
 	"aws-secret": struct{}{},
 }

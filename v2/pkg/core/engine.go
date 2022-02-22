@@ -11,7 +11,7 @@ import (
 // concurrency values per protocol executed.
 //
 // The engine does most of the heavy lifting of execution, from clustering
-// templates to leading to the final execution by the workpool, it is
+// templates to leading to the final execution by the work pool, it is
 // handled by the engine.
 type Engine struct {
 	workPool     *WorkPool

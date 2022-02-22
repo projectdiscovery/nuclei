@@ -123,7 +123,7 @@ func (holder TypeHolder) MarshalYAML() (interface{}, error) {
 type ProtocolTypes []ProtocolType
 
 func (protocolTypes *ProtocolTypes) Set(values string) error {
-	inputTypes, err := goflags.ToNormalizedStringSlice(values)
+	inputTypes, err := goflags.ToFileNormalizedStringSlice(values)
 	if err != nil {
 		return err
 	}
