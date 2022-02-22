@@ -74,16 +74,18 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 		}
 
 		// If the condition was an OR, return on the first match.
-		if matcher.condition == ORCondition {
+		if matcher.condition == ORCondition && !matcher.MatchAll {
 			return true, []string{word}
 		}
-
 		matchedWords = append(matchedWords, word)
 
 		// If we are at the end of the words, return with true
-		if len(matcher.Words)-1 == i {
+		if len(matcher.Words)-1 == i && !matcher.MatchAll {
 			return true, matchedWords
 		}
+	}
+	if len(matchedWords) > 0 && matcher.MatchAll {
+		return true, matchedWords
 	}
 	return false, []string{}
 }
@@ -107,16 +109,19 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 
 		currentMatches := regex.FindAllString(corpus, -1)
 		// If the condition was an OR, return on the first match.
-		if matcher.condition == ORCondition {
+		if matcher.condition == ORCondition && !matcher.MatchAll {
 			return true, currentMatches
 		}
 
 		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
-		if len(matcher.regexCompiled)-1 == i {
+		if len(matcher.regexCompiled)-1 == i && !matcher.MatchAll {
 			return true, matchedRegexes
 		}
+	}
+	if len(matchedRegexes) > 0 && matcher.MatchAll {
+		return true, matchedRegexes
 	}
 	return false, []string{}
 }

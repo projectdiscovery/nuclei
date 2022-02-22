@@ -1,4 +1,4 @@
-FROM golang:1.17.6-alpine as build-env
+FROM golang:1.17.7-alpine as build-env
 RUN go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 
 FROM alpine:3.15.0

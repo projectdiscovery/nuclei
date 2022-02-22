@@ -24,6 +24,5 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 			}
 		}
 	}
-
 	return event
 }

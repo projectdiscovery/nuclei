@@ -353,7 +353,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "HTTP response recieved from server",
+			Value: "HTTP response received from server",
 		},
 		{
 			Key:   "status_code",
@@ -599,7 +599,7 @@ func init() {
 			FieldName: "matchers",
 		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 13)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 14)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
 	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
@@ -699,6 +699,15 @@ func init() {
 	MATCHERSMatcherDoc.Fields[12].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
 	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
 	MATCHERSMatcherDoc.Fields[12].Values = []string{
+		"false",
+		"true",
+	}
+	MATCHERSMatcherDoc.Fields[13].Name = "match-all"
+	MATCHERSMatcherDoc.Fields[13].Type = "bool"
+	MATCHERSMatcherDoc.Fields[13].Note = ""
+	MATCHERSMatcherDoc.Fields[13].Description = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Values = []string{
 		"false",
 		"true",
 	}
@@ -1252,7 +1261,7 @@ func init() {
 		},
 		{
 			Key:   "body,all,data",
-			Value: "Network response recieved from server (default)",
+			Value: "Network response received from server (default)",
 		},
 		{
 			Key:   "raw",
@@ -1424,7 +1433,7 @@ func init() {
 		},
 		{
 			Key:   "resp,body,data",
-			Value: "Headless response recieved from client (default)",
+			Value: "Headless response received from client (default)",
 		},
 	}
 	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
@@ -1649,7 +1658,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "Websocket response recieved from the server",
+			Value: "Websocket response received from the server",
 		},
 		{
 			Key:   "host",
