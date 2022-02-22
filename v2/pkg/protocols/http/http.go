@@ -186,7 +186,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":               "Matched is the input which was matched upon",
 	"type":                  "Type is the type of request made",
 	"request":               "HTTP request made from the client",
-	"response":              "HTTP response recieved from server",
+	"response":              "HTTP response received from server",
 	"status_code":           "Status Code received from the Server",
 	"body":                  "HTTP response body received from server (default)",
 	"content_length":        "HTTP Response content length",

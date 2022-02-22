@@ -456,7 +456,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		if text == "" {
 			continue
 		}
-		if isNewTemplate(text) {
+		if isTemplate(text) {
 			templatesList = append(templatesList, text)
 		}
 	}
@@ -483,7 +483,7 @@ func (r *Runner) countNewTemplates() int {
 			continue
 		}
 
-		if isNewTemplate(text) {
+		if isTemplate(text) {
 			count++
 		}
 
@@ -491,7 +491,7 @@ func (r *Runner) countNewTemplates() int {
 	return count
 }
 
-func isNewTemplate(filename string) bool {
+func isTemplate(filename string) bool {
 	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 )
 
@@ -84,7 +85,7 @@ func (holder SignatureTypeHolder) MarshalYAML() (interface{}, error) {
 	return holder.Value.String(), nil
 }
 
-var ErrNoIgnoreList = errors.New("uknown signature types")
+var ErrNoIgnoreList = errors.New("unknown signature types")
 
 // GetVariablesNamesSkipList depending on the signature type
 func GetVariablesNamesSkipList(signature SignatureType) map[string]interface{} {
