@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
-	github.com/andygrunwald/go-jira v1.14.0
+	github.com/andygrunwald/go-jira v1.15.0
 	github.com/antchfx/htmlquery v1.2.4
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -50,7 +50,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.55.0
+	github.com/xanzy/go-gitlab v0.55.1
 	github.com/ysmood/gson v0.6.4 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.43.0
+require github.com/aws/aws-sdk-go v1.43.4
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
@@ -100,7 +100,7 @@ require (
 	github.com/goburrow/cache v0.1.4 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
+	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
