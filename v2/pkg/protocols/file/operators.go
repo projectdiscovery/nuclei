@@ -67,12 +67,24 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 	return itemStr, true
 }
 
-// responseToDSLMap converts a file response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName string) output.InternalEvent {
+type fileStatus struct {
+	raw             string
+	inputFilePath   string
+	matchedFileName string
+	lines           int
+	words           int
+	bytes           int
+}
+
+// toDSLMap converts a file chunk elaboration to a map for use in DSL matching
+func (request *Request) toDSLMap(state *fileStatus) output.InternalEvent {
 	return output.InternalEvent{
-		"path":          inputFilePath,
-		"matched":       matchedFileName,
-		"raw":           raw,
+		"path":          state.inputFilePath,
+		"matched":       state.matchedFileName,
+		"raw":           state.raw,
+		"lines":         state.lines,
+		"words":         state.words,
+		"bytes":         state.bytes,
 		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
@@ -88,6 +100,8 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 	if !ok {
 		return results
 	}
+
+	linesOffset := wrapped.InternalEvent["lines"].(int)
 
 	rawStr, ok := raw.(string)
 	if !ok {
@@ -109,7 +123,7 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 				lineWords[v] = struct{}{}
 			}
 		}
-		result.LineCount = calculateLineFunc(rawStr, lineWords)
+		result.LineCount = calculateLineFunc(rawStr, linesOffset, lineWords)
 	}
 
 	// Identify the position of match in file using a dirty hack.
@@ -123,7 +137,7 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 					if result.FileToIndexPosition == nil {
 						result.FileToIndexPosition = make(map[string]int)
 					}
-					result.FileToIndexPosition[result.Matched] = line
+					result.FileToIndexPosition[result.Matched] = line + linesOffset
 					continue
 				}
 				line++

@@ -3,7 +3,7 @@ package jira
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
@@ -101,7 +101,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
-			d, _ := ioutil.ReadAll(resp.Body)
+			d, _ := io.ReadAll(resp.Body)
 			data = string(d)
 		}
 		return fmt.Errorf("%w => %s", err, data)
@@ -138,7 +138,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
-			d, _ := ioutil.ReadAll(resp.Body)
+			d, _ := io.ReadAll(resp.Body)
 			data = string(d)
 		}
 		return "", fmt.Errorf("%w => %s", err, data)

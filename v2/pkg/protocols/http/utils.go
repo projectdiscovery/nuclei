@@ -63,7 +63,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 			break
 		}
 		if redirectResp.Body != nil {
-			body, _ = ioutil.ReadAll(redirectResp.Body)
+			body, _ = io.ReadAll(redirectResp.Body)
 		}
 		respObj := redirectedResponse{
 			headers:      respData,
@@ -162,7 +162,7 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 	}
 	defer reader.Close()
 
-	bodyDec, err = ioutil.ReadAll(reader)
+	bodyDec, err = io.ReadAll(reader)
 	if err != nil {
 		return bodyOrig, err
 	}
@@ -173,7 +173,7 @@ func handleDecompression(resp *http.Response, bodyOrig []byte) (bodyDec []byte, 
 func decodeGBK(s []byte) ([]byte, error) {
 	I := bytes.NewReader(s)
 	O := transform.NewReader(I, simplifiedchinese.GBK.NewDecoder())
-	d, e := ioutil.ReadAll(O)
+	d, e := io.ReadAll(O)
 	if e != nil {
 		return nil, e
 	}
