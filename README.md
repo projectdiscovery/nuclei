@@ -35,7 +35,7 @@
 
 ---
 
-Nuclei is used to send requests across targets based on a template leading to zero false positives and providing fast scanning on large number of hosts. Nuclei offers scanning for a variety of protocols including TCP, DNS, HTTP, File, etc. With powerful and flexible templating, all kinds of security checks can be modelled with Nuclei.
+Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
 
 We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
 
@@ -98,27 +98,27 @@ TARGET:
    -resume               Resume scan using resume.cfg (clustering will be disabled)
 
 TEMPLATES:
-   -t, -templates string[]      template or template directory paths to include in the scan
-   -tu, -template-url string[]  URL containing list of templates to run
    -nt, -new-templates          run only new templates added in latest nuclei-templates release
-   -w, -workflows string[]      workflow or workflow directory paths to include in the scan
-   -wu, -workflow-url string[]  URL containing list of workflows to run
+   -t, -templates string[]      list of template or template directory to run (comma-separated, file)
+   -tu, -template-url string[]  list of template urls to run (comma-separated, file)
+   -w, -workflows string[]      list of workflow or workflow directory to run (comma-separated, file)
+   -wu, -workflow-url string[]  list of workflow urls to run (comma-separated, file)
    -validate                    validate the passed templates to nuclei
    -tl                          list all available templates
 
 FILTERING:
-   -tags string[]                    execute a subset of templates that contain the provided tags
-   -itags, -include-tags string[]    tags from the default deny list that permit executing more intrusive templates
-   -etags, -exclude-tags string[]    exclude templates with the provided tags
+   -a, -author string[]              templates to run based on authors (comma-separated, file)
+   -tags string[]                    templates to run based on tags (comma-separated, file)
+   -etags, -exclude-tags string[]    templates to exclude based on tags (comma-separated, file)
+   -itags, -include-tags string[]    tags to be executed even if they are excluded either by default or configuration
+   -id, -template-id string[]        templates to run based on template ids (comma-separated, file)
+   -eid, -exclude-id string[]        templates to exclude based on template ids (comma-separated, file)
    -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
-   -et, -exclude-templates string[]  template or template directory paths to exclude
-   -s, -severity value[]             Templates to run based on severity. Possible values: info, low, medium, high, critical
-   -es, -exclude-severity value[]    Templates to exclude based on severity. Possible values: info, low, medium, high, critical
-   -pt, -type value[]                protocol types to be executed. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]       protocol types to not be executed. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -a, -author string[]              execute templates that are (co-)created by the specified authors
-   -id, -template-id string[]        List of template IDs to run (comma-separated, file)
-   -eid, -exclude-id string[]        List of template IDs to exclude (comma-separated, file)
+   -et, -exclude-templates string[]  template or template directory to exclude (comma-separated, file)
+   -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical
+   -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical
+   -pt, -type value[]                templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]       templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
@@ -126,10 +126,10 @@ OUTPUT:
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
-   -nm, -no-meta                 don't display match metadata
-   -nts, -no-timestamp           don't display timestamp metadata in CLI output
-   -rdb, -report-db string       local nuclei reporting database (always use this to persist report data)
-   -ms, -matcher-status          show optional match failure status
+   -nm, -no-meta                 disable printing result metadata in cli output
+   -nts, -no-timestamp           disable printing timestamp in cli output
+   -rdb, -report-db string       nuclei reporting database (always use this to persist report data)
+   -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
 
@@ -165,13 +165,14 @@ RATE-LIMIT:
    -hc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
-   -timeout int               time to wait in seconds before timeout (default 5)
-   -retries int               number of times to retry a failed request (default 1)
-   -mhe, -max-host-error int  max errors for a host before skipping from scan (default 30)
-   -project                   use a project folder to avoid sending same request multiple times
-   -project-path string       set a specific project path
-   -spm, -stop-at-first-path  stop processing HTTP requests after the first match (may break template/workflow logic)
-   -stream                    Stream mode - start elaborating without sorting the input
+   -timeout int                time to wait in seconds before timeout (default 5)
+   -retries int                number of times to retry a failed request (default 1)
+   -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
+   -mhe, -max-host-error int   max errors for a host before skipping from scan (default 30)
+   -project                    use a project folder to avoid sending same request multiple times
+   -project-path string        set a specific project path
+   -spm, -stop-at-first-path   stop processing HTTP requests after the first match (may break template/workflow logic)
+   -stream                     stream mode - start elaborating without sorting the input
 
 HEADLESS:
    -headless            enable templates that require headless browser support (root user on linux will disable sandbox)
