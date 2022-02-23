@@ -13,6 +13,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -56,9 +57,19 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			totalBytes := units.BytesSize(float64(stat.Size()))
 			fileReader := io.LimitReader(file, request.maxSize)
 			var bytesCount, linesCount, wordsCount int
+			isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
+			var result *operators.Result
 			scanner := bufio.NewScanner(fileReader)
 			buffer := []byte{}
 			scanner.Buffer(buffer, int(chunkSize))
+			outputEvent := request.responseToDSLMap(&fileStatus{
+				inputFilePath:   input,
+				matchedFileName: filePath,
+			})
+			for k, v := range previous {
+				outputEvent[k] = v
+			}
+
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -68,7 +79,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				processedBytes := units.BytesSize(float64(currentBytes))
 
 				gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
-				outputEvent := request.toDSLMap(&fileStatus{
+				chunkOutputEvent := request.responseToDSLMap(&fileStatus{
 					raw:             fileContent,
 					inputFilePath:   input,
 					matchedFileName: filePath,
@@ -77,20 +88,28 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					bytes:           bytesCount,
 				})
 				for k, v := range previous {
-					outputEvent[k] = v
+					chunkOutputEvent[k] = v
 				}
 
-				event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+				chunkEvent := eventcreator.CreateEvent(request, chunkOutputEvent, isResponseDebug)
+				if chunkEvent.OperatorsResult != nil {
 
-				dumpResponse(event, request.options, fileContent, filePath)
-				callback(event)
+					if result == nil {
+						result = chunkEvent.OperatorsResult
+					} else {
+						result.Merge(chunkEvent.OperatorsResult)
+					}
+					dumpResponse(chunkEvent, request.options, filePath, linesCount)
+				}
 
 				currentLinesCount := 1 + strings.Count(fileContent, "\n")
 				linesCount += currentLinesCount
 				wordsCount += strings.Count(fileContent, " ")
 				bytesCount = currentBytes
-				request.options.Progress.IncrementRequests()
+
 			}
+			callback(eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result))
+			request.options.Progress.IncrementRequests()
 		}(data)
 	})
 	wg.Wait()
@@ -102,43 +121,62 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, fileContent string, filePath string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, filePath string, line int) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
+		fileContent := event.InternalEvent["raw"].(string)
 		hexDump := false
 		if responsehighlighter.HasBinaryContent(fileContent) {
 			hexDump = true
 			fileContent = hex.Dump([]byte(fileContent))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, fileContent, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped file request for %s\n\n%s", requestOptions.TemplateID, filePath, highlightedResponse)
+		gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, line, highlightedResponse)
 	}
 }
 
-func getAllStringSubmatchIndex(content string, word string) []int {
+func getAllStringSubmatchIndex(filePath string, word string) []int {
+	file, _ := os.Open(filePath)
+	defer file.Close()
+
 	indexes := []int{}
 
-	start := 0
-	for {
-		v := strings.Index(content[start:], word)
-		if v == -1 {
-			break
+	b := 0
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		content := scanner.Text()
+		if v := strings.Index(content, word); v != -1 {
+			indexes = append(indexes, b+v)
 		}
-		indexes = append(indexes, v+start)
-		start += len(word) + v
+		b += len(content) + 1
 	}
+
 	return indexes
 }
 
-func calculateLineFunc(contents string, linesOffset int, words map[string]struct{}) []int {
+func calculateLineFunc(filePath string, words map[string]struct{}) []int {
 	var lines []int
 
 	for word := range words {
-		matches := getAllStringSubmatchIndex(contents, word)
+		matches := getAllStringSubmatchIndex(filePath, word)
 
 		for _, index := range matches {
-			lineCount := 1 + strings.Count(contents[:index], "\n")
-			lines = append(lines, linesOffset+lineCount)
+			f, _ := os.Open(filePath)
+			scanner := bufio.NewScanner(f)
+
+			lineCount := 0
+			b := 0
+			for scanner.Scan() {
+				lineCount++
+				b += len(scanner.Text()) + 1
+				if b > index {
+					break
+				}
+			}
+			if lineCount > 0 {
+				lines = append(lines, lineCount)
+			}
+			f.Close()
 		}
 	}
 	sort.Ints(lines)

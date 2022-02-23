@@ -79,15 +79,23 @@ func TestFileExecuteWithResults(t *testing.T) {
 }
 
 func TestGenerateNewLineIndexes(t *testing.T) {
-	lines := calculateLineFunc(`aaa
-bbb
-ccc
-RequestDataTooBig
-dddd
-eeee
-RequestDataTooBig
-dd
-RequestDataTooBig3
-SuspiciousOperation`, 0, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
+	tempDir, err := ioutil.TempDir("", "test-*")
+	require.Nil(t, err, "could not create temporary directory")
+	defer os.RemoveAll(tempDir)
+
+	v := `aaa
+		bbb
+		ccc
+		RequestDataTooBig
+		dddd
+		eeee
+		RequestDataTooBig
+		dd
+		RequestDataTooBig3
+		SuspiciousOperation`
+	filename := filepath.Join(tempDir, "test")
+	err = os.WriteFile(filename, []byte(v), os.ModePerm)
+	require.Nil(t, err, "could not write temporary file")
+	lines := calculateLineFunc(filename, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
 	require.ElementsMatch(t, []int{4, 7, 9, 10}, lines, "could not calculate correct lines")
 }
