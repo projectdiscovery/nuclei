@@ -145,10 +145,10 @@ func (r *Result) Merge(result *Result) {
 	}
 
 	for k, v := range result.Matches {
-		r.Matches[k] = v
+		r.Matches[k] = append(r.Matches[k], v...)
 	}
 	for k, v := range result.Extracts {
-		r.Extracts[k] = v
+		r.Extracts[k] = append(r.Extracts[k], v...)
 	}
 
 	r.outputUnique = make(map[string]struct{})
@@ -201,7 +201,6 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
 		var extractorResults []string
-
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 
