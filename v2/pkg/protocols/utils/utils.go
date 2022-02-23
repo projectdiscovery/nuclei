@@ -3,7 +3,7 @@ package utils
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -22,7 +22,7 @@ func AddConfiguredClientCertToRequest(tlsConfig *tls.Config, options *types.Opti
 		tlsConfig.Certificates = []tls.Certificate{cert}
 
 		// Load the certificate authority PEM certificate into the TLS configuration
-		caCert, err := ioutil.ReadFile(options.ClientCAFile)
+		caCert, err := os.ReadFile(options.ClientCAFile)
 		if err != nil {
 			return nil, err
 		}

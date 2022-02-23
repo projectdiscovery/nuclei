@@ -21,7 +21,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -34,8 +34,8 @@ func TestResponseToDSLMap(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.toDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
+	require.Len(t, event, 10, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 }
 
@@ -46,7 +46,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -59,8 +59,8 @@ func TestFileOperatorMatch(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.toDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
+	require.Len(t, event, 10, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("valid", func(t *testing.T) {
@@ -108,8 +108,8 @@ func TestFileOperatorMatch(t *testing.T) {
 
 	t.Run("caseInsensitive", func(t *testing.T) {
 		resp := "TEST-DATA\r\n1.1.1.1\r\n"
-		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-		require.Len(t, event, 7, "could not get correct number of items in dsl map")
+		event := request.toDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
+		require.Len(t, event, 10, "could not get correct number of items in dsl map")
 		require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 		matcher := &matchers.Matcher{
@@ -134,7 +134,7 @@ func TestFileOperatorExtract(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -147,8 +147,8 @@ func TestFileOperatorExtract(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.toDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
+	require.Len(t, event, 10, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("extract", func(t *testing.T) {
@@ -241,7 +241,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -265,8 +265,8 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	matchedFileName := "test.txt"
 	fileContent := "test-data\r\n1.1.1.1\r\n"
 
-	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName)
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.toDSLMap(&fileStatus{raw: fileContent, inputFilePath: "/tmp", matchedFileName: matchedFileName})
+	require.Len(t, event, 10, "could not get correct number of items in dsl map")
 	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}

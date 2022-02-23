@@ -3,7 +3,7 @@ package dsl
 import (
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"regexp"
 	"strings"
@@ -46,7 +46,7 @@ func TestDSLGzipSerialize(t *testing.T) {
 	require.Nil(t, err, "could not evaluate compare time")
 
 	reader, _ := gzip.NewReader(strings.NewReader(types.ToString(result)))
-	data, _ := ioutil.ReadAll(reader)
+	data, _ := io.ReadAll(reader)
 
 	require.Equal(t, "hello world", string(data), "could not get gzip encoded data")
 }
