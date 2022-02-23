@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"os"
 	"strings"
 	"time"
 
@@ -76,8 +77,8 @@ type fileStatus struct {
 	bytes           int
 }
 
-// toDSLMap converts a file chunk elaboration to a map for use in DSL matching
-func (request *Request) toDSLMap(state *fileStatus) output.InternalEvent {
+// responseToDSLMap converts a file chunk elaboration to a map for use in DSL matching
+func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent {
 	return output.InternalEvent{
 		"path":          state.inputFilePath,
 		"matched":       state.matchedFileName,
@@ -94,20 +95,8 @@ func (request *Request) toDSLMap(state *fileStatus) output.InternalEvent {
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	filePath := wrapped.InternalEvent["path"].(string)
 	results := protocols.MakeDefaultResultEvent(request, wrapped)
-
-	raw, ok := wrapped.InternalEvent["raw"]
-	if !ok {
-		return results
-	}
-
-	linesOffset := wrapped.InternalEvent["lines"].(int)
-
-	rawStr, ok := raw.(string)
-	if !ok {
-		return results
-	}
-
 	for _, result := range results {
 		lineWords := make(map[string]struct{})
 
@@ -123,13 +112,13 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 				lineWords[v] = struct{}{}
 			}
 		}
-		result.LineCount = calculateLineFunc(rawStr, linesOffset, lineWords)
+		result.Lines = calculateLineFunc(filePath, lineWords)
 	}
-
 	// Identify the position of match in file using a dirty hack.
 	for _, result := range results {
 		for _, extraction := range result.ExtractedResults {
-			scanner := bufio.NewScanner(strings.NewReader(rawStr))
+			file, _ := os.Open(filePath)
+			scanner := bufio.NewScanner(file)
 
 			line := 1
 			for scanner.Scan() {
@@ -137,11 +126,12 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 					if result.FileToIndexPosition == nil {
 						result.FileToIndexPosition = make(map[string]int)
 					}
-					result.FileToIndexPosition[result.Matched] = line + linesOffset
+					result.FileToIndexPosition[result.Matched] = line
 					continue
 				}
 				line++
 			}
+			file.Close()
 		}
 	}
 	return results
