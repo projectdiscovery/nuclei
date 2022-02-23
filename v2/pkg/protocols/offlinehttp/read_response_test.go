@@ -2,7 +2,7 @@ package offlinehttp
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -149,7 +149,7 @@ Server: Google Frontend
 			resp, err := readResponseFromString(tt.data)
 			require.Nil(t, err, "could not read response from string")
 
-			respData, err := ioutil.ReadAll(resp.Body)
+			respData, err := io.ReadAll(resp.Body)
 			require.Nil(t, err, "could not read response body")
 			require.Equal(t, expectedBody, string(respData), "could not get correct parsed body")
 			require.Equal(t, "Google Frontend", resp.Header.Get("Server"), "could not get correct headers")
@@ -190,7 +190,7 @@ Server: Google Frontend
 		respData, err := readResponseFromString(string(b))
 		require.Nil(t, err, "could not read response from string")
 
-		_, err = ioutil.ReadAll(respData.Body)
+		_, err = io.ReadAll(respData.Body)
 		require.Nil(t, err, "could not read response body")
 
 		require.Equal(t, "Google Frontend", respData.Header.Get("Server"), "could not get correct headers")

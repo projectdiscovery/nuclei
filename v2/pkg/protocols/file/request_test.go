@@ -24,7 +24,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"all"},
 		DenyList:    []string{".go"},
@@ -88,6 +88,6 @@ eeee
 RequestDataTooBig
 dd
 RequestDataTooBig3
-SuspiciousOperation`, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
+SuspiciousOperation`, 0, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
 	require.ElementsMatch(t, []int{4, 7, 9, 10}, lines, "could not calculate correct lines")
 }

@@ -486,7 +486,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		} else {
 			bodyReader = resp.Body
 		}
-		data, err := ioutil.ReadAll(bodyReader)
+		data, err := io.ReadAll(bodyReader)
 		if err != nil {
 			// Ignore body read due to server misconfiguration errors
 			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {

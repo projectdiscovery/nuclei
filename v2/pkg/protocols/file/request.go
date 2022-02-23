@@ -1,12 +1,14 @@
 package file
 
 import (
+	"bufio"
 	"encoding/hex"
-	"io/ioutil"
+	"io"
 	"os"
 	"sort"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -27,7 +28,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 
 	err := request.getInputPaths(input, func(data string) {
@@ -49,30 +50,47 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				gologger.Error().Msgf("Could not stat file path %s: %s\n", filePath, err)
 				return
 			}
-			if stat.Size() >= int64(request.MaxSize) {
-				gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", filePath)
-				return
+			if stat.Size() >= request.maxSize {
+				gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, units.HumanSize(float64(request.maxSize)))
 			}
+			totalBytes := units.BytesSize(float64(stat.Size()))
+			fileReader := io.LimitReader(file, request.maxSize)
+			var bytesCount, linesCount, wordsCount int
+			scanner := bufio.NewScanner(fileReader)
+			buffer := []byte{}
+			scanner.Buffer(buffer, int(chunkSize))
+			for scanner.Scan() {
+				fileContent := scanner.Text()
+				n := len(fileContent)
 
-			buffer, err := ioutil.ReadAll(file)
-			if err != nil {
-				gologger.Error().Msgf("Could not read file path %s: %s\n", filePath, err)
-				return
+				// update counters
+				currentBytes := bytesCount + n
+				processedBytes := units.BytesSize(float64(currentBytes))
+
+				gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
+				outputEvent := request.toDSLMap(&fileStatus{
+					raw:             fileContent,
+					inputFilePath:   input,
+					matchedFileName: filePath,
+					lines:           linesCount,
+					words:           wordsCount,
+					bytes:           bytesCount,
+				})
+				for k, v := range previous {
+					outputEvent[k] = v
+				}
+
+				event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+
+				dumpResponse(event, request.options, fileContent, filePath)
+				callback(event)
+
+				currentLinesCount := 1 + strings.Count(fileContent, "\n")
+				linesCount += currentLinesCount
+				wordsCount += strings.Count(fileContent, " ")
+				bytesCount = currentBytes
+				request.options.Progress.IncrementRequests()
 			}
-			fileContent := tostring.UnsafeToString(buffer)
-
-			gologger.Verbose().Msgf("[%s] Sent FILE request to %s", request.options.TemplateID, filePath)
-			outputEvent := request.responseToDSLMap(fileContent, input, filePath)
-			for k, v := range previous {
-				outputEvent[k] = v
-			}
-
-			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-
-			dumpResponse(event, request.options, fileContent, filePath)
-
-			callback(event)
-			request.options.Progress.IncrementRequests()
 		}(data)
 	})
 	wg.Wait()
@@ -112,22 +130,15 @@ func getAllStringSubmatchIndex(content string, word string) []int {
 	return indexes
 }
 
-func calculateLineFunc(contents string, words map[string]struct{}) []int {
+func calculateLineFunc(contents string, linesOffset int, words map[string]struct{}) []int {
 	var lines []int
 
 	for word := range words {
 		matches := getAllStringSubmatchIndex(contents, word)
 
 		for _, index := range matches {
-			lineCount := int(0)
-			for _, c := range contents[:index] {
-				if c == '\n' {
-					lineCount++
-				}
-			}
-			if lineCount > 0 {
-				lines = append(lines, lineCount+1)
-			}
+			lineCount := 1 + strings.Count(contents[:index], "\n")
+			lines = append(lines, linesOffset+lineCount)
 		}
 	}
 	sort.Ints(lines)

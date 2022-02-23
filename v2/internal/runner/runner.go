@@ -3,7 +3,6 @@ package runner
 import (
 	"bufio"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,7 +157,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		file, err := os.ReadFile(types.DefaultResumeFilePath())
 		if err != nil {
 			return nil, err
 		}

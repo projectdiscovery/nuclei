@@ -4,10 +4,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+)
+
+var (
+	defaultMaxReadSize, _ = units.FromHumanSize("1Gb")
+	chunkSize, _          = units.FromHumanSize("100Mb")
 )
 
 // Request contains a File matching mechanism for local disk operations.
@@ -34,11 +40,14 @@ type Request struct {
 	// description: |
 	//   MaxSize is the maximum size of the file to run request on.
 	//
-	//   By default, nuclei will process 5 MB files and not go more than that.
+	//   By default, nuclei will process 1 GB of content and not go more than that.
 	//   It can be set to much lower or higher depending on use.
+	//   If set to "no" then all content will be processed
 	// examples:
-	//   - value: 2048
-	MaxSize           int                  `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
+	//   - value: 5Mb
+	MaxSize string `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
+	maxSize int64
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
@@ -83,10 +92,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
-	// By default, use 1GB (1024 MB) as max size to read.
-	if request.MaxSize == 0 {
-		request.MaxSize = 1024 * 1024 * 1024
+
+	// By default, use default max size if not defined
+	switch {
+	case request.MaxSize != "":
+		maxSize, err := units.FromHumanSize(request.MaxSize)
+		if err != nil {
+			return errors.Wrap(err, "could not compile operators")
+		}
+		request.maxSize = maxSize
+	case request.MaxSize == "no":
+		request.maxSize = -1
+	default:
+		request.maxSize = defaultMaxReadSize
 	}
+
 	request.options = options
 
 	request.extensions = make(map[string]struct{})
