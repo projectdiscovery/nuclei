@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/hex"
 	"io"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -113,8 +112,11 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 			}
 			outputEvent["all_matches"] = allMatches
-			log.Printf("%#v\n", result)
-			callback(eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result))
+			event := eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result)
+			for _, outputResultEvent := range event.Results {
+				outputResultEvent.ExtractedResults = sliceutil.Dedupe(outputResultEvent.ExtractedResults)
+			}
+			callback(event)
 			request.options.Progress.IncrementRequests()
 		}(data)
 	})
