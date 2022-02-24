@@ -1,7 +1,6 @@
 package file
 
 import (
-	"log"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -125,7 +124,6 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 				result.FileToIndexPosition = make(map[string]int)
 			}
 			result.FileToIndexPosition[result.Matched] = calculateFileIndexFunc(allMatches, extraction)
-			log.Fatalf("%s %#v\n", extraction, result.FileToIndexPosition)
 		}
 	}
 	return results
