@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/hex"
 	"io"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -112,6 +113,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 			}
 			outputEvent["all_matches"] = allMatches
+			log.Printf("%#v\n", result)
 			callback(eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result))
 			request.options.Progress.IncrementRequests()
 		}(data)
@@ -171,12 +173,10 @@ func calculateFileIndexFunc(allMatches []*output.InternalEvent, extraction strin
 	for _, match := range allMatches {
 		matchPt := *match
 		opResult := matchPt["results"].(operators.Result)
-		if opResult.Matched {
-			for _, extracts := range opResult.Extracts {
-				for _, extract := range extracts {
-					if extraction == extract {
-						return matchPt["results"].(int)
-					}
+		for _, extracts := range opResult.Extracts {
+			for _, extract := range extracts {
+				if extraction == extract {
+					return matchPt["bytes"].(int)
 				}
 			}
 		}
