@@ -2,8 +2,6 @@ package runner
 
 import (
 	"bufio"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,8 +142,8 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	log.SetFlags(0)
-	log.SetOutput(io.Discard)
+	// log.SetFlags(0)
+	// log.SetOutput(io.Discard)
 }
 
 // loadResolvers loads resolvers from both user provided flag and file
