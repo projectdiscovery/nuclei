@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 var _ protocols.Request = &Request{}
@@ -161,19 +162,7 @@ func calculateLineFunc(allMatches []*output.InternalEvent, words map[string]stru
 		}
 		_ = word
 	}
-	lines = unique(lines)
+	lines = sliceutil.DedupeInt(lines)
 	sort.Ints(lines)
 	return lines
-}
-
-func unique(intSlice []int) []int {
-	keys := make(map[int]bool)
-	list := []int{}
-	for _, entry := range intSlice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
-		}
-	}
-	return list
 }
