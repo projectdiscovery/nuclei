@@ -1,6 +1,7 @@
 package file
 
 import (
+	"log"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -118,25 +119,15 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 		result.Lines = calculateLineFunc(allMatches, lineWords)
 	}
 	// Identify the position of match in file using a dirty hack.
-	// for _, result := range results {
-	// 	for _, extraction := range result.ExtractedResults {
-	// 		file, _ := os.Open(filePath)
-	// 		scanner := bufio.NewScanner(file)
-
-	// 		line := 1
-	// 		for scanner.Scan() {
-	// 			if strings.Contains(scanner.Text(), extraction) {
-	// 				if result.FileToIndexPosition == nil {
-	// 					result.FileToIndexPosition = make(map[string]int)
-	// 				}
-	// 				result.FileToIndexPosition[result.Matched] = line
-	// 				continue
-	// 			}
-	// 			line++
-	// 		}
-	// 		file.Close()
-	// 	}
-	// }
+	for _, result := range results {
+		for _, extraction := range result.ExtractedResults {
+			if result.FileToIndexPosition == nil {
+				result.FileToIndexPosition = make(map[string]int)
+			}
+			result.FileToIndexPosition[result.Matched] = calculateFileIndexFunc(allMatches, extraction)
+			log.Fatalf("%s %#v\n", extraction, result.FileToIndexPosition)
+		}
+	}
 	return results
 }
 

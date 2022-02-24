@@ -166,3 +166,20 @@ func calculateLineFunc(allMatches []*output.InternalEvent, words map[string]stru
 	sort.Ints(lines)
 	return lines
 }
+
+func calculateFileIndexFunc(allMatches []*output.InternalEvent, extraction string) int {
+	for _, match := range allMatches {
+		matchPt := *match
+		opResult := matchPt["results"].(operators.Result)
+		if opResult.Matched {
+			for _, extracts := range opResult.Extracts {
+				for _, extract := range extracts {
+					if extraction == extract {
+						return matchPt["results"].(int)
+					}
+				}
+			}
+		}
+	}
+	return -1
+}
