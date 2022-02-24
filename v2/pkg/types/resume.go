@@ -11,19 +11,14 @@ import (
 )
 
 // Default resume file
-const DefaultResumeFileName = "resume.cfg"
+const DefaultResumeFileName = "resume-%s.cfg"
 
 func DefaultResumeFilePath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return DefaultResumeFileName
+		return fmt.Sprintf("resume-%s.cfg", xid.New().String())
 	}
-	resumeFile := filepath.Join(home, ".config", "nuclei", DefaultResumeFileName)
-
-	// Generate random name if already exists
-	if _, err := os.Stat(resumeFile); !os.IsNotExist(err) {
-		resumeFile = filepath.Join(home, ".config", "nuclei", fmt.Sprintf("resume-%s.cfg", xid.New().String()))
-	}
+	resumeFile := filepath.Join(home, ".config", "nuclei", fmt.Sprintf("resume-%s.cfg", xid.New().String()))
 	return resumeFile
 }
 
