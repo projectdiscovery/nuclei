@@ -70,6 +70,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				outputEvent[k] = v
 			}
 
+			var allMatches []*output.InternalEvent
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -93,7 +94,8 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 				chunkEvent := eventcreator.CreateEvent(request, chunkOutputEvent, isResponseDebug)
 				if chunkEvent.OperatorsResult != nil {
-
+					chunkOutputEvent["results"] = *chunkEvent.OperatorsResult
+					allMatches = append(allMatches, &chunkOutputEvent)
 					if result == nil {
 						result = chunkEvent.OperatorsResult
 					} else {
@@ -108,6 +110,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				bytesCount = currentBytes
 
 			}
+			outputEvent["all_matches"] = allMatches
 			callback(eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result))
 			request.options.Progress.IncrementRequests()
 		}(data)
@@ -131,54 +134,46 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 			fileContent = hex.Dump([]byte(fileContent))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, fileContent, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, line, highlightedResponse)
+		gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, line+1, highlightedResponse)
 	}
 }
 
-func getAllStringSubmatchIndex(filePath string, word string) []int {
-	file, _ := os.Open(filePath)
-	defer file.Close()
-
-	indexes := []int{}
-
-	b := 0
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		content := scanner.Text()
-		if v := strings.Index(content, word); v != -1 {
-			indexes = append(indexes, b+v)
-		}
-		b += len(content) + 1
-	}
-
-	return indexes
-}
-
-func calculateLineFunc(filePath string, words map[string]struct{}) []int {
+func calculateLineFunc(allMatches []*output.InternalEvent, words map[string]struct{}) []int {
 	var lines []int
-
 	for word := range words {
-		matches := getAllStringSubmatchIndex(filePath, word)
-
-		for _, index := range matches {
-			f, _ := os.Open(filePath)
-			scanner := bufio.NewScanner(f)
-
-			lineCount := 0
-			b := 0
-			for scanner.Scan() {
-				lineCount++
-				b += len(scanner.Text()) + 1
-				if b > index {
-					break
+		for _, match := range allMatches {
+			matchPt := *match
+			opResult := matchPt["results"].(operators.Result)
+			if opResult.Matched {
+				for _, matchedItems := range opResult.Matches {
+					for _, matchedItem := range matchedItems {
+						if word == matchedItem {
+							lines = append(lines, matchPt["lines"].(int)+1)
+						}
+					}
 				}
 			}
-			if lineCount > 0 {
-				lines = append(lines, lineCount)
+			for _, v := range opResult.OutputExtracts {
+				if word == v {
+					lines = append(lines, matchPt["lines"].(int)+1)
+				}
 			}
-			f.Close()
 		}
+		_ = word
 	}
+	lines = unique(lines)
 	sort.Ints(lines)
 	return lines
+}
+
+func unique(intSlice []int) []int {
+	keys := make(map[int]bool)
+	list := []int{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }

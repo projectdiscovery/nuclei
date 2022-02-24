@@ -1,9 +1,6 @@
 package file
 
 import (
-	"bufio"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -69,6 +66,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 }
 
 type fileStatus struct {
+	results         []*operators.Result
 	raw             string
 	inputFilePath   string
 	matchedFileName string
@@ -80,6 +78,7 @@ type fileStatus struct {
 // responseToDSLMap converts a file chunk elaboration to a map for use in DSL matching
 func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent {
 	return output.InternalEvent{
+		"results":       state.results,
 		"path":          state.inputFilePath,
 		"matched":       state.matchedFileName,
 		"raw":           state.raw,
@@ -95,7 +94,11 @@ func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	filePath := wrapped.InternalEvent["path"].(string)
+	var allMatches []*output.InternalEvent
+	if allM, ok := wrapped.InternalEvent["all_matches"].([]*output.InternalEvent); ok {
+		allMatches = allM
+	}
+
 	results := protocols.MakeDefaultResultEvent(request, wrapped)
 	for _, result := range results {
 		lineWords := make(map[string]struct{})
@@ -112,28 +115,28 @@ func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []
 				lineWords[v] = struct{}{}
 			}
 		}
-		result.Lines = calculateLineFunc(filePath, lineWords)
+		result.Lines = calculateLineFunc(allMatches, lineWords)
 	}
 	// Identify the position of match in file using a dirty hack.
-	for _, result := range results {
-		for _, extraction := range result.ExtractedResults {
-			file, _ := os.Open(filePath)
-			scanner := bufio.NewScanner(file)
+	// for _, result := range results {
+	// 	for _, extraction := range result.ExtractedResults {
+	// 		file, _ := os.Open(filePath)
+	// 		scanner := bufio.NewScanner(file)
 
-			line := 1
-			for scanner.Scan() {
-				if strings.Contains(scanner.Text(), extraction) {
-					if result.FileToIndexPosition == nil {
-						result.FileToIndexPosition = make(map[string]int)
-					}
-					result.FileToIndexPosition[result.Matched] = line
-					continue
-				}
-				line++
-			}
-			file.Close()
-		}
-	}
+	// 		line := 1
+	// 		for scanner.Scan() {
+	// 			if strings.Contains(scanner.Text(), extraction) {
+	// 				if result.FileToIndexPosition == nil {
+	// 					result.FileToIndexPosition = make(map[string]int)
+	// 				}
+	// 				result.FileToIndexPosition[result.Matched] = line
+	// 				continue
+	// 			}
+	// 			line++
+	// 		}
+	// 		file.Close()
+	// 	}
+	// }
 	return results
 }
 
