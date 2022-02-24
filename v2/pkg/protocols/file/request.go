@@ -29,6 +29,15 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.FileProtocol
 }
 
+type FileMatch struct {
+	Data      string
+	Line      int
+	ByteIndex int
+	Match     bool
+	Extract   bool
+	Expr      string
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
@@ -59,19 +68,11 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			fileReader := io.LimitReader(file, request.maxSize)
 			var bytesCount, linesCount, wordsCount int
 			isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
-			var result *operators.Result
 			scanner := bufio.NewScanner(fileReader)
 			buffer := []byte{}
 			scanner.Buffer(buffer, int(chunkSize))
-			outputEvent := request.responseToDSLMap(&fileStatus{
-				inputFilePath:   input,
-				matchedFileName: filePath,
-			})
-			for k, v := range previous {
-				outputEvent[k] = v
-			}
 
-			var allMatches []*output.InternalEvent
+			var fileMatches []FileMatch
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -81,7 +82,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				processedBytes := units.BytesSize(float64(currentBytes))
 
 				gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
-				chunkOutputEvent := request.responseToDSLMap(&fileStatus{
+				dslMap := request.responseToDSLMap(&fileStatus{
 					raw:             fileContent,
 					inputFilePath:   input,
 					matchedFileName: filePath,
@@ -89,20 +90,34 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					words:           wordsCount,
 					bytes:           bytesCount,
 				})
-				for k, v := range previous {
-					chunkOutputEvent[k] = v
-				}
 
-				chunkEvent := eventcreator.CreateEvent(request, chunkOutputEvent, isResponseDebug)
-				if chunkEvent.OperatorsResult != nil {
-					chunkOutputEvent["results"] = *chunkEvent.OperatorsResult
-					allMatches = append(allMatches, &chunkOutputEvent)
-					if result == nil {
-						result = chunkEvent.OperatorsResult
-					} else {
-						result.Merge(chunkEvent.OperatorsResult)
+				if parts, ok := request.CompiledOperators.Execute(dslMap, request.Match, request.Extract, isResponseDebug); parts != nil && ok {
+					if parts.Extracts != nil {
+						for expr, extracts := range parts.Extracts {
+							for _, extract := range extracts {
+								fileMatches = append(fileMatches, FileMatch{
+									Data:      extract,
+									Extract:   true,
+									Line:      linesCount + 1,
+									ByteIndex: bytesCount,
+									Expr:      expr,
+								})
+							}
+						}
 					}
-					dumpResponse(chunkEvent, request.options, filePath, linesCount)
+					if parts.Matches != nil {
+						for expr, matches := range parts.Matches {
+							for _, match := range matches {
+								fileMatches = append(fileMatches, FileMatch{
+									Data:      match,
+									Match:     true,
+									Line:      linesCount + 1,
+									ByteIndex: bytesCount,
+									Expr:      expr,
+								})
+							}
+						}
+					}
 				}
 
 				currentLinesCount := 1 + strings.Count(fileContent, "\n")
@@ -111,12 +126,16 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				bytesCount = currentBytes
 
 			}
-			outputEvent["all_matches"] = allMatches
-			event := eventcreator.CreateEventWithResults(request, outputEvent, isResponseDebug, result)
-			for _, outputResultEvent := range event.Results {
-				outputResultEvent.ExtractedResults = sliceutil.Dedupe(outputResultEvent.ExtractedResults)
-			}
+
+			// create a new event trying to adapt it for the architecture
+			dumpResponse(request.options, fileMatches, filePath)
+
+			// build event to allow the internal logic to hopefully handle it
+			event := &output.InternalWrappedEvent{}
+			event.Results = append(event.Results, &output.ResultEvent{})
+			event := eventcreator.CreateEvent(request, outputEvent, isResponseDebug)
 			callback(event)
+
 			request.options.Progress.IncrementRequests()
 		}(data)
 	})
@@ -129,17 +148,19 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, filePath string, line int) {
+func dumpResponse(requestOptions *protocols.ExecuterOptions, filematches []FileMatch, filePath string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
-		fileContent := event.InternalEvent["raw"].(string)
-		hexDump := false
-		if responsehighlighter.HasBinaryContent(fileContent) {
-			hexDump = true
-			fileContent = hex.Dump([]byte(fileContent))
+		for _, fileMatch := range filematches {
+			data := fileMatch.Data
+			hexDump := false
+			if responsehighlighter.HasBinaryContent(data) {
+				hexDump = true
+				data = hex.Dump([]byte(data))
+			}
+			highlightedResponse := responsehighlighter.HighlightAll(data, cliOptions.NoColor, hexDump)
+			gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
 		}
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, fileContent, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, line+1, highlightedResponse)
 	}
 }
 
