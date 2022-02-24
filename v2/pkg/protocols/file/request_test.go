@@ -77,25 +77,3 @@ func TestFileExecuteWithResults(t *testing.T) {
 	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
 }
-
-func TestGenerateNewLineIndexes(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "test-*")
-	require.Nil(t, err, "could not create temporary directory")
-	defer os.RemoveAll(tempDir)
-
-	v := `aaa
-		bbb
-		ccc
-		RequestDataTooBig
-		dddd
-		eeee
-		RequestDataTooBig
-		dd
-		RequestDataTooBig3
-		SuspiciousOperation`
-	filename := filepath.Join(tempDir, "test")
-	err = os.WriteFile(filename, []byte(v), os.ModePerm)
-	require.Nil(t, err, "could not write temporary file")
-	lines := calculateLineFunc(filename, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
-	require.ElementsMatch(t, []int{4, 7, 9, 10}, lines, "could not calculate correct lines")
-}
