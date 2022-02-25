@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io"
 	"math"
 	"math/rand"
 	"net/url"
@@ -101,11 +102,25 @@ func init() {
 			buffer := &bytes.Buffer{}
 			writer := gzip.NewWriter(buffer)
 			if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+				_ = writer.Close()
 				return "", err
 			}
 			_ = writer.Close()
 
 			return buffer.String(), nil
+		}),
+		"gzip_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			reader, err := gzip.NewReader(strings.NewReader(args[0].(string)))
+			if err != nil {
+				return "", err
+			}
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				_ = reader.Close()
+				return "", err
+			}
+			_ = reader.Close()
+			return string(data), nil
 		}),
 		"base64_py": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			// python encodes to base64 with lines of 76 bytes terminated by new line "\n"

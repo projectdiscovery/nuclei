@@ -1,12 +1,9 @@
 package dsl
 
 import (
-	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -40,15 +37,18 @@ func TestDSLTimeComparison(t *testing.T) {
 
 func TestDSLGzipSerialize(t *testing.T) {
 	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("gzip(\"hello world\")", HelperFunctions())
-	require.Nil(t, err, "could not compare time")
+	require.Nil(t, err, "could not compile encoder")
 
 	result, err := compiled.Evaluate(make(map[string]interface{}))
 	require.Nil(t, err, "could not evaluate compare time")
 
-	reader, _ := gzip.NewReader(strings.NewReader(types.ToString(result)))
-	data, _ := ioutil.ReadAll(reader)
+	compiled, err = govaluate.NewEvaluableExpressionWithFunctions("gzip_decode(data)", HelperFunctions())
+	require.Nil(t, err, "could not compile decoder")
 
-	require.Equal(t, "hello world", string(data), "could not get gzip encoded data")
+	data, err := compiled.Evaluate(map[string]interface{}{"data": result})
+	require.Nil(t, err, "could not evaluate decoded data")
+
+	require.Equal(t, "hello world", data.(string), "could not get gzip encoded data")
 }
 
 func TestDslFunctionSignatures(t *testing.T) {
@@ -102,6 +102,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
