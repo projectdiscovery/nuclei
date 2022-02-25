@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 )
@@ -82,6 +83,8 @@ type Options struct {
 	DisableHttpFallback bool
 	// NoInteractsh disables the engine
 	NoInteractsh bool
+	// NoColor dissbles printing colors for matches
+	NoColor bool
 
 	StopAtFirstMatch bool
 }
@@ -124,6 +127,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 		IssuesClient:        reporting,
 		Progress:            progress,
 		DisableHttpFallback: true,
+		NoColor:             false,
 	}
 }
 
@@ -148,9 +152,6 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.hostname = interactDomain
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		if c.options.Debug || c.options.DebugRequest || c.options.DebugResponse {
-			c.debugPrintInteraction(interaction)
-		}
 		item := c.requests.Get(interaction.UniqueID)
 
 		if item == nil {
@@ -189,7 +190,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 
-	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, false)
+	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 	if !matched || result == nil {
 		return false // if we don't match, return
 	}
@@ -203,6 +204,10 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.Results = data.MakeResultFunc(data.Event)
 	for _, event := range data.Event.Results {
 		event.Interaction = interaction
+	}
+
+	if c.options.Debug || c.options.DebugRequest || c.options.DebugResponse {
+		c.debugPrintInteraction(interaction, data.Event.OperatorsResult)
 	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
@@ -350,35 +355,35 @@ func HasMarkers(data string) bool {
 	return strings.Contains(data, interactshURLMarker)
 }
 
-func (c *Client) debugPrintInteraction(interaction *server.Interaction) {
+func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {
 	builder := &bytes.Buffer{}
 
 	switch interaction.Protocol {
 	case "dns":
 		builder.WriteString(formatInteractionHeader("DNS", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug {
-			builder.WriteString(formatInteractionMessage("DNS Request", interaction.RawRequest))
+			builder.WriteString(formatInteractionMessage("DNS Request", interaction.RawRequest, event, c.options.NoColor))
 		}
 		if c.options.DebugResponse || c.options.Debug {
-			builder.WriteString(formatInteractionMessage("DNS Response", interaction.RawResponse))
+			builder.WriteString(formatInteractionMessage("DNS Response", interaction.RawResponse, event, c.options.NoColor))
 		}
 	case "http":
 		builder.WriteString(formatInteractionHeader("HTTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug {
-			builder.WriteString(formatInteractionMessage("HTTP Request", interaction.RawRequest))
+			builder.WriteString(formatInteractionMessage("HTTP Request", interaction.RawRequest, event, c.options.NoColor))
 		}
 		if c.options.DebugResponse || c.options.Debug {
-			builder.WriteString(formatInteractionMessage("HTTP Response", interaction.RawResponse))
+			builder.WriteString(formatInteractionMessage("HTTP Response", interaction.RawResponse, event, c.options.NoColor))
 		}
 	case "smtp":
 		builder.WriteString(formatInteractionHeader("SMTP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
-			builder.WriteString(formatInteractionMessage("SMTP Interaction", interaction.RawRequest))
+			builder.WriteString(formatInteractionMessage("SMTP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	case "ldap":
 		builder.WriteString(formatInteractionHeader("LDAP", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))
 		if c.options.DebugRequest || c.options.Debug || c.options.DebugResponse {
-			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest))
+			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	}
 	fmt.Fprint(os.Stderr, builder.String())
@@ -388,7 +393,8 @@ func formatInteractionHeader(protocol, ID, address string, at time.Time) string 
 	return fmt.Sprintf("[%s] Received %s interaction from %s at %s", ID, protocol, address, at.Format("2006-01-02 15:04:05"))
 }
 
-func formatInteractionMessage(key, value string) string {
+func formatInteractionMessage(key, value string, event *operators.Result, noColor bool) string {
+	value = responsehighlighter.Highlight(event, value, noColor, false)
 	return fmt.Sprintf("\n------------\n%s\n------------\n\n%s\n\n", key, value)
 }
 
