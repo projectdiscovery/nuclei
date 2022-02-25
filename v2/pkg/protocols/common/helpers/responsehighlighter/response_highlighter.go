@@ -30,22 +30,6 @@ func Highlight(operatorResult *operators.Result, response string, noColor, hexDu
 	return result
 }
 
-func HighlightAll(data string, noColor, hexDump bool) string {
-	var result string
-	if !noColor {
-		if hexDump {
-			highlightedHexDump, err := toHighLightedHexDump(data, data)
-			if err == nil {
-				result = highlightedHexDump.String()
-			}
-		} else {
-			result = highlightASCII(data, data)
-		}
-	}
-
-	return result
-}
-
 func highlightASCII(currentMatch string, result string) string {
 	var coloredMatchBuilder strings.Builder
 	for _, char := range currentMatch {

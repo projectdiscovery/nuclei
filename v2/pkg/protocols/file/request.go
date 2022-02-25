@@ -36,6 +36,7 @@ type FileMatch struct {
 	Match     bool
 	Extract   bool
 	Expr      string
+	Raw       string
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -76,8 +77,8 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			exprLines := make(map[string][]int)
 			exprBytes := make(map[string][]int)
 			for scanner.Scan() {
-				fileContent := scanner.Text()
-				n := len(fileContent)
+				lineContent := scanner.Text()
+				n := len(lineContent)
 
 				// update counters
 				currentBytes := bytesCount + n
@@ -85,7 +86,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 				gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
 				dslMap := request.responseToDSLMap(&fileStatus{
-					raw:             fileContent,
+					raw:             lineContent,
 					inputFilePath:   input,
 					matchedFileName: filePath,
 					lines:           linesCount,
@@ -103,6 +104,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 									Line:      linesCount + 1,
 									ByteIndex: bytesCount,
 									Expr:      expr,
+									Raw:       lineContent,
 								})
 							}
 						}
@@ -116,22 +118,21 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 									Line:      linesCount + 1,
 									ByteIndex: bytesCount,
 									Expr:      expr,
+									Raw:       lineContent,
 								})
 							}
 						}
 					}
 				}
 
-				currentLinesCount := 1 + strings.Count(fileContent, "\n")
+				currentLinesCount := 1 + strings.Count(lineContent, "\n")
 				linesCount += currentLinesCount
-				wordsCount += strings.Count(fileContent, " ")
+				wordsCount += strings.Count(lineContent, " ")
 				bytesCount = currentBytes
 
 			}
 
-			dumpResponse(request.options, fileMatches, filePath)
-
-			// build event to allow the internal logic to hopefully handle it
+			// build event structure to interface with internal logic
 			internalEvent := request.responseToDSLMap(&fileStatus{
 				inputFilePath:   input,
 				matchedFileName: filePath,
@@ -180,8 +181,9 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					Host:             types.ToString(internalEvent["host"]),
 					ExtractedResults: items,
 					// Response:         types.ToString(wrapped.InternalEvent["raw"]),
-					Timestamp: time.Now(),
-					Lines:     exprLines[expr],
+					Timestamp:   time.Now(),
+					Lines:       exprLines[expr],
+					MatcherName: expr,
 				})
 			}
 			for expr, items := range operatorResult.Extracts {
@@ -207,6 +209,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				Results:         results,
 				OperatorsResult: operatorResult,
 			}
+			dumpResponse(event, request.options, fileMatches, filePath)
 			callback(event)
 			request.options.Progress.IncrementRequests()
 		}(data)
@@ -220,17 +223,17 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 	return nil
 }
 
-func dumpResponse(requestOptions *protocols.ExecuterOptions, filematches []FileMatch, filePath string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, filematches []FileMatch, filePath string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		for _, fileMatch := range filematches {
-			data := fileMatch.Data
+			lineContent := fileMatch.Raw
 			hexDump := false
-			if responsehighlighter.HasBinaryContent(data) {
+			if responsehighlighter.HasBinaryContent(lineContent) {
 				hexDump = true
-				data = hex.Dump([]byte(data))
+				lineContent = hex.Dump([]byte(lineContent))
 			}
-			highlightedResponse := responsehighlighter.HighlightAll(data, cliOptions.NoColor, hexDump)
+			highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, lineContent, cliOptions.NoColor, hexDump)
 			gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
 		}
 	}
