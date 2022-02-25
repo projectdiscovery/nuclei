@@ -75,7 +75,6 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			var fileMatches []FileMatch
 			exprLines := make(map[string][]int)
 			exprBytes := make(map[string][]int)
-			// exprName := make(map[string]string)
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -130,7 +129,6 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 
 			}
 
-			// create a new event trying to adapt it for the architecture
 			dumpResponse(request.options, fileMatches, filePath)
 
 			// build event to allow the internal logic to hopefully handle it
