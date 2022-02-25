@@ -75,6 +75,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			var fileMatches []FileMatch
 			exprLines := make(map[string][]int)
 			exprBytes := make(map[string][]int)
+			// exprName := make(map[string]string)
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -177,11 +178,12 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					Info:             internalEvent["template-info"].(model.Info),
 					Type:             types.ToString(internalEvent["type"]),
 					Path:             types.ToString(internalEvent["path"]),
-					Matched:          expr,
+					Matched:          types.ToString(internalEvent["path"]),
 					Host:             types.ToString(internalEvent["host"]),
 					ExtractedResults: items,
 					// Response:         types.ToString(wrapped.InternalEvent["raw"]),
 					Timestamp: time.Now(),
+					Lines:     exprLines[expr],
 				})
 			}
 			for expr, items := range operatorResult.Extracts {
@@ -192,10 +194,11 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					Info:             internalEvent["template-info"].(model.Info),
 					Type:             types.ToString(internalEvent["type"]),
 					Path:             types.ToString(internalEvent["path"]),
-					Matched:          expr,
+					Matched:          types.ToString(internalEvent["matched"]),
 					Host:             types.ToString(internalEvent["host"]),
 					ExtractedResults: items,
 					Lines:            exprLines[expr],
+					ExtractorName:    expr,
 					// FileToIndexPosition: exprBytes,
 					Timestamp: time.Now(),
 				})
