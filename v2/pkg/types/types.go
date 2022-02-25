@@ -64,7 +64,7 @@ type Options struct {
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
 	// Resume the scan from the state stored in the resume config file
-	Resume bool
+	Resume string
 	// Output is the file to write found results to.
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
@@ -214,7 +214,7 @@ func (options *Options) VarsPayload() map[string]interface{} {
 
 // ShouldLoadResume resume file
 func (options *Options) ShouldLoadResume() bool {
-	return options.Resume && fileutil.FileExists(DefaultResumeFilePath())
+	return options.Resume != "" && fileutil.FileExists(options.Resume)
 }
 
 // ShouldSaveResume file
