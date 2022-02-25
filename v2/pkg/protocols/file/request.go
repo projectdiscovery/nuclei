@@ -152,7 +152,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 						operatorResult.Extracts[fileMatch.Expr] = append(operatorResult.Extracts[fileMatch.Expr], fileMatch.Data)
 					}
 					operatorResult.OutputExtracts = append(operatorResult.OutputExtracts, fileMatch.Data)
-					if operatorResult.Extracts == nil {
+					if operatorResult.OutputUnique == nil {
 						operatorResult.OutputUnique = make(map[string]struct{})
 					}
 					operatorResult.OutputUnique[fileMatch.Data] = struct{}{}
