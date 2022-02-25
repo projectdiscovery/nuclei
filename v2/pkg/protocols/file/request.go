@@ -5,21 +5,21 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"sort"
 	"strings"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/projectdiscovery/sliceutil"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 var _ protocols.Request = &Request{}
@@ -73,6 +73,8 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			scanner.Buffer(buffer, int(chunkSize))
 
 			var fileMatches []FileMatch
+			exprLines := make(map[string][]int)
+			exprBytes := make(map[string][]int)
 			for scanner.Scan() {
 				fileContent := scanner.Text()
 				n := len(fileContent)
@@ -131,11 +133,80 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			dumpResponse(request.options, fileMatches, filePath)
 
 			// build event to allow the internal logic to hopefully handle it
-			event := &output.InternalWrappedEvent{}
-			event.Results = append(event.Results, &output.ResultEvent{})
-			event := eventcreator.CreateEvent(request, outputEvent, isResponseDebug)
-			callback(event)
+			internalEvent := request.responseToDSLMap(&fileStatus{
+				inputFilePath:   input,
+				matchedFileName: filePath,
+			})
+			operatorResult := &operators.Result{}
+			for _, fileMatch := range fileMatches {
+				operatorResult.Matched = operatorResult.Matched || fileMatch.Match
+				operatorResult.Extracted = operatorResult.Extracted || fileMatch.Extract
+				switch {
+				case fileMatch.Extract:
+					if operatorResult.Extracts == nil {
+						operatorResult.Extracts = make(map[string][]string)
+					}
+					if _, ok := operatorResult.Extracts[fileMatch.Expr]; !ok {
+						operatorResult.Extracts[fileMatch.Expr] = []string{fileMatch.Data}
+					} else {
+						operatorResult.Extracts[fileMatch.Expr] = append(operatorResult.Extracts[fileMatch.Expr], fileMatch.Data)
+					}
+					operatorResult.OutputExtracts = append(operatorResult.OutputExtracts, fileMatch.Data)
+					operatorResult.OutputUnique = map[string]struct{}{}
+				case fileMatch.Match:
+					if operatorResult.Matches == nil {
+						operatorResult.Matches = make(map[string][]string)
+					}
+					if _, ok := operatorResult.Matches[fileMatch.Expr]; !ok {
+						operatorResult.Matches[fileMatch.Expr] = []string{fileMatch.Data}
+					} else {
+						operatorResult.Matches[fileMatch.Expr] = append(operatorResult.Matches[fileMatch.Expr], fileMatch.Data)
+					}
+				}
+				exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
+				exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)
+			}
 
+			// build results
+			var results []*output.ResultEvent
+			for expr, items := range operatorResult.Matches {
+				results = append(results, &output.ResultEvent{
+					MatcherStatus:    true,
+					TemplateID:       types.ToString(internalEvent["template-id"]),
+					TemplatePath:     types.ToString(internalEvent["template-path"]),
+					Info:             internalEvent["template-info"].(model.Info),
+					Type:             types.ToString(internalEvent["type"]),
+					Path:             types.ToString(internalEvent["path"]),
+					Matched:          expr,
+					Host:             types.ToString(internalEvent["host"]),
+					ExtractedResults: items,
+					// Response:         types.ToString(wrapped.InternalEvent["raw"]),
+					Timestamp: time.Now(),
+				})
+			}
+			for expr, items := range operatorResult.Extracts {
+				results = append(results, &output.ResultEvent{
+					MatcherStatus:    true,
+					TemplateID:       types.ToString(internalEvent["template-id"]),
+					TemplatePath:     types.ToString(internalEvent["template-path"]),
+					Info:             internalEvent["template-info"].(model.Info),
+					Type:             types.ToString(internalEvent["type"]),
+					Path:             types.ToString(internalEvent["path"]),
+					Matched:          expr,
+					Host:             types.ToString(internalEvent["host"]),
+					ExtractedResults: items,
+					Lines:            exprLines[expr],
+					// FileToIndexPosition: exprBytes,
+					Timestamp: time.Now(),
+				})
+			}
+
+			event := &output.InternalWrappedEvent{
+				InternalEvent:   internalEvent,
+				Results:         results,
+				OperatorsResult: operatorResult,
+			}
+			callback(event)
 			request.options.Progress.IncrementRequests()
 		}(data)
 	})
@@ -162,47 +233,4 @@ func dumpResponse(requestOptions *protocols.ExecuterOptions, filematches []FileM
 			gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
 		}
 	}
-}
-
-func calculateLineFunc(allMatches []*output.InternalEvent, words map[string]struct{}) []int {
-	var lines []int
-	for word := range words {
-		for _, match := range allMatches {
-			matchPt := *match
-			opResult := matchPt["results"].(operators.Result)
-			if opResult.Matched {
-				for _, matchedItems := range opResult.Matches {
-					for _, matchedItem := range matchedItems {
-						if word == matchedItem {
-							lines = append(lines, matchPt["lines"].(int)+1)
-						}
-					}
-				}
-			}
-			for _, v := range opResult.OutputExtracts {
-				if word == v {
-					lines = append(lines, matchPt["lines"].(int)+1)
-				}
-			}
-		}
-		_ = word
-	}
-	lines = sliceutil.DedupeInt(lines)
-	sort.Ints(lines)
-	return lines
-}
-
-func calculateFileIndexFunc(allMatches []*output.InternalEvent, extraction string) int {
-	for _, match := range allMatches {
-		matchPt := *match
-		opResult := matchPt["results"].(operators.Result)
-		for _, extracts := range opResult.Extracts {
-			for _, extract := range extracts {
-				if extraction == extract {
-					return matchPt["bytes"].(int)
-				}
-			}
-		}
-	}
-	return -1
 }

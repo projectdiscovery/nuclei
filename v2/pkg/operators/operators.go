@@ -71,7 +71,7 @@ type Result struct {
 	Extracts map[string][]string
 	// OutputExtracts is the list of extracts to be displayed on screen.
 	OutputExtracts []string
-	outputUnique   map[string]struct{}
+	OutputUnique   map[string]struct{}
 
 	// DynamicValues contains any dynamic values to be templated
 	DynamicValues map[string][]string
@@ -151,24 +151,24 @@ func (r *Result) Merge(result *Result) {
 		r.Extracts[k] = append(r.Extracts[k], v...)
 	}
 
-	r.outputUnique = make(map[string]struct{})
+	r.OutputUnique = make(map[string]struct{})
 	output := r.OutputExtracts
 	r.OutputExtracts = make([]string, 0, len(output))
 	for _, v := range output {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
+		if _, ok := r.OutputUnique[v]; !ok {
+			r.OutputUnique[v] = struct{}{}
 			r.OutputExtracts = append(r.OutputExtracts, v)
 		}
 	}
 	for _, v := range result.OutputExtracts {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
+		if _, ok := r.OutputUnique[v]; !ok {
+			r.OutputUnique[v] = struct{}{}
 			r.OutputExtracts = append(r.OutputExtracts, v)
 		}
 	}
 	for _, v := range result.OutputExtracts {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
+		if _, ok := r.OutputUnique[v]; !ok {
+			r.OutputUnique[v] = struct{}{}
 			r.OutputExtracts = append(r.OutputExtracts, v)
 		}
 	}
@@ -195,7 +195,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string][]string),
-		outputUnique:  make(map[string]struct{}),
+		OutputUnique:  make(map[string]struct{}),
 	}
 
 	// Start with the extractors first and evaluate them.
@@ -211,9 +211,9 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 					result.DynamicValues[extractor.Name] = append(data, match)
 				}
 			} else {
-				if _, ok := result.outputUnique[match]; !ok {
+				if _, ok := result.OutputUnique[match]; !ok {
 					result.OutputExtracts = append(result.OutputExtracts, match)
-					result.outputUnique[match] = struct{}{}
+					result.OutputUnique[match] = struct{}{}
 				}
 			}
 		}
