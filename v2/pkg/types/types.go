@@ -16,17 +16,17 @@ type Options struct {
 	// ExcludeTags is the list of tags to exclude
 	ExcludeTags goflags.FileNormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.FileNormalizedStringSlice
+	Workflows goflags.FileOriginalNormalizedStringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
-	WorkflowURLs goflags.FileNormalizedStringSlice
+	WorkflowURLs goflags.FileOriginalNormalizedStringSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.FileNormalizedStringSlice
+	Templates goflags.FileOriginalNormalizedStringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
-	TemplateURLs goflags.FileNormalizedStringSlice
+	TemplateURLs goflags.FileOriginalNormalizedStringSlice
 	// RemoteTemplates specifies list of allowed URLs to load remote templates from
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.FileNormalizedStringSlice
+	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
@@ -46,7 +46,7 @@ type Options struct {
 	// IncludeTags includes specified tags to be run even while being in denylist
 	IncludeTags goflags.FileNormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.FileNormalizedStringSlice
+	IncludeTemplates goflags.FileOriginalNormalizedStringSlice
 	// IncludeIds includes specified ids to be run even while being in denylist
 	IncludeIds goflags.FileNormalizedStringSlice
 	// ExcludeIds contains templates ids to not be executed
@@ -64,11 +64,11 @@ type Options struct {
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
 	// Resume the scan from the state stored in the resume config file
-	Resume bool
+	Resume string
 	// Output is the file to write found results to.
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
-	Proxy goflags.NormalizedStringSlice
+	Proxy goflags.NormalizedOriginalStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -214,7 +214,7 @@ func (options *Options) VarsPayload() map[string]interface{} {
 
 // ShouldLoadResume resume file
 func (options *Options) ShouldLoadResume() bool {
-	return options.Resume && fileutil.FileExists(DefaultResumeFilePath())
+	return options.Resume != "" && fileutil.FileExists(options.Resume)
 }
 
 // ShouldSaveResume file

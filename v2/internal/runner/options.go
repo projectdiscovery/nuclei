@@ -21,9 +21,11 @@ import (
 )
 
 func ConfigureOptions() error {
-	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = func(s string) bool {
+	isFromFileFunc := func(s string) bool {
 		return !isTemplate(s)
 	}
+	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.DefaultFileOriginalNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
 	return nil
 }
 
