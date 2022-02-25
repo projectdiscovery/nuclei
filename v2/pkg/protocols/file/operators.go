@@ -94,39 +94,7 @@ func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	var allMatches []*output.InternalEvent
-	if allM, ok := wrapped.InternalEvent["all_matches"].([]*output.InternalEvent); ok {
-		allMatches = allM
-	}
-
-	results := protocols.MakeDefaultResultEvent(request, wrapped)
-	for _, result := range results {
-		lineWords := make(map[string]struct{})
-
-		if wrapped.OperatorsResult != nil {
-			for _, value := range wrapped.OperatorsResult.Matches {
-				for _, v := range value {
-					lineWords[v] = struct{}{}
-				}
-			}
-		}
-		if len(result.ExtractedResults) > 0 {
-			for _, v := range result.ExtractedResults {
-				lineWords[v] = struct{}{}
-			}
-		}
-		result.Lines = calculateLineFunc(allMatches, lineWords)
-	}
-	// Identify the position of match in file using a dirty hack.
-	for _, result := range results {
-		for _, extraction := range result.ExtractedResults {
-			if result.FileToIndexPosition == nil {
-				result.FileToIndexPosition = make(map[string]int)
-			}
-			result.FileToIndexPosition[result.Matched] = calculateFileIndexFunc(allMatches, extraction)
-		}
-	}
-	return results
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
