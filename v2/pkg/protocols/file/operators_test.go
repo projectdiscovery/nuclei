@@ -1,6 +1,8 @@
 package file
 
 import (
+	"log"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,8 +36,8 @@ func TestResponseToDSLMap(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n"
-	event := request.responseToDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
-	require.Len(t, event, 11, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 }
 
@@ -59,8 +61,8 @@ func TestFileOperatorMatch(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
-	require.Len(t, event, 11, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("valid", func(t *testing.T) {
@@ -108,8 +110,8 @@ func TestFileOperatorMatch(t *testing.T) {
 
 	t.Run("caseInsensitive", func(t *testing.T) {
 		resp := "TEST-DATA\r\n1.1.1.1\r\n"
-		event := request.responseToDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
-		require.Len(t, event, 11, "could not get correct number of items in dsl map")
+		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+		require.Len(t, event, 7, "could not get correct number of items in dsl map")
 		require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 		matcher := &matchers.Matcher{
@@ -147,8 +149,8 @@ func TestFileOperatorExtract(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(&fileStatus{raw: resp, inputFilePath: "one.one.one.one", matchedFileName: "one.one.one.one"})
-	require.Len(t, event, 11, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("extract", func(t *testing.T) {
@@ -217,6 +219,7 @@ func testFileMakeResultOperators(t *testing.T, matcherCondition string) *output.
 	}
 
 	finalEvent := testFileMakeResult(t, matcher, matcherCondition, true)
+	log.Fatalf("%+v\n%+v\n", expectedValues, finalEvent.Results[0])
 	for matcherName, matchedValues := range expectedValues {
 		var matchesOne = false
 		for i := 0; i <= len(expectedValue); i++ {
@@ -262,24 +265,16 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
-	matchedFileName := "test.txt"
 	fileContent := "test-data\r\n1.1.1.1\r\n"
+	matchedFileName := "test.txt"
+	input := "/tmp"
 
-	event := request.responseToDSLMap(&fileStatus{raw: fileContent, inputFilePath: "/tmp", matchedFileName: matchedFileName})
-	require.Len(t, event, 11, "could not get correct number of items in dsl map")
-	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
+	fileMatches := request.collectMatches(strings.NewReader(fileContent), input, matchedFileName, "")
+	event := request.buildEvent(input, matchedFileName, fileMatches)
 
-	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
-	if request.CompiledOperators != nil {
-		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, isDebug)
-		if ok && result != nil {
-			finalEvent.OperatorsResult = result
-			finalEvent.Results = request.MakeResultEvent(finalEvent)
-		}
-	}
-	resultEvent := finalEvent.Results[0]
+	resultEvent := event.Results[0]
 	require.Equal(t, "1.1.1.1", resultEvent.ExtractedResults[0], "could not get correct extracted results")
 	require.Equal(t, matchedFileName, resultEvent.Matched, "could not get matched value")
 
-	return finalEvent
+	return event
 }
