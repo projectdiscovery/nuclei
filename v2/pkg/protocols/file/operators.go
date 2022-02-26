@@ -1,14 +1,10 @@
 package file
 
 import (
-	"time"
-
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -65,26 +61,12 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 	return itemStr, true
 }
 
-type fileStatus struct {
-	results         []*operators.Result
-	raw             string
-	inputFilePath   string
-	matchedFileName string
-	lines           int
-	words           int
-	bytes           int
-}
-
 // responseToDSLMap converts a file chunk elaboration to a map for use in DSL matching
-func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent {
+func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName string) output.InternalEvent {
 	return output.InternalEvent{
-		"results":       state.results,
-		"path":          state.inputFilePath,
-		"matched":       state.matchedFileName,
-		"raw":           state.raw,
-		"lines":         state.lines,
-		"words":         state.words,
-		"bytes":         state.bytes,
+		"path":          inputFilePath,
+		"matched":       matchedFileName,
+		"raw":           raw,
 		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
@@ -93,27 +75,17 @@ func (request *Request) responseToDSLMap(state *fileStatus) output.InternalEvent
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
+// Deprecated: unused in stream mode, must be present for interface compatibility
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	return protocols.MakeDefaultResultEvent(request, wrapped)
+	panic("unused")
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
 	return []*operators.Operators{request.CompiledOperators}
 }
 
+// MakeResultEventItem
+// Deprecated: unused in stream mode, must be present for interface compatibility
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
-	data := &output.ResultEvent{
-		MatcherStatus:    true,
-		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
-		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		Type:             types.ToString(wrapped.InternalEvent["type"]),
-		Path:             types.ToString(wrapped.InternalEvent["path"]),
-		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
-		Host:             types.ToString(wrapped.InternalEvent["host"]),
-		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
-		Response:         types.ToString(wrapped.InternalEvent["raw"]),
-		Timestamp:        time.Now(),
-	}
-	return data
+	panic("unused")
 }
