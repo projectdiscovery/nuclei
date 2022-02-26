@@ -1,6 +1,7 @@
 package eventcreator
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
@@ -27,5 +28,12 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 			}
 		}
 	}
+	return event
+}
+
+func CreateEventWithOperatorResults(request protocols.Request, internalEvent output.InternalEvent, operatorResult *operators.Result) *output.InternalWrappedEvent {
+	event := &output.InternalWrappedEvent{InternalEvent: internalEvent}
+	event.OperatorsResult = operatorResult
+	event.Results = append(event.Results, request.MakeResultEvent(event)...)
 	return event
 }
