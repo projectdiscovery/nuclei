@@ -1,8 +1,6 @@
 package file
 
 import (
-	"log"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -219,7 +217,6 @@ func testFileMakeResultOperators(t *testing.T, matcherCondition string) *output.
 	}
 
 	finalEvent := testFileMakeResult(t, matcher, matcherCondition, true)
-	log.Fatalf("%+v\n%+v\n", expectedValues, finalEvent.Results[0])
 	for matcherName, matchedValues := range expectedValues {
 		var matchesOne = false
 		for i := 0; i <= len(expectedValue); i++ {
@@ -265,16 +262,24 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
-	fileContent := "test-data\r\n1.1.1.1\r\n"
 	matchedFileName := "test.txt"
-	input := "/tmp"
+	fileContent := "test-data\r\n1.1.1.1\r\n"
 
-	fileMatches := request.collectMatches(strings.NewReader(fileContent), input, matchedFileName, "")
-	event := request.buildEvent(input, matchedFileName, fileMatches)
+	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName)
+	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
-	resultEvent := event.Results[0]
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
+	if request.CompiledOperators != nil {
+		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, isDebug)
+		if ok && result != nil {
+			finalEvent.OperatorsResult = result
+			finalEvent.Results = request.MakeResultEvent(finalEvent)
+		}
+	}
+	resultEvent := finalEvent.Results[0]
 	require.Equal(t, "1.1.1.1", resultEvent.ExtractedResults[0], "could not get correct extracted results")
 	require.Equal(t, matchedFileName, resultEvent.Matched, "could not get matched value")
 
-	return event
+	return finalEvent
 }

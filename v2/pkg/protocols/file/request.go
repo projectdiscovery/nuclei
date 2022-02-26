@@ -6,20 +6,18 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 var _ protocols.Request = &Request{}
@@ -67,10 +65,10 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			}
 
 			fileReader := io.LimitReader(file, request.maxSize)
-			fileMatches := request.collectMatches(fileReader, input, filePath, units.BytesSize(float64(stat.Size())))
+			fileMatches, opResult := request.collect(fileReader, input, filePath, units.BytesSize(float64(stat.Size())), previous)
 
 			// build event structure to interface with internal logic
-			event := request.buildEvent(input, filePath, fileMatches)
+			event := request.buildEvent(input, filePath, fileMatches, opResult, previous)
 			dumpResponse(event, request.options, fileMatches, filePath)
 			callback(event)
 			request.options.Progress.IncrementRequests()
@@ -85,7 +83,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 	return nil
 }
 
-func (request *Request) collectMatches(reader io.Reader, input, filePath, totalBytes string) []FileMatch {
+func (request *Request) collect(reader io.Reader, input, filePath, totalBytes string, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
 	var bytesCount, linesCount, wordsCount int
 	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 	scanner := bufio.NewScanner(reader)
@@ -93,6 +91,7 @@ func (request *Request) collectMatches(reader io.Reader, input, filePath, totalB
 	scanner.Buffer(buffer, int(chunkSize))
 
 	var fileMatches []FileMatch
+	var opResult *operators.Result
 	for scanner.Scan() {
 		lineContent := scanner.Text()
 		n := len(lineContent)
@@ -103,32 +102,44 @@ func (request *Request) collectMatches(reader io.Reader, input, filePath, totalB
 
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
 		dslMap := request.responseToDSLMap(lineContent, input, filePath)
-		if parts, ok := request.CompiledOperators.Execute(dslMap, request.Match, request.Extract, isResponseDebug); parts != nil && ok {
-			if parts.Extracts != nil {
-				for expr, extracts := range parts.Extracts {
-					for _, extract := range extracts {
-						fileMatches = append(fileMatches, FileMatch{
-							Data:      extract,
-							Extract:   true,
-							Line:      linesCount + 1,
-							ByteIndex: bytesCount,
-							Expr:      expr,
-							Raw:       lineContent,
-						})
+		for k, v := range previous {
+			dslMap[k] = v
+		}
+		discardEvent := eventcreator.CreateEvent(request, dslMap, isResponseDebug)
+		newOpResult := discardEvent.OperatorsResult
+		if newOpResult != nil {
+			if opResult == nil {
+				opResult = newOpResult
+			} else {
+				opResult.Merge(newOpResult)
+			}
+			if newOpResult.Matched || newOpResult.Extracted {
+				if newOpResult.Extracts != nil {
+					for expr, extracts := range newOpResult.Extracts {
+						for _, extract := range extracts {
+							fileMatches = append(fileMatches, FileMatch{
+								Data:      extract,
+								Extract:   true,
+								Line:      linesCount + 1,
+								ByteIndex: bytesCount,
+								Expr:      expr,
+								Raw:       lineContent,
+							})
+						}
 					}
 				}
-			}
-			if parts.Matches != nil {
-				for expr, matches := range parts.Matches {
-					for _, match := range matches {
-						fileMatches = append(fileMatches, FileMatch{
-							Data:      match,
-							Match:     true,
-							Line:      linesCount + 1,
-							ByteIndex: bytesCount,
-							Expr:      expr,
-							Raw:       lineContent,
-						})
+				if newOpResult.Matches != nil {
+					for expr, matches := range newOpResult.Matches {
+						for _, match := range matches {
+							fileMatches = append(fileMatches, FileMatch{
+								Data:      match,
+								Match:     true,
+								Line:      linesCount + 1,
+								ByteIndex: bytesCount,
+								Expr:      expr,
+								Raw:       lineContent,
+							})
+						}
 					}
 				}
 			}
@@ -139,88 +150,31 @@ func (request *Request) collectMatches(reader io.Reader, input, filePath, totalB
 		wordsCount += strings.Count(lineContent, " ")
 		bytesCount = currentBytes
 	}
-	return fileMatches
+	return fileMatches, opResult
 }
 
-func (request *Request) buildEvent(input, filePath string, fileMatches []FileMatch) *output.InternalWrappedEvent {
+func (request *Request) buildEvent(input, filePath string, fileMatches []FileMatch, operatorResult *operators.Result, previous output.InternalEvent) *output.InternalWrappedEvent {
 	exprLines := make(map[string][]int)
 	exprBytes := make(map[string][]int)
 	internalEvent := request.responseToDSLMap("", input, filePath)
-	operatorResult := &operators.Result{}
+	for k, v := range previous {
+		internalEvent[k] = v
+	}
 	for _, fileMatch := range fileMatches {
-		operatorResult.Matched = operatorResult.Matched || fileMatch.Match
-		operatorResult.Extracted = operatorResult.Extracted || fileMatch.Extract
-		switch {
-		case fileMatch.Extract:
-			if operatorResult.Extracts == nil {
-				operatorResult.Extracts = make(map[string][]string)
-			}
-			if _, ok := operatorResult.Extracts[fileMatch.Expr]; !ok {
-				operatorResult.Extracts[fileMatch.Expr] = []string{fileMatch.Data}
-			} else {
-				operatorResult.Extracts[fileMatch.Expr] = append(operatorResult.Extracts[fileMatch.Expr], fileMatch.Data)
-			}
-			operatorResult.OutputExtracts = append(operatorResult.OutputExtracts, fileMatch.Data)
-			if operatorResult.OutputUnique == nil {
-				operatorResult.OutputUnique = make(map[string]struct{})
-			}
-			operatorResult.OutputUnique[fileMatch.Data] = struct{}{}
-		case fileMatch.Match:
-			if operatorResult.Matches == nil {
-				operatorResult.Matches = make(map[string][]string)
-			}
-			if _, ok := operatorResult.Matches[fileMatch.Expr]; !ok {
-				operatorResult.Matches[fileMatch.Expr] = []string{fileMatch.Data}
-			} else {
-				operatorResult.Matches[fileMatch.Expr] = append(operatorResult.Matches[fileMatch.Expr], fileMatch.Data)
-			}
-		}
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
 		exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)
 	}
 
-	// build results
-	var results []*output.ResultEvent
-	for expr, items := range operatorResult.Matches {
-		results = append(results, &output.ResultEvent{
-			MatcherStatus:    true,
-			TemplateID:       types.ToString(internalEvent["template-id"]),
-			TemplatePath:     types.ToString(internalEvent["template-path"]),
-			Info:             internalEvent["template-info"].(model.Info),
-			Type:             types.ToString(internalEvent["type"]),
-			Path:             types.ToString(internalEvent["path"]),
-			Matched:          types.ToString(internalEvent["matched"]),
-			Host:             types.ToString(internalEvent["host"]),
-			ExtractedResults: items,
-			// Response:         types.ToString(wrapped.InternalEvent["raw"]),
-			Timestamp:   time.Now(),
-			Lines:       exprLines[expr],
-			MatcherName: expr,
-		})
+	event := eventcreator.CreateEventWithOperatorResults(request, internalEvent, operatorResult)
+	for _, result := range event.Results {
+		switch {
+		case result.MatcherName != "":
+			result.Lines = exprLines[result.MatcherName]
+		case result.ExtractorName != "":
+			result.Lines = exprLines[result.ExtractorName]
+		}
 	}
-	for expr, items := range operatorResult.Extracts {
-		results = append(results, &output.ResultEvent{
-			MatcherStatus:    true,
-			TemplateID:       types.ToString(internalEvent["template-id"]),
-			TemplatePath:     types.ToString(internalEvent["template-path"]),
-			Info:             internalEvent["template-info"].(model.Info),
-			Type:             types.ToString(internalEvent["type"]),
-			Path:             types.ToString(internalEvent["path"]),
-			Matched:          types.ToString(internalEvent["matched"]),
-			Host:             types.ToString(internalEvent["host"]),
-			ExtractedResults: items,
-			Lines:            exprLines[expr],
-			ExtractorName:    expr,
-			// FileToIndexPosition: exprBytes,
-			Timestamp: time.Now(),
-		})
-	}
-
-	return &output.InternalWrappedEvent{
-		InternalEvent:   internalEvent,
-		Results:         results,
-		OperatorsResult: operatorResult,
-	}
+	return event
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, filematches []FileMatch, filePath string) {

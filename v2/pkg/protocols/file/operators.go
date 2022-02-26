@@ -1,10 +1,14 @@
 package file
 
 import (
+	"time"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -77,7 +81,7 @@ func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName str
 // MakeResultEvent creates a result event from internal wrapped event
 // Deprecated: unused in stream mode, must be present for interface compatibility
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	panic("unused")
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -87,5 +91,18 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 // MakeResultEventItem
 // Deprecated: unused in stream mode, must be present for interface compatibility
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
-	panic("unused")
+	data := &output.ResultEvent{
+		MatcherStatus:    true,
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
+		Path:             types.ToString(wrapped.InternalEvent["path"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		Response:         types.ToString(wrapped.InternalEvent["raw"]),
+		Timestamp:        time.Now(),
+	}
+	return data
 }
