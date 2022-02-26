@@ -1232,6 +1232,20 @@ all requests defined in raw section.
 
 <div class="dd">
 
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Enables force reading of the entire raw unsafe request body ignoring
+any specified content length headers.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>redirects</code>  <i>bool</i>
 
 </div>
