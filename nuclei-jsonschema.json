@@ -774,6 +774,11 @@
           "title": "optional cookie reuse enable",
           "description": "Optional setting that enables cookie reuse"
         },
+        "read-all": {
+          "type": "boolean",
+          "title": "force read all body",
+          "description": "Enables force reading of entire unsafe http request body"
+        },
         "redirects": {
           "type": "boolean",
           "title": "follow http redirects",
