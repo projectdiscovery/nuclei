@@ -171,6 +171,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
+	opts.NoColor = runner.options.NoColor
 	if options.InteractshURL != "" {
 		opts.ServerURL = options.InteractshURL
 	}

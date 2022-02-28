@@ -383,6 +383,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		options := generatedRequest.original.rawhttpClient.Options
 		options.FollowRedirects = request.Redirects
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
+		options.ForceReadAllBody = request.ForceReadAllBody
 		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), options)
 	} else {
 		hostname = generatedRequest.request.URL.Host

@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
-	github.com/andygrunwald/go-jira v1.15.0
+	github.com/andygrunwald/go-jira v1.15.1
 	github.com/antchfx/htmlquery v1.2.4
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -35,7 +35,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v1.0.1-0.20220131074403-ca8bb8f87cd0
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
-	github.com/projectdiscovery/rawhttp v0.0.7
+	github.com/projectdiscovery/rawhttp v0.0.8-0.20220225134552-b60c4c126e5b
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.43.6
+require github.com/aws/aws-sdk-go v1.43.7
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
@@ -72,6 +72,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
+	github.com/rs/xid v1.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 )
