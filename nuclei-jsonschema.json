@@ -72,7 +72,7 @@
         "metadata": {
           "patternProperties": {
             ".*": {
-              "type": "string"
+              "additionalProperties": true
             }
           },
           "type": "object",
