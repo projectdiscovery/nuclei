@@ -21,12 +21,19 @@ func TestInfoJsonMarshal(t *testing.T) {
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
 		Reference:      stringslice.StringSlice{Value: "reference1"},
+		Metadata: map[string]interface{}{
+			"string_key": "string_value",
+			"array_key":  []string{"array_value1", "array_value2"},
+			"map_key": map[string]string{
+				"key1": "val1",
+			},
+		},
 	}
 
 	result, err := json.Marshal(&info)
 	assert.Nil(t, err)
 
-	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"reference1","severity":"high"}`
+	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
 	assert.Equal(t, expected, string(result))
 }
 
@@ -38,6 +45,13 @@ func TestInfoYamlMarshal(t *testing.T) {
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
 		Reference:      stringslice.StringSlice{Value: "reference1"},
+		Metadata: map[string]interface{}{
+			"string_key": "string_value",
+			"array_key":  []string{"array_value1", "array_value2"},
+			"map_key": map[string]string{
+				"key1": "val1",
+			},
+		},
 	}
 
 	result, err := yaml.Marshal(&info)
@@ -53,6 +67,13 @@ tags:
 description: Test description
 reference: reference1
 severity: high
+metadata:
+  array_key:
+  - array_value1
+  - array_value2
+  map_key:
+    key1: val1
+  string_key: string_value
 `
 	assert.Equal(t, expected, string(result))
 }
@@ -66,7 +87,7 @@ func TestUnmarshal(t *testing.T) {
 	dynamicKey1 := "customDynamicKey1"
 	dynamicKey2 := "customDynamicKey2"
 
-	dynamicKeysMap := map[string]string{
+	dynamicKeysMap := map[string]interface{}{
 		dynamicKey1: "customDynamicValue1",
 		dynamicKey2: "customDynamicValue2",
 	}
@@ -92,8 +113,8 @@ func TestUnmarshal(t *testing.T) {
   severity: critical
   reference: ` + strings.Join(references, ", ") + `
   metadata:
-     ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1] + `
-     ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2] + `
+     ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1].(string) + `
+     ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2].(string) + `
 `
 	yamlPayload2 := `
   name: ` + templateName + `
@@ -108,8 +129,8 @@ func TestUnmarshal(t *testing.T) {
     - ` + references[0] + ` # comments are not unmarshalled
     - ` + references[1] + `
   metadata:
-     ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1] + `
-     ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2] + `
+     ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1].(string) + `
+     ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2].(string) + `
 `
 
 	info1 := assertUnmarshalledTemplateInfo(t, yamlPayload1)
