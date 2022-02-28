@@ -489,7 +489,7 @@ Severity of the template.
 
 <div class="dd">
 
-<code>metadata</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]interface{}</i>
 
 </div>
 <div class="dt">
