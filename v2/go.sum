@@ -67,8 +67,8 @@ github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129/go.mod h1:rFgp
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/andygrunwald/go-jira v1.14.0/go.mod h1:KMo2f4DgMZA1C9FdImuLc04x4WQhn5derQpnsuBFgqE=
-github.com/andygrunwald/go-jira v1.15.0 h1:krX3Ad4i44mOG0u+vIxQLhLkyyQKPbTsOISsDRgBNjU=
-github.com/andygrunwald/go-jira v1.15.0/go.mod h1:GIYN1sHOIsENWUZ7B4pDeT/nxEtrZpE8l0987O67ZR8=
+github.com/andygrunwald/go-jira v1.15.1 h1:6J9aYKb9sW8bxv3pBLYBrs0wdsFrmGI5IeTgWSKWKc8=
+github.com/andygrunwald/go-jira v1.15.1/go.mod h1:GIYN1sHOIsENWUZ7B4pDeT/nxEtrZpE8l0987O67ZR8=
 github.com/antchfx/htmlquery v1.2.3/go.mod h1:B0ABL+F5irhhMWg54ymEZinzMSi0Kt3I2if0BLYa3V0=
 github.com/antchfx/htmlquery v1.2.4 h1:qLteofCMe/KGovBI6SQgmou2QNyedFUW+pE+BpeZ494=
 github.com/antchfx/htmlquery v1.2.4/go.mod h1:2xO6iu3EVWs7R2JYqBbp8YzG50gj/ofqs5/0VZoDZLc=
@@ -83,8 +83,8 @@ github.com/aphistic/sweet v0.2.0/go.mod h1:fWDlIh/isSE9n6EPsRmC0det+whmX6dJid3st
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.43.6 h1:FkwmndZR4LjnT2fiKaD18bnqfQ188E8A1IMNI5rcv00=
-github.com/aws/aws-sdk-go v1.43.6/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.43.7 h1:Gbs53KxXJWbO3txoVkevf56bhdDFqRisl7MQQ6581vc=
+github.com/aws/aws-sdk-go v1.43.7/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -457,8 +457,9 @@ github.com/projectdiscovery/networkpolicy v0.0.1/go.mod h1:asvdg5wMy3LPVMGALateb
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df h1:CvTNAUD5JbLMqpMFoGNgfk2gOcN0NC57ICu0+oK84vs=
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df/go.mod h1:pxWVDgq88t9dWv4+J2AIaWgY+EqOE1AyfHS0Tn23w4M=
 github.com/projectdiscovery/nuclei/v2 v2.5.1/go.mod h1:sU2qcY0MQFS0CqP1BgkR8ZnUyFhqK0BdnY6bvTKNjXY=
-github.com/projectdiscovery/rawhttp v0.0.7 h1:5m4peVgjbl7gqDcRYMTVEuX+Xs/nh76ohTkkvufucLg=
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
+github.com/projectdiscovery/rawhttp v0.0.8-0.20220225134552-b60c4c126e5b h1:ODEtmulEsryrOR3z949wxAdwFiRlnqn2HUh+dHcBK6w=
+github.com/projectdiscovery/rawhttp v0.0.8-0.20220225134552-b60c4c126e5b/go.mod h1:jAoQA4i8iu2v4u50ufmlky1t1WsBKpFP2XKd3BbY2y4=
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=

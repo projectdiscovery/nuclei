@@ -181,9 +181,12 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	builder := &bytes.Buffer{}
 
 	toMarkDownTable := func(insertionOrderedStringMap *utils.InsertionOrderedStringMap) {
-		insertionOrderedStringMap.ForEach(func(key string, value string) {
-			if utils.IsNotBlank(value) {
-				builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+		insertionOrderedStringMap.ForEach(func(key string, value interface{}) {
+			switch value := value.(type) {
+			case string:
+				if utils.IsNotBlank(value) {
+					builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+				}
 			}
 		})
 	}
