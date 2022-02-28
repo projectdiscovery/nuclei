@@ -270,6 +270,7 @@ func init() {
 		"medium",
 		"high",
 		"critical",
+		"unknown",
 	}
 
 	MODELClassificationDoc.Type = "model.Classification"

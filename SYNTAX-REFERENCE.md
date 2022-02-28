@@ -633,6 +633,8 @@ Enum Values:
   - <code>high</code>
 
   - <code>critical</code>
+
+  - <code>unknown</code>
 </div>
 
 <hr />
