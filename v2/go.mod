@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
-	github.com/andygrunwald/go-jira v1.15.0
+	github.com/andygrunwald/go-jira v1.15.1
 	github.com/antchfx/htmlquery v1.2.4
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
