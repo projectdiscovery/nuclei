@@ -67,8 +67,8 @@ github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129/go.mod h1:rFgp
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/andygrunwald/go-jira v1.14.0/go.mod h1:KMo2f4DgMZA1C9FdImuLc04x4WQhn5derQpnsuBFgqE=
-github.com/andygrunwald/go-jira v1.15.0 h1:krX3Ad4i44mOG0u+vIxQLhLkyyQKPbTsOISsDRgBNjU=
-github.com/andygrunwald/go-jira v1.15.0/go.mod h1:GIYN1sHOIsENWUZ7B4pDeT/nxEtrZpE8l0987O67ZR8=
+github.com/andygrunwald/go-jira v1.15.1 h1:6J9aYKb9sW8bxv3pBLYBrs0wdsFrmGI5IeTgWSKWKc8=
+github.com/andygrunwald/go-jira v1.15.1/go.mod h1:GIYN1sHOIsENWUZ7B4pDeT/nxEtrZpE8l0987O67ZR8=
 github.com/antchfx/htmlquery v1.2.3/go.mod h1:B0ABL+F5irhhMWg54ymEZinzMSi0Kt3I2if0BLYa3V0=
 github.com/antchfx/htmlquery v1.2.4 h1:qLteofCMe/KGovBI6SQgmou2QNyedFUW+pE+BpeZ494=
 github.com/antchfx/htmlquery v1.2.4/go.mod h1:2xO6iu3EVWs7R2JYqBbp8YzG50gj/ofqs5/0VZoDZLc=
