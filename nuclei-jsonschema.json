@@ -103,7 +103,8 @@
         "low",
         "medium",
         "high",
-        "critical"
+        "critical",
+        "unknown"
       ],
       "type": "string",
       "title": "severity of the template",
