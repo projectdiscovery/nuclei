@@ -188,7 +188,7 @@ func init() {
 	MODELInfoDoc.Fields[5].Description = "Severity of the template."
 	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
 	MODELInfoDoc.Fields[6].Name = "metadata"
-	MODELInfoDoc.Fields[6].Type = "map[string]string"
+	MODELInfoDoc.Fields[6].Type = "map[string]interface{}"
 	MODELInfoDoc.Fields[6].Note = ""
 	MODELInfoDoc.Fields[6].Description = "Metadata of the template."
 	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "Metadata of the template."
