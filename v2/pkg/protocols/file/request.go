@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/go-units"
+	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
@@ -37,44 +39,94 @@ type FileMatch struct {
 	Raw       string
 }
 
+var emptyResultErr = errors.New("Empty result")
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
-
-	err := request.getInputPaths(input, func(data string) {
+	err := request.getInputPaths(input, func(filePath string) {
 		request.options.Progress.AddToTotal(1)
 		wg.Add()
-
-		go func(filePath string) {
+		func(filePath string) {
 			defer wg.Done()
-
-			file, err := os.Open(filePath)
-			if err != nil {
-				gologger.Error().Msgf("Could not open file path %s: %s\n", filePath, err)
-				return
+			archiveReader, _ := archiver.ByExtension(filePath)
+			switch {
+			case archiveReader != nil:
+				switch archiveInstance := archiveReader.(type) {
+				case archiver.Walker:
+					err := archiveInstance.Walk(filePath, func(file archiver.File) error {
+						if !request.validatePath("/", file.Name()) {
+							return nil
+						}
+						totalBytesString := units.BytesSize(float64(file.Size()))
+						archiveFileName := filepath.Join(filePath, file.Name())
+						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input, totalBytesString, previous)
+						if err != nil {
+							if errors.Is(err, emptyResultErr) {
+								return nil
+							}
+							return err
+						}
+						defer file.Close()
+						dumpResponse(event, request.options, fileMatches, filePath)
+						callback(event)
+						request.options.Progress.IncrementRequests()
+						return nil
+					})
+					if err != nil {
+						gologger.Error().Msgf("%s\n", err)
+						return
+					}
+				case archiver.Decompressor:
+					file, err := os.Open(filePath)
+					if err != nil {
+						gologger.Error().Msgf("%s\n", err)
+						return
+					}
+					defer file.Close()
+					fileStat, _ := file.Stat()
+					totalBytesString := units.BytesSize(float64(fileStat.Size()))
+					tmpFileOut, err := os.CreateTemp("", "")
+					if err != nil {
+						gologger.Error().Msgf("%s\n", err)
+						return
+					}
+					defer tmpFileOut.Close()
+					defer os.RemoveAll(tmpFileOut.Name())
+					if err := archiveInstance.Decompress(file, tmpFileOut); err != nil {
+						gologger.Error().Msgf("%s\n", err)
+						return
+					}
+					_ = tmpFileOut.Sync()
+					// rewind the file
+					_, _ = tmpFileOut.Seek(0, 0)
+					event, fileMatches, err := request.processReader(tmpFileOut, filePath, input, totalBytesString, previous)
+					if err != nil {
+						if !errors.Is(err, emptyResultErr) {
+							gologger.Error().Msgf("%s\n", err)
+						}
+						return
+					}
+					dumpResponse(event, request.options, fileMatches, filePath)
+					callback(event)
+					request.options.Progress.IncrementRequests()
+				}
+			default:
+				// normal file
+				event, fileMatches, err := request.processFile(filePath, input, previous)
+				if err != nil {
+					if !errors.Is(err, emptyResultErr) {
+						gologger.Error().Msgf("%s\n", err)
+					}
+					return
+				}
+				dumpResponse(event, request.options, fileMatches, filePath)
+				callback(event)
+				request.options.Progress.IncrementRequests()
 			}
-			defer file.Close()
-
-			stat, err := file.Stat()
-			if err != nil {
-				gologger.Error().Msgf("Could not stat file path %s: %s\n", filePath, err)
-				return
-			}
-			if stat.Size() >= request.maxSize {
-				gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, units.HumanSize(float64(request.maxSize)))
-			}
-
-			fileReader := io.LimitReader(file, request.maxSize)
-			totalBytesString := units.BytesSize(float64(stat.Size()))
-			fileMatches, opResult := request.collect(fileReader, input, filePath, totalBytesString, previous)
-
-			// build event structure to interface with internal logic
-			event := request.buildEvent(input, filePath, fileMatches, opResult, previous)
-			dumpResponse(event, request.options, fileMatches, filePath)
-			callback(event)
-			request.options.Progress.IncrementRequests()
-		}(data)
+		}(filePath)
 	})
+
 	wg.Wait()
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
@@ -82,6 +134,37 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 		return errors.Wrap(err, "could not send file request")
 	}
 	return nil
+}
+
+func (request *Request) processFile(filePath, input string, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, nil, errors.Errorf("Could not open file path %s: %s\n", filePath, err)
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, nil, errors.Errorf("Could not stat file path %s: %s\n", filePath, err)
+	}
+	if stat.Size() >= request.maxSize {
+		maxSizeString := units.HumanSize(float64(request.maxSize))
+		gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, maxSizeString)
+	}
+
+	totalBytesString := units.BytesSize(float64(stat.Size()))
+	return request.processReader(file, filePath, input, totalBytesString, previousInternalEvent)
+}
+
+func (request *Request) processReader(reader io.Reader, filePath, input, totalBytesString string, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
+	fileReader := io.LimitReader(reader, request.maxSize)
+	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytesString, previousInternalEvent)
+	if len(fileMatches) == 0 || opResult == nil {
+		return nil, nil, emptyResultErr
+	}
+
+	// build event structure to interface with internal logic
+	return request.buildEvent(input, filePath, fileMatches, opResult, previousInternalEvent), fileMatches, nil
 }
 
 func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath, totalBytes string, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
