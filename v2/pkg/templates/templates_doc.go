@@ -31,6 +31,7 @@ var (
 	HEADLESSRequestDoc            encoder.Doc
 	ENGINEActionDoc               encoder.Doc
 	ActionTypeHolderDoc           encoder.Doc
+	USERAGENTUserAgentHolderDoc   encoder.Doc
 	SSLRequestDoc                 encoder.Doc
 	WEBSOCKETRequestDoc           encoder.Doc
 	WEBSOCKETInputDoc             encoder.Doc
@@ -1442,7 +1443,7 @@ func init() {
 			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 9)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
@@ -1463,22 +1464,32 @@ func init() {
 	HEADLESSRequestDoc.Fields[3].Note = ""
 	HEADLESSRequestDoc.Fields[3].Description = "Steps is the list of actions to run for headless request"
 	HEADLESSRequestDoc.Fields[3].Comments[encoder.LineComment] = "Steps is the list of actions to run for headless request"
-	HEADLESSRequestDoc.Fields[4].Name = "matchers"
-	HEADLESSRequestDoc.Fields[4].Type = "[]matchers.Matcher"
+	HEADLESSRequestDoc.Fields[4].Name = "user_agent"
+	HEADLESSRequestDoc.Fields[4].Type = "userAgent.UserAgentHolder"
 	HEADLESSRequestDoc.Fields[4].Note = ""
-	HEADLESSRequestDoc.Fields[4].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[5].Name = "extractors"
-	HEADLESSRequestDoc.Fields[5].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[4].Description = "descriptions: |\n 	 User-Agent is the type of user-agent to use for the request."
+	HEADLESSRequestDoc.Fields[4].Comments[encoder.LineComment] = " descriptions: |"
+	HEADLESSRequestDoc.Fields[5].Name = "custom_user_agent"
+	HEADLESSRequestDoc.Fields[5].Type = "string"
 	HEADLESSRequestDoc.Fields[5].Note = ""
-	HEADLESSRequestDoc.Fields[5].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	HEADLESSRequestDoc.Fields[5].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[6].Name = "matchers-condition"
-	HEADLESSRequestDoc.Fields[6].Type = "string"
+	HEADLESSRequestDoc.Fields[5].Description = "description: |\n 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request."
+	HEADLESSRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
+	HEADLESSRequestDoc.Fields[6].Name = "matchers"
+	HEADLESSRequestDoc.Fields[6].Type = "[]matchers.Matcher"
 	HEADLESSRequestDoc.Fields[6].Note = ""
-	HEADLESSRequestDoc.Fields[6].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[6].Values = []string{
+	HEADLESSRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[7].Name = "extractors"
+	HEADLESSRequestDoc.Fields[7].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[7].Note = ""
+	HEADLESSRequestDoc.Fields[7].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[8].Name = "matchers-condition"
+	HEADLESSRequestDoc.Fields[8].Type = "string"
+	HEADLESSRequestDoc.Fields[8].Note = ""
+	HEADLESSRequestDoc.Fields[8].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[8].Values = []string{
 		"and",
 		"or",
 	}
@@ -1552,6 +1563,28 @@ func init() {
 		"debug",
 		"sleep",
 		"waitvisible",
+	}
+
+	USERAGENTUserAgentHolderDoc.Type = "userAgent.UserAgentHolder"
+	USERAGENTUserAgentHolderDoc.Comments[encoder.LineComment] = " UserAgentHolder holds a UserAgent type. Required for un/marshalling purposes"
+	USERAGENTUserAgentHolderDoc.Description = "UserAgentHolder holds a UserAgent type. Required for un/marshalling purposes"
+	USERAGENTUserAgentHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "headless.Request",
+			FieldName: "user_agent",
+		},
+	}
+	USERAGENTUserAgentHolderDoc.Fields = make([]encoder.Doc, 1)
+	USERAGENTUserAgentHolderDoc.Fields[0].Name = ""
+	USERAGENTUserAgentHolderDoc.Fields[0].Type = "UserAgent"
+	USERAGENTUserAgentHolderDoc.Fields[0].Note = ""
+	USERAGENTUserAgentHolderDoc.Fields[0].Description = ""
+	USERAGENTUserAgentHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	USERAGENTUserAgentHolderDoc.Fields[0].EnumFields = []string{
+		"random",
+		"off",
+		"default",
+		"custom",
 	}
 
 	SSLRequestDoc.Type = "ssl.Request"
@@ -1892,6 +1925,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&HEADLESSRequestDoc,
 			&ENGINEActionDoc,
 			&ActionTypeHolderDoc,
+			&USERAGENTUserAgentHolderDoc,
 			&SSLRequestDoc,
 			&WEBSOCKETRequestDoc,
 			&WEBSOCKETInputDoc,
