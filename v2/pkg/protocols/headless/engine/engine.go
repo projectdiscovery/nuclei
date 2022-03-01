@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/corpix/uarand"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/pkg/errors"
@@ -89,9 +88,6 @@ func New(options *types.Options) (*Browser, error) {
 			customAgent = parts[1]
 		}
 	}
-	if customAgent == "" {
-		customAgent = uarand.GetRandom()
-	}
 
 	httpclient, err := newHttpClient(options)
 	if err != nil {
@@ -114,6 +110,16 @@ func MustDisableSandbox() bool {
 	// linux with root user needs "--no-sandbox" option
 	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
 	return runtime.GOOS == "linux" && os.Geteuid() == 0
+}
+
+// SetUserAgent sets custom user agent to the browser
+func (b *Browser) SetUserAgent(customUserAgent string) {
+	b.customAgent = customUserAgent
+}
+
+// UserAgent fetch the currently set custom user agent
+func (b *Browser) UserAgent() string {
+	return b.customAgent
 }
 
 // Close closes the browser engine
