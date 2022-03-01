@@ -53,6 +53,9 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 		cmd.Args = append(cmd.Args, "-silent")
 	}
 	data, err := cmd.Output()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +79,9 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args 
 		fmt.Println(cmd.String())
 	}
 	data, err := cmd.CombinedOutput()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return "", err
 	}
