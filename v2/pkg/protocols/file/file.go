@@ -48,6 +48,10 @@ type Request struct {
 	MaxSize string `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
 	maxSize int64
 
+	// description: |
+	//   elaborates archives
+	Archive bool
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
@@ -75,8 +79,11 @@ var RequestPartDefinitions = map[string]string{
 	"raw,body,all,data": "Raw contains the raw file contents",
 }
 
-// defaultDenylist is the default list of extensions to be denied
-var defaultDenylist = []string{".3g2", ".3gp", ".7z", ".apk", ".arj", ".avi", ".axd", ".bmp", ".css", ".csv", ".deb", ".dll", ".doc", ".drv", ".eot", ".exe", ".flv", ".gif", ".gifv", ".gz", ".h264", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lock", ".m4a", ".m4v", ".map", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg", ".mpg", ".msi", ".ogg", ".ogm", ".ogv", ".otf", ".pdf", ".pkg", ".png", ".ppt", ".psd", ".rar", ".rm", ".rpm", ".svg", ".swf", ".sys", ".tar.gz", ".tar", ".tif", ".tiff", ".ttf", ".vob", ".wav", ".webm", ".wmv", ".woff", ".woff2", ".xcf", ".xls", ".xlsx", ".zip"}
+// defaultDenylist contains common extensions to exclude
+var defaultDenylist = []string{".3g2", ".3gp", ".arj", ".avi", ".axd", ".bmp", ".css", ".csv", ".deb", ".dll", ".doc", ".drv", ".eot", ".exe", ".flv", ".gif", ".gifv", ".h264", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lock", ".m4a", ".m4v", ".map", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg", ".mpg", ".msi", ".ogg", ".ogm", ".ogv", ".otf", ".pdf", ".pkg", ".png", ".ppt", ".psd", ".rm", ".rpm", ".svg", ".swf", ".sys", ".tif", ".tiff", ".ttf", ".vob", ".wav", ".webm", ".wmv", ".woff", ".woff2", ".xcf", ".xls", ".xlsx"}
+
+// defaultArchiveDenyList contains common archive extensions to exclude
+var defaultArchiveDenyList = []string{".7z", ".apk", ".gz", ".rar", ".tar.gz", ".tar", ".zip"}
 
 // GetID returns the unique ID of the request if any.
 func (request *Request) GetID() string {
@@ -123,7 +130,13 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 	// process default denylist (extensions)
-	for _, excludeItem := range defaultDenylist {
+	var denyList []string
+	if !request.Archive {
+		denyList = append(defaultDenylist, defaultArchiveDenyList...)
+	} else {
+		denyList = defaultDenylist
+	}
+	for _, excludeItem := range denyList {
 		if !strings.HasPrefix(excludeItem, ".") {
 			excludeItem = "." + excludeItem
 		}
