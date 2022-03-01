@@ -65,7 +65,8 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 			}
 
 			fileReader := io.LimitReader(file, request.maxSize)
-			fileMatches, opResult := request.collect(fileReader, input, filePath, units.BytesSize(float64(stat.Size())), previous)
+			totalBytesString := units.BytesSize(float64(stat.Size()))
+			fileMatches, opResult := request.collect(fileReader, input, filePath, totalBytesString, previous)
 
 			// build event structure to interface with internal logic
 			event := request.buildEvent(input, filePath, fileMatches, opResult, previous)
@@ -83,7 +84,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 	return nil
 }
 
-func (request *Request) collect(reader io.Reader, input, filePath, totalBytes string, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
+func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath, totalBytes string, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
 	var bytesCount, linesCount, wordsCount int
 	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 	scanner := bufio.NewScanner(reader)
