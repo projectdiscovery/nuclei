@@ -103,7 +103,8 @@
         "low",
         "medium",
         "high",
-        "critical"
+        "critical",
+        "unknown"
       ],
       "type": "string",
       "title": "severity of the template",
@@ -118,6 +119,16 @@
           "type": "array"
         }
       ]
+    },
+    "userAgent.UserAgentHolder": {
+      "enum": [
+        "off",
+        "default",
+        "custom"
+      ],
+      "type": "string",
+      "title": "userAgent for the headless",
+      "description": "userAgent for the headless http request"
     },
     "extractors.Extractor": {
       "required": [
@@ -530,6 +541,17 @@
           "type": "array",
           "title": "list of actions for headless request",
           "description": "List of actions to run for headless request"
+        },
+        "user_agent": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/userAgent.UserAgentHolder",
+          "title": "user agent for the headless request",
+          "description": "User agent for the headless request"
+        },
+        "custom_user_agent": {
+          "type": "string",
+          "title": "custom user agent for the headless request",
+          "description": "Custom user agent for the headless request"
         },
         "matchers": {
           "items": {
