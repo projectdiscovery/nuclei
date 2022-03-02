@@ -26,6 +26,9 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(inputURL string, metadata, previous output.InternalEvent /*TODO review unused parameter*/, callback protocols.OutputEventCallback) error {
+	if request.options.Browser.UserAgent() == "" {
+		request.options.Browser.SetUserAgent(request.compiledUserAgent)
+	}
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
