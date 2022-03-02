@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -30,14 +31,24 @@ const nucleiConfigFilename = ".templates-config.json"
 const Version = `2.6.3-dev`
 
 func getConfigDetails() (string, error) {
-	homeDir, err := os.UserHomeDir()
+	configDir, err := GetConfigDir()
 	if err != nil {
 		return "", errors.Wrap(err, "could not get home directory")
 	}
-	configDir := filepath.Join(homeDir, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, 0755)
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	return templatesConfigFile, nil
+}
+
+// GetConfigDir returns the nuclei configuration directory
+func GetConfigDir() (string, error) {
+	appName := filepath.Base(os.Args[0])
+	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", appName), nil
 }
 
 // ReadConfiguration reads the nuclei configuration file from disk.
@@ -138,9 +149,8 @@ func getIgnoreFilePath() string {
 		return defIgnoreFilePath
 	}
 
-	home, err := os.UserHomeDir()
+	configDir, err := GetConfigDir()
 	if err == nil {
-		configDir := filepath.Join(home, ".config", "nuclei")
 		_ = os.MkdirAll(configDir, 0755)
 
 		defIgnoreFilePath = filepath.Join(configDir, nucleiIgnoreFile)
