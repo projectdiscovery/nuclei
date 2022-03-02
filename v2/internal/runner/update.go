@@ -225,7 +225,7 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 // getLatestReleaseFromGithub returns the latest release from GitHub
 func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
 	var tc *http.Client
-	if token, ok := os.LookupEnv("GITHUB_API_TOKEN"); ok {
+	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
