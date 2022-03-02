@@ -53,7 +53,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
-			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			gologger.Warning().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
 	}
@@ -223,7 +223,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			default:
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
-				if err != nil && !os.IsTimeout(err) {
+				if err != nil && !os.IsTimeout(err) && err != io.EOF {
 					request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 					closeTimer(readInterval)
 					return errors.Wrap(err, "could not read from server")
@@ -236,7 +236,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		final = make([]byte, bufferSize)
 		n, err = conn.Read(final)
-		if err != nil && err != io.EOF {
+		if err != nil && !os.IsTimeout(err) && err != io.EOF {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			return errors.Wrap(err, "could not read from server")
 		}
