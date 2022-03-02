@@ -73,6 +73,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
+	github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d
 	github.com/stretchr/testify v1.7.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 )
