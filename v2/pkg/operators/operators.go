@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -145,10 +146,10 @@ func (r *Result) Merge(result *Result) {
 	}
 
 	for k, v := range result.Matches {
-		r.Matches[k] = append(r.Matches[k], v...)
+		r.Matches[k] = sliceutil.Dedupe(append(r.Matches[k], v...))
 	}
 	for k, v := range result.Extracts {
-		r.Extracts[k] = append(r.Extracts[k], v...)
+		r.Extracts[k] = sliceutil.Dedupe(append(r.Extracts[k], v...))
 	}
 
 	r.outputUnique = make(map[string]struct{})
