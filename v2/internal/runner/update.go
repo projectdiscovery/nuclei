@@ -50,19 +50,22 @@ var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // If the path exists but does not contain the latest version of public templates,
 // the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error { // TODO this method does more than just update templates. Should be refactored.
-	home, err := os.UserHomeDir()
+	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return err
 	}
-	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, 0755)
 
-	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
+	if err := r.readInternalConfigurationFile(configDir); err != nil {
 		return errors.Wrap(err, "could not read configuration file")
 	}
 
 	// If the config doesn't exist, create it now.
 	if r.templatesConfig == nil {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
 		currentConfig := &config.Config{
 			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
 			NucleiVersion:      config.Version,
@@ -71,6 +74,9 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
+	}
+	if r.options.TemplatesDirectory == "" {
+		r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
 	}
 
 	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
@@ -90,11 +96,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
-		// Use the custom location if the user has given a template directory
-		r.templatesConfig = &config.Config{
-			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
-		}
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+		if r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
 			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 		r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
@@ -192,7 +194,7 @@ func getVersions(runner *Runner) (semver.Version, semver.Version, error) {
 }
 
 // readInternalConfigurationFile reads the internal configuration file for nuclei
-func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
+func (r *Runner) readInternalConfigurationFile(configDir string) error {
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
 		configuration, readErr := config.ReadConfiguration()
