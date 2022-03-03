@@ -489,7 +489,7 @@ Severity of the template.
 
 <div class="dd">
 
-<code>metadata</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]interface{}</i>
 
 </div>
 <div class="dt">
@@ -633,6 +633,8 @@ Enum Values:
   - <code>high</code>
 
   - <code>critical</code>
+
+  - <code>unknown</code>
 </div>
 
 <hr />
@@ -1225,6 +1227,20 @@ Valid values:
 
 CookieReuse is an optional setting that enables cookie reuse for
 all requests defined in raw section.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Enables force reading of the entire raw unsafe request body ignoring
+any specified content length headers.
 
 </div>
 
@@ -3204,6 +3220,34 @@ Steps is the list of actions to run for headless request
 
 <div class="dd">
 
+<code>user_agent</code>  <i><a href="#useragentuseragentholder">userAgent.UserAgentHolder</a></i>
+
+</div>
+<div class="dt">
+
+descriptions: |
+ 	 User-Agent is the type of user-agent to use for the request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>custom_user_agent</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+ 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>matchers</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
 
 </div>
@@ -3408,6 +3452,48 @@ Enum Values:
   - <code>sleep</code>
 
   - <code>waitvisible</code>
+</div>
+
+<hr />
+
+
+
+
+
+## userAgent.UserAgentHolder
+UserAgentHolder holds a UserAgent type. Required for un/marshalling purposes
+
+Appears in:
+
+
+- <code><a href="#headlessrequest">headless.Request</a>.user_agent</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>UserAgent</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>random</code>
+
+  - <code>off</code>
+
+  - <code>default</code>
+
+  - <code>custom</code>
 </div>
 
 <hr />

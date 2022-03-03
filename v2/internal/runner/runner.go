@@ -158,7 +158,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		file, err := ioutil.ReadFile(runner.options.Resume)
 		if err != nil {
 			return nil, err
 		}
@@ -168,11 +168,11 @@ func New(options *types.Options) (*Runner, error) {
 		}
 		resumeCfg.Compile()
 	}
-
 	runner.resumeCfg = resumeCfg
 
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
+	opts.NoColor = runner.options.NoColor
 	if options.InteractshURL != "" {
 		opts.ServerURL = options.InteractshURL
 	}
@@ -496,10 +496,10 @@ func isTemplate(filename string) bool {
 }
 
 // SaveResumeConfig to file
-func (r *Runner) SaveResumeConfig() error {
+func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfg := types.NewResumeCfg()
 	resumeCfg.ResumeFrom = r.resumeCfg.Current
 	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
 
-	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
+	return os.WriteFile(path, data, os.ModePerm)
 }
