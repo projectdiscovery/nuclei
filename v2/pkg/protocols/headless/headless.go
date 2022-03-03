@@ -1,9 +1,11 @@
 package headless
 
 import (
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fileutil"
+	useragent "github.com/projectdiscovery/nuclei/v2/pkg/model/types/userAgent"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -32,6 +34,15 @@ type Request struct {
 	// description: |
 	//   Steps is the list of actions to run for headless request
 	Steps []*engine.Action `yaml:"steps,omitempty" jsonschema:"title=list of actions for headless request,description=List of actions to run for headless request"`
+
+	// descriptions: |
+	// 	 User-Agent is the type of user-agent to use for the request.
+	UserAgent useragent.UserAgentHolder `yaml:"user_agent,omitempty" jsonschema:"title=user agent for the headless request,description=User agent for the headless request"`
+
+	// description: |
+	// 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request.
+	CustomUserAgent   string `yaml:"custom_user_agent,omitempty" jsonschema:"title=custom user agent for the headless request,description=Custom user agent for the headless request"`
+	compiledUserAgent string
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
@@ -88,6 +99,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
+	}
+
+	// Compile User-Agent
+	switch request.UserAgent.Value {
+	case useragent.Off:
+		request.compiledUserAgent = " "
+	case useragent.Default:
+		request.compiledUserAgent = ""
+	case useragent.Custom:
+		if request.CustomUserAgent == "" {
+			return errors.New("please set custom_user_agent in the template")
+		}
+		request.compiledUserAgent = request.CustomUserAgent
+	case useragent.Random:
+		request.compiledUserAgent = uarand.GetRandom()
 	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {

@@ -45,6 +45,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	cmd.Args = append(cmd.Args, extra...)
+	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -53,6 +54,9 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 		cmd.Args = append(cmd.Args, "-silent")
 	}
 	data, err := cmd.Output()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +75,15 @@ var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
+	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		fmt.Println(cmd.String())
 	}
 	data, err := cmd.CombinedOutput()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return "", err
 	}

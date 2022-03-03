@@ -1,4 +1,5 @@
 name: 🙏🏻 Lint Test
+
 on:
   push:
   pull_request:
@@ -9,10 +10,14 @@ jobs:
     name: Lint Test
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3.1.0
         with:
           version: latest
           args: --timeout 5m
