@@ -60,7 +60,11 @@ func main() {
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
-		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+		if options.Validate {
+			gologger.Fatal().Msgf("Could not validate templates: %s\n", err)
+		} else {
+			gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+		}
 	}
 	nucleiRunner.Close()
 	// on successful execution remove the resume file in case it exists
