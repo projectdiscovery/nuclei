@@ -6,12 +6,18 @@ cd ../v2/cmd/nuclei
 go build
 mv nuclei ../../../integration_tests/nuclei 
 echo "::endgroup::"
+
 echo "::group::Build nuclei integration-test"
 cd ../integration-test
 go build
 mv integration-test ../../../integration_tests/integration-test 
 cd ../../../integration_tests
 echo "::endgroup::"
+
+echo "::group::Installing nuclei templates"
+./nuclei -update-templates
+echo "::endgroup::"
+
 ./integration-test
 if [ $? -eq 0 ]
 then
