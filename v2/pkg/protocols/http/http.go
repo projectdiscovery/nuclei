@@ -139,6 +139,10 @@ type Request struct {
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
 	// description: |
+	//   Enables force reading of the entire raw unsafe request body ignoring
+	//   any specified content length headers.
+	ForceReadAllBody bool `yaml:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
+	// description: |
 	//   Redirects specifies whether redirects should be followed by the HTTP Client.
 	//
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.

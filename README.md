@@ -95,7 +95,7 @@ Flags:
 TARGET:
    -u, -target string[]  target URLs/hosts to scan
    -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
-   -resume               Resume scan using resume.cfg (clustering will be disabled)
+   -resume string        Resume scan using resume.cfg (clustering will be disabled)
 
 TEMPLATES:
    -nt, -new-templates          run only new templates added in latest nuclei-templates release
@@ -115,8 +115,8 @@ FILTERING:
    -eid, -exclude-id string[]        templates to exclude based on template ids (comma-separated, file)
    -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
    -et, -exclude-templates string[]  template or template directory to exclude (comma-separated, file)
-   -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical
-   -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical
+   -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
+   -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
    -pt, -type value[]                templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
    -ept, -exclude-type value[]       templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
 

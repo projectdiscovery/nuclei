@@ -1,21 +1,25 @@
 package types
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/rs/xid"
 )
 
 // Default resume file
-const DefaultResumeFileName = "resume.cfg"
+const DefaultResumeFileName = "resume-%s.cfg"
 
 func DefaultResumeFilePath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return DefaultResumeFileName
+		return fmt.Sprintf("resume-%s.cfg", xid.New().String())
 	}
-	return filepath.Join(home, ".config", "nuclei", DefaultResumeFileName)
+	resumeFile := filepath.Join(home, ".config", "nuclei", fmt.Sprintf("resume-%s.cfg", xid.New().String()))
+	return resumeFile
 }
 
 // ResumeCfg contains the scan progression

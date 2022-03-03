@@ -50,7 +50,7 @@ func main() {
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
 				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-				err := nucleiRunner.SaveResumeConfig()
+				err := nucleiRunner.SaveResumeConfig(resumeFileName)
 				if err != nil {
 					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
 				}
@@ -60,7 +60,11 @@ func main() {
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
-		gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+		if options.Validate {
+			gologger.Fatal().Msgf("Could not validate templates: %s\n", err)
+		} else {
+			gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+		}
 	}
 	nucleiRunner.Close()
 	// on successful execution remove the resume file in case it exists
@@ -84,7 +88,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	createGroup(flagSet, "input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
-		flagSet.BoolVar(&options.Resume, "resume", false, "Resume scan using resume.cfg (clustering will be disabled)"),
+		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
 	)
 
 	createGroup(flagSet, "templates", "Templates",
