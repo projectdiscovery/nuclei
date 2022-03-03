@@ -95,7 +95,7 @@ Flags:
 TARGET:
    -u, -target string[]  target URLs/hosts to scan
    -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
-   -resume               Resume scan using resume.cfg (clustering will be disabled)
+   -resume string        Resume scan using resume.cfg (clustering will be disabled)
 
 TEMPLATES:
    -nt, -new-templates          run only new templates added in latest nuclei-templates release
