@@ -58,9 +58,8 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 						if !request.validatePath("/", file.Name()) {
 							return nil
 						}
-						totalBytesString := units.BytesSize(float64(file.Size()))
 						archiveFileName := filepath.Join(filePath, file.Name())
-						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input, totalBytesString, previous)
+						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input, file.Size(), previous)
 						if err != nil {
 							if errors.Is(err, emptyResultErr) {
 								return nil
@@ -85,7 +84,6 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					}
 					defer file.Close()
 					fileStat, _ := file.Stat()
-					totalBytesString := units.BytesSize(float64(fileStat.Size()))
 					tmpFileOut, err := os.CreateTemp("", "")
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
@@ -100,7 +98,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					_ = tmpFileOut.Sync()
 					// rewind the file
 					_, _ = tmpFileOut.Seek(0, 0)
-					event, fileMatches, err := request.processReader(tmpFileOut, filePath, input, totalBytesString, previous)
+					event, fileMatches, err := request.processReader(tmpFileOut, filePath, input, fileStat.Size(), previous)
 					if err != nil {
 						if !errors.Is(err, emptyResultErr) {
 							gologger.Error().Msgf("%s\n", err)
@@ -152,13 +150,12 @@ func (request *Request) processFile(filePath, input string, previousInternalEven
 		gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, maxSizeString)
 	}
 
-	totalBytesString := units.BytesSize(float64(stat.Size()))
-	return request.processReader(file, filePath, input, totalBytesString, previousInternalEvent)
+	return request.processReader(file, filePath, input, stat.Size(), previousInternalEvent)
 }
 
-func (request *Request) processReader(reader io.Reader, filePath, input, totalBytesString string, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
+func (request *Request) processReader(reader io.Reader, filePath, input string, totalBytes int64, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
 	fileReader := io.LimitReader(reader, request.maxSize)
-	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytesString, previousInternalEvent)
+	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytes, previousInternalEvent)
 	if opResult == nil && len(fileMatches) == 0 {
 		return nil, nil, emptyResultErr
 	}
@@ -167,9 +164,11 @@ func (request *Request) processReader(reader io.Reader, filePath, input, totalBy
 	return request.buildEvent(input, filePath, fileMatches, opResult, previousInternalEvent), fileMatches, nil
 }
 
-func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath, totalBytes string, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
+func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath string, totalBytes int64, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
 	var bytesCount, linesCount, wordsCount int
 	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
+	totalBytesString := units.BytesSize(float64(totalBytes))
+
 	scanner := bufio.NewScanner(reader)
 	buffer := []byte{}
 	scanner.Buffer(buffer, int(chunkSize))
@@ -184,7 +183,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath,
 		currentBytes := bytesCount + n
 		processedBytes := units.BytesSize(float64(currentBytes))
 
-		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytes)
+		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input, filePath)
 		for k, v := range previous {
 			dslMap[k] = v
