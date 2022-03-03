@@ -148,10 +148,10 @@ func (store *Store) Load() {
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
-var uniqueTemplatesIDValidateMap map[string]string
+var templateIDPathMap map[string]string
 
 func init() {
-	uniqueTemplatesIDValidateMap = make(map[string]string)
+	templateIDPathMap = make(map[string]string)
 }
 
 // ValidateTemplates takes a list of templates and validates them
@@ -170,7 +170,7 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
 		return nil
 	}
-	return errors.New("an error occurred during templates validation")
+	return errors.New("errors occured during template validation")
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
@@ -189,8 +189,7 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 	areTemplatesValid := true
 
 	for templatePath := range filteredTemplatePaths {
-		_, err := load(templatePath, store.tagFilter)
-		if err != nil {
+		if _, err := load(templatePath, store.tagFilter); err != nil {
 			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
 				continue
@@ -203,11 +202,11 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 				areTemplatesValid = false
 			}
 		} else {
-			if old, ok := uniqueTemplatesIDValidateMap[template.ID]; !ok {
-				uniqueTemplatesIDValidateMap[template.ID] = templatePath
+			if existingTemplatePath, found := templateIDPathMap[template.ID]; !found {
+				templateIDPathMap[template.ID] = templatePath
 			} else {
 				areTemplatesValid = false
-				gologger.Warning().Msgf("Found duplicate template ID during validation %s => %s: %s\n", templatePath, old, template.ID)
+				gologger.Warning().Msgf("Found duplicate template ID during validation '%s' => '%s': %s\n", templatePath, existingTemplatePath, template.ID)
 			}
 			if !isWorkflow && len(template.Workflows) > 0 {
 				continue
