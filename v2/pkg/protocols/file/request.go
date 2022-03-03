@@ -159,7 +159,7 @@ func (request *Request) processFile(filePath, input string, previousInternalEven
 func (request *Request) processReader(reader io.Reader, filePath, input, totalBytesString string, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
 	fileReader := io.LimitReader(reader, request.maxSize)
 	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytesString, previousInternalEvent)
-	if len(fileMatches) == 0 || opResult == nil {
+	if opResult == nil && len(fileMatches) == 0 {
 		return nil, nil, emptyResultErr
 	}
 

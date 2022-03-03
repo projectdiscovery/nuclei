@@ -167,12 +167,6 @@ func (r *Result) Merge(result *Result) {
 			r.OutputExtracts = append(r.OutputExtracts, v)
 		}
 	}
-	for _, v := range result.OutputExtracts {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
-			r.OutputExtracts = append(r.OutputExtracts, v)
-		}
-	}
 	for k, v := range result.DynamicValues {
 		r.DynamicValues[k] = v
 	}
