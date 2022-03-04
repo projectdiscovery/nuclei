@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 var _ protocols.Request = &Request{}
@@ -225,6 +226,16 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath 
 						}
 					}
 				}
+				for _, outputExtract := range newOpResult.OutputExtracts {
+					fileMatches = append(fileMatches, FileMatch{
+						Data:      outputExtract,
+						Match:     true,
+						Line:      linesCount + 1,
+						ByteIndex: bytesCount,
+						Expr:      outputExtract,
+						Raw:       lineContent,
+					})
+				}
 			}
 		}
 
@@ -255,7 +266,12 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 			result.Lines = exprLines[result.MatcherName]
 		case result.ExtractorName != "":
 			result.Lines = exprLines[result.ExtractorName]
+		default:
+			for _, extractedResult := range result.ExtractedResults {
+				result.Lines = append(result.Lines, exprLines[extractedResult]...)
+			}
 		}
+		result.Lines = sliceutil.DedupeInt(result.Lines)
 	}
 	return event
 }
