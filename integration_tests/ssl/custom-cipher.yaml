@@ -1,0 +1,16 @@
+id: expired-ssl
+
+info:
+  name: Basic SSL Request
+  author: pdteam
+  severity: info
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    cipher_suites: 
+      - TLS_AES_128_GCM_SHA256
+    matchers:
+      - type: word
+        part: cipher_matched
+        words:
+          - "true"
