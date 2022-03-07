@@ -53,7 +53,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
-			gologger.Verbose().Label("ERR").Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			gologger.Warning().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}
 	}
@@ -69,9 +69,8 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		return err
 	}
 
+	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
-	// add Hostname variable to the payload
-	payloads = generators.MergeMaps(payloads, map[string]interface{}{"Hostname": address})
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -224,7 +223,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			default:
 				buf := make([]byte, bufferSize)
 				nBuf, err := conn.Read(buf)
-				if err != nil && !os.IsTimeout(err) {
+				if err != nil && !os.IsTimeout(err) && err != io.EOF {
 					request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 					closeTimer(readInterval)
 					return errors.Wrap(err, "could not read from server")
@@ -237,7 +236,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		final = make([]byte, bufferSize)
 		n, err = conn.Read(final)
-		if err != nil && err != io.EOF {
+		if err != nil && !os.IsTimeout(err) && err != io.EOF {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			return errors.Wrap(err, "could not read from server")
 		}

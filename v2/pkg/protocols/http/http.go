@@ -139,6 +139,10 @@ type Request struct {
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
 	// description: |
+	//   Enables force reading of the entire raw unsafe request body ignoring
+	//   any specified content length headers.
+	ForceReadAllBody bool `yaml:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
+	// description: |
 	//   Redirects specifies whether redirects should be followed by the HTTP Client.
 	//
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
@@ -186,7 +190,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":               "Matched is the input which was matched upon",
 	"type":                  "Type is the type of request made",
 	"request":               "HTTP request made from the client",
-	"response":              "HTTP response recieved from server",
+	"response":              "HTTP response received from server",
 	"status_code":           "Status Code received from the Server",
 	"body":                  "HTTP response body received from server (default)",
 	"content_length":        "HTTP Response content length",
@@ -298,7 +302,13 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total() * len(request.Raw)
+		payloadRequests := request.generator.NewIterator().Total()
+		if len(request.Raw) > 0 {
+			payloadRequests = payloadRequests * len(request.Raw)
+		}
+		if len(request.Path) > 0 {
+			payloadRequests = payloadRequests * len(request.Path)
+		}
 		return payloadRequests
 	}
 	if len(request.Raw) > 0 {

@@ -15,6 +15,10 @@ echo "::group::Building Nuclei binary from current branch"
 go build -o nuclei_dev$extension ../nuclei
 echo "::endgroup::"
 
+echo "::group::Installing nuclei templates"
+./nuclei_dev$extension -update-templates
+echo "::endgroup::"
+
 echo "::group::Building latest release of nuclei"
 go build -o nuclei$extension -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei
 echo "::endgroup::"

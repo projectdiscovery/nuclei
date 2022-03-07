@@ -160,7 +160,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(types.DefaultResumeFilePath())
+		file, err := ioutil.ReadFile(runner.options.Resume)
 		if err != nil {
 			return nil, err
 		}
@@ -170,11 +170,11 @@ func New(options *types.Options) (*Runner, error) {
 		}
 		resumeCfg.Compile()
 	}
-
 	runner.resumeCfg = resumeCfg
 
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
+	opts.NoColor = runner.options.NoColor
 	if options.InteractshURL != "" {
 		opts.ServerURL = options.InteractshURL
 	}
@@ -185,6 +185,9 @@ func New(options *types.Options) (*Runner, error) {
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
+	opts.Debug = runner.options.Debug
+	opts.DebugRequest = runner.options.DebugRequests
+	opts.DebugResponse = runner.options.DebugResponse
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -392,7 +395,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		if len(t.Workflows) > 0 {
 			continue
 		}
-		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
+		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
@@ -481,7 +484,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		if text == "" {
 			continue
 		}
-		if isNewTemplate(text) {
+		if isTemplate(text) {
 			templatesList = append(templatesList, text)
 		}
 	}
@@ -508,7 +511,7 @@ func (r *Runner) countNewTemplates() int {
 			continue
 		}
 
-		if isNewTemplate(text) {
+		if isTemplate(text) {
 			count++
 		}
 
@@ -516,15 +519,15 @@ func (r *Runner) countNewTemplates() int {
 	return count
 }
 
-func isNewTemplate(filename string) bool {
+func isTemplate(filename string) bool {
 	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
 }
 
 // SaveResumeConfig to file
-func (r *Runner) SaveResumeConfig() error {
+func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfg := types.NewResumeCfg()
 	resumeCfg.ResumeFrom = r.resumeCfg.Current
 	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
 
-	return os.WriteFile(types.DefaultResumeFilePath(), data, os.ModePerm)
+	return os.WriteFile(path, data, os.ModePerm)
 }

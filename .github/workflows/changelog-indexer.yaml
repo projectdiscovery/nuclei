@@ -1,0 +1,29 @@
+name: 📑 Template-DB Indexer
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Intalling Indexer
+        run: |
+          git config --global url."https://${{ secrets.ACCESS_TOKEN }}@github".insteadOf https://github
+          git clone https://github.com/projectdiscovery/nucleish-api.git
+          cd nucleish-api/cmd/generate-index/
+          go install
+
+      - name: Generate Index
+        env:
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        run: |
+          generate-index -mode changelog

@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,14 +13,23 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
+
+func ConfigureOptions() error {
+	isFromFileFunc := func(s string) bool {
+		return !isTemplate(s)
+	}
+	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.DefaultFileOriginalNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	return nil
+}
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
@@ -115,35 +126,7 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 
-	// expand include/exclude templates id filenames
-	if includeIds, err := processIdsFiltering(options.IncludeIds); err != nil {
-		return err
-	} else {
-		options.IncludeIds = includeIds
-	}
-	if excludeIds, err := processIdsFiltering(options.ExcludeIds); err != nil {
-		return err
-	} else {
-		options.ExcludeIds = excludeIds
-	}
-
 	return nil
-}
-
-func processIdsFiltering(ids []string) ([]string, error) {
-	var finalIds []string
-	for _, id := range ids {
-		if fileutil.FileExists(id) {
-			fileIds, err := utils.LoadFile(id)
-			if err != nil {
-				return nil, err
-			}
-			finalIds = append(finalIds, fileIds...)
-		} else {
-			finalIds = append(finalIds, id)
-		}
-	}
-	return finalIds, nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -152,7 +135,7 @@ func configureOutput(options *types.Options) {
 	if options.Verbose || options.Validate {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
-	if options.Debug {
+	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	}
 	if options.NoColor {
@@ -161,6 +144,10 @@ func configureOutput(options *types.Options) {
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	}
+
+	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
+	log.SetFlags(0)
+	log.SetOutput(io.Discard)
 }
 
 // loadResolvers loads resolvers from both user provided flag and file

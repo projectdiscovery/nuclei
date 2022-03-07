@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
@@ -223,7 +224,16 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 
 // getLatestReleaseFromGithub returns the latest release from GitHub
 func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
-	gitHubClient := github.NewClient(nil)
+	var tc *http.Client
+	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		tc = oauth2.NewClient(ctx, ts)
+	}
+
+	gitHubClient := github.NewClient(tc)
 
 	release, _, err := gitHubClient.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
@@ -280,17 +290,6 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
-	// Write the additions to a cached file for new runs.
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
-	buffer := &bytes.Buffer{}
-	for _, addition := range results.additions {
-		buffer.WriteString(addition)
-		buffer.WriteString("\n")
-	}
-
-	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), 0644); err != nil {
-		return nil, errors.Wrap(err, "could not write new additions file")
-	}
 	return results, err
 }
 
@@ -325,11 +324,6 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 			continue
 		}
 
-		isAddition := false
-		if _, statErr := os.Stat(templateAbsolutePath); os.IsNotExist(statErr) {
-			isAddition = true
-		}
-
 		newTemplateChecksum, err := writeUnZippedTemplateFile(templateAbsolutePath, zipTemplateFile)
 		if err != nil {
 			return nil, err
@@ -342,13 +336,17 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 			return nil, fmt.Errorf("could not calculate relative path for template: %s. %w", templateAbsolutePath, err)
 		}
 
-		if isAddition {
-			results.additions = append(results.additions, relativeTemplatePath)
-		} else if checksumOk && oldTemplateChecksum[0] != newTemplateChecksum {
+		if checksumOk && oldTemplateChecksum[0] != newTemplateChecksum {
 			results.modifications = append(results.modifications, relativeTemplatePath)
 		}
 		results.checksums[templateAbsolutePath] = newTemplateChecksum
 		results.totalCount++
+	}
+
+	var err error
+	results.additions, err = r.readNewTemplatesFile()
+	if err != nil {
+		results.additions = []string{}
 	}
 
 	// If we don't find the previous file in the newly downloaded list,
@@ -394,8 +392,10 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
 	directory, fileName := filepath.Split(zipFilePath)
 
-	if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
-		return "", true, nil
+	if !strings.EqualFold(fileName, ".new-additions") {
+		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
+			return "", true, nil
+		}
 	}
 
 	var (

@@ -11,10 +11,8 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/retryablehttp-go"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 )
@@ -40,17 +38,14 @@ type Options struct {
 
 // Mode options for the smart workflow system
 const (
-	ModeWorkflow     = "workflow"
-	ModeTechnologies = "technologies"
-	ModeWappalyzer   = "wappalyzer"
-	ModeAll          = "all"
+	ModeWorkflow   = "workflow"
+	ModeWappalyzer = "wappalyzer"
+	ModeAll        = "all"
 )
 
 func Modes() string {
 	builder := &strings.Builder{}
 	builder.WriteString(ModeWorkflow)
-	builder.WriteString(",")
-	builder.WriteString(ModeTechnologies)
 	builder.WriteString(",")
 	builder.WriteString(ModeWappalyzer)
 	builder.WriteString(",")
@@ -85,13 +80,6 @@ func (s *Service) Execute(mode string) {
 			gologger.Error().Msgf("Could not execute workflow based templates: %s", err)
 		}
 	}
-	technologiesFunc := func() map[string][]string {
-		mapping, err := s.executeTechnologiesPanelsBasedTemplates()
-		if err != nil {
-			gologger.Error().Msgf("Could not execute technologies based templates: %s", err)
-		}
-		return mapping
-	}
 	wappalyzerFunc := func() map[string][]string {
 		mapping, err := s.executeWappalyzerTechDetection()
 		if err != nil {
@@ -104,11 +92,6 @@ func (s *Service) Execute(mode string) {
 		switch value {
 		case ModeWorkflow:
 			workflowFunc()
-		case ModeTechnologies:
-			mapping := technologiesFunc()
-			if err := s.executeDiscoveredHostTags(mapping); err != nil {
-				gologger.Error().Msgf("Could not execute discovered tags from technologies: %s", err)
-			}
 		case ModeWappalyzer:
 			mapping := wappalyzerFunc()
 			if err := s.executeDiscoveredHostTags(mapping); err != nil {
@@ -116,11 +99,9 @@ func (s *Service) Execute(mode string) {
 			}
 		case ModeAll:
 			workflowFunc()
-			technologiesMapping := technologiesFunc()
 			wappalyzerMapping := wappalyzerFunc()
-			mapping := deduplicateHostMappings(technologiesMapping, wappalyzerMapping)
 
-			if err := s.executeDiscoveredHostTags(mapping); err != nil {
+			if err := s.executeDiscoveredHostTags(wappalyzerMapping); err != nil {
 				gologger.Error().Msgf("Could not execute discovered tags from technologies: %s", err)
 			}
 		default:
@@ -130,10 +111,7 @@ func (s *Service) Execute(mode string) {
 }
 
 var (
-	workflowsTemplateDirectory     = "workflows/"
-	exposedPanelsTemplateDirectory = "exposed-panels/"
-	technologiesTemplateDirectory  = "technologies/"
-
+	workflowsTemplateDirectory  = "workflows/"
 	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
 )
 
@@ -153,37 +131,6 @@ func (s *Service) executeWorkflowBasedTemplates() error {
 		s.results = true
 	}
 	return nil
-}
-
-// executeTechnologiesPanelsBasedTemplates implements the logic to run the default
-// technologies and panels templates on the provided input.
-//
-// The returned tags are then used for further execution.
-func (s *Service) executeTechnologiesPanelsBasedTemplates() (map[string][]string, error) {
-	panels, err := s.opts.Catalog.GetTemplatePath(exposedPanelsTemplateDirectory)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get exposed-panels from directory")
-	}
-	technologies, err := s.opts.Catalog.GetTemplatePath(technologiesTemplateDirectory)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get technologies from directory")
-	}
-	templateList := append(panels, technologies...)
-	templatesSlice := s.store.LoadTemplates(templateList)
-	finalTemplates, _ := templates.ClusterTemplates(templatesSlice, s.opts)
-
-	gologger.Info().Msgf("[workflow] Executing %d techs and panels from templates directory on targets", len(finalTemplates))
-
-	hostTagsMappings := make(map[string][]string)
-	s.engine.ExecuteWithResults(finalTemplates, s.target, func(event *output.ResultEvent) {
-		if values, ok := hostTagsMappings[event.Host]; ok {
-			hostTagsMappings[event.Host] = append(values, collectNamesFromResultEvent(event)...)
-		} else {
-			hostTagsMappings[event.Host] = collectNamesFromResultEvent(event)
-		}
-	})
-	finalMapping := cleanupHostTagsMappings(hostTagsMappings)
-	return finalMapping, nil
 }
 
 const maxDefaultBody = 2 * 1024 * 1024
@@ -266,99 +213,4 @@ func (s *Service) executeDiscoveredHostTags(data map[string][]string) error {
 		s.results = true
 	}
 	return nil
-}
-
-// cleanupHostTagsMappings cleans up host->tags mapping by doing deduplication
-// over the entire data structure and recommending best tech mapping per host.
-//
-// It is used during technologies and exposed-panels execution
-func cleanupHostTagsMappings(data map[string][]string) map[string][]string {
-	// first pass to identify tag frequency
-	techReferenceCount := make(map[string]int)
-	for _, v := range data {
-		for _, item := range v {
-			if count, ok := techReferenceCount[item]; !ok {
-				techReferenceCount[item] = 1
-			} else {
-				techReferenceCount[item] = count + 1
-			}
-		}
-	}
-
-	highest, lowest, avg := 0, 0, 0
-	for _, v := range techReferenceCount {
-		if highest == 0 {
-			highest = v
-		}
-		if lowest == 0 {
-			lowest = v
-		}
-		if v > highest {
-			highest = v
-		}
-		if v < lowest {
-			lowest = v
-		}
-	}
-	avg = (highest + lowest) / 2
-
-	results := make(map[string][]string)
-	// Second pass to eliminate duplicate matches
-	for k, v := range data {
-		var unique []string
-
-		for _, item := range v {
-			if count, ok := techReferenceCount[item]; ok && count > avg {
-				continue
-			} else {
-				unique = append(unique, item)
-			}
-		}
-		results[k] = unique
-	}
-	return results
-}
-
-// deduplicateHostMappings performs deduplication of two host mappings
-func deduplicateHostMappings(first, second map[string][]string) map[string][]string {
-	final := make(map[string][]string, len(first))
-	for k, v := range first {
-		if previous, ok := final[k]; !ok {
-			final[k] = v
-		} else {
-			final[k] = appendSliceUnique(previous, v)
-		}
-	}
-	return final
-}
-
-func appendSliceUnique(slice, second []string) []string {
-	unique := make(map[string]struct{})
-	for _, v := range slice {
-		unique[v] = struct{}{}
-	}
-	for _, v := range second {
-		unique[v] = struct{}{}
-	}
-	final := make([]string, 0, len(unique))
-	for k := range unique {
-		final = append(final, k)
-	}
-	return final
-}
-
-func collectNamesFromResultEvent(event *output.ResultEvent) []string {
-	tags := event.Info.Tags.ToSlice()
-	values := make([]string, 0, 2+len(tags))
-
-	if event.MatcherName != "" {
-		values = append(values, event.MatcherName)
-	}
-	if event.ExtractorName != "" {
-		values = append(values, event.ExtractorName)
-	}
-	if len(tags) > 0 {
-		values = append(values, tags...)
-	}
-	return values
 }

@@ -489,7 +489,7 @@ Severity of the template.
 
 <div class="dd">
 
-<code>metadata</code>  <i>map[string]string</i>
+<code>metadata</code>  <i>map[string]interface{}</i>
 
 </div>
 <div class="dt">
@@ -633,6 +633,8 @@ Enum Values:
   - <code>high</code>
 
   - <code>critical</code>
+
+  - <code>unknown</code>
 </div>
 
 <hr />
@@ -788,7 +790,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - HTTP request made from the client
-- <code>response</code> - HTTP response recieved from server
+- <code>response</code> - HTTP response received from server
 - <code>status_code</code> - Status Code received from the Server
 - <code>body</code> - HTTP response body received from server (default)
 - <code>content_length</code> - HTTP Response content length
@@ -1225,6 +1227,20 @@ Valid values:
 
 CookieReuse is an optional setting that enables cookie reuse for
 all requests defined in raw section.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>read-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Enables force reading of the entire raw unsafe request body ignoring
+any specified content length headers.
 
 </div>
 
@@ -1694,6 +1710,26 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>match-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+MatchAll enables matching for all matcher values. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
 
 
 
@@ -2091,6 +2127,8 @@ Appears in:
 - <code><a href="#httprequest">http.Request</a>.attack</code>
 
 - <code><a href="#networkrequest">network.Request</a>.attack</code>
+
+- <code><a href="#headlessrequest">headless.Request</a>.attack</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
 
@@ -2506,6 +2544,8 @@ Enum Values:
   - <code>TXT</code>
 
   - <code>AAAA</code>
+
+  - <code>CAA</code>
 </div>
 
 <hr />
@@ -2740,7 +2780,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - Network request made from the client
-- <code>body,all,data</code> - Network response recieved from server (default)
+- <code>body,all,data</code> - Network response received from server (default)
 - <code>raw</code> - Full Network protocol data
 
 <hr />
@@ -3115,7 +3155,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>req</code> - Headless request made from the client
-- <code>resp,body,data</code> - Headless response recieved from client (default)
+- <code>resp,body,data</code> - Headless response received from client (default)
 
 <hr />
 
@@ -3134,12 +3174,73 @@ ID is the optional id of the request
 
 <div class="dd">
 
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Attack is the type of payload combinations to perform.
+
+Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
+permutations and combinations for all payloads.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>payloads</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Payloads contains any payloads for the current request.
+
+Payloads support both key-values combinations where a list
+of payloads is provided, or optionally a single file can also
+be provided as payload which will be read on run-time.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>steps</code>  <i>[]<a href="#engineaction">engine.Action</a></i>
 
 </div>
 <div class="dt">
 
 Steps is the list of actions to run for headless request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>user_agent</code>  <i><a href="#useragentuseragentholder">userAgent.UserAgentHolder</a></i>
+
+</div>
+<div class="dt">
+
+descriptions: |
+ 	 User-Agent is the type of user-agent to use for the request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>custom_user_agent</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+ 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request.
 
 </div>
 
@@ -3359,6 +3460,48 @@ Enum Values:
 
 
 
+## userAgent.UserAgentHolder
+UserAgentHolder holds a UserAgent type. Required for un/marshalling purposes
+
+Appears in:
+
+
+- <code><a href="#headlessrequest">headless.Request</a>.user_agent</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>UserAgent</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>random</code>
+
+  - <code>off</code>
+
+  - <code>default</code>
+
+  - <code>custom</code>
+</div>
+
+<hr />
+
+
+
+
+
 ## ssl.Request
 Request is a request for the SSL protocol
 
@@ -3445,6 +3588,71 @@ Address contains address for the request
 
 <hr />
 
+<div class="dd">
+
+<code>min_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Minimum tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max_version</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Max tls version - auto if not specified.
+
+
+Valid values:
+
+
+  - <code>sslv3</code>
+
+  - <code>tls10</code>
+
+  - <code>tls11</code>
+
+  - <code>tls12</code>
+
+  - <code>tls13</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cipher_suites</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Client Cipher Suites  - auto if not specified.
+
+</div>
+
+<hr />
+
 
 
 
@@ -3465,7 +3673,7 @@ Part Definitions:
 - <code>type</code> - Type is the type of request made
 - <code>success</code> - Success specifies whether websocket connection was successful
 - <code>request</code> - Websocket request made to the server
-- <code>response</code> - Websocket response recieved from the server
+- <code>response</code> - Websocket response received from the server
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
 
