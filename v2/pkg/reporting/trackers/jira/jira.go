@@ -65,7 +65,7 @@ func New(options *Options) (*Integration, error) {
 func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	labels := []string{}
-	severityLabel := fmt.Sprintf("Severity-%s", event.Info.SeverityHolder.Severity.String())
+	severityLabel := fmt.Sprintf("Severity:%s", event.Info.SeverityHolder.Severity.String())
 	if i.options.SeverityAsLabel && severityLabel != "" {
 		labels = append(labels, severityLabel)
 	}
