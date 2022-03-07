@@ -148,6 +148,12 @@ func (store *Store) Load() {
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
+var templateIDPathMap map[string]string
+
+func init() {
+	templateIDPathMap = make(map[string]string)
+}
+
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
@@ -164,7 +170,7 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
 		return nil
 	}
-	return errors.New("an error occurred during templates validation")
+	return errors.New("errors occured during template validation")
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
@@ -181,6 +187,7 @@ func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) 
 
 func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
+
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
 			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
@@ -195,8 +202,14 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 				areTemplatesValid = false
 			}
 		} else {
+			if existingTemplatePath, found := templateIDPathMap[template.ID]; !found {
+				templateIDPathMap[template.ID] = templatePath
+			} else {
+				areTemplatesValid = false
+				gologger.Warning().Msgf("Found duplicate template ID during validation '%s' => '%s': %s\n", templatePath, existingTemplatePath, template.ID)
+			}
 			if !isWorkflow && len(template.Workflows) > 0 {
-				return true
+				continue
 			}
 		}
 		if isWorkflow {
