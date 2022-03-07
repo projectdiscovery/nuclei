@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 type ContentType string
@@ -16,38 +19,38 @@ const (
 	Workflow ContentType = "Workflow"
 )
 
-type RemoteContentError struct {
+type RemoteContent struct {
 	Content []string
 	Type    ContentType
 	Error   error
 }
 
-func getRemoteTemplatesAndWorkflows(templateURLs []string, workflowURLs []string) ([]string, []string, error) {
-	remoteContentErrorChannel := make(chan RemoteContentError)
+func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDomainList []string) ([]string, []string, error) {
+	remoteContentChannel := make(chan RemoteContent)
 
 	for _, templateURL := range templateURLs {
-		go getRemoteContent(templateURL, remoteContentErrorChannel, Template)
+		go getRemoteContent(templateURL, remoteTemplateDomainList, remoteContentChannel, Template)
 	}
 	for _, workflowURL := range workflowURLs {
-		go getRemoteContent(workflowURL, remoteContentErrorChannel, Workflow)
+		go getRemoteContent(workflowURL, remoteTemplateDomainList, remoteContentChannel, Workflow)
 	}
 
 	var remoteTemplateList []string
 	var remoteWorkFlowList []string
 	var err error
 	for i := 0; i < (len(templateURLs) + len(workflowURLs)); i++ {
-		remoteContentError := <-remoteContentErrorChannel
-		if remoteContentError.Error != nil {
+		remoteContent := <-remoteContentChannel
+		if remoteContent.Error != nil {
 			if err != nil {
-				err = errors.New(remoteContentError.Error.Error() + ": " + err.Error())
+				err = errors.New(remoteContent.Error.Error() + ": " + err.Error())
 			} else {
-				err = remoteContentError.Error
+				err = remoteContent.Error
 			}
 		} else {
-			if remoteContentError.Type == Template {
-				remoteTemplateList = append(remoteTemplateList, remoteContentError.Content...)
-			} else if remoteContentError.Type == Workflow {
-				remoteWorkFlowList = append(remoteWorkFlowList, remoteContentError.Content...)
+			if remoteContent.Type == Template {
+				remoteTemplateList = append(remoteTemplateList, remoteContent.Content...)
+			} else if remoteContent.Type == Workflow {
+				remoteWorkFlowList = append(remoteWorkFlowList, remoteContent.Content...)
 			}
 		}
 	}
@@ -55,17 +58,30 @@ func getRemoteTemplatesAndWorkflows(templateURLs []string, workflowURLs []string
 	return remoteTemplateList, remoteWorkFlowList, err
 }
 
-func getRemoteContent(URL string, w chan<- RemoteContentError, contentType ContentType) {
+func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteContentChannel chan<- RemoteContent, contentType ContentType) {
+	if err := validateRemoteTemplateURL(URL, remoteTemplateDomainList); err != nil {
+		remoteContentChannel <- RemoteContent{
+			Error: err,
+		}
+		return
+	}
+	if strings.HasPrefix(URL, "http") && (strings.HasSuffix(URL, ".yaml") || strings.HasSuffix(URL, ".yml")) {
+		remoteContentChannel <- RemoteContent{
+			Content: []string{URL},
+			Type:    contentType,
+		}
+		return
+	}
 	response, err := http.Get(URL)
 	if err != nil {
-		w <- RemoteContentError{
+		remoteContentChannel <- RemoteContent{
 			Error: err,
 		}
 		return
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
-		w <- RemoteContentError{
+		remoteContentChannel <- RemoteContent{
 			Error: fmt.Errorf("get \"%s\": unexpect status %d", URL, response.StatusCode),
 		}
 		return
@@ -78,18 +94,37 @@ func getRemoteContent(URL string, w chan<- RemoteContentError, contentType Conte
 		if text == "" {
 			continue
 		}
+		if utils.IsURL(text) {
+			if err := validateRemoteTemplateURL(text, remoteTemplateDomainList); err != nil {
+				remoteContentChannel <- RemoteContent{
+					Error: err,
+				}
+				return
+			}
+		}
 		templateList = append(templateList, text)
 	}
 
 	if err := scanner.Err(); err != nil {
-		w <- RemoteContentError{
+		remoteContentChannel <- RemoteContent{
 			Error: errors.Wrap(err, "get \"%s\""),
 		}
 		return
 	}
 
-	w <- RemoteContentError{
+	remoteContentChannel <- RemoteContent{
 		Content: templateList,
 		Type:    contentType,
 	}
+}
+
+func validateRemoteTemplateURL(inputURL string, remoteTemplateDomainList []string) error {
+	parsedURL, err := url.Parse(inputURL)
+	if err != nil {
+		return err
+	}
+	if !utils.StringSliceContains(remoteTemplateDomainList, parsedURL.Host) {
+		return errors.Errorf("Remote template URL host (%s) is not present in the `remote-template-domain` list in nuclei config", parsedURL.Host)
+	}
+	return nil
 }

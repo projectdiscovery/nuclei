@@ -72,7 +72,7 @@
         "metadata": {
           "patternProperties": {
             ".*": {
-              "type": "string"
+              "additionalProperties": true
             }
           },
           "type": "object",
@@ -103,7 +103,8 @@
         "low",
         "medium",
         "high",
-        "critical"
+        "critical",
+        "unknown"
       ],
       "type": "string",
       "title": "severity of the template",
@@ -118,6 +119,16 @@
           "type": "array"
         }
       ]
+    },
+    "userAgent.UserAgentHolder": {
+      "enum": [
+        "off",
+        "default",
+        "custom"
+      ],
+      "type": "string",
+      "title": "userAgent for the headless",
+      "description": "userAgent for the headless http request"
     },
     "extractors.Extractor": {
       "required": [
@@ -300,6 +311,11 @@
           "type": "boolean",
           "title": "use case insensitive match",
           "description": "use case insensitive match"
+        },
+        "match-all": {
+          "type": "boolean",
+          "title": "match all values",
+          "description": "match all matcher values ignoring condition"
         }
       },
       "additionalProperties": false,
@@ -316,7 +332,7 @@
       ],
       "type": "string",
       "title": "type of the matcher",
-      "description": "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"
+      "description": "Type of the matcher"
     },
     "generators.AttackTypeHolder": {
       "enum": [
@@ -338,11 +354,12 @@
         "PTR",
         "MX",
         "TXT",
-        "AAAA"
+        "AAAA",
+        "CAA"
       ],
       "type": "string",
       "title": "type of DNS request to make",
-      "description": "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"
+      "description": "Type is the type of DNS request to make"
     },
     "dns.Request": {
       "properties": {
@@ -501,6 +518,21 @@
           "title": "id of the request",
           "description": "Optional ID of the headless request"
         },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the headless request",
+          "description": "Payloads contains any payloads for the current request"
+        },
         "steps": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -509,6 +541,17 @@
           "type": "array",
           "title": "list of actions for headless request",
           "description": "List of actions to run for headless request"
+        },
+        "user_agent": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/userAgent.UserAgentHolder",
+          "title": "user agent for the headless request",
+          "description": "User agent for the headless request"
+        },
+        "custom_user_agent": {
+          "type": "string",
+          "title": "custom user agent for the headless request",
+          "description": "Custom user agent for the headless request"
         },
         "matchers": {
           "items": {
@@ -601,7 +644,7 @@
       ],
       "type": "string",
       "title": "action to perform",
-      "description": "Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"
+      "description": "Type of actions to perform"
     },
     "http.HTTPMethodTypeHolder": {
       "enum": [
@@ -619,7 +662,7 @@
       ],
       "type": "string",
       "title": "method is the HTTP request method",
-      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE,enum=DEBUG"
+      "description": "Method is the HTTP Request Method"
     },
     "http.Request": {
       "properties": {
@@ -753,6 +796,11 @@
           "title": "optional cookie reuse enable",
           "description": "Optional setting that enables cookie reuse"
         },
+        "read-all": {
+          "type": "boolean",
+          "title": "force read all body",
+          "description": "Enables force reading of entire unsafe http request body"
+        },
         "redirects": {
           "type": "boolean",
           "title": "follow http redirects",
@@ -839,7 +887,7 @@
       ],
       "type": "string",
       "title": "type is the type of input data",
-      "description": "description=Type of input specified in data field,enum=hex,enum=text"
+      "description": "description=Type of input specified in data field"
     },
     "network.Request": {
       "properties": {
@@ -950,6 +998,36 @@
           "type": "string",
           "title": "address for the ssl request",
           "description": "Address contains address for the request"
+        },
+        "min_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Minimum tls version - automatic if not specified."
+        },
+        "max_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Max tls version - automatic if not specified."
+        },
+        "cipher_suites": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

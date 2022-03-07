@@ -24,6 +24,7 @@ jobs:
       - name: Functional Tests
         env:
           GH_ACTION: true
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}

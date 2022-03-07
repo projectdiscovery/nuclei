@@ -7,12 +7,16 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 )
 
 // Instance is an isolated browser instance opened for doing operations with it.
 type Instance struct {
 	browser *Browser
 	engine  *rod.Browser
+
+	// redundant due to dependency cycle
+	interactsh *interactsh.Client
 }
 
 // NewInstance creates a new instance for the current browser.
@@ -37,6 +41,11 @@ func (b *Browser) NewInstance() (*Instance, error) {
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
 	return i.engine.Close()
+}
+
+// SetInteractsh client
+func (i *Instance) SetInteractsh(interactsh *interactsh.Client) {
+	i.interactsh = interactsh
 }
 
 // maxBackoffSleeper is a backoff sleeper respecting max backoff values

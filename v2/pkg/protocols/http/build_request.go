@@ -336,6 +336,15 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		setHeader(req, "Accept", "*/*")
 		setHeader(req, "Accept-Language", "en")
 	}
+
+	if !LeaveDefaultPorts {
+		switch {
+		case req.URL.Scheme == "http" && strings.HasSuffix(req.Host, ":80"):
+			req.Host = strings.TrimSuffix(req.Host, ":80")
+		case req.URL.Scheme == "https" && strings.HasSuffix(req.Host, ":443"):
+			req.Host = strings.TrimSuffix(req.Host, ":443")
+		}
+	}
 	return retryablehttp.FromRequest(req)
 }
 

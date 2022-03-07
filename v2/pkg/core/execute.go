@@ -151,7 +151,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 	})
 	wg.WaitGroup.Wait()
 
-	// on completition marks the template as completed
+	// on completion marks the template as completed
 	currentInfo.Lock()
 	currentInfo.Completed = true
 	currentInfo.Unlock()

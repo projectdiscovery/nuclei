@@ -365,7 +365,7 @@ var RequestPartDefinitions = map[string]string{
 	"type":     "Type is the type of request made",
 	"success":  "Success specifies whether websocket connection was successful",
 	"request":  "Websocket request made to the server",
-	"response": "Websocket response recieved from the server",
+	"response": "Websocket response received from the server",
 	"host":     "Host is the input to the template",
 	"matched":  "Matched is the input which was matched upon",
 }

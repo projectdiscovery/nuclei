@@ -12,19 +12,21 @@ type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
-	Tags goflags.NormalizedStringSlice
+	Tags goflags.FileNormalizedStringSlice
 	// ExcludeTags is the list of tags to exclude
-	ExcludeTags goflags.NormalizedStringSlice
+	ExcludeTags goflags.FileNormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.StringSlice
+	Workflows goflags.FileOriginalNormalizedStringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
-	WorkflowURLs goflags.StringSlice
+	WorkflowURLs goflags.FileOriginalNormalizedStringSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.StringSlice
+	Templates goflags.FileOriginalNormalizedStringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
-	TemplateURLs goflags.StringSlice
+	TemplateURLs goflags.FileOriginalNormalizedStringSlice
+	// RemoteTemplates specifies list of allowed URLs to load remote templates from
+	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.StringSlice
+	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
@@ -36,19 +38,19 @@ type Options struct {
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
 	// Authors filters templates based on their author and only run the matching ones.
-	Authors goflags.NormalizedStringSlice
+	Authors goflags.FileNormalizedStringSlice
 	// Protocols contains the protocols to be allowed executed
 	Protocols types.ProtocolTypes
 	// ExcludeProtocols contains protocols to not be executed
 	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
-	IncludeTags goflags.NormalizedStringSlice
+	IncludeTags goflags.FileNormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.StringSlice
+	IncludeTemplates goflags.FileOriginalNormalizedStringSlice
 	// IncludeIds includes specified ids to be run even while being in denylist
-	IncludeIds goflags.NormalizedStringSlice
+	IncludeIds goflags.FileNormalizedStringSlice
 	// ExcludeIds contains templates ids to not be executed
-	ExcludeIds goflags.NormalizedStringSlice
+	ExcludeIds goflags.FileNormalizedStringSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
@@ -64,11 +66,11 @@ type Options struct {
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
 	// Resume the scan from the state stored in the resume config file
-	Resume bool
+	Resume string
 	// Output is the file to write found results to.
 	Output string
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
-	Proxy goflags.NormalizedStringSlice
+	Proxy goflags.NormalizedOriginalStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -141,6 +143,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// LeaveDefaultPorts skips normalization of default ports
+	LeaveDefaultPorts bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit
@@ -194,6 +198,8 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
+	// Use ZTLS library
+	ZTLS bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
@@ -210,7 +216,7 @@ func (options *Options) VarsPayload() map[string]interface{} {
 
 // ShouldLoadResume resume file
 func (options *Options) ShouldLoadResume() bool {
-	return options.Resume && fileutil.FileExists(DefaultResumeFilePath())
+	return options.Resume != "" && fileutil.FileExists(options.Resume)
 }
 
 // ShouldSaveResume file
