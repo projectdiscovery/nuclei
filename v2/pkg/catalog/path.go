@@ -48,8 +48,8 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 var errNoValidCombination = errors.New("no valid combination found")
 
 // tryResolve attempts to load locate the target by iterating across all the folders tree
-func (c *Catalog) tryResolve(fullpath string) (string, error) {
-	dir, filename := filepath.Split(fullpath)
+func (c *Catalog) tryResolve(fullPath string) (string, error) {
+	dir, filename := filepath.Split(fullPath)
 	pathInfo, err := folderutil.NewPathInfo(dir)
 	if err != nil {
 		return "", err

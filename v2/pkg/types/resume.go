@@ -1,21 +1,25 @@
 package types
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/rs/xid"
 )
 
 // Default resume file
-const DefaultResumeFileName = "resume.cfg"
+const DefaultResumeFileName = "resume-%s.cfg"
 
 func DefaultResumeFilePath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return DefaultResumeFileName
+		return fmt.Sprintf("resume-%s.cfg", xid.New().String())
 	}
-	return filepath.Join(home, ".config", "nuclei", DefaultResumeFileName)
+	resumeFile := filepath.Join(home, ".config", "nuclei", fmt.Sprintf("resume-%s.cfg", xid.New().String()))
+	return resumeFile
 }
 
 // ResumeCfg contains the scan progression
@@ -30,7 +34,7 @@ type ResumeInfo struct {
 	Completed bool                `json:"completed"`
 	InFlight  map[uint32]struct{} `json:"inFlight"`
 	SkipUnder uint32              `json:"-"`
-	Repaet    map[uint32]struct{} `json:"-"`
+	Repeat    map[uint32]struct{} `json:"-"`
 	DoAbove   uint32              `json:"-"`
 }
 
@@ -70,9 +74,9 @@ func (resumeCfg *ResumeCfg) Compile() {
 			}
 		}
 		// maybe redundant but ensures we track the indexes to be repeated
-		resumeInfo.Repaet = map[uint32]struct{}{}
+		resumeInfo.Repeat = map[uint32]struct{}{}
 		for index := range resumeInfo.InFlight {
-			resumeInfo.Repaet[index] = struct{}{}
+			resumeInfo.Repeat[index] = struct{}{}
 		}
 		resumeInfo.SkipUnder = min
 		resumeInfo.DoAbove = max

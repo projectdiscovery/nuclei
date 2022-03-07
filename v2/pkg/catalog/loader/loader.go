@@ -13,16 +13,18 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
 // Config contains the configuration options for the loader
 type Config struct {
-	Templates        []string
-	TemplateURLs     []string
-	Workflows        []string
-	WorkflowURLs     []string
-	ExcludeTemplates []string
-	IncludeTemplates []string
+	Templates                []string
+	TemplateURLs             []string
+	Workflows                []string
+	WorkflowURLs             []string
+	ExcludeTemplates         []string
+	IncludeTemplates         []string
+	RemoteTemplateDomainList []string
 
 	Tags              []string
 	ExcludeTags       []string
@@ -57,25 +59,26 @@ type Store struct {
 // NewConfig returns a new loader config
 func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
-		Templates:          options.Templates,
-		Workflows:          options.Workflows,
-		TemplateURLs:       options.TemplateURLs,
-		WorkflowURLs:       options.WorkflowURLs,
-		ExcludeTemplates:   options.ExcludedTemplates,
-		Tags:               options.Tags,
-		ExcludeTags:        options.ExcludeTags,
-		IncludeTemplates:   options.IncludeTemplates,
-		Authors:            options.Authors,
-		Severities:         options.Severities,
-		ExcludeSeverities:  options.ExcludeSeverities,
-		IncludeTags:        options.IncludeTags,
-		IncludeIds:         options.IncludeIds,
-		ExcludeIds:         options.ExcludeIds,
-		TemplatesDirectory: options.TemplatesDirectory,
-		Protocols:          options.Protocols,
-		ExcludeProtocols:   options.ExcludeProtocols,
-		Catalog:            catalog,
-		ExecutorOptions:    executerOpts,
+		Templates:                options.Templates,
+		Workflows:                options.Workflows,
+		RemoteTemplateDomainList: options.RemoteTemplateDomainList,
+		TemplateURLs:             options.TemplateURLs,
+		WorkflowURLs:             options.WorkflowURLs,
+		ExcludeTemplates:         options.ExcludedTemplates,
+		Tags:                     options.Tags,
+		ExcludeTags:              options.ExcludeTags,
+		IncludeTemplates:         options.IncludeTemplates,
+		Authors:                  options.Authors,
+		Severities:               options.Severities,
+		ExcludeSeverities:        options.ExcludeSeverities,
+		IncludeTags:              options.IncludeTags,
+		IncludeIds:               options.IncludeIds,
+		ExcludeIds:               options.ExcludeIds,
+		TemplatesDirectory:       options.TemplatesDirectory,
+		Protocols:                options.Protocols,
+		ExcludeProtocols:         options.ExcludeProtocols,
+		Catalog:                  catalog,
+		ExecutorOptions:          executerOpts,
 	}
 	return &loaderConfig
 }
@@ -107,7 +110,7 @@ func New(config *Config) (*Store, error) {
 
 	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
 	if urlBasedTemplatesProvided {
-		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs)
+		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs, config.RemoteTemplateDomainList)
 		if err != nil {
 			return store, err
 		}
@@ -145,6 +148,12 @@ func (store *Store) Load() {
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
+var templateIDPathMap map[string]string
+
+func init() {
+	templateIDPathMap = make(map[string]string)
+}
+
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
@@ -161,7 +170,7 @@ func (store *Store) ValidateTemplates(templatesList, workflowsList []string) err
 	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
 		return nil
 	}
-	return errors.New("an error occurred during templates validation")
+	return errors.New("errors occured during template validation")
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
@@ -178,6 +187,7 @@ func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) 
 
 func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
+
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
 			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
@@ -192,12 +202,39 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 				areTemplatesValid = false
 			}
 		} else {
+			if existingTemplatePath, found := templateIDPathMap[template.ID]; !found {
+				templateIDPathMap[template.ID] = templatePath
+			} else {
+				areTemplatesValid = false
+				gologger.Warning().Msgf("Found duplicate template ID during validation '%s' => '%s': %s\n", templatePath, existingTemplatePath, template.ID)
+			}
 			if !isWorkflow && len(template.Workflows) > 0 {
-				return true
+				continue
+			}
+		}
+		if isWorkflow {
+			if !areWorkflowTemplatesValid(store, template.Workflows) {
+				areTemplatesValid = false
+				continue
 			}
 		}
 	}
 	return areTemplatesValid
+}
+
+func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemplate) bool {
+	for _, workflow := range workflows {
+		if !areWorkflowTemplatesValid(store, workflow.Subtemplates) {
+			return false
+		}
+		_, err := store.config.Catalog.GetTemplatePath(workflow.Template)
+		if err != nil {
+			if isParsingError("Error occurred loading template %s: %s\n", workflow.Template, err) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func isParsingError(message string, template string, err error) bool {

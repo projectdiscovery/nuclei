@@ -251,7 +251,7 @@ The internal logics for matching and extracting for things like words, regexes, 
 
 ### Template Execution
 
-`pkg/core` provides the engine mechanism which runs the templates/workflows on inputs. It exposes an `Execute` function which does the task of execution while also doing template clustring. The clustering can also be disbled optionally by the user.
+`pkg/core` provides the engine mechanism which runs the templates/workflows on inputs. It exposes an `Execute` function which does the task of execution while also doing template clustering. The clustering can also be disabled optionally by the user.
  
 An example of using the core engine is provided below.
 
