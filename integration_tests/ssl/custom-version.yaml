@@ -1,0 +1,16 @@
+id: expired-ssl
+
+info:
+  name: Basic SSL Request
+  author: pdteam
+  severity: info
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    min_version: tls12
+    max_version: tls12
+    matchers:
+      - type: word
+        part: response
+        words:
+          - '"tls_version":"TLS12"'
