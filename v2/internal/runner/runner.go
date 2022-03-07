@@ -127,9 +127,7 @@ func New(options *types.Options) (*Runner, error) {
 		gologger.Info().Msgf("Listening pprof debug server on: %s", pprofServerAddress)
 		runner.pprofServer = server
 		go func() {
-			if err := server.ListenAndServe(); err != nil {
-				gologger.Error().Msgf("Could not listen pprof server: %s", err)
-			}
+			_ = server.ListenAndServe()
 		}()
 	}
 
