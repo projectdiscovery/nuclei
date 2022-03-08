@@ -13,4 +13,4 @@ ssl:
       - type: word
         part: response
         words:
-          - '"tls_version":"TLS12"'
+          - 'TLS12'

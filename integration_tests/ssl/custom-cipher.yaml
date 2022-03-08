@@ -11,6 +11,6 @@ ssl:
       - TLS_AES_128_GCM_SHA256
     matchers:
       - type: word
-        part: cipher_matched
+        part: response
         words:
-          - "true"
+          - "TLS_AES_128_GCM_SHA256"
