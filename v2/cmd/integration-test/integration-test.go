@@ -19,15 +19,16 @@ var (
 	failed  = aurora.Red("[✘]").String()
 
 	protocolTests = map[string]map[string]testutils.TestCase{
-		"http":      httpTestcases,
-		"network":   networkTestcases,
-		"dns":       dnsTestCases,
-		"workflow":  workflowTestcases,
-		"loader":    loaderTestcases,
-		"websocket": websocketTestCases,
-		"headless":  headlessTestcases,
-		"whois":     whoisTestCases,
-		"ssl":       sslTestcases,
+		"http":          httpTestcases,
+		"network":       networkTestcases,
+		"dns":           dnsTestCases,
+		"workflow":      workflowTestcases,
+		"loader":        loaderTestcases,
+		"websocket":     websocketTestCases,
+		"headless":      headlessTestcases,
+		"whois":         whoisTestCases,
+		"ssl":           sslTestcases,
+		"templatesPath": templatesPathTestCases,
 	}
 )
 
