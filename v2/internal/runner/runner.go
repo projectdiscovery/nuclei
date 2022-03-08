@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
