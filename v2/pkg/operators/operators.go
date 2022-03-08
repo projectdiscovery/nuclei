@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -145,22 +146,16 @@ func (r *Result) Merge(result *Result) {
 	}
 
 	for k, v := range result.Matches {
-		r.Matches[k] = v
+		r.Matches[k] = sliceutil.Dedupe(append(r.Matches[k], v...))
 	}
 	for k, v := range result.Extracts {
-		r.Extracts[k] = v
+		r.Extracts[k] = sliceutil.Dedupe(append(r.Extracts[k], v...))
 	}
 
 	r.outputUnique = make(map[string]struct{})
 	output := r.OutputExtracts
 	r.OutputExtracts = make([]string, 0, len(output))
 	for _, v := range output {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
-			r.OutputExtracts = append(r.OutputExtracts, v)
-		}
-	}
-	for _, v := range result.OutputExtracts {
 		if _, ok := r.outputUnique[v]; !ok {
 			r.outputUnique[v] = struct{}{}
 			r.OutputExtracts = append(r.OutputExtracts, v)
@@ -201,7 +196,6 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
 		var extractorResults []string
-
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 

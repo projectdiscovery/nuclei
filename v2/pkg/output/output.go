@@ -105,8 +105,8 @@ type ResultEvent struct {
 	CURLCommand string `json:"curl-command,omitempty"`
 	// MatcherStatus is the status of the match
 	MatcherStatus bool `json:"matcher-status"`
-	// LineCount is the line count for the specified match
-	LineCount []int `json:"matched-line"`
+	// Lines is the line count for the specified match
+	Lines []int `json:"matched-line"`
 
 	FileToIndexPosition map[string]int `json:"-"`
 }
