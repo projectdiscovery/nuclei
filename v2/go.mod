@@ -12,7 +12,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.1.1
 	github.com/go-playground/validator/v10 v10.10.0
-	github.com/go-rod/rod v0.102.0
+	github.com/go-rod/rod v0.103.0
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.7
@@ -41,6 +41,7 @@ require (
 	github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
+	github.com/rs/xid v1.3.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/shirou/gopsutil/v3 v3.22.2
 	github.com/spaolacci/murmur3 v1.1.0
@@ -49,7 +50,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.55.1
+	github.com/xanzy/go-gitlab v0.58.0
 	github.com/ysmood/gson v0.6.4 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -62,15 +63,17 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.43.9
+require github.com/aws/aws-sdk-go v1.43.12
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
 require (
 	github.com/Ice3man543/nvd v1.0.8
+	github.com/docker/go-units v0.4.0
+	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
-	github.com/rs/xid v1.3.0
+	github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d
 	github.com/stretchr/testify v1.7.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 )
@@ -94,6 +97,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/frankban/quicktest v1.14.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -126,6 +130,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/nwaples/rardecode v1.1.2 // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e // indirect
@@ -138,6 +144,7 @@ require (
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
