@@ -20,7 +20,7 @@ func TestFindInputPaths(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"all", ".lock"},
 		DenyList:    []string{".go"},

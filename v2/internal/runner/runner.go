@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -175,7 +174,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(runner.options.Resume)
+		file, err := os.ReadFile(runner.options.Resume)
 		if err != nil {
 			return nil, err
 		}

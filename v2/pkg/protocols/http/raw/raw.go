@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"path"
 	"strings"
@@ -134,7 +133,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 
 	// Set the request body
-	b, err := ioutil.ReadAll(reader)
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %w", err)
 	}
