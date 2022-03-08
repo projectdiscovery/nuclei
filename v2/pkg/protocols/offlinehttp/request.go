@@ -1,7 +1,7 @@
 package offlinehttp
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -54,7 +54,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				return
 			}
 
-			buffer, err := ioutil.ReadAll(file)
+			buffer, err := io.ReadAll(file)
 			if err != nil {
 				gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
 				return
@@ -79,7 +79,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 				return
 			}
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				gologger.Error().Msgf("Could not read raw http response body %s: %s\n", data, err)
 				return
