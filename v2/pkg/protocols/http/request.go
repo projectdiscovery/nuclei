@@ -487,7 +487,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		} else {
 			bodyReader = resp.Body
 		}
-		data, err := ioutil.ReadAll(bodyReader)
+		data, err := io.ReadAll(bodyReader)
 		if err != nil {
 			// Ignore body read due to server misconfiguration errors
 			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
@@ -564,7 +564,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 
 		responseContentType := resp.Header.Get("Content-Type")
-		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType)
+		isResponseTruncated := len(gotData) >= request.MaxSize
+		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType, isResponseTruncated)
 
 		callback(event)
 	}
@@ -622,7 +623,7 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, redirectedResponse []byte, formedURL string, responseContentType string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		response := string(redirectedResponse)
@@ -634,7 +635,12 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 			highlightedResult = responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, false)
 		}
 
-		gologger.Debug().Msgf("[%s] Dumped HTTP response for %s\n\n%s", requestOptions.TemplateID, formedURL, highlightedResult)
+		msg := "[%s] Dumped HTTP response %s\n\n%s"
+		if isResponseTruncated {
+			msg = "[%s] Dumped HTTP response (Truncated) %s\n\n%s"
+		}
+
+		gologger.Debug().Msgf(msg, requestOptions.TemplateID, formedURL, highlightedResult)
 	}
 }
 
