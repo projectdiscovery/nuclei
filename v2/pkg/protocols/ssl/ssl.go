@@ -189,7 +189,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	var (
 		tlsData      interface{}
 		certNotAfter int64
-		gotCipher    uint16
 	)
 	if request.options.Options.ZTLS {
 		connTLS, ok := conn.(*ztls.Conn)
@@ -202,7 +201,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		}
 		tlsData = cryptoutil.ZTLSGrab(connTLS)
 		cert := connTLS.ConnectionState().PeerCertificates[0]
-		gotCipher = state.CipherSuite
 		certNotAfter = cert.NotAfter.Unix()
 	} else {
 		connTLS, ok := conn.(*tls.Conn)
@@ -215,16 +213,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		}
 		tlsData = cryptoutil.TLSGrab(&state)
 		cert := connTLS.ConnectionState().PeerCertificates[0]
-		gotCipher = state.CipherSuite
 		certNotAfter = cert.NotAfter.Unix()
 	}
-	var cipherSuiteMatched bool
-	for _, cipher := range request.cipherSuites {
-		if cipher == gotCipher {
-			cipherSuiteMatched = true
-		}
-	}
-
 	jsonData, _ := jsoniter.Marshal(tlsData)
 	jsonDataString := string(jsonData)
 
@@ -233,7 +223,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
-	data["cipher_matched"] = cipherSuiteMatched
 	data["matched"] = addressToDial
 	data["not_after"] = float64(certNotAfter)
 	data["ip"] = request.dialer.GetDialedIP(hostname)
