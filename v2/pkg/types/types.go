@@ -198,6 +198,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
+	// EnablePprof enables exposing pprof runtime information with a webserver.
+	EnablePprof bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
