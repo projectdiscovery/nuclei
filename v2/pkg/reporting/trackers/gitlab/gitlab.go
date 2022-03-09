@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Integration is a client for an issue tracker integration
@@ -31,6 +32,7 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	HttpClient      *retryablehttp.Client
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -38,6 +40,9 @@ func New(options *Options) (*Integration, error) {
 	gitlabOpts := []gitlab.ClientOptionFunc{}
 	if options.BaseURL != "" {
 		gitlabOpts = append(gitlabOpts, gitlab.WithBaseURL(options.BaseURL))
+	}
+	if options.HttpClient != nil {
+		gitlabOpts = append(gitlabOpts, gitlab.WithHTTPClient(options.HttpClient.HTTPClient))
 	}
 	git, err := gitlab.NewClient(options.Token, gitlabOpts...)
 	if err != nil {
