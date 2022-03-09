@@ -33,12 +33,12 @@ require (
 	github.com/projectdiscovery/goflags v0.0.8-0.20220223132346-fcffa47ead36
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v1.0.1-0.20220131074403-ca8bb8f87cd0
+	github.com/projectdiscovery/interactsh v1.0.2-0.20220309105842-7aa59db95941
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.8-0.20220225134552-b60c4c126e5b
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
-	github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700
+	github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.3.0
@@ -88,10 +88,11 @@ require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/andybalholm/cascadia v1.1.0 // indirect
 	github.com/antchfx/xpath v1.2.0 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.0.1 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
-	github.com/caddyserver/certmagic v0.15.2 // indirect
+	github.com/caddyserver/certmagic v0.15.3 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -117,7 +118,7 @@ require (
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.14.1 // indirect
+	github.com/klauspost/compress v1.14.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -151,7 +152,7 @@ require (
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	go.uber.org/zap v1.20.0 // indirect
+	go.uber.org/zap v1.21.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/mod v0.4.2 // indirect

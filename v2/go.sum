@@ -82,6 +82,8 @@ github.com/aphistic/golf v0.0.0-20180712155816-02c07f170c5a/go.mod h1:3NqKYiepwy
 github.com/aphistic/sweet v0.2.0/go.mod h1:fWDlIh/isSE9n6EPsRmC0det+whmX6dJid3stzu0Xys=
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
+github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
+github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.43.14 h1:ZFvtGVVB5yHskkE/dilXsZR1eLS3K1ibBrWBVYyxrbg=
 github.com/aws/aws-sdk-go v1.43.14/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
@@ -100,8 +102,8 @@ github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 h1:GKTyiRCL6zVf5wWaq
 github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8/go.mod h1:spo1JLcs67NmW1aVLEgtA8Yy1elc+X8y5SRW1sFW4Og=
 github.com/c4milo/unpackit v0.1.0 h1:91pWJ6B3svZ4LOE+p3rnyucRK5fZwBdF/yQ/pcZO31I=
 github.com/c4milo/unpackit v0.1.0/go.mod h1:pvXCMYlSV8zwGFWMaT+PWYkAB/cvDjN2mv9r7ZRSxEo=
-github.com/caddyserver/certmagic v0.15.2 h1:OMTakTsLM1ZfzMDjwvYprfUgFzpVPh3u87oxMPwmeBc=
-github.com/caddyserver/certmagic v0.15.2/go.mod h1:qhkAOthf72ufAcp3Y5jF2RaGE96oip3UbEQRIzwe3/8=
+github.com/caddyserver/certmagic v0.15.3 h1:ScY3KVV1eMIUfW74i20kDnD4eWL8T0rG6S6Wnc6nc9U=
+github.com/caddyserver/certmagic v0.15.3/go.mod h1:qhkAOthf72ufAcp3Y5jF2RaGE96oip3UbEQRIzwe3/8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
@@ -315,8 +317,8 @@ github.com/karrick/godirwalk v1.16.1 h1:DynhcF+bztK8gooS0+NDJFrdNZjJ3gzVzC545UNA
 github.com/karrick/godirwalk v1.16.1/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
-github.com/klauspost/compress v1.14.1 h1:hLQYb23E8/fO+1u53d02A97a8UnsddcvYzq4ERRU4ds=
-github.com/klauspost/compress v1.14.1/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
+github.com/klauspost/compress v1.14.4 h1:eijASRJcobkVtSt81Olfh7JX43osYLwy5krOJo6YEu4=
+github.com/klauspost/compress v1.14.4/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/cpuid v1.2.0 h1:NMpwD2G9JSFOE1/TJjGSo5zG7Yb2bTe7eq1jH+irmeE=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
 github.com/klauspost/cpuid/v2 v2.0.9 h1:lgaqFMSdTdQYdZ04uHyN2d/eKdOMyi2YLSvlQIBFYa4=
@@ -364,7 +366,6 @@ github.com/mholt/archiver v3.1.1+incompatible/go.mod h1:Dh2dOXnSdiLxRiPoVfIr/fI1
 github.com/miekg/dns v1.1.29/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJysuI=
 github.com/miekg/dns v1.1.43/go.mod h1:+evo5L0630/F6ca/Z9+GAqzhjGyn8/c+TBaOyfEl0V4=
-github.com/miekg/dns v1.1.45/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
 github.com/miekg/dns v1.1.46 h1:uzwpxRtSVxtcIZmz/4Uz6/Rn7G11DvsaslXoy5LxQio=
 github.com/miekg/dns v1.1.46/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
 github.com/minio/minio-go/v6 v6.0.46/go.mod h1:qD0lajrGW49lKZLtXKtCB4X/qkMf0a5tBvN2PaZg7Gg=
@@ -423,10 +424,6 @@ github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e/go.mod 
 github.com/projectdiscovery/clistats v0.0.8 h1:tjmWb15mqsPf/yrQXVHLe2ThZX/5+mgKSfZBKWWLh20=
 github.com/projectdiscovery/clistats v0.0.8/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
 github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod h1:clhQmPnt35ziJW1AhJRKyu8aygXCSoyWj6dtmZBRjjc=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143 h1:ulWFeH179xgDUfNQT/LyimW1znNlivsqv2d/lNFZU30=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220308134124-226941faf57b h1:BTOdZSqMTDGa+RE2d0qyE9SGoj9E1+/gTp6dTHHMA74=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220308134124-226941faf57b/go.mod h1:clhQmPnt35ziJW1AhJRKyu8aygXCSoyWj6dtmZBRjjc=
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
@@ -452,8 +449,8 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v1.0.1-0.20220131074403-ca8bb8f87cd0 h1:Olf2RG9sLqZF157gC664G6A3DU0Fta6VD/OWiNP3LbI=
-github.com/projectdiscovery/interactsh v1.0.1-0.20220131074403-ca8bb8f87cd0/go.mod h1:UW8wdok5mrDOXzcHxRjUCCDIScc/3hCpw8QjVDeXHEE=
+github.com/projectdiscovery/interactsh v1.0.2-0.20220309105842-7aa59db95941 h1:cFSdFArGFDvrmorGOxc35jPTCPMLb9b+MccLmwQKzA8=
+github.com/projectdiscovery/interactsh v1.0.2-0.20220309105842-7aa59db95941/go.mod h1:mMVHcw/S1HpGgvANGEc0syQTPAYzHJtepOv3xrnD+OM=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
 github.com/projectdiscovery/iputil v0.0.0-20210414194613-4b4d2517acf0/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
 github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
@@ -485,8 +482,8 @@ github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d/go.mod 
 github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/stringsutil v0.0.0-20210823090203-2f5f137e8e1d/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/stringsutil v0.0.0-20210830151154-f567170afdd9/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
-github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700 h1:L7Vb5AdzIV1Xs088Nvslfhh/piKP9gjTxjxfiqnd4mk=
-github.com/projectdiscovery/stringsutil v0.0.0-20220119085121-22513a958700/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
+github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9 h1:4fvUw6b4sS4GoWbHr60mJo3dI//4mGt3BuLx8Sz9aNw=
+github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/yamldoc-go v1.0.2/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6/go.mod h1:8OfZj8p/axkUM/TJoS/O9LDjj/S8u17rxRbqluE9CU4=
@@ -639,8 +636,8 @@ go.uber.org/ratelimit v0.2.0/go.mod h1:YYBV4e4naJvhpitQrWJu1vCpgB7CboMe0qhltKt6m
 go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee/go.mod h1:vJERXedbb3MVM5f9Ejo0C68/HhF8uaILCdgjnY+goOA=
 go.uber.org/zap v1.15.0/go.mod h1:Mb2vm2krFEG5DV0W9qcHBYFtp/Wku1cvYaqPsS/WYfc=
 go.uber.org/zap v1.17.0/go.mod h1:MXVU+bhUf/A7Xi2HNOnopQOrmycQ5Ih87HtOu4q5SSo=
-go.uber.org/zap v1.20.0 h1:N4oPlghZwYG55MlU6LXk/Zp00FVNE9X9wrYO8CEs4lc=
-go.uber.org/zap v1.20.0/go.mod h1:wjWOCqI0f2ZZrJF/UufIOkiC8ii6tm1iqIsLo76RfJw=
+go.uber.org/zap v1.21.0 h1:WefMeulhovoZ2sYXz7st6K0sLj7bBhpiFaud4r4zST8=
+go.uber.org/zap v1.21.0/go.mod h1:wjWOCqI0f2ZZrJF/UufIOkiC8ii6tm1iqIsLo76RfJw=
 goftp.io/server/v2 v2.0.0 h1:FF8JKXXKDxAeO1uXEZz7G+IZwCDhl19dpVIlDtp3QAg=
 goftp.io/server/v2 v2.0.0/go.mod h1:7+H/EIq7tXdfo1Muu5p+l3oQ6rYkDZ8lY7IM5d5kVdQ=
 golang.org/x/arch v0.0.0-20180920145803-b19384d3c130/go.mod h1:cYlCBUl1MsqxdiKgmc4uh7TxZfWSFLOGSRR090WDxt8=

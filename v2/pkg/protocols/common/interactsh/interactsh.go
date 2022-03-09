@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Client is a wrapped client for interactsh server.
@@ -66,7 +67,7 @@ type Options struct {
 	Eviction time.Duration
 	// CooldownPeriod is additional time to wait for interactions after closing
 	// of the poller.
-	ColldownPeriod time.Duration
+	CooldownPeriod time.Duration
 	// PollDuration is the time to wait before each poll to the server for interactions.
 	PollDuration time.Duration
 	// Output is the output writer for nuclei
@@ -87,6 +88,7 @@ type Options struct {
 	NoColor bool
 
 	StopAtFirstMatch bool
+	HTTPClient       *retryablehttp.Client
 }
 
 const defaultMaxInteractionsCount = 5000
@@ -110,7 +112,7 @@ func New(options *Options) (*Client, error) {
 		options:          options,
 		requests:         cache,
 		pollDuration:     options.PollDuration,
-		cooldownDuration: options.ColldownPeriod,
+		cooldownDuration: options.CooldownPeriod,
 	}
 	return interactClient, nil
 }
@@ -121,7 +123,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 		ServerURL:           client.DefaultOptions.ServerURL,
 		CacheSize:           5000,
 		Eviction:            60 * time.Second,
-		ColldownPeriod:      5 * time.Second,
+		CooldownPeriod:      5 * time.Second,
 		PollDuration:        5 * time.Second,
 		Output:              output,
 		IssuesClient:        reporting,
@@ -140,6 +142,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		Token:               c.options.Authorization,
 		PersistentSession:   false,
 		DisableHTTPFallback: c.options.DisableHttpFallback,
+		HTTPClient:          c.options.HTTPClient,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not create client")
