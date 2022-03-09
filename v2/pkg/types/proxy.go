@@ -1,9 +1,10 @@
 package types
 
 const (
-	SOCKS5 = "socks5"
-	HTTP   = "http"
-	HTTPS  = "https"
+	HTTP_PROXY_ENV = "HTTP_PROXY"
+	SOCKS5         = "socks5"
+	HTTP           = "http"
+	HTTPS          = "https"
 )
 
 var (
