@@ -81,7 +81,7 @@ func processProxyList(options *types.Options) error {
 func runProxyConnectivity(proxyURL url.URL, options *types.Options, done chan bool, exitCounter chan bool) {
 	if err := testProxyConnection(proxyURL, options.Timeout); err == nil {
 		if types.ProxyURL == "" && types.ProxySocksURL == "" {
-			assignProxyURL(proxyURL)
+			assignProxyURL(proxyURL, options)
 			done <- true
 		}
 	}
@@ -97,8 +97,10 @@ func testProxyConnection(proxyURL url.URL, timeoutDelay int) error {
 	return nil
 }
 
-func assignProxyURL(proxyURL url.URL) {
-	os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+func assignProxyURL(proxyURL url.URL, options *types.Options) {
+	if options.ProxyInternal {
+		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+	}
 	if proxyURL.Scheme == types.HTTP || proxyURL.Scheme == types.HTTPS {
 		types.ProxyURL = proxyURL.String()
 		types.ProxySocksURL = ""
