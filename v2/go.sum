@@ -83,8 +83,8 @@ github.com/aphistic/sweet v0.2.0/go.mod h1:fWDlIh/isSE9n6EPsRmC0det+whmX6dJid3st
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.43.14 h1:ZFvtGVVB5yHskkE/dilXsZR1eLS3K1ibBrWBVYyxrbg=
-github.com/aws/aws-sdk-go v1.43.14/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.43.15 h1:zAOUdqgNgJrkivRZi93NTjPNvuIQ5EcqNHSk0A1jrk8=
+github.com/aws/aws-sdk-go v1.43.15/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -423,10 +423,6 @@ github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e/go.mod 
 github.com/projectdiscovery/clistats v0.0.8 h1:tjmWb15mqsPf/yrQXVHLe2ThZX/5+mgKSfZBKWWLh20=
 github.com/projectdiscovery/clistats v0.0.8/go.mod h1:lV6jUHAv2bYWqrQstqW8iVIydKJhWlVaLl3Xo9ioVGg=
 github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod h1:clhQmPnt35ziJW1AhJRKyu8aygXCSoyWj6dtmZBRjjc=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143 h1:ulWFeH179xgDUfNQT/LyimW1znNlivsqv2d/lNFZU30=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220124150510-1f21e1ec3143/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220308134124-226941faf57b h1:BTOdZSqMTDGa+RE2d0qyE9SGoj9E1+/gTp6dTHHMA74=
-github.com/projectdiscovery/cryptoutil v0.0.0-20220308134124-226941faf57b/go.mod h1:clhQmPnt35ziJW1AhJRKyu8aygXCSoyWj6dtmZBRjjc=
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
