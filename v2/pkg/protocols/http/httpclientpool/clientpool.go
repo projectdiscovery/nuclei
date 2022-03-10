@@ -100,6 +100,11 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *types.Options) *rawhttp.Client {
 	if rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
+		if types.ProxyURL != "" {
+			rawHttpOptions.Proxy = types.ProxyURL
+		} else if types.ProxySocksURL != "" {
+			rawHttpOptions.Proxy = types.ProxySocksURL
+		}
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
