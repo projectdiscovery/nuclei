@@ -4,10 +4,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+)
+
+var (
+	defaultMaxReadSize, _ = units.FromHumanSize("1Gb")
+	chunkSize, _          = units.FromHumanSize("100Mb")
 )
 
 // Request contains a File matching mechanism for local disk operations.
@@ -34,11 +40,18 @@ type Request struct {
 	// description: |
 	//   MaxSize is the maximum size of the file to run request on.
 	//
-	//   By default, nuclei will process 5 MB files and not go more than that.
+	//   By default, nuclei will process 1 GB of content and not go more than that.
 	//   It can be set to much lower or higher depending on use.
+	//   If set to "no" then all content will be processed
 	// examples:
-	//   - value: 2048
-	MaxSize           int                  `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
+	//   - value: 5Mb
+	MaxSize string `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
+	maxSize int64
+
+	// description: |
+	//   elaborates archives
+	Archive bool
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
@@ -66,8 +79,11 @@ var RequestPartDefinitions = map[string]string{
 	"raw,body,all,data": "Raw contains the raw file contents",
 }
 
-// defaultDenylist is the default list of extensions to be denied
-var defaultDenylist = []string{".3g2", ".3gp", ".7z", ".apk", ".arj", ".avi", ".axd", ".bmp", ".css", ".csv", ".deb", ".dll", ".doc", ".drv", ".eot", ".exe", ".flv", ".gif", ".gifv", ".gz", ".h264", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lock", ".m4a", ".m4v", ".map", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg", ".mpg", ".msi", ".ogg", ".ogm", ".ogv", ".otf", ".pdf", ".pkg", ".png", ".ppt", ".psd", ".rar", ".rm", ".rpm", ".svg", ".swf", ".sys", ".tar.gz", ".tar", ".tif", ".tiff", ".ttf", ".vob", ".wav", ".webm", ".wmv", ".woff", ".woff2", ".xcf", ".xls", ".xlsx", ".zip"}
+// defaultDenylist contains common extensions to exclude
+var defaultDenylist = []string{".3g2", ".3gp", ".arj", ".avi", ".axd", ".bmp", ".css", ".csv", ".deb", ".dll", ".doc", ".drv", ".eot", ".exe", ".flv", ".gif", ".gifv", ".h264", ".ico", ".iso", ".jar", ".jpeg", ".jpg", ".lock", ".m4a", ".m4v", ".map", ".mkv", ".mov", ".mp3", ".mp4", ".mpeg", ".mpg", ".msi", ".ogg", ".ogm", ".ogv", ".otf", ".pdf", ".pkg", ".png", ".ppt", ".psd", ".rm", ".rpm", ".svg", ".swf", ".sys", ".tif", ".tiff", ".ttf", ".vob", ".wav", ".webm", ".wmv", ".woff", ".woff2", ".xcf", ".xls", ".xlsx"}
+
+// defaultArchiveDenyList contains common archive extensions to exclude
+var defaultArchiveDenyList = []string{".7z", ".apk", ".gz", ".rar", ".tar.gz", ".tar", ".zip"}
 
 // GetID returns the unique ID of the request if any.
 func (request *Request) GetID() string {
@@ -83,10 +99,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
-	// By default, use 1GB (1024 MB) as max size to read.
-	if request.MaxSize == 0 {
-		request.MaxSize = 1024 * 1024 * 1024
+
+	// By default, use default max size if not defined
+	switch {
+	case request.MaxSize != "":
+		maxSize, err := units.FromHumanSize(request.MaxSize)
+		if err != nil {
+			return errors.Wrap(err, "could not compile operators")
+		}
+		request.maxSize = maxSize
+	case request.MaxSize == "no":
+		request.maxSize = -1
+	default:
+		request.maxSize = defaultMaxReadSize
 	}
+
 	request.options = options
 
 	request.extensions = make(map[string]struct{})
@@ -103,7 +130,13 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 	// process default denylist (extensions)
-	for _, excludeItem := range defaultDenylist {
+	var denyList []string
+	if !request.Archive {
+		denyList = append(defaultDenylist, defaultArchiveDenyList...)
+	} else {
+		denyList = defaultDenylist
+	}
+	for _, excludeItem := range denyList {
 		if !strings.HasPrefix(excludeItem, ".") {
 			excludeItem = "." + excludeItem
 		}

@@ -45,6 +45,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	cmd.Args = append(cmd.Args, extra...)
+	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -53,6 +54,9 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 		cmd.Args = append(cmd.Args, "-silent")
 	}
 	data, err := cmd.Output()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +75,15 @@ var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
+	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		fmt.Println(cmd.String())
 	}
 	data, err := cmd.CombinedOutput()
+	if debug {
+		fmt.Println(string(data))
+	}
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +135,7 @@ TCxxGzcAlUAAJE6+SJpY7fPRe+n2EvPS
 `
 
 // NewTCPServer creates a new TCP server from a handler
-func NewTCPServer(withTls bool, port int, handler func(conn net.Conn)) *TCPServer {
+func NewTCPServer(tlsConfig *tls.Config, port int, handler func(conn net.Conn)) *TCPServer {
 	server := &TCPServer{}
 
 	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
@@ -137,11 +145,13 @@ func NewTCPServer(withTls bool, port int, handler func(conn net.Conn)) *TCPServe
 	server.URL = l.Addr().String()
 	server.listener = l
 
-	cer, err := tls.X509KeyPair([]byte(serverCert), []byte(serverKey))
-	if err != nil {
-		panic(err)
+	if tlsConfig != nil {
+		cer, err := tls.X509KeyPair([]byte(serverCert), []byte(serverKey))
+		if err != nil {
+			panic(err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cer}
 	}
-	config := &tls.Config{Certificates: []tls.Certificate{cer}}
 
 	go func() {
 		for {
@@ -151,8 +161,8 @@ func NewTCPServer(withTls bool, port int, handler func(conn net.Conn)) *TCPServe
 				continue
 			}
 			// Handle connections in a new goroutine.
-			if withTls {
-				connTls := tls.Server(conn, config)
+			if tlsConfig != nil {
+				connTls := tls.Server(conn, tlsConfig)
 				go handler(connTls)
 			} else {
 				go handler(conn)
