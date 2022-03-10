@@ -2,8 +2,10 @@ package runner
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,7 +60,10 @@ type Runner struct {
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
 	resumeCfg         *types.ResumeCfg
+	pprofServer       *http.Server
 }
+
+const pprofServerAddress = "127.0.0.1:8086"
 
 // New creates a new client for running enumeration process.
 func New(options *types.Options) (*Runner, error) {
@@ -113,6 +118,17 @@ func New(options *types.Options) (*Runner, error) {
 		runner.listAvailableTemplates()
 		os.Exit(0)
 	}
+	if options.EnablePprof {
+		server := &http.Server{
+			Addr:    pprofServerAddress,
+			Handler: http.DefaultServeMux,
+		}
+		gologger.Info().Msgf("Listening pprof debug server on: %s", pprofServerAddress)
+		runner.pprofServer = server
+		go func() {
+			_ = server.ListenAndServe()
+		}()
+	}
 
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
@@ -158,7 +174,7 @@ func New(options *types.Options) (*Runner, error) {
 	resumeCfg := types.NewResumeCfg()
 	if runner.options.ShouldLoadResume() {
 		gologger.Info().Msg("Resuming from save checkpoint")
-		file, err := ioutil.ReadFile(runner.options.Resume)
+		file, err := os.ReadFile(runner.options.Resume)
 		if err != nil {
 			return nil, err
 		}
@@ -247,6 +263,9 @@ func (r *Runner) Close() {
 	}
 	r.hmapInputProvider.Close()
 	protocolinit.Close()
+	if r.pprofServer != nil {
+		_ = r.pprofServer.Shutdown(context.Background())
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.

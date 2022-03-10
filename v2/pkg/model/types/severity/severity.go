@@ -24,6 +24,8 @@ const (
 	High
 	// name:critical
 	Critical
+	// name:unknown
+	Unknown
 	limit
 )
 
@@ -33,6 +35,7 @@ var severityMappings = map[Severity]string{
 	Medium:   "medium",
 	High:     "high",
 	Critical: "critical",
+	Unknown:  "unknown",
 }
 
 func GetSupportedSeverities() Severities {
