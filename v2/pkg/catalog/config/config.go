@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -42,13 +41,11 @@ func getConfigDetails() (string, error) {
 
 // GetConfigDir returns the nuclei configuration directory
 func GetConfigDir() (string, error) {
-	appName := filepath.Base(os.Args[0])
-	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", appName), nil
+	return filepath.Join(home, ".config", "nuclei"), nil
 }
 
 // ReadConfiguration reads the nuclei configuration file from disk.
