@@ -128,7 +128,8 @@ func init() {
 			return deserialization.InsertInto(stdBase64, 76, '\n'), nil
 		}),
 		"base64_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			return base64.StdEncoding.DecodeString(types.ToString(args[0]))
+			data, err := base64.StdEncoding.DecodeString(types.ToString(args[0]))
+			return string(data), err
 		}),
 		"url_encode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return url.QueryEscape(types.ToString(args[0])), nil
@@ -141,7 +142,7 @@ func init() {
 		}),
 		"hex_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
-			return decodeString, err
+			return string(decodeString), err
 		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return html.EscapeString(types.ToString(args[0])), nil
