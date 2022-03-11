@@ -1,12 +1,14 @@
 package operators
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/sliceutil"
 )
 
@@ -215,6 +217,23 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
 		}
+	}
+
+	// expose dynamic values to same request matchers
+	if len(result.DynamicValues) > 0 {
+		dataDynamicValues := make(map[string]interface{})
+		for dynName, dynValues := range result.DynamicValues {
+			if len(dynValues) > 1 {
+				for dynIndex, dynValue := range dynValues {
+					dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
+					dataDynamicValues[dynKeyName] = dynValue
+				}
+			} else {
+				dataDynamicValues[dynName] = dynValues[0]
+			}
+
+		}
+		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {
