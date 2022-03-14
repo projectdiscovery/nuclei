@@ -55,8 +55,6 @@ type Options struct {
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
-	// SmartWorkflow enables automatic tech a based workflows with mode
-	SmartWorkflow string
 	// InteractshURL is the URL for the interactsh server.
 	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
@@ -145,6 +143,8 @@ type Options struct {
 	DebugResponse bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
+	// AutomaticScan enables automatic tech based template execution
+	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit
