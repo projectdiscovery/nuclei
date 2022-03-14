@@ -56,7 +56,8 @@ type Request struct {
 	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Client Cipher Suites  - auto if not specified.
-	CiperSuites []string `yaml:"cipher_suites,omitempty"`
+	CiperSuites  []string `yaml:"cipher_suites,omitempty"`
+	cipherSuites []uint16
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -72,6 +73,15 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		return errors.Wrap(err, "could not get network client")
 	}
 	request.dialer = client
+
+	if request.options.Options.ZTLS {
+		request.cipherSuites, err = toZTLSCiphers(request.CiperSuites)
+	} else {
+		request.cipherSuites, err = toTLSCiphers(request.CiperSuites)
+	}
+	if err != nil {
+		return errors.Wrap(err, "invalid ciphersuites specified")
+	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -133,10 +143,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		}
 		maxVersion = version
 	}
-	cipherSuites, err := toCiphers(request.CiperSuites)
-	if err != nil {
-		return err
-	}
 	var conn net.Conn
 
 	if request.options.Options.ZTLS {
@@ -147,8 +153,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		if maxVersion > 0 {
 			zconfig.MaxVersion = maxVersion
 		}
-		if len(cipherSuites) > 0 {
-			zconfig.CipherSuites = cipherSuites
+		if len(request.cipherSuites) > 0 {
+			zconfig.CipherSuites = request.cipherSuites
 		}
 		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
 	} else {
@@ -159,8 +165,8 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		if maxVersion > 0 {
 			config.MaxVersion = maxVersion
 		}
-		if len(cipherSuites) > 0 {
-			config.CipherSuites = cipherSuites
+		if len(request.cipherSuites) > 0 {
+			config.CipherSuites = request.cipherSuites
 		}
 		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
 	}
@@ -193,7 +199,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		if len(state.PeerCertificates) == 0 {
 			return nil
 		}
-
 		tlsData = cryptoutil.ZTLSGrab(connTLS)
 		cert := connTLS.ConnectionState().PeerCertificates[0]
 		certNotAfter = cert.NotAfter.Unix()
@@ -210,7 +215,6 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		cert := connTLS.ConnectionState().PeerCertificates[0]
 		certNotAfter = cert.NotAfter.Unix()
 	}
-
 	jsonData, _ := jsoniter.Marshal(tlsData)
 	jsonDataString := string(jsonData)
 

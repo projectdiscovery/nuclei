@@ -3,10 +3,10 @@ package types
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/rs/xid"
 )
 
@@ -14,11 +14,11 @@ import (
 const DefaultResumeFileName = "resume-%s.cfg"
 
 func DefaultResumeFilePath() string {
-	home, err := os.UserHomeDir()
+	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return fmt.Sprintf("resume-%s.cfg", xid.New().String())
 	}
-	resumeFile := filepath.Join(home, ".config", "nuclei", fmt.Sprintf("resume-%s.cfg", xid.New().String()))
+	resumeFile := filepath.Join(configDir, fmt.Sprintf("resume-%s.cfg", xid.New().String()))
 	return resumeFile
 }
 
