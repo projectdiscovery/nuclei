@@ -147,7 +147,12 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
 	items := make([]string, 0, len(fingerprints))
 	for k := range fingerprints {
-		items = append(items, strings.ToLower(k))
+		if strings.Contains(k, " ") {
+			parts := strings.Split(strings.ToLower(k), " ")
+			items = append(items, parts...)
+		} else {
+			items = append(items, strings.ToLower(k))
+		}
 	}
 	if len(items) == 0 {
 		return
