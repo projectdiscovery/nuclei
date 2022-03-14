@@ -69,6 +69,7 @@ require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36
 
 require (
 	github.com/Ice3man543/nvd v1.0.8
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7

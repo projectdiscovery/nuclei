@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -21,7 +20,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/Knetic/govaluate"
+	"github.com/asaskevich/govalidator"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -363,6 +365,20 @@ func init() {
 				return true, nil
 			},
 		),
+		"to_number": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			argStr := types.ToString(args[0])
+			if govalidator.IsInt(argStr) {
+				sint, err := strconv.Atoi(argStr)
+				return float64(sint), err
+			} else if govalidator.IsFloat(argStr) {
+				sint, err := strconv.ParseFloat(argStr, 64)
+				return float64(sint), err
+			}
+			return nil, errors.Errorf("%v could not be converted to int", argStr)
+		}),
+		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return types.ToString(args[0]), nil
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
