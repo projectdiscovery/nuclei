@@ -6,6 +6,12 @@
 // technology detection are lowercased and split on space characters in the name,
 // which are then used as tags for the execution of the templates.
 //
+// Example -
+//   "Amazon Web Services,Jenkins,Atlassian Jira" -> "amazon,web,services,jenkins,atlassian,jira".
+//
+// Wappalyzergo (https://github.com/projectdiscovery/wappalyzergo) is used for wappalyzer tech
+// detection.
+//
 // The logic is very simple and can be further improved to increase the coverage of
 // this mode of nuclei exection.
 package automaticscan
