@@ -23,16 +23,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/smartworkflow"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
@@ -56,7 +55,6 @@ type Runner struct {
 	progress          progress.Progress
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
-	addColor          func(severity.Severity) string
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
@@ -114,7 +112,8 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.addColor = colorizer.New(runner.colorizer)
+	templates.Colorizer = runner.colorizer
+	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
@@ -341,7 +340,7 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
-	if r.options.SmartWorkflow != "" {
+	if r.options.AutomaticScan {
 		results, err = r.executeSmartWorkflowInput(executerOpts, store, engine)
 	} else {
 		results, err = r.executeTemplatesInput(store, engine)
@@ -368,7 +367,7 @@ func (r *Runner) RunEnumeration() error {
 }
 
 func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
-	service, err := smartworkflow.New(smartworkflow.Options{
+	service, err := automaticscan.New(automaticscan.Options{
 		ExecuterOpts: executerOpts,
 		Store:        store,
 		Engine:       engine,
@@ -377,7 +376,7 @@ func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOption
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create smart workflow service")
 	}
-	service.Execute(r.options.SmartWorkflow)
+	service.Execute()
 	result := &atomic.Bool{}
 	result.Store(service.Close())
 	return result, nil
