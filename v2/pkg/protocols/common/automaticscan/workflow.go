@@ -1,4 +1,4 @@
-package smartworkflow
+package automaticscan
 
 import (
 	"io"
@@ -13,12 +13,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 )
 
-// Service is a service for automatic smart workflow execution
+// Service is a service for automatic automatic scan execution
 type Service struct {
 	opts          protocols.ExecuterOptions
 	store         *loader.Store
@@ -32,32 +33,12 @@ type Service struct {
 	allTemplates []string
 }
 
-// Options contains configuration options for smart workflow service
+// Options contains configuration options for automatic scan service
 type Options struct {
 	ExecuterOpts protocols.ExecuterOptions
 	Store        *loader.Store
 	Engine       *core.Engine
 	Target       core.InputProvider
-}
-
-// Mode options for the smart workflow system
-const (
-	ModeWorkflow   = "workflow"
-	ModeWappalyzer = "wappalyzer"
-	ModeAll        = "all"
-	ModeDefault    = "default"
-)
-
-func Modes() string {
-	builder := &strings.Builder{}
-	builder.WriteString(ModeDefault)
-	builder.WriteString(",")
-	builder.WriteString(ModeWorkflow)
-	builder.WriteString(",")
-	builder.WriteString(ModeWappalyzer)
-	builder.WriteString(",")
-	builder.WriteString(ModeAll)
-	return builder.String()
 }
 
 // New takes options and returns a new smart workflow service
@@ -107,55 +88,15 @@ func (s *Service) Close() bool {
 }
 
 // Execute performs the execution of smart workflows on provided input
-func (s *Service) Execute(mode string) {
-	workflowFunc := func() {
-		if err := s.executeWorkflowBasedTemplates(); err != nil {
-			gologger.Error().Msgf("Could not execute workflow based templates: %s", err)
-		}
-	}
-	wappalyzerFunc := func() {
-		if err := s.executeWappalyzerTechDetection(); err != nil {
-			gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)
-		}
-	}
-	modeParts := strings.Split(mode, ",")
-	for _, value := range modeParts {
-		switch value {
-		case ModeWorkflow:
-			workflowFunc()
-		case ModeWappalyzer, ModeDefault:
-			wappalyzerFunc()
-		case ModeAll:
-			workflowFunc()
-			wappalyzerFunc()
-		default:
-			gologger.Error().Msgf("Invalid mode value provided to smartworkflows: %s", value)
-		}
+func (s *Service) Execute() {
+	if err := s.executeWappalyzerTechDetection(); err != nil {
+		gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)
 	}
 }
 
 var (
-	workflowsTemplateDirectory  = "workflows/"
 	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
 )
-
-// executeWorkflowBasedTemplates implements the logic to run the default
-// workflow templates on the provided input.
-func (s *Service) executeWorkflowBasedTemplates() error {
-	workflows, err := s.opts.Catalog.GetTemplatePath(workflowsTemplateDirectory)
-	if err != nil {
-		return errors.Wrap(err, "could not get workflows from directory")
-	}
-	templates := s.store.LoadWorkflows(workflows)
-
-	gologger.Info().Msgf("[workflow] Executing %d workflows from templates directory on targets", len(templates))
-	// s.opts.Progress.AddToTotal() todo: handle stats calculation
-
-	if result := s.engine.Execute(templates, s.target); result.Load() {
-		s.results = true
-	}
-	return nil
-}
 
 const maxDefaultBody = 2 * 1024 * 1024
 
@@ -211,9 +152,15 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	if len(items) == 0 {
 		return
 	}
-	templates := s.store.LoadTemplatesWithTags(s.allTemplates, items)
-	gologger.Info().Msgf("Executing tags %v for host %s (%d templates)", strings.Join(items, ","), input, len(templates))
-	for _, template := range templates {
-		s.childExecuter.Execute(template, input)
+	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, items)
+	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(items, ","), input, len(templatesList))
+	for _, t := range templatesList {
+		if s.opts.Options.VerboseVerbose {
+			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(t.ID,
+				t.Info.Name,
+				t.Info.Authors.ToSlice(),
+				t.Info.SeverityHolder.Severity))
+		}
+		s.childExecuter.Execute(t, input)
 	}
 }
