@@ -75,8 +75,6 @@ func main() {
 }
 
 func readConfig() {
-	home, _ := os.UserHomeDir()
-	templatesDirectory := filepath.Join(home, "nuclei-templates")
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -196,13 +194,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
+		flagSet.BoolVar(&options.EnablePprof, "enable-pprof", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
 	)
 
 	createGroup(flagSet, "update", "Update",
 		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", templatesDirectory, "overwrite the default directory to install nuclei-templates"),
+		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
 		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 

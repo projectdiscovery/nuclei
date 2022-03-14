@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -89,7 +89,7 @@ func (awsSigner *AwsSigner) SignHTTP(request *http.Request, args interface{}) er
 	awsSigner.prepareRequest(request)
 	var body *bytes.Reader
 	if request.Body != nil {
-		bodyBytes, err := ioutil.ReadAll(request.Body)
+		bodyBytes, err := io.ReadAll(request.Body)
 		if err != nil {
 			return err
 		}

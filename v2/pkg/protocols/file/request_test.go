@@ -24,7 +24,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"all"},
 		DenyList:    []string{".go"},
@@ -76,18 +76,4 @@ func TestFileExecuteWithResults(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
 	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
-}
-
-func TestGenerateNewLineIndexes(t *testing.T) {
-	lines := calculateLineFunc(`aaa
-bbb
-ccc
-RequestDataTooBig
-dddd
-eeee
-RequestDataTooBig
-dd
-RequestDataTooBig3
-SuspiciousOperation`, map[string]struct{}{"SuspiciousOperation": {}, "RequestDataTooBig": {}})
-	require.ElementsMatch(t, []int{4, 7, 9, 10}, lines, "could not calculate correct lines")
 }

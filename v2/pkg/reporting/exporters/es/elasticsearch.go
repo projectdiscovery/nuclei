@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -108,7 +109,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		return err
 	}
 
-	b, err = ioutil.ReadAll(res.Body)
+	b, err = io.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))
 	}

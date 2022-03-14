@@ -65,13 +65,13 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("]")
 	}
 
-	if len(output.LineCount) > 0 {
+	if len(output.Lines) > 0 {
 		builder.WriteString(" [LN: ")
 
-		for i, line := range output.LineCount {
+		for i, line := range output.Lines {
 			builder.WriteString(strconv.Itoa(line))
 
-			if i != len(output.LineCount)-1 {
+			if i != len(output.Lines)-1 {
 				builder.WriteString(",")
 			}
 		}
