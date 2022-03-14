@@ -105,7 +105,7 @@ const maxDefaultBody = 2 * 1024 * 1024
 //
 // The returned tags are then used for further execution.
 func (s *Service) executeWappalyzerTechDetection() error {
-	gologger.Info().Msgf("[workflow] Executing wappalyzer based tech detection on inputs")
+	gologger.Info().Msgf("Executing wappalyzer based tech detection on input urls")
 
 	// Iterate through each target making http request and identifying fingerprints
 	inputPool := s.engine.WorkPool().InputPool(types.HTTPProtocol)
