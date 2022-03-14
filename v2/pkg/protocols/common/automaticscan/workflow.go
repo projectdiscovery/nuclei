@@ -157,9 +157,13 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	if len(items) == 0 {
 		return
 	}
-	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, items)
-	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(items, ","), input, len(templatesList))
+	uniqueTags := uniqueSlice(items)
+
+	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, uniqueTags)
+	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(uniqueTags, ","), input, len(templatesList))
 	for _, t := range templatesList {
+		s.opts.Progress.AddToTotal(int64(t.Executer.Requests()))
+
 		if s.opts.Options.VerboseVerbose {
 			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(t.ID,
 				t.Info.Name,
@@ -168,4 +172,18 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		}
 		s.childExecuter.Execute(t, input)
 	}
+}
+
+func uniqueSlice(slice []string) []string {
+	data := make(map[string]struct{}, len(slice))
+	for _, item := range slice {
+		if _, ok := data[item]; !ok {
+			data[item] = struct{}{}
+		}
+	}
+	finalSlice := make([]string, 0, len(data))
+	for item := range data {
+		finalSlice = append(finalSlice, item)
+	}
+	return finalSlice
 }

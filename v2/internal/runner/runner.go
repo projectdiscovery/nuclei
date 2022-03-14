@@ -367,6 +367,8 @@ func (r *Runner) RunEnumeration() error {
 }
 
 func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
+
 	service, err := automaticscan.New(automaticscan.Options{
 		ExecuterOpts: executerOpts,
 		Store:        store,
