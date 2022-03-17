@@ -57,3 +57,8 @@ func (e *Engine) SetExecuterOptions(options protocols.ExecuterOptions) {
 func (e *Engine) ExecuterOptions() protocols.ExecuterOptions {
 	return e.executerOpts
 }
+
+// WorkPool returns the worker pool for the engine
+func (e *Engine) WorkPool() *WorkPool {
+	return e.workPool
+}

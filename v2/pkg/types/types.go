@@ -147,6 +147,8 @@ type Options struct {
 	DebugResponse bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
+	// AutomaticScan enables automatic tech based template execution
+	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit
