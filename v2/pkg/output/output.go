@@ -1,9 +1,13 @@
 package output
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,6 +15,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -36,16 +42,18 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json           bool
-	jsonReqResp    bool
-	noTimestamp    bool
-	noMetadata     bool
-	matcherStatus  bool
-	aurora         aurora.Aurora
-	outputFile     io.WriteCloser
-	traceFile      io.WriteCloser
-	errorFile      io.WriteCloser
-	severityColors func(severity.Severity) string
+	json             bool
+	jsonReqResp      bool
+	noTimestamp      bool
+	noMetadata       bool
+	matcherStatus    bool
+	aurora           aurora.Aurora
+	outputFile       io.WriteCloser
+	traceFile        io.WriteCloser
+	errorFile        io.WriteCloser
+	severityColors   func(severity.Severity) string
+	storeResponse    bool
+	storeResponseDir string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -112,7 +120,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -139,17 +147,25 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		}
 		errorOutput = output
 	}
+	// Try to create output folder if it doesn't exist
+	if storeResponse && !fileutil.FolderExists(storeResponseDir) {
+		if err := fileutil.CreateFolder(storeResponseDir); err != nil {
+			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", storeResponseDir, err)
+		}
+	}
 	writer := &StandardWriter{
-		json:           json,
-		jsonReqResp:    jsonReqResp,
-		noMetadata:     noMetadata,
-		matcherStatus:  MatcherStatus,
-		noTimestamp:    noTimestamp,
-		aurora:         auroraColorizer,
-		outputFile:     outputFile,
-		traceFile:      traceOutput,
-		errorFile:      errorOutput,
-		severityColors: colorizer.New(auroraColorizer),
+		json:             json,
+		jsonReqResp:      jsonReqResp,
+		noMetadata:       noMetadata,
+		matcherStatus:    MatcherStatus,
+		noTimestamp:      noTimestamp,
+		aurora:           auroraColorizer,
+		outputFile:       outputFile,
+		traceFile:        traceOutput,
+		errorFile:        errorOutput,
+		severityColors:   colorizer.New(auroraColorizer),
+		storeResponse:    storeResponse,
+		storeResponseDir: storeResponseDir,
 	}
 	return writer, nil
 }
@@ -178,6 +194,18 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
+
+	if w.storeResponse {
+		filename := strings.ReplaceAll(fmt.Sprintf("%s_%s.txt", event.Host, event.TemplateID), "/", "_")
+		subFolder := filepath.Join(w.storeResponseDir, event.Type)
+		if !fileutil.FolderExists(subFolder) {
+			fileutil.CreateFolder(subFolder)
+		}
+
+		filename = filepath.Join(subFolder, filename)
+		ioutil.WriteFile(filename, decolorizerRegex.ReplaceAll(data, []byte("")), os.ModePerm)
+	}
+
 	if w.outputFile != nil {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))

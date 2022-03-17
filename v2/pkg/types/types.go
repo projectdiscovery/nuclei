@@ -205,7 +205,11 @@ type Options struct {
 	// Use ZTLS library
 	ZTLS bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
-	EnablePprof bool
+	EnablePprof      bool
+	// StoreResponse stores received response to output directory
+	StoreResponse    bool
+	// StoreResponseDir stores received response to custom directory
+	StoreResponseDir string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

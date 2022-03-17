@@ -128,6 +128,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.MatcherStatus, "matcher-status", "ms", false, "display match failure status"),
 		flagSet.StringVarP(&options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
+		flagSet.BoolVarP(&options.StoreResponse, "store-response", "str", false, "store received response to output directory"),
+		flagSet.StringVarP(&options.StoreResponseDir, "store-response-dir", "strd", "output", "store received response to custom directory"),
 	)
 
 	createGroup(flagSet, "configs", "Configurations",
