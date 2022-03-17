@@ -126,6 +126,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mto_string[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_upper[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtrim[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtrim_left[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -193,6 +195,8 @@ func TestDslExpressions(t *testing.T) {
 		`regex("H([a-z]+)o", "Hello")`: true,
 		`wait_for(1)`:                  nil,
 		`print_debug(1+2, "Hello")`:    nil,
+		`to_number('4')`:               float64(4),
+		`to_string(4)`:                 "4",
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {
