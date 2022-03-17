@@ -119,6 +119,10 @@ type Options struct {
 	// InteractionsCoolDownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
 	InteractionsCoolDownPeriod int
+	// MaxRedirects is the maximum numbers of redirects to be followed.
+	MaxRedirects int
+	// FollowRedirects enables following redirects for http request module
+	FollowRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
