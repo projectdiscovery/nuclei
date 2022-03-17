@@ -224,21 +224,38 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 	return true
 }
 
-// getLatestReleaseFromGithub returns the latest release from GitHub
-func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
+func getGHClientIncognito() *github.Client {
 	var tc *http.Client
+	return github.NewClient(tc)
+}
+
+func getGHClientWithToken() *github.Client {
 	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)
-		tc = oauth2.NewClient(ctx, ts)
+		oauthClient := oauth2.NewClient(ctx, ts)
+		return github.NewClient(oauthClient)
 	}
+	return nil
+}
 
-	gitHubClient := github.NewClient(tc)
-
+// getLatestReleaseFromGithub returns the latest release from GitHub
+func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
+	var (
+		gitHubClient *github.Client
+		retried      bool
+	)
+	gitHubClient = getGHClientIncognito()
+getRelease:
 	release, _, err := gitHubClient.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
+		// retry with authentication
+		if gitHubClient = getGHClientWithToken(); gitHubClient != nil && !retried {
+			retried = true
+			goto getRelease
+		}
 		return nil, err
 	}
 	if release == nil {
