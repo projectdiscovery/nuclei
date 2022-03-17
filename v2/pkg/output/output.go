@@ -199,11 +199,11 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		filename := strings.ReplaceAll(fmt.Sprintf("%s_%s.txt", event.Host, event.TemplateID), "/", "_")
 		subFolder := filepath.Join(w.storeResponseDir, event.Type)
 		if !fileutil.FolderExists(subFolder) {
-			fileutil.CreateFolder(subFolder)
+			_ = fileutil.CreateFolder(subFolder)
 		}
 
 		filename = filepath.Join(subFolder, filename)
-		ioutil.WriteFile(filename, decolorizerRegex.ReplaceAll(data, []byte("")), os.ModePerm)
+		_ = ioutil.WriteFile(filename, decolorizerRegex.ReplaceAll(data, []byte("")), os.ModePerm)
 	}
 
 	if w.outputFile != nil {
