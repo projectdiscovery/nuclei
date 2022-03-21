@@ -1,12 +1,68 @@
 package ssl
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	ztls "github.com/zmap/zcrypto/tls"
 )
 
-var ciphers = map[string]uint16{
+func toTLSCiphers(items []string) ([]uint16, error) {
+	var convertedCiphers []uint16
+	for _, item := range items {
+		cipher, ok := tlsCiphers[item]
+		if !ok {
+			return nil, fmt.Errorf("unsupported cipher suite: %s", item)
+		}
+		convertedCiphers = append(convertedCiphers, cipher)
+	}
+	return convertedCiphers, nil
+}
+
+func toZTLSCiphers(items []string) ([]uint16, error) {
+	var convertedCiphers []uint16
+	for _, item := range items {
+		zcipher, ok := ztlsCiphers[item]
+		if !ok {
+			return nil, fmt.Errorf("unsupported cipher suite: %s", item)
+		}
+		convertedCiphers = append(convertedCiphers, zcipher)
+	}
+	return convertedCiphers, nil
+}
+
+var tlsCiphers = map[string]uint16{
+	"TLS_RSA_WITH_RC4_128_SHA":                      tls.TLS_RSA_WITH_RC4_128_SHA,
+	"TLS_RSA_WITH_3DES_EDE_CBC_SHA":                 tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+	"TLS_RSA_WITH_AES_128_CBC_SHA":                  tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+	"TLS_RSA_WITH_AES_256_CBC_SHA":                  tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+	"TLS_RSA_WITH_AES_128_CBC_SHA256":               tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+	"TLS_RSA_WITH_AES_128_GCM_SHA256":               tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+	"TLS_RSA_WITH_AES_256_GCM_SHA384":               tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+	"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA":              tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
+	"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA":          tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+	"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA":          tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+	"TLS_ECDHE_RSA_WITH_RC4_128_SHA":                tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+	"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA":           tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":            tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+	"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":            tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+	"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256":       tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":         tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":         tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":       tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":         tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":       tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256":   tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256": tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+	"TLS_AES_128_GCM_SHA256":                        tls.TLS_AES_128_GCM_SHA256,
+	"TLS_AES_256_GCM_SHA384":                        tls.TLS_AES_256_GCM_SHA384,
+	"TLS_CHACHA20_POLY1305_SHA256":                  tls.TLS_CHACHA20_POLY1305_SHA256,
+	"TLS_FALLBACK_SCSV":                             tls.TLS_FALLBACK_SCSV,
+	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305":          tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":        tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+}
+
+var ztlsCiphers = map[string]uint16{
 	"TLS_NULL_WITH_NULL_NULL":                           ztls.TLS_NULL_WITH_NULL_NULL,
 	"TLS_RSA_WITH_NULL_MD5":                             ztls.TLS_RSA_WITH_NULL_MD5,
 	"TLS_RSA_WITH_NULL_SHA":                             ztls.TLS_RSA_WITH_NULL_SHA,
@@ -352,16 +408,4 @@ var ciphers = map[string]uint16{
 	"SSL_RSA_WITH_3DES_EDE_CBC_MD5":                     ztls.SSL_RSA_WITH_3DES_EDE_CBC_MD5,
 	"SSL_EN_RC2_128_CBC_WITH_MD5":                       ztls.SSL_EN_RC2_128_CBC_WITH_MD5,
 	"OP_PCL_TLS10_AES_128_CBC_SHA512":                   ztls.OP_PCL_TLS10_AES_128_CBC_SHA512,
-}
-
-func toCiphers(items []string) ([]uint16, error) {
-	var convertedCiphers []uint16
-	for _, item := range items {
-		zcipher, ok := ciphers[item]
-		if !ok {
-			return nil, fmt.Errorf("unsupported cipher suite: %s", item)
-		}
-		convertedCiphers = append(convertedCiphers, zcipher)
-	}
-	return convertedCiphers, nil
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -57,7 +58,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, templateConfig *config.Config, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -74,7 +75,7 @@ func NewConfig(options *types.Options, catalog *catalog.Catalog, executerOpts pr
 		IncludeTags:              options.IncludeTags,
 		IncludeIds:               options.IncludeIds,
 		ExcludeIds:               options.ExcludeIds,
-		TemplatesDirectory:       options.TemplatesDirectory,
+		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
 		Catalog:                  catalog,
@@ -293,4 +294,29 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 		}
 	}
 	return loadedWorkflows
+}
+
+// LoadTemplatesWithTags takes a list of templates and extra tags
+// returning templates that match.
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+	includedTemplates := store.config.Catalog.GetTemplatesPath(templatesList)
+	templatePathMap := store.pathFilter.Match(includedTemplates)
+
+	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
+	for templatePath := range templatePathMap {
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags)
+		if err != nil {
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
+		}
+		if loaded {
+			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+			if err != nil {
+				stats.Increment(parsers.RuntimeWarningsStats)
+				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
+			} else if parsed != nil {
+				loadedTemplates = append(loadedTemplates, parsed)
+			}
+		}
+	}
+	return loadedTemplates
 }

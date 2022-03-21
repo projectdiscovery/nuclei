@@ -1,12 +1,15 @@
 package operators
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -145,22 +148,16 @@ func (r *Result) Merge(result *Result) {
 	}
 
 	for k, v := range result.Matches {
-		r.Matches[k] = v
+		r.Matches[k] = sliceutil.Dedupe(append(r.Matches[k], v...))
 	}
 	for k, v := range result.Extracts {
-		r.Extracts[k] = v
+		r.Extracts[k] = sliceutil.Dedupe(append(r.Extracts[k], v...))
 	}
 
 	r.outputUnique = make(map[string]struct{})
 	output := r.OutputExtracts
 	r.OutputExtracts = make([]string, 0, len(output))
 	for _, v := range output {
-		if _, ok := r.outputUnique[v]; !ok {
-			r.outputUnique[v] = struct{}{}
-			r.OutputExtracts = append(r.OutputExtracts, v)
-		}
-	}
-	for _, v := range result.OutputExtracts {
 		if _, ok := r.outputUnique[v]; !ok {
 			r.outputUnique[v] = struct{}{}
 			r.OutputExtracts = append(r.OutputExtracts, v)
@@ -201,7 +198,6 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
 		var extractorResults []string
-
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 
@@ -221,6 +217,23 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
 		}
+	}
+
+	// expose dynamic values to same request matchers
+	if len(result.DynamicValues) > 0 {
+		dataDynamicValues := make(map[string]interface{})
+		for dynName, dynValues := range result.DynamicValues {
+			if len(dynValues) > 1 {
+				for dynIndex, dynValue := range dynValues {
+					dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
+					dataDynamicValues[dynKeyName] = dynValue
+				}
+			} else {
+				dataDynamicValues[dynName] = dynValues[0]
+			}
+
+		}
+		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {

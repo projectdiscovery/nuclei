@@ -30,10 +30,11 @@ var (
 	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
-	rawHttpClient *rawhttp.Client
-	poolMutex     *sync.RWMutex
-	normalClient  *retryablehttp.Client
-	clientPool    map[string]*retryablehttp.Client
+	rawHttpClient     *rawhttp.Client
+	forceMaxRedirects int
+	poolMutex         *sync.RWMutex
+	normalClient      *retryablehttp.Client
+	clientPool        map[string]*retryablehttp.Client
 )
 
 // Init initializes the clientpool implementation
@@ -41,6 +42,9 @@ func Init(options *types.Options) error {
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
+	}
+	if options.FollowRedirects {
+		forceMaxRedirects = options.MaxRedirects
 	}
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryablehttp.Client)
@@ -100,6 +104,11 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *types.Options) *rawhttp.Client {
 	if rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
+		if types.ProxyURL != "" {
+			rawHttpOptions.Proxy = types.ProxyURL
+		} else if types.ProxySocksURL != "" {
+			rawHttpOptions.Proxy = types.ProxySocksURL
+		}
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
@@ -150,6 +159,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	followRedirects := configuration.FollowRedirects
 	maxRedirects := configuration.MaxRedirects
 
+	if forceMaxRedirects > 0 {
+		followRedirects = true
+		maxRedirects = forceMaxRedirects
+	}
 	// override connection's settings if required
 	if configuration.Connection != nil {
 		disableKeepAlives = configuration.Connection.DisableKeepAlive

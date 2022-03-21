@@ -3,7 +3,6 @@ package race
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -23,7 +22,7 @@ func NewSyncedReadCloser(r io.ReadCloser) *SyncedReadCloser {
 		s   SyncedReadCloser
 		err error
 	)
-	s.data, err = ioutil.ReadAll(r)
+	s.data, err = io.ReadAll(r)
 	if err != nil {
 		return nil
 	}

@@ -3,12 +3,12 @@ package dsl
 import (
 	"bytes"
 	"compress/gzip"
+	"compress/zlib"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -21,7 +21,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/Knetic/govaluate"
+	"github.com/asaskevich/govalidator"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -39,6 +42,8 @@ var invalidDslFunctionError = errors.New("invalid DSL function signature")
 var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
+
+var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
 
 type dslFunction struct {
 	signature   string
@@ -122,13 +127,90 @@ func init() {
 			_ = reader.Close()
 			return string(data), nil
 		}),
+		"zlib": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			buffer := &bytes.Buffer{}
+			writer := zlib.NewWriter(buffer)
+			if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+				_ = writer.Close()
+				return "", err
+			}
+			_ = writer.Close()
+
+			return buffer.String(), nil
+		}),
+		"zlib_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			reader, err := zlib.NewReader(strings.NewReader(args[0].(string)))
+			if err != nil {
+				return "", err
+			}
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				_ = reader.Close()
+				return "", err
+			}
+			_ = reader.Close()
+			return string(data), nil
+		}),
+		"date": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			item := types.ToString(args[0])
+			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
+			for _, value := range submatches {
+				if len(value) < 2 {
+					continue
+				}
+				now := time.Now()
+				switch value[1] {
+				case "Y", "y":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Year())))
+				case "M", "m":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(int(now.Month()))))
+				case "D", "d":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Day())))
+				default:
+					return nil, fmt.Errorf("invalid date format string: %s", value[0])
+				}
+			}
+			return item, nil
+		}),
+		"time": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			item := types.ToString(args[0])
+			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
+			for _, value := range submatches {
+				if len(value) < 2 {
+					continue
+				}
+				now := time.Now()
+				switch value[1] {
+				case "H", "h":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Hour())))
+				case "M", "m":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Minute())))
+				case "S", "s":
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Second())))
+				default:
+					return nil, fmt.Errorf("invalid time format string: %s", value[0])
+				}
+			}
+			return item, nil
+		}),
+		"timetostring": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			if got, ok := args[0].(time.Time); ok {
+				return got.String(), nil
+			}
+			if got, ok := args[0].(float64); ok {
+				seconds, nanoseconds := math.Modf(got)
+				return time.Unix(int64(seconds), int64(nanoseconds)).String(), nil
+			}
+			return nil, fmt.Errorf("invalid time format: %T", args[0])
+		}),
 		"base64_py": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 			stdBase64 := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
 			return deserialization.InsertInto(stdBase64, 76, '\n'), nil
 		}),
 		"base64_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			return base64.StdEncoding.DecodeString(types.ToString(args[0]))
+			data, err := base64.StdEncoding.DecodeString(types.ToString(args[0]))
+			return string(data), err
 		}),
 		"url_encode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return url.QueryEscape(types.ToString(args[0])), nil
@@ -141,7 +223,7 @@ func init() {
 		}),
 		"hex_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
-			return decodeString, err
+			return string(decodeString), err
 		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return html.EscapeString(types.ToString(args[0])), nil
@@ -362,12 +444,38 @@ func init() {
 				return true, nil
 			},
 		),
+		"to_number": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			argStr := types.ToString(args[0])
+			if govalidator.IsInt(argStr) {
+				sint, err := strconv.Atoi(argStr)
+				return float64(sint), err
+			} else if govalidator.IsFloat(argStr) {
+				sint, err := strconv.ParseFloat(argStr, 64)
+				return float64(sint), err
+			}
+			return nil, errors.Errorf("%v could not be converted to int", argStr)
+		}),
+		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return types.ToString(args[0]), nil
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+}
+
+// appendSingleDigitZero appends zero at front if not exists already doing two digit padding
+func appendSingleDigitZero(value string) string {
+	if len(value) == 1 && !strings.HasPrefix(value, "0") {
+		builder := &strings.Builder{}
+		builder.WriteRune('0')
+		builder.WriteString(value)
+		newVal := builder.String()
+		return newVal
+	}
+	return value
 }
 
 func createSignaturePart(numberOfParameters int) string {

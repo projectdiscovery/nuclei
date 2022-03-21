@@ -8,10 +8,10 @@ import (
 
 func TestMakeDynamicValuesCallback(t *testing.T) {
 	input := map[string][]string{
-		"a": []string{"1", "2"},
-		"b": []string{"3"},
-		"c": []string{},
-		"d": []string{"A", "B", "C"},
+		"a": {"1", "2"},
+		"b": {"3"},
+		"c": {},
+		"d": {"A", "B", "C"},
 	}
 
 	count := 0
@@ -24,9 +24,9 @@ func TestMakeDynamicValuesCallback(t *testing.T) {
 
 	t.Run("all", func(t *testing.T) {
 		input := map[string][]string{
-			"a": []string{"1"},
-			"b": []string{"2"},
-			"c": []string{"3"},
+			"a": {"1"},
+			"b": {"2"},
+			"c": {"3"},
 		}
 
 		count := 0
@@ -40,10 +40,10 @@ func TestMakeDynamicValuesCallback(t *testing.T) {
 
 	t.Run("first", func(t *testing.T) {
 		input := map[string][]string{
-			"a": []string{"1", "2"},
-			"b": []string{"3"},
-			"c": []string{},
-			"d": []string{"A", "B", "C"},
+			"a": {"1", "2"},
+			"b": {"3"},
+			"c": {},
+			"d": {"A", "B", "C"},
 		}
 
 		count := 0
