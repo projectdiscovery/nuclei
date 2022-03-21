@@ -2,7 +2,7 @@ package utils
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,7 +51,7 @@ func ReadFromPathOrURL(templatePath string) (data []byte, err error) {
 			return nil, err
 		}
 		defer resp.Body.Close()
-		data, err = ioutil.ReadAll(resp.Body)
+		data, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +61,7 @@ func ReadFromPathOrURL(templatePath string) (data []byte, err error) {
 			return nil, err
 		}
 		defer f.Close()
-		data, err = ioutil.ReadAll(f)
+		data, err = io.ReadAll(f)
 		if err != nil {
 			return nil, err
 		}

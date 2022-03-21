@@ -47,8 +47,10 @@
 #  token: test-token
 #  # project-name is the name of the project.
 #  project-name: test-project-name
-#  # issue-type is the name of the created issue type
-#  issue-type: bug
+#  # issue-type is the name of the created issue type (case sensitive)
+#  issue-type: Bug
+#  # SeverityAsLabel (optional) sends the severity as the label of the created issue
+#  severity-as-label: true
 #
 # elasticsearch contains configuration options for elasticsearch exporter
 #elasticsearch:
