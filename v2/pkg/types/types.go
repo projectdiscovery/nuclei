@@ -119,6 +119,10 @@ type Options struct {
 	// InteractionsCoolDownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
 	InteractionsCoolDownPeriod int
+	// MaxRedirects is the maximum numbers of redirects to be followed.
+	MaxRedirects int
+	// FollowRedirects enables following redirects for http request module
+	FollowRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -143,6 +147,8 @@ type Options struct {
 	DebugResponse bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
+	// AutomaticScan enables automatic tech based template execution
+	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit
@@ -198,6 +204,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
+	// EnablePprof enables exposing pprof runtime information with a webserver.
+	EnablePprof bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

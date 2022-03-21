@@ -21,7 +21,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -46,7 +46,7 @@ func TestFileOperatorMatch(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -134,7 +134,7 @@ func TestFileOperatorExtract(t *testing.T) {
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
@@ -241,7 +241,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	templateID := "testing-file"
 	request := &Request{
 		ID:          templateID,
-		MaxSize:     1024,
+		MaxSize:     "1Gb",
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
