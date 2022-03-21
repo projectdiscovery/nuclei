@@ -161,11 +161,11 @@ func init() {
 				now := time.Now()
 				switch value[1] {
 				case "Y", "y":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(now.Year()))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Year())))
 				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(int(now.Month())))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(int(now.Month()))))
 				case "D", "d":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(now.Day()))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Day())))
 				default:
 					return nil, fmt.Errorf("invalid date format string: %s", value[0])
 				}
@@ -182,11 +182,11 @@ func init() {
 				now := time.Now()
 				switch value[1] {
 				case "H", "h":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(now.Hour()))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Hour())))
 				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(now.Minute()))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Minute())))
 				case "S", "s":
-					item = strings.ReplaceAll(item, value[0], strconv.Itoa(now.Second()))
+					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Second())))
 				default:
 					return nil, fmt.Errorf("invalid time format string: %s", value[0])
 				}
@@ -464,6 +464,18 @@ func init() {
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+}
+
+// appendSingleDigitZero appends zero at front if not exists already doing two digit padding
+func appendSingleDigitZero(value string) string {
+	if len(value) == 1 && !strings.HasPrefix(value, "0") {
+		builder := &strings.Builder{}
+		builder.WriteRune('0')
+		builder.WriteString(value)
+		newVal := builder.String()
+		return newVal
+	}
+	return value
 }
 
 func createSignaturePart(numberOfParameters int) string {
