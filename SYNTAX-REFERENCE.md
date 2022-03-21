@@ -166,6 +166,7 @@ file:
             - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
     extensions:
         - all
+    archive: false
 ```
 
 
@@ -2570,6 +2571,7 @@ extractors:
         - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 extensions:
     - all
+archive: false
 ```
 
 Part Definitions: 
@@ -2707,15 +2709,16 @@ ID is the optional id of the request
 
 <div class="dd">
 
-<code>max-size</code>  <i>int</i>
+<code>max-size</code>  <i>string</i>
 
 </div>
 <div class="dt">
 
 MaxSize is the maximum size of the file to run request on.
 
-By default, nuclei will process 5 MB files and not go more than that.
+By default, nuclei will process 1 GB of content and not go more than that.
 It can be set to much lower or higher depending on use.
+If set to "no" then all content will be processed
 
 
 
@@ -2723,7 +2726,7 @@ Examples:
 
 
 ```yaml
-max-size: 2048
+max-size: 5Mb
 ```
 
 
