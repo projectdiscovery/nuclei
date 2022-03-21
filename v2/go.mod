@@ -21,7 +21,7 @@ require (
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.16.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.46
+	github.com/miekg/dns v1.1.47
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/owenrumney/go-sarif v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -35,7 +35,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v1.0.2-0.20220309105842-7aa59db95941
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
-	github.com/projectdiscovery/rawhttp v0.0.8-0.20220225134552-b60c4c126e5b
+	github.com/projectdiscovery/rawhttp v0.0.8
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.2
 	github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9
@@ -50,31 +50,33 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.58.0
+	github.com/xanzy/go-gitlab v0.59.0
 	github.com/ysmood/gson v0.6.4 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.8.0
 	go.uber.org/ratelimit v0.2.0
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	golang.org/x/text v0.3.7
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.43.14
+require github.com/aws/aws-sdk-go v1.43.20
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
 require (
-	github.com/Ice3man543/nvd v1.0.8
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
+	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
 	github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d
-	github.com/stretchr/testify v1.7.0
+	github.com/projectdiscovery/wappalyzergo v0.0.32
+	github.com/stretchr/testify v1.7.1
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 )
 
