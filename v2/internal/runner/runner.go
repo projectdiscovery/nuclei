@@ -13,6 +13,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/gologger"
@@ -22,12 +23,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -56,7 +57,6 @@ type Runner struct {
 	progress          progress.Progress
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
-	addColor          func(severity.Severity) string
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
@@ -127,7 +127,8 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.addColor = colorizer.New(runner.colorizer)
+	templates.Colorizer = runner.colorizer
+	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
@@ -336,7 +337,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(r.options, r.templatesConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -356,6 +357,52 @@ func (r *Runner) RunEnumeration() error {
 
 	r.displayExecutionInfo(store)
 
+	var results *atomic.Bool
+	if r.options.AutomaticScan {
+		results, err = r.executeSmartWorkflowInput(executerOpts, store, engine)
+	} else {
+		results, err = r.executeTemplatesInput(store, engine)
+	}
+
+	if r.interactsh != nil {
+		matched := r.interactsh.Close()
+		if matched {
+			results.CAS(false, true)
+		}
+	}
+	r.progress.Stop()
+
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
+	if !results.Load() {
+		gologger.Info().Msgf("No results found. Better luck next time!")
+	}
+	if r.browser != nil {
+		r.browser.Close()
+	}
+	return err
+}
+
+func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
+
+	service, err := automaticscan.New(automaticscan.Options{
+		ExecuterOpts: executerOpts,
+		Store:        store,
+		Engine:       engine,
+		Target:       r.hmapInputProvider,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create smart workflow service")
+	}
+	service.Execute()
+	result := &atomic.Bool{}
+	result.Store(service.Close())
+	return result, nil
+}
+
+func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
@@ -396,32 +443,14 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no valid templates were found")
+		return nil, errors.New("no valid templates were found")
 	}
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
 	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
-
-	if r.interactsh != nil {
-		matched := r.interactsh.Close()
-		if matched {
-			results.CAS(false, true)
-		}
-	}
-	r.progress.Stop()
-
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
-	}
-	if !results.Load() {
-		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
-	}
-	return nil
+	return results, nil
 }
 
 // displayExecutionInfo displays misc info about the nuclei engine execution
