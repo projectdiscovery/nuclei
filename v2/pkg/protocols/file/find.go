@@ -1,12 +1,14 @@
 package file
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 )
@@ -109,7 +111,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 // validatePath validates a file path for blacklist and whitelist options
 func (request *Request) validatePath(absPath, item string) bool {
 	extension := filepath.Ext(item)
-
+	// extension check
 	if len(request.extensions) > 0 {
 		if _, ok := request.extensions[extension]; ok {
 			return true
@@ -117,9 +119,28 @@ func (request *Request) validatePath(absPath, item string) bool {
 			return false
 		}
 	}
+
+	// mime type check
+	// read first bytes to infer runtime type
+	fileExists := fileutil.FileExists(item)
+	var dataChunk []byte
+	if fileExists {
+		dataChunk, _ = readChunk(item)
+		if len(request.mimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.mimeTypesChecks) {
+			return true
+		}
+	}
+
 	if matchingRule, ok := request.isInDenyList(absPath, item); ok {
 		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, matchingRule)
 		return false
+	}
+
+	// denied mime type checks
+	if fileExists {
+		if len(request.denyMimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.denyMimeTypesChecks) {
+			return false
+		}
 	}
 
 	return true
@@ -173,6 +194,21 @@ func (request *Request) isInDenyList(absPath, item string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func readChunk(fileName string) ([]byte, error) {
+	r, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+
+	var buff [1024]byte
+	if _, err = io.ReadFull(r, buff[:]); err != nil {
+		return nil, err
+	}
+	return buff[:], nil
 }
 
 func (request *Request) isAnyChunkInDenyList(path string, splitWithUtils bool) (string, bool) {
