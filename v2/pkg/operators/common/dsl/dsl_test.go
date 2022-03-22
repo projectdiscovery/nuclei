@@ -125,6 +125,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mrand_base[0m(length [38;5;208muint[0m, optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_char[0m(optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_int[0m(optionalMin, optionalMax [38;5;208muint[0m)[38;5;208m int[0m
+	[93mrand_ip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mrand_text_alpha[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_text_alphanumeric[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_text_numeric[0m(length [38;5;208muint[0m, optionalBadNumbers [38;5;208mstring[0m)[38;5;208m string[0m
@@ -235,12 +236,14 @@ func TestDslExpressions(t *testing.T) {
 
 func TestRandDslExpressions(t *testing.T) {
 	randDslExpressions := map[string]string{
-		`rand_base(10, "")`:   `[a-zA-Z0-9]{10}`,
-		`rand_base(5, "abc")`: `[abc]{5}`,
-		`rand_base(5)`:        `[a-zA-Z0-9]{5}`,
-		`rand_char("abc")`:    `[abc]{1}`,
-		`rand_char("")`:       `[a-zA-Z0-9]{1}`,
-		`rand_char()`:         `[a-zA-Z0-9]{1}`,
+		`rand_base(10, "")`:         `[a-zA-Z0-9]{10}`,
+		`rand_base(5, "abc")`:       `[abc]{5}`,
+		`rand_base(5)`:              `[a-zA-Z0-9]{5}`,
+		`rand_char("abc")`:          `[abc]{1}`,
+		`rand_char("")`:             `[a-zA-Z0-9]{1}`,
+		`rand_char()`:               `[a-zA-Z0-9]{1}`,
+		`rand_ip("192.168.0.0/24")`: `(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`,
+		`rand_ip("2001:db8::/64")`:  `(?:[A-Fa-f0-9]{0,4}:){0,7}[A-Fa-f0-9]{0,4}$`,
 
 		`rand_text_alpha(10, "abc")`:         `[^abc]{10}`,
 		`rand_text_alpha(10, "")`:            `[a-zA-Z]{10}`,

@@ -37,33 +37,35 @@ requests:
         25: {{rand_int(1, 10)}}
         26: {{rand_int(10)}}
         27: {{rand_int()}}
-        28: {{rand_text_alpha(10, "abc")}}
-        29: {{rand_text_alpha(10, "")}}
-        30: {{rand_text_alpha(10)}}
-        31: {{rand_text_alphanumeric(10, "ab12")}}
-        32: {{rand_text_alphanumeric(10)}}
-        33: {{rand_text_numeric(10, 123)}}
-        34: {{rand_text_numeric(10)}}
-        35: {{regex("H([a-z]+)o", "Hello")}}
-        36: {{remove_bad_chars("abcd", "bc")}}
-        37: {{repeat("a", 5)}}
-        38: {{replace("Hello", "He", "Ha")}}
-        39: {{replace_regex("He123llo", "(\\d+)", "")}}
-        40: {{reverse("abc")}}
-        41: {{sha1("Hello")}}
-        42: {{sha256("Hello")}}
-        43: {{to_lower("HELLO")}}
-        44: {{to_upper("hello")}}
-        45: {{trim("aaaHelloddd", "ad")}}
-        46: {{trim_left("aaaHelloddd", "ad")}}
-        47: {{trim_prefix("aaHelloaa", "aa")}}
-        48: {{trim_right("aaaHelloddd", "ad")}}
-        49: {{trim_space("  Hello  ")}}
-        50: {{trim_suffix("aaHelloaa", "aa")}}
-        51: {{unix_time(10)}}
-        52: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
-        53: {{url_encode("https://projectdiscovery.io/test?a=1")}}
-        54: {{wait_for(1)}}
+        28: {{rand_ip("192.168.0.0/24")}}
+        29: {{rand_ip("2002:c0a8::/24")}}
+        30: {{rand_text_alpha(10, "abc")}}
+        31: {{rand_text_alpha(10, "")}}
+        32: {{rand_text_alpha(10)}}
+        33: {{rand_text_alphanumeric(10, "ab12")}}
+        34: {{rand_text_alphanumeric(10)}}
+        35: {{rand_text_numeric(10, 123)}}
+        36: {{rand_text_numeric(10)}}
+        37: {{regex("H([a-z]+)o", "Hello")}}
+        38: {{remove_bad_chars("abcd", "bc")}}
+        39: {{repeat("a", 5)}}
+        40: {{replace("Hello", "He", "Ha")}}
+        41: {{replace_regex("He123llo", "(\\d+)", "")}}
+        42: {{reverse("abc")}}
+        43: {{sha1("Hello")}}
+        44: {{sha256("Hello")}}
+        45: {{to_lower("HELLO")}}
+        46: {{to_upper("hello")}}
+        47: {{trim("aaaHelloddd", "ad")}}
+        48: {{trim_left("aaaHelloddd", "ad")}}
+        49: {{trim_prefix("aaHelloaa", "aa")}}
+        50: {{trim_right("aaaHelloddd", "ad")}}
+        51: {{trim_space("  Hello  ")}}
+        52: {{trim_suffix("aaHelloaa", "aa")}}
+        53: {{unix_time(10)}}
+        54: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
+        55: {{url_encode("https://projectdiscovery.io/test?a=1")}}
+        56: {{wait_for(1)}}
 
     extractors:
       - type: regex
