@@ -31,7 +31,10 @@ jobs:
       - name: Integration Tests
         env:
           GH_ACTION: true
-        run: bash run.sh
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          chmod +x run.sh
+          bash run.sh ${{ matrix.os }}
         working-directory: integration_tests/
 
       # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
