@@ -30,6 +30,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -400,6 +401,11 @@ func init() {
 				return rand.Intn(max-min) + min, nil
 			},
 		),
+		"rand_ip": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			cidr := args[0].(string)
+			ip := randomip.IPFromRange(cidr)
+			return ip, nil
+		}),
 		"generate_java_gadget": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			gadget := args[0].(string)
 			cmd := args[1].(string)
