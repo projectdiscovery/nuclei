@@ -53,6 +53,10 @@ type Request struct {
 	//   elaborates archives
 	Archive bool
 
+	// description: |
+	//   enables mime types check
+	MimeType bool
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	// cache any variables that may be needed for operation.
@@ -126,7 +130,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		switch {
 		case extension == "all":
 			request.allExtensions = true
-		case filetype.IsMIMESupported(extension):
+		case request.MimeType && filetype.IsMIMESupported(extension):
 			continue
 		default:
 			if !strings.HasPrefix(extension, ".") {

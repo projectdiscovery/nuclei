@@ -53,7 +53,7 @@ func (request *Request) findGlobPathMatches(absPath string, processed map[string
 		return errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	for _, match := range matches {
-		if !request.validatePath(absPath, match) {
+		if !request.validatePath(absPath, match, false) {
 			continue
 		}
 		if _, ok := processed[match]; !ok {
@@ -75,7 +75,7 @@ func (request *Request) findFileMatches(absPath string, processed map[string]str
 		return false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
-		if !request.validatePath(absPath, absPath) {
+		if !request.validatePath(absPath, absPath, false) {
 			return false, nil
 		}
 		processed[absPath] = struct{}{}
@@ -95,7 +95,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 			if d.IsDir() {
 				return nil
 			}
-			if !request.validatePath(absPath, path) {
+			if !request.validatePath(absPath, path, false) {
 				return nil
 			}
 			if _, ok := processed[path]; !ok {
@@ -109,7 +109,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 }
 
 // validatePath validates a file path for blacklist and whitelist options
-func (request *Request) validatePath(absPath, item string) bool {
+func (request *Request) validatePath(absPath, item string, inArchive bool) bool {
 	extension := filepath.Ext(item)
 	// extension check
 	if len(request.extensions) > 0 {
@@ -120,14 +120,19 @@ func (request *Request) validatePath(absPath, item string) bool {
 		}
 	}
 
-	// mime type check
-	// read first bytes to infer runtime type
-	fileExists := fileutil.FileExists(item)
-	var dataChunk []byte
-	if fileExists {
-		dataChunk, _ = readChunk(item)
-		if len(request.mimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.mimeTypesChecks) {
-			return true
+	var (
+		fileExists bool
+		dataChunk  []byte
+	)
+	if !inArchive && request.MimeType {
+		// mime type check
+		// read first bytes to infer runtime type
+		fileExists = fileutil.FileExists(item)
+		if fileExists {
+			dataChunk, _ = readChunk(item)
+			if len(request.mimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.mimeTypesChecks) {
+				return true
+			}
 		}
 	}
 
@@ -137,7 +142,7 @@ func (request *Request) validatePath(absPath, item string) bool {
 	}
 
 	// denied mime type checks
-	if fileExists {
+	if !inArchive && request.MimeType && fileExists {
 		if len(request.denyMimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.denyMimeTypesChecks) {
 			return false
 		}
