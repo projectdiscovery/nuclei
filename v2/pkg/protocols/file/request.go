@@ -46,7 +46,6 @@ var emptyResultErr = errors.New("Empty result")
 func (request *Request) ExecuteWithResults(input string, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 	err := request.getInputPaths(input, func(filePath string) {
-		request.options.Progress.AddToTotal(1)
 		wg.Add()
 		func(filePath string) {
 			defer wg.Done()
@@ -59,17 +58,25 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 						if !request.validatePath("/", file.Name()) {
 							return nil
 						}
+						// every new file in the compressed multi-file archive counts 1
+						request.options.Progress.AddToTotal(1)
 						archiveFileName := filepath.Join(filePath, file.Name())
 						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input, file.Size(), previous)
 						if err != nil {
 							if errors.Is(err, emptyResultErr) {
+								// no matches but one file elaborated
+								request.options.Progress.IncrementRequests()
 								return nil
 							}
+							gologger.Error().Msgf("%s\n", err)
+							// error while elaborating the file
+							request.options.Progress.IncrementFailedRequestsBy(1)
 							return err
 						}
 						defer file.Close()
 						dumpResponse(event, request.options, fileMatches, filePath)
 						callback(event)
+						// file elaborated and matched
 						request.options.Progress.IncrementRequests()
 						return nil
 					})
@@ -78,9 +85,13 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 						return
 					}
 				case archiver.Decompressor:
+					// compressed archive - contains only one file => increments the counter by 1
+					request.options.Progress.AddToTotal(1)
 					file, err := os.Open(filePath)
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
+						// error while elaborating the file
+						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
 					defer file.Close()
@@ -88,12 +99,16 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					tmpFileOut, err := os.CreateTemp("", "")
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
+						// error while elaborating the file
+						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
 					defer tmpFileOut.Close()
 					defer os.RemoveAll(tmpFileOut.Name())
 					if err := archiveInstance.Decompress(file, tmpFileOut); err != nil {
 						gologger.Error().Msgf("%s\n", err)
+						// error while elaborating the file
+						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
 					_ = tmpFileOut.Sync()
@@ -101,26 +116,39 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 					_, _ = tmpFileOut.Seek(0, 0)
 					event, fileMatches, err := request.processReader(tmpFileOut, filePath, input, fileStat.Size(), previous)
 					if err != nil {
-						if !errors.Is(err, emptyResultErr) {
-							gologger.Error().Msgf("%s\n", err)
+						if errors.Is(err, emptyResultErr) {
+							// no matches but one file elaborated
+							request.options.Progress.IncrementRequests()
+							return
 						}
+						gologger.Error().Msgf("%s\n", err)
+						// error while elaborating the file
+						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
 					dumpResponse(event, request.options, fileMatches, filePath)
 					callback(event)
+					// file elaborated and matched
 					request.options.Progress.IncrementRequests()
 				}
 			default:
-				// normal file
+				// normal file - increments the counter by 1
+				request.options.Progress.AddToTotal(1)
 				event, fileMatches, err := request.processFile(filePath, input, previous)
 				if err != nil {
-					if !errors.Is(err, emptyResultErr) {
-						gologger.Error().Msgf("%s\n", err)
+					if errors.Is(err, emptyResultErr) {
+						// no matches but one file elaborated
+						request.options.Progress.IncrementRequests()
+						return
 					}
+					gologger.Error().Msgf("%s\n", err)
+					// error while elaborating the file
+					request.options.Progress.IncrementFailedRequestsBy(1)
 					return
 				}
 				dumpResponse(event, request.options, fileMatches, filePath)
 				callback(event)
+				// file elaborated and matched
 				request.options.Progress.IncrementRequests()
 			}
 		}(filePath)
