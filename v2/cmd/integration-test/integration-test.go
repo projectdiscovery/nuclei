@@ -29,6 +29,7 @@ var (
 		"whois":         whoisTestCases,
 		"ssl":           sslTestcases,
 		"templatesPath": templatesPathTestCases,
+		"templatesDir":  templatesDirTestCases,
 	}
 )
 
