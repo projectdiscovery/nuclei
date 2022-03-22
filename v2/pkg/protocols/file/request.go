@@ -55,7 +55,7 @@ func (request *Request) ExecuteWithResults(input string, metadata, previous outp
 				switch archiveInstance := archiveReader.(type) {
 				case archiver.Walker:
 					err := archiveInstance.Walk(filePath, func(file archiver.File) error {
-						if !request.validatePath("/", file.Name()) {
+						if !request.validatePath("/", file.Name(), true) {
 							return nil
 						}
 						// every new file in the compressed multi-file archive counts 1
