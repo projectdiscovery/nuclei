@@ -403,8 +403,7 @@ func init() {
 		),
 		"rand_ip": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			cidr := args[0].(string)
-			ip := randomip.IPFromRange(cidr)
-			return ip, nil
+			return randomip.GetRandomIPWithCidr(cidr)
 		}),
 		"generate_java_gadget": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			gadget := args[0].(string)
