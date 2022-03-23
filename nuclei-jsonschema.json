@@ -450,6 +450,9 @@
       "type": "object"
     },
     "file.Request": {
+      "required": [
+        "Archive"
+      ],
       "properties": {
         "matchers": {
           "items": {
@@ -498,9 +501,12 @@
           "description": "ID is the optional ID for the request"
         },
         "max-size": {
-          "type": "integer",
+          "type": "string",
           "title": "max size data to run request on",
           "description": "Maximum size of the file to run request on"
+        },
+        "Archive": {
+          "type": "boolean"
         },
         "no-recursive": {
           "type": "boolean",

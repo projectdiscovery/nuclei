@@ -1214,12 +1214,12 @@ func init() {
 	FILERequestDoc.Fields[5].Description = "ID is the optional id of the request"
 	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = " ID is the optional id of the request"
 	FILERequestDoc.Fields[6].Name = "max-size"
-	FILERequestDoc.Fields[6].Type = "int"
+	FILERequestDoc.Fields[6].Type = "string"
 	FILERequestDoc.Fields[6].Note = ""
-	FILERequestDoc.Fields[6].Description = "MaxSize is the maximum size of the file to run request on.\n\nBy default, nuclei will process 5 MB files and not go more than that.\nIt can be set to much lower or higher depending on use."
+	FILERequestDoc.Fields[6].Description = "MaxSize is the maximum size of the file to run request on.\n\nBy default, nuclei will process 1 GB of content and not go more than that.\nIt can be set to much lower or higher depending on use.\nIf set to \"no\" then all content will be processed"
 	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "MaxSize is the maximum size of the file to run request on."
 
-	FILERequestDoc.Fields[6].AddExample("", 2048)
+	FILERequestDoc.Fields[6].AddExample("", "5Mb")
 	FILERequestDoc.Fields[7].Name = "no-recursive"
 	FILERequestDoc.Fields[7].Type = "bool"
 	FILERequestDoc.Fields[7].Note = ""
