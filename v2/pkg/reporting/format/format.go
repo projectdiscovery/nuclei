@@ -2,7 +2,6 @@ package format
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"strconv"
 	"strings"
@@ -55,9 +54,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
-		token := make([]byte, 2500)
-		rand.Read(token)
-		builder.WriteString(types.ToHexOrString(token))
+		builder.WriteString(types.ToHexOrString(event.Request))
 		builder.WriteString("\n```\n")
 	}
 	if event.Response != "" {
