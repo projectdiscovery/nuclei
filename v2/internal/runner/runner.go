@@ -375,6 +375,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
 	}
+
 	if !results.Load() {
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
@@ -443,7 +444,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return nil, errors.New("no valid templates were found")
+		return &atomic.Bool{}, errors.New("no valid templates were found")
 	}
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
