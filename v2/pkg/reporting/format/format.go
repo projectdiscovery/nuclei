@@ -2,6 +2,7 @@ package format
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"strconv"
 	"strings"
@@ -54,7 +55,9 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
-		builder.WriteString(event.Request)
+		token := make([]byte, 2500)
+		rand.Read(token)
+		builder.WriteString(types.ToHexOrString(token))
 		builder.WriteString("\n```\n")
 	}
 	if event.Response != "" {
@@ -135,7 +138,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.CURLCommand != "" {
 		builder.WriteString("\n**CURL Command**\n```\n")
-		builder.WriteString(event.CURLCommand)
+		builder.WriteString(types.ToHexOrString(event.CURLCommand))
 		builder.WriteString("\n```")
 	}
 
