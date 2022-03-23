@@ -44,7 +44,7 @@ type Request struct {
 	//   It can be set to much lower or higher depending on use.
 	//   If set to "no" then all content will be processed
 	// examples:
-	//   - value: 5Mb
+	//   - value: "\"5Mb\""
 	MaxSize string `yaml:"max-size,omitempty" jsonschema:"title=max size data to run request on,description=Maximum size of the file to run request on"`
 	maxSize int64
 
