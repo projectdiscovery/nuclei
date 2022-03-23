@@ -12,7 +12,12 @@ const (
 	maxIterations = 255
 )
 
-func GetRandomIPWithCidr(cidr string) (net.IP, error) {
+func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
+	if len(cidrs) == 0 {
+		return nil, errors.Errorf("must specify at least one cidr")
+	}
+	cidr := cidrs[rand.Intn(len(cidrs))]
+
 	if !iputil.IsCIDR(cidr) {
 		return nil, errors.Errorf("%s is not a valid cidr", cidr)
 	}
