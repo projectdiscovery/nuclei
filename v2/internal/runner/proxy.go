@@ -98,7 +98,9 @@ func testProxyConnection(proxyURL url.URL, timeoutDelay int) error {
 }
 
 func assignProxyURL(proxyURL url.URL, options *types.Options) {
-	os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+	if options.ProxyInternal {
+		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+	}
 	if proxyURL.Scheme == types.HTTP || proxyURL.Scheme == types.HTTPS {
 		types.ProxyURL = proxyURL.String()
 		types.ProxySocksURL = ""

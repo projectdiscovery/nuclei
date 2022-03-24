@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Options is a configuration file for nuclei reporting module
@@ -36,6 +37,7 @@ type Options struct {
 	SarifExporter *sarif.Options `yaml:"sarif"`
 	// ElasticsearchExporter contains configuration options for Elasticsearch Exporter Module
 	ElasticsearchExporter *es.Options `yaml:"elasticsearch"`
+	HttpClient            *retryablehttp.Client
 }
 
 // Filter filters the received event and decides whether to perform
@@ -108,6 +110,7 @@ type Client struct {
 func New(options *Options, db string) (*Client, error) {
 	client := &Client{options: options}
 	if options.GitHub != nil {
+		options.GitHub.HttpClient = options.HttpClient
 		tracker, err := github.New(options.GitHub)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create reporting client")
@@ -115,6 +118,7 @@ func New(options *Options, db string) (*Client, error) {
 		client.trackers = append(client.trackers, tracker)
 	}
 	if options.GitLab != nil {
+		options.GitLab.HttpClient = options.HttpClient
 		tracker, err := gitlab.New(options.GitLab)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create reporting client")
@@ -122,6 +126,7 @@ func New(options *Options, db string) (*Client, error) {
 		client.trackers = append(client.trackers, tracker)
 	}
 	if options.Jira != nil {
+		options.Jira.HttpClient = options.HttpClient
 		tracker, err := jira.New(options.Jira)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create reporting client")
@@ -143,6 +148,7 @@ func New(options *Options, db string) (*Client, error) {
 		client.exporters = append(client.exporters, exporter)
 	}
 	if options.ElasticsearchExporter != nil {
+		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create exporting client")
