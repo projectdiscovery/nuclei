@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
@@ -41,6 +42,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/stringsutil"
 )
 
@@ -97,10 +99,23 @@ func New(options *types.Options) (*Runner, error) {
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 
+	var httpclient *retryablehttp.Client
+	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+		var err error
+		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
 	}
+	if reportingOptions != nil && httpclient != nil {
+		reportingOptions.HttpClient = httpclient
+	}
+
 	if reportingOptions != nil {
 		client, err := reporting.New(reportingOptions, options.ReportingDB)
 		if err != nil {
@@ -196,13 +211,16 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
+	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
 	opts.Debug = runner.options.Debug
 	opts.DebugRequest = runner.options.DebugRequests
 	opts.DebugResponse = runner.options.DebugResponse
+	if httpclient != nil {
+		opts.HTTPClient = httpclient
+	}
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
