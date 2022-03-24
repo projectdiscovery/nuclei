@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,8 @@ type Client struct {
 	interactions *ccache.Cache
 	// matchedTemplates is a stored cache to track matched templates
 	matchedTemplates *ccache.Cache
+	// interactshURLs is a stored cache to track track multiple interactsh markers
+	interactshURLs *ccache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -49,7 +52,7 @@ type Client struct {
 
 var (
 	defaultInteractionDuration = 60 * time.Second
-	interactshURLMarker        = "{{interactsh-url}}"
+	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(\S){0,3}}}`)
 )
 
 // Options contains configuration options for interactsh nuclei integration.
@@ -102,11 +105,13 @@ func New(options *Options) (*Client, error) {
 	interactionsCache := ccache.New(interactionsCfg)
 
 	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+	interactshURLCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
 		matchedTemplates: matchedTemplateCache,
+		interactshURLs:   interactshURLCache,
 		options:          options,
 		requests:         cache,
 		pollDuration:     options.PollDuration,
@@ -251,10 +256,18 @@ func (c *Client) Close() bool {
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
 func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-	for strings.Contains(data, interactshURLMarker) {
+	for interactshURLMarkerRegex.Match([]byte(data)) {
 		url := c.URL()
 		interactshURLs = append(interactshURLs, url)
-		data = strings.Replace(data, interactshURLMarker, url, 1)
+		interactshURLMarker := interactshURLMarkerRegex.FindString(data)
+		if interactshURLMarker != "" {
+			data = strings.Replace(data, interactshURLMarker, url, 1)
+			urlIndex := strings.Index(url, ".")
+			if urlIndex == -1 {
+				continue
+			}
+			c.interactshURLs.Set(url, interactshURLMarker, defaultInteractionDuration)
+		}
 	}
 	return data, interactshURLs
 }
@@ -262,14 +275,14 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.hostname
-
-	if len(urls) == 1 {
-		urlIndex := strings.Index(urls[0], ".")
+	for _, url := range urls {
+		interactshMarker := strings.TrimSuffix(strings.TrimPrefix(c.interactshURLs.Get(url).Value().(string), "{{"), "}}")
+		data[interactshMarker] = url
+		urlIndex := strings.Index(url, ".")
 		if urlIndex == -1 {
-			return
+			continue
 		}
-		data["interactsh-url"] = urls[0]
-		data["interactsh-id"] = urls[0][:urlIndex]
+		data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
 	}
 }
 
@@ -352,7 +365,7 @@ func HasMatchers(op *operators.Operators) bool {
 
 // HasMarkers checks if the text contains interactsh markers
 func HasMarkers(data string) bool {
-	return strings.Contains(data, interactshURLMarker)
+	return interactshURLMarkerRegex.Match([]byte(data))
 }
 
 func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {
