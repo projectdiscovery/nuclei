@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	pdyaml "github.com/projectdiscovery/nuclei/v2/pkg/yaml"
 )
 
 const (
@@ -127,7 +128,14 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
+
 	data, err := utils.ReadFromPathOrURL(templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// pre-process yaml directives
+	data, err = pdyaml.PreProcess(data)
 	if err != nil {
 		return nil, err
 	}
