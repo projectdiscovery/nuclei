@@ -136,45 +136,56 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 
 func printCallback(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
-	builder.WriteRune('[')
-	startedAt, _ := stats.GetStatic("startedAt")
-	duration := time.Since(startedAt.(time.Time))
-	builder.WriteString(fmtDuration(duration))
-	builder.WriteRune(']')
 
-	templates, _ := stats.GetStatic("templates")
-	builder.WriteString(" | Templates: ")
-	builder.WriteString(clistats.String(templates))
-	hosts, _ := stats.GetStatic("hosts")
-	builder.WriteString(" | Hosts: ")
-	builder.WriteString(clistats.String(hosts))
+	var duration time.Duration
+	if startedAt, ok := stats.GetStatic("startedAt"); ok {
+		if startedAtTime, ok := startedAt.(time.Time); ok {
+			duration = time.Since(startedAtTime)
+			builder.WriteString(fmt.Sprintf("[%s]", fmtDuration(duration)))
+		}
+	}
 
-	requests, _ := stats.GetCounter("requests")
-	total, _ := stats.GetCounter("total")
+	if templates, ok := stats.GetStatic("templates"); ok {
+		builder.WriteString(" | Templates: ")
+		builder.WriteString(clistats.String(templates))
+	}
 
-	builder.WriteString(" | RPS: ")
-	builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+	if hosts, ok := stats.GetStatic("hosts"); ok {
+		builder.WriteString(" | Hosts: ")
+		builder.WriteString(clistats.String(hosts))
+	}
 
-	matched, _ := stats.GetCounter("matched")
+	requests, okRequests := stats.GetCounter("requests")
+	total, okTotal := stats.GetCounter("total")
 
-	builder.WriteString(" | Matched: ")
-	builder.WriteString(clistats.String(matched))
+	if okRequests && okTotal && duration > 0 {
+		builder.WriteString(" | RPS: ")
+		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+	}
 
-	errors, _ := stats.GetCounter("errors")
-	builder.WriteString(" | Errors: ")
-	builder.WriteString(clistats.String(errors))
+	if matched, ok := stats.GetCounter("matched"); ok {
+		builder.WriteString(" | Matched: ")
+		builder.WriteString(clistats.String(matched))
+	}
 
-	builder.WriteString(" | Requests: ")
-	builder.WriteString(clistats.String(requests))
-	builder.WriteRune('/')
-	builder.WriteString(clistats.String(total))
-	builder.WriteRune(' ')
-	builder.WriteRune('(')
-	//nolint:gomnd // this is not a magic number
-	builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
-	builder.WriteRune('%')
-	builder.WriteRune(')')
-	builder.WriteRune('\n')
+	if errors, ok := stats.GetCounter("errors"); ok {
+		builder.WriteString(" | Errors: ")
+		builder.WriteString(clistats.String(errors))
+	}
+
+	if okRequests && okTotal {
+		builder.WriteString(" | Requests: ")
+		builder.WriteString(clistats.String(requests))
+		builder.WriteRune('/')
+		builder.WriteString(clistats.String(total))
+		builder.WriteRune(' ')
+		builder.WriteRune('(')
+		//nolint:gomnd // this is not a magic number
+		builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
+		builder.WriteRune('%')
+		builder.WriteRune(')')
+		builder.WriteRune('\n')
+	}
 
 	fmt.Fprintf(os.Stderr, "%s", builder.String())
 }
