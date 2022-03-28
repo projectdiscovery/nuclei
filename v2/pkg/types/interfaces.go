@@ -3,10 +3,12 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
@@ -70,6 +72,20 @@ func ToString(data interface{}) string {
 		return s.String()
 	case error:
 		return s.Error()
+	default:
+		return fmt.Sprintf("%v", data)
+	}
+}
+
+func ToHexOrString(data interface{}) string {
+	switch s := data.(type) {
+	case string:
+		if govalidator.IsASCII(s) {
+			return s
+		}
+		return hex.Dump([]byte(s))
+	case []byte:
+		return hex.Dump(s)
 	default:
 		return fmt.Sprintf("%v", data)
 	}
