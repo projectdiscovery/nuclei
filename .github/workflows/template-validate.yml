@@ -13,7 +13,7 @@ jobs:
 
       - name: Cache Go
         id: cache-go
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: /home/runner/go
           key: ${{ runner.os }}-go
