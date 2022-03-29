@@ -61,8 +61,14 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	}
 	ctx := context.Background()
 
+	// Try to evaluate any payloads before replacement
+	finalMap := generators.MergeMaps(payloads, dynamicValues)
+	for payloadName, payloadValue := range payloads {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			payloads[payloadName] = data
+		}
+	}
 	if r.options.Interactsh != nil {
-
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, []string{})
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
