@@ -3,7 +3,6 @@ package output
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -38,6 +37,8 @@ type Writer interface {
 	WriteFailure(event InternalEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
+	//  WriteStoreDebugData writes the request/response debug data to file
+	WriteStoreDebugData(host, templateID, eventType string, data string)
 }
 
 // StandardWriter is a writer writing output to file and screen for results.
@@ -195,17 +196,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
 
-	if w.storeResponse {
-		filename := strings.ReplaceAll(fmt.Sprintf("%s_%s.txt", event.Host, event.TemplateID), "/", "_")
-		subFolder := filepath.Join(w.storeResponseDir, event.Type)
-		if !fileutil.FolderExists(subFolder) {
-			_ = fileutil.CreateFolder(subFolder)
-		}
-
-		filename = filepath.Join(subFolder, filename)
-		_ = ioutil.WriteFile(filename, decolorizerRegex.ReplaceAll(data, []byte("")), os.ModePerm)
-	}
-
 	if w.outputFile != nil {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))
@@ -291,4 +281,31 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		Timestamp:     time.Now(),
 	}
 	return w.Write(data)
+}
+func sanitizeFileName(fileName string) string {
+	fileName = strings.ReplaceAll(fileName, "http:", "")
+	fileName = strings.ReplaceAll(fileName, "https:", "")
+	fileName = strings.ReplaceAll(fileName, "/", "_")
+	fileName = strings.TrimPrefix(fileName, "__")
+	return fileName
+}
+func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
+	if w.storeResponse {
+		filename := sanitizeFileName(fmt.Sprintf("%s_%s.txt", host, templateID))
+
+		subFolder := filepath.Join(w.storeResponseDir, eventType)
+		if !fileutil.FolderExists(subFolder) {
+			_ = fileutil.CreateFolder(subFolder)
+		}
+
+		filename = filepath.Join(subFolder, filename)
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			fmt.Print(err)
+			return
+		}
+		f.WriteString(fmt.Sprintln(data))
+		f.Close()
+	}
+
 }
