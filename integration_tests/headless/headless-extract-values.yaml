@@ -17,7 +17,7 @@ headless:
         name: extract
         args:
           code: |
-            '\n' + [...new Set(Array.from(document.querySelectorAll('[src], [href], [url], [action]')).map(i => i.src || i.href || i.url || i.action))].join('\r\n') + '\n'
+            () => '\n' + [...new Set(Array.from(document.querySelectorAll('[src], [href], [url], [action]')).map(i => i.src || i.href || i.url || i.action))].join('\r\n') + '\n'
 
     matchers:
       - type: word
