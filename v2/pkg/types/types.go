@@ -67,6 +67,8 @@ type Options struct {
 	Resume string
 	// Output is the file to write found results to.
 	Output string
+	// ProxyInternal requests
+	ProxyInternal bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.NormalizedOriginalStringSlice
 	// TemplatesDirectory is the directory to use for storing templates

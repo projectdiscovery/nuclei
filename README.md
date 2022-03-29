@@ -99,6 +99,7 @@ TARGET:
 
 TEMPLATES:
    -nt, -new-templates          run only new templates added in latest nuclei-templates release
+   -as, -automatic-scan         automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]      list of template or template directory to run (comma-separated, file)
    -tu, -template-url string[]  list of template urls to run (comma-separated, file)
    -w, -workflows string[]      list of workflow or workflow directory to run (comma-separated, file)
@@ -135,6 +136,8 @@ OUTPUT:
 
 CONFIGURATIONS:
    -config string              path to the nuclei configuration file
+   -fr, -follow-redirects      enable following redirects for http templates
+   -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
    -rc, -report-config string  nuclei reporting module configuration file
    -H, -header string[]        custom headers in header:value format
    -V, -var value              custom vars in var=value format
@@ -185,11 +188,13 @@ DEBUG:
    -debug-req                show all sent requests
    -debug-resp               show all received responses
    -p, -proxy string[]       List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal      proxy all internal requests
    -tlog, -trace-log string  file to write sent requests trace log
    -elog, -error-log string  file to write sent requests error log
    -version                  show nuclei version
    -v, -verbose              show verbose output
    -vv                       display templates loaded for scan
+   -enable-pprof             enable pprof debugging server
    -tv, -templates-version   shows the version of the installed nuclei-templates
 
 UPDATE:
