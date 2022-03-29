@@ -304,7 +304,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			fmt.Print(err)
 			return
 		}
-		f.WriteString(fmt.Sprintln(data))
+		_ ,_ = f.WriteString(fmt.Sprintln(data))
 		f.Close()
 	}
 
