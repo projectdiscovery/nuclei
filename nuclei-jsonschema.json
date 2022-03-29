@@ -451,7 +451,8 @@
     },
     "file.Request": {
       "required": [
-        "Archive"
+        "Archive",
+        "MimeType"
       ],
       "properties": {
         "matchers": {
@@ -506,6 +507,9 @@
           "description": "Maximum size of the file to run request on"
         },
         "Archive": {
+          "type": "boolean"
+        },
+        "MimeType": {
           "type": "boolean"
         },
         "no-recursive": {
