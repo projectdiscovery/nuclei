@@ -52,7 +52,7 @@ func TestActionScript(t *testing.T) {
 		actions := []*Action{
 			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "() => window.test"}},
 		}
 
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
@@ -64,10 +64,10 @@ func TestActionScript(t *testing.T) {
 
 	t.Run("hook", func(t *testing.T) {
 		actions := []*Action{
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Data: map[string]string{"code": "() => window.test = 'some-data';", "hook": "true"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "() => window.test"}},
 		}
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
 			require.Nil(t, err, "could not run page actions")
