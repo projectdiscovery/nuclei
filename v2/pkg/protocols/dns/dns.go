@@ -196,7 +196,7 @@ func (request *Request) Make(host string) (*dns.Msg, error) {
 
 	vars := GenerateDNSVariables(host)
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(variablesMap, variablesMap)
+	vars = generators.MergeMaps(variablesMap, vars)
 
 	final := replacer.Replace(request.Name, vars)
 
