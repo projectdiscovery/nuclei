@@ -101,8 +101,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		err      error
 	)
 
-	variablesMap := request.Variables.Evaluate(generators.MergeMaps(variables, payloads))
-	variables = generators.MergeMaps(variablesMap, variables)
+	variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(variables, payloads))
+	payloads = generators.MergeMaps(variablesMap, payloads)
 
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host

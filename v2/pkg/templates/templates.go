@@ -7,6 +7,7 @@ import (
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
@@ -97,6 +98,10 @@ type Template struct {
 	// values:
 	//   - "AWS"
 	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// description: |
+	//   Variables contains any variables for the current request.
+	Variables variables.Variable `yaml:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
