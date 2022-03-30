@@ -332,6 +332,19 @@ var errStopExecution = errors.New("stop execution due to unresolved variables")
 func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	request.setCustomHeaders(generatedRequest)
 
+	// Try to evaluate any payloads before replacement
+	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
+	for payloadName, payloadValue := range generatedRequest.dynamicValues {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.dynamicValues[payloadName] = data
+		}
+	}
+	for payloadName, payloadValue := range generatedRequest.meta {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.meta[payloadName] = data
+		}
+	}
+
 	var (
 		resp          *http.Response
 		fromCache     bool
