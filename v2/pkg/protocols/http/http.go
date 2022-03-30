@@ -179,6 +179,11 @@ type Request struct {
 	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
 }
 
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
+}
+
 // RequestPartDefinitions contains a mapping of request part definitions and their
 // description. Multiple definitions are separated by commas.
 // Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
