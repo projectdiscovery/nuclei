@@ -286,25 +286,26 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "http:", "")
 	fileName = strings.ReplaceAll(fileName, "https:", "")
 	fileName = strings.ReplaceAll(fileName, "/", "_")
+	fileName = strings.ReplaceAll(fileName, "\\", "_")
+	fileName = strings.ReplaceAll(fileName, "-", "_")
+	fileName = strings.ReplaceAll(fileName, ".", "_")
 	fileName = strings.TrimPrefix(fileName, "__")
 	return fileName
 }
 func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 	if w.storeResponse {
 		filename := sanitizeFileName(fmt.Sprintf("%s_%s.txt", host, templateID))
-
-		subFolder := filepath.Join(w.storeResponseDir, eventType)
+		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
 		if !fileutil.FolderExists(subFolder) {
 			_ = fileutil.CreateFolder(subFolder)
 		}
-
 		filename = filepath.Join(subFolder, filename)
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 		if err != nil {
 			fmt.Print(err)
 			return
 		}
-		_ ,_ = f.WriteString(fmt.Sprintln(data))
+		_, _ = f.WriteString(fmt.Sprintln(data))
 		f.Close()
 	}
 
