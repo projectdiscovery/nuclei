@@ -481,7 +481,7 @@ func init() {
 
 // appendSingleDigitZero appends zero at front if not exists already doing two digit padding
 func appendSingleDigitZero(value string) string {
-	if len(value) == 1 && !strings.HasPrefix(value, "0") {
+	if len(value) == 1 && (!strings.HasPrefix(value, "0") || value == "0") {
 		builder := &strings.Builder{}
 		builder.WriteRune('0')
 		builder.WriteString(value)
