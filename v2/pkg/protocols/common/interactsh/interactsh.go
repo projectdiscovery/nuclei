@@ -276,13 +276,20 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.hostname
 	for _, url := range urls {
-		interactshMarker := strings.TrimSuffix(strings.TrimPrefix(c.interactshURLs.Get(url).Value().(string), "{{"), "}}")
-		data[interactshMarker] = url
-		urlIndex := strings.Index(url, ".")
-		if urlIndex == -1 {
-			continue
+		if interactshURLMarker := c.interactshURLs.Get(url); interactshURLMarker != nil {
+			if interactshURLMarker, ok := interactshURLMarker.Value().(string); ok {
+				interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
+
+				c.interactshURLs.Delete(url)
+
+				data[interactshMarker] = url
+				urlIndex := strings.Index(url, ".")
+				if urlIndex == -1 {
+					continue
+				}
+				data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
+			}
 		}
-		data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
 	}
 }
 
