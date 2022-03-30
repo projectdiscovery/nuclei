@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -193,7 +194,11 @@ func (request *Request) Make(host string) (*dns.Msg, error) {
 
 	var q dns.Question
 
-	final := replacer.Replace(request.Name, GenerateDNSVariables(host))
+	vars := GenerateDNSVariables(host)
+	variablesMap := request.options.Variables.Evaluate(vars)
+	vars = generators.MergeMaps(variablesMap, variablesMap)
+
+	final := replacer.Replace(request.Name, vars)
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
