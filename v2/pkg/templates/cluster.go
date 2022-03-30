@@ -20,6 +20,23 @@ import (
 //
 // If the attributes match, multiple requests can be clustered into a single
 // request which saves time and network resources during execution.
+//
+// The clusterer goes through all the templates, looking for templates with a single
+// HTTP request to an endpoint (multiple requests aren't clustered as of now).
+//
+// All the templates are iterated and any templates with request that is identical
+// to the first individual HTTP request is compared for equality.
+// The equality check is performed as described below -
+//
+// Cases where clustering is not perfomed (request is considered different)
+//  - If request contains payloads,raw,body,unsafe,req-condition,name attributes
+//	- If request methods,max-redirects,cookie-reuse,redirects are not equal
+//  - If request paths aren't identical.
+//  - If request headers aren't identical
+//
+// If multiple requests are identified as identical, they are appended to a slice.
+// Finally, the engine creates a single executer with a clusteredexecuter for all templates
+// in a cluster.
 func Cluster(list map[string]*Template) [][]*Template {
 	final := [][]*Template{}
 
@@ -86,9 +103,12 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptio
 	for _, cluster := range clusters {
 		if len(cluster) > 1 {
 			executerOpts := options
-
 			clusterID := fmt.Sprintf("cluster-%s", ClusterID(cluster))
 
+			for _, req := range cluster[0].RequestsHTTP {
+				req.Options().TemplateID = clusterID
+			}
+			executerOpts.TemplateID = clusterID
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
