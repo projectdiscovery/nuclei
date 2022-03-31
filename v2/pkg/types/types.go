@@ -28,7 +28,7 @@ type Options struct {
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders goflags.StringSlice
+	CustomHeaders goflags.FileStringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
 	// vars to use as iterative payload
