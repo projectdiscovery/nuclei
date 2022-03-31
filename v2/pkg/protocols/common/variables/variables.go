@@ -29,6 +29,10 @@ func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	if err := unmarshal(&variables.InsertionOrderedStringMap); err != nil {
 		return err
 	}
+	evaluated := variables.Evaluate(map[string]interface{}{})
+	for k, v := range evaluated {
+		variables.Set(k, v)
+	}
 	return nil
 }
 
