@@ -30,6 +30,10 @@ func (request *Request) ExecuteWithResults(inputURL string, metadata, previous o
 		request.options.Browser.SetUserAgent(request.compiledUserAgent)
 	}
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+
+	variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(metadata, payloads))
+	payloads = generators.MergeMaps(variablesMap, payloads)
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
