@@ -4,11 +4,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -17,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
+	"gopkg.in/yaml.v2"
 )
 
 // Service is a service for automatic automatic scan execution
@@ -29,8 +33,9 @@ type Service struct {
 	childExecuter *core.ChildExecuter
 	httpclient    *retryablehttp.Client
 
-	results      bool
-	allTemplates []string
+	results            bool
+	allTemplates       []string
+	technologyMappings map[string]string
 }
 
 // Options contains configuration options for automatic scan service
@@ -41,11 +46,23 @@ type Options struct {
 	Target       core.InputProvider
 }
 
+const mappingFilename = "wappalyzer-mapping.yaml"
+
 // New takes options and returns a new smart workflow service
 func New(opts Options) (*Service, error) {
 	wappalyzer, err := wappalyzer.New()
 	if err != nil {
 		return nil, err
+	}
+
+	var mappingData map[string]string
+	config, err := config.ReadConfiguration()
+	if err == nil {
+		mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
+		if file, err := os.Open(mappingFile); err == nil {
+			_ = yaml.NewDecoder(file).Decode(&mappingData)
+			file.Close()
+		}
 	}
 
 	// Collect path for default directories we want to look for templates in
@@ -67,14 +84,15 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:          opts.ExecuterOpts,
-		store:         opts.Store,
-		engine:        opts.Engine,
-		target:        opts.Target,
-		wappalyzer:    wappalyzer,
-		allTemplates:  allTemplates,
-		childExecuter: childExecuter,
-		httpclient:    httpclient,
+		opts:               opts.ExecuterOpts,
+		store:              opts.Store,
+		engine:             opts.Engine,
+		target:             opts.Target,
+		wappalyzer:         wappalyzer,
+		allTemplates:       allTemplates,
+		childExecuter:      childExecuter,
+		httpclient:         httpclient,
+		technologyMappings: mappingData,
 	}, nil
 }
 
@@ -145,6 +163,13 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	resp.Body.Close()
 
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
+	for k := range fingerprints {
+		// Replace values with mapping data
+		if value, ok := s.technologyMappings[k]; ok {
+			delete(fingerprints, k)
+			fingerprints[value] = struct{}{}
+		}
+	}
 	items := make([]string, 0, len(fingerprints))
 	for k := range fingerprints {
 		if strings.Contains(k, " ") {
