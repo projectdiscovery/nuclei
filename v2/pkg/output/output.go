@@ -294,12 +294,12 @@ func sanitizeFileName(fileName string) string {
 }
 func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 	if w.storeResponse {
-		filename := sanitizeFileName(fmt.Sprintf("%s_%s.txt", host, templateID))
+		filename := sanitizeFileName(fmt.Sprintf("%s_%s", host, templateID))
 		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
 		if !fileutil.FolderExists(subFolder) {
 			_ = fileutil.CreateFolder(subFolder)
 		}
-		filename = filepath.Join(subFolder, filename)
+		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 		if err != nil {
 			fmt.Print(err)
