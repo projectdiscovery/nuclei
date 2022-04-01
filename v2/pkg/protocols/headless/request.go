@@ -106,6 +106,9 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	for k, v := range out {
 		outputEvent[k] = v
 	}
+	for k, v := range payloads {
+		outputEvent[k] = v
+	}
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {

@@ -50,6 +50,8 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 	for _, kv := range request.addresses {
 		variables := generateNetworkVariables(address)
+		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(variables, variables))
+		variables = generators.MergeMaps(variablesMap, variables)
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
@@ -62,15 +64,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 
 // executeAddress executes the request for an address
 func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
+	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
-
-	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
-	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -101,9 +103,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		err      error
 	)
 
-	variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(variables, payloads))
-	payloads = generators.MergeMaps(variablesMap, payloads)
-
 	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
 		hostname = host
 	}
@@ -125,6 +124,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	responseBuilder := &strings.Builder{}
 	reqBuilder := &strings.Builder{}
+
+	interimValues := generators.MergeMaps(variables, payloads)
 
 	inputEvents := make(map[string]interface{})
 	for _, input := range request.Inputs {
@@ -149,7 +150,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			data = []byte(transformedData)
 		}
 
-		finalData, dataErr := expressions.EvaluateByte(data, payloads)
+		finalData, dataErr := expressions.EvaluateByte(data, interimValues)
 		if dataErr != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), dataErr)
 			request.options.Progress.IncrementFailedRequestsBy(1)
@@ -255,7 +256,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
-	for k, v := range payloads {
+	for k, v := range interimValues {
 		outputEvent[k] = v
 	}
 	for k, v := range inputEvents {
