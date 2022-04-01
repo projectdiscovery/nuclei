@@ -14,6 +14,7 @@ var headlessTestcases = map[string]testutils.TestCase{
 	"headless/headless-header-action.yaml":  &headlessHeaderActions{},
 	"headless/headless-extract-values.yaml": &headlessExtractValues{},
 	"headless/headless-payloads.yaml":       &headlessPayloads{},
+	"headless/variables.yaml":               &headlessVariables{},
 }
 
 type headlessBasic struct{}
@@ -91,4 +92,22 @@ func (h *headlessPayloads) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 4)
+}
+
+type headlessVariables struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *headlessVariables) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("<html><body>value</body></html>"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-headless")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
