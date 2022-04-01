@@ -449,7 +449,7 @@ func init() {
 			},
 		),
 		"compare_versions": makeDslWithOptionalArgsFunction(
-			"(firstVersion, constraint string) bool",
+			"(firstVersion, constraints ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
@@ -460,7 +460,11 @@ func init() {
 					return nil, parseErr
 				}
 
-				constraint, constraintErr := version.NewConstraint(types.ToString(args[1]))
+				var versionConstraints []string
+				for _, constraint := range args[1:] {
+					versionConstraints = append(versionConstraints, types.ToString(constraint))
+				}
+				constraint, constraintErr := version.NewConstraint(strings.Join(versionConstraints, ","))
 				if constraintErr != nil {
 					return nil, constraintErr
 				}
