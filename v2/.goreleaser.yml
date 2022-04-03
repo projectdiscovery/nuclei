@@ -48,3 +48,31 @@ archives:
 
 checksum:
   algorithm: sha256
+
+snapcrafts:
+  - id: nuclei
+    replacements:
+      darwin: macOS
+    name: nuclei
+    publish: false
+    summary: Fast and customisable vulnerability scanner based on simple YAML based DSL.
+    description: |
+      Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
+    grade: stable
+    confinement: strict
+    license: MIT
+    base: core18
+    apps:
+      nuclei:
+        command: nuclei
+        plugs:
+          - home
+          - network
+          - removable-media
+          - dot-nuclei
+    plugs:
+      dot-nuclei:
+        interface: personal-files
+        write:
+          - $HOME/.config/nuclei
+          - $HOME/nuclei-templates
