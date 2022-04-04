@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -40,11 +39,10 @@ func New(options *Options) (*Exporter, error) {
 		return nil, errors.Wrap(err, "could not create sarif exporter")
 	}
 
-	home, err := os.UserHomeDir()
+	templatePath, err := utils.GetDefaultTemplatePath()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get home dir")
+		return nil, errors.Wrap(err, "could not template path")
 	}
-	templatePath := filepath.Join(home, "nuclei-templates")
 
 	run := sarif.NewRun("nuclei", "https://github.com/projectdiscovery/nuclei")
 	return &Exporter{options: options, home: templatePath, sarif: report, run: run, mutex: &sync.Mutex{}}, nil

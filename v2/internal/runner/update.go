@@ -25,10 +25,12 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
@@ -62,13 +64,13 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// If the config doesn't exist, create it now.
+	defaultTemplatesDirectory, err := utils.GetDefaultTemplatePath()
+	if err != nil {
+		return err
+	}
 	if r.templatesConfig == nil {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
 		currentConfig := &config.Config{
-			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
+			TemplatesDirectory: defaultTemplatesDirectory,
 			NucleiVersion:      config.Version,
 		}
 		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
@@ -77,7 +79,11 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		r.templatesConfig = currentConfig
 	}
 	if r.options.TemplatesDirectory == "" {
-		r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
+		if r.templatesConfig.TemplatesDirectory != "" {
+			r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
+		} else {
+			r.options.TemplatesDirectory = defaultTemplatesDirectory
+		}
 	}
 
 	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
@@ -90,7 +96,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	ctx := context.Background()
 
 	var noTemplatesFound bool
-	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+	if !fileutil.FileExists(r.templatesConfig.TemplatesDirectory) {
 		noTemplatesFound = true
 	}
 
