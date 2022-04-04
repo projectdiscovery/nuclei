@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Integration is a client for an issue tracker integration
@@ -38,6 +41,7 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	HttpClient      *retryablehttp.Client
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -47,6 +51,14 @@ func New(options *Options) (*Integration, error) {
 		&oauth2.Token{AccessToken: options.Token},
 	)
 	tc := oauth2.NewClient(ctx, ts)
+
+	// patch transport to support proxy - only http
+	// TODO: investigate if it's possible to reuse existing retryablehttp
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
+			tc.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		}
+	}
 
 	client := github.NewClient(tc)
 	if options.BaseURL != "" {

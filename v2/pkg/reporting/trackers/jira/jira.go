@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Integration is a client for an issue tracker integration
@@ -42,6 +43,7 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	HttpClient      *retryablehttp.Client
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -53,6 +55,9 @@ func New(options *Options) (*Integration, error) {
 	tp := jira.BasicAuthTransport{
 		Username: username,
 		Password: options.Token,
+	}
+	if options.HttpClient != nil {
+		tp.Transport = options.HttpClient.HTTPClient.Transport
 	}
 	jiraClient, err := jira.NewClient(tp.Client(), options.URL)
 	if err != nil {

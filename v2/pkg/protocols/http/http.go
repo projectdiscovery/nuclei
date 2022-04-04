@@ -1,9 +1,11 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
+	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fileutil"
@@ -179,6 +181,11 @@ type Request struct {
 	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
 }
 
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
+}
+
 // RequestPartDefinitions contains a mapping of request part definitions and their
 // description. Multiple definitions are separated by commas.
 // Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
@@ -286,6 +293,25 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			}
 			request.Payloads[name] = payloadStr
 		}
+	}
+
+	// tries to drop unused payloads - by marshaling sections that might contain the payload
+	unusedPayloads := make(map[string]struct{})
+	requestSectionsToCheck := []interface{}{
+		request.customHeaders, request.Headers, request.Matchers,
+		request.Extractors, request.Body, request.Path, request.Raw,
+	}
+	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
+		for payload := range request.Payloads {
+			if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
+				continue
+			}
+			unusedPayloads[payload] = struct{}{}
+		}
+	}
+
+	for payload := range unusedPayloads {
+		delete(request.Payloads, payload)
 	}
 
 	if len(request.Payloads) > 0 {
