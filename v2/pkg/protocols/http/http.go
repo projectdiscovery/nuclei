@@ -179,9 +179,12 @@ type Request struct {
 	// description: |
 	//   IterateAll iterates all the values extracted from internal extractors
 	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
-	// These could be moved as requests annotations (ref: https://github.com/projectdiscovery/nuclei/pull/1805)
-	DigestAuthUsername string `yaml:"digest-username,omitempty"`
-	DigestAuthPassword string `yaml:"digest-password,omitempty"`
+	// description: |
+	//   DigestAuthUsername specifies the username for digest authentication
+	DigestAuthUsername string `yaml:"digest-username,omitempty" jsonschema:"title=specifies the username for digest authentication,description=Optional parameter which specifies the username for digest auth"`
+	// description: |
+	//   DigestAuthPassword specifies the password for digest authentication
+	DigestAuthPassword string `yaml:"digest-password,omitempty" jsonschema:"title=specifies the password for digest authentication,description=Optional parameter which specifies the password for digest auth"`
 }
 
 // Options returns executer options for http request
