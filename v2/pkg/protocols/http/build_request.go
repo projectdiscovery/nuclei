@@ -343,7 +343,21 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 			req.Host = strings.TrimSuffix(req.Host, ":443")
 		}
 	}
-	return retryablehttp.FromRequest(req)
+
+	filledRequest, err := retryablehttp.FromRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.request.DigestAuthUsername != "" {
+		filledRequest.Auth = &retryablehttp.Auth{
+			Type:     retryablehttp.DigestAuth,
+			Username: r.request.DigestAuthUsername,
+			Password: r.request.DigestAuthPassword,
+		}
+	}
+
+	return filledRequest, nil
 }
 
 // setHeader sets some headers only if the header wasn't supplied by the user
