@@ -37,7 +37,7 @@ require (
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.8-0.20220321180300-366b511e8bfd
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
-	github.com/projectdiscovery/retryablehttp-go v1.0.2
+	github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220405093937-06b2f4488535
 	github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -148,6 +148,7 @@ require (
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	github.com/xinsnake/go-http-digest-auth-client v0.6.0 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

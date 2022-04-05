@@ -479,8 +479,9 @@ github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/g
 github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660 h1:Ooa5htghPkdyfpzy6Y5KLdyv4w8ePZWmfzFSPQlJStQ=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660/go.mod h1:UfszkO3x+GLKVOpXB7boddJKbwNCr+tMPSkfgCSNhl4=
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
-github.com/projectdiscovery/retryablehttp-go v1.0.2 h1:LV1/KAQU+yeWhNVlvveaYFsjBYRwXlNEq0PvrezMV0U=
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
+github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220405093937-06b2f4488535 h1:LYEFr75bpDBdY0FgNfHx1pxTgEno1S4xmba7C0Vt6v4=
+github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220405093937-06b2f4488535/go.mod h1:0gjntLm5NsG/W0Cu/dRkM70Wrz7QdVvxT6wwXJ5WB0w=
 github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d h1:wIQPYRZEwTeJuoZLv3NT9r+il2fAv1ObRzTdHkNgOxk=
 github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d/go.mod h1:QHXvznfPfA5f0AZUIBkbLapoUJJlsIDgUlkKva6dOr4=
 github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
@@ -586,6 +587,8 @@ github.com/xanzy/go-gitlab v0.61.0 h1:sPeRduwe8/8z32nw/5ogQ8f5GP1X096azK4VEq4d5q
 github.com/xanzy/go-gitlab v0.61.0/go.mod h1:F0QEXwmqiBUxCgJm8fE9S+1veX4XC9Z4cfaAbqwk4YM=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
+github.com/xinsnake/go-http-digest-auth-client v0.6.0 h1:nrYFWDrB2F7VwYlNravXZS0nOtg9axlATH3Jns55/F0=
+github.com/xinsnake/go-http-digest-auth-client v0.6.0/go.mod h1:QK1t1v7ylyGb363vGWu+6Irh7gyFj+N7+UZzM0L6g8I=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yl2chen/cidranger v1.0.2 h1:lbOWZVCG1tCRX4u24kuM1Tb4nHqWkDxwLdoS+SevawU=
 github.com/yl2chen/cidranger v1.0.2/go.mod h1:9U1yz7WPYDwf0vpNWFaeRh0bjwz5RVgRy/9UEQfHl0g=
