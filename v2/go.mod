@@ -50,7 +50,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.61.0
+	github.com/xanzy/go-gitlab v0.62.0
 	github.com/ysmood/gson v0.7.0 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.43.31
+require github.com/aws/aws-sdk-go v1.43.33
 
 require github.com/projectdiscovery/folderutil v0.0.0-20211206150108-b4e7ea80f36e
 
