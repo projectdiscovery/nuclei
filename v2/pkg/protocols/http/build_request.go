@@ -60,9 +60,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
 	}
 	ctx := context.Background()
-
 	if r.options.Interactsh != nil {
-
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, []string{})
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)

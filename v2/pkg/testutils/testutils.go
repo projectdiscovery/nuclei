@@ -136,6 +136,9 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
 	return nil
 }
+func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
+
+}
 
 type MockProgressClient struct{}
 
