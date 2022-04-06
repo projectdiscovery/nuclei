@@ -64,6 +64,9 @@ func New(opts Options) (*Service, error) {
 			file.Close()
 		}
 	}
+	if opts.ExecuterOpts.Options.Verbose {
+		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
+	}
 
 	// Collect path for default directories we want to look for templates in
 	var allTemplates []string
@@ -163,15 +166,25 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	resp.Body.Close()
 
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
+	normalized := make(map[string]struct{})
 	for k := range fingerprints {
+		normalized[strings.ToLower(k)] = struct{}{}
+	}
+
+	if s.opts.Options.Verbose {
+		gologger.Verbose().Msgf("Wappalyzer fingerprints %v for %s\n", normalized, input)
+	}
+
+	for k := range normalized {
 		// Replace values with mapping data
 		if value, ok := s.technologyMappings[k]; ok {
-			delete(fingerprints, k)
-			fingerprints[value] = struct{}{}
+			delete(normalized, k)
+			normalized[value] = struct{}{}
 		}
 	}
-	items := make([]string, 0, len(fingerprints))
-	for k := range fingerprints {
+
+	items := make([]string, 0, len(normalized))
+	for k := range normalized {
 		if strings.Contains(k, " ") {
 			parts := strings.Split(strings.ToLower(k), " ")
 			items = append(items, parts...)
