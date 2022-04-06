@@ -11,7 +11,7 @@ func TestVariablesEvaluate(t *testing.T) {
 	data := `a1: rand_base(5)
 a2: md5(a1)
 a3: this_is_random_text
-a4: date("%Y-%M-%D")
+a4: date("%Y")
 a5: reverse(hostname)
 a6: 123456`
 
@@ -20,5 +20,5 @@ a6: 123456`
 	require.NoError(t, err, "could not unmarshal variables")
 
 	result := variables.Evaluate(map[string]interface{}{"hostname": "google.com"})
-	require.Equal(t, map[string]interface{}{"a1": "BpLnf", "a2": "531403a4c6a4133e42d0499b5a6ee60f", "a3": "this_is_random_text", "a4": "2022-03-30", "a5": "moc.elgoog", "a6": "123456"}, result, "could not get correct elements")
+	require.Equal(t, map[string]interface{}{"a1": "BpLnf", "a2": "531403a4c6a4133e42d0499b5a6ee60f", "a3": "this_is_random_text", "a4": "2022", "a5": "moc.elgoog", "a6": "123456"}, result, "could not get correct elements")
 }
