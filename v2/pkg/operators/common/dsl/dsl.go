@@ -25,6 +25,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
+	"github.com/hashicorp/go-version"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -445,6 +446,30 @@ func init() {
 				seconds := args[0].(float64)
 				time.Sleep(time.Duration(seconds) * time.Second)
 				return true, nil
+			},
+		),
+		"compare_versions": makeDslWithOptionalArgsFunction(
+			"(firstVersion, constraints ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+
+				firstParsed, parseErr := version.NewVersion(types.ToString(args[0]))
+				if parseErr != nil {
+					return nil, parseErr
+				}
+
+				var versionConstraints []string
+				for _, constraint := range args[1:] {
+					versionConstraints = append(versionConstraints, types.ToString(constraint))
+				}
+				constraint, constraintErr := version.NewConstraint(strings.Join(versionConstraints, ","))
+				if constraintErr != nil {
+					return nil, constraintErr
+				}
+				result := constraint.Check(firstParsed)
+				return result, nil
 			},
 		),
 		"print_debug": makeDslWithOptionalArgsFunction(
