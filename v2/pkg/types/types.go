@@ -28,7 +28,7 @@ type Options struct {
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders goflags.StringSlice
+	CustomHeaders goflags.FileStringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
 	// vars to use as iterative payload
@@ -207,7 +207,11 @@ type Options struct {
 	// Use ZTLS library
 	ZTLS bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
-	EnablePprof bool
+	EnablePprof      bool
+	// StoreResponse stores received response to output directory
+	StoreResponse    bool
+	// StoreResponseDir stores received response to custom directory
+	StoreResponseDir string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
