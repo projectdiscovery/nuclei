@@ -3,6 +3,7 @@ package ssl
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -182,8 +183,14 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
-	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-		gologger.Debug().Str("address", input).Msgf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
+			gologger.Debug().Str("address", input).Msg(msg)
+		}
+		if requestOptions.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), msg)
+		}
 	}
 
 	var (
@@ -228,9 +235,15 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
-	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+		gologger.Debug().Msg(msg)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+		}
+		if requestOptions.Options.StoreResponse {
+		request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
+		}
 	}
 	callback(event)
 	return nil

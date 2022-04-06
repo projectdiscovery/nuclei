@@ -2,6 +2,7 @@ package dns
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/url"
 
 	"github.com/miekg/dns"
@@ -67,9 +68,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
 		return nil
 	}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
-		gologger.Print().Msgf("%s", requestString)
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Str("domain", domain).Msgf(msg)
+			gologger.Print().Msgf("%s", requestString)
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, requestString))
+		}
 	}
 
 	// Send the request to the target servers
@@ -105,7 +112,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 	// TODO: dynamic values are not supported yet
 
-	dumpResponse(event, request.options, response.String(), domain)
+	dumpResponse(event, request, request.options, response.String(), domain)
 	if request.Trace {
 		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
 	}
@@ -132,16 +139,22 @@ func (request *Request) parseDNSInput(host string) (string, error) {
 	return host, nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response, domain string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecuterOptions, response, domain string) {
+	cliOptions := request.options.Options
+	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
 		if responsehighlighter.HasBinaryContent(response) {
 			hexDump = true
 			response = hex.Dump([]byte(response))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+		msg := fmt.Sprintf("[%s] Dumped DNS response for %s\n\n%s", request.options.TemplateID, domain, highlightedResponse)
+		if cliOptions.Debug || cliOptions.DebugResponse {
+			gologger.Debug().Msg(msg)
+		}
+		if cliOptions.StoreResponse {
+			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), msg)
+		}
 	}
 }
 
