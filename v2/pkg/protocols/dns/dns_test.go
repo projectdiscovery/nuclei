@@ -42,7 +42,7 @@ func TestDNSCompileMake(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
-	req, err := request.Make("one.one.one.one", map[string]interface{}{})
+	req, err := request.Make("one.one.one.one", map[string]interface{}{"FQDN": "one.one.one.one"})
 	require.Nil(t, err, "could not make dns request")
 	require.Equal(t, "one.one.one.one.", req.Question[0].Name, "could not get correct dns question")
 }

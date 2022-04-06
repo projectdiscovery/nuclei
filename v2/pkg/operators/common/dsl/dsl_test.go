@@ -125,7 +125,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mrand_base[0m(length [38;5;208muint[0m, optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_char[0m(optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_int[0m(optionalMin, optionalMax [38;5;208muint[0m)[38;5;208m int[0m
-	[93mrand_ip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mrand_ip[0m(cidr [38;5;208m...string[0m)[38;5;208m string[0m
 	[93mrand_text_alpha[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_text_alphanumeric[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
 	[93mrand_text_numeric[0m(length [38;5;208muint[0m, optionalBadNumbers [38;5;208mstring[0m)[38;5;208m string[0m
