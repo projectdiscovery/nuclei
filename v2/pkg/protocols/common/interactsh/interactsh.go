@@ -53,7 +53,7 @@ type Client struct {
 
 var (
 	defaultInteractionDuration = 60 * time.Second
-	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:-[0-9]+){0,3}}}`)
+	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:_[0-9]+){0,3}}}`)
 )
 
 // Options contains configuration options for interactsh nuclei integration.
