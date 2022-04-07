@@ -187,7 +187,9 @@ DEBUG:
    -debug                    show all requests and responses
    -debug-req                show all sent requests
    -debug-resp               show all received responses
-   -p, -proxy string[]       List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
+   -sresp, -store-resp           store all request/response passed through nuclei to output directory
+   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
+   -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal      proxy all internal requests
    -tlog, -trace-log string  file to write sent requests trace log
    -elog, -error-log string  file to write sent requests error log

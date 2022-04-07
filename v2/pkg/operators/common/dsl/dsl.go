@@ -25,6 +25,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
+	"github.com/hashicorp/go-version"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -447,6 +448,30 @@ func init() {
 				return true, nil
 			},
 		),
+		"compare_versions": makeDslWithOptionalArgsFunction(
+			"(firstVersion, constraints ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+
+				firstParsed, parseErr := version.NewVersion(types.ToString(args[0]))
+				if parseErr != nil {
+					return nil, parseErr
+				}
+
+				var versionConstraints []string
+				for _, constraint := range args[1:] {
+					versionConstraints = append(versionConstraints, types.ToString(constraint))
+				}
+				constraint, constraintErr := version.NewConstraint(strings.Join(versionConstraints, ","))
+				if constraintErr != nil {
+					return nil, constraintErr
+				}
+				result := constraint.Check(firstParsed)
+				return result, nil
+			},
+		),
 		"print_debug": makeDslWithOptionalArgsFunction(
 			"(args ...interface{})",
 			func(args ...interface{}) (interface{}, error) {
@@ -481,7 +506,7 @@ func init() {
 
 // appendSingleDigitZero appends zero at front if not exists already doing two digit padding
 func appendSingleDigitZero(value string) string {
-	if len(value) == 1 && !strings.HasPrefix(value, "0") {
+	if len(value) == 1 && (!strings.HasPrefix(value, "0") || value == "0") {
 		builder := &strings.Builder{}
 		builder.WriteRune('0')
 		builder.WriteString(value)
