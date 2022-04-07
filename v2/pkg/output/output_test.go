@@ -11,7 +11,7 @@ import (
 
 func TestStandardWriterRequest(t *testing.T) {
 	t.Run("WithoutTraceAndError", func(t *testing.T) {
-		w, err := NewStandardWriter(false, false, false, false, false, false, "", "", "")
+		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "")
 		require.NoError(t, err)
 		require.NotPanics(t, func() {
 			w.Request("path", "input", "http", nil)
@@ -23,7 +23,7 @@ func TestStandardWriterRequest(t *testing.T) {
 		traceWriter := &testWriteCloser{}
 		errorWriter := &testWriteCloser{}
 
-		w, err := NewStandardWriter(false, false, false, false, false, false, "", "", "")
+		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "")
 		w.traceFile = traceWriter
 		w.errorFile = errorWriter
 		require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestStandardWriterRequest(t *testing.T) {
 	t.Run("ErrorWithWrappedError", func(t *testing.T) {
 		errorWriter := &testWriteCloser{}
 
-		w, err := NewStandardWriter(false, false, false, false, false, false, "", "", "")
+		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "")
 		w.errorFile = errorWriter
 		require.NoError(t, err)
 		w.Request(
