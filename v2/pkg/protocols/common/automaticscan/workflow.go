@@ -46,7 +46,7 @@ type Options struct {
 	Target       core.InputProvider
 }
 
-const mappingFilename = "wappalyzer-mapping.yaml"
+const mappingFilename = "wappalyzer-mapping.yml"
 
 // New takes options and returns a new smart workflow service
 func New(opts Options) (*Service, error) {
