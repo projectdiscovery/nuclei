@@ -243,7 +243,7 @@ func cleanupOldResumeFiles() {
 		OlderThan: 24*time.Hour*10, // cleanup on the 10th day
 		Prefix:    "resume-",
 	}
-	fileutil.DeleteFilesOlderThan(root, filter)
+	_=fileutil.DeleteFilesOlderThan(root, filter)
 }
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
