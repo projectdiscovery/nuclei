@@ -234,7 +234,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		ServerURL:           options.InteractshURL,
 		CacheSize:           int64(options.InteractionsCacheSize),
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
-		ColldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
 		DisableHttpFallback: true,
 	})

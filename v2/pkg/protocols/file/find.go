@@ -1,12 +1,14 @@
 package file
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 )
@@ -51,7 +53,7 @@ func (request *Request) findGlobPathMatches(absPath string, processed map[string
 		return errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	for _, match := range matches {
-		if !request.validatePath(absPath, match) {
+		if !request.validatePath(absPath, match, false) {
 			continue
 		}
 		if _, ok := processed[match]; !ok {
@@ -73,7 +75,7 @@ func (request *Request) findFileMatches(absPath string, processed map[string]str
 		return false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
-		if !request.validatePath(absPath, absPath) {
+		if !request.validatePath(absPath, absPath, false) {
 			return false, nil
 		}
 		processed[absPath] = struct{}{}
@@ -93,7 +95,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 			if d.IsDir() {
 				return nil
 			}
-			if !request.validatePath(absPath, path) {
+			if !request.validatePath(absPath, path, false) {
 				return nil
 			}
 			if _, ok := processed[path]; !ok {
@@ -107,9 +109,9 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 }
 
 // validatePath validates a file path for blacklist and whitelist options
-func (request *Request) validatePath(absPath, item string) bool {
+func (request *Request) validatePath(absPath, item string, inArchive bool) bool {
 	extension := filepath.Ext(item)
-
+	// extension check
 	if len(request.extensions) > 0 {
 		if _, ok := request.extensions[extension]; ok {
 			return true
@@ -117,9 +119,33 @@ func (request *Request) validatePath(absPath, item string) bool {
 			return false
 		}
 	}
+
+	var (
+		fileExists bool
+		dataChunk  []byte
+	)
+	if !inArchive && request.MimeType {
+		// mime type check
+		// read first bytes to infer runtime type
+		fileExists = fileutil.FileExists(item)
+		if fileExists {
+			dataChunk, _ = readChunk(item)
+			if len(request.mimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.mimeTypesChecks) {
+				return true
+			}
+		}
+	}
+
 	if matchingRule, ok := request.isInDenyList(absPath, item); ok {
 		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, matchingRule)
 		return false
+	}
+
+	// denied mime type checks
+	if !inArchive && request.MimeType && fileExists {
+		if len(request.denyMimeTypesChecks) > 0 && matchAnyMimeTypes(dataChunk, request.denyMimeTypesChecks) {
+			return false
+		}
 	}
 
 	return true
@@ -173,6 +199,21 @@ func (request *Request) isInDenyList(absPath, item string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func readChunk(fileName string) ([]byte, error) {
+	r, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+
+	var buff [1024]byte
+	if _, err = io.ReadFull(r, buff[:]); err != nil {
+		return nil, err
+	}
+	return buff[:], nil
 }
 
 func (request *Request) isAnyChunkInDenyList(path string, splitWithUtils bool) (string, bool) {

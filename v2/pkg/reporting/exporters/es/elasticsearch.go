@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Options contains necessary options required for elasticsearch communication
@@ -32,7 +33,8 @@ type Options struct {
 	// Password is the password for elasticsearch instance
 	Password string `yaml:"password"  validate:"required"`
 	// IndexName is the name of the elasticsearch index
-	IndexName string `yaml:"index-name"  validate:"required"`
+	IndexName  string `yaml:"index-name"  validate:"required"`
+	HttpClient *retryablehttp.Client
 }
 
 type data struct {
@@ -51,15 +53,21 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		Transport: &http.Transport{
-			MaxIdleConns:        10,
-			MaxIdleConnsPerHost: 10,
-			DialContext:         protocolstate.Dialer.Dial,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
-		},
+	var client *http.Client
+	if option.HttpClient != nil {
+		client = option.HttpClient.HTTPClient
+	} else {
+		client = &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        10,
+				MaxIdleConnsPerHost: 10,
+				DialContext:         protocolstate.Dialer.Dial,
+				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
+			},
+		}
 	}
+
 	// preparing url for elasticsearch
 	scheme := "http://"
 	if option.SSL {

@@ -25,11 +25,13 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
+	"github.com/hashicorp/go-version"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -400,6 +402,18 @@ func init() {
 				return rand.Intn(max-min) + min, nil
 			},
 		),
+		"rand_ip": makeDslWithOptionalArgsFunction(
+			"(cidr ...string) string",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) == 0 {
+					return nil, invalidDslFunctionError
+				}
+				var cidrs []string
+				for _, arg := range args {
+					cidrs = append(cidrs, arg.(string))
+				}
+				return randomip.GetRandomIPWithCidr(cidrs...)
+			}),
 		"generate_java_gadget": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			gadget := args[0].(string)
 			cmd := args[1].(string)
@@ -432,6 +446,30 @@ func init() {
 				seconds := args[0].(float64)
 				time.Sleep(time.Duration(seconds) * time.Second)
 				return true, nil
+			},
+		),
+		"compare_versions": makeDslWithOptionalArgsFunction(
+			"(firstVersion, constraints ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+
+				firstParsed, parseErr := version.NewVersion(types.ToString(args[0]))
+				if parseErr != nil {
+					return nil, parseErr
+				}
+
+				var versionConstraints []string
+				for _, constraint := range args[1:] {
+					versionConstraints = append(versionConstraints, types.ToString(constraint))
+				}
+				constraint, constraintErr := version.NewConstraint(strings.Join(versionConstraints, ","))
+				if constraintErr != nil {
+					return nil, constraintErr
+				}
+				result := constraint.Check(firstParsed)
+				return result, nil
 			},
 		),
 		"print_debug": makeDslWithOptionalArgsFunction(
@@ -468,7 +506,7 @@ func init() {
 
 // appendSingleDigitZero appends zero at front if not exists already doing two digit padding
 func appendSingleDigitZero(value string) string {
-	if len(value) == 1 && !strings.HasPrefix(value, "0") {
+	if len(value) == 1 && (!strings.HasPrefix(value, "0") || value == "0") {
 		builder := &strings.Builder{}
 		builder.WriteRune('0')
 		builder.WriteString(value)
