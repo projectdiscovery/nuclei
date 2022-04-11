@@ -29,7 +29,7 @@ require (
 	github.com/projectdiscovery/cryptoutil v1.0.0
 	github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
-	github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5
+	github.com/projectdiscovery/fileutil v0.0.0-20220411194636-887419690acd
 	github.com/projectdiscovery/goflags v0.0.8-0.20220323170412-1721b7db8fa0
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
