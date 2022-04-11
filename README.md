@@ -139,8 +139,8 @@ CONFIGURATIONS:
    -fr, -follow-redirects      enable following redirects for http templates
    -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
    -rc, -report-config string  nuclei reporting module configuration file
-   -H, -header string[]        custom headers in header:value format
-   -V, -var value              custom vars in var=value format
+   -H, -header string[]        custom header/cookie to include in all http request in header:value format (cli, file)
+   -V, -var value              custom vars in key=value format
    -r, -resolvers string       file containing resolver list for nuclei
    -sr, -system-resolvers      use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
@@ -184,20 +184,20 @@ HEADLESS:
    -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
 
 DEBUG:
-   -debug                    show all requests and responses
-   -debug-req                show all sent requests
-   -debug-resp               show all received responses
+   -debug                        display all requests and responses
+   -dreq, -debug-req             display all sent requests
+   -dresp, -debug-resp           display all received responses
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal      proxy all internal requests
-   -tlog, -trace-log string  file to write sent requests trace log
-   -elog, -error-log string  file to write sent requests error log
-   -version                  show nuclei version
-   -v, -verbose              show verbose output
-   -vv                       display templates loaded for scan
-   -enable-pprof             enable pprof debugging server
-   -tv, -templates-version   shows the version of the installed nuclei-templates
+   -pi, -proxy-internal          proxy all internal requests
+   -tlog, -trace-log string      file to write sent requests trace log
+   -elog, -error-log string      file to write sent requests error log
+   -version                      show nuclei version
+   -v, -verbose                  show verbose output
+   -vv                           display templates loaded for scan
+   -ep, -enable-pprof            enable pprof debugging server
+   -tv, -templates-version       shows the version of the installed nuclei-templates
 
 UPDATE:
    -update                        update nuclei engine to the latest released version
@@ -306,15 +306,17 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Resources
 
-
-- [Scanning Live Web Applications with Nuclei in CI/CD Pipeline](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) by [@TristanKalos](https://twitter.com/TristanKalos)
+- [Finding bugs with Nuclei with PinkDraconian (Robbe Van Roey)](https://www.youtube.com/watch?v=ewP0xVPW-Pk) by **[@PinkDraconian](https://twitter.com/PinkDraconian)** 
+- [Nuclei: Packing a Punch with Vulnerability Scanning](https://bishopfox.com/blog/nuclei-vulnerability-scan) by **Bishopfox**
+- [The WAF efficacy framework](https://www.fastly.com/blog/the-waf-efficacy-framework-measuring-the-effectiveness-of-your-waf) by **Fastly**
+- [Scanning Live Web Applications with Nuclei in CI/CD Pipeline](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) by **[@TristanKalos](https://twitter.com/TristanKalos)**
 - [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
 - [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
 - [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
 - [Nuclei + Interactsh Integration for Automating OOB Testing](https://blog.projectdiscovery.io/nuclei-interactsh-integration/)
-- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
-- [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
-- [Hack with Automation !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) by [@DhiyaneshGeek](https://github.com/DhiyaneshGeek)
+- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [Hack with Automation !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) by **[@DhiyaneshGeek](https://github.com/DhiyaneshGeek)**
 
 ### Credits
 
