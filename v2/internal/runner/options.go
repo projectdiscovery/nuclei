@@ -57,7 +57,10 @@ func ParseOptions(options *types.Options) {
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
-
+	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
+		gologger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
+		options.StoreResponse = true
+	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	if err := validateOptions(options); err != nil {

@@ -65,9 +65,15 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	if err != nil {
 		return err
 	}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-		gologger.Print().Msgf("%s", string(dumpedRequest))
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msg(msg)
+			gologger.Print().Msgf("%s", string(dumpedRequest))
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequest))
+		}
 	}
 	previous["request"] = string(dumpedRequest)
 
@@ -332,6 +338,19 @@ var errStopExecution = errors.New("stop execution due to unresolved variables")
 func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	request.setCustomHeaders(generatedRequest)
 
+	// Try to evaluate any payloads before replacement
+	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
+	for payloadName, payloadValue := range generatedRequest.dynamicValues {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.dynamicValues[payloadName] = data
+		}
+	}
+	for payloadName, payloadValue := range generatedRequest.meta {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.meta[payloadName] = data
+		}
+	}
+
 	var (
 		resp          *http.Response
 		fromCache     bool
@@ -413,9 +432,16 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			return dumpError
 		}
 		dumpedRequestString := string(dumpedRequest)
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", dumpedRequestString)
+		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Info().Msg(msg)
+				gologger.Print().Msgf("%s", dumpedRequestString)
+			}
+			if request.options.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+			}
 		}
 	}
 
@@ -565,7 +591,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 		responseContentType := resp.Header.Get("Content-Type")
 		isResponseTruncated := len(gotData) >= request.MaxSize
-		dumpResponse(event, request.options, response.fullResponse, formedURL, responseContentType, isResponseTruncated)
+		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)
 	}
@@ -623,9 +649,9 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
+	cliOptions := request.options.Options
+	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		response := string(redirectedResponse)
 
 		var highlightedResult string
@@ -639,8 +665,13 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 		if isResponseTruncated {
 			msg = "[%s] Dumped HTTP response (Truncated) %s\n\n%s"
 		}
-
-		gologger.Debug().Msgf(msg, requestOptions.TemplateID, formedURL, highlightedResult)
+		fMsg := fmt.Sprintf(msg, request.options.TemplateID, formedURL, highlightedResult)
+		if cliOptions.Debug || cliOptions.DebugResponse {
+			gologger.Debug().Msg(fMsg)
+		}
+		if cliOptions.StoreResponse {
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fMsg)
+		}
 	}
 }
 

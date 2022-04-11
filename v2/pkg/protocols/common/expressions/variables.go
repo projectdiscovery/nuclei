@@ -6,7 +6,10 @@ import (
 	"strings"
 )
 
-var unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
+var (
+	numericalExpressionRegex = regexp.MustCompile(`[0-9+\-*/]+`)
+	unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
+)
 
 // ContainsUnresolvedVariables returns an error with variable names if the passed
 // input contains unresolved {{<pattern-here>}} variables.
@@ -19,6 +22,10 @@ func ContainsUnresolvedVariables(items ...string) error {
 		var unresolvedVariables []string
 		for _, match := range matches {
 			if len(match) < 2 {
+				continue
+			}
+			// Skip if the match is an expression
+			if numericalExpressionRegex.MatchString(match[1]) {
 				continue
 			}
 			unresolvedVariables = append(unresolvedVariables, match[1])
@@ -45,6 +52,10 @@ func ContainsVariablesWithNames(names map[string]interface{}, items ...string) e
 				continue
 			}
 			matchName := match[1]
+			// Skip if the match is an expression
+			if numericalExpressionRegex.MatchString(matchName) {
+				continue
+			}
 			if _, ok := names[matchName]; !ok {
 				unresolvedVariables = append(unresolvedVariables, matchName)
 			}
@@ -71,6 +82,10 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 				continue
 			}
 			matchName := match[1]
+			// Skip if the match is an expression
+			if numericalExpressionRegex.MatchString(matchName) {
+				continue
+			}
 			if _, ok := skipNames[matchName]; ok {
 				continue
 			}

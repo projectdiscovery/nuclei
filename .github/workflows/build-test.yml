@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.17
 
@@ -31,7 +31,10 @@ jobs:
       - name: Integration Tests
         env:
           GH_ACTION: true
-        run: bash run.sh
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          chmod +x run.sh
+          bash run.sh ${{ matrix.os }}
         working-directory: integration_tests/
 
       # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
