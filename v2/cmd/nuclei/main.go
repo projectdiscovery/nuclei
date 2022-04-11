@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/projectdiscovery/fileutil"
@@ -241,20 +239,11 @@ func cleanupOldResumeFiles() {
 	if err != nil {
 		return
 	}
-	files, err := ioutil.ReadDir(root)
-	if err == nil {
-		for _, file := range files {
-			prefix := "resume-"
-			if strings.HasPrefix(file.Name(), prefix) {
-				filePath := filepath.Join(root, file.Name())
-				modifiedtime := file.ModTime()
-				//cleanup on the 10th day
-				if time.Since(modifiedtime) >= 24*time.Hour*10 {
-					os.Remove(filePath)
-				}
-			}
-		}
+	filter := fileutil.FileFilters{
+		OlderThan: 24*time.Hour*10, // cleanup on the 10th day
+		Prefix:    "resume-",
 	}
+	fileutil.DeleteFilesOlderThan(root, filter)
 }
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
