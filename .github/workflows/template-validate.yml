@@ -7,13 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with: 
           go-version: 1.17
 
       - name: Cache Go
         id: cache-go
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: /home/runner/go
           key: ${{ runner.os }}-go
