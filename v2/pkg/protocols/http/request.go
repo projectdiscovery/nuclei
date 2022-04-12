@@ -590,7 +590,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 
 		responseContentType := resp.Header.Get("Content-Type")
-		isResponseTruncated := len(gotData) >= request.MaxSize
+		isResponseTruncated := request.MaxSize >0 && len(gotData) >= request.MaxSize
 		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)
