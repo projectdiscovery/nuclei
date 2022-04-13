@@ -71,11 +71,13 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/h2non/filetype v1.1.3
+	github.com/hashicorp/go-version v1.4.0
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
 	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
 	github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d
+	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/wappalyzergo v0.0.35
 	github.com/stretchr/testify v1.7.1
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
@@ -117,7 +119,6 @@ require (
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
-	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
