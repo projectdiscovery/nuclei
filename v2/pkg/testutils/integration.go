@@ -93,6 +93,21 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args 
 	}
 	return matches[0][1], nil
 }
+func RunNucleiBinaryAndGetCombinedOutput(debug bool, args []string) (string, error) {
+	cmd := exec.Command("./nuclei", args...)
+	if debug {
+		cmd.Args = append(cmd.Args, "-debug")
+		fmt.Println(cmd.String())
+	}
+	data, err := cmd.CombinedOutput()
+	if debug {
+		fmt.Println(string(data))
+	}
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
 
 // TestCase is a single integration test case
 type TestCase interface {
