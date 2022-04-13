@@ -1,9 +1,8 @@
 package variables
 
 import (
-	"github.com/Knetic/govaluate"
 	"github.com/alecthomas/jsonschema"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
@@ -47,18 +46,11 @@ func (variables *Variable) Evaluate(values map[string]interface{}) map[string]in
 
 // evaluateVariableValue expression and returns final value
 func evaluateVariableValue(expression string, values, processing map[string]interface{}) string {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions())
-	if err != nil {
-		return expression
-	}
 	finalMap := generators.MergeMaps(values, processing)
-	result, err := compiled.Evaluate(finalMap)
+
+	result, err := expressions.Evaluate(expression, finalMap)
 	if err != nil {
 		return expression
 	}
-	final, _ := result.(string)
-	if final == "" {
-		return expression
-	}
-	return final
+	return result
 }
