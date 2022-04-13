@@ -96,7 +96,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	ctx := context.Background()
 
 	var noTemplatesFound bool
-	if !fileutil.FileExists(r.templatesConfig.TemplatesDirectory) {
+	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
 		noTemplatesFound = true
 	}
 
