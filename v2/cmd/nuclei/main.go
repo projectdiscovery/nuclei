@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
@@ -231,8 +232,19 @@ on extensive configurability, massive extensibility and ease of use.`)
 			gologger.Warning().Msgf("Could not read ignore file from custom path: %s\n", err)
 		}
 	}
+	cleanupOldResumeFiles()
 }
-
+func cleanupOldResumeFiles() {
+	root, err := config.GetConfigDir()
+	if err != nil {
+		return
+	}
+	filter := fileutil.FileFilters{
+		OlderThan: 24*time.Hour*10, // cleanup on the 10th day
+		Prefix:    "resume-",
+	}
+	_=fileutil.DeleteFilesOlderThan(root, filter)
+}
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
 	for _, currentFlag := range flags {
