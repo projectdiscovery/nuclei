@@ -31,6 +31,13 @@ func parseAnnotations(rawRequest string, request *http.Request) {
 
 		if isHostPort(value) {
 			request.URL.Host = value
+		} else {
+			hostPort := value
+			port := request.URL.Port()
+			if port != "" {
+				hostPort = net.JoinHostPort(hostPort, port)
+			}
+			request.URL.Host = hostPort
 		}
 	}
 }
