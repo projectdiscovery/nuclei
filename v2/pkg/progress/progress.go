@@ -192,17 +192,25 @@ func printCallback(stats clistats.StatisticsClient) {
 
 func printCallbackJSON(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
-	_ = json.NewEncoder(builder).Encode(metricsMap(stats))
-	fmt.Fprintf(os.Stderr, "%s", builder.String())
+	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
+		fmt.Fprintf(os.Stderr, "%s", builder.String())
+	}
 }
 
 func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	results := make(map[string]interface{})
 
-	startedAt, _ := stats.GetStatic("startedAt")
-	duration := time.Since(startedAt.(time.Time))
+	var (
+		startedAt time.Time
+		duration  time.Duration
+	)
 
-	results["startedAt"] = startedAt.(time.Time)
+	if stAt, ok := stats.GetStatic("startedAt"); ok {
+		startedAt = stAt.(time.Time)
+		duration = time.Since(startedAt)
+	}
+
+	results["startedAt"] = startedAt
 	results["duration"] = fmtDuration(duration)
 	templates, _ := stats.GetStatic("templates")
 	results["templates"] = clistats.String(templates)
@@ -218,7 +226,7 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 
-	//nolint:gomnd // this is not a magic number
+	// nolint:gomnd // this is not a magic number
 	percentData := (float64(requests) * float64(100)) / float64(total)
 	percent := clistats.String(uint64(percentData))
 	results["percent"] = percent
