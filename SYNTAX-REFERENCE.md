@@ -1363,6 +1363,32 @@ IterateAll iterates all the values extracted from internal extractors
 
 <hr />
 
+<div class="dd">
+
+<code>digest-username</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+DigestAuthUsername specifies the username for digest authentication
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>digest-password</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+DigestAuthPassword specifies the password for digest authentication
+
+</div>
+
+<hr />
+
 
 
 
