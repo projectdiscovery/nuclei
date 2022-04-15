@@ -850,6 +850,16 @@
           "type": "boolean",
           "title": "iterate all the values",
           "description": "Iterates all the values extracted from internal extractors"
+        },
+        "digest-username": {
+          "type": "string",
+          "title": "specifies the username for digest authentication",
+          "description": "Optional parameter which specifies the username for digest auth"
+        },
+        "digest-password": {
+          "type": "string",
+          "title": "specifies the password for digest authentication",
+          "description": "Optional parameter which specifies the password for digest auth"
         }
       },
       "additionalProperties": false,

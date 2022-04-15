@@ -390,7 +390,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 29)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 31)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -568,6 +568,16 @@ func init() {
 	HTTPRequestDoc.Fields[28].Note = ""
 	HTTPRequestDoc.Fields[28].Description = "IterateAll iterates all the values extracted from internal extractors"
 	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[29].Name = "digest-username"
+	HTTPRequestDoc.Fields[29].Type = "string"
+	HTTPRequestDoc.Fields[29].Note = ""
+	HTTPRequestDoc.Fields[29].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[30].Name = "digest-password"
+	HTTPRequestDoc.Fields[30].Type = "string"
+	HTTPRequestDoc.Fields[30].Note = ""
+	HTTPRequestDoc.Fields[30].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
