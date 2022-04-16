@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Request defines a basic HTTP raw request
@@ -39,9 +40,14 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 	reader := bufio.NewReader(strings.NewReader(request))
+read_line:
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %w", err)
+	}
+	// ignore all annotations
+	if stringsutil.HasPrefixAny(s, "@") {
+		goto read_line
 	}
 
 	parts := strings.Split(s, " ")
