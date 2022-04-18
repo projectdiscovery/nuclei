@@ -359,9 +359,14 @@ func (r *Runner) RunEnumeration() error {
 
 	var results *atomic.Bool
 	if r.options.AutomaticScan {
-		results, err = r.executeSmartWorkflowInput(executerOpts, store, engine)
+		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
+			return err
+		}
+
 	} else {
-		results, err = r.executeTemplatesInput(store, engine)
+		if results, err = r.executeTemplatesInput(store, engine); err != nil {
+			return err
+		}
 	}
 
 	if r.interactsh != nil {
