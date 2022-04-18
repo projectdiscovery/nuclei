@@ -68,15 +68,8 @@ func New(opts Options) (*Service, error) {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
 
-	// Collect path for default directories we want to look for templates in
-	var allTemplates []string
-	for _, directory := range defaultTemplatesDirectories {
-		templates, err := opts.ExecuterOpts.Catalog.GetTemplatePath(directory)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get templates in directory")
-		}
-		allTemplates = append(allTemplates, templates...)
-	}
+	// Collect paths for top-level requested directories
+	allTemplates := opts.ExecuterOpts.Catalog.GetTemplatesPath(opts.ExecuterOpts.Options.Templates)
 	childExecuter := opts.Engine.ChildExecuter()
 
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
