@@ -108,10 +108,6 @@ func (s *Service) Execute() {
 	}
 }
 
-var (
-	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
-)
-
 const maxDefaultBody = 2 * 1024 * 1024
 
 // executeWappalyzerTechDetection implements the logic to run the wappalyzer
