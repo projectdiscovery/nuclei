@@ -400,7 +400,7 @@ func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOption
 		Target:       r.hmapInputProvider,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create smart workflow service")
+		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
 	service.Execute()
 	result := &atomic.Bool{}
