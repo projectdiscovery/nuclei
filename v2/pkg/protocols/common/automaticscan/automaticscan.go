@@ -67,7 +67,10 @@ func New(opts Options) (*Service, error) {
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
-
+	//adding custom template path if available
+	if len(opts.ExecuterOpts.Options.Templates) > 0 {
+		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
+	}
 	// Collect path for default directories we want to look for templates in
 	var allTemplates []string
 	for _, directory := range defaultTemplatesDirectories {
