@@ -6,18 +6,17 @@ info:
   severity: info
 
 variables:
-  a1: "Hostname"
-  a2: "PING"
-  a3: "PONG"
+  a1: "PING"
+  a2: "{{base64('hello')}}"
 
 network:
   - host: 
-      - "{{a1}}"
+      - "{{Hostname}}"
     inputs:
-      - data: "{{a2}}\r\n"
-    read-size: 4
+      - data: "{{a1}}"
+    read-size: 8
     matchers:
       - type: word
         part: data
         words:
-          - "{{a3}}"
+          - "{{a2}}"

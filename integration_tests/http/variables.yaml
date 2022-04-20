@@ -7,7 +7,7 @@ info:
 
 variables:
   a1: "value"
-  a2: "rand_base(5)"
+  a2: "{{base64('hello')}}"
 
 requests:
   - raw:
@@ -22,5 +22,5 @@ requests:
     matchers:
       - type: word
         words: 
-          - "{{a1}}"
-          - "{{a2}}"
+          - "value"
+          - "aGVsbG8="

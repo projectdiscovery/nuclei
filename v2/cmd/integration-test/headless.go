@@ -100,7 +100,7 @@ type headlessVariables struct{}
 func (h *headlessVariables) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("<html><body>value</body></html>"))
+		_, _ = w.Write([]byte("<html><body>aGVsbG8=</body></html>"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()

@@ -6,7 +6,7 @@ info:
   severity: info
 
 variables:
-  a1: "value"
+  a1: "{{base64('hello')}}"
 
 headless:
   - steps:
