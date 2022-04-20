@@ -359,9 +359,14 @@ func (r *Runner) RunEnumeration() error {
 
 	var results *atomic.Bool
 	if r.options.AutomaticScan {
-		results, err = r.executeSmartWorkflowInput(executerOpts, store, engine)
+		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
+			return err
+		}
+
 	} else {
-		results, err = r.executeTemplatesInput(store, engine)
+		if results, err = r.executeTemplatesInput(store, engine); err != nil {
+			return err
+		}
 	}
 
 	if r.interactsh != nil {
@@ -395,7 +400,7 @@ func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOption
 		Target:       r.hmapInputProvider,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create smart workflow service")
+		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
 	service.Execute()
 	result := &atomic.Bool{}
