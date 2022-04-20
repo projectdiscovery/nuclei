@@ -81,7 +81,7 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 		return nil, errors.Wrap(err, "could not find directory matches")
 	}
 	if len(matches) == 0 {
-		return nil, errors.Errorf("no templates found in path")
+		return nil, errors.Errorf("no templates found in path %s", absPath)
 	}
 	return matches, nil
 }
