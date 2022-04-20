@@ -133,7 +133,7 @@ func (h *networkVariables) Execute(filePath string) error {
 			return
 		}
 		if string(data) == "PING" {
-			_, _ = conn.Write([]byte("PONG"))
+			_, _ = conn.Write([]byte("aGVsbG8="))
 		}
 	})
 	defer ts.Close()

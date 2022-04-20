@@ -6,11 +6,10 @@ info:
   severity: info
 
 variables:
-  a1: "FQDN"
-  a2: "IN"
+  a1: "IN"
 
 dns:
-  - name: "{{a1}}"
+  - name: "{{FQDN}}"
     type: A
     class: inet
     recursion: true
@@ -18,4 +17,4 @@ dns:
     matchers:
       - type: word
         words:
-          - "{{a2}}"
+          - "{{a1}}"
