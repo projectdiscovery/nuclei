@@ -21,6 +21,8 @@ const (
 	XPathExtractor
 	// name:json
 	JSONExtractor
+	// name:dsl
+	DSLExtractor
 	limit
 )
 
@@ -30,6 +32,7 @@ var extractorMappings = map[ExtractorType]string{
 	KValExtractor:  "kval",
 	XPathExtractor: "xpath",
 	JSONExtractor:  "json",
+	DSLExtractor:   "dsl",
 }
 
 // GetType returns the type of the matcher
