@@ -173,8 +173,8 @@ github.com/go-playground/validator/v10 v10.10.1 h1:uA0+amWMiglNZKZ9FJRKUAe9U3RX9
 github.com/go-playground/validator/v10 v10.10.1/go.mod h1:i+3WkQ1FvaUjjxh1kSvIA4dMGDBiPU55YFDl0WbKdWU=
 github.com/go-redis/redis v6.15.5+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
 github.com/go-rod/rod v0.91.1/go.mod h1:/W4lcZiCALPD603MnJGIvhtywP3R6yRB9EDfFfsHiiI=
-github.com/go-rod/rod v0.106.0 h1:C3dZVRLuIKh3ze/Nm8woS+l3yqOOD4tW7aVHI2eTl7k=
-github.com/go-rod/rod v0.106.0/go.mod h1:+YLe2X+nAuEGpYWs7rKPZr9SMX100FbxYZaeU1Dofpc=
+github.com/go-rod/rod v0.106.1 h1:+9YdoTT56KI3KrFfWVr3I13wh0qbhm/Aq+7JvCBA6AQ=
+github.com/go-rod/rod v0.106.1/go.mod h1:+YLe2X+nAuEGpYWs7rKPZr9SMX100FbxYZaeU1Dofpc=
 github.com/goburrow/cache v0.1.4 h1:As4KzO3hgmzPlnaMniZU9+VmoNYseUhuELbxy9mRBfw=
 github.com/goburrow/cache v0.1.4/go.mod h1:cDFesZDnIlrHoNlMYqqMpCRawuXulgx+y7mXU8HZ+/c=
 github.com/gobwas/httphead v0.1.0 h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=
