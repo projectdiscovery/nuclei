@@ -144,7 +144,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	}
 
 	item, ok := data[part]
-	if !ok && extractor.Type.ExtractorType != extractors.KValExtractor {
+	if !ok && !extractors.SupportsMap(extractor) {
 		return nil
 	}
 	itemStr := types.ToString(item)
@@ -158,6 +158,8 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 		return extractor.ExtractJSON(itemStr)
 	case extractors.XPathExtractor:
 		return extractor.ExtractHTML(itemStr)
+	case extractors.DSLExtractor:
+		return extractor.ExtractDSL(data)
 	}
 	return nil
 }
