@@ -891,6 +891,7 @@ func init() {
 		"kval",
 		"xpath",
 		"json",
+		"dsl",
 	}
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
