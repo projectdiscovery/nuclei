@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -35,8 +38,17 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		domain = input
 	}
 
+	var err error
+	domain, err = request.parseDNSInput(domain)
+	if err != nil {
+		return errors.Wrap(err, "could not build request")
+	}
+	vars := GenerateDNSVariables(domain)
+	variablesMap := request.options.Variables.Evaluate(vars)
+	vars = generators.MergeMaps(variablesMap, vars)
+
 	// Compile each request for the template based on the URL
-	compiledRequest, err := request.Make(domain)
+	compiledRequest, err := request.Make(domain, vars)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -94,11 +106,13 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
-
+	for k, v := range vars {
+		outputEvent[k] = v
+	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 	// TODO: dynamic values are not supported yet
 
-	dumpResponse(event, request, response.String(), domain)
+	dumpResponse(event, request, request.options, response.String(), domain)
 	if request.Trace {
 		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
 	}
@@ -107,7 +121,25 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, response, domain string) {
+func (request *Request) parseDNSInput(host string) (string, error) {
+	isIP := iputil.IsIP(host)
+	switch {
+	case request.question == dns.TypePTR && isIP:
+		var err error
+		host, err = dns.ReverseAddr(host)
+		if err != nil {
+			return "", err
+		}
+	default:
+		if isIP {
+			return "", errors.New("cannot use IP address as DNS input")
+		}
+		host = dns.Fqdn(host)
+	}
+	return host, nil
+}
+
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecuterOptions, response, domain string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
