@@ -46,6 +46,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/race-multiple.yaml":                       &httpRaceMultiple{},
 	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
 	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
+	"http/variables.yaml":                           &httpVariables{},
 }
 
 type httpInteractshRequest struct{}
@@ -766,4 +767,23 @@ func (h *httpStopAtFirstMatchWithExtractors) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 2)
+}
+
+type httpVariables struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpVariables) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
