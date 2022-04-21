@@ -1,0 +1,20 @@
+id: variables-example
+
+info:
+  name: Variables Example
+  author: pdteam
+  severity: info
+
+variables:
+  a1: "IN"
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: word
+        words:
+          - "{{a1}}"

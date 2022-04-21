@@ -34,7 +34,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(types.ToString(item)))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), data))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(types.ToString(item)))
 	case matchers.BinaryMatcher:
