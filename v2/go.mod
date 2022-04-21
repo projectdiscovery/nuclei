@@ -81,6 +81,7 @@ require (
 	github.com/projectdiscovery/wappalyzergo v0.0.37
 	github.com/stretchr/testify v1.7.1
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
 require (
@@ -169,5 +170,4 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
