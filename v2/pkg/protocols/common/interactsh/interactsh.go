@@ -230,8 +230,20 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() string {
 	c.firstTimeGroup.Do(func() {
-		if err := c.firstTimeInitializeClient(); err != nil {
-			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
+		servers := strings.Split(client.DefaultOptions.ServerURL, ",")
+		var i = 0
+		for {
+			if err := c.firstTimeInitializeClient(); err != nil {
+				gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
+				if len(servers) >= i+1 {
+					gologger.Info().Msgf("Trying to connect alternative interactsh server %s", servers[i])
+					c.options.ServerURL = servers[i]
+				} else {
+					break
+				}
+			} else {
+				break
+			}
 		}
 	})
 	if c.interactsh == nil {
