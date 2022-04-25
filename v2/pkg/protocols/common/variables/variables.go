@@ -11,7 +11,7 @@ import (
 // Variable is a key-value pair of strings that can be used
 // throughout template.
 type Variable struct {
-	utils.InsertionOrderedStringMap
+	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
 func (variables *Variable) JSONSchemaType() *jsonschema.Type {
