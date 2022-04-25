@@ -39,13 +39,14 @@ var (
 	WORKFLOWSWorkflowTemplateDoc  encoder.Doc
 	WORKFLOWSMatcherDoc           encoder.Doc
 	HTTPSignatureTypeHolderDoc    encoder.Doc
+	VARIABLESVariableDoc          encoder.Doc
 )
 
 func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 14)
+	TemplateDoc.Fields = make([]encoder.Doc, 15)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -131,6 +132,11 @@ func init() {
 	TemplateDoc.Fields[13].Values = []string{
 		"AWS",
 	}
+	TemplateDoc.Fields[14].Name = "variables"
+	TemplateDoc.Fields[14].Type = "variables.Variable"
+	TemplateDoc.Fields[14].Note = ""
+	TemplateDoc.Fields[14].Description = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -1906,6 +1912,17 @@ func init() {
 		},
 	}
 	HTTPSignatureTypeHolderDoc.Fields = make([]encoder.Doc, 0)
+
+	VARIABLESVariableDoc.Type = "variables.Variable"
+	VARIABLESVariableDoc.Comments[encoder.LineComment] = " Variable is a key-value pair of strings that can be used"
+	VARIABLESVariableDoc.Description = "Variable is a key-value pair of strings that can be used\n throughout template."
+	VARIABLESVariableDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "variables",
+		},
+	}
+	VARIABLESVariableDoc.Fields = make([]encoder.Doc, 0)
 }
 
 // GetTemplateDoc returns documentation for the file templates_doc.go.
@@ -1944,6 +1961,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&WORKFLOWSWorkflowTemplateDoc,
 			&WORKFLOWSMatcherDoc,
 			&HTTPSignatureTypeHolderDoc,
+			&VARIABLESVariableDoc,
 		},
 	}
 }

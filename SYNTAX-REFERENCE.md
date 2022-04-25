@@ -319,6 +319,19 @@ Valid values:
 
 <hr />
 
+<div class="dd">
+
+<code>variables</code>  <i><a href="#variablesvariable">variables.Variable</a></i>
+
+</div>
+<div class="dt">
+
+Variables contains any variables for the current request.
+
+</div>
+
+<hr />
+
 
 
 
@@ -4152,6 +4165,21 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.signature</code>
+
+
+
+
+
+
+
+## variables.Variable
+Variable is a key-value pair of strings that can be used
+ throughout template.
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.variables</code>
 
 
 
