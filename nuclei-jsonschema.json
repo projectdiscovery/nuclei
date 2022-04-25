@@ -352,6 +352,11 @@
       "title": "type of the attack",
       "description": "Type of the attack"
     },
+    "variables.Variable": {
+      "properties": {},
+      "additionalProperties": false,
+      "type": "object"
+    },
     "dns.DNSRequestTypeHolder": {
       "enum": [
         "A",
@@ -1304,6 +1309,12 @@
           "$ref": "#/definitions/http.SignatureTypeHolder",
           "title": "signature is the http request signature method",
           "description": "Signature is the HTTP Request signature Method"
+        },
+        "variables": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/variables.Variable",
+          "title": "variables for the http request",
+          "description": "Variables contains any variables for the current request"
         }
       },
       "additionalProperties": false,
