@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Service is a service for automatic automatic scan execution
+// Service is a service for automatic scan execution
 type Service struct {
 	opts          protocols.ExecuterOptions
 	store         *loader.Store
@@ -48,7 +48,7 @@ type Options struct {
 
 const mappingFilename = "wappalyzer-mapping.yml"
 
-// New takes options and returns a new smart workflow service
+// New takes options and returns a new automatic scan service
 func New(opts Options) (*Service, error) {
 	wappalyzer, err := wappalyzer.New()
 	if err != nil {
@@ -67,7 +67,10 @@ func New(opts Options) (*Service, error) {
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
-
+	// adding custom template path if available
+	if len(opts.ExecuterOpts.Options.Templates) > 0 {
+		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
+	}
 	// Collect path for default directories we want to look for templates in
 	var allTemplates []string
 	for _, directory := range defaultTemplatesDirectories {
@@ -108,7 +111,7 @@ func (s *Service) Close() bool {
 	return s.results
 }
 
-// Execute performs the execution of smart workflows on provided input
+// Execute performs the execution of automatic scan on provided input
 func (s *Service) Execute() {
 	if err := s.executeWappalyzerTechDetection(); err != nil {
 		gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)

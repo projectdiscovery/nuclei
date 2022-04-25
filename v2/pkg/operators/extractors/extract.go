@@ -2,6 +2,7 @@ package extractors
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
@@ -120,5 +121,26 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 			}
 		}
 	}
+	return results
+}
+
+// ExtractDSL execute the expression and returns the results
+func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} {
+	results := make(map[string]struct{})
+
+	for _, compiledExpression := range e.dslCompiled {
+		result, err := compiledExpression.Evaluate(data)
+		if err != nil {
+			return results
+		}
+
+		if result != nil {
+			resultString := fmt.Sprint(result)
+			if resultString != "" {
+				results[resultString] = struct{}{}
+			}
+		}
+	}
+
 	return results
 }
