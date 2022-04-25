@@ -257,7 +257,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
-		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request}
+		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
 
@@ -287,6 +287,8 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	if err != nil {
 		return nil, err
 	}
+
+	parseAnnotations(rawRequest, req)
 
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
 }

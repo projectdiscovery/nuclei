@@ -246,6 +246,9 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
+			payloads = generators.MergeMaps(variablesMap, payloads)
+
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -590,7 +593,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 
 		responseContentType := resp.Header.Get("Content-Type")
-		isResponseTruncated := request.MaxSize >0 && len(gotData) >= request.MaxSize
+		isResponseTruncated := request.MaxSize > 0 && len(gotData) >= request.MaxSize
 		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)

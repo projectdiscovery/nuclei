@@ -71,6 +71,7 @@ type Request struct {
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the http request,description=Payloads contains any payloads for the current request"`
+
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
 	// examples:
