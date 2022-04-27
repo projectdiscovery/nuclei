@@ -146,6 +146,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "Use ztls library with autofallback to standard one for tls13"),
+		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 	)
 
 	createGroup(flagSet, "interactsh", "interactsh",
@@ -240,10 +241,10 @@ func cleanupOldResumeFiles() {
 		return
 	}
 	filter := fileutil.FileFilters{
-		OlderThan: 24*time.Hour*10, // cleanup on the 10th day
+		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
 	}
-	_=fileutil.DeleteFilesOlderThan(root, filter)
+	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
