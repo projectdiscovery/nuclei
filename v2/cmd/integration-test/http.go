@@ -175,7 +175,7 @@ func (h *httpDisableRedirects) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-dr", "-sresp")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-dr")
 	if err != nil {
 		return err
 	}
