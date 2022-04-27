@@ -20,8 +20,8 @@ import (
 var httpTestcases = map[string]testutils.TestCase{
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
-	"http/get-redirects.yaml":     &httpGetRedirects{},
-	"http/disable-redirects.yaml": &httpDisableRedirects{},
+	"http/get-redirects.yaml":                       &httpGetRedirects{},
+	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
