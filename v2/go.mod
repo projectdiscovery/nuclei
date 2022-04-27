@@ -29,7 +29,7 @@ require (
 	github.com/projectdiscovery/cryptoutil v1.0.0
 	github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
-	github.com/projectdiscovery/fileutil v0.0.0-20220411194636-887419690acd
+	github.com/projectdiscovery/fileutil v0.0.0-20220427234316-40b2541a84b8
 	github.com/projectdiscovery/goflags v0.0.8-0.20220323170412-1721b7db8fa0
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
@@ -38,7 +38,7 @@ require (
 	github.com/projectdiscovery/rawhttp v0.0.8-0.20220321180300-366b511e8bfd
 	github.com/projectdiscovery/retryabledns v1.0.13-0.20211109182249-43d38df59660
 	github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220414143248-bb6eabffa43e
-	github.com/projectdiscovery/stringsutil v0.0.0-20220404001522-0d00e0703d0d
+	github.com/projectdiscovery/stringsutil v0.0.0-20220422150559-b54fb5dc6833
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
