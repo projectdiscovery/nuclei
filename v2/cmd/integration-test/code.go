@@ -75,8 +75,8 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	}
 
 	defaultOpts := types.DefaultOptions()
-	protocolstate.Init(defaultOpts)
-	protocolinit.Init(defaultOpts)
+	_ = protocolstate.Init(defaultOpts)
+	_ = protocolinit.Init(defaultOpts)
 
 	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
