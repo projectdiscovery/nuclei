@@ -246,6 +246,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		data[k] = v
 	}
 
+	data["template-id"] = request.options.TemplateID
 	data["type"] = request.Type().String()
 	data["success"] = "true"
 	data["request"] = requestOutput

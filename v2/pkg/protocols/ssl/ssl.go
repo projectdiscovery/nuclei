@@ -227,6 +227,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 
 	data := make(map[string]interface{})
 
+	data["template-id"] = request.options.TemplateID
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input

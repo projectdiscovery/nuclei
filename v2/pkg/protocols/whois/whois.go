@@ -116,6 +116,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	jsonData, _ := jsoniter.Marshal(response)
 	jsonDataString := string(jsonData)
 
+	data["template-id"] = request.options.TemplateID
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
