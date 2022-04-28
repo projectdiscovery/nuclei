@@ -207,11 +207,13 @@ type Options struct {
 	// Use ZTLS library
 	ZTLS bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
-	EnablePprof      bool
+	EnablePprof bool
 	// StoreResponse stores received response to output directory
-	StoreResponse    bool
+	StoreResponse bool
 	// StoreResponseDir stores received response to custom directory
 	StoreResponseDir string
+	// DisableRedirects disables following redirects for http request module
+	DisableRedirects bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
