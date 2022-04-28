@@ -120,7 +120,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["host"] = query
 	data["response"] = jsonDataString
 
-	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
 		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))

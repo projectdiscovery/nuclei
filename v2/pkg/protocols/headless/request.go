@@ -112,7 +112,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
-		event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+		event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse)
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}

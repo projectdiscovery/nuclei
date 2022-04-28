@@ -254,7 +254,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
-	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || request.options.Options.DebugRequests || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
 	})
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {

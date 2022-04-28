@@ -234,15 +234,15 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["not_after"] = float64(certNotAfter)
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
-	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || request.options.Options.DebugRequests || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
-		gologger.Debug().Msg(msg)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+			gologger.Debug().Msg(msg)
+			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
 		}
 		if requestOptions.Options.StoreResponse {
-		request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
+			request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
 		}
 	}
 	callback(event)

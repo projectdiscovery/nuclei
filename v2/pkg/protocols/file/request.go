@@ -195,7 +195,7 @@ func (request *Request) processReader(reader io.Reader, filePath, input string, 
 
 func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath string, totalBytes int64, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
 	var bytesCount, linesCount, wordsCount int
-	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
+	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse
 	totalBytesString := units.BytesSize(float64(totalBytes))
 
 	scanner := bufio.NewScanner(reader)

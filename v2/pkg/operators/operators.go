@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -195,6 +196,9 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		outputUnique:  make(map[string]struct{}),
 	}
 
+	// Extract template ID from provided data map
+	templateID := data["template-id"].(string)
+
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
 		var extractorResults []string
@@ -237,10 +241,12 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {
+		matcherName := getMatcherName(matcher, matcherIndex)
+
 		if isMatch, matched := match(data, matcher); isMatch {
 			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
-				matcherName := getMatcherName(matcher, matcherIndex)
 				result.Matches[matcherName] = matched
+				gologger.Debug().Msgf("[%s:%s] %v Matched ✔", templateID, matcherName, matched)
 			} else { // if it's a "named" matcher with OR condition, then display it
 				if matcherCondition == matchers.ORCondition && matcher.Name != "" {
 					result.Matches[matcher.Name] = matched
@@ -250,6 +256,9 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		} else if matcherCondition == matchers.ANDCondition {
 			if len(result.DynamicValues) > 0 {
 				return result, true
+			}
+			if isDebug {
+				gologger.Debug().Msgf("[%s:%s] Not Matched ❌", templateID, matcherName)
 			}
 			return nil, false
 		}

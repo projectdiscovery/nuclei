@@ -109,7 +109,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	for k, v := range vars {
 		outputEvent[k] = v
 	}
-	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse)
 	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request, request.options, response.String(), domain)
