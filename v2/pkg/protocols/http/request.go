@@ -455,7 +455,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
-		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil {
+		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
