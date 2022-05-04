@@ -119,6 +119,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		bodyBytes, _ := req.request.BodyBytes()
 		var dumpBody bool
 		if len(bodyBytes) > 0 {
+			dumpBody = true
 			req.request.Request.ContentLength = int64(len(bodyBytes))
 			req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		} else {
