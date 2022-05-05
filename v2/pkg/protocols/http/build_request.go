@@ -32,6 +32,8 @@ var (
 	urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 )
 
+const notEvalHelperExp = "could not evaluate helper expressions"
+
 // generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
 	original        *Request
@@ -206,12 +208,12 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	var err error
 	data, err = expressions.Evaluate(data, finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, notEvalHelperExp)
 	}
 
 	method, err := expressions.Evaluate(r.request.Method.String(), finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, notEvalHelperExp)
 	}
 
 	// Build a request on the specified URL
@@ -245,7 +247,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	var err error
 	rawRequest, err = expressions.Evaluate(rawRequest, finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, notEvalHelperExp)
 	}
 	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
@@ -302,7 +304,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+			return nil, errors.Wrap(err, notEvalHelperExp)
 		}
 		req.Header[header] = []string{value}
 		if header == "Host" {
@@ -323,7 +325,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+			return nil, errors.Wrap(err, notEvalHelperExp)
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}

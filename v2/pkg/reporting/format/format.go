@@ -13,6 +13,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
+ 
+const regExp = "\n```\n"
 
 // Summary returns a formatted built one line summary of the event
 func Summary(event *output.ResultEvent) string {
@@ -55,7 +57,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
 		builder.WriteString(types.ToHexOrString(event.Request))
-		builder.WriteString("\n```\n")
+		builder.WriteString(regExp)
 	}
 	if event.Response != "" {
 		builder.WriteString("\n**Response**\n\n```http\n")
@@ -66,7 +68,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 		} else {
 			builder.WriteString(event.Response)
 		}
-		builder.WriteString("\n```\n")
+		builder.WriteString(regExp)
 	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
@@ -109,12 +111,12 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 		if event.Interaction.RawRequest != "" {
 			builder.WriteString("\n\n**Interaction Request**\n\n```\n")
 			builder.WriteString(event.Interaction.RawRequest)
-			builder.WriteString("\n```\n")
+			builder.WriteString(regExp)
 		}
 		if event.Interaction.RawResponse != "" {
 			builder.WriteString("\n**Interaction Response**\n\n```\n")
 			builder.WriteString(event.Interaction.RawResponse)
-			builder.WriteString("\n```\n")
+			builder.WriteString(regExp)
 		}
 	}
 

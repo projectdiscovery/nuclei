@@ -18,6 +18,15 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
+var (
+	errInvalidArguments = errors.New("invalid arguments provided")
+)
+
+const (
+	couldNotGetElement = "could not get element"
+	couldNotScroll     = "could not scroll into view"
+)
+
 // ExecuteActions executes a list of actions on a page.
 func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]string, error) {
 	var err error
@@ -243,7 +252,7 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string /*TODO review 
 func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL /*TODO review unused parameter*/) error {
 	URL := p.getActionArgWithDefaultValues(action, "url")
 	if URL == "" {
-		return errors.New("invalid arguments provided")
+		return errInvalidArguments
 	}
 
 	// Handle the dynamic value substitution here.
@@ -267,7 +276,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.UR
 func (p *Page) RunScript(action *Action, out map[string]string) error {
 	code := p.getActionArgWithDefaultValues(action, "code")
 	if code == "" {
-		return errors.New("invalid arguments provided")
+		return errInvalidArguments
 	}
 	if p.getActionArgWithDefaultValues(action, "hook") == "true" {
 		if _, err := p.page.EvalOnNewDocument(code); err != nil {
@@ -288,10 +297,10 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 func (p *Page) ClickElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	if err = element.Click(proto.InputMouseButtonLeft); err != nil {
 		return errors.Wrap(err, "could not click element")
@@ -308,10 +317,10 @@ func (p *Page) KeyboardAction(act *Action, out map[string]string /*TODO review u
 func (p *Page) RightClickElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	if err = element.Click(proto.InputMouseButtonRight); err != nil {
 		return errors.Wrap(err, "could not right click element")
@@ -349,14 +358,14 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 func (p *Page) InputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
-		return errors.New("invalid arguments provided")
+		return errInvalidArguments
 	}
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	if err = element.Input(value); err != nil {
 		return errors.Wrap(err, "could not input element")
@@ -368,14 +377,14 @@ func (p *Page) InputElement(act *Action, out map[string]string /*TODO review unu
 func (p *Page) TimeInputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
-		return errors.New("invalid arguments provided")
+		return errInvalidArguments
 	}
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	t, err := time.Parse(time.RFC3339, value)
 	if err != nil {
@@ -391,14 +400,14 @@ func (p *Page) TimeInputElement(act *Action, out map[string]string /*TODO review
 func (p *Page) SelectInputElement(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
-		return errors.New("invalid arguments provided")
+		return errInvalidArguments
 	}
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 
 	selectedBool := false
@@ -430,7 +439,7 @@ func (p *Page) WaitLoad(act *Action, out map[string]string /*TODO review unused 
 func (p *Page) GetResource(act *Action, out map[string]string) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	resource, err := element.Resource()
 	if err != nil {
@@ -446,10 +455,10 @@ func (p *Page) GetResource(act *Action, out map[string]string) error {
 func (p *Page) FilesInput(act *Action, out map[string]string /*TODO review unused parameter*/) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	value := p.getActionArgWithDefaultValues(act, "value")
 	filesPaths := strings.Split(value, ",")
@@ -463,10 +472,10 @@ func (p *Page) FilesInput(act *Action, out map[string]string /*TODO review unuse
 func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
-		return errors.Wrap(err, "could not get element")
+		return errors.Wrap(err, couldNotGetElement)
 	}
 	if err = element.ScrollIntoView(); err != nil {
-		return errors.Wrap(err, "could not scroll into view")
+		return errors.Wrap(err, couldNotScroll)
 	}
 	switch p.getActionArgWithDefaultValues(act, "target") {
 	case "attribute":

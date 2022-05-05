@@ -46,6 +46,8 @@ type Options struct {
 	HttpClient      *retryablehttp.Client
 }
 
+const coderegex = "\n{code}\n"
+
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
 	username := options.Email
@@ -187,7 +189,7 @@ func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove th
 
 	builder.WriteString("\n*Request*\n\n{code}\n")
 	builder.WriteString(event.Request)
-	builder.WriteString("\n{code}\n")
+	builder.WriteString(coderegex)
 
 	builder.WriteString("\n*Response*\n\n{code}\n")
 	// If the response is larger than 5 kb, truncate it before writing.
@@ -238,12 +240,12 @@ func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove th
 		if event.Interaction.RawRequest != "" {
 			builder.WriteString("\n\n*Interaction Request*\n\n{code}\n")
 			builder.WriteString(event.Interaction.RawRequest)
-			builder.WriteString("\n{code}\n")
+			builder.WriteString(coderegex)
 		}
 		if event.Interaction.RawResponse != "" {
 			builder.WriteString("\n*Interaction Response*\n\n{code}\n")
 			builder.WriteString(event.Interaction.RawResponse)
-			builder.WriteString("\n{code}\n")
+			builder.WriteString(coderegex)
 		}
 	}
 
