@@ -93,7 +93,7 @@ func TestActionClick(t *testing.T) {
 		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
 	}
 
-	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
+	testHeadlessSimpleResponse(t, response, actions, 60*time.Second, func(page *Page, err error, out map[string]string) {
 		require.Nil(t, err, "could not run page actions")
 		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
 		el := page.Page().MustElement("button")
