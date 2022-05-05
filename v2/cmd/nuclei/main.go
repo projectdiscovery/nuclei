@@ -11,10 +11,10 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
-	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/runner"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
