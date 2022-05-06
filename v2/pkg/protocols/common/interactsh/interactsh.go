@@ -57,8 +57,8 @@ var (
 )
 
 const (
-	stopAtFirstMatch = "stop-at-first-match"
-	templateId = "template-id"
+	stopAtFirstMatchAttribute = "stop-at-first-match"
+	templateIdAttribute = "template-id"
 )
 
 // Options contains configuration options for interactsh nuclei integration.
@@ -184,8 +184,8 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent[stopAtFirstMatch]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateId].(string), request.Event.InternalEvent["host"].(string)))
+		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateIdAttribute].(string), request.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				return
 			}
@@ -225,8 +225,8 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
-		if _, ok := data.Event.InternalEvent[stopAtFirstMatch]; ok || c.options.StopAtFirstMatch {
-			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateId].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -323,8 +323,8 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
-		if _, ok := data.Event.InternalEvent[stopAtFirstMatch]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent[templateId].(string), data.Event.InternalEvent["host"].(string)))
+		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				break
 			}
