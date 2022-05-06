@@ -163,6 +163,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		followRedirects = true
 		maxRedirects = forceMaxRedirects
 	}
+	if options.DisableRedirects {
+		options.FollowRedirects = false
+		followRedirects = false
+		maxRedirects = 0
+	}
 	// override connection's settings if required
 	if configuration.Connection != nil {
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
