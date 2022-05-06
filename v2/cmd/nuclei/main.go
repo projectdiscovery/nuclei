@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 )
 
 var (
@@ -25,6 +26,9 @@ var (
 )
 
 func main() {
+	cancel := monitor.NewStackMonitor(10 * time.Second)
+	defer cancel()
+
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
