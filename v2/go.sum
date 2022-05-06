@@ -101,6 +101,7 @@ github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 h1:GKTyiRCL6zVf5wWaq
 github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8/go.mod h1:spo1JLcs67NmW1aVLEgtA8Yy1elc+X8y5SRW1sFW4Og=
 github.com/c4milo/unpackit v0.1.0 h1:91pWJ6B3svZ4LOE+p3rnyucRK5fZwBdF/yQ/pcZO31I=
 github.com/c4milo/unpackit v0.1.0/go.mod h1:pvXCMYlSV8zwGFWMaT+PWYkAB/cvDjN2mv9r7ZRSxEo=
+github.com/caddyserver/certmagic v0.16.0/go.mod h1:jKQ5n+ViHAr6DbPwEGLTSM2vDwTO6EvCKBblBRUvvuQ=
 github.com/caddyserver/certmagic v0.16.1 h1:rdSnjcUVJojmL4M0efJ+yHXErrrijS4YYg3FuwRdJkI=
 github.com/caddyserver/certmagic v0.16.1/go.mod h1:jKQ5n+ViHAr6DbPwEGLTSM2vDwTO6EvCKBblBRUvvuQ=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -320,6 +321,7 @@ github.com/karrick/godirwalk v1.16.1 h1:DynhcF+bztK8gooS0+NDJFrdNZjJ3gzVzC545UNA
 github.com/karrick/godirwalk v1.16.1/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
+github.com/klauspost/compress v1.15.1/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.15.2 h1:3WH+AG7s2+T8o3nrM/8u2rdqUEcQhmga7smjrT41nAw=
 github.com/klauspost/compress v1.15.2/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
 github.com/klauspost/cpuid v1.2.0 h1:NMpwD2G9JSFOE1/TJjGSo5zG7Yb2bTe7eq1jH+irmeE=
@@ -454,8 +456,8 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v1.0.2-0.20220506105651-94a010bbdcc4 h1:JIDZY8FMqMmTLYND7C+fObH9er6C97y/jyHbECEWY00=
-github.com/projectdiscovery/interactsh v1.0.2-0.20220506105651-94a010bbdcc4/go.mod h1:XRYkQWbbbgsl939GCmg4EGvCKmNB/LJgipgpJzKXngU=
+github.com/projectdiscovery/interactsh v1.0.3 h1:QFL/fFTfvhLeIRFBSguWP8r6h8vf65Bhkf8wzKU2/qQ=
+github.com/projectdiscovery/interactsh v1.0.3/go.mod h1:3943djLJ4SZBZfJ7A2XEy8xspfFmT0BDiN9FCW7PAXY=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
 github.com/projectdiscovery/iputil v0.0.0-20210414194613-4b4d2517acf0/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
 github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
