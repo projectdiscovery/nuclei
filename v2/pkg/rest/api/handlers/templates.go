@@ -42,7 +42,7 @@ func (s *Server) getTemplates(ctx echo.Context) error {
 	page, size := paginationDataFromContext(ctx)
 
 	rows, err := s.db.GetTemplates(context.Background(), dbsql.GetTemplatesParams{
-		SqlOffset: page,
+		SqlOffset: page * size,
 		SqlLimit:  size,
 	})
 	if err != nil {
