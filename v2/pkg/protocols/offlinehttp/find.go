@@ -1,13 +1,12 @@
 package offlinehttp
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
-	pderrors "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/errors"
 )
 
 // getInputPaths parses the specified input paths and returns a compiled
@@ -35,7 +34,7 @@ func (request *Request) getInputPaths(target string, callback func(string)) erro
 
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
-	if err := request.findDirectoryMatches(target, processed, callback); pderrors.IsFileErrFatal(err) {
+	if err := request.findDirectoryMatches(target, processed, callback); err != nil {
 		return errors.Wrap(err, "could not find directory matches")
 	}
 	return nil
@@ -81,12 +80,13 @@ func (request *Request) findFileMatches(absPath string, processed map[string]str
 
 // findDirectoryMatches finds matches for templates from a directory
 func (request *Request) findDirectoryMatches(absPath string, processed map[string]struct{}, callback func(string)) error {
-	err := godirwalk.Walk(absPath, &godirwalk.Options{
-		Unsorted: true,
-		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
-			return godirwalk.SkipNode
-		},
-		Callback: func(p string, d *godirwalk.Dirent) error {
+	err := filepath.WalkDir(
+		absPath,
+		func(p string, d fs.DirEntry, err error) error {
+			// continue on errors
+			if err != nil {
+				return nil
+			}
 			if d.IsDir() {
 				return nil
 			}
@@ -99,6 +99,6 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 			}
 			return nil
 		},
-	})
+	)
 	return err
 }

@@ -1,15 +1,14 @@
 package catalog
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
-	pderrors "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/errors"
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
@@ -78,7 +77,7 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
 	matches, err := c.findDirectoryMatches(absPath, processed)
-	if pderrors.IsFileErrFatal(err) {
+	if err != nil {
 		return nil, errors.Wrap(err, "could not find directory matches")
 	}
 	if len(matches) == 0 {
@@ -137,12 +136,13 @@ func (c *Catalog) findFileMatches(absPath string, processed map[string]struct{})
 // findDirectoryMatches finds matches for templates from a directory
 func (c *Catalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	var results []string
-	err := godirwalk.Walk(absPath, &godirwalk.Options{
-		Unsorted: true,
-		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
-			return godirwalk.SkipNode
-		},
-		Callback: func(path string, d *godirwalk.Dirent) error {
+	err := filepath.WalkDir(
+		absPath,
+		func(path string, d fs.DirEntry, err error) error {
+			// continue on errors
+			if err != nil {
+				return nil
+			}
 			if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 				if _, ok := processed[path]; !ok {
 					results = append(results, path)
@@ -151,6 +151,6 @@ func (c *Catalog) findDirectoryMatches(absPath string, processed map[string]stru
 			}
 			return nil
 		},
-	})
+	)
 	return results, err
 }
