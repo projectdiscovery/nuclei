@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
+	pderrors "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/errors"
 )
 
 // getInputPaths parses the specified input paths and returns a compiled
@@ -21,7 +22,7 @@ func (request *Request) getInputPaths(target string, callback func(string)) erro
 
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") && !request.NoRecursive {
-		if err := request.findGlobPathMatches(target, processed, callback); isFatalErr(err) {
+		if err := request.findGlobPathMatches(target, processed, callback); pderrors.IsFileErrFatal(err) {
 			return errors.Wrap(err, "could not find glob matches")
 		}
 		return nil
@@ -29,7 +30,7 @@ func (request *Request) getInputPaths(target string, callback func(string)) erro
 
 	// Template input is either a file or a directory
 	file, err := request.findFileMatches(target, processed, callback)
-	if isFatalErr(err) {
+	if pderrors.IsFileErrFatal(err) {
 		return errors.Wrap(err, "could not find file")
 	}
 	if file {
@@ -40,7 +41,7 @@ func (request *Request) getInputPaths(target string, callback func(string)) erro
 	}
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
-	if err := request.findDirectoryMatches(target, processed, callback); isFatalErr(err) {
+	if err := request.findDirectoryMatches(target, processed, callback); pderrors.IsFileErrFatal(err) {
 		return errors.Wrap(err, "could not find directory matches")
 	}
 	return nil

@@ -7,6 +7,7 @@ import (
 
 	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
+	pderrors "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/errors"
 )
 
 // getInputPaths parses the specified input paths and returns a compiled
@@ -34,7 +35,7 @@ func (request *Request) getInputPaths(target string, callback func(string)) erro
 
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
-	if err := request.findDirectoryMatches(target, processed, callback); err != nil {
+	if err := request.findDirectoryMatches(target, processed, callback); pderrors.IsFileErrFatal(err) {
 		return errors.Wrap(err, "could not find directory matches")
 	}
 	return nil

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	pderrors "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/errors"
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
@@ -77,7 +78,7 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 	// Recursively walk down the Templates directory and run all
 	// the template file checks
 	matches, err := c.findDirectoryMatches(absPath, processed)
-	if err != nil {
+	if pderrors.IsFileErrFatal(err) {
 		return nil, errors.Wrap(err, "could not find directory matches")
 	}
 	if len(matches) == 0 {
