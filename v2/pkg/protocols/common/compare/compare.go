@@ -1,6 +1,8 @@
 package compare
 
-import "strings"
+import (
+	"strings"
+)
 
 // StringSlice compares two string slices for equality
 func StringSlice(a, b []string) bool {
