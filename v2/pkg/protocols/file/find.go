@@ -2,11 +2,11 @@ package file
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/folderutil"
@@ -86,12 +86,13 @@ func (request *Request) findFileMatches(absPath string, processed map[string]str
 
 // findDirectoryMatches finds matches for templates from a directory
 func (request *Request) findDirectoryMatches(absPath string, processed map[string]struct{}, callback func(string)) error {
-	err := godirwalk.Walk(absPath, &godirwalk.Options{
-		Unsorted: true,
-		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
-			return godirwalk.SkipNode
-		},
-		Callback: func(path string, d *godirwalk.Dirent) error {
+	err := filepath.WalkDir(
+		absPath,
+		func(path string, d fs.DirEntry, err error) error {
+			// continue on errors
+			if err != nil {
+				return nil
+			}
 			if d.IsDir() {
 				return nil
 			}
@@ -104,7 +105,7 @@ func (request *Request) findDirectoryMatches(absPath string, processed map[strin
 			}
 			return nil
 		},
-	})
+	)
 	return err
 }
 
