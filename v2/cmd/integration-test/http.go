@@ -21,6 +21,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
+	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
@@ -158,6 +159,28 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type httpDisableRedirects struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDisableRedirects) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusMovedPermanently)
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test redirects matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-dr")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 0)
 }
 
 type httpGet struct{}

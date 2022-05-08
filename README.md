@@ -138,6 +138,7 @@ CONFIGURATIONS:
    -config string              path to the nuclei configuration file
    -fr, -follow-redirects      enable following redirects for http templates
    -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
+   -dr, -disable-redirects     disable redirects for http templates
    -rc, -report-config string  nuclei reporting module configuration file
    -H, -header string[]        custom header/cookie to include in all http request in header:value format (cli, file)
    -V, -var value              custom vars in key=value format

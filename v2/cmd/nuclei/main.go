@@ -135,6 +135,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
+		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
 		flagSet.FileStringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom header/cookie to include in all http request in header:value format (cli, file)"),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in key=value format"),
@@ -234,17 +235,19 @@ on extensive configurability, massive extensibility and ease of use.`)
 	}
 	cleanupOldResumeFiles()
 }
+
 func cleanupOldResumeFiles() {
 	root, err := config.GetConfigDir()
 	if err != nil {
 		return
 	}
 	filter := fileutil.FileFilters{
-		OlderThan: 24*time.Hour*10, // cleanup on the 10th day
+		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
 	}
-	_=fileutil.DeleteFilesOlderThan(root, filter)
+	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
+
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
 	for _, currentFlag := range flags {
