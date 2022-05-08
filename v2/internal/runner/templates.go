@@ -1,10 +1,10 @@
 package runner
 
 import (
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
-
-	"github.com/karrick/godirwalk"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -40,9 +40,13 @@ func (r *Runner) listAvailableTemplates() {
 		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	err := directoryWalker(
+	err := filepath.WalkDir(
 		r.templatesConfig.TemplatesDirectory,
-		func(path string, d *godirwalk.Dirent) error {
+		func(path string, d fs.DirEntry, err error) error {
+			// continue on errors
+			if err != nil {
+				return nil
+			}
 			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
 				gologger.Print().Msgf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(d.Name())).String())
 			} else if strings.HasSuffix(path, ".yaml") {
@@ -55,14 +59,4 @@ func (r *Runner) listAvailableTemplates() {
 	if err != nil {
 		gologger.Error().Msgf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
 	}
-}
-
-func directoryWalker(fsPath string, callback func(fsPath string, d *godirwalk.Dirent) error) error {
-	return godirwalk.Walk(fsPath, &godirwalk.Options{
-		Callback: callback,
-		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
-			return godirwalk.SkipNode
-		},
-		Unsorted: true,
-	})
 }
