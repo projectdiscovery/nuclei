@@ -171,7 +171,7 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
 	normalized := make(map[string]struct{})
 	for k := range fingerprints {
-		normalized[strings.ToLower(k)] = struct{}{}
+		normalized[normalizeAppName(k)] = struct{}{}
 	}
 
 	if s.opts.Options.Verbose {
@@ -213,6 +213,15 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		}
 		s.childExecuter.Execute(t, input)
 	}
+}
+
+func normalizeAppName(appName string) string {
+	if strings.Contains(appName, ":") {
+		if parts := strings.Split(appName, ":"); len(parts) == 2 {
+			appName = parts[0]
+		}
+	}
+	return strings.ToLower(appName)
 }
 
 func uniqueSlice(slice []string) []string {
