@@ -63,6 +63,7 @@ func New(option *Options) (*Exporter, error) {
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 10,
 				DialContext:         protocolstate.Dialer.Dial,
+				DialTLSContext:      protocolstate.Dialer.DialTLS,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
 			},
 		}

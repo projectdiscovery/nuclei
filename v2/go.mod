@@ -27,7 +27,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/cryptoutil v1.0.0
-	github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47
+	github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20220427234316-40b2541a84b8
 	github.com/projectdiscovery/goflags v0.0.8-0.20220412061559-5119d6086323

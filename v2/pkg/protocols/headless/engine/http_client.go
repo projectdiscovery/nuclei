@@ -37,6 +37,7 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
+		DialTLSContext:      dialer.DialTLS,
 		MaxIdleConns:        500,
 		MaxIdleConnsPerHost: 500,
 		MaxConnsPerHost:     500,
