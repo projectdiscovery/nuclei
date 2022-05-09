@@ -86,8 +86,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.7 h1:LpCM8Fpw/L58vgdve6A+UqJr8dzo6Xj7HX7DIIGHg2A=
-github.com/aws/aws-sdk-go v1.44.7/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.9 h1:s3lsEFbc8i7ghQmcEpcdyvoO/WMwyCVa9pUq3Lq//Ok=
+github.com/aws/aws-sdk-go v1.44.9/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -103,7 +103,6 @@ github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 h1:GKTyiRCL6zVf5wWaq
 github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8/go.mod h1:spo1JLcs67NmW1aVLEgtA8Yy1elc+X8y5SRW1sFW4Og=
 github.com/c4milo/unpackit v0.1.0 h1:91pWJ6B3svZ4LOE+p3rnyucRK5fZwBdF/yQ/pcZO31I=
 github.com/c4milo/unpackit v0.1.0/go.mod h1:pvXCMYlSV8zwGFWMaT+PWYkAB/cvDjN2mv9r7ZRSxEo=
-github.com/caddyserver/certmagic v0.16.0/go.mod h1:jKQ5n+ViHAr6DbPwEGLTSM2vDwTO6EvCKBblBRUvvuQ=
 github.com/caddyserver/certmagic v0.16.1 h1:rdSnjcUVJojmL4M0efJ+yHXErrrijS4YYg3FuwRdJkI=
 github.com/caddyserver/certmagic v0.16.1/go.mod h1:jKQ5n+ViHAr6DbPwEGLTSM2vDwTO6EvCKBblBRUvvuQ=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -324,7 +323,6 @@ github.com/karrick/godirwalk v1.17.0 h1:b4kY7nqDdioR/6qnbHQyDvmA17u5G1cZ6J+CZXwS
 github.com/karrick/godirwalk v1.17.0/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
-github.com/klauspost/compress v1.15.1/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
 github.com/klauspost/compress v1.15.2 h1:3WH+AG7s2+T8o3nrM/8u2rdqUEcQhmga7smjrT41nAw=
 github.com/klauspost/compress v1.15.2/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
 github.com/klauspost/cpuid v1.2.0 h1:NMpwD2G9JSFOE1/TJjGSo5zG7Yb2bTe7eq1jH+irmeE=
@@ -459,8 +457,6 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v1.0.3 h1:QFL/fFTfvhLeIRFBSguWP8r6h8vf65Bhkf8wzKU2/qQ=
-github.com/projectdiscovery/interactsh v1.0.3/go.mod h1:3943djLJ4SZBZfJ7A2XEy8xspfFmT0BDiN9FCW7PAXY=
 github.com/projectdiscovery/interactsh v1.0.4 h1:73HHOeqGduU1lkIqeYkuEfzdejXRqxQJFZCEbQ1uvkU=
 github.com/projectdiscovery/interactsh v1.0.4/go.mod h1:57Xl3Q59aTb8VaFNGkCPO8pWTyTYhlM33p+HDhL8Ygw=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
@@ -490,8 +486,6 @@ github.com/projectdiscovery/retryabledns v1.0.13 h1:Ogfv0fl3Nszb+Nq2S2qQmE+PJDlS
 github.com/projectdiscovery/retryabledns v1.0.13/go.mod h1:EeqHcAPp0g2GljT4qkxKSAE47Dj0ZrJQ46R9ct3Muhk=
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
-github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220414143248-bb6eabffa43e h1:ohoSKR8w4GzGjmOaqdCa8pvHm3qbAyv489skpyrkCX0=
-github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220414143248-bb6eabffa43e/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
 github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d h1:wIQPYRZEwTeJuoZLv3NT9r+il2fAv1ObRzTdHkNgOxk=
