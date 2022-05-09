@@ -149,6 +149,7 @@ CONFIGURATIONS:
    -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
    -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+   -show-match-line            show match lines for file templates
    -ztls                       Use ztls library with autofallback to standard one for tls13
 
 INTERACTSH:
