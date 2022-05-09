@@ -47,6 +47,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/race-multiple.yaml":                       &httpRaceMultiple{},
 	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
 	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
+	"http/variables.yaml":                           &httpVariables{},
 	"http/get-sni.yaml":                             &customCLISNI{},
 }
 
@@ -818,9 +819,9 @@ func (h *customCLISNI) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if r.TLS.ServerName == "test" {
-			w.Write([]byte("test-ok"))
+			_, _ = w.Write([]byte("test-ok"))
 		} else {
-			w.Write([]byte("test-ko"))
+			_, _ = w.Write([]byte("test-ko"))
 		}
 	})
 	ts := httptest.NewTLSServer(router)
