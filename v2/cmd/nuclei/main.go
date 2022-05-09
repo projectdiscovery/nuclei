@@ -235,6 +235,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	}
 	cleanupOldResumeFiles()
 }
+
 func cleanupOldResumeFiles() {
 	root, err := config.GetConfigDir()
 	if err != nil {
@@ -246,6 +247,7 @@ func cleanupOldResumeFiles() {
 	}
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
+
 func createGroup(flagSet *goflags.FlagSet, groupName, description string, flags ...*goflags.FlagData) {
 	flagSet.SetGroup(groupName, description)
 	for _, currentFlag := range flags {

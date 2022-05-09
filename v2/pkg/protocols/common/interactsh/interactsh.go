@@ -150,7 +150,6 @@ func (c *Client) firstTimeInitializeClient() error {
 	interactsh, err := client.New(&client.Options{
 		ServerURL:           c.options.ServerURL,
 		Token:               c.options.Authorization,
-		PersistentSession:   false,
 		DisableHTTPFallback: c.options.DisableHttpFallback,
 		HTTPClient:          c.options.HTTPClient,
 	})
