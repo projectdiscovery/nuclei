@@ -22,7 +22,7 @@ type AwsSignerArgs struct {
 	AwsSecretToken string
 }
 
-var errCredentialStruct = errors.New("couldn't create the credentials structure")
+var credentialCreationError = errors.New("couldn't create the credentials structure")
 
 func (awsSignerArgs AwsSignerArgs) Validate() error {
 	if awsSignerArgs.AwsId == "" {
@@ -58,7 +58,7 @@ func NewAwsSigner(args AwsSignerArgs) (*AwsSigner, error) {
 	}
 	creds := credentials.NewStaticCredentials(args.AwsId, args.AwsSecretToken, "")
 	if creds == nil {
-		return nil, errCredentialStruct
+		return nil, credentialCreationError
 	}
 	signer := v4.NewSigner(creds)
 	return &AwsSigner{creds: creds, signer: signer}, nil
@@ -67,7 +67,7 @@ func NewAwsSigner(args AwsSignerArgs) (*AwsSigner, error) {
 func NewAwsSignerFromEnv() (*AwsSigner, error) {
 	creds := credentials.NewEnvCredentials()
 	if creds == nil {
-		return nil, errCredentialStruct
+		return nil, credentialCreationError
 	}
 	signer := v4.NewSigner(creds)
 	return &AwsSigner{creds: creds, signer: signer}, nil
@@ -76,7 +76,7 @@ func NewAwsSignerFromEnv() (*AwsSigner, error) {
 func NewAwsSignerFromFile() (*AwsSigner, error) {
 	creds := credentials.NewSharedCredentials("", "")
 	if creds == nil {
-		return nil, errCredentialStruct
+		return nil, credentialCreationError
 	}
 	signer := v4.NewSigner(creds)
 	return &AwsSigner{creds: creds, signer: signer}, nil

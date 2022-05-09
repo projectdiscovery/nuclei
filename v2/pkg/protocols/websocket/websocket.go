@@ -87,8 +87,8 @@ type Input struct {
 }
 
 const (
-	couldNotParseUrl = "could not parse input url"
-	couldNotEvalTempExp = "could not evaluate template expressions"
+	parseUrlErrorMessage = "could not parse input url"
+	evaluateTemplateExpressionErrorMessage = "could not evaluate template expressions"
 )
 
 // Compile compiles the request generators preparing any requests possible.
@@ -169,7 +169,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 	parsed, err := url.Parse(input)
 	if err != nil {
-		return errors.Wrap(err, couldNotParseUrl)
+		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	payloadValues["Hostname"] = parsed.Host
 	payloadValues["Host"] = parsed.Hostname()
@@ -186,7 +186,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(dataErr, couldNotEvalTempExp)
+			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		header.Set(key, string(finalData))
 	}
@@ -201,7 +201,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(dataErr, couldNotEvalTempExp)
+		return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 	}
 
 	addressToDial := string(finalAddress)
@@ -209,7 +209,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, couldNotParseUrl)
+		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
 	addressToDial = parsedAddress.String()
@@ -284,7 +284,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return nil, "", errors.Wrap(dataErr, couldNotEvalTempExp)
+			return nil, "", errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		reqBuilder.WriteString(string(finalData))
 
@@ -328,7 +328,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 func getAddress(toTest string) (string, error) {
 	parsed, err := url.Parse(toTest)
 	if err != nil {
-		return "", errors.Wrap(err, couldNotParseUrl)
+		return "", errors.Wrap(err, parseUrlErrorMessage)
 	}
 	scheme := strings.ToLower(parsed.Scheme)
 
