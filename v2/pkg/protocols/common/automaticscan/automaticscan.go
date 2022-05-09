@@ -67,6 +67,8 @@ func New(opts Options) (*Service, error) {
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
+	defaultTemplatesDirectories := []string{"nuclei-templates/"}
+
 	// adding custom template path if available
 	if len(opts.ExecuterOpts.Options.Templates) > 0 {
 		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
@@ -117,10 +119,6 @@ func (s *Service) Execute() {
 		gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)
 	}
 }
-
-var (
-	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
-)
 
 const maxDefaultBody = 2 * 1024 * 1024
 
