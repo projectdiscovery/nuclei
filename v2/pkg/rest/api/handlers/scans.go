@@ -199,7 +199,7 @@ func (s *Server) GetScanMatches(ctx echo.Context) error {
 
 	rows, err := s.db.GetIssuesMatches(context.Background(), dbsql.GetIssuesMatchesParams{
 		Scanid:    id,
-		SqlOffset: page,
+		SqlOffset: page * size,
 		SqlLimit:  size,
 	})
 	if err != nil {

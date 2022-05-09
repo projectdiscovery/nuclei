@@ -72,7 +72,7 @@ func (s *Server) GetIssues(ctx echo.Context) error {
 	page, size := paginationDataFromContext(ctx)
 
 	response, err := s.db.GetIssues(context.Background(), dbsql.GetIssuesParams{
-		SqlOffset: page,
+		SqlOffset: page * size,
 		SqlLimit:  size,
 	})
 	if err != nil {

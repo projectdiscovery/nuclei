@@ -37,7 +37,7 @@ func (s *Server) getTargets(ctx echo.Context) error {
 	page, size := paginationDataFromContext(ctx)
 
 	targets, err := s.db.GetTargets(context.Background(), dbsql.GetTargetsParams{
-		SqlOffset: page,
+		SqlOffset: page * size,
 		SqlLimit:  size,
 	})
 	if err != nil {

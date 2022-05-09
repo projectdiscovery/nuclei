@@ -54,7 +54,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.Request != "" {
 		builder.WriteString("\n**Request**\n\n```http\n")
-		builder.WriteString(event.Request)
+		builder.WriteString(types.ToHexOrString(event.Request))
 		builder.WriteString("\n```\n")
 	}
 	if event.Response != "" {
@@ -135,7 +135,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.CURLCommand != "" {
 		builder.WriteString("\n**CURL Command**\n```\n")
-		builder.WriteString(event.CURLCommand)
+		builder.WriteString(types.ToHexOrString(event.CURLCommand))
 		builder.WriteString("\n```")
 	}
 
@@ -181,9 +181,12 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	builder := &bytes.Buffer{}
 
 	toMarkDownTable := func(insertionOrderedStringMap *utils.InsertionOrderedStringMap) {
-		insertionOrderedStringMap.ForEach(func(key string, value string) {
-			if utils.IsNotBlank(value) {
-				builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+		insertionOrderedStringMap.ForEach(func(key string, value interface{}) {
+			switch value := value.(type) {
+			case string:
+				if utils.IsNotBlank(value) {
+					builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+				}
 			}
 		})
 	}

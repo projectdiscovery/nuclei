@@ -1,9 +1,11 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
+	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fileutil"
@@ -139,6 +141,10 @@ type Request struct {
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
 	// description: |
+	//   Enables force reading of the entire raw unsafe request body ignoring
+	//   any specified content length headers.
+	ForceReadAllBody bool `yaml:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
+	// description: |
 	//   Redirects specifies whether redirects should be followed by the HTTP Client.
 	//
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
@@ -173,6 +179,11 @@ type Request struct {
 	// description: |
 	//   IterateAll iterates all the values extracted from internal extractors
 	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
+}
+
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -282,6 +293,25 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			}
 			request.Payloads[name] = payloadStr
 		}
+	}
+
+	// tries to drop unused payloads - by marshaling sections that might contain the payload
+	unusedPayloads := make(map[string]struct{})
+	requestSectionsToCheck := []interface{}{
+		request.customHeaders, request.Headers, request.Matchers,
+		request.Extractors, request.Body, request.Path, request.Raw,
+	}
+	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
+		for payload := range request.Payloads {
+			if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
+				continue
+			}
+			unusedPayloads[payload] = struct{}{}
+		}
+	}
+
+	for payload := range unusedPayloads {
+		delete(request.Payloads, payload)
 	}
 
 	if len(request.Payloads) > 0 {
