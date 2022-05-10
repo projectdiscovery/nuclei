@@ -120,6 +120,9 @@ func (s *Server) UpdateTemplate(ctx echo.Context) error {
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
 	}
+	if _, err := templates.Parse(strings.NewReader(body.Contents), "", nil, *testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{})); err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse template").Error())
+	}
 	err := s.db.UpdateTemplate(context.Background(), dbsql.UpdateTemplateParams{
 		Contents:  body.Contents,
 		Updatedat: time.Now(),
@@ -143,6 +146,9 @@ func (s *Server) AddTemplate(ctx echo.Context) error {
 	var body AddTemplateRequest
 	if err := jsoniter.NewDecoder(ctx.Request().Body).Decode(&body); err != nil {
 		return echo.NewHTTPError(400, errors.Wrap(err, "could not unmarshal body").Error())
+	}
+	if _, err := templates.Parse(strings.NewReader(body.Contents), "", nil, *testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{})); err != nil {
+		return echo.NewHTTPError(400, errors.Wrap(err, "could not parse template").Error())
 	}
 	id, err := s.db.AddTemplate(context.Background(), dbsql.AddTemplateParams{
 		Contents: body.Contents,
