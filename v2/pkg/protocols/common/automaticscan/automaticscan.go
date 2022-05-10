@@ -67,7 +67,7 @@ func New(opts Options) (*Service, error) {
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
-	defaultTemplatesDirectories := []string{"nuclei-templates/"}
+	defaultTemplatesDirectories := []string{config.TemplatesDirectory}
 
 	// adding custom template path if available
 	if len(opts.ExecuterOpts.Options.Templates) > 0 {
