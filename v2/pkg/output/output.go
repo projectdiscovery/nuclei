@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,6 +49,7 @@ type StandardWriter struct {
 	noTimestamp      bool
 	noMetadata       bool
 	matcherStatus    bool
+	mutex            *sync.Mutex
 	aurora           aurora.Aurora
 	outputFile       io.WriteCloser
 	traceFile        io.WriteCloser
@@ -161,6 +163,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		matcherStatus:    MatcherStatus,
 		noTimestamp:      noTimestamp,
 		aurora:           auroraColorizer,
+		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
@@ -193,6 +196,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if len(data) == 0 {
 		return nil
 	}
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
 
