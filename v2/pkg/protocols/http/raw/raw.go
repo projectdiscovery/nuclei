@@ -130,6 +130,9 @@ read_line:
 			rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 		}
 		rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+		if parsedURL.RawQuery != "" {
+			rawRequest.FullURL = fmt.Sprintf("%s?%s", rawRequest.FullURL, parsedURL.RawQuery)
+		}
 
 		// If raw request doesn't have a Host header and isn't marked unsafe,
 		// this will generate the Host header from the parsed baseURL
