@@ -185,11 +185,15 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		}
 		header.Set(key, string(finalData))
 	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	if requestOptions.Options.SNI != "" {
+		tlsConfig.ServerName = requestOptions.Options.SNI
+	}
 	websocketDialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(header),
 		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
 		NetDial:   request.dialer.Dial,
-		TLSConfig: &tls.Config{InsecureSkipVerify: true, ServerName: hostname},
+		TLSConfig: tlsConfig,
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
