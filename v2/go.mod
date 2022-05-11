@@ -21,7 +21,7 @@ require (
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.48
+	github.com/miekg/dns v1.1.49
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/owenrumney/go-sarif v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -50,7 +50,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.64.0
+	github.com/xanzy/go-gitlab v0.65.0
 	github.com/ysmood/gson v0.7.1 // indirect
 	github.com/ysmood/leakless v0.7.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.8
+require github.com/aws/aws-sdk-go v1.44.9
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
