@@ -179,6 +179,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		InsecureSkipVerify: true,
 	}
 
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
 	// Add the client certificate authentication to the request if it's configured
 	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
 	if err != nil {
