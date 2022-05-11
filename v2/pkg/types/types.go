@@ -214,6 +214,8 @@ type Options struct {
 	StoreResponseDir string
 	// DisableRedirects disables following redirects for http request module
 	DisableRedirects bool
+	// SNI custom hostname
+	SNI string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

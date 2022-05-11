@@ -1,0 +1,15 @@
+id: basic-get
+
+info:
+  name: Basic GET Request with CLI SNI
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "test-ok"
