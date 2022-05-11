@@ -53,7 +53,7 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 	}
 
 	hasPayloadIterator := r.payloadIterator != nil
-	hasInitializedPayloads := r.currentPayloads == nil
+	hasInitializedPayloads := r.currentPayloads != nil
 
 	if r.currentIndex == 0 && hasPayloadIterator && !hasInitializedPayloads {
 		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
