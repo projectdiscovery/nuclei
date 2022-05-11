@@ -28,6 +28,10 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		InsecureSkipVerify: true,
 	}
 
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
 	// Add the client certificate authentication to the request if it's configured
 	var err error
 	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
