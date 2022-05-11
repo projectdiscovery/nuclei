@@ -1,9 +1,6 @@
 // Package monitor implements a goroutine based monitoring for
 // detecting stuck scanner processes and dumping stack and other
 // relevant information for investigation.
-//
-// To use, just import as below -
-//   import _ "github.com/projectdiscovery/nuclei/v2/utils/monitor"
 package monitor
 
 import (
@@ -62,10 +59,11 @@ func (s *Agent) monitorWorker() {
 	// cancel the monitoring goroutine if we discover
 	// we've been stuck for some iterations.
 	if s.currentIteration == defaultMonitorIteration {
+		currentStack := getStack(true)
 		s.cancel()
 		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", xid.New().String())
 		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d) = %s\n", current, s.goroutineCount, stackTraceFile)
-		if err := ioutil.WriteFile(stackTraceFile, getStack(true), os.ModePerm); err != nil {
+		if err := ioutil.WriteFile(stackTraceFile, currentStack, os.ModePerm); err != nil {
 			gologger.Error().Msgf("Could not write stack trace for goroutines: %s\n", err)
 		}
 		os.Exit(1) // exit forcefully if we've been stuck
