@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -282,6 +283,12 @@ func (s *Server) GetScanErrors(ctx echo.Context) error {
 	}
 	defer logsReader.Close()
 
-	_, _ = io.Copy(ctx.Response().Writer, logsReader)
+	sb := new(strings.Builder)
+	_, _ = io.Copy(sb, logsReader)
+	sbs := "[" + sb.String() + "]"
+	sbs = strings.ReplaceAll(sbs, "}", "},")
+	sbs = strings.ReplaceAll(sbs, "},\n]", "}\n]")
+	_, _ = io.Copy(ctx.Response().Writer, strings.NewReader(sbs))
+	//_, _ = io.Copy(ctx.Response().Writer, logsReader)
 	return nil
 }

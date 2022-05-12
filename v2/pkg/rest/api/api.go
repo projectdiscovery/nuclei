@@ -52,7 +52,7 @@ func New(config *Config) *API {
 		AllowHeaders:     []string{HeaderAuthKey},
 	}))
 	// Use basic auth
-	e.Use(HeaderAuthenticator(config.Token))
+	//e.Use(HeaderAuthenticator(config.Token))
 
 	apiGroup := e.Group("/api/v1")
 

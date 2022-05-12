@@ -1111,7 +1111,7 @@ func (q *Queries) UpdateSettings(ctx context.Context, arg UpdateSettingsParams) 
 }
 
 const updateTargetMetadata = `-- name: UpdateTargetMetadata :exec
-UPDATE targets SET total=total+$1 AND updatedAt=NOW() WHERE id=$2
+UPDATE targets SET total=total+$1 , updatedAt=NOW() WHERE id=$2
 `
 
 type UpdateTargetMetadataParams struct {
