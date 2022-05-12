@@ -88,7 +88,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
-		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
+		gologger.Info().Msgf("mypoc-templates are not installed, installing...\n")
 
 		// Use the custom location if the user has given a template directory
 		r.templatesConfig = &config.Config{
@@ -109,7 +109,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		if getErr != nil {
 			return getErr
 		}
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
+		gologger.Verbose().Msgf("Downloading mypoc-templates (v%s) to %s\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 		if _, err := r.downloadReleaseAndUnzip(ctx, version.String(), asset.GetZipballURL()); err != nil {
 			return err
@@ -119,7 +119,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
+		gologger.Info().Msgf("Successfully downloaded mypoc-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 		return nil
 	}
 
@@ -130,7 +130,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 
 	if latestVersion.EQ(currentVersion) {
 		if r.options.UpdateTemplates {
-			gologger.Info().Msgf("No new updates found for nuclei templates")
+			gologger.Info().Msgf("No new updates found for mypoc templates")
 		}
 		return config.WriteConfiguration(r.templatesConfig)
 	}
@@ -143,7 +143,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 
 func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, currentVersion semver.Version, runner *Runner, ctx context.Context) error {
 	if latestVersion.GT(currentVersion) {
-		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", currentVersion, latestVersion.String())
+		gologger.Info().Msgf("Your current mypoc-templates v%s are outdated. Latest is v%s\n", currentVersion, latestVersion.String())
 		gologger.Info().Msgf("Downloading latest release...")
 
 		if runner.options.TemplatesDirectory != "" {
@@ -151,7 +151,7 @@ func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, curren
 		}
 		runner.templatesConfig.TemplateVersion = latestVersion.String()
 
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", latestVersion.String(), runner.templatesConfig.TemplatesDirectory)
+		gologger.Verbose().Msgf("Downloading mypoc-templates (v%s) to %s\n", latestVersion.String(), runner.templatesConfig.TemplatesDirectory)
 
 		asset, err := runner.getLatestReleaseFromGithub(runner.templatesConfig.NucleiTemplatesLatestVersion)
 		if err != nil {
@@ -163,7 +163,7 @@ func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, curren
 		if err := config.WriteConfiguration(runner.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s) to %s. GoodLuck!\n", latestVersion.String(), r.templatesConfig.TemplatesDirectory)
+		gologger.Info().Msgf("Successfully updated mypoc-templates (v%s) to %s. GoodLuck!\n", latestVersion.String(), r.templatesConfig.TemplatesDirectory)
 	}
 	return nil
 }

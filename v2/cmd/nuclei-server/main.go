@@ -26,11 +26,11 @@ import (
 )
 
 var (
-	datadir = flag.String("data-dir", "data", "Data directory for nuclei server")
-	logsdir = flag.String("logs-dir", "logs", "Logs directory for nuclei server")
+	datadir = flag.String("data-dir", "data", "Data directory for mypoc server")
+	logsdir = flag.String("logs-dir", "logs", "Logs directory for mypoc server")
 	json    = flag.Bool("json", false, "show json logs")
 
-	token = flag.String("token", "", "Token for nuclei REST API")
+	token = flag.String("token", "", "Token for mypoc REST API")
 	host  = flag.String("host", "localhost", "Host to listen REST API on")
 	port  = flag.Int("port", 8822, "Port to listen REST API on")
 	dburl = flag.String("db-url", "postgres://postgres:mysecretpassword@localhost:5432/postgres", "database connection url for postgres db")
@@ -45,7 +45,7 @@ func main() {
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 
 	_ = protocolinit.Init(testutils.DefaultOptions)
-
+	showBanner()
 	if err := process(); err != nil {
 		gologger.Fatal().Msgf("Could not run server: %s\n", err)
 	}
@@ -118,4 +118,24 @@ func process() error {
 	})
 	gologger.Info().Msgf("Listening on %s:%d", *host, *port)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), api.Echo())
+}
+
+// showBanner is used to show the banner to the user
+func showBanner() {
+	var banner = fmt.Sprintf(`
+ ████     ████ ██    ██ ███████    ███████     ██████ 
+░██░██   ██░██░░██  ██ ░██░░░░██  ██░░░░░██   ██░░░░██
+░██░░██ ██ ░██ ░░████  ░██   ░██ ██     ░░██ ██    ░░ 
+░██ ░░███  ░██  ░░██   ░███████ ░██      ░██░██       
+░██  ░░█   ░██   ░██   ░██░░░░  ░██      ░██░██       
+░██   ░    ░██   ░██   ░██      ░░██     ██ ░░██    ██
+░██        ░██   ░██   ░██       ░░███████   ░░██████ 
+░░         ░░    ░░    ░░         ░░░░░░░     ░░░░░░  %s
+`, "v1.0.0")
+
+	fmt.Printf("%s\n", banner)
+	fmt.Printf("\t\twww.vackbot.com\n\n")
+
+	fmt.Printf("Use with caution. You are responsible for your actions.\n")
+	fmt.Printf("Developers assume no liability and are not responsible for any misuse or damage.\n")
 }

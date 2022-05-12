@@ -126,27 +126,27 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 		if getErr != nil {
 			return semver.Version{}, getErr
 		}
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to db\n", versions.Templates)
+		gologger.Verbose().Msgf("Downloading mypoc-templates (v%s) to db\n", versions.Templates)
 
 		if _, err := downloadReleaseAndUnzip(ctx, db, versions.Templates, asset.GetZipballURL()); err != nil {
 			return semver.Version{}, err
 		}
 		_ = db.Queries().InsertOrUpdateVersion(context.Background(), parsed.String())
 
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", versions.Templates)
+		gologger.Info().Msgf("Successfully downloaded mypoc-templates (v%s). GoodLuck!\n", versions.Templates)
 		return parsed, nil
 	}
 
 	if parsed.EQ(currentTemplates) {
-		gologger.Info().Msgf("No new updates found for nuclei templates")
+		gologger.Info().Msgf("No new updates found for mypoc templates")
 		return currentTemplates, nil
 	}
 
 	if parsed.GT(currentTemplates) {
-		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", currentTemplates.String(), parsed.String())
+		gologger.Info().Msgf("Your current mypoc-templates v%s are outdated. Latest is v%s\n", currentTemplates.String(), parsed.String())
 		gologger.Info().Msgf("Downloading latest release...")
 
-		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to storage\n", parsed.String())
+		gologger.Verbose().Msgf("Downloading mypoc-templates (v%s) to storage\n", parsed.String())
 
 		asset, err := getLatestReleaseFromGithub(parsed.String())
 		if err != nil {
@@ -156,7 +156,7 @@ func UpdateTemplates(db *db.Database, lastVersion semver.Version) (semver.Versio
 			return currentTemplates, err
 		}
 		_ = db.Queries().InsertOrUpdateVersion(context.Background(), parsed.String())
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", parsed.String())
+		gologger.Info().Msgf("Successfully updated mypoc-templates (v%s). GoodLuck!\n", parsed.String())
 	}
 	return parsed, nil
 }
