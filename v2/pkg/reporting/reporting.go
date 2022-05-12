@@ -47,6 +47,11 @@ type Filter struct {
 	Tags       stringslice.StringSlice `yaml:"tags"`
 }
 
+const (
+	reportingClientCreationErrorMessage  = "could not create reporting client"
+	exportClientCreationErrorMessage = "could not create exporting client"
+)
+
 // GetMatch returns true if a filter matches result event
 func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
 	return isSeverityMatch(event, filter) && isTagMatch(event, filter) // TODO revisit this
@@ -113,7 +118,7 @@ func New(options *Options, db string) (*Client, error) {
 		options.GitHub.HttpClient = options.HttpClient
 		tracker, err := github.New(options.GitHub)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create reporting client")
+			return nil, errors.Wrap(err, reportingClientCreationErrorMessage)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
@@ -121,7 +126,7 @@ func New(options *Options, db string) (*Client, error) {
 		options.GitLab.HttpClient = options.HttpClient
 		tracker, err := gitlab.New(options.GitLab)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create reporting client")
+			return nil, errors.Wrap(err, reportingClientCreationErrorMessage)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
@@ -129,21 +134,21 @@ func New(options *Options, db string) (*Client, error) {
 		options.Jira.HttpClient = options.HttpClient
 		tracker, err := jira.New(options.Jira)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create reporting client")
+			return nil, errors.Wrap(err, reportingClientCreationErrorMessage)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
 	if options.MarkdownExporter != nil {
 		exporter, err := markdown.New(options.MarkdownExporter)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create exporting client")
+			return nil, errors.Wrap(err, exportClientCreationErrorMessage)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
 	if options.SarifExporter != nil {
 		exporter, err := sarif.New(options.SarifExporter)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create exporting client")
+			return nil, errors.Wrap(err, exportClientCreationErrorMessage)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
@@ -151,7 +156,7 @@ func New(options *Options, db string) (*Client, error) {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create exporting client")
+			return nil, errors.Wrap(err, exportClientCreationErrorMessage)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
