@@ -14,6 +14,7 @@ var (
 	debug        = os.Getenv("DEBUG") == "true"
 	githubAction = os.Getenv("GH_ACTION") == "true"
 	customTests  = os.Getenv("TESTS")
+	a            = 1
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
