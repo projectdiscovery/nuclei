@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -72,10 +74,12 @@ func (s *ScanService) getSettingsForName(name string) (*types.Options, error) {
 func (s *ScanService) createExecuterOpts(ctx context.Context, cancel context.CancelFunc, scanID int64, reportingConfig, scanSource, templatesDirectory string, typesOptions *types.Options) (*scanContext, error) {
 	// Use a no ticking progress service to track scan statistics
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
 	s.Running.Store(scanID, &RunningScan{
 		ctx:          ctx,
 		cancel:       cancel,
 		ProgressFunc: makePercentReturnFunc(progressImpl),
+		tmpStatus:    new(sync.Map),
 	})
 
 	logWriter, err := s.Logs.Write(scanID)
@@ -265,7 +269,13 @@ func (s *ScanService) worker(req ScanRequest) error {
 	gologger.Info().Msgf("[scans] [worker] [%d] total loaded input count: %d", req.ScanID, inputProvider.Count())
 
 	scanCtx.executerOpts.Progress.Init(inputProvider.Count(), len(finalTemplates), int64(len(finalTemplates)*int(inputProvider.Count())))
-	_ = scanCtx.executer.Execute(ctx, finalTemplates, inputProvider)
+	tsRunning, ok := s.Running.Load(req.ScanID)
+	if !ok {
+		log.Fatal("未找到 s.Running.Load(req.ScanID)：", req.ScanID)
+	}
+	tsRV := tsRunning.(*RunningScan)
+	withTmpStatusCtx := context.WithValue(ctx, "ts", tsRV.tmpStatus)
+	_ = scanCtx.executer.Execute(withTmpStatusCtx, finalTemplates, inputProvider)
 
 	gologger.Info().Msgf("[scans] [worker] [%d] finished scan for ID", req.ScanID)
 

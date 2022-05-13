@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"log"
+	"sync"
 
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/atomic"
@@ -30,6 +32,15 @@ func (e *Engine) ExecuteWithOpts(ctx context.Context, templatesList []*templates
 		finalTemplates = templatesList
 	}
 
+	tsAny := ctx.Value("ts")
+	if tsAny == nil {
+		log.Fatal("load fail~~!!!")
+	}
+	ts, ok := tsAny.(*sync.Map)
+	if !ok {
+		log.Fatal("断言失败~~!!!")
+	}
+
 	results := &atomic.Bool{}
 	for _, template := range finalTemplates {
 		if ctx.Err() != nil {
@@ -45,7 +56,9 @@ func (e *Engine) ExecuteWithOpts(ctx context.Context, templatesList []*templates
 		}
 
 		wg.Add()
-		go func(tpl *templates.Template) {
+		go func(tpl *templates.Template, tsVar *sync.Map) {
+			tsVar.Store(tpl.ID, "running")
+			defer tsVar.Delete(tpl.ID)
 			switch {
 			case tpl.SelfContained:
 				// Self Contained requests are executed here separately
@@ -55,7 +68,7 @@ func (e *Engine) ExecuteWithOpts(ctx context.Context, templatesList []*templates
 				e.executeModelWithInput(ctx, templateType, tpl, target, results)
 			}
 			wg.Done()
-		}(template)
+		}(template, ts)
 	}
 	e.workPool.Wait()
 	return results

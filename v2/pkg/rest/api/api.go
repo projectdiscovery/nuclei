@@ -87,6 +87,8 @@ func New(config *Config) *API {
 	apiGroup.GET("/scans/:id/execute", config.Server.ExecuteScan)
 	apiGroup.GET("/scans/:id/matches", config.Server.GetScanMatches)
 	apiGroup.GET("/scans/:id/errors", config.Server.GetScanErrors)
+	//获取模板执行进度
+	apiGroup.GET("/scans/:id/progress", config.Server.GetScanTmpStatus)
 
 	// /issues endpoints
 	apiGroup.GET("/issues", config.Server.GetIssues)

@@ -34,6 +34,7 @@ type RunningScan struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	ProgressFunc PercentReturnFunc
+	tmpStatus    *sync.Map
 }
 
 // Stop stops a running scan context
@@ -127,6 +128,22 @@ func (s *ScanService) Progress() map[int64]float64 {
 		keyValue := key.(int64)
 		valueFunc := value.(*RunningScan)
 		values[keyValue] = valueFunc.ProgressFunc()
+		return true
+	})
+	return values
+}
+
+// ExecStatus returns the progress map for all scan ids
+func (s *ScanService) ExecStatus(scanId int64) *sync.Map {
+	var values *sync.Map
+	s.Running.Range(func(key interface{}, value interface{}) bool {
+		keyValue := key.(int64)
+
+		if keyValue == scanId {
+			valueFunc := value.(*RunningScan)
+			values = valueFunc.tmpStatus
+			return false
+		}
 		return true
 	})
 	return values
