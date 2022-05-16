@@ -86,8 +86,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.12 h1:5f7ESFKQv5WHX8m37H2T8G+tc/rggy7sfdZ8ioqXFY8=
-github.com/aws/aws-sdk-go v1.44.12/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.14 h1:qd7/muV1rElsbvkK9D1nHUzBoDlEw2etfeo4IE82eSQ=
+github.com/aws/aws-sdk-go v1.44.14/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -437,8 +437,6 @@ github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
-github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47 h1:TUsZiwez9uFmph1hlTsiH7rdB+wi4524+lMuV2z6FaM=
-github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47/go.mod h1:GbQvP1ezGlQn0af3lVcl08b5eRQu960T7A9pwazybSo=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83 h1:1hzvl0lsWpvQ8nn1s9YMyBjO13/Z+f/T4W2jroOohfo=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83/go.mod h1:wn6jSJ1fIO6kLplFEbFIkRB6Kj/Q6VngnzKuBHLVPiI=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08 h1:NwD1R/du1dqrRKN3SJl9kT6tN3K9puuWFXEvYF2ihew=
@@ -493,8 +491,6 @@ github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
-github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d h1:wIQPYRZEwTeJuoZLv3NT9r+il2fAv1ObRzTdHkNgOxk=
-github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d/go.mod h1:QHXvznfPfA5f0AZUIBkbLapoUJJlsIDgUlkKva6dOr4=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9 h1:dQO4FNxOhkZqZHW5nUh6f1NXIRUyoZ57bXETXjsyfNk=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9/go.mod h1:crCchiT/KYrAlEY8JbuMGE6XKym61mhAd1E7REq2VwQ=
 github.com/projectdiscovery/stringsutil v0.0.0-20210524051937-51dabe3b72c0/go.mod h1:TVSdZC0rRQeMIbsNSiGPhbmhyRtxqqtAGA9JiiNp2r4=
