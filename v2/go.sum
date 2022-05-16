@@ -437,8 +437,6 @@ github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
-github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47 h1:TUsZiwez9uFmph1hlTsiH7rdB+wi4524+lMuV2z6FaM=
-github.com/projectdiscovery/fastdialer v0.0.15-0.20220127193345-f06b0fd54d47/go.mod h1:GbQvP1ezGlQn0af3lVcl08b5eRQu960T7A9pwazybSo=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83 h1:1hzvl0lsWpvQ8nn1s9YMyBjO13/Z+f/T4W2jroOohfo=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83/go.mod h1:wn6jSJ1fIO6kLplFEbFIkRB6Kj/Q6VngnzKuBHLVPiI=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08 h1:NwD1R/du1dqrRKN3SJl9kT6tN3K9puuWFXEvYF2ihew=
@@ -493,8 +491,6 @@ github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
-github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d h1:wIQPYRZEwTeJuoZLv3NT9r+il2fAv1ObRzTdHkNgOxk=
-github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d/go.mod h1:QHXvznfPfA5f0AZUIBkbLapoUJJlsIDgUlkKva6dOr4=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9 h1:dQO4FNxOhkZqZHW5nUh6f1NXIRUyoZ57bXETXjsyfNk=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9/go.mod h1:crCchiT/KYrAlEY8JbuMGE6XKym61mhAd1E7REq2VwQ=
 github.com/projectdiscovery/stringsutil v0.0.0-20210524051937-51dabe3b72c0/go.mod h1:TVSdZC0rRQeMIbsNSiGPhbmhyRtxqqtAGA9JiiNp2r4=
@@ -506,8 +502,8 @@ github.com/projectdiscovery/stringsutil v0.0.0-20220422150559-b54fb5dc6833 h1:yo
 github.com/projectdiscovery/stringsutil v0.0.0-20220422150559-b54fb5dc6833/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921 h1:EgaxpJm7+lKppfAHkFHs+S+II0lodp4Gu3leZCCkWlc=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921/go.mod h1:oXLErqOpqEAp/ueQlknysFxHO3CUNoSiDNnkiHG+Jpo=
-github.com/projectdiscovery/wappalyzergo v0.0.41 h1:t6zsfLiMFyjsIv0BYYKSDSxDbsG+FEuO1/TjE/eD55o=
-github.com/projectdiscovery/wappalyzergo v0.0.41/go.mod h1:vS+npIOANv7eKsEtODsyRQt2n1v8VofCwj2gjmq72EM=
+github.com/projectdiscovery/wappalyzergo v0.0.42 h1:4DuJVpgesHSnUNVG+l62QIYEmcMXu3PLyhS1Wp75c30=
+github.com/projectdiscovery/wappalyzergo v0.0.42/go.mod h1:vS+npIOANv7eKsEtODsyRQt2n1v8VofCwj2gjmq72EM=
 github.com/projectdiscovery/yamldoc-go v1.0.2/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6/go.mod h1:8OfZj8p/axkUM/TJoS/O9LDjj/S8u17rxRbqluE9CU4=
