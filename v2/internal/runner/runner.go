@@ -570,8 +570,10 @@ func isTemplate(filename string) bool {
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfg := types.NewResumeCfg()
+	r.resumeCfg.Lock()
 	resumeCfg.ResumeFrom = r.resumeCfg.Current
 	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+	r.resumeCfg.Unlock()
 
 	return os.WriteFile(path, data, os.ModePerm)
 }
