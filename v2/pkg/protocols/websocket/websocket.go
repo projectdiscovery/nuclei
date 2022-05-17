@@ -86,6 +86,11 @@ type Input struct {
 	Name string `yaml:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
 }
 
+const (
+	parseUrlErrorMessage = "could not parse input url"
+	evaluateTemplateExpressionErrorMessage = "could not evaluate template expressions"
+)
+
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
@@ -164,7 +169,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 	parsed, err := url.Parse(input)
 	if err != nil {
-		return errors.Wrap(err, "could not parse input url")
+		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	payloadValues["Hostname"] = parsed.Host
 	payloadValues["Host"] = parsed.Hostname()
@@ -181,22 +186,26 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(dataErr, "could not evaluate template expressions")
+			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		header.Set(key, string(finalData))
+	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	if requestOptions.Options.SNI != "" {
+		tlsConfig.ServerName = requestOptions.Options.SNI
 	}
 	websocketDialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(header),
 		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
 		NetDial:   request.dialer.Dial,
-		TLSConfig: &tls.Config{InsecureSkipVerify: true, ServerName: hostname},
+		TLSConfig: tlsConfig,
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(dataErr, "could not evaluate template expressions")
+		return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 	}
 
 	addressToDial := string(finalAddress)
@@ -204,7 +213,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not parse input url")
+		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
 	addressToDial = parsedAddress.String()
@@ -279,7 +288,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return nil, "", errors.Wrap(dataErr, "could not evaluate template expressions")
+			return nil, "", errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		reqBuilder.WriteString(string(finalData))
 
@@ -323,7 +332,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 func getAddress(toTest string) (string, error) {
 	parsed, err := url.Parse(toTest)
 	if err != nil {
-		return "", errors.Wrap(err, "could not parse input url")
+		return "", errors.Wrap(err, parseUrlErrorMessage)
 	}
 	scheme := strings.ToLower(parsed.Scheme)
 
