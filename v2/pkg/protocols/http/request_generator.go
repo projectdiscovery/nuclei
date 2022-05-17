@@ -12,11 +12,13 @@ import (
 // values. Paths and Raw requests are supported as base input, so
 // it will automatically select between them based on the template.
 type requestGenerator struct {
-	currentIndex    int
-	request         *Request
-	options         *protocols.ExecuterOptions
-	payloadIterator *generators.Iterator
-	interactshURLs  []string
+	currentIndex     int
+	currentPayloads  map[string]interface{}
+	okCurrentPayload bool
+	request          *Request
+	options          *protocols.ExecuterOptions
+	payloadIterator  *generators.Iterator
+	interactshURLs   []string
 }
 
 // LeaveDefaultPorts skips normalization of default standard ports
@@ -35,61 +37,45 @@ func (request *Request) newGenerator() *requestGenerator {
 // nextValue returns the next path or the next raw request depending on user input
 // It returns false if all the inputs have been exhausted by the generator instance.
 func (r *requestGenerator) nextValue() (value string, payloads map[string]interface{}, result bool) {
-	// For both raw/path requests, start with the request at current index.
-	// If we are not at the start, then check if the iterator for payloads
-	// has finished if there are any.
+	// Iterate each payload sequentially for each request path/raw
 	//
-	// If the iterator has finished for the current request
-	// then reset it and move on to the next value, otherwise use the last request.
+	// If the sequence has finished for the current payload values
+	// then restart the sequence from the beginning and move on to the next payloads values
+	// otherwise use the last request.
+	var sequence []string
+	switch {
+	case len(r.request.Path) > 0:
+		sequence = r.request.Path
+	case len(r.request.Raw) > 0:
+		sequence = r.request.Raw
+	default:
+		return "", nil, false
+	}
 
-	if len(r.request.Path) > 0 && r.currentIndex < len(r.request.Path) {
-		if r.payloadIterator != nil {
-			payload, ok := r.payloadIterator.Value()
-			if !ok {
-				r.currentIndex++
-				r.payloadIterator.Reset()
+	hasPayloadIterator := r.payloadIterator != nil
+	hasInitializedPayloads := r.currentPayloads != nil
 
-				// No more payloads request for us now.
-				if len(r.request.Path) == r.currentIndex {
-					return "", nil, false
+	if r.currentIndex == 0 && hasPayloadIterator && !hasInitializedPayloads {
+		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
+	}
+	if r.currentIndex < len(sequence) {
+		currentRequest := sequence[r.currentIndex]
+		r.currentIndex++
+		return currentRequest, r.currentPayloads, true
+	}
+	if r.currentIndex == len(sequence) {
+		if r.okCurrentPayload {
+			r.currentIndex = 0
+			currentRequest := sequence[r.currentIndex]
+			if hasPayloadIterator {
+				r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
+				if r.okCurrentPayload {
+					r.currentIndex++
+					return currentRequest, r.currentPayloads, true
 				}
-				if item := r.request.Path[r.currentIndex]; item != "" {
-					newPayload, ok := r.payloadIterator.Value()
-					return item, newPayload, ok
-				}
-				return "", nil, false
 			}
-			return r.request.Path[r.currentIndex], payload, true
-		}
-		if value := r.request.Path[r.currentIndex]; value != "" {
-			r.currentIndex++
-			return value, nil, true
 		}
 	}
 
-	if len(r.request.Raw) > 0 && r.currentIndex < len(r.request.Raw) {
-		if r.payloadIterator != nil {
-			payload, ok := r.payloadIterator.Value()
-			if !ok {
-				r.currentIndex++
-				r.payloadIterator.Reset()
-
-				// No more payloads request for us now.
-				if len(r.request.Raw) == r.currentIndex {
-					return "", nil, false
-				}
-				if item := r.request.Raw[r.currentIndex]; item != "" {
-					newPayload, ok := r.payloadIterator.Value()
-					return item, newPayload, ok
-				}
-				return "", nil, false
-			}
-			return r.request.Raw[r.currentIndex], payload, true
-		}
-		if item := r.request.Raw[r.currentIndex]; item != "" {
-			r.currentIndex++
-			return item, nil, true
-		}
-	}
 	return "", nil, false
 }
