@@ -67,6 +67,8 @@ func New(opts Options) (*Service, error) {
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
+	defaultTemplatesDirectories := []string{config.TemplatesDirectory}
+
 	// adding custom template path if available
 	if len(opts.ExecuterOpts.Options.Templates) > 0 {
 		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
@@ -118,10 +120,6 @@ func (s *Service) Execute() {
 	}
 }
 
-var (
-	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
-)
-
 const maxDefaultBody = 2 * 1024 * 1024
 
 // executeWappalyzerTechDetection implements the logic to run the wappalyzer
@@ -171,7 +169,7 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
 	normalized := make(map[string]struct{})
 	for k := range fingerprints {
-		normalized[strings.ToLower(k)] = struct{}{}
+		normalized[normalizeAppName(k)] = struct{}{}
 	}
 
 	if s.opts.Options.Verbose {
@@ -213,6 +211,15 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		}
 		s.childExecuter.Execute(t, input)
 	}
+}
+
+func normalizeAppName(appName string) string {
+	if strings.Contains(appName, ":") {
+		if parts := strings.Split(appName, ":"); len(parts) == 2 {
+			appName = parts[0]
+		}
+	}
+	return strings.ToLower(appName)
 }
 
 func uniqueSlice(slice []string) []string {
