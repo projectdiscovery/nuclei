@@ -26,9 +26,6 @@ var (
 )
 
 func main() {
-	cancel := monitor.NewStackMonitor(10 * time.Second)
-	defer cancel()
-
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
@@ -36,6 +33,11 @@ func main() {
 	readConfig()
 
 	runner.ParseOptions(options)
+
+	if options.HangMonitor {
+		cancel := monitor.NewStackMonitor(10 * time.Second)
+		defer cancel()
+	}
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
@@ -201,6 +203,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
+		flagSet.BoolVar(&options.HangMonitor, "hang-monitor", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
