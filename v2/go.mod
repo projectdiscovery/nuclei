@@ -10,7 +10,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
-	github.com/corpix/uarand v0.1.1
+	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.0
 	github.com/go-rod/rod v0.106.6
 	github.com/gobwas/ws v1.1.0
