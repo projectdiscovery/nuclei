@@ -865,7 +865,7 @@ func (h *httpRedirectMatchURL) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.Redirect(w, r, "/redirected", http.StatusFound)
-		w.Write([]byte("This is test redirects matcher text"))
+		_, _ = w.Write([]byte("This is test redirects matcher text"))
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "This is test redirects matcher text")
