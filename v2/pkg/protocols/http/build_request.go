@@ -125,17 +125,17 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		payloads = generators.MergeMaps(
+		values := generators.MergeMaps(
 			payloads,
 			generators.BuildPayloadFromOptions(r.request.options.Options),
 		)
 
 		// in case cases (eg requests signing, some variables uses default values if missing)
 		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
-			payloads = generators.MergeMaps(defaultList, payloads)
+			values = generators.MergeMaps(defaultList, values)
 		}
 
-		parts[1] = replacer.Replace(parts[1], payloads)
+		parts[1] = replacer.Replace(parts[1], values)
 		if len(dynamicValues) > 0 {
 			parts[1] = replacer.Replace(parts[1], dynamicValues)
 		}
@@ -155,9 +155,9 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
-		values := generators.MergeMaps(
+		values = generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
-			payloads,
+			values,
 		)
 
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
