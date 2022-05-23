@@ -224,6 +224,7 @@ func TestDslExpressions(t *testing.T) {
 		`compare_versions('v1.1.1', '>v1.1.0')`:            true,
 		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,
 		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
+		`hmacsha256('test','scrt')`:                        "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {
