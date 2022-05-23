@@ -10,7 +10,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
-	github.com/corpix/uarand v0.1.1
+	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.0
 	github.com/go-rod/rod v0.106.6
 	github.com/gobwas/ws v1.1.0
@@ -63,7 +63,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.15
+require github.com/aws/aws-sdk-go v1.44.17
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -71,7 +71,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/h2non/filetype v1.1.3
-	github.com/hashicorp/go-version v1.4.0
+	github.com/hashicorp/go-version v1.5.0
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20210804143329-3a30fcde43f3
