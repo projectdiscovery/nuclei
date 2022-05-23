@@ -1,8 +1,9 @@
 package loader
 
 import (
-	"errors"
+	"os"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -119,11 +120,18 @@ func New(config *Config) (*Store, error) {
 		store.finalWorkflows = append(store.finalWorkflows, remoteWorkflows...)
 	}
 
+	// Handle a dot as the current working directory
+	if len(store.finalTemplates) == 1 && store.finalTemplates[0] == "." {
+		currentDirectory, err := os.Getwd()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get current directory")
+		}
+		store.finalTemplates = []string{currentDirectory}
+	}
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
 		store.finalTemplates = []string{config.TemplatesDirectory}
 	}
-
 	return store, nil
 }
 
@@ -157,13 +165,9 @@ func init() {
 
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
-func (store *Store) ValidateTemplates(templatesList, workflowsList []string) error {
-	// consider all the templates by default if no templates passed by user
-	if len(templatesList) == 0 {
-		templatesList = store.finalTemplates
-	}
-	templatePaths := store.config.Catalog.GetTemplatesPath(templatesList)
-	workflowPaths := store.config.Catalog.GetTemplatesPath(workflowsList)
+func (store *Store) ValidateTemplates() error {
+	templatePaths := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
+	workflowPaths := store.config.Catalog.GetTemplatesPath(store.finalWorkflows)
 
 	filteredTemplatePaths := store.pathFilter.Match(templatePaths)
 	filteredWorkflowPaths := store.pathFilter.Match(workflowPaths)
