@@ -502,6 +502,10 @@ func init() {
 			h.Write([]byte(args[0].(string)))
 			return hex.EncodeToString(h.Sum(nil)), nil
 		}),
+		"time_format": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			t := time.Now()
+			return string(t.Format(args[0].(string))), nil
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
