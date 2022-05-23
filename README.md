@@ -84,7 +84,7 @@ nuclei -h
 This will display help for the tool. Here are all the switches it supports.
 
 
-```yaml
+```console
 Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
@@ -123,8 +123,8 @@ FILTERING:
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
-   -silent                       display findings only
-   -nc, -no-color                disable output content coloring (ANSI escape codes)
+   -sresp, -store-resp           store all request/response passed through nuclei to output directory
+   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
@@ -133,6 +133,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
+   -silent                       display findings only
+   -nc, -no-color                disable output content coloring (ANSI escape codes)
 
 CONFIGURATIONS:
    -config string              path to the nuclei configuration file
@@ -149,7 +151,8 @@ CONFIGURATIONS:
    -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
    -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
-   -ztls                       Use ztls library with autofallback to standard one for tls13
+   -ztls                       use ztls library with autofallback to standard one for tls13
+   -sni string                 tls sni hostname to use (default: input domain name)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -188,8 +191,6 @@ DEBUG:
    -debug                        display all requests and responses
    -dreq, -debug-req             display all sent requests
    -dresp, -debug-resp           display all received responses
-   -sresp, -store-resp           store all request/response passed through nuclei to output directory
-   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal          proxy all internal requests
    -tlog, -trace-log string      file to write sent requests trace log

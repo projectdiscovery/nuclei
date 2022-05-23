@@ -179,6 +179,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		InsecureSkipVerify: true,
 	}
 
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
 	// Add the client certificate authentication to the request if it's configured
 	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
 	if err != nil {
@@ -187,6 +191,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
+		DialTLSContext:      Dialer.DialTLS,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,

@@ -21,6 +21,7 @@ func Init(options *types.Options) error {
 	}
 	opts.WithDialerHistory = true
 	opts.WithZTLS = options.ZTLS
+	opts.SNIName = options.SNI
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
