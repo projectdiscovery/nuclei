@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Knetic/govaluate"
+	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 )
 
-// CompileExtractors performs the initial setup operation on a extractor
+// CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
-	var ok bool
-	// Setup the extractor type
-	e.extractorType, ok = ExtractorTypes[e.Type]
-	if !ok {
+	// Set up the extractor type
+	computedType, err := toExtractorTypes(e.GetType().String())
+	if err != nil {
 		return fmt.Errorf("unknown extractor type specified: %s", e.Type)
 	}
-
+	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		compiled, err := regexp.Compile(regex)
@@ -23,14 +26,38 @@ func (e *Extractor) CompileExtractors() error {
 		}
 		e.regexCompiled = append(e.regexCompiled, compiled)
 	}
-
 	for i, kval := range e.KVal {
 		e.KVal[i] = strings.ToLower(kval)
 	}
 
-	// Setup the part of the request to match, if any.
-	if e.Part == "" {
-		e.Part = "body"
+	for _, query := range e.JSON {
+		query, err := gojq.Parse(query)
+		if err != nil {
+			return fmt.Errorf("could not parse json: %s", query)
+		}
+		compiled, err := gojq.Compile(query)
+		if err != nil {
+			return fmt.Errorf("could not compile json: %s", query)
+		}
+		e.jsonCompiled = append(e.jsonCompiled, compiled)
 	}
+
+	for _, dslExp := range e.DSL {
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions())
+		if err != nil {
+			return fmt.Errorf("could not compile dsl: %s", dslExp)
+		}
+		e.dslCompiled = append(e.dslCompiled, compiled)
+	}
+
+	if e.CaseInsensitive {
+		if e.GetType() != KValExtractor {
+			return fmt.Errorf("case-insensitive flag is supported only for 'kval' extractors (not '%s')", e.Type)
+		}
+		for i := range e.KVal {
+			e.KVal[i] = strings.ToLower(e.KVal[i])
+		}
+	}
+
 	return nil
 }

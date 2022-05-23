@@ -1,151 +1,110 @@
 package file
 
 import (
-	"bufio"
-	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Match matches a generic data response again a given matcher
-func (r *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) bool {
-	partString := matcher.Part
-	switch partString {
-	case "body", "all", "data", "":
-		partString = "raw"
+func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	itemStr, ok := request.getMatchPart(matcher.Part, data)
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+		return false, []string{}
 	}
-
-	item, ok := data[partString]
-	if !ok {
-		return false
-	}
-	itemStr := types.ToString(item)
 
 	switch matcher.GetType() {
 	case matchers.SizeMatcher:
-		return matcher.Result(matcher.MatchSize(len(itemStr)))
+		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.Result(matcher.MatchWords(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(itemStr, nil))
 	case matchers.RegexMatcher:
-		return matcher.Result(matcher.MatchRegex(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(itemStr))
 	case matchers.BinaryMatcher:
-		return matcher.Result(matcher.MatchBinary(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(itemStr))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data))
+		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
-	return false
+	return false, []string{}
 }
 
-// Extract performs extracting operation for a extractor on model and returns true or false.
-func (r *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	partString := extractor.Part
-	switch partString {
-	case "body", "all", "data", "":
-		partString = "raw"
-	}
-
-	item, ok := data[partString]
-	if !ok {
+// Extract performs extracting operation for an extractor on model and returns true or false.
+func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+	itemStr, ok := request.getMatchPart(extractor.Part, data)
+	if !ok && !extractors.SupportsMap(extractor) {
 		return nil
 	}
-	itemStr := types.ToString(item)
 
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
 		return extractor.ExtractRegex(itemStr)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
+	case extractors.DSLExtractor:
+		return extractor.ExtractDSL(data)
 	}
 	return nil
 }
 
-// responseToDSLMap converts a DNS response to a map for use in DSL matching
-func (r *Request) responseToDSLMap(raw, host, matched string) output.InternalEvent {
-	data := make(output.InternalEvent, 5)
+func (request *Request) getMatchPart(part string, data output.InternalEvent) (string, bool) {
+	switch part {
+	case "body", "all", "data", "":
+		part = "raw"
+	}
 
-	// Some data regarding the request metadata
-	data["path"] = host
-	data["matched"] = matched
-	data["raw"] = raw
-	data["template-id"] = r.options.TemplateID
-	data["template-info"] = r.options.TemplateInfo
-	data["template-path"] = r.options.TemplatePath
-	return data
+	item, ok := data[part]
+	if !ok {
+		return "", false
+	}
+	itemStr := types.ToString(item)
+
+	return itemStr, true
+}
+
+// responseToDSLMap converts a file chunk elaboration to a map for use in DSL matching
+func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName string) output.InternalEvent {
+	return output.InternalEvent{
+		"path":          inputFilePath,
+		"matched":       matchedFileName,
+		"raw":           raw,
+		"type":          request.Type().String(),
+		"template-id":   request.options.TemplateID,
+		"template-info": request.options.TemplateInfo,
+		"template-path": request.options.TemplatePath,
+	}
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
-func (r *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	if len(wrapped.OperatorsResult.DynamicValues) > 0 {
-		return nil
-	}
-	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
-
-	// If we have multiple matchers with names, write each of them separately.
-	if len(wrapped.OperatorsResult.Matches) > 0 {
-		for k := range wrapped.OperatorsResult.Matches {
-			data := r.makeResultEventItem(wrapped)
-			data.MatcherName = k
-			results = append(results, data)
-		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
-		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := r.makeResultEventItem(wrapped)
-			data.ExtractedResults = v
-			data.ExtractorName = k
-			results = append(results, data)
-		}
-	} else {
-		data := r.makeResultEventItem(wrapped)
-		results = append(results, data)
-	}
-	raw, ok := wrapped.InternalEvent["raw"]
-	if !ok {
-		return results
-	}
-	rawStr, ok := raw.(string)
-	if !ok {
-		return results
-	}
-
-	// Identify the position of match in file using a dirty hack.
-	for _, result := range results {
-		for _, extraction := range result.ExtractedResults {
-			scanner := bufio.NewScanner(strings.NewReader(rawStr))
-
-			line := 1
-			for scanner.Scan() {
-				if strings.Contains(scanner.Text(), extraction) {
-					if result.FileToIndexPosition == nil {
-						result.FileToIndexPosition = make(map[string]int)
-					}
-					result.FileToIndexPosition[result.Matched] = line
-					continue
-				}
-				line++
-			}
-		}
-	}
-	return results
+// Deprecated: unused in stream mode, must be present for interface compatibility
+func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
-func (r *Request) makeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+func (request *Request) GetCompiledOperators() []*operators.Operators {
+	return []*operators.Operators{request.CompiledOperators}
+}
+
+// MakeResultEventItem
+// Deprecated: unused in stream mode, must be present for interface compatibility
+func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
+		MatcherStatus:    true,
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(map[string]interface{}),
-		Type:             "file",
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Path:             types.ToString(wrapped.InternalEvent["path"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
-		Host:             types.ToString(wrapped.InternalEvent["matched"]),
+		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
+		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 		Timestamp:        time.Now(),
-	}
-	if r.options.Options.JSONRequests {
-		data.Response = types.ToString(wrapped.InternalEvent["raw"])
 	}
 	return data
 }

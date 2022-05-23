@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -39,13 +40,14 @@ var _ Progress = &StatsTicker{}
 // StatsTicker is a progress instance for showing program stats
 type StatsTicker struct {
 	active       bool
-	tickDuration time.Duration
-	stats        clistats.StatisticsClient
+	outputJSON   bool
 	server       *http.Server
+	stats        clistats.StatisticsClient
+	tickDuration time.Duration
 }
 
 // NewStatsTicker creates and returns a new progress tracking object.
-func NewStatsTicker(duration int, active, metrics bool, port int) (Progress, error) {
+func NewStatsTicker(duration int, active, outputJSON, metrics bool, port int) (Progress, error) {
 	var tickDuration time.Duration
 	if active {
 		tickDuration = time.Duration(duration) * time.Second
@@ -62,6 +64,7 @@ func NewStatsTicker(duration int, active, metrics bool, port int) (Progress, err
 	progress.active = active
 	progress.stats = stats
 	progress.tickDuration = tickDuration
+	progress.outputJSON = outputJSON
 
 	if metrics {
 		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
@@ -92,7 +95,13 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddCounter("total", uint64(requestCount))
 
 	if p.active {
-		if err := p.stats.Start(printCallback, p.tickDuration); err != nil {
+		var printCallbackFunc clistats.PrintCallback
+		if p.outputJSON {
+			printCallbackFunc = printCallbackJSON
+		} else {
+			printCallbackFunc = printCallback
+		}
+		if err := p.stats.Start(printCallbackFunc, p.tickDuration); err != nil {
 			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
 	}
@@ -127,77 +136,106 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 
 func printCallback(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
-	builder.WriteRune('[')
-	startedAt, _ := stats.GetStatic("startedAt")
-	duration := time.Since(startedAt.(time.Time))
-	builder.WriteString(fmtDuration(duration))
-	builder.WriteRune(']')
 
-	templates, _ := stats.GetStatic("templates")
-	builder.WriteString(" | Templates: ")
-	builder.WriteString(clistats.String(templates))
-	hosts, _ := stats.GetStatic("hosts")
-	builder.WriteString(" | Hosts: ")
-	builder.WriteString(clistats.String(hosts))
+	var duration time.Duration
+	if startedAt, ok := stats.GetStatic("startedAt"); ok {
+		if startedAtTime, ok := startedAt.(time.Time); ok {
+			duration = time.Since(startedAtTime)
+			builder.WriteString(fmt.Sprintf("[%s]", fmtDuration(duration)))
+		}
+	}
 
-	requests, _ := stats.GetCounter("requests")
-	total, _ := stats.GetCounter("total")
+	if templates, ok := stats.GetStatic("templates"); ok {
+		builder.WriteString(" | Templates: ")
+		builder.WriteString(clistats.String(templates))
+	}
 
-	builder.WriteString(" | RPS: ")
-	builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+	if hosts, ok := stats.GetStatic("hosts"); ok {
+		builder.WriteString(" | Hosts: ")
+		builder.WriteString(clistats.String(hosts))
+	}
 
-	matched, _ := stats.GetCounter("matched")
+	requests, okRequests := stats.GetCounter("requests")
+	total, okTotal := stats.GetCounter("total")
 
-	builder.WriteString(" | Matched: ")
-	builder.WriteString(clistats.String(matched))
+	if okRequests && okTotal && duration > 0 {
+		builder.WriteString(" | RPS: ")
+		builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+	}
 
-	errors, _ := stats.GetCounter("errors")
-	builder.WriteString(" | Errors: ")
-	builder.WriteString(clistats.String(errors))
+	if matched, ok := stats.GetCounter("matched"); ok {
+		builder.WriteString(" | Matched: ")
+		builder.WriteString(clistats.String(matched))
+	}
 
-	builder.WriteString(" | Requests: ")
-	builder.WriteString(clistats.String(requests))
-	builder.WriteRune('/')
-	builder.WriteString(clistats.String(total))
-	builder.WriteRune(' ')
-	builder.WriteRune('(')
-	//nolint:gomnd // this is not a magic number
-	builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
-	builder.WriteRune('%')
-	builder.WriteRune(')')
-	builder.WriteRune('\n')
+	if errors, ok := stats.GetCounter("errors"); ok {
+		builder.WriteString(" | Errors: ")
+		builder.WriteString(clistats.String(errors))
+	}
 
-	gologger.Print().Msgf("%s", builder.String())
+	if okRequests && okTotal {
+		builder.WriteString(" | Requests: ")
+		builder.WriteString(clistats.String(requests))
+		builder.WriteRune('/')
+		builder.WriteString(clistats.String(total))
+		builder.WriteRune(' ')
+		builder.WriteRune('(')
+		//nolint:gomnd // this is not a magic number
+		builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
+		builder.WriteRune('%')
+		builder.WriteRune(')')
+		builder.WriteRune('\n')
+	}
+
+	fmt.Fprintf(os.Stderr, "%s", builder.String())
 }
 
-// getMetrics returns a map of important metrics for client
-func (p *StatsTicker) getMetrics() map[string]interface{} {
+func printCallbackJSON(stats clistats.StatisticsClient) {
+	builder := &strings.Builder{}
+	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
+		fmt.Fprintf(os.Stderr, "%s", builder.String())
+	}
+}
+
+func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	results := make(map[string]interface{})
 
-	startedAt, _ := p.stats.GetStatic("startedAt")
-	duration := time.Since(startedAt.(time.Time))
+	var (
+		startedAt time.Time
+		duration  time.Duration
+	)
 
-	results["startedAt"] = startedAt.(time.Time)
+	if stAt, ok := stats.GetStatic("startedAt"); ok {
+		startedAt = stAt.(time.Time)
+		duration = time.Since(startedAt)
+	}
+
+	results["startedAt"] = startedAt
 	results["duration"] = fmtDuration(duration)
-	templates, _ := p.stats.GetStatic("templates")
+	templates, _ := stats.GetStatic("templates")
 	results["templates"] = clistats.String(templates)
-	hosts, _ := p.stats.GetStatic("hosts")
+	hosts, _ := stats.GetStatic("hosts")
 	results["hosts"] = clistats.String(hosts)
-	matched, _ := p.stats.GetCounter("matched")
+	matched, _ := stats.GetCounter("matched")
 	results["matched"] = clistats.String(matched)
-	requests, _ := p.stats.GetCounter("requests")
+	requests, _ := stats.GetCounter("requests")
 	results["requests"] = clistats.String(requests)
-	total, _ := p.stats.GetCounter("total")
+	total, _ := stats.GetCounter("total")
 	results["total"] = clistats.String(total)
 	results["rps"] = clistats.String(uint64(float64(requests) / duration.Seconds()))
-	errors, _ := p.stats.GetCounter("errors")
+	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 
-	//nolint:gomnd // this is not a magic number
+	// nolint:gomnd // this is not a magic number
 	percentData := (float64(requests) * float64(100)) / float64(total)
 	percent := clistats.String(uint64(percentData))
 	results["percent"] = percent
 	return results
+}
+
+// getMetrics returns a map of important metrics for client
+func (p *StatsTicker) getMetrics() map[string]interface{} {
+	return metricsMap(p.stats)
 }
 
 // fmtDuration formats the duration for the time elapsed
@@ -215,7 +253,11 @@ func fmtDuration(d time.Duration) string {
 func (p *StatsTicker) Stop() {
 	if p.active {
 		// Print one final summary
-		printCallback(p.stats)
+		if p.outputJSON {
+			printCallbackJSON(p.stats)
+		} else {
+			printCallback(p.stats)
+		}
 		if err := p.stats.Stop(); err != nil {
 			gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 		}

@@ -8,12 +8,14 @@ import (
 	"crypto/sha1"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"unsafe"
+
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // Storage is a duplicate detecting storage for nuclei scan events.
@@ -92,7 +94,7 @@ func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 	exists, err := s.storage.Has(hash, nil)
 	if err != nil {
 		// if we have an error, return with it but mark it as true
-		// since we don't want to loose an issue considering it a dupe.
+		// since we don't want to lose an issue considering it a dupe.
 		return true, err
 	}
 	if !exists {
@@ -106,5 +108,7 @@ func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 //
 // Reference - https://stackoverflow.com/questions/59209493/how-to-use-unsafe-get-a-byte-slice-from-a-string-without-memory-copy
 func unsafeToBytes(data string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&data))
+	var buf = *(*[]byte)(unsafe.Pointer(&data))
+	(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(data)
+	return buf
 }

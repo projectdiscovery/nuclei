@@ -1,0 +1,22 @@
+id: variables-example
+
+info:
+  name: Variables Example
+  author: pdteam
+  severity: info
+
+variables:
+  a1: "PING"
+  a2: "{{base64('hello')}}"
+
+network:
+  - host: 
+      - "{{Hostname}}"
+    inputs:
+      - data: "{{a1}}"
+    read-size: 8
+    matchers:
+      - type: word
+        part: data
+        words:
+          - "{{a2}}"

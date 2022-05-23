@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,67 +14,98 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/multierr"
+	"moul.io/http2curl"
+
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/multierr"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 const defaultMaxWorkers = 150
 
+// Type returns the type of the protocol request
+func (request *Request) Type() templateTypes.ProtocolType {
+	return templateTypes.HTTPProtocol
+}
+
 // executeRaceRequest executes race condition request for a URL
-func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	var requests []*generatedRequest
+func (request *Request) executeRaceRequest(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	var generatedRequests []*generatedRequest
 
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
-	generator := r.newGenerator()
-	requestForDump, err := generator.Make(reqURL, nil, "")
+	generator := request.newGenerator()
+
+	inputData, payloads, ok := generator.nextValue()
+	if !ok {
+		return nil
+	}
+	requestForDump, err := generator.Make(reqURL, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
-	r.setCustomHeaders(requestForDump)
+	request.setCustomHeaders(requestForDump)
 	dumpedRequest, err := dump(requestForDump, reqURL)
 	if err != nil {
 		return err
 	}
-	if r.options.Options.Debug || r.options.Options.DebugRequests {
-		gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-		gologger.Print().Msgf("%s", string(dumpedRequest))
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msg(msg)
+			gologger.Print().Msgf("%s", string(dumpedRequest))
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequest))
+		}
 	}
 	previous["request"] = string(dumpedRequest)
 
 	// Pre-Generate requests
-	for i := 0; i < r.RaceNumberRequests; i++ {
-		generator := r.newGenerator()
-		request, err := generator.Make(reqURL, nil, "")
+	for i := 0; i < request.RaceNumberRequests; i++ {
+		generator := request.newGenerator()
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
+			break
+		}
+		generatedRequest, err := generator.Make(reqURL, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
-		requests = append(requests, request)
+		generatedRequests = append(generatedRequests, generatedRequest)
 	}
 
 	wg := sync.WaitGroup{}
 	var requestErr error
 	mutex := &sync.Mutex{}
-	for i := 0; i < r.RaceNumberRequests; i++ {
+	for i := 0; i < request.RaceNumberRequests; i++ {
 		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
 			defer wg.Done()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := request.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
-		}(requests[i])
-		r.options.Progress.IncrementRequests()
+		}(generatedRequests[i])
+		request.options.Progress.IncrementRequests()
 	}
 	wg.Wait()
 
@@ -81,45 +113,54 @@ func (r *Request) executeRaceRequest(reqURL string, previous output.InternalEven
 }
 
 // executeRaceRequest executes parallel requests for a template
-func (r *Request) executeParallelHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := r.newGenerator()
+func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
+	generator := request.newGenerator()
 
 	// Workers that keeps enqueuing new requests
-	maxWorkers := r.Threads
+	maxWorkers := request.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues, "")
-		if err == io.EOF {
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
 			break
 		}
+		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
-			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			if err == io.EOF {
+				break
+			}
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
+		}
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
 		}
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			r.options.RateLimiter.Take()
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			request.options.RateLimiter.Take()
+
+			previous := make(map[string]interface{})
+			err := request.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
-		}(request)
-		r.options.Progress.IncrementRequests()
+		}(generatedHttpRequest)
+		request.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
 	return requestErr
 }
 
 // executeTurboHTTP executes turbo http request for a URL
-func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := r.newGenerator()
+func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	generator := request.newGenerator()
 
 	// need to extract the target from the url
 	URL, err := url.Parse(reqURL)
@@ -130,13 +171,13 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	pipeOptions := rawhttp.DefaultPipelineOptions
 	pipeOptions.Host = URL.Host
 	pipeOptions.MaxConnections = 1
-	if r.PipelineConcurrentConnections > 0 {
-		pipeOptions.MaxConnections = r.PipelineConcurrentConnections
+	if request.PipelineConcurrentConnections > 0 {
+		pipeOptions.MaxConnections = request.PipelineConcurrentConnections
 	}
-	if r.PipelineRequestsPerConnection > 0 {
-		pipeOptions.MaxPendingRequests = r.PipelineRequestsPerConnection
+	if request.PipelineRequestsPerConnection > 0 {
+		pipeOptions.MaxPendingRequests = request.PipelineRequestsPerConnection
 	}
-	pipeclient := rawhttp.NewPipelineClient(pipeOptions)
+	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
 	maxWorkers := defaultMaxWorkers
@@ -149,98 +190,143 @@ func (r *Request) executeTurboHTTP(reqURL string, dynamicValues, previous output
 	var requestErr error
 	mutex := &sync.Mutex{}
 	for {
-		request, err := generator.Make(reqURL, dynamicValues, "")
-		if err == io.EOF {
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
 			break
 		}
+		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
-			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
-		request.pipelinedClient = pipeclient
-
+		if reqURL == "" {
+			reqURL = generatedHttpRequest.URL()
+		}
+		generatedHttpRequest.pipelinedClient = pipeClient
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
 
-			err := r.executeRequest(reqURL, httpRequest, previous, callback, 0)
+			err := request.executeRequest(reqURL, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
 				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
-		}(request)
-		r.options.Progress.IncrementRequests()
+		}(generatedHttpRequest)
+		request.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
 	return requestErr
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// verify if pipeline was requested
-	if r.Pipeline {
-		return r.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
+	if request.Pipeline {
+		return request.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
 	}
 
 	// verify if a basic race condition was requested
-	if r.Race && r.RaceNumberRequests > 0 {
-		return r.executeRaceRequest(reqURL, previous, callback)
+	if request.Race && request.RaceNumberRequests > 0 {
+		return request.executeRaceRequest(reqURL, previous, callback)
 	}
 
 	// verify if parallel elaboration was requested
-	if r.Threads > 0 {
-		return r.executeParallelHTTP(reqURL, dynamicValues, previous, callback)
+	if request.Threads > 0 {
+		return request.executeParallelHTTP(reqURL, dynamicValues, callback)
 	}
 
-	generator := r.newGenerator()
+	generator := request.newGenerator()
 
+	var gotDynamicValues map[string][]string
 	requestCount := 1
 	var requestErr error
 	for {
-		hasInteractMarkers := interactsh.HasMatchers(r.CompiledOperators)
+		// returns two values, error and skip, which skips the execution for the request instance.
+		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
+			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
+			payloads = generators.MergeMaps(variablesMap, payloads)
 
-		var interactURL string
-		if r.options.Interactsh != nil && hasInteractMarkers {
-			interactURL = r.options.Interactsh.URL()
+			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
+			if err != nil {
+				if err == io.EOF {
+					return true, nil
+				}
+				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+				return true, err
+			}
+			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
+			if reqURL == "" {
+				reqURL = generatedHttpRequest.URL()
+			}
+			// Check if hosts keep erroring
+			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
+				return true, nil
+			}
+			var gotMatches bool
+			request.options.RateLimiter.Take()
+
+			err = request.executeRequest(reqURL, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+				// Add the extracts to the dynamic values if any.
+				if event.OperatorsResult != nil {
+					gotMatches = event.OperatorsResult.Matched
+					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+				}
+				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
+					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
+						MakeResultFunc: request.MakeResultEvent,
+						Event:          event,
+						Operators:      request.CompiledOperators,
+						MatchFunc:      request.Match,
+						ExtractFunc:    request.Extract,
+					})
+				} else {
+					callback(event)
+				}
+			}, requestCount)
+
+			// If a variable is unresolved, skip all further requests
+			if err == errStopExecution {
+				return true, nil
+			}
+			if err != nil {
+				if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.CheckError(err) {
+					request.options.HostErrorsCache.MarkFailed(reqURL)
+				}
+				requestErr = err
+			}
+			requestCount++
+			request.options.Progress.IncrementRequests()
+
+			// If this was a match, and we want to stop at first match, skip all further requests.
+			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+				return true, nil
+			}
+			return false, nil
 		}
-		request, err := generator.Make(reqURL, dynamicValues, interactURL)
-		if err == io.EOF {
+
+		inputData, payloads, ok := generator.nextValue()
+		if !ok {
 			break
 		}
-		if err != nil {
-			r.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			return err
+		var gotErr error
+		var skip bool
+		if len(gotDynamicValues) > 0 {
+			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
+				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
+					return true
+				}
+				return false
+			})
+		} else {
+			skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
 		}
-
-		var gotOutput bool
-		r.options.RateLimiter.Take()
-		err = r.executeRequest(reqURL, request, previous, func(event *output.InternalWrappedEvent) {
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotOutput = true
-				dynamicValues = generators.MergeMaps(dynamicValues, event.OperatorsResult.DynamicValues)
-			}
-			if hasInteractMarkers && r.options.Interactsh != nil {
-				r.options.Interactsh.RequestEvent(interactURL, &interactsh.RequestData{
-					MakeResultFunc: r.MakeResultEvent,
-					Event:          event,
-					Operators:      r.CompiledOperators,
-					MatchFunc:      r.Match,
-					ExtractFunc:    r.Extract,
-				})
-			} else {
-				callback(event)
-			}
-		}, requestCount)
-		if err != nil {
-			requestErr = multierr.Append(requestErr, err)
+		if gotErr != nil && requestErr == nil {
+			requestErr = gotErr
 		}
-		requestCount++
-		r.options.Progress.IncrementRequests()
-
-		if request.original.options.Options.StopAtFirstMatch && gotOutput {
-			r.options.Progress.IncrementErrorsBy(int64(generator.Total()))
+		if skip || gotErr != nil {
 			break
 		}
 	}
@@ -249,88 +335,169 @@ func (r *Request) ExecuteWithResults(reqURL string, dynamicValues, previous outp
 
 const drainReqSize = int64(8 * 1024)
 
+var errStopExecution = errors.New("stop execution due to unresolved variables")
+
 // executeRequest executes the actual generated request and returns error if occurred
-func (r *Request) executeRequest(reqURL string, request *generatedRequest, previous output.InternalEvent, callback protocols.OutputEventCallback, requestCount int) error {
-	r.setCustomHeaders(request)
+func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
+	request.setCustomHeaders(generatedRequest)
+
+	// Try to evaluate any payloads before replacement
+	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
+	for payloadName, payloadValue := range generatedRequest.dynamicValues {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.dynamicValues[payloadName] = data
+		}
+	}
+	for payloadName, payloadValue := range generatedRequest.meta {
+		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+			generatedRequest.meta[payloadName] = data
+		}
+	}
 
 	var (
 		resp          *http.Response
-		fromcache     bool
+		fromCache     bool
 		dumpedRequest []byte
 		err           error
 	)
 
+	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
-	if !request.original.Race {
-		dumpedRequest, err = dump(request, reqURL)
-		if err != nil {
-			return err
+	if !generatedRequest.original.Race {
+		var dumpError error
+		// TODO: dump is currently not working with post-processors - somehow it alters the signature
+		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
+		if dumpError != nil {
+			return dumpError
 		}
+		dumpedRequestString := string(dumpedRequest)
 
-		if r.options.Options.Debug || r.options.Options.DebugRequests {
-			gologger.Info().Msgf("[%s] Dumped HTTP request for %s\n\n", r.options.TemplateID, reqURL)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
+		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
+			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
+		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
+			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, reqURL, varErr)
+				return errStopExecution
+			}
 		}
 	}
-
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
-	if request.original.Pipeline {
-		if request.rawRequest != nil {
-			formedURL = request.rawRequest.FullURL
+	if generatedRequest.original.Pipeline {
+		if generatedRequest.rawRequest != nil {
+			formedURL = generatedRequest.rawRequest.FullURL
 			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 				hostname = parsed.Host
 			}
-			resp, err = request.pipelinedClient.DoRaw(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)))
-		} else if request.request != nil {
-			resp, err = request.pipelinedClient.Dor(request.request)
+			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+		} else if generatedRequest.request != nil {
+			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
-	} else if request.original.Unsafe && request.rawRequest != nil {
-		formedURL = request.rawRequest.FullURL
+	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
+		formedURL = generatedRequest.rawRequest.FullURL
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 			hostname = parsed.Host
 		}
-		options := request.original.rawhttpClient.Options
-		options.FollowRedirects = r.Redirects
-		options.CustomRawBytes = request.rawRequest.UnsafeRawBytes
-		resp, err = request.original.rawhttpClient.DoRawWithOptions(request.rawRequest.Method, reqURL, request.rawRequest.Path, generators.ExpandMapValues(request.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(request.rawRequest.Data)), options)
+		options := generatedRequest.original.rawhttpClient.Options
+		options.FollowRedirects = request.Redirects
+		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
+		options.ForceReadAllBody = request.ForceReadAllBody
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), options)
 	} else {
-		hostname = request.request.URL.Host
-		formedURL = request.request.URL.String()
+		hostname = generatedRequest.request.URL.Host
+		formedURL = generatedRequest.request.URL.String()
 		// if nuclei-project is available check if the request was already sent previously
-		if r.options.ProjectFile != nil {
+		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
-			fromcache = true
-			resp, err = r.options.ProjectFile.Get(dumpedRequest)
+			fromCache = true
+			resp, err = request.options.ProjectFile.Get(dumpedRequest)
 			if err != nil {
-				fromcache = false
+				fromCache = false
 			}
 		}
 		if resp == nil {
-			resp, err = r.httpClient.Do(request.request)
+			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
+				return errSignature
+			}
+			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
-	if resp == nil {
-		err = errors.New("no response got for request")
+
+	// Dump the requests containing all headers
+	if !generatedRequest.original.Race {
+		var dumpError error
+		dumpedRequest, dumpError = dump(generatedRequest, reqURL)
+		if dumpError != nil {
+			return dumpError
+		}
+		dumpedRequestString := string(dumpedRequest)
+		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Info().Msg(msg)
+				gologger.Print().Msgf("%s", dumpedRequestString)
+			}
+			if request.options.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+			}
+		}
 	}
+
+	// use request url as matched url if empty
+	if formedURL == "" {
+		formedURL = reqURL
+	}
+
 	if err != nil {
-		// rawhttp doesn't supports draining response bodies.
-		if resp != nil && resp.Body != nil && request.rawRequest == nil {
+		// rawhttp doesn't support draining response bodies.
+		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
-		r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
-		r.options.Progress.IncrementErrorsBy(1)
+		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
+		request.options.Progress.IncrementErrorsBy(1)
+
+		// If we have interactsh markers and request times out, still send
+		// a callback event so in case we receive an interaction, correlation is possible.
+		if hasInteractMatchers {
+			outputEvent := request.responseToDSLMap(&http.Response{}, reqURL, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+			if i := strings.LastIndex(hostname, ":"); i != -1 {
+				hostname = hostname[:i]
+			}
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+			if request.CompiledOperators != nil {
+				event.InternalEvent = outputEvent
+			}
+			callback(event)
+		}
 		return err
 	}
 	defer func() {
-		_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+		}
 		resp.Body.Close()
 	}()
 
-	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", r.options.TemplateID, formedURL)
-	r.options.Output.Request(r.options.TemplateID, formedURL, "http", err)
+	var curlCommand string
+	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
+		bodyBytes, _ := generatedRequest.request.BodyBytes()
+		resp.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+		command, _ := http2curl.GetCurlCommand(resp.Request)
+		if err == nil && command != nil {
+			curlCommand = command.String()
+		}
+	}
+
+	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
+	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 
 	duration := time.Since(timeStart)
 
@@ -339,101 +506,138 @@ func (r *Request) executeRequest(reqURL string, request *generatedRequest, previ
 		return errors.Wrap(err, "could not dump http response")
 	}
 
-	var bodyReader io.Reader
-	if r.MaxSize != 0 {
-		bodyReader = io.LimitReader(resp.Body, int64(r.MaxSize))
-	} else {
-		bodyReader = resp.Body
-	}
-	data, err := ioutil.ReadAll(bodyReader)
-	if err != nil {
-		if !strings.Contains(err.Error(), "unexpected EOF") { // ignore EOF error
-			return errors.Wrap(err, "could not read http body")
+	var dumpedResponse []redirectedResponse
+	var gotData []byte
+	// If the status code is HTTP 101, we should not proceed with reading body.
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		var bodyReader io.Reader
+		if request.MaxSize != 0 {
+			bodyReader = io.LimitReader(resp.Body, int64(request.MaxSize))
+		} else {
+			bodyReader = resp.Body
 		}
-	}
-	resp.Body.Close()
+		data, err := io.ReadAll(bodyReader)
+		if err != nil {
+			// Ignore body read due to server misconfiguration errors
+			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
+				gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", request.options.TemplateID, formedURL, err.Error())
+			} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
+				return errors.Wrap(err, "could not read http body")
+			}
+		}
+		gotData = data
+		resp.Body.Close()
 
-	redirectedResponse, err := dumpResponseWithRedirectChain(resp, data)
-	if err != nil {
-		return errors.Wrap(err, "could not read http response with redirect chain")
-	}
-
-	// net/http doesn't automatically decompress the response body if an
-	// encoding has been specified by the user in the request so in case we have to
-	// manually do it.
-	dataOrig := data
-	data, _ = handleDecompression(resp, data)
-
-	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	dumpedResponseBuilder := &bytes.Buffer{}
-	dumpedResponseBuilder.Write(dumpedResponseHeaders)
-	dumpedResponseBuilder.Write(data)
-	dumpedResponse := dumpedResponseBuilder.Bytes()
-	redirectedResponse = bytes.ReplaceAll(redirectedResponse, dataOrig, data)
-
-	// Dump response - step 2 - replace gzip body with deflated one or with itself (NOP operation)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped HTTP response for %s\n\n", r.options.TemplateID, formedURL)
-		gologger.Print().Msgf("%s", string(redirectedResponse))
+		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
+		if err != nil {
+			return errors.Wrap(err, "could not read http response with redirect chain")
+		}
+	} else {
+		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
-	if r.options.ProjectFile != nil && !fromcache {
-		err := r.options.ProjectFile.Set(dumpedRequest, resp, data)
-		if err != nil {
+	if request.options.ProjectFile != nil && !fromCache {
+		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
 			return errors.Wrap(err, "could not store in project file")
 		}
 	}
 
-	matchedURL := reqURL
-	if request.rawRequest != nil && request.rawRequest.FullURL != "" {
-		matchedURL = request.rawRequest.FullURL
-	}
-	if request.request != nil {
-		matchedURL = request.request.URL.String()
-	}
-	finalEvent := make(output.InternalEvent)
+	for _, response := range dumpedResponse {
+		if response.resp == nil {
+			continue // Skip nil responses
+		}
+		matchedURL := reqURL
+		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
+			matchedURL = generatedRequest.rawRequest.FullURL
+		}
+		if generatedRequest.request != nil {
+			matchedURL = generatedRequest.request.URL.String()
+		}
+		finalEvent := make(output.InternalEvent)
 
-	outputEvent := r.responseToDSLMap(resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(data), headersToString(resp.Header), duration, request.meta)
-	if i := strings.LastIndex(hostname, ":"); i != -1 {
-		hostname = hostname[:i]
-	}
-	outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
-	outputEvent["redirect-chain"] = tostring.UnsafeToString(redirectedResponse)
-	for k, v := range previous {
-		finalEvent[k] = v
-	}
-	for k, v := range outputEvent {
-		finalEvent[k] = v
-	}
-	// Add to history the current request number metadata if asked by the user.
-	if r.ReqCondition {
+		outputEvent := request.responseToDSLMap(response.resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		if i := strings.LastIndex(hostname, ":"); i != -1 {
+			hostname = hostname[:i]
+		}
+		outputEvent["curl-command"] = curlCommand
+		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+		if request.options.Interactsh != nil {
+			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
+		}
+		for k, v := range previousEvent {
+			finalEvent[k] = v
+		}
 		for k, v := range outputEvent {
-			key := fmt.Sprintf("%s_%d", k, requestCount)
-			previous[key] = v
-			finalEvent[key] = v
+			finalEvent[k] = v
+		}
+
+		// Add to history the current request number metadata if asked by the user.
+		if request.ReqCondition {
+			for k, v := range outputEvent {
+				key := fmt.Sprintf("%s_%d", k, requestCount)
+				previousEvent[key] = v
+				finalEvent[key] = v
+			}
+		}
+
+		// prune signature internal values if any
+		request.pruneSignatureInternalValues(generatedRequest.meta)
+
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+		})
+		if hasInteractMatchers {
+			event.UsesInteractsh = true
+		}
+
+		responseContentType := resp.Header.Get("Content-Type")
+		isResponseTruncated := request.MaxSize > 0 && len(gotData) >= request.MaxSize
+		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
+
+		callback(event)
+	}
+	return nil
+}
+
+// handleSignature of the http request
+func (request *Request) handleSignature(generatedRequest *generatedRequest) error {
+	switch request.Signature.Value {
+	case AWSSignature:
+		var awsSigner signer.Signer
+		vars := request.options.Options.Vars.AsMap()
+		awsAccessKeyId := types.ToString(vars["aws-id"])
+		awsSecretAccessKey := types.ToString(vars["aws-secret"])
+		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
+		service := types.ToString(generatedRequest.dynamicValues["service"])
+		region := types.ToString(generatedRequest.dynamicValues["region"])
+		// if region is empty use default value
+		if region == "" {
+			region = types.ToString(signer.AwsDefaultVars["region"])
+		}
+		awsSignatureArguments := signer.AwsSignatureArguments{
+			Service: types.ToString(service),
+			Region:  types.ToString(region),
+			Time:    time.Now(),
+		}
+
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
+		if err != nil {
+			return err
+		}
+		err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
+		if err != nil {
+			return err
 		}
 	}
 
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-	if !interactsh.HasMatchers(r.CompiledOperators) {
-		if r.CompiledOperators != nil {
-			var ok bool
-			event.OperatorsResult, ok = r.CompiledOperators.Execute(finalEvent, r.Match, r.Extract)
-			if ok && event.OperatorsResult != nil {
-				event.OperatorsResult.PayloadValues = request.meta
-				event.Results = r.MakeResultEvent(event)
-			}
-			event.InternalEvent = outputEvent
-		}
-	}
-	callback(event)
 	return nil
 }
 
 // setCustomHeaders sets the custom headers for generated request
-func (r *Request) setCustomHeaders(req *generatedRequest) {
-	for k, v := range r.customHeaders {
+func (request *Request) setCustomHeaders(req *generatedRequest) {
+	for k, v := range request.customHeaders {
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
@@ -442,6 +646,65 @@ func (r *Request) setCustomHeaders(req *generatedRequest) {
 			if kk == "Host" {
 				req.request.Host = vv
 			}
+		}
+	}
+}
+
+const CRLF = "\r\n"
+
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
+	cliOptions := request.options.Options
+	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
+		response := string(redirectedResponse)
+
+		var highlightedResult string
+		if responseContentType == "application/octet-stream" || ((responseContentType == "" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response)) {
+			highlightedResult = createResponseHexDump(event, response, cliOptions.NoColor)
+		} else {
+			highlightedResult = responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, false)
+		}
+
+		msg := "[%s] Dumped HTTP response %s\n\n%s"
+		if isResponseTruncated {
+			msg = "[%s] Dumped HTTP response (Truncated) %s\n\n%s"
+		}
+		fMsg := fmt.Sprintf(msg, request.options.TemplateID, formedURL, highlightedResult)
+		if cliOptions.Debug || cliOptions.DebugResponse {
+			gologger.Debug().Msg(fMsg)
+		}
+		if cliOptions.StoreResponse {
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fMsg)
+		}
+	}
+}
+
+func createResponseHexDump(event *output.InternalWrappedEvent, response string, noColor bool) string {
+	CRLFs := CRLF + CRLF
+	headerEndIndex := strings.Index(response, CRLFs) + len(CRLFs)
+	if headerEndIndex > 0 {
+		headers := response[0:headerEndIndex]
+		responseBodyHexDump := hex.Dump([]byte(response[headerEndIndex:]))
+
+		highlightedHeaders := responsehighlighter.Highlight(event.OperatorsResult, headers, noColor, false)
+		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBodyHexDump, noColor, true)
+		return fmt.Sprintf("%s\n%s", highlightedHeaders, highlightedResponse)
+	} else {
+		return responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), noColor, true)
+	}
+}
+
+func (request *Request) pruneSignatureInternalValues(maps ...map[string]interface{}) {
+	var signatureFieldsToSkip map[string]interface{}
+	switch request.Signature.Value {
+	case AWSSignature:
+		signatureFieldsToSkip = signer.AwsInternalOnlyVars
+	default:
+		return
+	}
+
+	for _, m := range maps {
+		for fieldName := range signatureFieldsToSkip {
+			delete(m, fieldName)
 		}
 	}
 }

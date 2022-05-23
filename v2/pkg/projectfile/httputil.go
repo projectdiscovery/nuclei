@@ -18,8 +18,7 @@ func hash(v interface{}) (string, error) {
 
 	sh := sha256.New()
 
-	_, err = io.WriteString(sh, string(data))
-	if err != nil {
+	if _, err = io.WriteString(sh, string(data)); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(sh.Sum(nil)), nil
@@ -28,8 +27,7 @@ func hash(v interface{}) (string, error) {
 func marshal(data interface{}) ([]byte, error) {
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
-	err := enc.Encode(data)
-	if err != nil {
+	if err := enc.Encode(data); err != nil {
 		return nil, err
 	}
 
@@ -38,8 +36,7 @@ func marshal(data interface{}) ([]byte, error) {
 
 func unmarshal(data []byte, obj interface{}) error {
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	err := dec.Decode(obj)
-	if err != nil {
+	if err := dec.Decode(obj); err != nil {
 		return err
 	}
 
@@ -82,23 +79,6 @@ func newInternalResponse() *InternalResponse {
 	}
 }
 
-// Unused
-// func toInternalRequest(req *http.Request, target string, body []byte) *InternalRequest {
-// 	intReq := newInternalRquest()
-
-// 	intReq.Target = target
-// 	intReq.HTTPMajor = req.ProtoMajor
-// 	intReq.HTTPMinor = req.ProtoMinor
-// 	for k, v := range req.Header {
-// 		intReq.Headers[k] = v
-// 	}
-// 	intReq.Headers = req.Header
-// 	intReq.Method = req.Method
-// 	intReq.Body = body
-
-// 	return intReq
-// }
-
 func toInternalResponse(resp *http.Response, body []byte) *InternalResponse {
 	intResp := newInternalResponse()
 
@@ -128,14 +108,3 @@ func fromInternalResponse(intResp *InternalResponse) *http.Response {
 		Body:          ioutil.NopCloser(bytes.NewReader(intResp.Body)),
 	}
 }
-
-// Unused
-// func fromInternalRequest(intReq *InternalRequest) *http.Request {
-// 	return &http.Request{
-// 		ProtoMinor:    intReq.HTTPMinor,
-// 		ProtoMajor:    intReq.HTTPMajor,
-// 		Header:        intReq.Headers,
-// 		ContentLength: int64(len(intReq.Body)),
-// 		Body:          ioutil.NopCloser(bytes.NewReader(intReq.Body)),
-// 	}
-// }

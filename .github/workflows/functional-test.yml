@@ -1,0 +1,31 @@
+name: 🧪 Functional Test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+
+jobs:  
+  functional:
+    name: Functional Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Functional Tests
+        env:
+          GH_ACTION: true
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          chmod +x run.sh
+          bash run.sh ${{ matrix.os }}
+        working-directory: v2/cmd/functional-test

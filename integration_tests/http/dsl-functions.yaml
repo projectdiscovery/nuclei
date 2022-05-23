@@ -1,0 +1,75 @@
+id: helper-functions-examples
+
+info:
+  name: RAW Template with Helper Functions
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+        01: {{base64("Hello")}}
+        02: {{base64(1234)}}
+        03: {{base64_decode("SGVsbG8=")}}
+        04: {{base64_py("Hello")}}
+        05: {{concat("Hello", "world")}}
+        06: {{contains("Hello", "lo")}}
+        07: {{generate_java_gadget("commons-collections3.1", "wget http://{{interactsh-url}}", "base64")}}
+        08: {{gzip("Hello")}}
+        09: {{hex_decode("6161")}}
+        10: {{hex_encode("aa")}}
+        11: {{html_escape("<body>test</body>")}}
+        12: {{html_unescape("&lt;body&gt;test&lt;/body&gt;")}}
+        13: {{len("Hello")}}
+        14: {{len(5555)}}
+        15: {{md5("Hello")}}
+        16: {{md5(1234)}}
+        17: {{mmh3("Hello")}}
+        18: {{print_debug(1+2, "Hello")}}
+        19: {{rand_base(5, "abc")}}
+        20: {{rand_base(5, "")}}
+        21: {{rand_base(5)}}
+        22: {{rand_char("abc")}}
+        23: {{rand_char("")}}
+        24: {{rand_char()}}
+        25: {{rand_int(1, 10)}}
+        26: {{rand_int(10)}}
+        27: {{rand_int()}}
+        28: {{rand_ip("192.168.0.0/24")}}
+        29: {{rand_ip("2002:c0a8::/24")}}
+        30: {{rand_ip("192.168.0.0/24","10.0.100.0/24")}}
+        31: {{rand_text_alpha(10, "abc")}}
+        32: {{rand_text_alpha(10, "")}}
+        33: {{rand_text_alpha(10)}}
+        34: {{rand_text_alphanumeric(10, "ab12")}}
+        35: {{rand_text_alphanumeric(10)}}
+        36: {{rand_text_numeric(10, 123)}}
+        37: {{rand_text_numeric(10)}}
+        38: {{regex("H([a-z]+)o", "Hello")}}
+        39: {{remove_bad_chars("abcd", "bc")}}
+        40: {{repeat("a", 5)}}
+        41: {{replace("Hello", "He", "Ha")}}
+        42: {{replace_regex("He123llo", "(\\d+)", "")}}
+        43: {{reverse("abc")}}
+        44: {{sha1("Hello")}}
+        45: {{sha256("Hello")}}
+        46: {{to_lower("HELLO")}}
+        47: {{to_upper("hello")}}
+        48: {{trim("aaaHelloddd", "ad")}}
+        49: {{trim_left("aaaHelloddd", "ad")}}
+        50: {{trim_prefix("aaHelloaa", "aa")}}
+        51: {{trim_right("aaaHelloddd", "ad")}}
+        52: {{trim_space("  Hello  ")}}
+        53: {{trim_suffix("aaHelloaa", "aa")}}
+        54: {{unix_time(10)}}
+        55: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
+        56: {{url_encode("https://projectdiscovery.io/test?a=1")}}
+        57: {{wait_for(1)}}
+
+    extractors:
+      - type: regex
+        name: results
+        regex:
+          - '\d+: [^\s]+'

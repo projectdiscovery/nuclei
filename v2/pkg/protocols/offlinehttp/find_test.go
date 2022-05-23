@@ -3,12 +3,15 @@ package offlinehttp
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestFindResponses(t *testing.T) {
@@ -19,7 +22,7 @@ func TestFindResponses(t *testing.T) {
 	request := &Request{}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	executerOpts.Operators = []*operators.Operators{{}}
 	err := request.Compile(executerOpts)
@@ -37,13 +40,13 @@ func TestFindResponses(t *testing.T) {
 		"test.txt":          "TEST",
 	}
 	for k, v := range files {
-		err = ioutil.WriteFile(path.Join(tempDir, k), []byte(v), 0777)
+		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
 		require.Nil(t, err, "could not write temporary file")
 	}
 	expected := []string{"config.txt", "final.txt", "test.txt"}
 	got := []string{}
 	err = request.getInputPaths(tempDir+"/*", func(item string) {
-		base := path.Base(item)
+		base := filepath.Base(item)
 		got = append(got, base)
 	})
 	require.Nil(t, err, "could not get input paths for glob")
@@ -51,7 +54,7 @@ func TestFindResponses(t *testing.T) {
 
 	got = []string{}
 	err = request.getInputPaths(tempDir, func(item string) {
-		base := path.Base(item)
+		base := filepath.Base(item)
 		got = append(got, base)
 	})
 	require.Nil(t, err, "could not get input paths for directory")

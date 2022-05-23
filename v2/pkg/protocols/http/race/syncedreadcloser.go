@@ -3,7 +3,6 @@ package race
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -13,7 +12,7 @@ type SyncedReadCloser struct {
 	data           []byte
 	p              int64
 	length         int64
-	opengate       chan struct{}
+	openGate       chan struct{}
 	enableBlocking bool
 }
 
@@ -23,13 +22,13 @@ func NewSyncedReadCloser(r io.ReadCloser) *SyncedReadCloser {
 		s   SyncedReadCloser
 		err error
 	)
-	s.data, err = ioutil.ReadAll(r)
+	s.data, err = io.ReadAll(r)
 	if err != nil {
 		return nil
 	}
 	r.Close()
 	s.length = int64(len(s.data))
-	s.opengate = make(chan struct{})
+	s.openGate = make(chan struct{})
 	s.enableBlocking = true
 	return &s
 }
@@ -48,13 +47,13 @@ func (s *SyncedReadCloser) SetOpenGate(status bool) {
 
 // OpenGate opens the gate allowing all requests to be completed
 func (s *SyncedReadCloser) OpenGate() {
-	s.opengate <- struct{}{}
+	s.openGate <- struct{}{}
 }
 
 // OpenGateAfter schedules gate to be opened after a duration
 func (s *SyncedReadCloser) OpenGateAfter(d time.Duration) {
 	time.AfterFunc(d, func() {
-		s.opengate <- struct{}{}
+		s.openGate <- struct{}{}
 	})
 }
 
@@ -84,7 +83,7 @@ func (s *SyncedReadCloser) Seek(offset int64, whence int) (int64, error) {
 func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
 	// If the data fits in the buffer blocks awaiting the sync instruction
 	if s.p+int64(len(p)) >= s.length && s.enableBlocking {
-		<-s.opengate
+		<-s.openGate
 	}
 	n = copy(p, s.data[s.p:])
 	s.p += int64(n)
@@ -94,7 +93,7 @@ func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-// Close implements close method for io.ReadSeeker
+// Close closes an io.ReadSeeker
 func (s *SyncedReadCloser) Close() error {
 	return nil
 }

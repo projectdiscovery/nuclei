@@ -1,10 +1,18 @@
 package projectfile
 
 import (
-	"fmt"
 	"net/http"
+	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
+)
+
+var (
+	ErrNotFound          = errors.New("not found")
+	regexUserAgent       = regexp.MustCompile(`(?mi)\r\nUser-Agent: .+\r\n`)
+	regexDefaultInteract = regexp.MustCompile(`(?mi)[a-zA-Z1-9%.]+interact.sh`)
 )
 
 type Options struct {
@@ -31,37 +39,43 @@ func New(options *Options) (*ProjectFile, error) {
 	return &p, nil
 }
 
+func (pf *ProjectFile) cleanupData(data []byte) []byte {
+	// ignore all user agents
+	data = regexUserAgent.ReplaceAll(data, []byte("\r\n"))
+	// ignore interact markers
+	return regexDefaultInteract.ReplaceAll(data, []byte(""))
+}
+
 func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
-	reqHash, err := hash(req)
+	reqHash, err := hash(pf.cleanupData(req))
 	if err != nil {
 		return nil, err
 	}
 
 	data, ok := pf.hm.Get(reqHash)
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, ErrNotFound
 	}
 
-	var httprecord HTTPRecord
-	httprecord.Response = newInternalResponse()
-	err = unmarshal(data, &httprecord)
-	if err != nil {
+	var httpRecord HTTPRecord
+	httpRecord.Response = newInternalResponse()
+	if err := unmarshal(data, &httpRecord); err != nil {
 		return nil, err
 	}
 
-	return fromInternalResponse(httprecord.Response), nil
+	return fromInternalResponse(httpRecord.Response), nil
 }
 
 func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
-	reqHash, err := hash(req)
+	reqHash, err := hash(pf.cleanupData(req))
 	if err != nil {
 		return err
 	}
 
-	var httprecord HTTPRecord
-	httprecord.Request = req
-	httprecord.Response = toInternalResponse(resp, data)
-	data, err = marshal(httprecord)
+	var httpRecord HTTPRecord
+	httpRecord.Request = req
+	httpRecord.Response = toInternalResponse(resp, data)
+	data, err = marshal(httpRecord)
 	if err != nil {
 		return err
 	}

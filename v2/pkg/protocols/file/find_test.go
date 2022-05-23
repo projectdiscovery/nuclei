@@ -3,11 +3,14 @@ package file
 import (
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestFindInputPaths(t *testing.T) {
@@ -16,15 +19,15 @@ func TestFindInputPaths(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-file"
 	request := &Request{
-		ID:                templateID,
-		MaxSize:           1024,
-		NoRecursive:       false,
-		Extensions:        []string{"all", ".lock"},
-		ExtensionDenylist: []string{".go"},
+		ID:          templateID,
+		MaxSize:     "1Gb",
+		NoRecursive: false,
+		Extensions:  []string{"all", ".lock"},
+		DenyList:    []string{".go"},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -41,13 +44,13 @@ func TestFindInputPaths(t *testing.T) {
 		"test.js":           "TEST",
 	}
 	for k, v := range files {
-		err = ioutil.WriteFile(path.Join(tempDir, k), []byte(v), 0777)
+		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
 		require.Nil(t, err, "could not write temporary file")
 	}
 	expected := []string{"config.yaml", "final.yaml", "test.js"}
 	got := []string{}
 	err = request.getInputPaths(tempDir+"/*", func(item string) {
-		base := path.Base(item)
+		base := filepath.Base(item)
 		got = append(got, base)
 	})
 	require.Nil(t, err, "could not get input paths for glob")
@@ -55,7 +58,7 @@ func TestFindInputPaths(t *testing.T) {
 
 	got = []string{}
 	err = request.getInputPaths(tempDir, func(item string) {
-		base := path.Base(item)
+		base := filepath.Base(item)
 		got = append(got, base)
 	})
 	require.Nil(t, err, "could not get input paths for directory")

@@ -3,10 +3,31 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/asaskevich/govalidator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
+
+// JSONScalarToString converts an interface coming from json to string
+// Inspired from: https://github.com/cli/cli/blob/09b09810dd812e3ede54b59ad9d6912b946ac6c5/pkg/export/template.go#L72
+func JSONScalarToString(input interface{}) (string, error) {
+	switch tt := input.(type) {
+	case string:
+		return ToString(tt), nil
+	case float64:
+		return ToString(tt), nil
+	case nil:
+		return ToString(tt), nil
+	case bool:
+		return ToString(tt), nil
+	default:
+		return "", fmt.Errorf("cannot convert type to string: %v", tt)
+	}
+}
 
 // ToString converts an interface to string in a quick way
 func ToString(data interface{}) string {
@@ -43,10 +64,28 @@ func ToString(data interface{}) string {
 		return strconv.FormatUint(uint64(s), 10)
 	case []byte:
 		return string(s)
+	case severity.Holder:
+		return s.Severity.String()
+	case severity.Severity:
+		return s.String()
 	case fmt.Stringer:
 		return s.String()
 	case error:
 		return s.Error()
+	default:
+		return fmt.Sprintf("%v", data)
+	}
+}
+
+func ToHexOrString(data interface{}) string {
+	switch s := data.(type) {
+	case string:
+		if govalidator.IsASCII(s) {
+			return s
+		}
+		return hex.Dump([]byte(s))
+	case []byte:
+		return hex.Dump(s)
 	default:
 		return fmt.Sprintf("%v", data)
 	}

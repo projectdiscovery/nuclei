@@ -2,6 +2,7 @@ package protocolstate
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -18,6 +19,9 @@ func Init(options *types.Options) error {
 	if options.ResolversFile != "" {
 		opts.BaseResolvers = options.InternalResolversList
 	}
+	opts.WithDialerHistory = true
+	opts.WithZTLS = options.ZTLS
+	opts.SNIName = options.SNI
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")

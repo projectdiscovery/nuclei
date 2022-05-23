@@ -1,0 +1,17 @@
+id: basic-get-headers
+
+info:
+  name: Basic GET Headers Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      test: nuclei
+    matchers:
+      - type: word
+        words:
+          - "This is test headers matcher text"

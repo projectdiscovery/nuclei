@@ -3,8 +3,12 @@ package http
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/internal/testutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 func TestHTTPCompile(t *testing.T) {
@@ -14,13 +18,12 @@ func TestHTTPCompile(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-http"
 	request := &Request{
-		ID:   templateID,
 		Name: "testing",
 		Payloads: map[string]interface{}{
 			"username": []string{"admin"},
 			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
 		},
-		AttackType: "clusterbomb",
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
@@ -30,7 +33,7 @@ Accept-Encoding: gzip`},
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
-		Info: map[string]interface{}{"severity": "low", "name": "test"},
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
