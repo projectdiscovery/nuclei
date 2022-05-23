@@ -73,9 +73,7 @@ func (s *Agent) monitorWorker() {
 
 		// Bail out if the stacks don't match from previous iteration
 		newStack := generateStackTraceSlice(currentStack)
-		fmt.Printf("Comparison of stack: %v\n", compareStringSliceEqual(s.lastStack, newStack))
 		if !compareStringSliceEqual(s.lastStack, newStack) {
-			fmt.Printf("last: %v\nnew: %v\n", s.lastStack, newStack)
 			s.currentIteration = 0
 			return
 		}
@@ -122,7 +120,6 @@ func generateStackTraceSlice(stack []byte) []string {
 // compareStringSliceEqual compares two string slices for equality without order
 func compareStringSliceEqual(first, second []string) bool {
 	if len(first) != len(second) {
-		fmt.Printf("len not matched: %v %v\n", len(first), len(second))
 		return false
 	}
 	diff := make(map[string]int, len(first))
@@ -131,7 +128,6 @@ func compareStringSliceEqual(first, second []string) bool {
 	}
 	for _, y := range second {
 		if _, ok := diff[y]; !ok {
-			fmt.Printf("element %v not found\n", y)
 			return false
 		}
 		diff[y] -= 1
