@@ -4,26 +4,30 @@
 package monitor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
+	"github.com/DataDog/gostackparse"
 	"github.com/projectdiscovery/gologger"
 	"github.com/rs/xid"
 )
 
 // Agent is an agent for monitoring hanging programs
 type Agent struct {
-	cancel context.CancelFunc
+	cancel    context.CancelFunc
+	lastStack []string
 
 	goroutineCount   int
 	currentIteration int // number of times we've checked hang
 }
 
-const defaultMonitorIteration = 5
+const defaultMonitorIteration = 6
 
 // NewStackMonitor returns a new stack monitor instance
 func NewStackMonitor(interval time.Duration) context.CancelFunc {
@@ -56,10 +60,25 @@ func (s *Agent) monitorWorker() {
 	}
 	s.currentIteration++
 
+	if s.currentIteration == defaultMonitorIteration-1 {
+		lastStackTrace := generateStackTraceSlice(getStack(true))
+		s.lastStack = lastStackTrace
+		return
+	}
+
 	// cancel the monitoring goroutine if we discover
 	// we've been stuck for some iterations.
 	if s.currentIteration == defaultMonitorIteration {
 		currentStack := getStack(true)
+
+		// Bail out if the stacks don't match from previous iteration
+		newStack := generateStackTraceSlice(currentStack)
+		fmt.Printf("Comparison of stack: %v\n", compareStringSliceEqual(s.lastStack, newStack))
+		if !compareStringSliceEqual(s.lastStack, newStack) {
+			fmt.Printf("last: %v\nnew: %v\n", s.lastStack, newStack)
+			s.currentIteration = 0
+			return
+		}
 		s.cancel()
 		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", xid.New().String())
 		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d) = %s\n", current, s.goroutineCount, stackTraceFile)
@@ -78,4 +97,47 @@ var getStack = func(all bool) []byte {
 			return buf[:n-1]
 		}
 	}
+}
+
+// generateStackTraceSlice returns a list of current stack in string slice format
+func generateStackTraceSlice(stack []byte) []string {
+	goroutines, _ := gostackparse.Parse(bytes.NewReader(stack))
+
+	var builder strings.Builder
+	var stackList []string
+	for _, goroutine := range goroutines {
+		builder.WriteString(goroutine.State)
+		builder.WriteString("|")
+
+		for _, frame := range goroutine.Stack {
+			builder.WriteString(frame.Func)
+			builder.WriteString(";")
+		}
+		stackList = append(stackList, builder.String())
+		builder.Reset()
+	}
+	return stackList
+}
+
+// compareStringSliceEqual compares two string slices for equality without order
+func compareStringSliceEqual(first, second []string) bool {
+	if len(first) != len(second) {
+		fmt.Printf("len not matched: %v %v\n", len(first), len(second))
+		return false
+	}
+	diff := make(map[string]int, len(first))
+	for _, x := range first {
+		diff[x]++
+	}
+	for _, y := range second {
+		if _, ok := diff[y]; !ok {
+			fmt.Printf("element %v not found\n", y)
+			return false
+		}
+		diff[y] -= 1
+		if diff[y] == 0 {
+			delete(diff, y)
+		}
+	}
+	return len(diff) == 0
 }
