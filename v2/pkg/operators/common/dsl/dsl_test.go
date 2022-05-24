@@ -117,6 +117,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhmac_sha256[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -139,6 +140,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtime[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtime_format[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtimetostring[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -225,7 +227,7 @@ func TestDslExpressions(t *testing.T) {
 		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,
 		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
 		`hmac_sha256('test','scrt')`:                       "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
-		`time_format("02-01-2006 15:04:05")`:               now.Format("02-01-2006 15:04:05"),
+		`time_format("02-01-2006 15:04")`:                  now.Format("02-01-2006 15:04"),
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {
