@@ -155,46 +155,54 @@ func init() {
 			return string(data), nil
 		}),
 		"date": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			item := types.ToString(args[0])
-			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
-			for _, value := range submatches {
-				if len(value) < 2 {
+			timeFormat := types.ToString(args[0])
+			timeFormatFragment := dateFormatRegex.FindAllStringSubmatch(timeFormat, -1)
+
+			for _, currentFragment := range timeFormatFragment {
+				if len(currentFragment) < 2 {
 					continue
 				}
 				now := time.Now()
-				switch value[1] {
+				prefixedFormatFragment := currentFragment[0]
+				switch currentFragment[1] {
 				case "Y", "y":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Year())))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, now.Year())
 				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(int(now.Month()))))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, int(now.Month()))
 				case "D", "d":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Day())))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, now.Day())
 				default:
-					return nil, fmt.Errorf("invalid date format string: %s", value[0])
+					return nil, fmt.Errorf("invalid date format string: %s", prefixedFormatFragment)
 				}
 			}
-			return item, nil
+			return timeFormat, nil
 		}),
 		"time": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			item := types.ToString(args[0])
-			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
-			for _, value := range submatches {
-				if len(value) < 2 {
+			timeFormat := types.ToString(args[0])
+			timeFormatFragment := dateFormatRegex.FindAllStringSubmatch(timeFormat, -1)
+
+			for _, currentFragment := range timeFormatFragment {
+				if len(currentFragment) < 2 {
 					continue
 				}
 				now := time.Now()
-				switch value[1] {
+				prefixedFormatFragment := currentFragment[0]
+				switch currentFragment[1] {
 				case "H", "h":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Hour())))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, now.Hour())
 				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Minute())))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, now.Minute())
 				case "S", "s":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Second())))
+					timeFormat = formatDateTime(timeFormat, prefixedFormatFragment, now.Second())
 				default:
-					return nil, fmt.Errorf("invalid time format string: %s", value[0])
+					return nil, fmt.Errorf("invalid time format string: %s", prefixedFormatFragment)
 				}
 			}
-			return item, nil
+			return timeFormat, nil
+		}),
+		"time_format": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			t := time.Now()
+			return t.Format(args[0].(string)), nil
 		}),
 		"time_to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			if got, ok := args[0].(time.Time); ok {
@@ -227,6 +235,11 @@ func init() {
 		"hex_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
 			return string(decodeString), err
+		}),
+		"hmac_sha256": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			h := hmac.New(sha256.New, []byte(args[1].(string)))
+			h.Write([]byte(args[0].(string)))
+			return hex.EncodeToString(h.Sum(nil)), nil
 		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return html.EscapeString(types.ToString(args[0])), nil
@@ -497,21 +510,16 @@ func init() {
 		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return types.ToString(args[0]), nil
 		}),
-		"hmac_sha256": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			h := hmac.New(sha256.New, []byte(args[1].(string)))
-			h.Write([]byte(args[0].(string)))
-			return hex.EncodeToString(h.Sum(nil)), nil
-		}),
-		"time_format": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			t := time.Now()
-			return string(t.Format(args[0].(string))), nil
-		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+}
+
+func formatDateTime(inputFormat string, matchValue string, timeFragment int) string {
+	return strings.ReplaceAll(inputFormat, matchValue, appendSingleDigitZero(strconv.Itoa(timeFragment)))
 }
 
 // appendSingleDigitZero appends zero at front if not exists already doing two digit padding
