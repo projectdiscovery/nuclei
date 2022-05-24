@@ -52,7 +52,7 @@ func TestDSLGzipSerialize(t *testing.T) {
 }
 
 func TestTimeToStringDSLFunction(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("timetostring(data)", HelperFunctions())
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("time_to_string(data)", HelperFunctions())
 	require.Nil(t, err, "could not compile encoder")
 
 	data := time.Now()
@@ -141,7 +141,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtime[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mtime_format[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtimetostring[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mtime_to_string[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_string[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
