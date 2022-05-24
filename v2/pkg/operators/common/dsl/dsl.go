@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	crand "crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
@@ -54,6 +57,9 @@ type dslFunction struct {
 
 func init() {
 	tempDslFunctions := map[string]func(string) dslFunction{
+		"aes4base64key": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return aes4base64key(types.ToString(args[0]), types.ToString(args[1]))
+		}),
 		"len": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			length := len(types.ToString(args[0]))
 			return float64(length), nil
@@ -644,6 +650,32 @@ func colorizeDslFunctionSignatures() []string {
 	}
 
 	return result
+}
+
+func aes4base64key(key string, data string) (string, error) {
+	s, err := base64.StdEncoding.DecodeString(key)
+	if nil != err {
+		return "", err
+	}
+	szData, err := hex.DecodeString(data)
+	if nil != err {
+		return "", err
+	}
+	c, err := aes.NewCipher([]byte(s))
+	if nil != err {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(c)
+	if nil != err {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(crand.Reader, nonce); err != nil {
+		return "", err
+	}
+	x1 := gcm.Seal(nonce, nonce, szData, nil)
+	return base64.StdEncoding.EncodeToString(x1), nil
 }
 
 func reverseString(s string) string {
