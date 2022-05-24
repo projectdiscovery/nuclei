@@ -196,7 +196,7 @@ func init() {
 			}
 			return item, nil
 		}),
-		"timetostring": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+		"time_to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			if got, ok := args[0].(time.Time); ok {
 				return got.String(), nil
 			}
