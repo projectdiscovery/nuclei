@@ -497,7 +497,7 @@ func init() {
 		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return types.ToString(args[0]), nil
 		}),
-		"hmacsha256": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"hmac_sha256": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			h := hmac.New(sha256.New, []byte(args[1].(string)))
 			h.Write([]byte(args[0].(string)))
 			return hex.EncodeToString(h.Sum(nil)), nil
