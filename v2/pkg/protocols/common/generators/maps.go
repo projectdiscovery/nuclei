@@ -47,15 +47,14 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 }
 
 // MergeMaps merges two maps into a new map
-func MergeMaps(m1, m2 map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{}, len(m1)+len(m2))
-	for k, v := range m1 {
-		m[k] = v
+func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
+	merged := make(map[string]interface{})
+	for _, m := range maps {
+		for k, v := range m {
+			merged[k] = v
+		}
 	}
-	for k, v := range m2 {
-		m[k] = v
-	}
-	return m
+	return merged
 }
 
 // ExpandMapValues converts values from flat string to string slice
