@@ -220,6 +220,7 @@ func TestDslExpressions(t *testing.T) {
 		`print_debug(1+2, "Hello")`:                        nil,
 		`to_number('4')`:                                   float64(4),
 		`to_string(4)`:                                     "4",
+		`dec_to_hex(7001)`:                                 "1b59",
 		`compare_versions('v1.0.0', '<1.1.1')`:             true,
 		`compare_versions('v1.1.1', '>v1.1.0')`:            true,
 		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,
