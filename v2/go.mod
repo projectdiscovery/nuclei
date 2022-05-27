@@ -35,7 +35,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v1.0.4
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
-	github.com/projectdiscovery/rawhttp v0.0.8-0.20220504112210-ae777c1ccd6b
+	github.com/projectdiscovery/rawhttp v0.0.8-0.20220526170355-03de6bb78f37
 	github.com/projectdiscovery/retryabledns v1.0.13
 	github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d
 	github.com/projectdiscovery/stringsutil v0.0.0-20220422150559-b54fb5dc6833
