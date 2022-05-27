@@ -6,7 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
 	github.com/andygrunwald/go-jira v1.15.1
-	github.com/antchfx/htmlquery v1.2.4
+	github.com/antchfx/htmlquery v1.2.5
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
@@ -94,7 +94,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/andybalholm/cascadia v1.1.0 // indirect
-	github.com/antchfx/xpath v1.2.0 // indirect
+	github.com/antchfx/xpath v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.0.1 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
