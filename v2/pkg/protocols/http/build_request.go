@@ -93,7 +93,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	}
 
 	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash)),
+		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 
@@ -156,7 +156,7 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
+			generators.MergeMaps(dynamicValues, GenerateVariables(parsed, false)),
 			values,
 		)
 
@@ -377,8 +377,8 @@ func setHeader(req *http.Request, name, value string) {
 	}
 }
 
-// generateVariables will create default variables after parsing a url
-func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
+// GenerateVariables will create default variables after parsing a url
+func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
 	domain := parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
@@ -416,5 +416,5 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
-	return generators.MergeMaps(httpVariables, dns.GenerateDNSVariables(domain))
+	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain))
 }
