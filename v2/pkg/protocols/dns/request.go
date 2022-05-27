@@ -43,7 +43,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
 	}
-	vars := GenerateDNSVariables(domain)
+	vars := GenerateVariables(domain)
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
