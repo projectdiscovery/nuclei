@@ -533,7 +533,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
 	} else {
-		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
+		dumpedResponse = []redirectedResponse{{resp: resp, fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
