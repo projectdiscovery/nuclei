@@ -50,6 +50,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/variables.yaml":                           &httpVariables{},
 	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
 	"http/get-sni.yaml":                             &customCLISNI{},
+	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 }
 
@@ -856,6 +857,35 @@ func (h *httpSniAnnotation) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type httpRedirectMatchURL struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRedirectMatchURL) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+		_, _ = w.Write([]byte("This is test redirects matcher text"))
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test redirects matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-no-meta")
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+	if results[0] != fmt.Sprintf("%s/redirected", ts.URL) {
+		return fmt.Errorf("mismatched url found: %s", results[0])
+	}
+	return nil
 }
 
 type customCLISNIUnsafe struct{}
