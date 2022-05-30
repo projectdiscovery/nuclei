@@ -228,6 +228,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 					dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
 					dataDynamicValues[dynKeyName] = dynValue
 				}
+				dataDynamicValues[dynName] = dynValues
 			} else {
 				dataDynamicValues[dynName] = dynValues[0]
 			}
