@@ -555,6 +555,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if generatedRequest.request != nil {
 			matchedURL = generatedRequest.request.URL.String()
 		}
+		// Give precedence to the final URL from response
+		if response.resp.Request != nil {
+			if responseURL := response.resp.Request.URL.String(); responseURL != "" {
+				matchedURL = responseURL
+			}
+		}
 		finalEvent := make(output.InternalEvent)
 
 		outputEvent := request.responseToDSLMap(response.resp, reqURL, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
@@ -598,6 +604,11 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)
+
+		// Skip further responses if we have stop-at-first-match and a match
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+			return nil
+		}
 	}
 	return nil
 }
