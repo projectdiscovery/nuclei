@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -200,7 +201,21 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath 
 
 	scanner := bufio.NewScanner(reader)
 	buffer := []byte{}
-	scanner.Buffer(buffer, int(chunkSize))
+	if request.CompiledOperators.GetMatchersCondition() == matchers.ANDCondition {
+		scanner.Buffer(buffer, int(defaultMaxReadSize))
+		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+			defaultMaxReadSizeInt := int(defaultMaxReadSize)
+			if len(data) > defaultMaxReadSizeInt {
+				return defaultMaxReadSizeInt, data[0:defaultMaxReadSizeInt], nil
+			}
+			if !atEOF {
+				return 0, nil, nil
+			}
+			return len(data), data, bufio.ErrFinalToken
+		})
+	} else {
+		scanner.Buffer(buffer, int(chunkSize))
+	}
 
 	var fileMatches []FileMatch
 	var opResult *operators.Result
