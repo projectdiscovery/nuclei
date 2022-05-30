@@ -51,6 +51,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
 	"http/get-sni.yaml":                             &customCLISNI{},
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
+	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 }
 
 type httpInteractshRequest struct{}
@@ -885,4 +886,26 @@ func (h *httpRedirectMatchURL) Execute(filePath string) error {
 		return fmt.Errorf("mismatched url found: %s", results[0])
 	}
 	return nil
+}
+
+type customCLISNIUnsafe struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customCLISNIUnsafe) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.TLS.ServerName == "test" {
+			_, _ = w.Write([]byte("test-ok"))
+		} else {
+			_, _ = w.Write([]byte("test-ko"))
+		}
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-sni", "test")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
