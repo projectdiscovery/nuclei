@@ -174,6 +174,8 @@ type Options struct {
 	TemplatesVersion bool
 	// TemplateList lists available templates
 	TemplateList bool
+	// HangMonitor enables nuclei hang monitoring
+	HangMonitor bool
 	// Stdin specifies whether stdin input was given to the process
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
