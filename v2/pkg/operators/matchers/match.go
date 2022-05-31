@@ -180,12 +180,12 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 
 		result, err := expression.Evaluate(data)
 		if err != nil {
-			gologger.Warning().Msgf(err.Error())
+			gologger.Error().Label("WRN").Msgf(err.Error())
 			continue
 		}
 
 		if boolResult, ok := result.(bool); !ok {
-			gologger.Warning().Msgf("The return value of a DSL statement must return a boolean value.")
+			gologger.Error().Label("WRN").Msgf("The return value of a DSL statement must return a boolean value.")
 			continue
 		} else if !boolResult {
 			// If we are in an AND request and a match failed,
