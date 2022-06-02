@@ -15,7 +15,7 @@ require (
 	github.com/go-rod/rod v0.106.8
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/itchyny/gojq v0.12.7
+	github.com/itchyny/gojq v0.12.8
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
@@ -68,6 +68,7 @@ require github.com/aws/aws-sdk-go v1.44.24
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
 require (
+	github.com/DataDog/gostackparse v0.5.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/h2non/filetype v1.1.3
@@ -81,12 +82,11 @@ require (
 	github.com/projectdiscovery/wappalyzergo v0.0.44
 	github.com/stretchr/testify v1.7.1
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
-	github.com/DataDog/gostackparse v0.5.0 // indirect
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
 	github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
@@ -161,7 +161,7 @@ require (
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
