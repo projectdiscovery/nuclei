@@ -303,18 +303,21 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	}
 
 	event := eventcreator.CreateEventWithOperatorResults(request, internalEvent, operatorResult)
-	for _, result := range event.Results {
-		switch {
-		case result.MatcherName != "":
-			result.Lines = exprLines[result.MatcherName]
-		case result.ExtractorName != "":
-			result.Lines = exprLines[result.ExtractorName]
-		default:
-			for _, extractedResult := range result.ExtractedResults {
-				result.Lines = append(result.Lines, exprLines[extractedResult]...)
+	// Annotate with line numbers if asked by the user
+	if request.options.Options.ShowMatchLine {
+		for _, result := range event.Results {
+			switch {
+			case result.MatcherName != "":
+				result.Lines = exprLines[result.MatcherName]
+			case result.ExtractorName != "":
+				result.Lines = exprLines[result.ExtractorName]
+			default:
+				for _, extractedResult := range result.ExtractedResults {
+					result.Lines = append(result.Lines, exprLines[extractedResult]...)
+				}
 			}
+			result.Lines = sliceutil.DedupeInt(result.Lines)
 		}
-		result.Lines = sliceutil.DedupeInt(result.Lines)
 	}
 	return event
 }
