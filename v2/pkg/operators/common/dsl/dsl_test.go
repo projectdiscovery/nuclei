@@ -112,7 +112,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mdate[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mdectohex[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mdec_to_hex[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -221,7 +221,7 @@ func TestDslExpressions(t *testing.T) {
 		`print_debug(1+2, "Hello")`:                        nil,
 		`to_number('4')`:                                   float64(4),
 		`to_string(4)`:                                     "4",
-		`dectohex(7001)`:                                 "1b59",
+		`dec_to_hex(7001)`:                                 "1b59",
 		`compare_versions('v1.0.0', '<1.1.1')`:             true,
 		`compare_versions('v1.1.1', '>v1.1.0')`:            true,
 		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,

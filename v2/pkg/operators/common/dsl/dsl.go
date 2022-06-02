@@ -496,7 +496,7 @@ func init() {
 		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return types.ToString(args[0]), nil
 		}),
-		"dectohex": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+		"dec_to_hex": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			if number, ok := args[0].(float64); ok {
 				hexNum := strconv.FormatInt(int64(number), 16)
 				return types.ToString(hexNum), nil
