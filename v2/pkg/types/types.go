@@ -174,6 +174,8 @@ type Options struct {
 	TemplatesVersion bool
 	// TemplateList lists available templates
 	TemplateList bool
+	// HangMonitor enables nuclei hang monitoring
+	HangMonitor bool
 	// Stdin specifies whether stdin input was given to the process
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
@@ -216,6 +218,8 @@ type Options struct {
 	StoreResponseDir string
 	// DisableRedirects disables following redirects for http request module
 	DisableRedirects bool
+	// SNI custom hostname
+	SNI string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

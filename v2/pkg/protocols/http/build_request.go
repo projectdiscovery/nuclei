@@ -32,6 +32,8 @@ var (
 	urlWithPortRegex = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
 )
 
+const evaluateHelperExpressionErrorMessage = "could not evaluate helper expressions"
+
 // generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
 	original        *Request
@@ -91,7 +93,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	}
 
 	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, generateVariables(parsed, trailingSlash)),
+		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 
@@ -123,17 +125,17 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		payloads = generators.MergeMaps(
+		values := generators.MergeMaps(
 			payloads,
 			generators.BuildPayloadFromOptions(r.request.options.Options),
 		)
 
 		// in case cases (eg requests signing, some variables uses default values if missing)
 		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
-			payloads = generators.MergeMaps(defaultList, payloads)
+			values = generators.MergeMaps(defaultList, values)
 		}
 
-		parts[1] = replacer.Replace(parts[1], payloads)
+		parts[1] = replacer.Replace(parts[1], values)
 		if len(dynamicValues) > 0 {
 			parts[1] = replacer.Replace(parts[1], dynamicValues)
 		}
@@ -153,9 +155,9 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
-		values := generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, generateVariables(parsed, false)),
-			payloads,
+		values = generators.MergeMaps(
+			generators.MergeMaps(dynamicValues, GenerateVariables(parsed, false)),
+			values,
 		)
 
 		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
@@ -206,12 +208,12 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	var err error
 	data, err = expressions.Evaluate(data, finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 	}
 
 	method, err := expressions.Evaluate(r.request.Method.String(), finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 	}
 
 	// Build a request on the specified URL
@@ -245,7 +247,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	var err error
 	rawRequest, err = expressions.Evaluate(rawRequest, finalValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not evaluate helper expressions")
+		return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 	}
 	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
@@ -288,7 +290,10 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	parseAnnotations(rawRequest, req)
+	if reqWithAnnotations, hasAnnotations := parseAnnotations(rawRequest, req); hasAnnotations {
+		req = reqWithAnnotations
+		request = request.WithContext(req.Context())
+	}
 
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
 }
@@ -302,7 +307,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
 		req.Header[header] = []string{value}
 		if header == "Host" {
@@ -323,7 +328,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not evaluate helper expressions")
+			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
 		req.Body = ioutil.NopCloser(strings.NewReader(body))
 	}
@@ -372,8 +377,8 @@ func setHeader(req *http.Request, name, value string) {
 	}
 }
 
-// generateVariables will create default variables after parsing a url
-func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
+// GenerateVariables will create default variables after parsing a url
+func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
 	domain := parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
@@ -411,5 +416,5 @@ func generateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
-	return generators.MergeMaps(httpVariables, dns.GenerateDNSVariables(domain))
+	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain))
 }
