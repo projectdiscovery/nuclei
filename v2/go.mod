@@ -27,7 +27,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/cryptoutil v1.0.0
-	github.com/projectdiscovery/fastdialer v0.0.16-0.20220509174423-0e57a7c8cf83
+	github.com/projectdiscovery/fastdialer v0.0.16-0.20220603192502-7d34c304eb65
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/fileutil v0.0.0-20220427234316-40b2541a84b8
 	github.com/projectdiscovery/goflags v0.0.8-0.20220412061559-5119d6086323
@@ -68,6 +68,7 @@ require github.com/aws/aws-sdk-go v1.44.24
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
 require (
+	github.com/DataDog/gostackparse v0.5.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/h2non/filetype v1.1.3
@@ -86,7 +87,6 @@ require (
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
-	github.com/DataDog/gostackparse v0.5.0 // indirect
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
 	github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
