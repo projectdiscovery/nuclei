@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -227,6 +228,11 @@ func init() {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
 			return string(decodeString), err
 		}),
+		"hmac_sha1": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			h := hmac.New(sha1.New, []byte(args[1].(string)))
+			h.Write([]byte(args[0].(string)))
+			return hex.EncodeToString(h.Sum(nil)), nil
+		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return html.EscapeString(types.ToString(args[0])), nil
 		}),
@@ -265,6 +271,23 @@ func init() {
 				builder := &strings.Builder{}
 				for _, argument := range arguments {
 					builder.WriteString(types.ToString(argument))
+				}
+				return builder.String(), nil
+			},
+		),
+		"concat_ws": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) string",
+			func(arguments ...interface{}) (interface{}, error) {
+				builder := &strings.Builder{}
+				separator := arguments[len(arguments)-1]
+				arguments = arguments[:len(arguments)-1]
+
+				for i, argument := range arguments {
+					builder.WriteString(types.ToString(argument))
+
+					if i != len(arguments)-1 {
+						builder.WriteString(types.ToString(separator))
+					}
 				}
 				return builder.String(), nil
 			},

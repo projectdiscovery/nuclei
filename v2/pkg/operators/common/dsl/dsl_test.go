@@ -110,6 +110,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mcompare_versions[0m(firstVersion, constraints [38;5;208m...string[0m)[38;5;208m bool[0m
 	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
+	[93mconcat_ws[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mdate[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mdec_to_hex[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -118,6 +119,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhex_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mhmac_sha1[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -188,6 +190,7 @@ func TestDslExpressions(t *testing.T) {
 		`remove_bad_chars("abcd", "bc")`:                 "ad",
 		`replace("Hello", "He", "Ha")`:                   "Hallo",
 		`concat("Hello", 123, "world")`:                  "Hello123world",
+		`concat_ws("Hello", 123, "world", "_")`:          "Hello_123_world",
 		`repeat("a", 5)`:                                 "aaaaa",
 		`repeat("a", "5")`:                               "aaaaa",
 		`repeat("../", "5")`:                             "../../../../../",
@@ -226,6 +229,7 @@ func TestDslExpressions(t *testing.T) {
 		`compare_versions('v1.1.1', '>v1.1.0')`:            true,
 		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,
 		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
+		`hmac_sha1('test','scrt')`:                         "8856b111056d946d5c6c92a21b43c233596623c6",
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {
