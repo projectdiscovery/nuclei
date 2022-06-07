@@ -177,6 +177,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
 	}
 
 	if options.SNI != "" {
