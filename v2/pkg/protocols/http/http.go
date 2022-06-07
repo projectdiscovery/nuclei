@@ -245,12 +245,20 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.customHeaders = make(map[string]string)
 	request.httpClient = client
 	request.options = options
+	var prevKey string
 	for _, option := range request.options.Options.CustomHeaders {
-		parts := strings.SplitN(option, ":", 2)
-		if len(parts) != 2 {
-			continue
+		if strings.Contains(option, ":") {
+			parts := strings.SplitN(option, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			request.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
+			prevKey = parts[0]
+		} else {
+			if prevKey != "" {
+				request.customHeaders[prevKey] += fmt.Sprintf(",%s", option)
+			}
 		}
-		request.customHeaders[parts[0]] = strings.TrimSpace(parts[1])
 	}
 
 	if request.Body != "" && !strings.Contains(request.Body, "\r\n") {
