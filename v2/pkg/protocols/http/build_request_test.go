@@ -27,7 +27,7 @@ func TestBaseURLWithTemplatePrefs(t *testing.T) {
 func TestVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
 	parsed, _ := url.Parse(baseURL)
-	values := generateVariables(parsed, true)
+	values := GenerateVariables(parsed, true)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["RootURL"], "http://localhost:9001", "incorrect rootURL")
@@ -40,7 +40,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "https://example.com"
 	parsed, _ = url.Parse(baseURL)
-	values = generateVariables(parsed, false)
+	values = GenerateVariables(parsed, false)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "example.com", "incorrect domain name")
@@ -52,7 +52,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "ftp://foobar.com/"
 	parsed, _ = url.Parse(baseURL)
-	values = generateVariables(parsed, true)
+	values = GenerateVariables(parsed, true)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "foobar.com", "incorrect domain name")
