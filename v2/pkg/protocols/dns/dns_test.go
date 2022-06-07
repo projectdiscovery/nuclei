@@ -11,7 +11,7 @@ import (
 )
 
 func TestGenerateDNSVariables(t *testing.T) {
-	vars := GenerateDNSVariables("www.projectdiscovery.io")
+	vars := GenerateVariables("www.projectdiscovery.io")
 	require.Equal(t, map[string]interface{}{
 		"FQDN": "www.projectdiscovery.io",
 		"RDN":  "projectdiscovery.io",

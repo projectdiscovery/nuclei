@@ -1,0 +1,16 @@
+id: file-extract
+
+info:
+  name: File with Extractor
+  author: pdteam
+  severity: info
+  tags: file
+
+file:
+  - extensions:
+      - all
+
+    extractors:
+      - type: regex
+        regex:
+          - "(?m)11\\s(EE|FF)\\s11"
