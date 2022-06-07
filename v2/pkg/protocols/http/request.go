@@ -247,7 +247,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
-			payloads = generators.MergeMaps(variablesMap, payloads)
+			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {
@@ -406,6 +406,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		options.FollowRedirects = request.Redirects
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
+		options.SNI = request.options.Options.SNI
 		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
@@ -533,7 +534,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
 	} else {
-		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
+		dumpedResponse = []redirectedResponse{{resp: resp, fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
@@ -553,6 +554,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		if generatedRequest.request != nil {
 			matchedURL = generatedRequest.request.URL.String()
+		}
+		// Give precedence to the final URL from response
+		if response.resp.Request != nil {
+			if responseURL := response.resp.Request.URL.String(); responseURL != "" {
+				matchedURL = responseURL
+			}
 		}
 		finalEvent := make(output.InternalEvent)
 
@@ -597,6 +604,11 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)
+
+		// Skip further responses if we have stop-at-first-match and a match
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+			return nil
+		}
 	}
 	return nil
 }
