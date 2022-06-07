@@ -341,10 +341,9 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-	store.Load()
 
 	if r.options.Validate {
-		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
 		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
@@ -354,6 +353,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
+	store.Load()
 
 	r.displayExecutionInfo(store)
 
