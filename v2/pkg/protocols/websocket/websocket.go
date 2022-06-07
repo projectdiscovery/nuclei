@@ -87,7 +87,7 @@ type Input struct {
 }
 
 const (
-	parseUrlErrorMessage = "could not parse input url"
+	parseUrlErrorMessage                   = "could not parse input url"
 	evaluateTemplateExpressionErrorMessage = "could not evaluate template expressions"
 )
 
@@ -190,7 +190,11 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		}
 		header.Set(key, string(finalData))
 	}
-	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         hostname,
+		MinVersion:         tls.VersionTLS10,
+	}
 	if requestOptions.Options.SNI != "" {
 		tlsConfig.ServerName = requestOptions.Options.SNI
 	}

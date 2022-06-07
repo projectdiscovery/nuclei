@@ -245,8 +245,8 @@ func classToInt(class string) uint16 {
 	return uint16(result)
 }
 
-// GenerateDNSVariables from a dns name
-func GenerateDNSVariables(domain string) map[string]interface{} {
+// GenerateVariables from a dns name
+func GenerateVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -200,7 +201,21 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath 
 
 	scanner := bufio.NewScanner(reader)
 	buffer := []byte{}
-	scanner.Buffer(buffer, int(chunkSize))
+	if request.CompiledOperators.GetMatchersCondition() == matchers.ANDCondition {
+		scanner.Buffer(buffer, int(defaultMaxReadSize))
+		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+			defaultMaxReadSizeInt := int(defaultMaxReadSize)
+			if len(data) > defaultMaxReadSizeInt {
+				return defaultMaxReadSizeInt, data[0:defaultMaxReadSizeInt], nil
+			}
+			if !atEOF {
+				return 0, nil, nil
+			}
+			return len(data), data, bufio.ErrFinalToken
+		})
+	} else {
+		scanner.Buffer(buffer, int(chunkSize))
+	}
 
 	var fileMatches []FileMatch
 	var opResult *operators.Result
@@ -288,18 +303,21 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	}
 
 	event := eventcreator.CreateEventWithOperatorResults(request, internalEvent, operatorResult)
-	for _, result := range event.Results {
-		switch {
-		case result.MatcherName != "":
-			result.Lines = exprLines[result.MatcherName]
-		case result.ExtractorName != "":
-			result.Lines = exprLines[result.ExtractorName]
-		default:
-			for _, extractedResult := range result.ExtractedResults {
-				result.Lines = append(result.Lines, exprLines[extractedResult]...)
+	// Annotate with line numbers if asked by the user
+	if request.options.Options.ShowMatchLine {
+		for _, result := range event.Results {
+			switch {
+			case result.MatcherName != "":
+				result.Lines = exprLines[result.MatcherName]
+			case result.ExtractorName != "":
+				result.Lines = exprLines[result.ExtractorName]
+			default:
+				for _, extractedResult := range result.ExtractedResults {
+					result.Lines = append(result.Lines, exprLines[extractedResult]...)
+				}
 			}
+			result.Lines = sliceutil.DedupeInt(result.Lines)
 		}
-		result.Lines = sliceutil.DedupeInt(result.Lines)
 	}
 	return event
 }
