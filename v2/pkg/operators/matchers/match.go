@@ -180,7 +180,11 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 
 		result, err := expression.Evaluate(data)
 		if err != nil {
-			gologger.Error().Label("WRN").Msgf("[%s] %s", data["template-id"], err.Error())
+			if strings.Contains(err.Error(), "No parameter") {
+				gologger.Warning().Msgf("[%s] %s", data["template-id"], err.Error())
+			} else {
+				gologger.Error().Label("WRN").Msgf("[%s] %s", data["template-id"], err.Error())
+			}
 			continue
 		}
 
