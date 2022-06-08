@@ -263,22 +263,13 @@ func init() {
 			return html.UnescapeString(types.ToString(args[0])), nil
 		}),
 		"md5": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := md5.Sum([]byte(types.ToString(args[0])))
-			return hex.EncodeToString(hash[:]), nil
+			return toHexEncodedHash(md5.New(), types.ToString(args[0]))
 		}),
 		"sha256": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := sha256.New()
-			if _, err := hash.Write([]byte(types.ToString(args[0]))); err != nil {
-				return nil, err
-			}
-			return hex.EncodeToString(hash.Sum(nil)), nil
+			return toHexEncodedHash(sha256.New(), types.ToString(args[0]))
 		}),
 		"sha1": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := sha1.New()
-			if _, err := hash.Write([]byte(types.ToString(args[0]))); err != nil {
-				return nil, err
-			}
-			return hex.EncodeToString(hash.Sum(nil)), nil
+			return toHexEncodedHash(sha1.New(), types.ToString(args[0]))
 		}),
 		"mmh3": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			hasher := murmur3.New32WithSeed(0)
@@ -555,6 +546,13 @@ func init() {
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+}
+
+func toHexEncodedHash(hashToUse hash.Hash, data string) (interface{}, error) {
+	if _, err := hashToUse.Write([]byte(data)); err != nil {
+		return nil, err
+	}
+	return hex.EncodeToString(hashToUse.Sum(nil)), nil
 }
 
 func formatDateTime(inputFormat string, matchValue string, timeFragment int) string {
