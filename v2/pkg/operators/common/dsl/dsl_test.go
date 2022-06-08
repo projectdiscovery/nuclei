@@ -110,7 +110,6 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mcompare_versions[0m(firstVersion, constraints [38;5;208m...string[0m)[38;5;208m bool[0m
 	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
-	[93mconcat_ws[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mdate[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mdec_to_hex[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -122,6 +121,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mhmac[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mjoin[0m(separator [38;5;208mstring[0m, elements [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mmd5[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mmmh3[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -191,7 +191,7 @@ func TestDslExpressions(t *testing.T) {
 		`remove_bad_chars("abcd", "bc")`:                 "ad",
 		`replace("Hello", "He", "Ha")`:                   "Hallo",
 		`concat("Hello", 123, "world")`:                  "Hello123world",
-		`concat_ws("Hello", 123, "world", "_")`:          "Hello_123_world",
+		`join("_", "Hello", 123, "world")`:               "Hello_123_world",
 		`repeat("a", 5)`:                                 "aaaaa",
 		`repeat("a", "5")`:                               "aaaaa",
 		`repeat("../", "5")`:                             "../../../../../",
