@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"html"
 	"io"
 	"math"
@@ -236,14 +237,23 @@ func init() {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
 			return string(decodeString), err
 		}),
-		"hmac_sha256": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			h := hmac.New(sha256.New, []byte(args[1].(string)))
-			h.Write([]byte(args[0].(string)))
-			return hex.EncodeToString(h.Sum(nil)), nil
-		}),
-		"hmac_sha1": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			h := hmac.New(sha1.New, []byte(args[1].(string)))
-			h.Write([]byte(args[0].(string)))
+		"hmac": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
+			hashAlgorithm := args[0]
+			data := args[1].(string)
+			secretKey := args[2].(string)
+
+			var hashFunction func() hash.Hash
+			switch hashAlgorithm {
+			case "sha1", "sha-1":
+				hashFunction = sha1.New
+			case "sha256", "sha-256":
+				hashFunction = sha256.New
+			default:
+				return nil, fmt.Errorf("unsupported hash algorithm: '%s'", hashAlgorithm)
+			}
+
+			h := hmac.New(hashFunction, []byte(secretKey))
+			h.Write([]byte(data))
 			return hex.EncodeToString(h.Sum(nil)), nil
 		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
