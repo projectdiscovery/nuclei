@@ -289,21 +289,22 @@ func init() {
 				return builder.String(), nil
 			},
 		),
-		"concat_ws": makeDslWithOptionalArgsFunction(
-			"(args ...interface{}) string",
+		"join": makeDslWithOptionalArgsFunction(
+			"(separator string, elements ...interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
-				builder := &strings.Builder{}
-				separator := arguments[len(arguments)-1]
-				arguments = arguments[:len(arguments)-1]
-
-				for i, argument := range arguments {
-					builder.WriteString(types.ToString(argument))
-
-					if i != len(arguments)-1 {
-						builder.WriteString(types.ToString(separator))
-					}
+				argumentsSize := len(arguments)
+				if argumentsSize < 2 {
+					return nil, errors.New("incorrect number of arguments received")
 				}
-				return builder.String(), nil
+
+				separator := types.ToString(arguments[0])
+				elements := arguments[1:argumentsSize]
+
+				stringElements := make([]string, 0, argumentsSize)
+				for _, element := range elements {
+					stringElements = append(stringElements, types.ToString(element))
+				}
+				return strings.Join(stringElements, separator), nil
 			},
 		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
