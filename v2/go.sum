@@ -443,8 +443,8 @@ github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
-github.com/projectdiscovery/fastdialer v0.0.16-0.20220603192502-7d34c304eb65 h1:6nPONYe5Zas+0toFxP0vvDOxMwQIZo6geajd+FfwzMc=
-github.com/projectdiscovery/fastdialer v0.0.16-0.20220603192502-7d34c304eb65/go.mod h1:k4iAKJMOJJWpqgYA3tDXtNFRkL40H0DXQ0cmyTg5J5k=
+github.com/projectdiscovery/fastdialer v0.0.16-0.20220609092737-7e3c7dcecf16 h1:oinl80GbA16c6Et6YxcYw/QfwsZgRE0ZswxL43/MNhY=
+github.com/projectdiscovery/fastdialer v0.0.16-0.20220609092737-7e3c7dcecf16/go.mod h1:/l2A7NuQPkHH4mDyScm4N9cDltPB1XMhE5y+9mt00Ak=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08 h1:NwD1R/du1dqrRKN3SJl9kT6tN3K9puuWFXEvYF2ihew=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08/go.mod h1:paLCnwV8sL7ppqIwVQodQrk3F6mnWafwTDwRd7ywZwQ=
 github.com/projectdiscovery/fileutil v0.0.0-20210914153648-31f843feaad4/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
@@ -565,8 +565,9 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMTY=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.7.2 h1:4jaiDzPyXQvSd7D0EjG45355tLlV3VOECpq10pLC+8s=
+github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tj/assert v0.0.0-20171129193455-018094318fb0/go.mod h1:mZ9/Rh9oLWpLLDRpvE+3b7gP/C2YyLFYxNmcLnPTMe0=
