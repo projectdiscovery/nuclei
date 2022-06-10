@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/md5"
-	crand "crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
@@ -16,7 +13,9 @@ import (
 	"html"
 	"io"
 	"math"
+	"math/big"
 	"math/rand"
+	"net"
 	"net/url"
 	"regexp"
 	"sort"
@@ -57,9 +56,6 @@ type dslFunction struct {
 
 func init() {
 	tempDslFunctions := map[string]func(string) dslFunction{
-		"aes4base64key": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			return aes4base64key(types.ToString(args[0]), types.ToString(args[1]))
-		}),
 		"len": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			length := len(types.ToString(args[0]))
 			return float64(length), nil
@@ -496,6 +492,32 @@ func init() {
 			} else if govalidator.IsFloat(argStr) {
 				sint, err := strconv.ParseFloat(argStr, 64)
 				return float64(sint), err
+			} else if govalidator.IsIP(argStr) { // add by 51pwn
+				ip := net.ParseIP(argStr)
+				i := big.NewInt(0)
+				i.SetBytes(ip)
+				return i.Int64(), nil
+			} else if govalidator.IsDNSName(argStr) { // add by 51pwn
+				ips, err := net.LookupIP(argStr)
+				if nil == err {
+					var szIp string
+					for _, ip := range ips {
+						if ipv4 := ip.To4(); ipv4 != nil {
+							szIp = ipv4.String()
+							break
+						} else if ipv6 := ip.To16(); ipv6 != nil {
+							szIp = ipv6.String()
+							break
+						}
+					}
+					if "" != szIp {
+						ip := net.ParseIP(szIp)
+						i := big.NewInt(0)
+						i.SetBytes(ip)
+						return i.Int64(), nil
+					}
+				}
+				return nil, err
 			}
 			return nil, errors.Errorf("%v could not be converted to int", argStr)
 		}),
@@ -657,32 +679,6 @@ func colorizeDslFunctionSignatures() []string {
 	}
 
 	return result
-}
-
-func aes4base64key(key string, data string) (string, error) {
-	s, err := base64.StdEncoding.DecodeString(key)
-	if nil != err {
-		return "", err
-	}
-	szData, err := hex.DecodeString(data)
-	if nil != err {
-		return "", err
-	}
-	c, err := aes.NewCipher([]byte(s))
-	if nil != err {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(c)
-	if nil != err {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(crand.Reader, nonce); err != nil {
-		return "", err
-	}
-	x1 := gcm.Seal(nonce, nonce, szData, nil)
-	return base64.StdEncoding.EncodeToString(x1), nil
 }
 
 func reverseString(s string) string {
