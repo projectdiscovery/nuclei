@@ -120,6 +120,12 @@ func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]
 	return exps
 }
 
+func hasLiteralsOnly(data string) bool {
+	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions())
+	_, err = expr.Evaluate(nil)
+	return err == nil
+}
+
 func isExpression(data string, functions map[string]govaluate.ExpressionFunction) bool {
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
 		return stringsutil.ContainsAny(data, getFunctionsNames(functions)...)
