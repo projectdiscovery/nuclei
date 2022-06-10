@@ -16,6 +16,7 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 		{"{{test}}/{{another}}", errors.New("unresolved variables found: test,another")},
 		{"test", nil},
 		{"%7b%7btest%7d%7d", errors.New("unresolved variables found: test")},
+		{"{{7*7}}", nil},
 		{"{{'a'+'b'}}", nil},
 		{"{{'a'}}", nil},
 	}
