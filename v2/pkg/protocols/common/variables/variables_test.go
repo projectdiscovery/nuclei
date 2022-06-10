@@ -12,7 +12,7 @@ func TestVariablesEvaluate(t *testing.T) {
 	data := `a1: "{{rand_base(5)}}"
 a2: "{{md5(a1)}}"
 a3: "this_is_random_text"
-a4: "{{date('%Y-%M-%D')}}"
+a4: "{{date_time('%Y-%M-%D')}}"
 a5: "{{reverse(hostname)}}"
 a6: "123456"`
 
