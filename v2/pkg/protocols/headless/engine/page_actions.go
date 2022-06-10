@@ -423,13 +423,13 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string /*TODO revi
 
 // WaitLoad waits for the page to load
 func (p *Page) WaitLoad(act *Action, out map[string]string /*TODO review unused parameter*/) error {
-	p.page.Timeout(1 * time.Second).WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)()
+	p.page.Timeout(2 * time.Second).WaitNavigation(proto.PageLifecycleEventNameDOMContentLoaded)()
 
 	// Wait for the window.onload event and also wait for the network requests
-	// to become idle for a maximum duration of 2 seconds. If the requests
+	// to become idle for a maximum duration of 3 seconds. If the requests
 	// do not finish,
 	if err := p.page.WaitLoad(); err != nil {
-		return errors.Wrap(err, "could not reset mouse")
+		return errors.Wrap(err, "could not wait load event")
 	}
 	_ = p.page.WaitIdle(1 * time.Second)
 	return nil

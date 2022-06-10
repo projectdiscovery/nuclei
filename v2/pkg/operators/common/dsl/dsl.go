@@ -502,6 +502,13 @@ func init() {
 		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return types.ToString(args[0]), nil
 		}),
+		"dec_to_hex": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			if number, ok := args[0].(float64); ok {
+				hexNum := strconv.FormatInt(int64(number), 16)
+				return types.ToString(hexNum), nil
+			}
+			return nil, fmt.Errorf("invalid number: %T", args[0])
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))

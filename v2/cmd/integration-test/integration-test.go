@@ -31,6 +31,7 @@ var (
 		"code":          codeTestcases,
 		"templatesPath": templatesPathTestCases,
 		"templatesDir":  templatesDirTestCases,
+		"file":          fileTestcases,
 	}
 )
 
