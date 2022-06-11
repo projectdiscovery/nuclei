@@ -125,6 +125,8 @@ OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
+   -silent                       display findings only
+   -nc, -no-color                disable output content coloring (ANSI escape codes)
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
@@ -133,8 +135,6 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
-   -silent                       display findings only
-   -nc, -no-color                disable output content coloring (ANSI escape codes)
 
 CONFIGURATIONS:
    -config string              path to the nuclei configuration file
@@ -189,18 +189,19 @@ HEADLESS:
    -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
 
 DEBUG:
-   -debug                        display all requests and responses
-   -dreq, -debug-req             display all sent requests
-   -dresp, -debug-resp           display all received responses
-   -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal          proxy all internal requests
-   -tlog, -trace-log string      file to write sent requests trace log
-   -elog, -error-log string      file to write sent requests error log
-   -version                      show nuclei version
-   -v, -verbose                  show verbose output
-   -vv                           display templates loaded for scan
-   -ep, -enable-pprof            enable pprof debugging server
-   -tv, -templates-version       shows the version of the installed nuclei-templates
+   -debug                    show all requests and responses
+   -dreq, -debug-req         show all sent requests
+   -dresp, -debug-resp       show all received responses
+   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal      proxy all internal requests
+   -tlog, -trace-log string  file to write sent requests trace log
+   -elog, -error-log string  file to write sent requests error log
+   -version                  show nuclei version
+   -hm, -hang-monitor        enable nuclei hang monitoring
+   -v, -verbose              show verbose output
+   -vv                       display templates loaded for scan
+   -ep, -enable-pprof        enable pprof debugging server
+   -tv, -templates-version   shows the version of the installed nuclei-templates
 
 UPDATE:
    -update                        update nuclei engine to the latest released version

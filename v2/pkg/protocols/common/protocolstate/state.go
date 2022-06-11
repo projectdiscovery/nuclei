@@ -12,6 +12,9 @@ var Dialer *fastdialer.Dialer
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
+	if Dialer != nil {
+		return nil
+	}
 	opts := fastdialer.DefaultOptions
 	if options.SystemResolvers {
 		opts.EnableFallback = true
