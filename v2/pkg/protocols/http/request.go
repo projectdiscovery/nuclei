@@ -240,7 +240,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	generator := request.newGenerator()
 
 	var gotDynamicValues map[string][]string
-	requestCount := 1
 	var requestErr error
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
@@ -285,7 +284,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				} else {
 					callback(event)
 				}
-			}, requestCount)
+			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
 			if err == errStopExecution {
@@ -297,7 +296,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				}
 				requestErr = err
 			}
-			requestCount++
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
