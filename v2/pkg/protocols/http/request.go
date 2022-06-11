@@ -582,6 +582,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if request.ReqCondition {
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
+				previousEvent[key] = v
 				finalEvent[key] = v
 			}
 		}
