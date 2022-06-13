@@ -1,9 +1,11 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
+	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fileutil"
@@ -69,6 +71,7 @@ type Request struct {
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the http request,description=Payloads contains any payloads for the current request"`
+
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
 	// examples:
@@ -123,16 +126,25 @@ type Request struct {
 	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient    *retryablehttp.Client
 	rawhttpClient *rawhttp.Client
-	dynamicValues map[string]interface{}
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
+	//   Signature is the request signature method
+	// values:
+	//   - "AWS"
+	Signature SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
+	// description: |
+	//   Enables force reading of the entire raw unsafe request body ignoring
+	//   any specified content length headers.
+	ForceReadAllBody bool `yaml:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
 	// description: |
 	//   Redirects specifies whether redirects should be followed by the HTTP Client.
 	//
@@ -165,6 +177,20 @@ type Request struct {
 	// description: |
 	//   SkipVariablesCheck skips the check for unresolved variables in request
 	SkipVariablesCheck bool `yaml:"skip-variables-check,omitempty" jsonschema:"title=skip variable checks,description=Skips the check for unresolved variables in request"`
+	// description: |
+	//   IterateAll iterates all the values extracted from internal extractors
+	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
+	// description: |
+	//   DigestAuthUsername specifies the username for digest authentication
+	DigestAuthUsername string `yaml:"digest-username,omitempty" jsonschema:"title=specifies the username for digest authentication,description=Optional parameter which specifies the username for digest auth"`
+	// description: |
+	//   DigestAuthPassword specifies the password for digest authentication
+	DigestAuthPassword string `yaml:"digest-password,omitempty" jsonschema:"title=specifies the password for digest authentication,description=Optional parameter which specifies the password for digest auth"`
+}
+
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -178,7 +204,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":               "Matched is the input which was matched upon",
 	"type":                  "Type is the type of request made",
 	"request":               "HTTP request made from the client",
-	"response":              "HTTP response recieved from server",
+	"response":              "HTTP response received from server",
 	"status_code":           "Status Code received from the Server",
 	"body":                  "HTTP response body received from server (default)",
 	"content_length":        "HTTP Response content length",
@@ -276,6 +302,25 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 
+	// tries to drop unused payloads - by marshaling sections that might contain the payload
+	unusedPayloads := make(map[string]struct{})
+	requestSectionsToCheck := []interface{}{
+		request.customHeaders, request.Headers, request.Matchers,
+		request.Extractors, request.Body, request.Path, request.Raw,
+	}
+	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
+		for payload := range request.Payloads {
+			if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
+				continue
+			}
+			unusedPayloads[payload] = struct{}{}
+		}
+	}
+
+	for payload := range unusedPayloads {
+		delete(request.Payloads, payload)
+	}
+
 	if len(request.Payloads) > 0 {
 		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
 		if err != nil {
@@ -290,7 +335,13 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total() * len(request.Raw)
+		payloadRequests := request.generator.NewIterator().Total()
+		if len(request.Raw) > 0 {
+			payloadRequests = payloadRequests * len(request.Raw)
+		}
+		if len(request.Path) > 0 {
+			payloadRequests = payloadRequests * len(request.Path)
+		}
 		return payloadRequests
 	}
 	if len(request.Raw) > 0 {

@@ -1,61 +1,57 @@
-# to specify which severities should be reported
 #allow-list:
-#  severity: critical, high
-# to specify which severities should be excluded from reporting
+#  severity: high, critical
 #deny-list:
-#  severity: info, low, medium
-
+#  severity: low
+#
 # GitHub contains configuration options for GitHub issue tracker
-#GitHub: 
-#  # base-url (optional) is the self-hosted GitHub application url
-#  base-url: ""
+#github:
+#  # base-url is the optional self-hosted GitHub application url
+#  base-url: https://localhost:8443/github
 #  # username is the username of the GitHub user
-#  username: ""
-#  # owner is the owner name of the repository for issues.
-#  owner: ""
-#  # token is the token for GitHub account.
-#  token: ""
-#  # project-name is the name of the repository.
-#  project-name: ""
-#  # issue-label (optional) is the label of the created issue type
-#  issue-label: ""
-#  # severity-as-label (optional) sets the severity as the label of the created issue type
-#  severity-as-label: false
-
-# GitLab contains configuration options for GitLab issue tracker
-#GitLab: 
-#  # base-url (optional) is the self-hosted GitLab application url
-#  base-url: ""
+#  username: test-username
+#  # owner is the owner name of the repository for issues
+#  owner: test-owner
+#  # token is the token for GitHub account
+#  token: test-token
+#  # project-name is the name of the repository
+#  project-name: test-project
+#  # issue-label is the label of the created issue type
+#  issue-label: bug
+#
+# GitLab contains configuration options for gitlab issue tracker
+#gitlab:
+#  # base-url is the optional self-hosted GitLab application url
+#  base-url: https://localhost:8443/gitlab
 #  # username is the username of the GitLab user
-#  username: ""
-#  # token is the token for GitLab account.
-#  token: ""
-#  # project-id is the ID of the repository.
-#  project-id: ""
-#  # issue-label (optional) is the label of the created issue type
-#  issue-label: ""
-#  # severity-as-label (optional) sets the severity as the label of the created issue type
-#  severity-as-label: false
-
+#  username: test-username
+#  # token is the token for GitLab account
+#  token: test-token
+#  # project-name is the name/id of the project(repository)
+#  project-name: "1234"
+#  # issue-label is the label of the created issue type
+#  issue-label: bug
+#
 # Jira contains configuration options for Jira issue tracker
-#Jira:
-#  # cloud (optional) is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+#jira:
+#  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
 #  cloud: true
-#  # update-existing (optional) is the boolean which tells if the existing, opened issue should be updated or new one should be created
+#  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
 #  update-existing: false
-#  # URL is the Jira application URL
-#  url: ""
+#  # URL is the jira application url
+#  url: https://localhost/jira
 #  # account-id is the account-id of the Jira user or username in case of on-prem Jira
-#  account-id: ""
+#  account-id: test-account-id
 #  # email is the email of the user for Jira instance
-#  email: ""
+#  email: test@test.com
 #  # token is the token for Jira instance or password in case of on-prem Jira
-#  token: ""
+#  token: test-token
 #  # project-name is the name of the project.
-#  project-name: ""
-#  # issue-type is the name of the created issue type
-#  issue-type: ""
-
+#  project-name: test-project-name
+#  # issue-type is the name of the created issue type (case sensitive)
+#  issue-type: Bug
+#  # SeverityAsLabel (optional) sends the severity as the label of the created issue
+#  severity-as-label: true
+#
 # elasticsearch contains configuration options for elasticsearch exporter
 #elasticsearch:
 #  # IP for elasticsearch instance
@@ -64,9 +60,9 @@
 #  port: 9200
 #  # IndexName is the name of the elasticsearch index
 #  index-name: nuclei
-#  # SSL (optional) enables ssl for elasticsearch connection
+#  # SSL enables ssl for elasticsearch connection
 #  ssl: false
-#  # SSLVerification (optional) disables SSL verification for elasticsearch
+#  # SSLVerification disables SSL verification for elasticsearch
 #  ssl-verification: false
 #  # Username for the elasticsearch instance
 #  username: test

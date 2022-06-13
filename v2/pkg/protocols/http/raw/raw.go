@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Request defines a basic HTTP raw request
@@ -40,9 +40,14 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 	reader := bufio.NewReader(strings.NewReader(request))
+read_line:
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %w", err)
+	}
+	// ignore all annotations
+	if stringsutil.HasPrefixAny(s, "@") {
+		goto read_line
 	}
 
 	parts := strings.Split(s, " ")
@@ -116,22 +121,28 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if strings.HasSuffix(parsedURL.Path, "/") && strings.HasPrefix(rawRequest.Path, "/") {
 		parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 	}
-	if parsedURL.Path != rawRequest.Path {
-		rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
-	}
-	if strings.HasSuffix(rawRequest.Path, "//") {
-		rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
-	}
-	rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
 
-	// If raw request doesn't have a Host header and isn't marked unsafe,
-	// this will generate the Host header from the parsed baseURL
-	if !unsafe && rawRequest.Headers["Host"] == "" {
-		rawRequest.Headers["Host"] = hostURL
+	if !unsafe {
+		if parsedURL.Path != rawRequest.Path {
+			rawRequest.Path = fmt.Sprintf("%s%s", parsedURL.Path, rawRequest.Path)
+		}
+		if strings.HasSuffix(rawRequest.Path, "//") {
+			rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
+		}
+		rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+		if parsedURL.RawQuery != "" {
+			rawRequest.FullURL = fmt.Sprintf("%s?%s", rawRequest.FullURL, parsedURL.RawQuery)
+		}
+
+		// If raw request doesn't have a Host header and isn't marked unsafe,
+		// this will generate the Host header from the parsed baseURL
+		if rawRequest.Headers["Host"] == "" {
+			rawRequest.Headers["Host"] = hostURL
+		}
 	}
 
 	// Set the request body
-	b, err := ioutil.ReadAll(reader)
+	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %w", err)
 	}
@@ -143,7 +154,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 }
 
 func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) []byte {
-	fixedPath := filepath.Join(baseURL.Path, requestPath)
+	fixedPath := path.Join(baseURL.Path, requestPath)
 	fixed := bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1)
 	return fixed
 }

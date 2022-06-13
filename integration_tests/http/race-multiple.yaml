@@ -1,0 +1,46 @@
+id: race-condition-testing
+
+info:
+  name: Race condition testing with multiple requests
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:  
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        id=1
+
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        id=2
+
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        id=3
+
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        id=4
+
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+        id=5
+
+    threads: 5
+    race: true
+
+    matchers:
+      - type: status
+        status:
+          - 200

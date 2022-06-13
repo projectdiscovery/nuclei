@@ -3,6 +3,7 @@ package ssl
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	ztls "github.com/zmap/zcrypto/tls"
 )
 
 // Request is a request for the SSL protocol
@@ -35,6 +37,28 @@ type Request struct {
 	// description: |
 	//   Address contains address for the request
 	Address string `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
+	// description: |
+	//   Minimum tls version - auto if not specified.
+	// values:
+	//   - "sslv3"
+	//   - "tls10"
+	//   - "tls11"
+	//   - "tls12"
+	//   - "tls13"
+	MinVersion string `yaml:"min_version,omitempty" jsonschema:"title=TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	// description: |
+	//   Max tls version - auto if not specified.
+	// values:
+	//   - "sslv3"
+	//   - "tls10"
+	//   - "tls11"
+	//   - "tls12"
+	//   - "tls13"
+	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	// description: |
+	//   Client Cipher Suites  - auto if not specified.
+	CiperSuites  []string `yaml:"cipher_suites,omitempty"`
+	cipherSuites []uint16
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -50,6 +74,15 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		return errors.Wrap(err, "could not get network client")
 	}
 	request.dialer = client
+
+	if request.options.Options.ZTLS {
+		request.cipherSuites, err = toZTLSCiphers(request.CiperSuites)
+	} else {
+		request.cipherSuites, err = toTLSCiphers(request.CiperSuites)
+	}
+	if err != nil {
+		return errors.Wrap(err, "invalid ciphersuites specified")
+	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -96,9 +129,49 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 
 	addressToDial := string(finalAddress)
-	config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+	var minVersion, maxVersion uint16
+	if request.MinVersion != "" {
+		version, err := toVersion(request.MinVersion)
+		if err != nil {
+			return err
+		}
+		minVersion = version
+	}
+	if request.MaxVersion != "" {
+		version, err := toVersion(request.MaxVersion)
+		if err != nil {
+			return err
+		}
+		maxVersion = version
+	}
+	var conn net.Conn
 
-	conn, err := request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	if request.options.Options.ZTLS {
+		zconfig := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			zconfig.MinVersion = minVersion
+		}
+		if maxVersion > 0 {
+			zconfig.MaxVersion = maxVersion
+		}
+		if len(request.cipherSuites) > 0 {
+			zconfig.CipherSuites = request.cipherSuites
+		}
+		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
+	} else {
+		config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
+		if minVersion > 0 {
+			config.MinVersion = minVersion
+		}
+		if maxVersion > 0 {
+			config.MaxVersion = maxVersion
+		}
+		if len(request.cipherSuites) > 0 {
+			config.CipherSuites = request.cipherSuites
+		}
+		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	}
+
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -107,40 +180,72 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(requestOptions.Options.Timeout) * time.Second))
 
-	connTLS, ok := conn.(*tls.Conn)
-	if !ok {
-		return nil
-	}
 	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
 
-	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-		gologger.Debug().Str("address", input).Msgf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
+			gologger.Debug().Str("address", input).Msg(msg)
+		}
+		if requestOptions.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), msg)
+		}
 	}
 
-	state := connTLS.ConnectionState()
-	if len(state.PeerCertificates) == 0 {
-		return nil
+	var (
+		tlsData      interface{}
+		certNotAfter int64
+	)
+	if request.options.Options.ZTLS {
+		connTLS, ok := conn.(*ztls.Conn)
+		if !ok {
+			return nil
+		}
+		state := connTLS.ConnectionState()
+		if len(state.PeerCertificates) == 0 {
+			return nil
+		}
+		tlsData = cryptoutil.ZTLSGrab(connTLS)
+		cert := connTLS.ConnectionState().PeerCertificates[0]
+		certNotAfter = cert.NotAfter.Unix()
+	} else {
+		connTLS, ok := conn.(*tls.Conn)
+		if !ok {
+			return nil
+		}
+		state := connTLS.ConnectionState()
+		if len(state.PeerCertificates) == 0 {
+			return nil
+		}
+		tlsData = cryptoutil.TLSGrab(&state)
+		cert := connTLS.ConnectionState().PeerCertificates[0]
+		certNotAfter = cert.NotAfter.Unix()
 	}
-
-	tlsData := cryptoutil.TLSGrab(&state)
 	jsonData, _ := jsoniter.Marshal(tlsData)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-	cert := connTLS.ConnectionState().PeerCertificates[0]
 
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["not_after"] = float64(cert.NotAfter.Unix())
+	data["not_after"] = float64(certNotAfter)
 	data["ip"] = request.dialer.GetDialedIP(hostname)
-
+	data["template-path"] = requestOptions.TemplatePath
+	data["template-id"] = requestOptions.TemplateID
+	data["template-info"] = requestOptions.TemplateInfo
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
-	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+			gologger.Debug().Msg(msg)
+			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+		}
+		if requestOptions.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
+		}
 	}
 	callback(event)
 	return nil

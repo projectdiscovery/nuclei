@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -20,16 +21,18 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 				return errors.New("invalid number of lines in payload")
 			}
 
-			// check if it's a worldlist file and try to load it
+			// check if it's a file and try to load it
 			if fileExists(payloadType) {
 				continue
 			}
 
 			changed := false
-			pathTokens := strings.Split(templatePath, string(os.PathSeparator))
 
-			for i := range pathTokens {
-				payloadPath := filepath.Join(filepath.Join(pathTokens[:i]...), payloadType)
+			dir, _ := filepath.Split(templatePath)
+			templatePathInfo, _ := folderutil.NewPathInfo(dir)
+			payloadPathsToProbe, _ := templatePathInfo.MeshWith(payloadType)
+
+			for _, payloadPath := range payloadPathsToProbe {
 				if fileExists(payloadPath) {
 					payloads[name] = payloadPath
 					changed = true

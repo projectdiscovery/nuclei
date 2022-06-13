@@ -23,10 +23,14 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
+	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
@@ -49,27 +53,37 @@ var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // If the path exists but does not contain the latest version of public templates,
 // the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error { // TODO this method does more than just update templates. Should be refactored.
-	home, err := os.UserHomeDir()
+	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return err
 	}
-	configDir := filepath.Join(home, ".config", "nuclei")
 	_ = os.MkdirAll(configDir, 0755)
 
-	if err := r.readInternalConfigurationFile(home, configDir); err != nil {
+	if err := r.readInternalConfigurationFile(configDir); err != nil {
 		return errors.Wrap(err, "could not read configuration file")
 	}
 
 	// If the config doesn't exist, create it now.
+	defaultTemplatesDirectory, err := utils.GetDefaultTemplatePath()
+	if err != nil {
+		return err
+	}
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
-			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
+			TemplatesDirectory: defaultTemplatesDirectory,
 			NucleiVersion:      config.Version,
 		}
 		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 		r.templatesConfig = currentConfig
+	}
+	if r.options.TemplatesDirectory == "" {
+		if r.templatesConfig.TemplatesDirectory != "" {
+			r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
+		} else {
+			r.options.TemplatesDirectory = defaultTemplatesDirectory
+		}
 	}
 
 	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
@@ -82,18 +96,14 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	ctx := context.Background()
 
 	var noTemplatesFound bool
-	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
+	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
 		noTemplatesFound = true
 	}
 
 	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
-		// Use the custom location if the user has given a template directory
-		r.templatesConfig = &config.Config{
-			TemplatesDirectory: filepath.Join(home, "nuclei-templates"),
-		}
-		if r.options.TemplatesDirectory != "" && r.options.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
+		if r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
 			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 		}
 		r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
@@ -118,7 +128,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s). GoodLuck!\n", version.String())
+		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 		return nil
 	}
 
@@ -134,13 +144,13 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return config.WriteConfiguration(r.templatesConfig)
 	}
 
-	if err := updateTemplates(latestVersion, currentVersion, r, ctx); err != nil {
+	if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func updateTemplates(latestVersion semver.Version, currentVersion semver.Version, runner *Runner, ctx context.Context) error {
+func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, currentVersion semver.Version, runner *Runner, ctx context.Context) error {
 	if latestVersion.GT(currentVersion) {
 		gologger.Info().Msgf("Your current nuclei-templates v%s are outdated. Latest is v%s\n", currentVersion, latestVersion.String())
 		gologger.Info().Msgf("Downloading latest release...")
@@ -162,7 +172,7 @@ func updateTemplates(latestVersion semver.Version, currentVersion semver.Version
 		if err := config.WriteConfiguration(runner.templatesConfig); err != nil {
 			return err
 		}
-		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s). GoodLuck!\n", latestVersion.String())
+		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s) to %s. GoodLuck!\n", latestVersion.String(), r.templatesConfig.TemplatesDirectory)
 	}
 	return nil
 }
@@ -191,7 +201,7 @@ func getVersions(runner *Runner) (semver.Version, semver.Version, error) {
 }
 
 // readInternalConfigurationFile reads the internal configuration file for nuclei
-func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
+func (r *Runner) readInternalConfigurationFile(configDir string) error {
 	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
 	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
 		configuration, readErr := config.ReadConfiguration()
@@ -199,10 +209,6 @@ func (r *Runner) readInternalConfigurationFile(home, configDir string) error {
 			return readErr
 		}
 		r.templatesConfig = configuration
-
-		if configuration.TemplatesDirectory != "" && configuration.TemplatesDirectory != filepath.Join(home, "nuclei-templates") {
-			r.options.TemplatesDirectory = configuration.TemplatesDirectory
-		}
 	}
 	return nil
 }
@@ -224,12 +230,38 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 	return true
 }
 
+func getGHClientIncognito() *github.Client {
+	var tc *http.Client
+	return github.NewClient(tc)
+}
+
+func getGHClientWithToken() *github.Client {
+	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		oauthClient := oauth2.NewClient(ctx, ts)
+		return github.NewClient(oauthClient)
+	}
+	return nil
+}
+
 // getLatestReleaseFromGithub returns the latest release from GitHub
 func (r *Runner) getLatestReleaseFromGithub(latestTag string) (*github.RepositoryRelease, error) {
-	gitHubClient := github.NewClient(nil)
-
+	var (
+		gitHubClient *github.Client
+		retried      bool
+	)
+	gitHubClient = getGHClientIncognito()
+getRelease:
 	release, _, err := gitHubClient.Repositories.GetReleaseByTag(context.Background(), userName, repoName, "v"+latestTag)
 	if err != nil {
+		// retry with authentication
+		if gitHubClient = getGHClientWithToken(); gitHubClient != nil && !retried {
+			retried = true
+			goto getRelease
+		}
 		return nil, err
 	}
 	if release == nil {
@@ -254,7 +286,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to download a release file from %s: Not successful status %d", downloadURL, res.StatusCode)
 	}
 
-	buf, err := ioutil.ReadAll(res.Body)
+	buf, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create buffer for zip file: %w", err)
 	}
@@ -283,17 +315,6 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
 
-	// Write the additions to a cached file for new runs.
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
-	buffer := &bytes.Buffer{}
-	for _, addition := range results.additions {
-		buffer.WriteString(addition)
-		buffer.WriteString("\n")
-	}
-
-	if err := ioutil.WriteFile(additionsFile, buffer.Bytes(), 0644); err != nil {
-		return nil, errors.Wrap(err, "could not write new additions file")
-	}
 	return results, err
 }
 
@@ -328,11 +349,6 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 			continue
 		}
 
-		isAddition := false
-		if _, statErr := os.Stat(templateAbsolutePath); os.IsNotExist(statErr) {
-			isAddition = true
-		}
-
 		newTemplateChecksum, err := writeUnZippedTemplateFile(templateAbsolutePath, zipTemplateFile)
 		if err != nil {
 			return nil, err
@@ -345,13 +361,17 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 			return nil, fmt.Errorf("could not calculate relative path for template: %s. %w", templateAbsolutePath, err)
 		}
 
-		if isAddition {
-			results.additions = append(results.additions, relativeTemplatePath)
-		} else if checksumOk && oldTemplateChecksum[0] != newTemplateChecksum {
+		if checksumOk && oldTemplateChecksum[0] != newTemplateChecksum {
 			results.modifications = append(results.modifications, relativeTemplatePath)
 		}
 		results.checksums[templateAbsolutePath] = newTemplateChecksum
 		results.totalCount++
+	}
+
+	var err error
+	results.additions, err = r.readNewTemplatesFile()
+	if err != nil {
+		results.additions = []string{}
 	}
 
 	// If we don't find the previous file in the newly downloaded list,
@@ -397,12 +417,23 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
 	directory, fileName := filepath.Split(zipFilePath)
 
-	if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
-		return "", true, nil
+	if !strings.EqualFold(fileName, ".new-additions") {
+		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
+			return "", true, nil
+		}
 	}
 
-	directoryPathChunks := strings.Split(directory, string(os.PathSeparator))
-	relativeDirectoryPathWithoutZipRoot := filepath.Join(directoryPathChunks[1:]...)
+	var (
+		directoryPathChunks                 []string
+		relativeDirectoryPathWithoutZipRoot string
+	)
+	if folderutil.IsUnixOS() {
+		directoryPathChunks = strings.Split(directory, string(os.PathSeparator))
+	} else if folderutil.IsWindowsOS() {
+		pathInfo, _ := folderutil.NewPathInfo(directory)
+		directoryPathChunks = pathInfo.Parts
+	}
+	relativeDirectoryPathWithoutZipRoot = filepath.Join(directoryPathChunks[1:]...)
 
 	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
 		return "", true, nil

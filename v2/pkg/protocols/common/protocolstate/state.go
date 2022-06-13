@@ -12,6 +12,9 @@ var Dialer *fastdialer.Dialer
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
+	if Dialer != nil {
+		return nil
+	}
 	opts := fastdialer.DefaultOptions
 	if options.SystemResolvers {
 		opts.EnableFallback = true
@@ -20,6 +23,8 @@ func Init(options *types.Options) error {
 		opts.BaseResolvers = options.InternalResolversList
 	}
 	opts.WithDialerHistory = true
+	opts.WithZTLS = options.ZTLS
+	opts.SNIName = options.SNI
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")

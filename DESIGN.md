@@ -251,7 +251,7 @@ The internal logics for matching and extracting for things like words, regexes, 
 
 ### Template Execution
 
-`pkg/core` provides the engine mechanism which runs the templates/workflows on inputs. It exposes an `Execute` function which does the task of execution while also doing template clustring. The clustering can also be disbled optionally by the user.
+`pkg/core` provides the engine mechanism which runs the templates/workflows on inputs. It exposes an `Execute` function which does the task of execution while also doing template clustering. The clustering can also be disabled optionally by the user.
  
 An example of using the core engine is provided below.
 
@@ -312,7 +312,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service-detection.yaml"}
+	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{"dns/cname-service-detection.yaml"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -334,6 +334,7 @@ func main() {
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
+		ResumeCfg:       types.NewResumeCfg(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
@@ -344,7 +345,11 @@ func main() {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
+	configObject, err := config.ReadConfiguration()
+	if err != nil {
+		log.Fatalf("Could not read config: %s\n", err)
+	}
+	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
 	if err != nil {
 		log.Fatalf("Could not create loader client: %s\n", err)
 	}
@@ -352,6 +357,7 @@ func main() {
 
 	input := &inputs.SimpleInputProvider{Inputs: []string{"docs.hackerone.com"}}
 	_ = engine.Execute(store.Templates(), input)
+	engine.WorkPool().Wait() // Wait for the scan to finish
 }
 ```
 

@@ -2,17 +2,22 @@ package dns
 
 import (
 	"encoding/hex"
+	"fmt"
 	"net/url"
 
+	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 )
 
@@ -27,14 +32,23 @@ func (request *Request) Type() templateTypes.ProtocolType {
 func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
-	if isURL(input) {
+	if utils.IsURL(input) {
 		domain = extractDomain(input)
 	} else {
 		domain = input
 	}
 
+	var err error
+	domain, err = request.parseDNSInput(domain)
+	if err != nil {
+		return errors.Wrap(err, "could not build request")
+	}
+	vars := GenerateVariables(domain)
+	variablesMap := request.options.Variables.Evaluate(vars)
+	vars = generators.MergeMaps(variablesMap, vars)
+
 	// Compile each request for the template based on the URL
-	compiledRequest, err := request.Make(domain)
+	compiledRequest, err := request.Make(domain, vars)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -54,9 +68,15 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
 		return nil
 	}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Str("domain", domain).Msgf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
-		gologger.Print().Msgf("%s", requestString)
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Str("domain", domain).Msgf(msg)
+			gologger.Print().Msgf("%s", requestString)
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, requestString))
+		}
 	}
 
 	// Send the request to the target servers
@@ -86,11 +106,13 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
-
+	for k, v := range vars {
+		outputEvent[k] = v
+	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 	// TODO: dynamic values are not supported yet
 
-	dumpResponse(event, request.options, response.String(), domain)
+	dumpResponse(event, request, request.options, response.String(), domain)
 	if request.Trace {
 		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
 	}
@@ -99,16 +121,40 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	return nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, response, domain string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
+func (request *Request) parseDNSInput(host string) (string, error) {
+	isIP := iputil.IsIP(host)
+	switch {
+	case request.question == dns.TypePTR && isIP:
+		var err error
+		host, err = dns.ReverseAddr(host)
+		if err != nil {
+			return "", err
+		}
+	default:
+		if isIP {
+			return "", errors.New("cannot use IP address as DNS input")
+		}
+		host = dns.Fqdn(host)
+	}
+	return host, nil
+}
+
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecuterOptions, response, domain string) {
+	cliOptions := request.options.Options
+	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
 		if responsehighlighter.HasBinaryContent(response) {
 			hexDump = true
 			response = hex.Dump([]byte(response))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped DNS response for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+		msg := fmt.Sprintf("[%s] Dumped DNS response for %s\n\n%s", request.options.TemplateID, domain, highlightedResponse)
+		if cliOptions.Debug || cliOptions.DebugResponse {
+			gologger.Debug().Msg(msg)
+		}
+		if cliOptions.StoreResponse {
+			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), msg)
+		}
 	}
 }
 
@@ -123,18 +169,6 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
-}
-
-// isURL tests a string to determine if it is a well-structured url or not.
-func isURL(toTest string) bool {
-	if _, err := url.ParseRequestURI(toTest); err != nil {
-		return false
-	}
-	u, err := url.Parse(toTest)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-	return true
 }
 
 // extractDomain extracts the domain name of a URL

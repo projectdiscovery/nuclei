@@ -1,0 +1,40 @@
+name: 👮🏼‍♂️ Sonarcloud
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+     
+      - name: "Set up Go"
+        uses: actions/setup-go@v3
+        with: 
+          go-version: 1.18
+      
+      - name: Run unit Tests
+        working-directory: v2/
+        run: |
+          go test -coverprofile=cov.out ./...
+
+      - name: Run Gosec Security Scanner
+        working-directory: v2/
+        run: |
+          go install github.com/securego/gosec/cmd/gosec@latest
+          gosec -no-fail -fmt=sonarqube -out report.json ./...
+     
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

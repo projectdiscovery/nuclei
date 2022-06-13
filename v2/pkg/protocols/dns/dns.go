@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -73,7 +72,7 @@ type Request struct {
 
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
-	Recursion bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	Recursion *bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 	// Resolvers to use for the dns requests
 	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
@@ -109,6 +108,13 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if request.Retries == 0 {
+		request.Retries = 3
+	}
+	if request.Recursion == nil {
+		recursion := true
+		request.Recursion = &recursion
+	}
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 	}
@@ -163,20 +169,14 @@ func (request *Request) Requests() int {
 }
 
 // Make returns the request to be sent for the protocol
-func (request *Request) Make(domain string) (*dns.Msg, error) {
-	if request.question != dns.TypePTR && net.ParseIP(domain) != nil {
-		return nil, errors.New("cannot use IP address as DNS input")
-	}
-	domain = dns.Fqdn(domain)
-
+func (request *Request) Make(host string, vars map[string]interface{}) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
-	req.RecursionDesired = request.Recursion
+	req.RecursionDesired = *request.Recursion
 
 	var q dns.Question
-
-	final := replacer.Replace(request.Name, generateDNSVariables(domain))
+	final := replacer.Replace(request.Name, vars)
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -217,6 +217,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeDS
 	case "AAAA":
 		question = dns.TypeAAAA
+	case "CAA":
+		question = dns.TypeCAA
 	}
 	return question
 }
@@ -243,7 +245,8 @@ func classToInt(class string) uint16 {
 	return uint16(result)
 }
 
-func generateDNSVariables(domain string) map[string]interface{} {
+// GenerateVariables from a dns name
+func GenerateVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}

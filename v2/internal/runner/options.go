@@ -2,6 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
@@ -18,6 +21,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
+
+func ConfigureOptions() error {
+	isFromFileFunc := func(s string) bool {
+		return !isTemplate(s)
+	}
+	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.DefaultFileOriginalNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	return nil
+}
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
@@ -29,6 +41,10 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
+	if options.TemplatesDirectory != "" && !filepath.IsAbs(options.TemplatesDirectory) {
+		cwd, _ := os.Getwd()
+		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
+	}
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
@@ -41,7 +57,10 @@ func ParseOptions(options *types.Options) {
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
 		os.Exit(0)
 	}
-
+	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
+		gologger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
+		options.StoreResponse = true
+	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	if err := validateOptions(options); err != nil {
@@ -93,6 +112,9 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
+	if options.FollowRedirects && options.DisableRedirects {
+		return errors.New("both follow redirects and disable redirects specified")
+	}
 	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
 		return err
@@ -116,10 +138,10 @@ func validateOptions(options *types.Options) error {
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose {
+	if options.Verbose || options.Validate {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
-	if options.Debug {
+	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	}
 	if options.NoColor {
@@ -128,6 +150,10 @@ func configureOutput(options *types.Options) {
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	}
+
+	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
+	log.SetFlags(0)
+	log.SetOutput(io.Discard)
 }
 
 // loadResolvers loads resolvers from both user provided flag and file

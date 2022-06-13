@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -11,21 +12,23 @@ type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
-	Tags goflags.NormalizedStringSlice
+	Tags goflags.FileNormalizedStringSlice
 	// ExcludeTags is the list of tags to exclude
-	ExcludeTags goflags.NormalizedStringSlice
+	ExcludeTags goflags.FileNormalizedStringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.StringSlice
+	Workflows goflags.FileOriginalNormalizedStringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
-	WorkflowURLs goflags.StringSlice
+	WorkflowURLs goflags.FileOriginalNormalizedStringSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.StringSlice
+	Templates goflags.FileOriginalNormalizedStringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
-	TemplateURLs goflags.StringSlice
+	TemplateURLs goflags.FileOriginalNormalizedStringSlice
+	// RemoteTemplates specifies list of allowed URLs to load remote templates from
+	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.StringSlice
+	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders goflags.StringSlice
+	CustomHeaders goflags.FileStringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
 	// vars to use as iterative payload
@@ -35,31 +38,39 @@ type Options struct {
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
 	// Authors filters templates based on their author and only run the matching ones.
-	Authors goflags.NormalizedStringSlice
+	Authors goflags.FileNormalizedStringSlice
 	// Protocols contains the protocols to be allowed executed
 	Protocols types.ProtocolTypes
 	// ExcludeProtocols contains protocols to not be executed
 	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
-	IncludeTags goflags.NormalizedStringSlice
+	IncludeTags goflags.FileNormalizedStringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.StringSlice
+	IncludeTemplates goflags.FileOriginalNormalizedStringSlice
+	// IncludeIds includes specified ids to be run even while being in denylist
+	IncludeIds goflags.FileNormalizedStringSlice
+	// ExcludeIds contains templates ids to not be executed
+	ExcludeIds goflags.FileNormalizedStringSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
-	InteractshURL string `validate:"omitempty,url"`
+	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
+	// Resume the scan from the state stored in the resume config file
+	Resume string
 	// Output is the file to write found results to.
 	Output string
+	// ProxyInternal requests
+	ProxyInternal bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
-	Proxy goflags.NormalizedStringSlice
+	Proxy goflags.NormalizedOriginalStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -110,6 +121,10 @@ type Options struct {
 	// InteractionsCoolDownPeriod is additional seconds to wait for interactions after closing
 	// of the poller.
 	InteractionsCoolDownPeriod int
+	// MaxRedirects is the maximum numbers of redirects to be followed.
+	MaxRedirects int
+	// FollowRedirects enables following redirects for http request module
+	FollowRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -132,6 +147,10 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// LeaveDefaultPorts skips normalization of default ports
+	LeaveDefaultPorts bool
+	// AutomaticScan enables automatic tech based template execution
+	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Version specifies if we should just show version and exit
@@ -155,6 +174,8 @@ type Options struct {
 	TemplatesVersion bool
 	// TemplateList lists available templates
 	TemplateList bool
+	// HangMonitor enables nuclei hang monitoring
+	HangMonitor bool
 	// Stdin specifies whether stdin input was given to the process
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
@@ -185,6 +206,20 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
+	// Use ZTLS library
+	ZTLS bool
+	// ShowMatchLine enables display of match line number
+	ShowMatchLine bool
+	// EnablePprof enables exposing pprof runtime information with a webserver.
+	EnablePprof bool
+	// StoreResponse stores received response to output directory
+	StoreResponse bool
+	// StoreResponseDir stores received response to custom directory
+	StoreResponseDir string
+	// DisableRedirects disables following redirects for http request module
+	DisableRedirects bool
+	// SNI custom hostname
+	SNI string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
@@ -197,6 +232,16 @@ func (options *Options) AddVarPayload(key string, value interface{}) {
 
 func (options *Options) VarsPayload() map[string]interface{} {
 	return options.varsPayload
+}
+
+// ShouldLoadResume resume file
+func (options *Options) ShouldLoadResume() bool {
+	return options.Resume != "" && fileutil.FileExists(options.Resume)
+}
+
+// ShouldSaveResume file
+func (options *Options) ShouldSaveResume() bool {
+	return true
 }
 
 // DefaultOptions returns default options for nuclei

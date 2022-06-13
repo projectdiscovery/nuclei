@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+
 // Summary returns a formatted built one line summary of the event
 func Summary(event *output.ResultEvent) string {
 	template := GetMatchedTemplate(event)
@@ -53,20 +54,18 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 	builder.WriteString(ToMarkdownTableString(&event.Info))
 
 	if event.Request != "" {
-		builder.WriteString("\n**Request**\n\n```http\n")
-		builder.WriteString(event.Request)
-		builder.WriteString("\n```\n")
+		builder.WriteString(createMarkdownCodeBlock("Request", types.ToHexOrString(event.Request), "http"))
 	}
 	if event.Response != "" {
-		builder.WriteString("\n**Response**\n\n```http\n")
+		var responseString string
 		// If the response is larger than 5 kb, truncate it before writing.
 		if len(event.Response) > 5*1024 {
-			builder.WriteString(event.Response[:5*1024])
-			builder.WriteString(".... Truncated ....")
+			responseString = (event.Response[:5*1024])
+			responseString += ".... Truncated ...."
 		} else {
-			builder.WriteString(event.Response)
+			responseString = event.Response
 		}
-		builder.WriteString("\n```\n")
+		builder.WriteString(createMarkdownCodeBlock("Response", responseString, "http"))
 	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
@@ -107,14 +106,10 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 		builder.WriteString(event.Interaction.UniqueID)
 
 		if event.Interaction.RawRequest != "" {
-			builder.WriteString("\n\n**Interaction Request**\n\n```\n")
-			builder.WriteString(event.Interaction.RawRequest)
-			builder.WriteString("\n```\n")
+			builder.WriteString(createMarkdownCodeBlock("Interaction Request", event.Interaction.RawRequest, ""))
 		}
 		if event.Interaction.RawResponse != "" {
-			builder.WriteString("\n**Interaction Response**\n\n```\n")
-			builder.WriteString(event.Interaction.RawResponse)
-			builder.WriteString("\n```\n")
+			builder.WriteString(createMarkdownCodeBlock("Interaction Response", event.Interaction.RawResponse, ""))
 		}
 	}
 
@@ -135,7 +130,7 @@ func MarkdownDescription(event *output.ResultEvent) string { // TODO remove the 
 
 	if event.CURLCommand != "" {
 		builder.WriteString("\n**CURL Command**\n```\n")
-		builder.WriteString(event.CURLCommand)
+		builder.WriteString(types.ToHexOrString(event.CURLCommand))
 		builder.WriteString("\n```")
 	}
 
@@ -181,9 +176,12 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	builder := &bytes.Buffer{}
 
 	toMarkDownTable := func(insertionOrderedStringMap *utils.InsertionOrderedStringMap) {
-		insertionOrderedStringMap.ForEach(func(key string, value string) {
-			if utils.IsNotBlank(value) {
-				builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+		insertionOrderedStringMap.ForEach(func(key string, value interface{}) {
+			switch value := value.(type) {
+			case string:
+				if utils.IsNotBlank(value) {
+					builder.WriteString(fmt.Sprintf("| %s | %s |\n", key, value))
+				}
 			}
 		})
 	}
@@ -233,4 +231,12 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 	if len(cveIDs) > 0 {
 		fields.Set("CVE-ID", strings.Join(cveIDs, ","))
 	}
+}
+
+func createMarkdownCodeBlock(title string, content string, language string) string {
+	return "\n" + createBoldMarkdown(title) + "\n```" + language + "\n" + content + "\n```\n"
+}
+
+func createBoldMarkdown(value string) string {
+	return "**" + value + "**"
 }

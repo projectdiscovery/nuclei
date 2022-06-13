@@ -58,7 +58,7 @@ var DefaultOptions = &types.Options{
 	Templates:                  []string{},
 	ExcludedTemplates:          []string{},
 	CustomHeaders:              []string{},
-	InteractshURL:              "https://interactsh.com",
+	InteractshURL:              "https://interact.sh",
 	InteractionsCacheSize:      5000,
 	InteractionsEviction:       60,
 	InteractionsCoolDownPeriod: 5,
@@ -135,6 +135,9 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
 	return nil
+}
+func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
+
 }
 
 type MockProgressClient struct{}

@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -61,11 +62,16 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache *hosterrorscache.Cache
+	// Stop execution once first match is found
+	StopAtFirstMatch bool
+	// Variables is a list of variables from template
+	Variables variables.Variable
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
+	ResumeCfg      *types.ResumeCfg
 }
 
 // Copy returns a copy of the executeroptions structure
@@ -141,7 +147,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	}
 
 	item, ok := data[part]
-	if !ok {
+	if !ok && !extractors.SupportsMap(extractor) {
 		return nil
 	}
 	itemStr := types.ToString(item)
@@ -155,6 +161,8 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 		return extractor.ExtractJSON(itemStr)
 	case extractors.XPathExtractor:
 		return extractor.ExtractHTML(itemStr)
+	case extractors.DSLExtractor:
+		return extractor.ExtractDSL(data)
 	}
 	return nil
 }
@@ -167,7 +175,7 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 	}
 
 	partItem, ok := data[part]
-	if !ok && len(matcher.DSL) == 0 {
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
 		return false, nil
 	}
 	item := types.ToString(partItem)

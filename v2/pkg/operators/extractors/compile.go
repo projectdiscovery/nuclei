@@ -5,7 +5,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 )
 
 // CompileExtractors performs the initial setup operation on an extractor
@@ -38,6 +40,14 @@ func (e *Extractor) CompileExtractors() error {
 			return fmt.Errorf("could not compile json: %s", query)
 		}
 		e.jsonCompiled = append(e.jsonCompiled, compiled)
+	}
+
+	for _, dslExp := range e.DSL {
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions())
+		if err != nil {
+			return fmt.Errorf("could not compile dsl: %s", dslExp)
+		}
+		e.dslCompiled = append(e.dslCompiled, compiled)
 	}
 
 	if e.CaseInsensitive {

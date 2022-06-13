@@ -3,6 +3,7 @@ package extractors
 import (
 	"regexp"
 
+	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 )
 
@@ -86,6 +87,11 @@ type Extractor struct {
 
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
+
+	// description: |
+	//   Extracts using DSL expressions.
+	DSL         []string
+	dslCompiled []*govaluate.EvaluableExpression
 
 	// description: |
 	//   Part is the part of the request response to extract data from.

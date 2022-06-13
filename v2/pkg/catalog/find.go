@@ -1,11 +1,11 @@
 package catalog
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/karrick/godirwalk"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -18,14 +18,21 @@ func (c *Catalog) GetTemplatesPath(definitions []string) []string {
 	allTemplates := []string{}
 
 	for _, t := range definitions {
-		paths, err := c.GetTemplatePath(t)
-		if err != nil {
-			gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
-		}
-		for _, path := range paths {
-			if _, ok := processed[path]; !ok {
-				processed[path] = true
-				allTemplates = append(allTemplates, path)
+		if strings.HasPrefix(t, "http") && (strings.HasSuffix(t, ".yaml") || strings.HasSuffix(t, ".yml")) {
+			if _, ok := processed[t]; !ok {
+				processed[t] = true
+				allTemplates = append(allTemplates, t)
+			}
+		} else {
+			paths, err := c.GetTemplatePath(t)
+			if err != nil {
+				gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
+			}
+			for _, path := range paths {
+				if _, ok := processed[path]; !ok {
+					processed[path] = true
+					allTemplates = append(allTemplates, path)
+				}
 			}
 		}
 	}
@@ -74,7 +81,7 @@ func (c *Catalog) GetTemplatePath(target string) ([]string, error) {
 		return nil, errors.Wrap(err, "could not find directory matches")
 	}
 	if len(matches) == 0 {
-		return nil, errors.Errorf("no templates found in path")
+		return nil, errors.Errorf("no templates found in path %s", absPath)
 	}
 	return matches, nil
 }
@@ -129,12 +136,13 @@ func (c *Catalog) findFileMatches(absPath string, processed map[string]struct{})
 // findDirectoryMatches finds matches for templates from a directory
 func (c *Catalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	var results []string
-	err := godirwalk.Walk(absPath, &godirwalk.Options{
-		Unsorted: true,
-		ErrorCallback: func(fsPath string, err error) godirwalk.ErrorAction {
-			return godirwalk.SkipNode
-		},
-		Callback: func(path string, d *godirwalk.Dirent) error {
+	err := filepath.WalkDir(
+		absPath,
+		func(path string, d fs.DirEntry, err error) error {
+			// continue on errors
+			if err != nil {
+				return nil
+			}
 			if !d.IsDir() && strings.HasSuffix(path, ".yaml") {
 				if _, ok := processed[path]; !ok {
 					results = append(results, path)
@@ -143,6 +151,6 @@ func (c *Catalog) findDirectoryMatches(absPath string, processed map[string]stru
 			}
 			return nil
 		},
-	})
+	)
 	return results, err
 }

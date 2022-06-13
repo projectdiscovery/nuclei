@@ -2,6 +2,10 @@ package runner
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +13,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"go.uber.org/atomic"
 	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/gologger"
@@ -18,16 +23,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
@@ -36,6 +42,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Runner is a client for running the enumeration process.
@@ -49,12 +57,15 @@ type Runner struct {
 	progress          progress.Progress
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
-	addColor          func(severity.Severity) string
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
 	hostErrors        *hosterrorscache.Cache
+	resumeCfg         *types.ResumeCfg
+	pprofServer       *http.Server
 }
+
+const pprofServerAddress = "127.0.0.1:8086"
 
 // New creates a new client for running enumeration process.
 func New(options *types.Options) (*Runner, error) {
@@ -69,11 +80,16 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	if options.Validate {
 		parsers.ShouldValidate = true
+		// Does not update the templates when validate flag is used
+		options.NoUpdateTemplates = true
 	}
 	if err := runner.updateTemplates(); err != nil {
-		gologger.Warning().Msgf("Could not update templates: %s\n", err)
+		gologger.Error().Msgf("Could not update templates: %s\n", err)
 	}
 	if options.Headless {
+		if engine.MustDisableSandbox() {
+			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+		}
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
@@ -83,10 +99,23 @@ func New(options *types.Options) (*Runner, error) {
 
 	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
 
+	var httpclient *retryablehttp.Client
+	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+		var err error
+		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
 	}
+	if reportingOptions != nil && httpclient != nil {
+		reportingOptions.HttpClient = httpclient
+	}
+
 	if reportingOptions != nil {
 		client, err := reporting.New(reportingOptions, options.ReportingDB)
 		if err != nil {
@@ -98,11 +127,23 @@ func New(options *types.Options) (*Runner, error) {
 	// output coloring
 	useColor := !options.NoColor
 	runner.colorizer = aurora.NewAurora(useColor)
-	runner.addColor = colorizer.New(runner.colorizer)
+	templates.Colorizer = runner.colorizer
+	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
 	if options.TemplateList {
 		runner.listAvailableTemplates()
 		os.Exit(0)
+	}
+	if options.EnablePprof {
+		server := &http.Server{
+			Addr:    pprofServerAddress,
+			Handler: http.DefaultServeMux,
+		}
+		gologger.Info().Msgf("Listening pprof debug server on: %s", pprofServerAddress)
+		runner.pprofServer = server
+		go func() {
+			_ = server.ListenAndServe()
+		}()
 	}
 
 	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
@@ -117,7 +158,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.Output, options.TraceLogFile, options.ErrorLogFile)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -145,16 +186,41 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	// create the resume configuration structure
+	resumeCfg := types.NewResumeCfg()
+	if runner.options.ShouldLoadResume() {
+		gologger.Info().Msg("Resuming from save checkpoint")
+		file, err := os.ReadFile(runner.options.Resume)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(file), &resumeCfg)
+		if err != nil {
+			return nil, err
+		}
+		resumeCfg.Compile()
+	}
+	runner.resumeCfg = resumeCfg
+
 	opts := interactsh.NewDefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
-	opts.ServerURL = options.InteractshURL
+	opts.NoColor = runner.options.NoColor
+	if options.InteractshURL != "" {
+		opts.ServerURL = options.InteractshURL
+	}
 	opts.Authorization = options.InteractshToken
 	opts.CacheSize = int64(options.InteractionsCacheSize)
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
-	opts.ColldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
+	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
-
+	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
+	opts.Debug = runner.options.Debug
+	opts.DebugRequest = runner.options.DebugRequests
+	opts.DebugResponse = runner.options.DebugResponse
+	if httpclient != nil {
+		opts.HTTPClient = httpclient
+	}
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -216,6 +282,9 @@ func (r *Runner) Close() {
 	}
 	r.hmapInputProvider.Close()
 	protocolinit.Close()
+	if r.pprofServer != nil {
+		_ = r.pprofServer.Shutdown(context.Background())
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -231,10 +300,12 @@ func (r *Runner) RunEnumeration() error {
 		}
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
-	ignoreFile := config.ReadIgnoreFile()
-	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
-	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
-
+	// Exclude ignored file for validation
+	if !r.options.Validate {
+		ignoreFile := config.ReadIgnoreFile()
+		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+	}
 	var cache *hosterrorscache.Cache
 	if r.options.MaxHostError > 0 {
 		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
@@ -255,6 +326,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
+		ResumeCfg:       r.resumeCfg,
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -265,26 +337,78 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(r.options, r.templatesConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-	store.Load()
 
 	if r.options.Validate {
-		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
-		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 {
+		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
 			gologger.Info().Msgf("All templates validated successfully\n")
 		} else {
 			return errors.New("encountered errors while performing template validation")
 		}
 		return nil // exit
 	}
+	store.Load()
 
 	r.displayExecutionInfo(store)
 
+	var results *atomic.Bool
+	if r.options.AutomaticScan {
+		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
+			return err
+		}
+
+	} else {
+		if results, err = r.executeTemplatesInput(store, engine); err != nil {
+			return err
+		}
+	}
+
+	if r.interactsh != nil {
+		matched := r.interactsh.Close()
+		if matched {
+			results.CAS(false, true)
+		}
+	}
+	r.progress.Stop()
+
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
+
+	if !results.Load() {
+		gologger.Info().Msgf("No results found. Better luck next time!")
+	}
+	if r.browser != nil {
+		r.browser.Close()
+	}
+	return err
+}
+
+func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
+
+	service, err := automaticscan.New(automaticscan.Options{
+		ExecuterOpts: executerOpts,
+		Store:        store,
+		Engine:       engine,
+		Target:       r.hmapInputProvider,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create automatic scan service")
+	}
+	service.Execute()
+	result := &atomic.Bool{}
+	result.Store(service.Close())
+	return result, nil
+}
+
+func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	var unclusteredRequests int64
 	for _, template := range store.Templates() {
 		// workflows will dynamically adjust the totals while running, as
@@ -315,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 		if len(t.Workflows) > 0 {
 			continue
 		}
-		totalRequests += int64(t.TotalRequests) * r.hmapInputProvider.Count()
+		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
 		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
@@ -325,32 +449,14 @@ func (r *Runner) RunEnumeration() error {
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		return errors.New("no valid templates were found")
+		return &atomic.Bool{}, errors.New("no valid templates were found")
 	}
 
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
 	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
-
-	if r.interactsh != nil {
-		matched := r.interactsh.Close()
-		if matched {
-			results.CAS(false, true)
-		}
-	}
-	r.progress.Stop()
-
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
-	}
-	if !results.Load() {
-		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
-	}
-	return nil
+	return results, nil
 }
 
 // displayExecutionInfo displays misc info about the nuclei engine execution
@@ -358,6 +464,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
+	stats.Display(parsers.RuntimeWarningsStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
@@ -393,9 +500,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.templatesConfig != nil {
 		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
-	if r.interactsh != nil {
-		gologger.Info().Msgf("Using Interactsh Server %s", r.options.InteractshURL)
-	}
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
 		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
@@ -424,7 +528,9 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 		if text == "" {
 			continue
 		}
-		templatesList = append(templatesList, text)
+		if isTemplate(text) {
+			templatesList = append(templatesList, text)
+		}
 	}
 	return templatesList, nil
 }
@@ -448,7 +554,26 @@ func (r *Runner) countNewTemplates() int {
 		if text == "" {
 			continue
 		}
-		count++
+
+		if isTemplate(text) {
+			count++
+		}
+
 	}
 	return count
+}
+
+func isTemplate(filename string) bool {
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
+}
+
+// SaveResumeConfig to file
+func (r *Runner) SaveResumeConfig(path string) error {
+	resumeCfg := types.NewResumeCfg()
+	r.resumeCfg.Lock()
+	resumeCfg.ResumeFrom = r.resumeCfg.Current
+	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+	r.resumeCfg.Unlock()
+
+	return os.WriteFile(path, data, os.ModePerm)
 }

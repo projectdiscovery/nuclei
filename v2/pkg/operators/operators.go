@@ -1,12 +1,15 @@
 package operators
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -71,10 +74,68 @@ type Result struct {
 	Extracts map[string][]string
 	// OutputExtracts is the list of extracts to be displayed on screen.
 	OutputExtracts []string
+	outputUnique   map[string]struct{}
+
 	// DynamicValues contains any dynamic values to be templated
-	DynamicValues map[string]interface{}
+	DynamicValues map[string][]string
 	// PayloadValues contains payload values provided by user. (Optional)
 	PayloadValues map[string]interface{}
+
+	// Optional lineCounts for file protocol
+	LineCount string
+}
+
+// MakeDynamicValuesCallback takes an input dynamic values map and calls
+// the callback function with all variations of the data in input in form
+// of map[string]string (interface{}).
+func MakeDynamicValuesCallback(input map[string][]string, iterateAllValues bool, callback func(map[string]interface{}) bool) {
+	output := make(map[string]interface{}, len(input))
+
+	if !iterateAllValues {
+		for k, v := range input {
+			if len(v) > 0 {
+				output[k] = v[0]
+			}
+		}
+		callback(output)
+		return
+	}
+	inputIndex := make(map[string]int, len(input))
+
+	var maxValue int
+	for _, v := range input {
+		if len(v) > maxValue {
+			maxValue = len(v)
+		}
+	}
+
+	for i := 0; i < maxValue; i++ {
+		for k, v := range input {
+			if len(v) == 0 {
+				continue
+			}
+			if len(v) == 1 {
+				output[k] = v[0]
+				continue
+			}
+			if gotIndex, ok := inputIndex[k]; !ok {
+				inputIndex[k] = 0
+				output[k] = v[0]
+			} else {
+				newIndex := gotIndex + 1
+				if newIndex >= len(v) {
+					output[k] = v[len(v)-1]
+					continue
+				}
+				output[k] = v[newIndex]
+				inputIndex[k] = newIndex
+			}
+		}
+		// skip if the callback says so
+		if callback(output) {
+			return
+		}
+	}
 }
 
 // Merge merges a result structure into the other.
@@ -87,12 +148,27 @@ func (r *Result) Merge(result *Result) {
 	}
 
 	for k, v := range result.Matches {
-		r.Matches[k] = v
+		r.Matches[k] = sliceutil.Dedupe(append(r.Matches[k], v...))
 	}
 	for k, v := range result.Extracts {
-		r.Extracts[k] = v
+		r.Extracts[k] = sliceutil.Dedupe(append(r.Extracts[k], v...))
 	}
-	r.OutputExtracts = append(r.OutputExtracts, result.OutputExtracts...)
+
+	r.outputUnique = make(map[string]struct{})
+	output := r.OutputExtracts
+	r.OutputExtracts = make([]string, 0, len(output))
+	for _, v := range output {
+		if _, ok := r.outputUnique[v]; !ok {
+			r.outputUnique[v] = struct{}{}
+			r.OutputExtracts = append(r.OutputExtracts, v)
+		}
+	}
+	for _, v := range result.OutputExtracts {
+		if _, ok := r.outputUnique[v]; !ok {
+			r.outputUnique[v] = struct{}{}
+			r.OutputExtracts = append(r.OutputExtracts, v)
+		}
+	}
 	for k, v := range result.DynamicValues {
 		r.DynamicValues[k] = v
 	}
@@ -115,27 +191,50 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	result := &Result{
 		Matches:       make(map[string][]string),
 		Extracts:      make(map[string][]string),
-		DynamicValues: make(map[string]interface{}),
+		DynamicValues: make(map[string][]string),
+		outputUnique:  make(map[string]struct{}),
 	}
 
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
 		var extractorResults []string
-
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
 
 			if extractor.Internal {
-				if _, ok := result.DynamicValues[extractor.Name]; !ok {
-					result.DynamicValues[extractor.Name] = match
+				if data, ok := result.DynamicValues[extractor.Name]; !ok {
+					result.DynamicValues[extractor.Name] = []string{match}
+				} else {
+					result.DynamicValues[extractor.Name] = append(data, match)
 				}
 			} else {
-				result.OutputExtracts = append(result.OutputExtracts, match)
+				if _, ok := result.outputUnique[match]; !ok {
+					result.OutputExtracts = append(result.OutputExtracts, match)
+					result.outputUnique[match] = struct{}{}
+				}
 			}
 		}
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
 		}
+	}
+
+	// expose dynamic values to same request matchers
+	if len(result.DynamicValues) > 0 {
+		dataDynamicValues := make(map[string]interface{})
+		for dynName, dynValues := range result.DynamicValues {
+			if len(dynValues) > 1 {
+				for dynIndex, dynValue := range dynValues {
+					dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
+					dataDynamicValues[dynKeyName] = dynValue
+				}
+				dataDynamicValues[dynName] = dynValues
+			} else {
+				dataDynamicValues[dynName] = dynValues[0]
+			}
+
+		}
+		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {

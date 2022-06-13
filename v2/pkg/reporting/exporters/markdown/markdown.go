@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 type Exporter struct {
@@ -37,7 +38,7 @@ func New(options *Options) (*Exporter, error) {
 }
 
 // Export exports a passed result event to markdown
-func (i *Exporter) Export(event *output.ResultEvent) error {
+func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	summary := format.Summary(event)
 	description := format.MarkdownDescription(event)
 
@@ -66,11 +67,11 @@ func (i *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	return ioutil.WriteFile(filepath.Join(i.directory, finalFilename), data, 0644)
+	return ioutil.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation
-func (i *Exporter) Close() error {
+func (exporter *Exporter) Close() error {
 	return nil
 }
 
@@ -78,5 +79,5 @@ func sanitizeFilename(filename string) string {
 	if len(filename) > 256 {
 		filename = filename[0:255]
 	}
-	return filename
+	return stringsutil.ReplaceAny(filename, "_", "?", "/", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
 }

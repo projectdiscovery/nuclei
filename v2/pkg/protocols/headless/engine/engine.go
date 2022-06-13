@@ -5,14 +5,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
-	"github.com/corpix/uarand"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/pkg/errors"
 	ps "github.com/shirou/gopsutil/v3/process"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
 )
@@ -44,13 +45,23 @@ func New(options *types.Options) (*Browser, error) {
 		Set("disable-notifications", "true").
 		Set("hide-scrollbars", "true").
 		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-		Set("no-sandbox", "true").
 		Set("mute-audio", "true").
 		Set("incognito", "true").
 		Delete("use-mock-keychain").
 		UserDataDir(dataStore)
 
-	if options.UseInstalledChrome {
+	if MustDisableSandbox() {
+		chromeLauncher = chromeLauncher.NoSandbox(true)
+	}
+
+	executablePath, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+
+	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
+	useMusl, _ := fileutil.UseMusl(executablePath)
+	if options.UseInstalledChrome || useMusl {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
 			chromeLauncher.Bin(chromePath)
 		} else {
@@ -85,9 +96,6 @@ func New(options *types.Options) (*Browser, error) {
 			customAgent = parts[1]
 		}
 	}
-	if customAgent == "" {
-		customAgent = uarand.GetRandom()
-	}
 
 	httpclient, err := newHttpClient(options)
 	if err != nil {
@@ -103,6 +111,23 @@ func New(options *types.Options) (*Browser, error) {
 	}
 	engine.previousPIDs = previousPIDs
 	return engine, nil
+}
+
+// MustDisableSandbox determines if the current os and user needs sandbox mode disabled
+func MustDisableSandbox() bool {
+	// linux with root user needs "--no-sandbox" option
+	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
+	return runtime.GOOS == "linux" && os.Geteuid() == 0
+}
+
+// SetUserAgent sets custom user agent to the browser
+func (b *Browser) SetUserAgent(customUserAgent string) {
+	b.customAgent = customUserAgent
+}
+
+// UserAgent fetch the currently set custom user agent
+func (b *Browser) UserAgent() string {
+	return b.customAgent
 }
 
 // Close closes the browser engine

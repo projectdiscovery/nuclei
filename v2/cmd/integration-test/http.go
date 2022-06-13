@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -15,27 +18,40 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	"http/get-headers.yaml":                        &httpGetHeaders{},
-	"http/get-query-string.yaml":                   &httpGetQueryString{},
-	"http/get-redirects.yaml":                      &httpGetRedirects{},
-	"http/get.yaml":                                &httpGet{},
-	"http/post-body.yaml":                          &httpPostBody{},
-	"http/post-json-body.yaml":                     &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":                &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":                   &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml":              &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":                      &httpRawGetQuery{},
-	"http/raw-get.yaml":                            &httpRawGet{},
-	"http/raw-payload.yaml":                        &httpRawPayload{},
-	"http/raw-post-body.yaml":                      &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                 &httpRawUnsafeRequest{},
-	"http/request-condition.yaml":                  &httpRequestCondition{},
-	"http/request-condition-new.yaml":              &httpRequestCondition{},
-	"http/interactsh.yaml":                         &httpInteractshRequest{},
-	"http/self-contained.yaml":                     &httpRequestSelContained{},
-	"http/get-case-insensitive.yaml":               &httpGetCaseInsensitive{},
-	"http/get.yaml,http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
-	"http/get-redirects-chain-headers.yaml":        &httpGetRedirectsChainHeaders{},
+	"http/get-headers.yaml":                         &httpGetHeaders{},
+	"http/get-query-string.yaml":                    &httpGetQueryString{},
+	"http/get-redirects.yaml":                       &httpGetRedirects{},
+	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
+	"http/get.yaml":                                 &httpGet{},
+	"http/post-body.yaml":                           &httpPostBody{},
+	"http/post-json-body.yaml":                      &httpPostJSONBody{},
+	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
+	"http/raw-cookie-reuse.yaml":                    &httpRawCookieReuse{},
+	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
+	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
+	"http/raw-get.yaml":                             &httpRawGet{},
+	"http/raw-payload.yaml":                         &httpRawPayload{},
+	"http/raw-post-body.yaml":                       &httpRawPostBody{},
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
+	"http/request-condition.yaml":                   &httpRequestCondition{},
+	"http/request-condition-new.yaml":               &httpRequestCondition{},
+	"http/interactsh.yaml":                          &httpInteractshRequest{},
+	"http/interactsh-stop-at-first-match.yaml":      &httpInteractshStopAtFirstMatchRequest{},
+	"http/self-contained.yaml":                      &httpRequestSelContained{},
+	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
+	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
+	"http/get-redirects-chain-headers.yaml":         &httpGetRedirectsChainHeaders{},
+	"http/dsl-matcher-variable.yaml":                &httpDSLVariable{},
+	"http/dsl-functions.yaml":                       &httpDSLFunctions{},
+	"http/race-simple.yaml":                         &httpRaceSimple{},
+	"http/race-multiple.yaml":                       &httpRaceMultiple{},
+	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
+	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
+	"http/variables.yaml":                           &httpVariables{},
+	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
+	"http/get-sni.yaml":                             &customCLISNI{},
+	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
+	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 }
 
 type httpInteractshRequest struct{}
@@ -58,10 +74,31 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
+
+	return expectResultsCount(results, 1)
+}
+
+type httpInteractshStopAtFirstMatchRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+				resp.Body.Close()
+			}
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
-	return nil
+	return expectResultsCount(results, 1)
 }
 
 type httpGetHeaders struct{}
@@ -81,10 +118,8 @@ func (h *httpGetHeaders) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetQueryString struct{}
@@ -104,10 +139,8 @@ func (h *httpGetQueryString) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetRedirects struct{}
@@ -128,10 +161,30 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
+
+	return expectResultsCount(results, 1)
+}
+
+type httpDisableRedirects struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDisableRedirects) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusMovedPermanently)
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test redirects matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-dr")
+	if err != nil {
+		return err
 	}
-	return nil
+
+	return expectResultsCount(results, 0)
 }
 
 type httpGet struct{}
@@ -149,9 +202,79 @@ func (h *httpGet) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
+
+	return expectResultsCount(results, 1)
+}
+
+type httpDSLVariable struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDSLVariable) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
 	}
+
+	return expectResultsCount(results, 5)
+}
+
+type httpDSLFunctions struct{}
+
+func (h *httpDSLFunctions) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		request, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			_, _ = fmt.Fprint(w, err.Error())
+		} else {
+			_, _ = fmt.Fprint(w, string(request))
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-nc")
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+
+	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
+	submatch := resultPattern.FindStringSubmatch(results[0])
+	if len(submatch) != 2 {
+		return errors.New("could not parse the result")
+	}
+
+	totalExtracted := strings.Split(submatch[1], ",")
+	numberOfDslFunctions := 70
+	if len(totalExtracted) != numberOfDslFunctions {
+		return errors.New("incorrect number of results")
+	}
+
+	for _, header := range totalExtracted {
+		parts := strings.Split(header, ": ")
+		index, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return err
+		}
+		if index < 0 || index > numberOfDslFunctions {
+			return fmt.Errorf("incorrect header index found: %d", index)
+		}
+		if strings.TrimSpace(parts[1]) == "" {
+			return fmt.Errorf("the DSL expression with index %d was not evaluated correctly", index)
+		}
+	}
+
 	return nil
 }
 
@@ -181,10 +304,8 @@ func (h *httpPostBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpPostJSONBody struct{}
@@ -218,10 +339,8 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpPostMultipartBody struct{}
@@ -260,10 +379,8 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawDynamicExtractor struct{}
@@ -297,10 +414,8 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawGetQuery struct{}
@@ -325,10 +440,8 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawGet struct{}
@@ -351,10 +464,8 @@ func (h *httpRawGet) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawPayload struct{}
@@ -386,10 +497,8 @@ func (h *httpRawPayload) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 2 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 2)
 }
 
 type httpRawPostBody struct{}
@@ -418,10 +527,8 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawCookieReuse struct{}
@@ -465,10 +572,8 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRawUnsafeRequest struct{}
@@ -477,7 +582,7 @@ type httpRawUnsafeRequest struct{}
 func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	var routerErr error
 
-	ts := testutils.NewTCPServer(func(conn net.Conn) {
+	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
 	})
@@ -490,10 +595,8 @@ func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRequestCondition struct{}
@@ -519,10 +622,8 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpRequestSelContained struct{}
@@ -551,10 +652,8 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetCaseInsensitive struct{}
@@ -572,10 +671,8 @@ func (h *httpGetCaseInsensitive) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 1)
 }
 
 type httpGetCaseInsensitiveCluster struct{}
@@ -595,10 +692,8 @@ func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 2 {
-		return errIncorrectResultsCount(results)
-	}
-	return nil
+
+	return expectResultsCount(results, 2)
 }
 
 type httpGetRedirectsChainHeaders struct{}
@@ -623,8 +718,194 @@ func (h *httpGetRedirectsChainHeaders) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if len(results) != 1 {
-		return errIncorrectResultsCount(results)
+
+	return expectResultsCount(results, 1)
+}
+
+type httpRaceSimple struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRaceSimple) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 10)
+}
+
+type httpRaceMultiple struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRaceMultiple) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 5)
+}
+
+type httpStopAtFirstMatch struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpStopAtFirstMatch) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpStopAtFirstMatchWithExtractors struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpStopAtFirstMatchWithExtractors) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 2)
+}
+
+type httpVariables struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpVariables) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type customCLISNI struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customCLISNI) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.TLS.ServerName == "test" {
+			_, _ = w.Write([]byte("test-ok"))
+		} else {
+			_, _ = w.Write([]byte("test-ko"))
+		}
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-sni", "test")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type httpSniAnnotation struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpSniAnnotation) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.TLS.ServerName == "test" {
+			_, _ = w.Write([]byte("test-ok"))
+		} else {
+			_, _ = w.Write([]byte("test-ko"))
+		}
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type httpRedirectMatchURL struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRedirectMatchURL) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+		_, _ = w.Write([]byte("This is test redirects matcher text"))
+	})
+	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test redirects matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-no-meta")
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+	if results[0] != fmt.Sprintf("%s/redirected", ts.URL) {
+		return fmt.Errorf("mismatched url found: %s", results[0])
 	}
 	return nil
+}
+
+type customCLISNIUnsafe struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customCLISNIUnsafe) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.TLS.ServerName == "test" {
+			_, _ = w.Write([]byte("test-ok"))
+		} else {
+			_, _ = w.Write([]byte("test-ko"))
+		}
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-sni", "test")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }

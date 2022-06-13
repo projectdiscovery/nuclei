@@ -1,9 +1,13 @@
 package output
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,6 +15,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -32,20 +38,25 @@ type Writer interface {
 	WriteFailure(event InternalEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
+	//  WriteStoreDebugData writes the request/response debug data to file
+	WriteStoreDebugData(host, templateID, eventType string, data string)
 }
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json           bool
-	jsonReqResp    bool
-	noTimestamp    bool
-	noMetadata     bool
-	matcherStatus  bool
-	aurora         aurora.Aurora
-	outputFile     io.WriteCloser
-	traceFile      io.WriteCloser
-	errorFile      io.WriteCloser
-	severityColors func(severity.Severity) string
+	json             bool
+	jsonReqResp      bool
+	noTimestamp      bool
+	noMetadata       bool
+	matcherStatus    bool
+	mutex            *sync.Mutex
+	aurora           aurora.Aurora
+	outputFile       io.WriteCloser
+	traceFile        io.WriteCloser
+	errorFile        io.WriteCloser
+	severityColors   func(severity.Severity) string
+	storeResponse    bool
+	storeResponseDir string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -104,12 +115,15 @@ type ResultEvent struct {
 	// Only applicable if the report is for HTTP.
 	CURLCommand string `json:"curl-command,omitempty"`
 	// MatcherStatus is the status of the match
-	MatcherStatus       bool           `json:"matcher-status"`
+	MatcherStatus bool `json:"matcher-status"`
+	// Lines is the line count for the specified match
+	Lines []int `json:"matched-line"`
+
 	FileToIndexPosition map[string]int `json:"-"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus bool, file, traceFile string, errorFile string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -136,17 +150,26 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		}
 		errorOutput = output
 	}
+	// Try to create output folder if it doesn't exist
+	if storeResponse && !fileutil.FolderExists(storeResponseDir) {
+		if err := fileutil.CreateFolder(storeResponseDir); err != nil {
+			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", storeResponseDir, err)
+		}
+	}
 	writer := &StandardWriter{
-		json:           json,
-		jsonReqResp:    jsonReqResp,
-		noMetadata:     noMetadata,
-		matcherStatus:  MatcherStatus,
-		noTimestamp:    noTimestamp,
-		aurora:         auroraColorizer,
-		outputFile:     outputFile,
-		traceFile:      traceOutput,
-		errorFile:      errorOutput,
-		severityColors: colorizer.New(auroraColorizer),
+		json:             json,
+		jsonReqResp:      jsonReqResp,
+		noMetadata:       noMetadata,
+		matcherStatus:    MatcherStatus,
+		noTimestamp:      noTimestamp,
+		aurora:           auroraColorizer,
+		mutex:            &sync.Mutex{},
+		outputFile:       outputFile,
+		traceFile:        traceOutput,
+		errorFile:        errorOutput,
+		severityColors:   colorizer.New(auroraColorizer),
+		storeResponse:    storeResponse,
+		storeResponseDir: storeResponseDir,
 	}
 	return writer, nil
 }
@@ -173,8 +196,12 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if len(data) == 0 {
 		return nil
 	}
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
+
 	if w.outputFile != nil {
 		if !w.json {
 			data = decolorizerRegex.ReplaceAll(data, []byte(""))
@@ -248,16 +275,48 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		return nil
 	}
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
+	var templateInfo model.Info
+	if event["template-info"] != nil {
+		templateInfo = event["template-info"].(model.Info)
+	}
 	data := &ResultEvent{
 		Template:      templatePath,
 		TemplateURL:   templateURL,
 		TemplateID:    types.ToString(event["template-id"]),
 		TemplatePath:  types.ToString(event["template-path"]),
-		Info:          event["template-info"].(model.Info),
+		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
 		Host:          types.ToString(event["host"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 	}
 	return w.Write(data)
+}
+func sanitizeFileName(fileName string) string {
+	fileName = strings.ReplaceAll(fileName, "http:", "")
+	fileName = strings.ReplaceAll(fileName, "https:", "")
+	fileName = strings.ReplaceAll(fileName, "/", "_")
+	fileName = strings.ReplaceAll(fileName, "\\", "_")
+	fileName = strings.ReplaceAll(fileName, "-", "_")
+	fileName = strings.ReplaceAll(fileName, ".", "_")
+	fileName = strings.TrimPrefix(fileName, "__")
+	return fileName
+}
+func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
+	if w.storeResponse {
+		filename := sanitizeFileName(fmt.Sprintf("%s_%s", host, templateID))
+		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
+		if !fileutil.FolderExists(subFolder) {
+			_ = fileutil.CreateFolder(subFolder)
+		}
+		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			fmt.Print(err)
+			return
+		}
+		_, _ = f.WriteString(fmt.Sprintln(data))
+		f.Close()
+	}
+
 }

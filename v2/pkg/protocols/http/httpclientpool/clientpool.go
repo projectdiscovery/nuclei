@@ -30,10 +30,11 @@ var (
 	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
-	rawHttpClient *rawhttp.Client
-	poolMutex     *sync.RWMutex
-	normalClient  *retryablehttp.Client
-	clientPool    map[string]*retryablehttp.Client
+	rawHttpClient     *rawhttp.Client
+	forceMaxRedirects int
+	poolMutex         *sync.RWMutex
+	normalClient      *retryablehttp.Client
+	clientPool        map[string]*retryablehttp.Client
 )
 
 // Init initializes the clientpool implementation
@@ -41,6 +42,9 @@ func Init(options *types.Options) error {
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
+	}
+	if options.FollowRedirects {
+		forceMaxRedirects = options.MaxRedirects
 	}
 	poolMutex = &sync.RWMutex{}
 	clientPool = make(map[string]*retryablehttp.Client)
@@ -100,6 +104,11 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *types.Options) *rawhttp.Client {
 	if rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
+		if types.ProxyURL != "" {
+			rawHttpOptions.Proxy = types.ProxyURL
+		} else if types.ProxySocksURL != "" {
+			rawHttpOptions.Proxy = types.ProxySocksURL
+		}
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
@@ -116,7 +125,6 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	var proxyURL *url.URL
 	var err error
 
 	if Dialer == nil {
@@ -130,12 +138,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return client, nil
 	}
 	poolMutex.RUnlock()
-	if types.ProxyURL != "" {
-		proxyURL, err = url.Parse(types.ProxyURL)
-	}
-	if err != nil {
-		return nil, err
-	}
 
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
@@ -157,6 +159,15 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	followRedirects := configuration.FollowRedirects
 	maxRedirects := configuration.MaxRedirects
 
+	if forceMaxRedirects > 0 {
+		followRedirects = true
+		maxRedirects = forceMaxRedirects
+	}
+	if options.DisableRedirects {
+		options.FollowRedirects = false
+		followRedirects = false
+		maxRedirects = 0
+	}
 	// override connection's settings if required
 	if configuration.Connection != nil {
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
@@ -166,6 +177,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
 	}
 
 	// Add the client certificate authentication to the request if it's configured
@@ -176,29 +192,31 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
+		DialTLSContext:      Dialer.DialTLS,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
 		TLSClientConfig:     tlsConfig,
 		DisableKeepAlives:   disableKeepAlives,
 	}
-	if proxyURL != nil {
-		// Attempts to overwrite the dial function with the socks proxied version
-		if proxyURL.Scheme == types.SOCKS5 {
-			var proxyAuth = &proxy.Auth{}
-			proxyAuth.User = proxyURL.User.Username()
-			proxyAuth.Password, _ = proxyURL.User.Password()
-
-			dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", proxyURL.Hostname(), proxyURL.Port()), proxyAuth, proxy.Direct)
-
-			dc := dialer.(interface {
-				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-			})
-			if proxyErr == nil {
-				transport.DialContext = dc.DialContext
-			}
-		} else {
+	if types.ProxyURL != "" {
+		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	} else if types.ProxySocksURL != "" {
+		var proxyAuth *proxy.Auth
+		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+		if proxyErr == nil {
+			proxyAuth = &proxy.Auth{}
+			proxyAuth.User = socksURL.User.Username()
+			proxyAuth.Password, _ = socksURL.User.Password()
+		}
+		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+		dc := dialer.(interface {
+			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+		})
+		if proxyErr == nil {
+			transport.DialContext = dc.DialContext
 		}
 	}
 

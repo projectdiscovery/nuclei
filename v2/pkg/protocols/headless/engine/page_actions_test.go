@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -46,13 +46,13 @@ func TestActionScript(t *testing.T) {
 		<script>window.test = 'some-data';</script>
 	</html>`
 
-	timeout := 2 * time.Second
+	timeout := 15 * time.Second
 
 	t.Run("run-and-results", func(t *testing.T) {
 		actions := []*Action{
 			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "() => window.test"}},
 		}
 
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
@@ -64,10 +64,10 @@ func TestActionScript(t *testing.T) {
 
 	t.Run("hook", func(t *testing.T) {
 		actions := []*Action{
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Data: map[string]string{"code": "window.test = 'some-data';", "hook": "true"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Data: map[string]string{"code": "() => window.test = 'some-data';", "hook": "true"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "window.test"}},
+			{ActionType: ActionTypeHolder{ActionType: ActionScript}, Name: "test", Data: map[string]string{"code": "() => window.test"}},
 		}
 		testHeadlessSimpleResponse(t, response, actions, timeout, func(page *Page, err error, out map[string]string) {
 			require.Nil(t, err, "could not run page actions")
@@ -414,7 +414,7 @@ func TestActionSetBody(t *testing.T) {
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 		_, _ = fmt.Fprintln(w, string(body))
 	}
 
@@ -529,7 +529,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	parsed, err := url.Parse(ts.URL)
 	require.Nil(t, err, "could not parse URL")
-	extractedData, page, err := instance.Run(parsed, actions, timeout)
+	extractedData, page, err := instance.Run(parsed, actions, nil, timeout)
 	assert(page, err, extractedData)
 
 	if page != nil {

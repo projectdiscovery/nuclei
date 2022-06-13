@@ -72,7 +72,7 @@
         "metadata": {
           "patternProperties": {
             ".*": {
-              "type": "string"
+              "additionalProperties": true
             }
           },
           "type": "object",
@@ -103,7 +103,8 @@
         "low",
         "medium",
         "high",
-        "critical"
+        "critical",
+        "unknown"
       ],
       "type": "string",
       "title": "severity of the template",
@@ -119,9 +120,20 @@
         }
       ]
     },
+    "userAgent.UserAgentHolder": {
+      "enum": [
+        "off",
+        "default",
+        "custom"
+      ],
+      "type": "string",
+      "title": "userAgent for the headless",
+      "description": "userAgent for the headless http request"
+    },
     "extractors.Extractor": {
       "required": [
-        "type"
+        "type",
+        "DSL"
       ],
       "properties": {
         "name": {
@@ -175,6 +187,12 @@
           "title": "optional attribute to extract from xpath",
           "description": "Optional attribute to extract from response XPath"
         },
+        "DSL": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "part": {
           "type": "string",
           "title": "part of response to extract data from",
@@ -199,7 +217,8 @@
         "regex",
         "kval",
         "xpath",
-        "json"
+        "json",
+        "dsl"
       ],
       "type": "string",
       "title": "type of the extractor",
@@ -300,6 +319,11 @@
           "type": "boolean",
           "title": "use case insensitive match",
           "description": "use case insensitive match"
+        },
+        "match-all": {
+          "type": "boolean",
+          "title": "match all values",
+          "description": "match all matcher values ignoring condition"
         }
       },
       "additionalProperties": false,
@@ -316,7 +340,7 @@
       ],
       "type": "string",
       "title": "type of the matcher",
-      "description": "Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"
+      "description": "Type of the matcher"
     },
     "generators.AttackTypeHolder": {
       "enum": [
@@ -328,6 +352,11 @@
       "title": "type of the attack",
       "description": "Type of the attack"
     },
+    "variables.Variable": {
+      "properties": {},
+      "additionalProperties": false,
+      "type": "object"
+    },
     "dns.DNSRequestTypeHolder": {
       "enum": [
         "A",
@@ -338,11 +367,12 @@
         "PTR",
         "MX",
         "TXT",
-        "AAAA"
+        "AAAA",
+        "CAA"
       ],
       "type": "string",
       "title": "type of DNS request to make",
-      "description": "Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"
+      "description": "Type is the type of DNS request to make"
     },
     "dns.Request": {
       "properties": {
@@ -433,6 +463,10 @@
       "type": "object"
     },
     "file.Request": {
+      "required": [
+        "Archive",
+        "MimeType"
+      ],
       "properties": {
         "matchers": {
           "items": {
@@ -472,8 +506,8 @@
             "type": "string"
           },
           "type": "array",
-          "title": "extensions to deny match",
-          "description": "List of file extensions to deny during matching"
+          "title": "denylist",
+          "description": "List of files"
         },
         "id": {
           "type": "string",
@@ -481,9 +515,15 @@
           "description": "ID is the optional ID for the request"
         },
         "max-size": {
-          "type": "integer",
+          "type": "string",
           "title": "max size data to run request on",
           "description": "Maximum size of the file to run request on"
+        },
+        "Archive": {
+          "type": "boolean"
+        },
+        "MimeType": {
+          "type": "boolean"
         },
         "no-recursive": {
           "type": "boolean",
@@ -501,6 +541,21 @@
           "title": "id of the request",
           "description": "Optional ID of the headless request"
         },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the headless request",
+          "description": "Payloads contains any payloads for the current request"
+        },
         "steps": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -509,6 +564,17 @@
           "type": "array",
           "title": "list of actions for headless request",
           "description": "List of actions to run for headless request"
+        },
+        "user_agent": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/userAgent.UserAgentHolder",
+          "title": "user agent for the headless request",
+          "description": "User agent for the headless request"
+        },
+        "custom_user_agent": {
+          "type": "string",
+          "title": "custom user agent for the headless request",
+          "description": "Custom user agent for the headless request"
         },
         "matchers": {
           "items": {
@@ -601,7 +667,7 @@
       ],
       "type": "string",
       "title": "action to perform",
-      "description": "Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"
+      "description": "Type of actions to perform"
     },
     "http.HTTPMethodTypeHolder": {
       "enum": [
@@ -614,11 +680,12 @@
         "OPTIONS",
         "TRACE",
         "PATCH",
-        "PURGE"
+        "PURGE",
+        "DEBUG"
       ],
       "type": "string",
       "title": "method is the HTTP request method",
-      "description": "Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"
+      "description": "Method is the HTTP Request Method"
     },
     "http.Request": {
       "properties": {
@@ -741,10 +808,21 @@
           "title": "maximum http response body size",
           "description": "Maximum size of http response body to read in bytes"
         },
+        "signature": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/http.SignatureTypeHolder",
+          "title": "signature is the http request signature method",
+          "description": "Signature is the HTTP Request signature Method"
+        },
         "cookie-reuse": {
           "type": "boolean",
           "title": "optional cookie reuse enable",
           "description": "Optional setting that enables cookie reuse"
+        },
+        "read-all": {
+          "type": "boolean",
+          "title": "force read all body",
+          "description": "Enables force reading of entire unsafe http request body"
         },
         "redirects": {
           "type": "boolean",
@@ -780,10 +858,33 @@
           "type": "boolean",
           "title": "skip variable checks",
           "description": "Skips the check for unresolved variables in request"
+        },
+        "iterate-all": {
+          "type": "boolean",
+          "title": "iterate all the values",
+          "description": "Iterates all the values extracted from internal extractors"
+        },
+        "digest-username": {
+          "type": "string",
+          "title": "specifies the username for digest authentication",
+          "description": "Optional parameter which specifies the username for digest auth"
+        },
+        "digest-password": {
+          "type": "string",
+          "title": "specifies the password for digest authentication",
+          "description": "Optional parameter which specifies the password for digest auth"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "http.SignatureTypeHolder": {
+      "enum": [
+        "AWS"
+      ],
+      "type": "string",
+      "title": "type of the signature",
+      "description": "Type of the signature"
     },
     "network.Input": {
       "properties": {
@@ -819,7 +920,7 @@
       ],
       "type": "string",
       "title": "type is the type of input data",
-      "description": "description=Type of input specified in data field,enum=hex,enum=text"
+      "description": "description=Type of input specified in data field"
     },
     "network.Request": {
       "properties": {
@@ -930,6 +1031,36 @@
           "type": "string",
           "title": "address for the ssl request",
           "description": "Address contains address for the request"
+        },
+        "min_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Minimum tls version - automatic if not specified."
+        },
+        "max_version": {
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "type": "string",
+          "title": "TLS version",
+          "description": "Max tls version - automatic if not specified."
+        },
+        "cipher_suites": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,
@@ -1021,6 +1152,47 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "whois.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "query": {
+          "type": "string",
+          "title": "query for the WHOIS request",
+          "description": "Query contains query for the request"
+        },
+        "server": {
+          "type": "string",
+          "title": "server url to execute the WHOIS request on",
+          "description": "Server contains the server url to execute the WHOIS request on"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "templates.Template": {
       "required": [
         "id",
@@ -1105,6 +1277,15 @@
           "title": "websocket requests to make",
           "description": "Websocket requests to make for the template"
         },
+        "whois": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/whois.Request"
+          },
+          "type": "array",
+          "title": "whois requests to make",
+          "description": "WHOIS requests to make for the template"
+        },
         "workflows": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1118,6 +1299,22 @@
           "type": "boolean",
           "title": "mark requests as self-contained",
           "description": "Mark Requests for the template as self-contained"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop at first match for the template"
+        },
+        "signature": {
+          "$ref": "#/definitions/http.SignatureTypeHolder",
+          "title": "signature is the http request signature method",
+          "description": "Signature is the HTTP Request signature Method"
+        },
+        "variables": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/variables.Variable",
+          "title": "variables for the http request",
+          "description": "Variables contains any variables for the current request"
         }
       },
       "additionalProperties": false,

@@ -34,6 +34,8 @@ const (
 	SSLProtocol
 	// name:websocket
 	WebsocketProtocol
+	// name:whois
+	WHOISProtocol
 	limit
 	InvalidProtocol
 )
@@ -49,6 +51,7 @@ var protocolMappings = map[ProtocolType]string{
 	WorkflowProtocol:  "workflow",
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
+	WHOISProtocol:     "whois",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {
@@ -120,7 +123,7 @@ func (holder TypeHolder) MarshalYAML() (interface{}, error) {
 type ProtocolTypes []ProtocolType
 
 func (protocolTypes *ProtocolTypes) Set(values string) error {
-	inputTypes, err := goflags.ToNormalizedStringSlice(values)
+	inputTypes, err := goflags.ToFileNormalizedStringSlice(values)
 	if err != nil {
 		return err
 	}
