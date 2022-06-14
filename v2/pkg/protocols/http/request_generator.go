@@ -19,6 +19,7 @@ type requestGenerator struct {
 	options          *protocols.ExecuterOptions
 	payloadIterator  *generators.Iterator
 	interactshURLs   []string
+	onceFlow         map[string]struct{}
 }
 
 // LeaveDefaultPorts skips normalization of default standard ports
@@ -26,7 +27,11 @@ var LeaveDefaultPorts = false
 
 // newGenerator creates a new request generator instance
 func (request *Request) newGenerator() *requestGenerator {
-	generator := &requestGenerator{request: request, options: request.options}
+	generator := &requestGenerator{
+		request:  request,
+		options:  request.options,
+		onceFlow: make(map[string]struct{}),
+	}
 
 	if len(request.Payloads) > 0 {
 		generator.payloadIterator = request.generator.NewIterator()
@@ -37,6 +42,7 @@ func (request *Request) newGenerator() *requestGenerator {
 // nextValue returns the next path or the next raw request depending on user input
 // It returns false if all the inputs have been exhausted by the generator instance.
 func (r *requestGenerator) nextValue() (value string, payloads map[string]interface{}, result bool) {
+	var isRawRequest bool
 	// Iterate each payload sequentially for each request path/raw
 	//
 	// If the sequence has finished for the current payload values
@@ -48,6 +54,7 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 		sequence = r.request.Path
 	case len(r.request.Raw) > 0:
 		sequence = r.request.Raw
+		isRawRequest = true
 	default:
 		return "", nil, false
 	}
@@ -58,6 +65,26 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 	if r.currentIndex == 0 && hasPayloadIterator && !hasInitializedPayloads {
 		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
 	}
+
+	// check if the request was marked to be executed once
+	if r.currentIndex < len(sequence) {
+		currentRequest := sequence[r.currentIndex]
+		if fo, hasOverrides := parseFlowAnnotations(currentRequest); hasOverrides && isRawRequest {
+			if fo.Once {
+				// check if the request was already sent out
+				if _, ok := r.onceFlow[currentRequest]; ok {
+					// just move forward
+					if r.currentIndex < len(sequence) {
+						r.currentIndex++
+					}
+				} else {
+					// mark as executed for next iterations
+					r.onceFlow[currentRequest] = struct{}{}
+				}
+			}
+		}
+	}
+
 	if r.currentIndex < len(sequence) {
 		currentRequest := sequence[r.currentIndex]
 		r.currentIndex++

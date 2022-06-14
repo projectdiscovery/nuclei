@@ -21,10 +21,31 @@ var (
 	// request.host: takes the value from the host header
 	// target: overiddes with the specific value
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
+	// @once sets the request to be executed only once for a specific URL
+	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
 )
 
-// parseAnnotations and override requests settings
-func parseAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
+// flowOverride contains logical override settings of the request
+type flowOverride struct {
+	Once bool
+}
+
+// parseFlowAnnotations and override requests flow
+func parseFlowAnnotations(rawRequest string) (*flowOverride, bool) {
+	fo := &flowOverride{}
+	// parse request for known ovverride annotations
+	var hasFlowOveride bool
+	// @once
+	if reOnceAnnotation.MatchString(rawRequest) {
+		fo.Once = true
+		hasFlowOveride = true
+	}
+
+	return fo, hasFlowOveride
+}
+
+// parseHTTPAnnotations and override requests settings
+func parseHTTPAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
 	// parse request for known ovverride annotations
 	var modified bool
 	// @Host:target
