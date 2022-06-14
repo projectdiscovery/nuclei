@@ -42,7 +42,6 @@ func (request *Request) newGenerator() *requestGenerator {
 // nextValue returns the next path or the next raw request depending on user input
 // It returns false if all the inputs have been exhausted by the generator instance.
 func (r *requestGenerator) nextValue() (value string, payloads map[string]interface{}, result bool) {
-	var isRawRequest bool
 	// Iterate each payload sequentially for each request path/raw
 	//
 	// If the sequence has finished for the current payload values
@@ -54,55 +53,73 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 		sequence = r.request.Path
 	case len(r.request.Raw) > 0:
 		sequence = r.request.Raw
-		isRawRequest = true
 	default:
 		return "", nil, false
 	}
 
 	hasPayloadIterator := r.payloadIterator != nil
-	hasInitializedPayloads := r.currentPayloads != nil
 
-	if r.currentIndex == 0 && hasPayloadIterator && !hasInitializedPayloads {
+	if hasPayloadIterator && r.currentPayloads == nil {
 		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
 	}
 
-	// check if the request was marked to be executed once
-	if r.currentIndex < len(sequence) {
-		currentRequest := sequence[r.currentIndex]
-		if fo, hasOverrides := parseFlowAnnotations(currentRequest); hasOverrides && isRawRequest {
-			if fo.Once {
-				// check if the request was already sent out
-				if _, ok := r.onceFlow[currentRequest]; ok {
-					// just move forward
-					if r.currentIndex < len(sequence) {
-						r.currentIndex++
-					}
-				} else {
-					// mark as executed for next iterations
-					r.onceFlow[currentRequest] = struct{}{}
-				}
-			}
+	var request string
+	var shouldContinue bool
+	if nextRequest, nextIndex, found := r.findNextIteration(sequence, r.currentIndex); found {
+		r.currentIndex = nextIndex + 1
+		request = nextRequest
+		shouldContinue = true
+	} else if nextRequest, nextIndex, found := r.findNextIteration(sequence, 0); found && hasPayloadIterator {
+		r.currentIndex = nextIndex + 1
+		request = nextRequest
+		shouldContinue = true
+	}
+
+	if shouldContinue {
+		if r.hasMarker(request, Once) {
+			r.applyMark(request, Once)
+		}
+		if hasPayloadIterator {
+			return request, r.currentPayloads, r.okCurrentPayload
+		}
+		return request, r.currentPayloads, true
+	} else {
+		return "", nil, false
+	}
+}
+
+func (r *requestGenerator) findNextIteration(sequence []string, index int) (string, int, bool) {
+	for i, request := range sequence[index:] {
+		if !r.wasMarked(request, Once) {
+			return request, index + i, true
 		}
 	}
 
-	if r.currentIndex < len(sequence) {
-		currentRequest := sequence[r.currentIndex]
-		r.currentIndex++
-		return currentRequest, r.currentPayloads, true
-	}
-	if r.currentIndex == len(sequence) {
-		if r.okCurrentPayload {
-			r.currentIndex = 0
-			currentRequest := sequence[r.currentIndex]
-			if hasPayloadIterator {
-				r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
-				if r.okCurrentPayload {
-					r.currentIndex++
-					return currentRequest, r.currentPayloads, true
-				}
-			}
-		}
+	if r.payloadIterator != nil {
+		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
 	}
 
-	return "", nil, false
+	return "", 0, false
+}
+
+func (r *requestGenerator) applyMark(request string, mark flowMark) {
+	switch mark {
+	case Once:
+		r.onceFlow[request] = struct{}{}
+	}
+
+}
+
+func (r *requestGenerator) wasMarked(request string, mark flowMark) bool {
+	switch mark {
+	case Once:
+		_, ok := r.onceFlow[request]
+		return ok
+	}
+	return false
+}
+
+func (r *requestGenerator) hasMarker(request string, mark flowMark) bool {
+	fo, hasOverrides := parseFlowAnnotations(request)
+	return hasOverrides && fo == mark
 }

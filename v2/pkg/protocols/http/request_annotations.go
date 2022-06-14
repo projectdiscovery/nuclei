@@ -25,23 +25,24 @@ var (
 	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
 )
 
-// flowOverride contains logical override settings of the request
-type flowOverride struct {
-	Once bool
-}
+type flowMark int
+
+const (
+	Once flowMark = iota
+)
 
 // parseFlowAnnotations and override requests flow
-func parseFlowAnnotations(rawRequest string) (*flowOverride, bool) {
-	fo := &flowOverride{}
+func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
+	var fm flowMark
 	// parse request for known ovverride annotations
 	var hasFlowOveride bool
 	// @once
 	if reOnceAnnotation.MatchString(rawRequest) {
-		fo.Once = true
+		fm = Once
 		hasFlowOveride = true
 	}
 
-	return fo, hasFlowOveride
+	return fm, hasFlowOveride
 }
 
 // parseHTTPAnnotations and override requests settings
