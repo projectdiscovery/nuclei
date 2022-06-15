@@ -180,6 +180,9 @@ func (e *Executer) Execute(input string) (bool, error) {
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
+			if operator.operator == nil {
+				continue
+			}
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
 			event.InternalEvent["template-id"] = operator.templateID
 			event.InternalEvent["template-path"] = operator.templatePath
@@ -211,6 +214,9 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
+			if operator.operator == nil {
+				continue
+			}
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
 			if matched && result != nil {
 				event.OperatorsResult = result
