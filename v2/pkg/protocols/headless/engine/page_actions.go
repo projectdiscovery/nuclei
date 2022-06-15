@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
@@ -310,7 +311,7 @@ func (p *Page) ClickElement(act *Action, out map[string]string /*TODO review unu
 
 // KeyboardAction executes a keyboard action on the page.
 func (p *Page) KeyboardAction(act *Action, out map[string]string /*TODO review unused parameter*/) error {
-	return p.page.Keyboard.Press([]rune(p.getActionArgWithDefaultValues(act, "keys"))...)
+	return p.page.Keyboard.Type([]input.Key(p.getActionArgWithDefaultValues(act, "keys"))...)
 }
 
 // RightClickElement executes right click actions for an element.
