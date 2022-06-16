@@ -27,7 +27,7 @@ func (matcher *Matcher) Validate() error {
 	case DSLMatcher:
 		expectedFields = append(commonExpectedFields, "dsl")
 	case StatusMatcher:
-		expectedFields = append(commonExpectedFields, "status")
+		expectedFields = append(commonExpectedFields, "status", "part")
 	case SizeMatcher:
 		expectedFields = append(commonExpectedFields, "size", "part")
 	case WordsMatcher:
