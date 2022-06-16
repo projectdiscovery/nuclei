@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/projectdiscovery/sliceutil"
 	"gopkg.in/yaml.v3"
 )
+
+var commonExpectedFields = []string{"type", "condition", "name", "match-all", "negative"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {
@@ -19,28 +22,28 @@ func (matcher *Matcher) Validate() error {
 		return err
 	}
 
-	var unexpectedFields []string
+	var expectedFields []string
 	switch matcher.matcherType {
 	case DSLMatcher:
-		unexpectedFields = []string{"status", "regex", "words", "size", "binary", "part"}
+		expectedFields = append(commonExpectedFields, "dsl")
 	case StatusMatcher:
-		unexpectedFields = []string{"dsl", "regex", "words", "size", "binary"}
+		expectedFields = append(commonExpectedFields, "status")
 	case SizeMatcher:
-		unexpectedFields = []string{"dsl", "regex", "words", "status", "binary"}
+		expectedFields = append(commonExpectedFields, "size", "part")
 	case WordsMatcher:
-		unexpectedFields = []string{"dsl", "regex", "size", "status", "binary"}
+		expectedFields = append(commonExpectedFields, "words", "part", "encoding", "case-insensitive")
 	case BinaryMatcher:
-		unexpectedFields = []string{"dsl", "regex", "size", "status", "words"}
+		expectedFields = append(commonExpectedFields, "binary", "part", "encoding", "case-insensitive")
 	case RegexMatcher:
-		unexpectedFields = []string{"dsl", "binary", "size", "status", "words"}
+		expectedFields = append(commonExpectedFields, "regex", "part", "encoding", "case-insensitive")
 	}
-	return checkUnexpectedFields(matcher, matcherMap, unexpectedFields...)
+	return checkFields(matcher, matcherMap, expectedFields...)
 }
 
-func checkUnexpectedFields(m *Matcher, matcherMap map[string]interface{}, unexpectedFields ...string) error {
+func checkFields(m *Matcher, matcherMap map[string]interface{}, expectedFields ...string) error {
 	var foundUnexpectedFields []string
-	for _, name := range unexpectedFields {
-		if _, ok := matcherMap[name]; ok {
+	for name := range matcherMap {
+		if !sliceutil.Contains(expectedFields, name) {
 			foundUnexpectedFields = append(foundUnexpectedFields, name)
 		}
 	}
