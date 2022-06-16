@@ -210,6 +210,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
+		flagSet.BoolVar(&options.HealthCheck, "health-check", false, "run diagnostic check up"),
 	)
 
 	createGroup(flagSet, "update", "Update",

@@ -220,6 +220,8 @@ type Options struct {
 	DisableRedirects bool
 	// SNI custom hostname
 	SNI string
+	// Health Check
+	HealthCheck bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
