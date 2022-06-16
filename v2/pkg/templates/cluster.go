@@ -150,12 +150,14 @@ func NewExecuter(requests []*Template, options *protocols.ExecuterOptions) *Exec
 		requests: requests[0].RequestsHTTP[0],
 	}
 	for _, req := range requests {
-		executer.operators = append(executer.operators, &clusteredOperator{
-			templateID:   req.ID,
-			templateInfo: req.Info,
-			templatePath: req.Path,
-			operator:     req.RequestsHTTP[0].CompiledOperators,
-		})
+		if req.RequestsHTTP[0].CompiledOperators != nil {
+			executer.operators = append(executer.operators, &clusteredOperator{
+				templateID:   req.ID,
+				templateInfo: req.Info,
+				templatePath: req.Path,
+				operator:     req.RequestsHTTP[0].CompiledOperators,
+			})
+		}
 	}
 	return executer
 }
