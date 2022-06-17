@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+// DoHealthCheck performs self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
 	cfgFilePath, _ := goflags.GetConfigFilePath()
