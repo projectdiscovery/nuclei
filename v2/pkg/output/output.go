@@ -310,7 +310,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			_ = fileutil.CreateFolder(subFolder)
 		}
 		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Print(err)
 			return

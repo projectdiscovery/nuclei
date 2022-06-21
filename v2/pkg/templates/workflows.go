@@ -23,7 +23,7 @@ func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.
 func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader) error {
 	shouldNotValidate := false
 
-	if len(workflow.Template) == 0 && workflow.Tags.IsEmpty() {
+	if workflow.Template == "" && workflow.Tags.IsEmpty() {
 		return errors.New("invalid workflow with no templates or tags")
 	}
 	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {

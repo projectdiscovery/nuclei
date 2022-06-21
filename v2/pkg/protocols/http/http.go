@@ -226,6 +226,10 @@ func (request *Request) isRaw() bool {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if err := request.validate(); err != nil {
+		return errors.Wrap(err, "validation error")
+	}
+
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:         request.Threads,
 		MaxRedirects:    request.MaxRedirects,

@@ -240,7 +240,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	generator := request.newGenerator()
 
 	var gotDynamicValues map[string][]string
-	requestCount := 1
 	var requestErr error
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
@@ -285,7 +284,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				} else {
 					callback(event)
 				}
-			}, requestCount)
+			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
 			if err == errStopExecution {
@@ -297,7 +296,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				}
 				requestErr = err
 			}
-			requestCount++
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
@@ -427,6 +425,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
+	// use request url as matched url if empty
+	if formedURL == "" {
+		formedURL = reqURL
+	}
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
@@ -437,7 +439,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
 				gologger.Info().Msg(msg)
@@ -447,11 +449,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 			}
 		}
-	}
-
-	// use request url as matched url if empty
-	if formedURL == "" {
-		formedURL = reqURL
 	}
 
 	if err != nil {
