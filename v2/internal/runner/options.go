@@ -34,7 +34,7 @@ func ConfigureOptions() error {
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
-	options.Stdin = hasStdin()
+	options.Stdin = fileutil.HasStdin()
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -82,18 +82,6 @@ func ParseOptions(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
-}
-
-// hasStdin returns true if we have stdin input
-func hasStdin() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	if fi.Mode()&os.ModeNamedPipe == 0 {
-		return false
-	}
-	return true
 }
 
 // validateOptions validates the configuration options passed
