@@ -72,6 +72,12 @@ func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 	}
+
+	if options.HealthCheck {
+		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
+		os.Exit(0)
+	}
+
 	if options.UpdateNuclei {
 		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
 			return nil, err
