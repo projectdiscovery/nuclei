@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"html"
 	"io"
 	"math"
@@ -45,6 +47,7 @@ var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
 
+var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
 
 type dslFunction struct {
@@ -153,58 +156,29 @@ func init() {
 			_ = reader.Close()
 			return string(data), nil
 		}),
-		"date": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			item := types.ToString(args[0])
-			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
-			for _, value := range submatches {
-				if len(value) < 2 {
-					continue
+		"date_time": makeDslWithOptionalArgsFunction(
+			"(dateTimeFormat string, optionalUnixTime interface{}) string",
+			func(arguments ...interface{}) (interface{}, error) {
+				dateTimeFormat := types.ToString(arguments[0])
+				dateTimeFormatFragment := dateFormatRegex.FindAllStringSubmatch(dateTimeFormat, -1)
+
+				argumentsSize := len(arguments)
+				if argumentsSize < 1 && argumentsSize > 2 {
+					return nil, errors.New("invalid number of arguments")
 				}
-				now := time.Now()
-				switch value[1] {
-				case "Y", "y":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Year())))
-				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(int(now.Month()))))
-				case "D", "d":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Day())))
-				default:
-					return nil, fmt.Errorf("invalid date format string: %s", value[0])
+
+				currentTime, err := getCurrentTimeFromUserInput(arguments)
+				if err != nil {
+					return nil, err
 				}
-			}
-			return item, nil
-		}),
-		"time": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			item := types.ToString(args[0])
-			submatches := dateFormatRegex.FindAllStringSubmatch(item, -1)
-			for _, value := range submatches {
-				if len(value) < 2 {
-					continue
+
+				if len(dateTimeFormatFragment) > 0 {
+					return doSimpleTimeFormat(dateTimeFormatFragment, currentTime, dateTimeFormat)
+				} else {
+					return currentTime.Format(dateTimeFormat), nil
 				}
-				now := time.Now()
-				switch value[1] {
-				case "H", "h":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Hour())))
-				case "M", "m":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Minute())))
-				case "S", "s":
-					item = strings.ReplaceAll(item, value[0], appendSingleDigitZero(strconv.Itoa(now.Second())))
-				default:
-					return nil, fmt.Errorf("invalid time format string: %s", value[0])
-				}
-			}
-			return item, nil
-		}),
-		"timetostring": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			if got, ok := args[0].(time.Time); ok {
-				return got.String(), nil
-			}
-			if got, ok := args[0].(float64); ok {
-				seconds, nanoseconds := math.Modf(got)
-				return time.Unix(int64(seconds), int64(nanoseconds)).String(), nil
-			}
-			return nil, fmt.Errorf("invalid time format: %T", args[0])
-		}),
+			},
+		),
 		"base64_py": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 			stdBase64 := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
@@ -227,6 +201,25 @@ func init() {
 			decodeString, err := hex.DecodeString(types.ToString(args[0]))
 			return string(decodeString), err
 		}),
+		"hmac": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
+			hashAlgorithm := args[0]
+			data := args[1].(string)
+			secretKey := args[2].(string)
+
+			var hashFunction func() hash.Hash
+			switch hashAlgorithm {
+			case "sha1", "sha-1":
+				hashFunction = sha1.New
+			case "sha256", "sha-256":
+				hashFunction = sha256.New
+			default:
+				return nil, fmt.Errorf("unsupported hash algorithm: '%s'", hashAlgorithm)
+			}
+
+			h := hmac.New(hashFunction, []byte(secretKey))
+			h.Write([]byte(data))
+			return hex.EncodeToString(h.Sum(nil)), nil
+		}),
 		"html_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return html.EscapeString(types.ToString(args[0])), nil
 		}),
@@ -234,22 +227,13 @@ func init() {
 			return html.UnescapeString(types.ToString(args[0])), nil
 		}),
 		"md5": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := md5.Sum([]byte(types.ToString(args[0])))
-			return hex.EncodeToString(hash[:]), nil
+			return toHexEncodedHash(md5.New(), types.ToString(args[0]))
 		}),
 		"sha256": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := sha256.New()
-			if _, err := hash.Write([]byte(types.ToString(args[0]))); err != nil {
-				return nil, err
-			}
-			return hex.EncodeToString(hash.Sum(nil)), nil
+			return toHexEncodedHash(sha256.New(), types.ToString(args[0]))
 		}),
 		"sha1": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			hash := sha1.New()
-			if _, err := hash.Write([]byte(types.ToString(args[0]))); err != nil {
-				return nil, err
-			}
-			return hex.EncodeToString(hash.Sum(nil)), nil
+			return toHexEncodedHash(sha1.New(), types.ToString(args[0]))
 		}),
 		"mmh3": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			hasher := murmur3.New32WithSeed(0)
@@ -267,6 +251,24 @@ func init() {
 					builder.WriteString(types.ToString(argument))
 				}
 				return builder.String(), nil
+			},
+		),
+		"join": makeDslWithOptionalArgsFunction(
+			"(separator string, elements ...interface{}) string",
+			func(arguments ...interface{}) (interface{}, error) {
+				argumentsSize := len(arguments)
+				if argumentsSize < 2 {
+					return nil, errors.New("incorrect number of arguments received")
+				}
+
+				separator := types.ToString(arguments[0])
+				elements := arguments[1:argumentsSize]
+
+				stringElements := make([]string, 0, argumentsSize)
+				for _, element := range elements {
+					stringElements = append(stringElements, types.ToString(element))
+				}
+				return strings.Join(stringElements, separator), nil
 			},
 		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
@@ -511,26 +513,6 @@ func init() {
 	}
 }
 
-// appendSingleDigitZero appends zero at front if not exists already doing two digit padding
-func appendSingleDigitZero(value string) string {
-	if len(value) == 1 && (!strings.HasPrefix(value, "0") || value == "0") {
-		builder := &strings.Builder{}
-		builder.WriteRune('0')
-		builder.WriteString(value)
-		newVal := builder.String()
-		return newVal
-	}
-	return value
-}
-
-func createSignaturePart(numberOfParameters int) string {
-	params := make([]string, 0, numberOfParameters)
-	for i := 1; i <= numberOfParameters; i++ {
-		params = append(params, "arg"+strconv.Itoa(i))
-	}
-	return fmt.Sprintf("(%s interface{}) interface{}", strings.Join(params, ", "))
-}
-
 func makeDslWithOptionalArgsFunction(signaturePart string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
 	return func(functionName string) dslFunction {
 		return dslFunction{
@@ -553,6 +535,14 @@ func makeDslFunction(numberOfParameters int, dslFunctionLogic govaluate.Expressi
 			},
 		}
 	}
+}
+
+func createSignaturePart(numberOfParameters int) string {
+	params := make([]string, 0, numberOfParameters)
+	for i := 1; i <= numberOfParameters; i++ {
+		params = append(params, "arg"+strconv.Itoa(i))
+	}
+	return fmt.Sprintf("(%s interface{}) interface{}", strings.Join(params, ", "))
 }
 
 // HelperFunctions returns the dsl helper functions
@@ -607,8 +597,6 @@ func getDslFunctionSignatures() []string {
 
 	return result
 }
-
-var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 
 func colorizeDslFunctionSignatures() []string {
 	signatures := getDslFunctionSignatures()
@@ -674,4 +662,76 @@ func randSeq(base string, n int) string {
 		b[i] = rune(base[rand.Intn(len(base))])
 	}
 	return string(b)
+}
+
+func toHexEncodedHash(hashToUse hash.Hash, data string) (interface{}, error) {
+	if _, err := hashToUse.Write([]byte(data)); err != nil {
+		return nil, err
+	}
+	return hex.EncodeToString(hashToUse.Sum(nil)), nil
+}
+
+func doSimpleTimeFormat(dateTimeFormatFragment [][]string, currentTime time.Time, dateTimeFormat string) (interface{}, error) {
+	for _, currentFragment := range dateTimeFormatFragment {
+		if len(currentFragment) < 2 {
+			continue
+		}
+		prefixedFormatFragment := currentFragment[0]
+		switch currentFragment[1] {
+		case "Y", "y":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, currentTime.Year())
+		case "M":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, int(currentTime.Month()))
+		case "D", "d":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, currentTime.Day())
+		case "H", "h":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, currentTime.Hour())
+		case "m":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, currentTime.Minute())
+		case "S", "s":
+			dateTimeFormat = formatDateTime(dateTimeFormat, prefixedFormatFragment, currentTime.Second())
+		default:
+			return nil, fmt.Errorf("invalid date time format string: %s", prefixedFormatFragment)
+		}
+	}
+	return dateTimeFormat, nil
+}
+
+func getCurrentTimeFromUserInput(arguments []interface{}) (time.Time, error) {
+	var currentTime time.Time
+	if len(arguments) == 2 {
+		switch inputUnixTime := arguments[1].(type) {
+		case time.Time:
+			currentTime = inputUnixTime
+		case string:
+			unixTime, err := strconv.ParseInt(inputUnixTime, 10, 64)
+			if err != nil {
+				return time.Time{}, errors.New("invalid argument type")
+			}
+			currentTime = time.Unix(unixTime, 0)
+		case int64, float64:
+			currentTime = time.Unix(int64(inputUnixTime.(float64)), 0)
+		default:
+			return time.Time{}, errors.New("invalid argument type")
+		}
+	} else {
+		currentTime = time.Now()
+	}
+	return currentTime, nil
+}
+
+func formatDateTime(inputFormat string, matchValue string, timeFragment int) string {
+	return strings.ReplaceAll(inputFormat, matchValue, appendSingleDigitZero(strconv.Itoa(timeFragment)))
+}
+
+// appendSingleDigitZero appends zero at front if not exists already doing two digit padding
+func appendSingleDigitZero(value string) string {
+	if len(value) == 1 && (!strings.HasPrefix(value, "0") || value == "0") {
+		builder := &strings.Builder{}
+		builder.WriteRune('0')
+		builder.WriteString(value)
+		newVal := builder.String()
+		return newVal
+	}
+	return value
 }
