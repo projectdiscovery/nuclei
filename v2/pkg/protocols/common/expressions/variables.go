@@ -28,6 +28,10 @@ func ContainsUnresolvedVariables(items ...string) error {
 			if numericalExpressionRegex.MatchString(match[1]) {
 				continue
 			}
+			// or if it contains only literals (can be solved from expression engine)
+			if hasLiteralsOnly(match[1]) {
+				continue
+			}
 			unresolvedVariables = append(unresolvedVariables, match[1])
 		}
 		if len(unresolvedVariables) > 0 {
@@ -54,6 +58,10 @@ func ContainsVariablesWithNames(names map[string]interface{}, items ...string) e
 			matchName := match[1]
 			// Skip if the match is an expression
 			if numericalExpressionRegex.MatchString(matchName) {
+				continue
+			}
+			// or if it contains only literals (can be solved from expression engine)
+			if hasLiteralsOnly(match[1]) {
 				continue
 			}
 			if _, ok := names[matchName]; !ok {
@@ -84,6 +92,10 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 			matchName := match[1]
 			// Skip if the match is an expression
 			if numericalExpressionRegex.MatchString(matchName) {
+				continue
+			}
+			// or if it contains only literals (can be solved from expression engine)
+			if hasLiteralsOnly(match[1]) {
 				continue
 			}
 			if _, ok := skipNames[matchName]; ok {
