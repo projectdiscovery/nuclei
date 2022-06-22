@@ -59,7 +59,9 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 		word, err = expressions.Evaluate(word, data)
 		if err != nil {
 			gologger.Warning().Msgf("Error while evaluating word matcher: %q", word)
-			continue
+			if matcher.condition == ANDCondition {
+				return false, []string{}
+			}
 		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
@@ -180,12 +182,19 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 
 		result, err := expression.Evaluate(data)
 		if err != nil {
-			gologger.Warning().Msgf(err.Error())
+			if matcher.condition == ANDCondition {
+				return false
+			}
+			if strings.Contains(err.Error(), "No parameter") {
+				gologger.Warning().Msgf("[%s] %s", data["template-id"], err.Error())
+			} else {
+				gologger.Error().Label("WRN").Msgf("[%s] %s", data["template-id"], err.Error())
+			}
 			continue
 		}
 
 		if boolResult, ok := result.(bool); !ok {
-			gologger.Warning().Msgf("The return value of a DSL statement must return a boolean value.")
+			gologger.Error().Label("WRN").Msgf("[%s] The return value of a DSL statement must return a boolean value.", data["template-id"])
 			continue
 		} else if !boolResult {
 			// If we are in an AND request and a match failed,

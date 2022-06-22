@@ -56,6 +56,11 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	request.options = options
 	request.client = &rdap.Client{}
+	if request.options.Options.Verbose || request.options.Options.Debug || request.options.Options.DebugRequests {
+		request.client.Verbose = func(text string) {
+			gologger.Debug().Msgf("rdap: %s", text)
+		}
+	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

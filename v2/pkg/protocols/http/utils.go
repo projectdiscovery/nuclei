@@ -117,15 +117,18 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
 		// Create a copy on the fly of the request body - ignore errors
 		bodyBytes, _ := req.request.BodyBytes()
+		var dumpBody bool
 		if len(bodyBytes) > 0 {
+			dumpBody = true
 			req.request.Request.ContentLength = int64(len(bodyBytes))
 			req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		} else {
 			req.request.Request.ContentLength = 0
 			req.request.Request.Body = nil
+			delete(req.request.Request.Header, "Content-length")
 		}
 
-		dumpBytes, err := httputil.DumpRequestOut(req.request.Request, true)
+		dumpBytes, err := httputil.DumpRequestOut(req.request.Request, dumpBody)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +142,8 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 
 		return dumpBytes, nil
 	}
-	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes})
+	rawHttpOptions := &rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes}
+	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
 }
 
 // handleDecompression if the user specified a custom encoding (as golang transport doesn't do this automatically)

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 // Request defines a basic HTTP raw request
@@ -39,9 +40,14 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 	reader := bufio.NewReader(strings.NewReader(request))
+read_line:
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %w", err)
+	}
+	// ignore all annotations
+	if stringsutil.HasPrefixAny(s, "@") {
+		goto read_line
 	}
 
 	parts := strings.Split(s, " ")
@@ -124,6 +130,9 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 			rawRequest.Path = strings.TrimSuffix(rawRequest.Path, "/")
 		}
 		rawRequest.FullURL = fmt.Sprintf("%s://%s%s", parsedURL.Scheme, strings.TrimSpace(hostURL), rawRequest.Path)
+		if parsedURL.RawQuery != "" {
+			rawRequest.FullURL = fmt.Sprintf("%s?%s", rawRequest.FullURL, parsedURL.RawQuery)
+		}
 
 		// If raw request doesn't have a Host header and isn't marked unsafe,
 		// this will generate the Host header from the parsed baseURL

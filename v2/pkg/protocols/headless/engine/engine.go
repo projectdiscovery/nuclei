@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	ps "github.com/shirou/gopsutil/v3/process"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
 )
@@ -53,7 +54,14 @@ func New(options *types.Options) (*Browser, error) {
 		chromeLauncher = chromeLauncher.NoSandbox(true)
 	}
 
-	if options.UseInstalledChrome {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+
+	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
+	useMusl, _ := fileutil.UseMusl(executablePath)
+	if options.UseInstalledChrome || useMusl {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
 			chromeLauncher.Bin(chromePath)
 		} else {

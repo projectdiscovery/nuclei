@@ -84,7 +84,7 @@ nuclei -h
 This will display help for the tool. Here are all the switches it supports.
 
 
-```yaml
+```console
 Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
@@ -123,6 +123,8 @@ FILTERING:
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
+   -sresp, -store-resp           store all request/response passed through nuclei to output directory
+   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -json                         write output in JSONL(ines) format
@@ -138,9 +140,10 @@ CONFIGURATIONS:
    -config string              path to the nuclei configuration file
    -fr, -follow-redirects      enable following redirects for http templates
    -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
+   -dr, -disable-redirects     disable redirects for http templates
    -rc, -report-config string  nuclei reporting module configuration file
-   -H, -header string[]        custom headers in header:value format
-   -V, -var value              custom vars in var=value format
+   -H, -header string[]        custom header/cookie to include in all http request in header:value format (cli, file)
+   -V, -var value              custom vars in key=value format
    -r, -resolvers string       file containing resolver list for nuclei
    -sr, -system-resolvers      use system DNS resolving as error fallback
    -passive                    enable passive HTTP response processing mode
@@ -148,7 +151,9 @@ CONFIGURATIONS:
    -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
    -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
-   -ztls                       Use ztls library with autofallback to standard one for tls13
+   -sml, -show-match-line      show match lines for file templates, works with extractors only
+   -ztls                       use ztls library with autofallback to standard one for tls13
+   -sni string                 tls sni hostname to use (default: input domain name)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -185,18 +190,17 @@ HEADLESS:
 
 DEBUG:
    -debug                    show all requests and responses
-   -debug-req                show all sent requests
-   -debug-resp               show all received responses
-   -sresp, -store-resp           store all request/response passed through nuclei to output directory
-   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
-   -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
+   -dreq, -debug-req         show all sent requests
+   -dresp, -debug-resp       show all received responses
+   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal      proxy all internal requests
    -tlog, -trace-log string  file to write sent requests trace log
    -elog, -error-log string  file to write sent requests error log
    -version                  show nuclei version
+   -hm, -hang-monitor        enable nuclei hang monitoring
    -v, -verbose              show verbose output
    -vv                       display templates loaded for scan
-   -enable-pprof             enable pprof debugging server
+   -ep, -enable-pprof        enable pprof debugging server
    -tv, -templates-version   shows the version of the installed nuclei-templates
 
 UPDATE:
@@ -306,15 +310,17 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Resources
 
-
-- [Scanning Live Web Applications with Nuclei in CI/CD Pipeline](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) by [@TristanKalos](https://twitter.com/TristanKalos)
+- [Finding bugs with Nuclei with PinkDraconian (Robbe Van Roey)](https://www.youtube.com/watch?v=ewP0xVPW-Pk) by **[@PinkDraconian](https://twitter.com/PinkDraconian)** 
+- [Nuclei: Packing a Punch with Vulnerability Scanning](https://bishopfox.com/blog/nuclei-vulnerability-scan) by **Bishopfox**
+- [The WAF efficacy framework](https://www.fastly.com/blog/the-waf-efficacy-framework-measuring-the-effectiveness-of-your-waf) by **Fastly**
+- [Scanning Live Web Applications with Nuclei in CI/CD Pipeline](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) by **[@TristanKalos](https://twitter.com/TristanKalos)**
 - [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
 - [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
 - [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
 - [Nuclei + Interactsh Integration for Automating OOB Testing](https://blog.projectdiscovery.io/nuclei-interactsh-integration/)
-- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by [@dwisiswant0](https://github.com/dwisiswant0)
-- [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by [@dwisiswant0](https://github.com/dwisiswant0)
-- [Hack with Automation !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) by [@DhiyaneshGeek](https://github.com/DhiyaneshGeek)
+- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [Hack with Automation !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) by **[@DhiyaneshGeek](https://github.com/DhiyaneshGeek)**
 
 ### Credits
 

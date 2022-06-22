@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -36,6 +37,8 @@ type Client struct {
 	interactions *ccache.Cache
 	// matchedTemplates is a stored cache to track matched templates
 	matchedTemplates *ccache.Cache
+	// interactshURLs is a stored cache to track track multiple interactsh markers
+	interactshURLs *ccache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -50,7 +53,12 @@ type Client struct {
 
 var (
 	defaultInteractionDuration = 60 * time.Second
-	interactshURLMarker        = "{{interactsh-url}}"
+	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:_[0-9]+){0,3}}}`)
+)
+
+const (
+	stopAtFirstMatchAttribute = "stop-at-first-match"
+	templateIdAttribute = "template-id"
 )
 
 // Options contains configuration options for interactsh nuclei integration.
@@ -104,11 +112,13 @@ func New(options *Options) (*Client, error) {
 	interactionsCache := ccache.New(interactionsCfg)
 
 	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+	interactshURLCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		interactions:     interactionsCache,
 		matchedTemplates: matchedTemplateCache,
+		interactshURLs:   interactshURLCache,
 		options:          options,
 		requests:         cache,
 		pollDuration:     options.PollDuration,
@@ -140,7 +150,6 @@ func (c *Client) firstTimeInitializeClient() error {
 	interactsh, err := client.New(&client.Options{
 		ServerURL:           c.options.ServerURL,
 		Token:               c.options.Authorization,
-		PersistentSession:   false,
 		DisableHTTPFallback: c.options.DisableHttpFallback,
 		HTTPClient:          c.options.HTTPClient,
 	})
@@ -174,8 +183,8 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent["template-id"].(string), request.Event.InternalEvent["host"].(string)))
+		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateIdAttribute].(string), request.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				return
 			}
@@ -215,8 +224,8 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched = true
-		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
-			c.matchedTemplates.Set(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -254,10 +263,18 @@ func (c *Client) Close() bool {
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
 func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-	for strings.Contains(data, interactshURLMarker) {
+	for interactshURLMarkerRegex.Match([]byte(data)) {
 		url := c.URL()
 		interactshURLs = append(interactshURLs, url)
-		data = strings.Replace(data, interactshURLMarker, url, 1)
+		interactshURLMarker := interactshURLMarkerRegex.FindString(data)
+		if interactshURLMarker != "" {
+			data = strings.Replace(data, interactshURLMarker, url, 1)
+			urlIndex := strings.Index(url, ".")
+			if urlIndex == -1 {
+				continue
+			}
+			c.interactshURLs.Set(url, interactshURLMarker, defaultInteractionDuration)
+		}
 	}
 	return data, interactshURLs
 }
@@ -265,14 +282,21 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.hostname
+	for _, url := range urls {
+		if interactshURLMarker := c.interactshURLs.Get(url); interactshURLMarker != nil {
+			if interactshURLMarker, ok := interactshURLMarker.Value().(string); ok {
+				interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
 
-	if len(urls) == 1 {
-		urlIndex := strings.Index(urls[0], ".")
-		if urlIndex == -1 {
-			return
+				c.interactshURLs.Delete(url)
+
+				data[interactshMarker] = url
+				urlIndex := strings.Index(url, ".")
+				if urlIndex == -1 {
+					continue
+				}
+				data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
+			}
 		}
-		data["interactsh-url"] = urls[0]
-		data["interactsh-id"] = urls[0][:urlIndex]
 	}
 }
 
@@ -298,8 +322,8 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
-		if _, ok := data.Event.InternalEvent["stop-at-first-match"]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent["template-id"].(string), data.Event.InternalEvent["host"].(string)))
+		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)))
 			if gotItem != nil {
 				break
 			}
@@ -355,7 +379,7 @@ func HasMatchers(op *operators.Operators) bool {
 
 // HasMarkers checks if the text contains interactsh markers
 func HasMarkers(data string) bool {
-	return strings.Contains(data, interactshURLMarker)
+	return interactshURLMarkerRegex.Match([]byte(data))
 }
 
 func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {

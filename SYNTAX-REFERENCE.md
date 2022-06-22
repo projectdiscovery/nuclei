@@ -132,6 +132,7 @@ dns:
           regex:
             - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
             - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
+          dsl: []
     name: '{{FQDN}}'
     type: CNAME
     class: inet
@@ -164,6 +165,7 @@ file:
         - type: regex
           regex:
             - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+          dsl: []
     extensions:
         - all
     archive: false
@@ -313,6 +315,19 @@ Valid values:
 
 
   - <code>AWS</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>variables</code>  <i><a href="#variablesvariable">variables.Variable</a></i>
+
+</div>
+<div class="dt">
+
+Variables contains any variables for the current request.
+
 </div>
 
 <hr />
@@ -1363,6 +1378,32 @@ IterateAll iterates all the values extracted from internal extractors
 
 <hr />
 
+<div class="dd">
+
+<code>digest-username</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+DigestAuthUsername specifies the username for digest authentication
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>digest-password</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+DigestAuthPassword specifies the password for digest authentication
+
+</div>
+
+<hr />
+
 
 
 
@@ -2112,6 +2153,8 @@ Enum Values:
   - <code>xpath</code>
 
   - <code>json</code>
+
+  - <code>dsl</code>
 </div>
 
 <hr />
@@ -2251,6 +2294,7 @@ extractors:
       regex:
         - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
         - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
+      dsl: []
 name: '{{FQDN}}'
 type: CNAME
 class: inet
@@ -2570,6 +2614,7 @@ extractors:
     - type: regex
       regex:
         - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+      dsl: []
 extensions:
     - all
 archive: false
@@ -4120,6 +4165,21 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.signature</code>
+
+
+
+
+
+
+
+## variables.Variable
+Variable is a key-value pair of strings that can be used
+ throughout template.
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.variables</code>
 
 
 

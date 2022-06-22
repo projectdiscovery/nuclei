@@ -240,12 +240,14 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 	generator := request.newGenerator()
 
 	var gotDynamicValues map[string][]string
-	requestCount := 1
 	var requestErr error
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
+			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
+
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -282,7 +284,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				} else {
 					callback(event)
 				}
-			}, requestCount)
+			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
 			if err == errStopExecution {
@@ -294,7 +296,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				}
 				requestErr = err
 			}
-			requestCount++
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
@@ -403,6 +404,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		options.FollowRedirects = request.Redirects
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
+		options.SNI = request.options.Options.SNI
 		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
@@ -423,6 +425,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
+	// use request url as matched url if empty
+	if formedURL == "" {
+		formedURL = reqURL
+	}
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
@@ -433,7 +439,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
 				gologger.Info().Msg(msg)
@@ -445,14 +451,9 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 	}
 
-	// use request url as matched url if empty
-	if formedURL == "" {
-		formedURL = reqURL
-	}
-
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
-		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil {
+		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
@@ -530,7 +531,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
 	} else {
-		dumpedResponse = []redirectedResponse{{fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
+		dumpedResponse = []redirectedResponse{{resp: resp, fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
 	}
 
 	// if nuclei-project is enabled store the response if not previously done
@@ -550,6 +551,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		if generatedRequest.request != nil {
 			matchedURL = generatedRequest.request.URL.String()
+		}
+		// Give precedence to the final URL from response
+		if response.resp.Request != nil {
+			if responseURL := response.resp.Request.URL.String(); responseURL != "" {
+				matchedURL = responseURL
+			}
 		}
 		finalEvent := make(output.InternalEvent)
 
@@ -590,10 +597,15 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 
 		responseContentType := resp.Header.Get("Content-Type")
-		isResponseTruncated := len(gotData) >= request.MaxSize
+		isResponseTruncated := request.MaxSize > 0 && len(gotData) >= request.MaxSize
 		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, reqURL)
 
 		callback(event)
+
+		// Skip further responses if we have stop-at-first-match and a match
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+			return nil
+		}
 	}
 	return nil
 }

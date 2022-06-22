@@ -163,6 +163,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		followRedirects = true
 		maxRedirects = forceMaxRedirects
 	}
+	if options.DisableRedirects {
+		options.FollowRedirects = false
+		followRedirects = false
+		maxRedirects = 0
+	}
 	// override connection's settings if required
 	if configuration.Connection != nil {
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
@@ -172,6 +177,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
 	}
 
 	// Add the client certificate authentication to the request if it's configured
@@ -182,6 +192,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		DialContext:         Dialer.Dial,
+		DialTLSContext:      Dialer.DialTLS,
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,

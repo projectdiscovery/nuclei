@@ -63,6 +63,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	options.TemplatePath = filePath
 	options.StopAtFirstMatch = template.StopAtFirstMatch
 
+	if template.Variables.Len() > 0 {
+		options.Variables = template.Variables
+	}
+
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)

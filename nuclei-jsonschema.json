@@ -132,7 +132,8 @@
     },
     "extractors.Extractor": {
       "required": [
-        "type"
+        "type",
+        "DSL"
       ],
       "properties": {
         "name": {
@@ -186,6 +187,12 @@
           "title": "optional attribute to extract from xpath",
           "description": "Optional attribute to extract from response XPath"
         },
+        "DSL": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "part": {
           "type": "string",
           "title": "part of response to extract data from",
@@ -210,7 +217,8 @@
         "regex",
         "kval",
         "xpath",
-        "json"
+        "json",
+        "dsl"
       ],
       "type": "string",
       "title": "type of the extractor",
@@ -343,6 +351,11 @@
       "type": "string",
       "title": "type of the attack",
       "description": "Type of the attack"
+    },
+    "variables.Variable": {
+      "properties": {},
+      "additionalProperties": false,
+      "type": "object"
     },
     "dns.DNSRequestTypeHolder": {
       "enum": [
@@ -850,6 +863,16 @@
           "type": "boolean",
           "title": "iterate all the values",
           "description": "Iterates all the values extracted from internal extractors"
+        },
+        "digest-username": {
+          "type": "string",
+          "title": "specifies the username for digest authentication",
+          "description": "Optional parameter which specifies the username for digest auth"
+        },
+        "digest-password": {
+          "type": "string",
+          "title": "specifies the password for digest authentication",
+          "description": "Optional parameter which specifies the password for digest auth"
         }
       },
       "additionalProperties": false,
@@ -1286,6 +1309,12 @@
           "$ref": "#/definitions/http.SignatureTypeHolder",
           "title": "signature is the http request signature method",
           "description": "Signature is the HTTP Request signature Method"
+        },
+        "variables": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/variables.Variable",
+          "title": "variables for the http request",
+          "description": "Variables contains any variables for the current request"
         }
       },
       "additionalProperties": false,

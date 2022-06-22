@@ -39,13 +39,14 @@ var (
 	WORKFLOWSWorkflowTemplateDoc  encoder.Doc
 	WORKFLOWSMatcherDoc           encoder.Doc
 	HTTPSignatureTypeHolderDoc    encoder.Doc
+	VARIABLESVariableDoc          encoder.Doc
 )
 
 func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 14)
+	TemplateDoc.Fields = make([]encoder.Doc, 15)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -131,6 +132,11 @@ func init() {
 	TemplateDoc.Fields[13].Values = []string{
 		"AWS",
 	}
+	TemplateDoc.Fields[14].Name = "variables"
+	TemplateDoc.Fields[14].Type = "variables.Variable"
+	TemplateDoc.Fields[14].Note = ""
+	TemplateDoc.Fields[14].Description = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -390,7 +396,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 29)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 31)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -568,6 +574,16 @@ func init() {
 	HTTPRequestDoc.Fields[28].Note = ""
 	HTTPRequestDoc.Fields[28].Description = "IterateAll iterates all the values extracted from internal extractors"
 	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[29].Name = "digest-username"
+	HTTPRequestDoc.Fields[29].Type = "string"
+	HTTPRequestDoc.Fields[29].Note = ""
+	HTTPRequestDoc.Fields[29].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[30].Name = "digest-password"
+	HTTPRequestDoc.Fields[30].Type = "string"
+	HTTPRequestDoc.Fields[30].Note = ""
+	HTTPRequestDoc.Fields[30].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -881,6 +897,7 @@ func init() {
 		"kval",
 		"xpath",
 		"json",
+		"dsl",
 	}
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
@@ -1895,6 +1912,17 @@ func init() {
 		},
 	}
 	HTTPSignatureTypeHolderDoc.Fields = make([]encoder.Doc, 0)
+
+	VARIABLESVariableDoc.Type = "variables.Variable"
+	VARIABLESVariableDoc.Comments[encoder.LineComment] = " Variable is a key-value pair of strings that can be used"
+	VARIABLESVariableDoc.Description = "Variable is a key-value pair of strings that can be used\n throughout template."
+	VARIABLESVariableDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "variables",
+		},
+	}
+	VARIABLESVariableDoc.Fields = make([]encoder.Doc, 0)
 }
 
 // GetTemplateDoc returns documentation for the file templates_doc.go.
@@ -1933,6 +1961,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&WORKFLOWSWorkflowTemplateDoc,
 			&WORKFLOWSMatcherDoc,
 			&HTTPSignatureTypeHolderDoc,
+			&VARIABLESVariableDoc,
 		},
 	}
 }

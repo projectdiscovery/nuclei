@@ -26,6 +26,11 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
 	}
 
 	// Add the client certificate authentication to the request if it's configured
@@ -37,6 +42,7 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	transport := &http.Transport{
 		DialContext:         dialer.Dial,
+		DialTLSContext:      dialer.DialTLS,
 		MaxIdleConns:        500,
 		MaxIdleConnsPerHost: 500,
 		MaxConnsPerHost:     500,

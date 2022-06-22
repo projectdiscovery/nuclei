@@ -28,8 +28,10 @@ var (
 		"headless":      headlessTestcases,
 		"whois":         whoisTestCases,
 		"ssl":           sslTestcases,
+		"code":          codeTestcases,
 		"templatesPath": templatesPathTestCases,
 		"templatesDir":  templatesDirTestCases,
+		"file":          fileTestcases,
 	}
 )
 

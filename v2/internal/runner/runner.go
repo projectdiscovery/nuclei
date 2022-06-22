@@ -72,6 +72,12 @@ func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 	}
+
+	if options.HealthCheck {
+		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
+		os.Exit(0)
+	}
+
 	if options.UpdateNuclei {
 		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
 			return nil, err
@@ -341,10 +347,9 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-	store.Load()
 
 	if r.options.Validate {
-		if err := store.ValidateTemplates(r.options.Templates, r.options.Workflows); err != nil {
+		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
 		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
@@ -354,14 +359,20 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
+	store.Load()
 
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
 	if r.options.AutomaticScan {
-		results, err = r.executeSmartWorkflowInput(executerOpts, store, engine)
+		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
+			return err
+		}
+
 	} else {
-		results, err = r.executeTemplatesInput(store, engine)
+		if results, err = r.executeTemplatesInput(store, engine); err != nil {
+			return err
+		}
 	}
 
 	if r.interactsh != nil {
@@ -395,7 +406,7 @@ func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOption
 		Target:       r.hmapInputProvider,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create smart workflow service")
+		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
 	service.Execute()
 	result := &atomic.Bool{}
@@ -565,8 +576,10 @@ func isTemplate(filename string) bool {
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfg := types.NewResumeCfg()
+	r.resumeCfg.Lock()
 	resumeCfg.ResumeFrom = r.resumeCfg.Current
 	data, _ := json.MarshalIndent(resumeCfg, "", "\t")
+	r.resumeCfg.Unlock()
 
 	return os.WriteFile(path, data, os.ModePerm)
 }

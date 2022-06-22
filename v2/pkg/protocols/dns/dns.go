@@ -8,7 +8,6 @@ import (
 
 	"github.com/weppos/publicsuffix-go/publicsuffix"
 
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -170,30 +169,14 @@ func (request *Request) Requests() int {
 }
 
 // Make returns the request to be sent for the protocol
-func (request *Request) Make(host string) (*dns.Msg, error) {
-	isIP := iputil.IsIP(host)
-	switch {
-	case request.question == dns.TypePTR && isIP:
-		var err error
-		host, err = dns.ReverseAddr(host)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		if isIP {
-			return nil, errors.New("cannot use IP address as DNS input")
-		}
-		host = dns.Fqdn(host)
-	}
-
+func (request *Request) Make(host string, vars map[string]interface{}) (*dns.Msg, error) {
 	// Build a request on the specified URL
 	req := new(dns.Msg)
 	req.Id = dns.Id()
 	req.RecursionDesired = *request.Recursion
 
 	var q dns.Question
-
-	final := replacer.Replace(request.Name, GenerateDNSVariables(host))
+	final := replacer.Replace(request.Name, vars)
 
 	q.Name = dns.Fqdn(final)
 	q.Qclass = request.class
@@ -262,8 +245,8 @@ func classToInt(class string) uint16 {
 	return uint16(result)
 }
 
-// GenerateDNSVariables from a dns name
-func GenerateDNSVariables(domain string) map[string]interface{} {
+// GenerateVariables from a dns name
+func GenerateVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
 		return map[string]interface{}{"FQDN": domain}

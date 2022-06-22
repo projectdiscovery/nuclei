@@ -71,6 +71,7 @@ type Request struct {
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the http request,description=Payloads contains any payloads for the current request"`
+
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
 	// examples:
@@ -179,6 +180,12 @@ type Request struct {
 	// description: |
 	//   IterateAll iterates all the values extracted from internal extractors
 	IterateAll bool `yaml:"iterate-all,omitempty" jsonschema:"title=iterate all the values,description=Iterates all the values extracted from internal extractors"`
+	// description: |
+	//   DigestAuthUsername specifies the username for digest authentication
+	DigestAuthUsername string `yaml:"digest-username,omitempty" jsonschema:"title=specifies the username for digest authentication,description=Optional parameter which specifies the username for digest auth"`
+	// description: |
+	//   DigestAuthPassword specifies the password for digest authentication
+	DigestAuthPassword string `yaml:"digest-password,omitempty" jsonschema:"title=specifies the password for digest authentication,description=Optional parameter which specifies the password for digest auth"`
 }
 
 // Options returns executer options for http request
@@ -219,6 +226,10 @@ func (request *Request) isRaw() bool {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if err := request.validate(); err != nil {
+		return errors.Wrap(err, "validation error")
+	}
+
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:         request.Threads,
 		MaxRedirects:    request.MaxRedirects,

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,6 +49,7 @@ type StandardWriter struct {
 	noTimestamp      bool
 	noMetadata       bool
 	matcherStatus    bool
+	mutex            *sync.Mutex
 	aurora           aurora.Aurora
 	outputFile       io.WriteCloser
 	traceFile        io.WriteCloser
@@ -161,6 +163,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		matcherStatus:    MatcherStatus,
 		noTimestamp:      noTimestamp,
 		aurora:           auroraColorizer,
+		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
@@ -193,6 +196,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if len(data) == 0 {
 		return nil
 	}
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	_, _ = os.Stdout.Write(data)
 	_, _ = os.Stdout.Write([]byte("\n"))
 
@@ -269,12 +275,16 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		return nil
 	}
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
+	var templateInfo model.Info
+	if event["template-info"] != nil {
+		templateInfo = event["template-info"].(model.Info)
+	}
 	data := &ResultEvent{
 		Template:      templatePath,
 		TemplateURL:   templateURL,
 		TemplateID:    types.ToString(event["template-id"]),
 		TemplatePath:  types.ToString(event["template-path"]),
-		Info:          event["template-info"].(model.Info),
+		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
 		Host:          types.ToString(event["host"]),
 		MatcherStatus: false,
@@ -300,7 +310,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			_ = fileutil.CreateFolder(subFolder)
 		}
 		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Print(err)
 			return

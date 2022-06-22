@@ -312,7 +312,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service-detection.yaml"}
+	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{"dns/cname-service-detection.yaml"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -334,6 +334,7 @@ func main() {
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
+		ResumeCfg:       types.NewResumeCfg(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
@@ -344,7 +345,11 @@ func main() {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
+	configObject, err := config.ReadConfiguration()
+	if err != nil {
+		log.Fatalf("Could not read config: %s\n", err)
+	}
+	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
 	if err != nil {
 		log.Fatalf("Could not create loader client: %s\n", err)
 	}
@@ -352,6 +357,7 @@ func main() {
 
 	input := &inputs.SimpleInputProvider{Inputs: []string{"docs.hackerone.com"}}
 	_ = engine.Execute(store.Templates(), input)
+	engine.WorkPool().Wait() // Wait for the scan to finish
 }
 ```
 

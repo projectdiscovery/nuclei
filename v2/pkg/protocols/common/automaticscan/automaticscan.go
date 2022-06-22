@@ -4,11 +4,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -17,9 +20,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
+	"gopkg.in/yaml.v2"
 )
 
-// Service is a service for automatic automatic scan execution
+// Service is a service for automatic scan execution
 type Service struct {
 	opts          protocols.ExecuterOptions
 	store         *loader.Store
@@ -29,8 +33,9 @@ type Service struct {
 	childExecuter *core.ChildExecuter
 	httpclient    *retryablehttp.Client
 
-	results      bool
-	allTemplates []string
+	results            bool
+	allTemplates       []string
+	technologyMappings map[string]string
 }
 
 // Options contains configuration options for automatic scan service
@@ -41,13 +46,33 @@ type Options struct {
 	Target       core.InputProvider
 }
 
-// New takes options and returns a new smart workflow service
+const mappingFilename = "wappalyzer-mapping.yml"
+
+// New takes options and returns a new automatic scan service
 func New(opts Options) (*Service, error) {
 	wappalyzer, err := wappalyzer.New()
 	if err != nil {
 		return nil, err
 	}
 
+	var mappingData map[string]string
+	config, err := config.ReadConfiguration()
+	if err == nil {
+		mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
+		if file, err := os.Open(mappingFile); err == nil {
+			_ = yaml.NewDecoder(file).Decode(&mappingData)
+			file.Close()
+		}
+	}
+	if opts.ExecuterOpts.Options.Verbose {
+		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
+	}
+	defaultTemplatesDirectories := []string{config.TemplatesDirectory}
+
+	// adding custom template path if available
+	if len(opts.ExecuterOpts.Options.Templates) > 0 {
+		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
+	}
 	// Collect path for default directories we want to look for templates in
 	var allTemplates []string
 	for _, directory := range defaultTemplatesDirectories {
@@ -67,14 +92,15 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:          opts.ExecuterOpts,
-		store:         opts.Store,
-		engine:        opts.Engine,
-		target:        opts.Target,
-		wappalyzer:    wappalyzer,
-		allTemplates:  allTemplates,
-		childExecuter: childExecuter,
-		httpclient:    httpclient,
+		opts:               opts.ExecuterOpts,
+		store:              opts.Store,
+		engine:             opts.Engine,
+		target:             opts.Target,
+		wappalyzer:         wappalyzer,
+		allTemplates:       allTemplates,
+		childExecuter:      childExecuter,
+		httpclient:         httpclient,
+		technologyMappings: mappingData,
 	}, nil
 }
 
@@ -87,16 +113,12 @@ func (s *Service) Close() bool {
 	return s.results
 }
 
-// Execute performs the execution of smart workflows on provided input
+// Execute performs the execution of automatic scan on provided input
 func (s *Service) Execute() {
 	if err := s.executeWappalyzerTechDetection(); err != nil {
 		gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)
 	}
 }
-
-var (
-	defaultTemplatesDirectories = []string{"cves/", "default-logins/", "dns/", "exposures/", "miscellaneous/", "misconfiguration/", "network/", "takeovers/", "vulnerabilities/"}
-)
 
 const maxDefaultBody = 2 * 1024 * 1024
 
@@ -145,8 +167,25 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	resp.Body.Close()
 
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
-	items := make([]string, 0, len(fingerprints))
+	normalized := make(map[string]struct{})
 	for k := range fingerprints {
+		normalized[normalizeAppName(k)] = struct{}{}
+	}
+
+	if s.opts.Options.Verbose {
+		gologger.Verbose().Msgf("Wappalyzer fingerprints %v for %s\n", normalized, input)
+	}
+
+	for k := range normalized {
+		// Replace values with mapping data
+		if value, ok := s.technologyMappings[k]; ok {
+			delete(normalized, k)
+			normalized[value] = struct{}{}
+		}
+	}
+
+	items := make([]string, 0, len(normalized))
+	for k := range normalized {
 		if strings.Contains(k, " ") {
 			parts := strings.Split(strings.ToLower(k), " ")
 			items = append(items, parts...)
@@ -172,6 +211,15 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		}
 		s.childExecuter.Execute(t, input)
 	}
+}
+
+func normalizeAppName(appName string) string {
+	if strings.Contains(appName, ":") {
+		if parts := strings.Split(appName, ":"); len(parts) == 2 {
+			appName = parts[0]
+		}
+	}
+	return strings.ToLower(appName)
 }
 
 func uniqueSlice(slice []string) []string {
