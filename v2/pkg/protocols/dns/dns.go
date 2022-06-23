@@ -131,7 +131,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
 		compiled.ExcludeMatchers = options.ExcludeMatchers
-		compiled.TemplateID = request.options.TemplateID
+		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
