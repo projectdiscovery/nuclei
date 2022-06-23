@@ -27,17 +27,22 @@ func New(values []string) *ExcludeMatchers {
 	for _, value := range values {
 		partValues := strings.SplitN(value, ":", 2)
 		if len(partValues) < 2 {
+			// If there is no matcher name, consider it as template ID
+			if _, ok := excludeMatchers.templateIDs[value]; !ok {
+				excludeMatchers.templateIDs[value] = struct{}{}
+			}
 			continue
 		}
+		templateID, matcherName := partValues[0], partValues[1]
 
 		// Handle wildcards
-		if partValues[0] == "*" {
-			if _, ok := excludeMatchers.matcherNames[partValues[1]]; !ok {
-				excludeMatchers.matcherNames[partValues[1]] = struct{}{}
+		if templateID == "*" {
+			if _, ok := excludeMatchers.matcherNames[matcherName]; !ok {
+				excludeMatchers.matcherNames[matcherName] = struct{}{}
 			}
-		} else if partValues[1] == "*" {
-			if _, ok := excludeMatchers.templateIDs[partValues[0]]; !ok {
-				excludeMatchers.templateIDs[partValues[0]] = struct{}{}
+		} else if matcherName == "*" {
+			if _, ok := excludeMatchers.templateIDs[templateID]; !ok {
+				excludeMatchers.templateIDs[templateID] = struct{}{}
 			}
 		} else {
 			if _, ok := excludeMatchers.values[value]; !ok {
