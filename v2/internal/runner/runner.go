@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
@@ -327,6 +328,7 @@ func (r *Runner) RunEnumeration() error {
 		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
+		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)

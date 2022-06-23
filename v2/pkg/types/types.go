@@ -27,6 +27,8 @@ type Options struct {
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
+	// ExcludeMatchers is a list of matchers to exclude processing
+	ExcludeMatchers goflags.FileCommaSeparatedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.FileStringSlice
 	// Vars is the list of custom global vars

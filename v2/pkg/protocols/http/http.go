@@ -266,6 +266,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
+		compiled.ExcludeMatchers = options.ExcludeMatchers
+		compiled.TemplateID = request.options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}

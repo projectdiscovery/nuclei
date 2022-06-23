@@ -117,6 +117,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.FileNormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "templates to exclude based on template ids (comma-separated, file)"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.IncludeTemplates, "include-templates", "it", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory to exclude (comma-separated, file)"),
+		flagSet.FileCommaSeparatedStringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", []string{}, "template matchers to exclude in result"),
 		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
