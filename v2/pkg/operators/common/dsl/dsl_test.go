@@ -133,7 +133,8 @@ func createSignatureError(signature string) string {
 }
 
 func TestGetPrintableDslFunctionSignatures(t *testing.T) {
-	expected := `	[93mbase64[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	expected := `	[93maes_gcm[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mbase64[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mbase64_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mcompare_versions[0m(firstVersion, constraints [38;5;208m...string[0m)[38;5;208m bool[0m

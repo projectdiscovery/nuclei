@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/md5"
+	crand "crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
@@ -504,6 +507,26 @@ func init() {
 				return types.ToString(hexNum), nil
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
+		}),
+		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			key := args[0].(string)
+			value := args[1].(string)
+
+			c, err := aes.NewCipher([]byte(key))
+			if nil != err {
+				return "", err
+			}
+			gcm, err := cipher.NewGCM(c)
+			if nil != err {
+				return "", err
+			}
+
+			nonce := make([]byte, gcm.NonceSize())
+			if _, err = io.ReadFull(crand.Reader, nonce); err != nil {
+				return "", err
+			}
+			data := gcm.Seal(nonce, nonce, []byte(value), nil)
+			return data, nil
 		}),
 	}
 
