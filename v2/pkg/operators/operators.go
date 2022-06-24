@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/sliceutil"
 )
 
@@ -34,6 +35,11 @@ type Operators struct {
 	MatchersCondition string `yaml:"matchers-condition,omitempty" jsonschema:"title=condition between the matchers,description=Conditions between the matchers,enum=and,enum=or"`
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
+
+	// TemplateID is the ID of the template for matcher
+	TemplateID string
+	// ExcludeMatchers is a list of excludeMatchers items
+	ExcludeMatchers *excludematchers.ExcludeMatchers
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors
@@ -238,6 +244,12 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {
+		// Skip matchers that are in the blocklist
+		if operators.ExcludeMatchers != nil {
+			if operators.ExcludeMatchers.Match(operators.TemplateID, matcher.Name) {
+				continue
+			}
+		}
 		if isMatch, matched := match(data, matcher); isMatch {
 			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
 				matcherName := getMatcherName(matcher, matcherIndex)
