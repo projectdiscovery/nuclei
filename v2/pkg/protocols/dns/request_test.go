@@ -20,6 +20,10 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
 	request := &Request{
 		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
@@ -40,11 +44,8 @@ func TestDNSExecuteWithResults(t *testing.T) {
 				Regex: []string{"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+"},
 			}},
 		},
+		options: executerOpts,
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
-		ID:   templateID,
-		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
