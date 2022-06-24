@@ -19,7 +19,6 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
-	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/miekg/dns v1.1.49
 	github.com/olekukonko/tablewriter v0.0.5
@@ -80,7 +79,7 @@ require (
 	github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/wappalyzergo v0.0.47
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.7.5
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 	gopkg.in/yaml.v3 v3.0.1
 )
