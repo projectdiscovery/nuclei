@@ -222,6 +222,10 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
+		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
+		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+	}
 	// verify if pipeline was requested
 	if request.Pipeline {
 		return request.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
@@ -229,7 +233,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(reqURL, previous, callback)
+		return request.executeRaceRequest(reqURL, dynamicValues, callback)
 	}
 
 	// verify if parallel elaboration was requested
