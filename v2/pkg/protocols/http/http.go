@@ -226,6 +226,10 @@ func (request *Request) isRaw() bool {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+	if err := request.validate(); err != nil {
+		return errors.Wrap(err, "validation error")
+	}
+
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:         request.Threads,
 		MaxRedirects:    request.MaxRedirects,
@@ -266,6 +270,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
+		compiled.ExcludeMatchers = options.ExcludeMatchers
+		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
