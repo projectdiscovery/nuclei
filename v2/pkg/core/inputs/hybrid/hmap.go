@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -73,7 +74,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(os.Stdin)
+		i.scanInputFromReader(fileutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.Timeout)})
 	}
 
 	// Handle target file
