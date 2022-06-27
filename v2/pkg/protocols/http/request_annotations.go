@@ -79,12 +79,12 @@ func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*h
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
-				// nolint:lostcancel // cancelled automatically by withTimeout
+				//nolint:lostcancel // cancelled automatically by withTimeout
 				ctx, _ := context.WithTimeout(request.Context(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {
-			// nolint:lostcancel // cancelled automatically by withTimeout
+			//nolint:lostcancel // cancelled automatically by withTimeout
 			ctx, _ := context.WithTimeout(request.Context(), time.Duration(r.options.Options.Timeout)*time.Second)
 			request = request.Clone(ctx)
 		}
