@@ -1,0 +1,16 @@
+id: excluded-template
+
+info:
+  name: Basic Excluded Template
+  author: pdteam
+  severity: info
+  tags: fuzz
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "This is test matcher text"
