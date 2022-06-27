@@ -34,7 +34,7 @@ func ConfigureOptions() error {
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
-	options.Stdin = fileutil.HasStdin()
+	options.Stdin = !options.DisableStdin && fileutil.HasStdin()
 
 	// Read the inputs and configure the logging
 	configureOutput(options)

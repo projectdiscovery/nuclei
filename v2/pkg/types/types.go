@@ -228,6 +228,8 @@ type Options struct {
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
 	InputReadTimeout time.Duration
+	// Disable stdin for input processing
+	DisableStdin bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
