@@ -69,6 +69,8 @@ type Configuration struct {
 	Threads int
 	// MaxRedirects is the maximum number of redirects to follow
 	MaxRedirects int
+	// NoTimeout disables http request timeout for context based usage
+	NoTimeout bool
 	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
 	CookieReuse bool
 	// FollowRedirects specifies whether to follow redirects
@@ -85,6 +87,8 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.Itoa(c.Threads))
 	builder.WriteString("m")
 	builder.WriteString(strconv.Itoa(c.MaxRedirects))
+	builder.WriteString("n")
+	builder.WriteString(strconv.FormatBool(c.NoTimeout))
 	builder.WriteString("f")
 	builder.WriteString(strconv.FormatBool(c.FollowRedirects))
 	builder.WriteString("r")
@@ -97,7 +101,7 @@ func (c *Configuration) Hash() string {
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil
+	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil && !c.NoTimeout
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -227,11 +231,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 
-	client := retryablehttp.NewWithHTTPClient(&http.Client{
+	httpclient := &http.Client{
 		Transport:     transport,
-		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryableHttpOptions)
+	}
+	if !configuration.NoTimeout {
+		httpclient.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {
 		client.HTTPClient.Jar = jar
 	}
