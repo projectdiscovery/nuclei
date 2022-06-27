@@ -74,7 +74,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(fileutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.Timeout)})
+		i.scanInputFromReader(fileutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
 	}
 
 	// Handle target file

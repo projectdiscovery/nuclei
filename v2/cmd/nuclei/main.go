@@ -188,6 +188,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
 		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
+		flagSet.DurationVar(&options.InputReadTimeout, "input-read-timeout", time.Duration(10*time.Minute), "timeout on input read"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
