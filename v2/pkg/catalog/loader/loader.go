@@ -261,10 +261,7 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
 		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		}
-		if loaded {
+		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
@@ -272,6 +269,8 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 			} else if parsed != nil {
 				loadedTemplates = append(loadedTemplates, parsed)
 			}
+		} else if err != nil {
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
 	return loadedTemplates
@@ -309,10 +308,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
 		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		}
-		if loaded {
+		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
@@ -320,6 +316,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			} else if parsed != nil {
 				loadedTemplates = append(loadedTemplates, parsed)
 			}
+		} else if err != nil {
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
 	return loadedTemplates
