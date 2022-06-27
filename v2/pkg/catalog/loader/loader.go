@@ -155,6 +155,13 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 func (store *Store) Load() {
 	store.templates = store.LoadTemplates(store.finalTemplates)
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+
+	// If user asked to include templates, force include them
+	// without filtering based on tags.
+	if len(store.config.IncludeTemplates) > 0 {
+		loaded := store.loadTemplatesWithoutFilters(store.config.IncludeTemplates)
+		store.templates = append(store.templates, loaded...)
+	}
 }
 
 var templateIDPathMap map[string]string
@@ -320,6 +327,25 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			} else if parsed != nil {
 				loadedTemplates = append(loadedTemplates, parsed)
 			}
+		}
+	}
+	return loadedTemplates
+}
+
+// loadTemplatesWithoutFilters takes a list of templates and returns loaded without
+// validation. Used for include-templates
+func (store *Store) loadTemplatesWithoutFilters(templatesList []string) []*templates.Template {
+	includedTemplates := store.config.Catalog.GetTemplatesPath(templatesList)
+	templatePathMap := store.pathFilter.Match(includedTemplates)
+
+	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
+	for templatePath := range templatePathMap {
+		parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+		if err != nil {
+			stats.Increment(parsers.RuntimeWarningsStats)
+			gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
+		} else if parsed != nil {
+			loadedTemplates = append(loadedTemplates, parsed)
 		}
 	}
 	return loadedTemplates
