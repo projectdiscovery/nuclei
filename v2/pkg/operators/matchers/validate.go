@@ -1,14 +1,16 @@
 package matchers
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/projectdiscovery/sliceutil"
 	"gopkg.in/yaml.v3"
 )
 
-var commonExpectedFields = []string{"type", "condition", "name", "match-all", "negative"}
+var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Negative"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {
@@ -25,30 +27,50 @@ func (matcher *Matcher) Validate() error {
 	var expectedFields []string
 	switch matcher.matcherType {
 	case DSLMatcher:
-		expectedFields = append(commonExpectedFields, "dsl")
+		expectedFields = append(commonExpectedFields, "DSL")
 	case StatusMatcher:
-		expectedFields = append(commonExpectedFields, "status", "part")
+		expectedFields = append(commonExpectedFields, "Status", "Part")
 	case SizeMatcher:
-		expectedFields = append(commonExpectedFields, "size", "part")
+		expectedFields = append(commonExpectedFields, "Size", "Part")
 	case WordsMatcher:
-		expectedFields = append(commonExpectedFields, "words", "part", "encoding", "case-insensitive")
+		expectedFields = append(commonExpectedFields, "Words", "Part", "Encoding", "CaseInsensitive")
 	case BinaryMatcher:
-		expectedFields = append(commonExpectedFields, "binary", "part", "encoding", "case-insensitive")
+		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive")
 	case RegexMatcher:
-		expectedFields = append(commonExpectedFields, "regex", "part", "encoding", "case-insensitive")
+		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive")
 	}
 	return checkFields(matcher, matcherMap, expectedFields...)
 }
 
 func checkFields(m *Matcher, matcherMap map[string]interface{}, expectedFields ...string) error {
 	var foundUnexpectedFields []string
-	for name := range matcherMap {
-		if !sliceutil.Contains(expectedFields, name) {
-			foundUnexpectedFields = append(foundUnexpectedFields, name)
+	for marshaledFieldName := range matcherMap {
+		// revert back the marshaled name to the original field
+		structFieldName, err := getFieldNameFromYamlTag(marshaledFieldName, *m)
+		if err != nil {
+			return err
+		}
+		if !sliceutil.Contains(expectedFields, structFieldName) {
+			foundUnexpectedFields = append(foundUnexpectedFields, structFieldName)
 		}
 	}
 	if len(foundUnexpectedFields) > 0 {
 		return fmt.Errorf("matcher %s has unexpected fields: %s", m.matcherType, strings.Join(foundUnexpectedFields, ","))
 	}
 	return nil
+}
+
+func getFieldNameFromYamlTag(tagName string, object interface{}) (string, error) {
+	reflectType := reflect.TypeOf(object)
+	if reflectType.Kind() != reflect.Struct {
+		return "", errors.New("the object must be a struct")
+	}
+	for idx := 0; idx < reflectType.NumField(); idx++ {
+		field := reflectType.Field(idx)
+		tagParts := strings.Split(field.Tag.Get("yaml"), ",")
+		if len(tagParts) > 0 && tagParts[0] == tagName {
+			return field.Name, nil
+		}
+	}
+	return "", fmt.Errorf("field %s not found", tagName)
 }
