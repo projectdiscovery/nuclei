@@ -458,8 +458,8 @@ github.com/projectdiscovery/fileutil v0.0.0-20210914153648-31f843feaad4/go.mod h
 github.com/projectdiscovery/fileutil v0.0.0-20210926202739-6050d0acf73c/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/fileutil v0.0.0-20220506114156-c4ab20801483/go.mod h1:wjS/oBWbzlayJ/aTK0KW0oOHGO03G8oEYzuN6stI8Ho=
-github.com/projectdiscovery/fileutil v0.0.0-20220609150212-453ac591c36c h1:/+xJK8e/Gj/zAmudWh5l2SzGJB+CkwYnraelCkBe7Aw=
-github.com/projectdiscovery/fileutil v0.0.0-20220609150212-453ac591c36c/go.mod h1:g8wsrb0S5NtEN0JgVyyPeb3FQdArx+UMESmFX94bcGY=
+github.com/projectdiscovery/fileutil v0.0.0-20220626180823-b24f0847f8e6 h1:5C3sxeSsGsrj2eDY+3SgYl/W1jUvciP71XzTGTQ511E=
+github.com/projectdiscovery/fileutil v0.0.0-20220626180823-b24f0847f8e6/go.mod h1:DaY7wmLPMleyHDCD/14YApPCDtrARY4J8Eny2ZGsG/g=
 github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 h1:m1pgJisawU7zP9lKGktOEk6KNrNAR7e4Q07Kt3ox0NM=
 github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
@@ -580,6 +580,7 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
+github.com/stretchr/testify v1.7.3/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.7.4/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.7.5 h1:s5PTfem8p8EbKQOctVV53k6jCJt3UX4IEJzwh+C324Q=
 github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=

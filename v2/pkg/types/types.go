@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -224,6 +226,10 @@ type Options struct {
 	SNI string
 	// Health Check
 	HealthCheck bool
+	// Time to wait between each input read operation before closing the stream
+	InputReadTimeout time.Duration
+	// Disable stdin for input processing
+	DisableStdin bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
