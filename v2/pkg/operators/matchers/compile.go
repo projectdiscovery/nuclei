@@ -31,6 +31,12 @@ func (matcher *Matcher) CompileMatchers() error {
 	}
 
 	matcher.matcherType = computedType
+
+	// Validate the matcher structure
+	if err := matcher.Validate(); err != nil {
+		return err
+	}
+
 	// By default, match on body if user hasn't provided any specific items
 	if matcher.Part == "" {
 		matcher.Part = "body"
