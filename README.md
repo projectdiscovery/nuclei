@@ -116,6 +116,7 @@ FILTERING:
    -eid, -exclude-id string[]        templates to exclude based on template ids (comma-separated, file)
    -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
    -et, -exclude-templates string[]  template or template directory to exclude (comma-separated, file)
+   -em, -exclude-matchers string[]   template matchers to exclude in result
    -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
    -pt, -type value[]                templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
@@ -165,22 +166,24 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 RATE-LIMIT:
-   -rl, -rate-limit int            maximum number of requests to send per second (default 150)
-   -rlm, -rate-limit-minute int    maximum number of requests to send per minute
-   -bs, -bulk-size int             maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int            maximum number of templates to be executed in parallel (default 25)
-   -hbs, -headless-bulk-size int   maximum number of headless hosts to be analyzed in parallel per template (default 10)
-   -hc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
+   -rl, -rate-limit int               maximum number of requests to send per second (default 150)
+   -rlm, -rate-limit-minute int       maximum number of requests to send per minute
+   -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
+   -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
+   -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
+   -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
-   -timeout int                time to wait in seconds before timeout (default 5)
-   -retries int                number of times to retry a failed request (default 1)
-   -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
-   -mhe, -max-host-error int   max errors for a host before skipping from scan (default 30)
-   -project                    use a project folder to avoid sending same request multiple times
-   -project-path string        set a specific project path
-   -spm, -stop-at-first-path   stop processing HTTP requests after the first match (may break template/workflow logic)
-   -stream                     stream mode - start elaborating without sorting the input
+   -timeout int                        time to wait in seconds before timeout (default 5)
+   -retries int                        number of times to retry a failed request (default 1)
+   -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443
+   -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
+   -project                            use a project folder to avoid sending same request multiple times
+   -project-path string                set a specific project path
+   -spm, -stop-at-first-path           stop processing HTTP requests after the first match (may break template/workflow logic)
+   -stream                             stream mode - start elaborating without sorting the input
+   -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
+   -no-stdin                           Disable Stdin processing
 
 HEADLESS:
    -headless            enable templates that require headless browser support (root user on linux will disable sandbox)
@@ -202,6 +205,7 @@ DEBUG:
    -vv                       display templates loaded for scan
    -ep, -enable-pprof        enable pprof debugging server
    -tv, -templates-version   shows the version of the installed nuclei-templates
+   -hc, -health-check        run diagnostic check up
 
 UPDATE:
    -update                        update nuclei engine to the latest released version
