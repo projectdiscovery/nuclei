@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -27,6 +29,8 @@ type Options struct {
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
 	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
+	// ExcludeMatchers is a list of matchers to exclude processing
+	ExcludeMatchers goflags.FileCommaSeparatedStringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.FileStringSlice
 	// Vars is the list of custom global vars
@@ -222,6 +226,10 @@ type Options struct {
 	SNI string
 	// Health Check
 	HealthCheck bool
+	// Time to wait between each input read operation before closing the stream
+	InputReadTimeout time.Duration
+	// Disable stdin for input processing
+	DisableStdin bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
