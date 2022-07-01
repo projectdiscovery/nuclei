@@ -218,12 +218,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		if proxyErr == nil {
 			transport.DialContext = dc.DialContext
 			transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// upgrade proxy conn to tls connection
-				rawConn, err2 := dc.DialContext(ctx, network, addr)
-				if err2 != nil {
-					return nil, err2
+				// upgrade proxy connection to tls
+				conn, err := dc.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, err
 				}
-				return tls.Client(rawConn, tlsConfig), nil
+				return tls.Client(conn, tlsConfig), nil
 			}
 		}
 	}
