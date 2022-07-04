@@ -258,7 +258,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			}
 			// If the variables contain interactsh urls, use them
 			if len(interactURLs) > 0 {
-				generatedHttpRequest.interactshURLs = interactURLs
+				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
 			}
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if reqURL == "" {
