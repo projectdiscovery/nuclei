@@ -222,6 +222,10 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
+		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
+		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+	}
 	// verify if pipeline was requested
 	if request.Pipeline {
 		return request.executeTurboHTTP(reqURL, dynamicValues, previous, callback)
@@ -229,7 +233,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(reqURL, previous, callback)
+		return request.executeRaceRequest(reqURL, dynamicValues, callback)
 	}
 
 	// verify if parallel elaboration was requested
@@ -423,6 +427,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			resp, err = request.httpClient.Do(generatedRequest.request)
 		}
 	}
+	// use request url as matched url if empty
+	if formedURL == "" {
+		formedURL = reqURL
+	}
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
@@ -433,7 +441,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		dumpedRequestString := string(dumpedRequest)
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
 				gologger.Info().Msg(msg)
@@ -443,11 +451,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 			}
 		}
-	}
-
-	// use request url as matched url if empty
-	if formedURL == "" {
-		formedURL = reqURL
 	}
 
 	if err != nil {
