@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
@@ -62,7 +63,10 @@ func (e *Executer) Requests() int {
 func (e *Executer) Execute(input string) (bool, error) {
 	var results bool
 
-	dynamicValues := make(map[string]interface{})
+	dynamicValues := generators.BuildPayloadFromOptions(e.options.Options)
+	variablesMap := e.options.Variables.Evaluate(dynamicValues)
+	dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
@@ -108,7 +112,10 @@ func (e *Executer) Execute(input string) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
-	dynamicValues := make(map[string]interface{})
+	dynamicValues := generators.BuildPayloadFromOptions(e.options.Options)
+	variablesMap := e.options.Variables.Evaluate(dynamicValues)
+	dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+
 	previous := make(map[string]interface{})
 	var results bool
 

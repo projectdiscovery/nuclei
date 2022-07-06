@@ -91,18 +91,14 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	if !isRawRequest && strings.HasSuffix(parsed.Path, "/") && strings.Contains(data, "{{BaseURL}}/") {
 		trailingSlash = true
 	}
-
-	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-	)
+	dynamicValues = generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash))
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
 	if isRawRequest {
-		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
+		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, dynamicValues, payloads)
 	}
-	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
+	return r.makeHTTPRequestFromModel(ctx, data, dynamicValues, payloads)
 }
 
 func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
@@ -125,17 +121,11 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		values := generators.MergeMaps(
-			payloads,
-			generators.BuildPayloadFromOptions(r.request.options.Options),
-		)
-
 		// in case cases (eg requests signing, some variables uses default values if missing)
 		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
-			values = generators.MergeMaps(defaultList, values)
+			dynamicValues = generators.MergeMaps(defaultList, dynamicValues)
 		}
 
-		parts[1] = replacer.Replace(parts[1], values)
 		if len(dynamicValues) > 0 {
 			parts[1] = replacer.Replace(parts[1], dynamicValues)
 		}
@@ -155,18 +145,13 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
-		values = generators.MergeMaps(
+		dynamicValues = generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, GenerateVariables(parsed, false)),
-			values,
+			dynamicValues,
 		)
-
-		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, values, payloads)
+		return r.makeHTTPRequestFromRaw(ctx, parsed.String(), data, dynamicValues, payloads)
 	}
-	values := generators.MergeMaps(
-		dynamicValues,
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-	)
-	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
+	return r.makeHTTPRequestFromModel(ctx, data, dynamicValues, payloads)
 }
 
 // Total returns the total number of requests for the generator
@@ -195,14 +180,14 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
 }
 
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
-func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, dynamicValues, payloads map[string]interface{}) (*generatedRequest, error) {
 	if r.options.Interactsh != nil {
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
 	}
 
 	// Combine the template payloads along with base
-	// request values.
-	finalValues := generators.MergeMaps(generatorValues, values)
+	// request dynamicValues.
+	finalValues := generators.MergeMaps(payloads, dynamicValues)
 
 	// Evaluate the expressions for the request if any.
 	var err error
@@ -226,22 +211,22 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	if err != nil {
 		return nil, err
 	}
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
+	return &generatedRequest{request: request, meta: payloads, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
 }
 
 // makeHTTPRequestFromRaw creates a *http.Request from a raw request
-func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, values, payloads map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) makeHTTPRequestFromRaw(ctx context.Context, baseURL, data string, dynamicValues, payloads map[string]interface{}) (*generatedRequest, error) {
 	if r.options.Interactsh != nil {
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, r.interactshURLs)
 	}
-	return r.handleRawWithPayloads(ctx, data, baseURL, values, payloads)
+	return r.handleRawWithPayloads(ctx, data, baseURL, dynamicValues, payloads)
 }
 
 // handleRawWithPayloads handles raw requests along with payloads
-func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest, baseURL string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest, baseURL string, dynamicValues, payloads map[string]interface{}) (*generatedRequest, error) {
 	// Combine the template payloads along with base
-	// request values.
-	finalValues := generators.MergeMaps(generatorValues, values)
+	// request dynamicValues.
+	finalValues := generators.MergeMaps(payloads, dynamicValues)
 
 	// Evaluate the expressions for raw request if any.
 	var err error
@@ -259,7 +244,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
-		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
+		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: payloads, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
 
@@ -295,17 +280,17 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		request = request.WithContext(req.Context())
 	}
 
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
+	return &generatedRequest{request: request, meta: payloads, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
 }
 
-// fillRequest fills various headers in the request with values
-func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
+// fillRequest fills various headers in the request with dynamicValues
+func (r *requestGenerator) fillRequest(req *http.Request, finalValues map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
 	for header, value := range r.request.Headers {
 		if r.options.Interactsh != nil {
 			value, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(value, r.interactshURLs)
 		}
-		value, err := expressions.Evaluate(value, values)
+		value, err := expressions.Evaluate(value, finalValues)
 		if err != nil {
 			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
@@ -326,7 +311,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if r.options.Interactsh != nil {
 			body, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(r.request.Body, r.interactshURLs)
 		}
-		body, err := expressions.Evaluate(body, values)
+		body, err := expressions.Evaluate(body, finalValues)
 		if err != nil {
 			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}

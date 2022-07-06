@@ -245,8 +245,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
-			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
 			if err != nil {

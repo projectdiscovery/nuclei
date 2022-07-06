@@ -44,8 +44,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		return errors.Wrap(err, "could not build request")
 	}
 	vars := GenerateVariables(domain)
-	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(variablesMap, vars)
+	vars = generators.MergeMaps(vars, request.options.Variables.Evaluate(vars))
 
 	// Compile each request for the template based on the URL
 	compiledRequest, err := request.Make(domain, vars)
