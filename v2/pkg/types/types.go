@@ -194,6 +194,8 @@ type Options struct {
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
 	NewTemplates bool
+	// NewTemplatesWithVersion runs new templates added in specific version
+	NewTemplatesWithVersion goflags.CommaSeparatedStringSlice
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
 	// UpdateNuclei checks for an update for the nuclei engine

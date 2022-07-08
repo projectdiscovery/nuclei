@@ -99,6 +99,7 @@ TARGET:
 
 TEMPLATES:
    -nt, -new-templates          run only new templates added in latest nuclei-templates release
+   -ntv, -new-templates-version          run new templates added in specific version
    -as, -automatic-scan         automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]      list of template or template directory to run (comma-separated, file)
    -tu, -template-url string[]  list of template urls to run (comma-separated, file)
