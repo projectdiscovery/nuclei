@@ -249,7 +249,7 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, payloads))
+			variablesMap, interactURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, payloads), request.options.Interactsh)
 			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
 			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
@@ -259,6 +259,10 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				}
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 				return true, err
+			}
+			// If the variables contain interactsh urls, use them
+			if len(interactURLs) > 0 {
+				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
 			}
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if reqURL == "" {
