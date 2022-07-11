@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -14,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 var (
@@ -203,8 +203,13 @@ func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOp
 
 mainLoop:
 	for _, req := range template.RequestsHTTP {
+		hasPaths := len(req.Path) > 0
+		if !hasPaths {
+			break mainLoop
+		}
 		for _, path := range req.Path {
-			if !(strings.EqualFold(path, "{{BaseURL}}") || strings.EqualFold(path, "{{BaseURL}}/")) {
+			pathIsBaseURL := stringsutil.EqualFoldAny(path, "{{BaseURL}}", "{{BaseURL}}/", "/")
+			if !pathIsBaseURL {
 				break mainLoop
 			}
 		}
