@@ -518,8 +518,8 @@ github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3 h1:Eb
 github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3/go.mod h1:mF5sh4jTghoGWwgUb9qWi5waTFklClDbtrqtJU93awc=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921 h1:EgaxpJm7+lKppfAHkFHs+S+II0lodp4Gu3leZCCkWlc=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921/go.mod h1:oXLErqOpqEAp/ueQlknysFxHO3CUNoSiDNnkiHG+Jpo=
-github.com/projectdiscovery/wappalyzergo v0.0.48 h1:+5w6LzAdqYq3gJs4c5BkPYzOOqC7zYvA40ZoNLg/b+g=
-github.com/projectdiscovery/wappalyzergo v0.0.48/go.mod h1:1LQBGQVW47tMHxGTxmBK+pAwfsWKSLQMXt/egxGlljo=
+github.com/projectdiscovery/wappalyzergo v0.0.50 h1:mV0RwGnzyyfKscXnDCgzb2INy1BTJX8dT8Zurl+WCuY=
+github.com/projectdiscovery/wappalyzergo v0.0.50/go.mod h1:1LQBGQVW47tMHxGTxmBK+pAwfsWKSLQMXt/egxGlljo=
 github.com/projectdiscovery/yamldoc-go v1.0.2/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6/go.mod h1:8OfZj8p/axkUM/TJoS/O9LDjj/S8u17rxRbqluE9CU4=
