@@ -312,13 +312,19 @@ func (r *Runner) RunEnumeration() error {
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
 	if len(r.options.NewTemplatesWithVersion) > 0 {
-		minVersion, _ := semver.Parse("8.8.5")
+		minVersion, err := semver.Parse("8.8.5")
+		if err != nil {
+			return errors.Wrap(err, "could not parse minimum version")
+		}
 		latestVersion, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
 		if err != nil {
 			return errors.Wrap(err, "could not get latest version")
 		}
 		for _, version := range r.options.NewTemplatesWithVersion {
-			current, _ := semver.Parse(strings.Trim(version, "v"))
+			current, err := semver.Parse(strings.Trim(version, "v"))
+			if err != nil {
+				return errors.Wrap(err, "could not parse current version")
+			}
 			if !(current.GT(minVersion) && current.LTE(latestVersion)) {
 				return fmt.Errorf("version should be greater than %s and less than %s", minVersion, latestVersion)
 			}
