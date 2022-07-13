@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
@@ -41,7 +42,7 @@ func getConfigDetails() (string, error) {
 
 // GetConfigDir returns the nuclei configuration directory
 func GetConfigDir() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
