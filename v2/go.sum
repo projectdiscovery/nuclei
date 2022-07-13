@@ -178,8 +178,8 @@ github.com/go-playground/validator/v10 v10.11.0 h1:0W+xRM511GY47Yy3bZUbJVitCNg2B
 github.com/go-playground/validator/v10 v10.11.0/go.mod h1:i+3WkQ1FvaUjjxh1kSvIA4dMGDBiPU55YFDl0WbKdWU=
 github.com/go-redis/redis v6.15.5+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
 github.com/go-rod/rod v0.91.1/go.mod h1:/W4lcZiCALPD603MnJGIvhtywP3R6yRB9EDfFfsHiiI=
-github.com/go-rod/rod v0.107.3 h1:s+auNxQW4CTV2DhZ8S6ooQ7CXED4xLJBZPvZTDFA4CA=
-github.com/go-rod/rod v0.107.3/go.mod h1:4SqYRUrcc4dSr9iT36YRZ4hdUAPg3A0O8RhxAMh0eCQ=
+github.com/go-rod/rod v0.108.1 h1:2lKs+v/+B/2pbGKZgNIRbURhduTKNDZ3PXIvTRAV2Mg=
+github.com/go-rod/rod v0.108.1/go.mod h1:yNvL687cwcjgebRuArQN9AStFdm8iS/e/rzImrS9Pzg=
 github.com/goburrow/cache v0.1.4 h1:As4KzO3hgmzPlnaMniZU9+VmoNYseUhuELbxy9mRBfw=
 github.com/goburrow/cache v0.1.4/go.mod h1:cDFesZDnIlrHoNlMYqqMpCRawuXulgx+y7mXU8HZ+/c=
 github.com/gobwas/httphead v0.1.0 h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=
@@ -643,8 +643,9 @@ github.com/ysmood/gson v0.6.4/go.mod h1:3Kzs5zDl21g5F/BlLTNcuAGAYLKt2lV5G8D1zF3R
 github.com/ysmood/gson v0.7.1 h1:zKL2MTGtynxdBdlZjyGsvEOZ7dkxaY5TH6QhAbTgz0Q=
 github.com/ysmood/gson v0.7.1/go.mod h1:3Kzs5zDl21g5F/BlLTNcuAGAYLKt2lV5G8D1zF3RNmg=
 github.com/ysmood/leakless v0.6.12/go.mod h1:R8iAXPRaG97QJwqxs74RdwzcRHT1SWCGTNqY8q0JvMQ=
-github.com/ysmood/leakless v0.7.0 h1:XCGdaPExyoreoQd+H5qgxM3ReNbSPFsEXpSKwbXbwQw=
 github.com/ysmood/leakless v0.7.0/go.mod h1:R8iAXPRaG97QJwqxs74RdwzcRHT1SWCGTNqY8q0JvMQ=
+github.com/ysmood/leakless v0.8.0 h1:BzLrVoiwxikpgEQR0Lk8NyBN5Cit2b1z+u0mgL4ZJak=
+github.com/ysmood/leakless v0.8.0/go.mod h1:R8iAXPRaG97QJwqxs74RdwzcRHT1SWCGTNqY8q0JvMQ=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
