@@ -104,7 +104,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)"),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
-		flagSet.BoolVar(&options.StrictSyntax, "strict-syntax", true, "Force strict syntax check on passed templates to nuclei"),
+		flagSet.BoolVar(&options.NoStrictSyntax, "no-strict-syntax", false, "Disable strict syntax check on templates"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)

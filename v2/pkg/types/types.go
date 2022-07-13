@@ -161,8 +161,8 @@ type Options struct {
 	Version bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
-	// StrictSyntax forces the templates passed to nuclei to be exact.
-	StrictSyntax bool
+	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
+	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool

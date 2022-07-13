@@ -90,8 +90,7 @@ func New(options *types.Options) (*Runner, error) {
 		// Does not update the templates when validate flag is used
 		options.NoUpdateTemplates = true
 	}
-	// Set strictSyntax
-	parsers.StrictSyntax = options.StrictSyntax
+	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)

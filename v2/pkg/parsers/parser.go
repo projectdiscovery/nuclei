@@ -103,7 +103,7 @@ func validateTemplateFields(template *templates.Template) error {
 var (
 	parsedTemplatesCache *cache.Templates
 	ShouldValidate       bool
-	StrictSyntax         bool
+	NoStrictSyntax       bool
 	fieldErrorRegexp     = regexp.MustCompile(`not found in`)
 	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
 )
@@ -134,10 +134,10 @@ func ParseTemplate(templatePath string) (*templates.Template, error) {
 	}
 
 	template := &templates.Template{}
-	if StrictSyntax {
-		err = yaml.UnmarshalStrict(data, template)
-	}else{
+	if NoStrictSyntax {
 		err = yaml.Unmarshal(data, template)
+	} else {
+		err = yaml.UnmarshalStrict(data, template)
 	}
 	if err != nil {
 		errString := err.Error()
