@@ -87,6 +87,10 @@ func (e *Executer) Execute(input string) (bool, error) {
 			} else {
 				if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 					results = true
+				} else {
+					if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+						gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+					}
 				}
 			}
 		})
