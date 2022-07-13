@@ -46,7 +46,7 @@ func TestActionScript(t *testing.T) {
 		<script>window.test = 'some-data';</script>
 	</html>`
 
-	timeout := 15 * time.Second
+	timeout := 30 * time.Second
 
 	t.Run("run-and-results", func(t *testing.T) {
 		actions := []*Action{
