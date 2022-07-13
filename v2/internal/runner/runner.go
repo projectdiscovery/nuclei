@@ -312,7 +312,7 @@ func (r *Runner) RunEnumeration() error {
 		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
 	if len(r.options.NewTemplatesWithVersion) > 0 {
-		minVersion, err := semver.Parse("8.8.5")
+		minVersion, err := semver.Parse("8.8.4")
 		if err != nil {
 			return errors.Wrap(err, "could not parse minimum version")
 		}
