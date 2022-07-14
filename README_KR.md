@@ -3,8 +3,7 @@
   <a href="https://nuclei.projectdiscovery.io"><img src="static/nuclei-logo.png" width="200px" alt="Nuclei"></a>
 </h1>
 
-<h4 align="center">Fast and customisable vulnerability scanner based on simple YAML based DSL.</h4>
-
+<h4 align="center">DSL 기반의 간단한 YAML을 기초로한 빠른 맞춤형 취약점 스캐너</h4>
 
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/projectdiscovery/nuclei?filename=v2%2Fgo.mod">
@@ -18,14 +17,14 @@
 </p>
       
 <p align="center">
-  <a href="#how-it-works">How</a> •
-  <a href="#install-nuclei">Install</a> •
-  <a href="#for-security-engineers">For Security Engineers</a> •
-  <a href="#for-developers-and-organisations">For Developers</a> •
-  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
+  <a href="#작동-방식">작동 방식</a> •
+  <a href="#설치">설치</a> •
+  <a href="#보안-엔지니어를-위한">보안 엔지니어를 위한</a> •
+  <a href="#개발자를-위한">개발자를 위한</a> •
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">문서</a> •
   <a href="#credits">Credits</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
-  <a href="https://discord.gg/projectdiscovery">Join Discord</a>
+  <a href="https://discord.gg/projectdiscovery"> Discord 참가</a>
 </p>
 
 <p align="center">
@@ -36,53 +35,53 @@
 
 ---
 
-Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
+Nuclei는 템플릿을 기반으로 대상 간에 요청을 보내기 위해 사용되며 긍정 오류(false positives)가 0이고 다수의 호스트에서 빠른 스캔을 제공합니다. Nuclei는 TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless 등을 포함한 다양한 프로토콜의 스캔을 제공합니다. 강력하고 유연한 템플릿을 통해 Nuclei는 모든 종류의 보안 검사를 모델링 할 수 있습니다.
 
-We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
+**300명 이상의** 보안 연구원과 엔지니어가 제공한 다양한 유형의 취약점 템플릿을 보관하는 [전용 저장소](https://github.com/projectdiscovery/nuclei-templates)를 보유하고 있습니다.
 
 
 
-## How it works
-
+## 작동 방식
 
 <h3 align="center">
   <img src="static/nuclei-flow.jpg" alt="nuclei-flow" width="700px"></a>
 </h3>
 
 
-# Install Nuclei
+# 설치
 
-Nuclei requires **go1.17** to install successfully. Run the following command to install the latest version -
+Nuclei를 성공적으로 설치하기 위해서 **go1.17**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
-**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
+**자세한 설치 방법은 [여기에서 찾을 수 있습니다.](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
 <tr>
 <td>  
 
-### Nuclei Templates
+### Nuclei 템플릿
 
-Nuclei has built-in support for automatic template download/update as default since version [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
+Nuclei는 [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2)부터 자동 템플릿 다운로드/업데이트를 기본으로 지원합니다.
+[**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) 프로젝트는 지속적으로 업데이트되는 즉시 사용 가능한 템플릿 목록을 제공합니다.
 
-You may still use the `update-templates` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
+`update-templates` 플래그를 사용하여 언제든 템플릿을 업데이트할 수 있습니다. Nuclei의 [템플릿 가이드](https://nuclei.projectdiscovery.io/templating-guide/)에 따라 개별 워크플로 및 요구 사항에 대한 자체 검사를 작성할 수 있습니다.
 
-The YAML DSL reference syntax is available [here](SYNTAX-REFERENCE.md).
+YAML DSL의 참조 구문은 [여기](SYNTAX-REFERENCE.md)에서 확인할 수 있습니다.
 
 </td>
 </tr>
 </table>
 
-### Usage
+### 사용 방법
 
 ```sh
 nuclei -h
 ```
 
-This will display help for the tool. Here are all the switches it supports.
+도구에 대한 도움말이 표시됩니다. 다음은 지원하는 모든 스위치들입니다.
 
 
 ```console
@@ -94,48 +93,48 @@ Usage:
 
 Flags:
 TARGET:
-   -u, -target string[]  target URLs/hosts to scan
-   -l, -list string      path to file containing a list of target URLs/hosts to scan (one per line)
-   -resume string        Resume scan using resume.cfg (clustering will be disabled)
+   -u, -target string[]  스캔할 URLs/hosts 대상
+   -l, -list string      스캔할 URLs/hosts 대상 목록이 포함된 파일 경로(줄당 하나씩)
+   -resume string        resume.cfg를 사용한 스캔 재개(클러스터링이 비활성화됨)
 
 TEMPLATES:
-   -nt, -new-templates          run only new templates added in latest nuclei-templates release
-   -as, -automatic-scan         automatic web scan using wappalyzer technology detection to tags mapping
-   -t, -templates string[]      list of template or template directory to run (comma-separated, file)
-   -tu, -template-url string[]  list of template urls to run (comma-separated, file)
-   -w, -workflows string[]      list of workflow or workflow directory to run (comma-separated, file)
-   -wu, -workflow-url string[]  list of workflow urls to run (comma-separated, file)
-   -validate                    validate the passed templates to nuclei
-   -tl                          list all available templates
+   -nt, -new-templates          nuclei-templates에 가장 최근에 추가된 새 템플릿만 실행
+   -as, -automatic-scan         태그 매핑에 대한 wappalyzer 기술 탐지를 사용한 자동 웹 스캔
+   -t, -templates string[]      실행할 템플릿 또는 템플릿 디렉토리 목록(쉼표로 구분된 파일)
+   -tu, -template-url string[]  실행할 템플릿 URL 목록(쉼표로 구분된 파일)
+   -w, -workflows string[]      실행할 워크플로 또는 워크플로 디렉토리 목록(쉼표로 구분된 파일)
+   -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
+   -validate                    nuclei로 전달된 템플릿 검증
+   -tl                          사용 가능한 모든 템플릿 목록
 
 FILTERING:
-   -a, -author string[]              templates to run based on authors (comma-separated, file)
-   -tags string[]                    templates to run based on tags (comma-separated, file)
-   -etags, -exclude-tags string[]    templates to exclude based on tags (comma-separated, file)
-   -itags, -include-tags string[]    tags to be executed even if they are excluded either by default or configuration
-   -id, -template-id string[]        templates to run based on template ids (comma-separated, file)
-   -eid, -exclude-id string[]        templates to exclude based on template ids (comma-separated, file)
-   -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
-   -et, -exclude-templates string[]  template or template directory to exclude (comma-separated, file)
-   -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
-   -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]       templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -a, -author string[]              작성자를 기준으로 실행할 템플릿(쉼표로 구분된 파일)
+   -tags string[]                    태그를 기준으로 실행할 템플릿(쉼표로 구분된 파일)
+   -etags, -exclude-tags string[]    태그를 기준으로 제외할 템플릿(쉼표로 구분된 파일)
+   -itags, -include-tags string[]    태그가 기본 또는 구성에 의해 제외된 경우에도 실행됨
+   -id, -template-id string[]        템플릿 ID들을 기준으로 실행할 템플릿(쉼표로 구분된 파일)
+   -eid, -exclude-id string[]        템플릿 ID들을 기준으로 제외할 템플릿(쉼표로 구분된 파일)
+   -it, -include-templates string[]  템플릿이 기본 또는 구성에 의해 제외된 경우에도 실행됨
+   -et, -exclude-templates string[]  제외할 템플릿 또는 템플릿 디렉토리(파일로 구분됨, 파일)
+   -s, -severity value[]             심각도를 기준으로 실행할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
+   -es, -exclude-severity value[]    심각도를 기준으로 제외할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
+   -pt, -type value[]                프로토콜 유형을 기준으로 실행할 템플릿. 가능한 값: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]       프로토콜 유형에 따라 제외할 템플릿. 가능한 값: dns, file, http, headless, network, workflow, ssl, websocket, whois
 
 OUTPUT:
-   -o, -output string            output file to write found issues/vulnerabilities
-   -sresp, -store-resp           store all request/response passed through nuclei to output directory
-   -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
-   -silent                       display findings only
-   -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -json                         write output in JSONL(ines) format
-   -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
-   -nm, -no-meta                 disable printing result metadata in cli output
-   -nts, -no-timestamp           disable printing timestamp in cli output
-   -rdb, -report-db string       nuclei reporting database (always use this to persist report data)
-   -ms, -matcher-status          display match failure status
-   -me, -markdown-export string  directory to export results in markdown format
-   -se, -sarif-export string     file to export results in SARIF format
+   -o, -output string            발견된 문제/취약점를 쓰기 위한 출력 파일
+   -sresp, -store-resp           nuclei을 통해 전달된 모든 요청/응답을 출력 디렉토리에 저장
+   -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉토리에 저장(기본 "output")
+   -silent                       결과만 표시
+   -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
+   -json                         JSONL(ines) 형식으로 출력
+   -irr, -include-rr             JSONL 출력에 요청/응답 쌍 포함(결과만)
+   -nm, -no-meta                 cli 출력에서 결과 메타데이터 출력 비활성화
+   -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
+   -rdb, -report-db string       nuclei 보고 데이터베이스(보고서 데이터를 유지하려면 항상 이것을 사용)
+   -ms, -matcher-status          매치 실패 상태 표시
+   -me, -markdown-export string  마크다운 형식으로 결과를 내보낼 디렉토리
+   -se, -sarif-export string     결과를 SARIF 형식으로 내보내는 파일
 
 CONFIGURATIONS:
    -config string              path to the nuclei configuration file
