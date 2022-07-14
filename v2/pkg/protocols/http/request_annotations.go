@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/iputil"
@@ -21,6 +22,8 @@ var (
 	// request.host: takes the value from the host header
 	// target: overiddes with the specific value
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
+	// @timeout:duration overrides the input timout with a custom duration
+	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
 	// @once sets the request to be executed only once for a specific URL
 	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
 )
@@ -45,8 +48,8 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	return fm, hasFlowOveride
 }
 
-// parseHTTPAnnotations and override requests settings
-func parseHTTPAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
+// parseAnnotations and override requests settings
+func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
 	// parse request for known ovverride annotations
 	var modified bool
 	// @Host:target
@@ -90,6 +93,25 @@ func parseHTTPAnnotations(rawRequest string, request *http.Request) (*http.Reque
 		request = request.Clone(ctx)
 		modified = true
 	}
+
+	// @timeout:duration
+	if r.connConfiguration.NoTimeout {
+		modified = true
+
+		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
+			value := strings.TrimSpace(duration[1])
+			if parsed, err := time.ParseDuration(value); err == nil {
+				//nolint:govet // cancelled automatically by withTimeout
+				ctx, _ := context.WithTimeout(request.Context(), parsed)
+				request = request.Clone(ctx)
+			}
+		} else {
+			//nolint:govet // cancelled automatically by withTimeout
+			ctx, _ := context.WithTimeout(request.Context(), time.Duration(r.options.Options.Timeout)*time.Second)
+			request = request.Clone(ctx)
+		}
+	}
+
 	return request, modified
 }
 

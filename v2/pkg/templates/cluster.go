@@ -112,7 +112,7 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptio
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
-				Executer:      NewExecuter(cluster, &executerOpts),
+				Executer:      NewClusterExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP),
 			})
 			clusterCount += len(cluster)
@@ -123,12 +123,12 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptio
 	return finalTemplatesList, clusterCount
 }
 
-// Executer executes a group of requests for a protocol for a clustered
+// ClusterExecuter executes a group of requests for a protocol for a clustered
 // request. It is different from normal executers since the original
 // operators are all combined and post processed after making the request.
 //
 // TODO: We only cluster http requests as of now.
-type Executer struct {
+type ClusterExecuter struct {
 	requests  *http.Request
 	operators []*clusteredOperator
 	options   *protocols.ExecuterOptions
@@ -141,39 +141,45 @@ type clusteredOperator struct {
 	operator     *operators.Operators
 }
 
-var _ protocols.Executer = &Executer{}
+var _ protocols.Executer = &ClusterExecuter{}
 
-// NewExecuter creates a new request executer for list of requests
-func NewExecuter(requests []*Template, options *protocols.ExecuterOptions) *Executer {
-	executer := &Executer{
+// NewClusterExecuter creates a new request executer for list of requests
+func NewClusterExecuter(requests []*Template, options *protocols.ExecuterOptions) *ClusterExecuter {
+	executer := &ClusterExecuter{
 		options:  options,
 		requests: requests[0].RequestsHTTP[0],
 	}
 	for _, req := range requests {
-		executer.operators = append(executer.operators, &clusteredOperator{
-			templateID:   req.ID,
-			templateInfo: req.Info,
-			templatePath: req.Path,
-			operator:     req.RequestsHTTP[0].CompiledOperators,
-		})
+		if req.RequestsHTTP[0].CompiledOperators != nil {
+			operator := req.RequestsHTTP[0].CompiledOperators
+			operator.TemplateID = req.ID
+			operator.ExcludeMatchers = options.ExcludeMatchers
+
+			executer.operators = append(executer.operators, &clusteredOperator{
+				operator:     operator,
+				templateID:   req.ID,
+				templateInfo: req.Info,
+				templatePath: req.Path,
+			})
+		}
 	}
 	return executer
 }
 
 // Compile compiles the execution generators preparing any requests possible.
-func (e *Executer) Compile() error {
+func (e *ClusterExecuter) Compile() error {
 	return e.requests.Compile(e.options)
 }
 
 // Requests returns the total number of requests the rule will perform
-func (e *Executer) Requests() int {
+func (e *ClusterExecuter) Requests() int {
 	var count int
 	count += e.requests.Requests()
 	return count
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input string) (bool, error) {
+func (e *ClusterExecuter) Execute(input string) (bool, error) {
 	var results bool
 
 	previous := make(map[string]interface{})
@@ -207,7 +213,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (e *ClusterExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {

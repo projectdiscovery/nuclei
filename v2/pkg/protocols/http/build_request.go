@@ -290,7 +290,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	if reqWithAnnotations, hasHttpAnnotations := parseHTTPAnnotations(rawRequest, req); hasHttpAnnotations {
+	if reqWithAnnotations, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
 		req = reqWithAnnotations
 		request = request.WithContext(req.Context())
 	}
