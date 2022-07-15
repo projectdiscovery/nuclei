@@ -65,7 +65,7 @@ type Runner struct {
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       ratelimit.Limiter
-	hostErrors        *hosterrorscache.Cache
+	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
 }
