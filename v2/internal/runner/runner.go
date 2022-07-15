@@ -345,7 +345,8 @@ func (r *Runner) RunEnumeration() error {
 	}
 	var cache *hosterrorscache.Cache
 	if r.options.MaxHostError > 0 {
-		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount).SetVerbose(r.options.Verbose)
+		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache.SetVerbose(r.options.Verbose)
 	}
 	r.hostErrors = cache
 
@@ -581,7 +582,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return nil, err
-	}	
+	}
 	defer file.Close()
 
 	templatesList := []string{}
