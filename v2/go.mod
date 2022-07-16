@@ -62,7 +62,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.53
+require github.com/aws/aws-sdk-go v1.44.55
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -73,6 +73,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/iputil v0.0.0-20220620153941-036d511e4097
 	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
@@ -138,7 +139,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mholt/acmez v1.0.2 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.18 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
