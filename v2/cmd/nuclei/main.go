@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/profile"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -21,8 +22,9 @@ import (
 )
 
 var (
-	cfgFile string
-	options = &types.Options{}
+	cfgFile     string
+	profileMode string // optional profile option mode
+	options     = &types.Options{}
 )
 
 func main() {
@@ -31,6 +33,18 @@ func main() {
 	}
 
 	readConfig()
+
+	// Profiling related code
+	if profileMode != "" {
+		switch profileMode {
+		case "cpu":
+			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+		case "mem":
+			defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+		default:
+			gologger.Fatal().Msgf("Invalid profiling mode specified: %s", profileMode)
+		}
+	}
 
 	runner.ParseOptions(options)
 
@@ -208,6 +222,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
+		flagSet.StringVar(&profileMode, "profile", "", "optional nuclei profiling mode (cpu,mem)"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),

@@ -556,6 +556,28 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 
 That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
 
+```console
+$ nuclei -t nuclei-templates/ -u https://example.com -profile cpu
+$ nuclei -t nuclei-templates/ -u https://example.com -profile mem
+```
+
+To view profile data in pprof, first install pprof. Then run the below command -
+
+```console
+$ go tool pprof mem.pprof
+```
+
+To open a web UI on a port to visualize debug data, the below command can be used.
+
+```console
+$ go tool pprof -http=:8081 mem.pprof
+```
+
+## Profiling Instructions
+
+To enable dumping of either CPU or Memory profiling data, `-profile` flag can be used along with either `cpu`/`mem` option. This writes a pprof formatted file which can be used for investigate resource usage with `pprof` tool.
+
+
 ## Project Structure
 
 - [v2/pkg/reporting](./v2/pkg/reporting) - Reporting modules for nuclei.
