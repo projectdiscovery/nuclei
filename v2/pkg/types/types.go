@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -159,6 +161,8 @@ type Options struct {
 	Version bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
+	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
+	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool
@@ -192,6 +196,8 @@ type Options struct {
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
 	NewTemplates bool
+	// NewTemplatesWithVersion runs new templates added in specific version
+	NewTemplatesWithVersion goflags.CommaSeparatedStringSlice
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
 	// UpdateNuclei checks for an update for the nuclei engine
@@ -224,6 +230,10 @@ type Options struct {
 	SNI string
 	// Health Check
 	HealthCheck bool
+	// Time to wait between each input read operation before closing the stream
+	InputReadTimeout time.Duration
+	// Disable stdin for input processing
+	DisableStdin bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

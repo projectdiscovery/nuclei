@@ -12,8 +12,16 @@ var noMinor = regexp.MustCompile(`HTTP/([0-9]) `)
 
 // readResponseFromString reads a raw http response from a string.
 func readResponseFromString(data string) (*http.Response, error) {
-	var final string
+	// Check if "data" contains RFC compatible Request followed by a response
+	br := bufio.NewReader(strings.NewReader(data))
+	if req, err := http.ReadRequest(br); err == nil {
+		if resp, err := http.ReadResponse(br, req); err == nil {
+			return resp, nil
+		}
+	}
 
+	// otherwise tries to patch known cases such as http minor version
+	var final string
 	if strings.HasPrefix(data, "HTTP/") {
 		final = addMinorVersionToHTTP(data)
 	} else {
