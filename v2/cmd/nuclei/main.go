@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
-	"github.com/pkg/profile"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -22,9 +24,9 @@ import (
 )
 
 var (
-	cfgFile     string
-	profileMode string // optional profile option mode
-	options     = &types.Options{}
+	cfgFile    string
+	memProfile string // optional profile file path
+	options    = &types.Options{}
 )
 
 func main() {
@@ -35,15 +37,21 @@ func main() {
 	readConfig()
 
 	// Profiling related code
-	if profileMode != "" {
-		switch profileMode {
-		case "cpu":
-			defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-		case "mem":
-			defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-		default:
-			gologger.Fatal().Msgf("Invalid profiling mode specified: %s", profileMode)
+	if memProfile != "" {
+		f, err := os.Create(memProfile)
+		if err != nil {
+			log.Fatalf("profile: could not create memory profile %q: %v", memProfile, err)
 		}
+		old := runtime.MemProfileRate
+		runtime.MemProfileRate = 4096
+		log.Printf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+
+		defer func() {
+			pprof.Lookup("heap").WriteTo(f, 0)
+			f.Close()
+			runtime.MemProfileRate = old
+			log.Printf("profile: memory profiling disabled, %s", memProfile)
+		}()
 	}
 
 	runner.ParseOptions(options)
@@ -112,7 +120,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
-		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion,"new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
+		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
 		flagSet.BoolVarP(&options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
@@ -226,7 +234,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.StringVar(&profileMode, "profile", "", "optional nuclei profiling mode (cpu,mem)"),
+		flagSet.StringVar(&memProfile, "profile", "", "optional nuclei memory profile"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
