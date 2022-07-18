@@ -4,6 +4,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+var Options = &types.Options{}
+
 // BuildPayloadFromOptions returns a map with the payloads provided via CLI
 func BuildPayloadFromOptions(options *types.Options) map[string]interface{} {
 	m := make(map[string]interface{})

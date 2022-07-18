@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -22,7 +23,6 @@ import (
 
 var (
 	cfgFile string
-	options = &types.Options{}
 )
 
 func main() {
@@ -32,14 +32,14 @@ func main() {
 
 	readConfig()
 
-	runner.ParseOptions(options)
+	runner.ParseOptions(generators.Options)
 
-	if options.HangMonitor {
+	if generators.Options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
 		defer cancel()
 	}
 
-	nucleiRunner, err := runner.New(options)
+	nucleiRunner, err := runner.New(generators.Options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
@@ -55,7 +55,7 @@ func main() {
 		for range c {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
 			nucleiRunner.Close()
-			if options.ShouldSaveResume() {
+			if generators.Options.ShouldSaveResume() {
 				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 				err := nucleiRunner.SaveResumeConfig(resumeFileName)
 				if err != nil {
@@ -67,7 +67,7 @@ func main() {
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
-		if options.Validate {
+		if generators.Options.Validate {
 			gologger.Fatal().Msgf("Could not validate templates: %s\n", err)
 		} else {
 			gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
@@ -91,151 +91,151 @@ on extensive configurability, massive extensibility and ease of use.`)
 	*/
 
 	flagSet.CreateGroup("input", "Target",
-		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
-		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
-		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
+		flagSet.StringSliceVarP(&generators.Options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
+		flagSet.StringVarP(&generators.Options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringVar(&generators.Options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
-		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
-		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion,"new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
-		flagSet.BoolVarP(&options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)"),
-		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
-		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "Disable strict syntax check on templates"),
-		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
-		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
+		flagSet.BoolVarP(&generators.Options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
+		flagSet.CommaSeparatedStringSliceVarP(&generators.Options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
+		flagSet.BoolVarP(&generators.Options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)"),
+		flagSet.BoolVar(&generators.Options.Validate, "validate", false, "validate the passed templates to nuclei"),
+		flagSet.BoolVarP(&generators.Options.NoStrictSyntax, "no-strict-syntax", "nss", false, "Disable strict syntax check on templates"),
+		flagSet.BoolVar(&generators.Options.TemplateList, "tl", false, "list all available templates"),
+		flagSet.StringSliceVarConfigOnly(&generators.Options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
-		flagSet.FileNormalizedStringSliceVarP(&options.Authors, "author", "a", []string{}, "templates to run based on authors (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVar(&options.Tags, "tags", []string{}, "templates to run based on tags (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "templates to exclude based on tags (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.IncludeTags, "include-tags", "itags", []string{}, "tags to be executed even if they are excluded either by default or configuration"), // TODO show default deny list
-		flagSet.FileNormalizedStringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "templates to run based on template ids (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "templates to exclude based on template ids (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.IncludeTemplates, "include-templates", "it", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory to exclude (comma-separated, file)"),
-		flagSet.FileCommaSeparatedStringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", []string{}, "template matchers to exclude in result"),
-		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
-		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
-		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
-		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
+		flagSet.FileNormalizedStringSliceVarP(&generators.Options.Authors, "author", "a", []string{}, "templates to run based on authors (comma-separated, file)"),
+		flagSet.FileNormalizedStringSliceVar(&generators.Options.Tags, "tags", []string{}, "templates to run based on tags (comma-separated, file)"),
+		flagSet.FileNormalizedStringSliceVarP(&generators.Options.ExcludeTags, "exclude-tags", "etags", []string{}, "templates to exclude based on tags (comma-separated, file)"),
+		flagSet.FileNormalizedStringSliceVarP(&generators.Options.IncludeTags, "include-tags", "itags", []string{}, "tags to be executed even if they are excluded either by default or configuration"), // TODO show default deny list
+		flagSet.FileNormalizedStringSliceVarP(&generators.Options.IncludeIds, "template-id", "id", []string{}, "templates to run based on template ids (comma-separated, file)"),
+		flagSet.FileNormalizedStringSliceVarP(&generators.Options.ExcludeIds, "exclude-id", "eid", []string{}, "templates to exclude based on template ids (comma-separated, file)"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.IncludeTemplates, "include-templates", "it", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
+		flagSet.FileNormalizedOriginalStringSliceVarP(&generators.Options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory to exclude (comma-separated, file)"),
+		flagSet.FileCommaSeparatedStringSliceVarP(&generators.Options.ExcludeMatchers, "exclude-matchers", "em", []string{}, "template matchers to exclude in result"),
+		flagSet.VarP(&generators.Options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
+		flagSet.VarP(&generators.Options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
+		flagSet.VarP(&generators.Options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
+		flagSet.VarP(&generators.Options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 	)
 
 	flagSet.CreateGroup("output", "Output",
-		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
-		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
-		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
-		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
-		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
-		flagSet.BoolVar(&options.JSON, "json", false, "write output in JSONL(ines) format"),
-		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
-		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
-		flagSet.BoolVarP(&options.NoTimestamp, "no-timestamp", "nts", false, "disable printing timestamp in cli output"),
-		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "nuclei reporting database (always use this to persist report data)"),
-		flagSet.BoolVarP(&options.MatcherStatus, "matcher-status", "ms", false, "display match failure status"),
-		flagSet.StringVarP(&options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
-		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
+		flagSet.StringVarP(&generators.Options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
+		flagSet.BoolVarP(&generators.Options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
+		flagSet.StringVarP(&generators.Options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
+		flagSet.BoolVar(&generators.Options.Silent, "silent", false, "display findings only"),
+		flagSet.BoolVarP(&generators.Options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
+		flagSet.BoolVar(&generators.Options.JSON, "json", false, "write output in JSONL(ines) format"),
+		flagSet.BoolVarP(&generators.Options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
+		flagSet.BoolVarP(&generators.Options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
+		flagSet.BoolVarP(&generators.Options.NoTimestamp, "no-timestamp", "nts", false, "disable printing timestamp in cli output"),
+		flagSet.StringVarP(&generators.Options.ReportingDB, "report-db", "rdb", "", "nuclei reporting database (always use this to persist report data)"),
+		flagSet.BoolVarP(&generators.Options.MatcherStatus, "matcher-status", "ms", false, "display match failure status"),
+		flagSet.StringVarP(&generators.Options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
+		flagSet.StringVarP(&generators.Options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
-		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
-		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
-		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
-		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
-		flagSet.FileStringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom header/cookie to include in all http request in header:value format (cli, file)"),
-		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in key=value format"),
-		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
-		flagSet.BoolVarP(&options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
-		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
-		flagSet.BoolVarP(&options.EnvironmentVariables, "env-vars", "ev", false, "enable environment variables to be used in template"),
-		flagSet.StringVarP(&options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
-		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
-		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
-		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
-		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
-		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
+		flagSet.BoolVarP(&generators.Options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
+		flagSet.IntVarP(&generators.Options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
+		flagSet.BoolVarP(&generators.Options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
+		flagSet.StringVarP(&generators.Options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
+		flagSet.FileStringSliceVarP(&generators.Options.CustomHeaders, "header", "H", []string{}, "custom header/cookie to include in all http request in header:value format (cli, file)"),
+		flagSet.RuntimeMapVarP(&generators.Options.Vars, "var", "V", []string{}, "custom vars in key=value format"),
+		flagSet.StringVarP(&generators.Options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
+		flagSet.BoolVarP(&generators.Options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
+		flagSet.BoolVar(&generators.Options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+		flagSet.BoolVarP(&generators.Options.EnvironmentVariables, "env-vars", "ev", false, "enable environment variables to be used in template"),
+		flagSet.StringVarP(&generators.Options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.StringVarP(&generators.Options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.StringVarP(&generators.Options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
+		flagSet.BoolVarP(&generators.Options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
+		flagSet.BoolVar(&generators.Options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
+		flagSet.StringVar(&generators.Options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
-		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "", fmt.Sprintf("interactsh server url for self-hosted instance (default: %s)", client.DefaultOptions.ServerURL)),
-		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
-		flagSet.IntVar(&options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
-		flagSet.IntVar(&options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
-		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
-		flagSet.IntVar(&options.InteractionsCoolDownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
-		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
+		flagSet.StringVarP(&generators.Options.InteractshURL, "interactsh-server", "iserver", "", fmt.Sprintf("interactsh server url for self-hosted instance (default: %s)", client.DefaultOptions.ServerURL)),
+		flagSet.StringVarP(&generators.Options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
+		flagSet.IntVar(&generators.Options.InteractionsCacheSize, "interactions-cache-size", 5000, "number of requests to keep in the interactions cache"),
+		flagSet.IntVar(&generators.Options.InteractionsEviction, "interactions-eviction", 60, "number of seconds to wait before evicting requests from cache"),
+		flagSet.IntVar(&generators.Options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
+		flagSet.IntVar(&generators.Options.InteractionsCoolDownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
+		flagSet.BoolVarP(&generators.Options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
-		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
-		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
-		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
-		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
-		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),
-		flagSet.IntVarP(&options.HeadlessTemplateThreads, "headless-concurrency", "headc", 10, "maximum number of headless templates to be executed in parallel"),
+		flagSet.IntVarP(&generators.Options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
+		flagSet.IntVarP(&generators.Options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
+		flagSet.IntVarP(&generators.Options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
+		flagSet.IntVarP(&generators.Options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
+		flagSet.IntVarP(&generators.Options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),
+		flagSet.IntVarP(&generators.Options.HeadlessTemplateThreads, "headless-concurrency", "headc", 10, "maximum number of headless templates to be executed in parallel"),
 	)
 
 	flagSet.CreateGroup("optimization", "Optimizations",
-		flagSet.IntVar(&options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
-		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
-		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443"),
-		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
-		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
-		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
-		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
-		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
-		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
-		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "Disable Stdin processing"),
+		flagSet.IntVar(&generators.Options.Timeout, "timeout", 5, "time to wait in seconds before timeout"),
+		flagSet.IntVar(&generators.Options.Retries, "retries", 1, "number of times to retry a failed request"),
+		flagSet.BoolVarP(&generators.Options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443"),
+		flagSet.IntVarP(&generators.Options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.BoolVar(&generators.Options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
+		flagSet.StringVar(&generators.Options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
+		flagSet.BoolVarP(&generators.Options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
+		flagSet.BoolVar(&generators.Options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
+		flagSet.DurationVarP(&generators.Options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
+		flagSet.BoolVar(&generators.Options.DisableStdin, "no-stdin", false, "Disable Stdin processing"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
-		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support (root user on linux will disable sandbox)"),
-		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
-		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
-		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
+		flagSet.BoolVar(&generators.Options.Headless, "headless", false, "enable templates that require headless browser support (root user on linux will disable sandbox)"),
+		flagSet.IntVar(&generators.Options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
+		flagSet.BoolVarP(&generators.Options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
+		flagSet.BoolVarP(&generators.Options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
 	)
 
 	flagSet.CreateGroup("debug", "Debug",
-		flagSet.BoolVar(&options.Debug, "debug", false, "show all requests and responses"),
-		flagSet.BoolVarP(&options.DebugRequests, "debug-req", "dreq", false, "show all sent requests"),
-		flagSet.BoolVarP(&options.DebugResponse, "debug-resp", "dresp", false, "show all received responses"),
-		flagSet.NormalizedOriginalStringSliceVarP(&options.Proxy, "proxy", "p", []string{}, "list of http/socks5 proxy to use (comma separated or file input)"),
-		flagSet.BoolVarP(&options.ProxyInternal, "proxy-internal", "pi", false, "proxy all internal requests"),
-		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
-		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
-		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
-		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
-		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
-		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
-		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
-		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
+		flagSet.BoolVar(&generators.Options.Debug, "debug", false, "show all requests and responses"),
+		flagSet.BoolVarP(&generators.Options.DebugRequests, "debug-req", "dreq", false, "show all sent requests"),
+		flagSet.BoolVarP(&generators.Options.DebugResponse, "debug-resp", "dresp", false, "show all received responses"),
+		flagSet.NormalizedOriginalStringSliceVarP(&generators.Options.Proxy, "proxy", "p", []string{}, "list of http/socks5 proxy to use (comma separated or file input)"),
+		flagSet.BoolVarP(&generators.Options.ProxyInternal, "proxy-internal", "pi", false, "proxy all internal requests"),
+		flagSet.StringVarP(&generators.Options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
+		flagSet.StringVarP(&generators.Options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
+		flagSet.BoolVar(&generators.Options.Version, "version", false, "show nuclei version"),
+		flagSet.BoolVarP(&generators.Options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
+		flagSet.BoolVarP(&generators.Options.Verbose, "verbose", "v", false, "show verbose output"),
+		flagSet.BoolVar(&generators.Options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
+		flagSet.BoolVarP(&generators.Options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
+		flagSet.BoolVarP(&generators.Options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
+		flagSet.BoolVarP(&generators.Options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
-		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
-		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
+		flagSet.BoolVar(&generators.Options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
+		flagSet.BoolVarP(&generators.Options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
+		flagSet.StringVarP(&generators.Options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
+		flagSet.BoolVarP(&generators.Options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",
-		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
-		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "write statistics data to an output file in JSONL(ines) format"),
-		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
-		flagSet.BoolVarP(&options.Metrics, "metrics", "m", false, "expose nuclei metrics on a port"),
-		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
+		flagSet.BoolVar(&generators.Options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
+		flagSet.BoolVarP(&generators.Options.StatsJSON, "stats-json", "sj", false, "write statistics data to an output file in JSONL(ines) format"),
+		flagSet.IntVarP(&generators.Options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
+		flagSet.BoolVarP(&generators.Options.Metrics, "metrics", "m", false, "expose nuclei metrics on a port"),
+		flagSet.IntVarP(&generators.Options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
 	)
 
 	_ = flagSet.Parse()
 
-	if options.LeaveDefaultPorts {
+	if generators.Options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
 

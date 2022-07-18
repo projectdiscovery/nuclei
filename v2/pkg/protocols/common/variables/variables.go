@@ -27,14 +27,28 @@ func (variables *Variable) JSONSchemaType() *jsonschema.Type {
 }
 
 func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
+	envVars := generators.BuildPayloadFromOptions(generators.Options)
+	variables.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(len(envVars))
+
+	// run once to set keys
+	for key, value := range envVars {
+		variables.Set(key, value)
+	}
+
 	if err := unmarshal(&variables.InsertionOrderedStringMap); err != nil {
 		return err
 	}
+
+	// run again to reset values
+	for key, value := range envVars {
+		variables.Set(key, value)
+	}
+
 	evaluated := variables.Evaluate(map[string]interface{}{})
 	for k, v := range evaluated {
 		variables.Set(k, v)
 	}
+
 	return nil
 }
 
