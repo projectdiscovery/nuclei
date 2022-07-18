@@ -96,9 +96,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				if e.options.HostErrorsCache.CheckError(err) {
-					e.options.HostErrorsCache.MarkFailed(input)
-				}
+				e.options.HostErrorsCache.MarkFailed(input, err)
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}
@@ -139,9 +137,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				if e.options.HostErrorsCache.CheckError(err) {
-					e.options.HostErrorsCache.MarkFailed(input)
-				}
+				e.options.HostErrorsCache.MarkFailed(input, err)
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
 		}

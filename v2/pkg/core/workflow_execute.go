@@ -59,9 +59,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					if w.Options.HostErrorsCache.CheckError(err) {
-						w.Options.HostErrorsCache.MarkFailed(input)
-					}
+					w.Options.HostErrorsCache.MarkFailed(input, err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err

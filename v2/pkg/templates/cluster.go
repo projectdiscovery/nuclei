@@ -206,8 +206,8 @@ func (e *ClusterExecuter) Execute(input string) (bool, error) {
 			}
 		}
 	})
-	if err != nil && e.options.HostErrorsCache != nil && e.options.HostErrorsCache.CheckError(err) {
-		e.options.HostErrorsCache.MarkFailed(input)
+	if err != nil && e.options.HostErrorsCache != nil {
+		e.options.HostErrorsCache.MarkFailed(input, err)
 	}
 	return results, err
 }
@@ -228,8 +228,8 @@ func (e *ClusterExecuter) ExecuteWithResults(input string, callback protocols.Ou
 			}
 		}
 	})
-	if err != nil && e.options.HostErrorsCache != nil && e.options.HostErrorsCache.CheckError(err) {
-		e.options.HostErrorsCache.MarkFailed(input)
+	if err != nil && e.options.HostErrorsCache != nil {
+		e.options.HostErrorsCache.MarkFailed(input, err)
 	}
 	return err
 }
