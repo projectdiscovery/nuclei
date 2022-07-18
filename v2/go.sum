@@ -335,8 +335,8 @@ github.com/karlseguin/expect v1.0.2-0.20190806010014-778a5f0c6003/go.mod h1:zNBx
 github.com/karrick/godirwalk v1.16.1/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
-github.com/klauspost/compress v1.15.6 h1:6D9PcO8QWu0JyaQ2zUMmu16T1T+zjjEpP91guRsvDfY=
-github.com/klauspost/compress v1.15.6/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
+github.com/klauspost/compress v1.15.8 h1:JahtItbkWjf2jzm/T+qgMxkP9EMHsqEUA6vCMGmXvhA=
+github.com/klauspost/compress v1.15.8/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
 github.com/klauspost/cpuid v1.2.0 h1:NMpwD2G9JSFOE1/TJjGSo5zG7Yb2bTe7eq1jH+irmeE=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
 github.com/klauspost/cpuid/v2 v2.0.11 h1:i2lw1Pm7Yi/4O6XCSyJWqEHI2MDw2FzUK6o/D21xn2A=
@@ -474,8 +474,8 @@ github.com/projectdiscovery/hmap v0.0.2-0.20210616215655-7b78e7f33d1f/go.mod h1:
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa h1:9sZWFUAshIa/ea0RKjGRuuZiS5PzYXAFjTRUnSbezr0=
 github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa/go.mod h1:lV5f/PNPmCCjCN/dR317/chN9s7VG5h/xcbFfXOz8Fo=
 github.com/projectdiscovery/interactsh v0.0.4/go.mod h1:PtJrddeBW1/LeOVgTvvnjUl3Hu/17jTkoIi8rXeEODE=
-github.com/projectdiscovery/interactsh v1.0.5 h1:/hWP/0qGAzPa3quG8y87Ki4bFZkzXu1OXmyxEWrgnvk=
-github.com/projectdiscovery/interactsh v1.0.5/go.mod h1:qEbFdjL3QWbLa5cvoHs9VSYBYCA7uDyViGkM+QqJCQk=
+github.com/projectdiscovery/interactsh v1.0.6 h1:nuJmJ9zSUiG5tcgwgtkFdXpYghuB+i+OuvohXSCPhxo=
+github.com/projectdiscovery/interactsh v1.0.6/go.mod h1:xyFWrqgMRJMrd19tPLdjtIOsg/kUhIAUXp+Yg+yoAvg=
 github.com/projectdiscovery/ipranger v0.0.2/go.mod h1:kcAIk/lo5rW+IzUrFkeYyXnFJ+dKwYooEOHGVPP/RWE=
 github.com/projectdiscovery/iputil v0.0.0-20210414194613-4b4d2517acf0/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
 github.com/projectdiscovery/iputil v0.0.0-20210429152401-c18a5408ca46/go.mod h1:PQAqn5h5NXsQTF4ZA00ZTYLRzGCjOtcCq8llAqrsd1A=
@@ -581,9 +581,9 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
 github.com/stretchr/testify v1.7.3/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
-github.com/stretchr/testify v1.7.4/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
-github.com/stretchr/testify v1.7.5 h1:s5PTfem8p8EbKQOctVV53k6jCJt3UX4IEJzwh+C324Q=
 github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
+github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
+github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tj/assert v0.0.0-20171129193455-018094318fb0/go.mod h1:mZ9/Rh9oLWpLLDRpvE+3b7gP/C2YyLFYxNmcLnPTMe0=
