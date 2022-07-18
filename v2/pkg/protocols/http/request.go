@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -405,6 +406,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		formedURL = generatedRequest.rawRequest.FullURL
+		// use request url as matched url if empty
+		if formedURL == "" {
+			formedURL = reqURL
+		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 			hostname = parsed.Host
 		}
@@ -458,7 +463,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 	}
-
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
@@ -572,9 +576,15 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
+		var ipAddr string
+		// Check if the hostname is a valid IP address
+		if netIP := net.ParseIP(hostname); netIP != nil {
+			ipAddr = netIP.String()
+		} else {
+			ipAddr = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
 		outputEvent["curl-command"] = curlCommand
-		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
-
+		outputEvent["ip"] = ipAddr
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
