@@ -34,8 +34,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
@@ -510,6 +508,9 @@ func init() {
 					if nil != err {
 						return nil, err
 					}
+					if 0 > n2 {
+						n2 = len([]byte(argStr)) + n2
+					}
 					return argStr[n1:n2], nil
 				}
 				return nil, nil
@@ -546,7 +547,7 @@ func init() {
 			temp := bytes.Repeat([]byte{byte(n)}, n)
 			Content = append(Content, temp...)
 
-			iv := uuid.NewV4().Bytes()
+			iv := []byte{5, 191, 171, 231, 240, 243, 72, 96, 148, 5, 128, 157, 95, 154, 84, 102}
 			blockMode := cipher.NewCBCEncrypter(block, iv)
 			cipherText := make([]byte, len(Content))
 			blockMode.CryptBlocks(cipherText, Content)
