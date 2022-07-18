@@ -96,6 +96,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
 模板：
    -t, -templates string[]              指定需要扫描的模板或者模板的路径
    -nt, -new-templates                  只扫描最新版本中添加的模板
+   -ntv， -new-templates-version        运行在特定版本中添加的新模板
    -w, -workflows string[]              指定扫描中的工作流或者工作流目录
    -validate                            验证通过的模板
    -tl                                  列出所有可用的模板
