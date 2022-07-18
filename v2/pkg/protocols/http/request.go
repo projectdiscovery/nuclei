@@ -299,8 +299,8 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 				return true, nil
 			}
 			if err != nil {
-				if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.CheckError(err) {
-					request.options.HostErrorsCache.MarkFailed(reqURL)
+				if request.options.HostErrorsCache != nil {
+					request.options.HostErrorsCache.MarkFailed(reqURL, err)
 				}
 				requestErr = err
 			}
