@@ -19,6 +19,7 @@ type requestGenerator struct {
 	options          *protocols.ExecuterOptions
 	payloadIterator  *generators.Iterator
 	interactshURLs   []string
+	onceFlow         map[string]struct{}
 }
 
 // LeaveDefaultPorts skips normalization of default standard ports
@@ -26,7 +27,11 @@ var LeaveDefaultPorts = false
 
 // newGenerator creates a new request generator instance
 func (request *Request) newGenerator() *requestGenerator {
-	generator := &requestGenerator{request: request, options: request.options}
+	generator := &requestGenerator{
+		request:  request,
+		options:  request.options,
+		onceFlow: make(map[string]struct{}),
+	}
 
 	if len(request.Payloads) > 0 {
 		generator.payloadIterator = request.generator.NewIterator()
@@ -53,29 +58,68 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 	}
 
 	hasPayloadIterator := r.payloadIterator != nil
-	hasInitializedPayloads := r.currentPayloads != nil
 
-	if r.currentIndex == 0 && hasPayloadIterator && !hasInitializedPayloads {
+	if hasPayloadIterator && r.currentPayloads == nil {
 		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
 	}
-	if r.currentIndex < len(sequence) {
-		currentRequest := sequence[r.currentIndex]
-		r.currentIndex++
-		return currentRequest, r.currentPayloads, true
+
+	var request string
+	var shouldContinue bool
+	if nextRequest, nextIndex, found := r.findNextIteration(sequence, r.currentIndex); found {
+		r.currentIndex = nextIndex + 1
+		request = nextRequest
+		shouldContinue = true
+	} else if nextRequest, nextIndex, found := r.findNextIteration(sequence, 0); found && hasPayloadIterator {
+		r.currentIndex = nextIndex + 1
+		request = nextRequest
+		shouldContinue = true
 	}
-	if r.currentIndex == len(sequence) {
-		if r.okCurrentPayload {
-			r.currentIndex = 0
-			currentRequest := sequence[r.currentIndex]
-			if hasPayloadIterator {
-				r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
-				if r.okCurrentPayload {
-					r.currentIndex++
-					return currentRequest, r.currentPayloads, true
-				}
-			}
+
+	if shouldContinue {
+		if r.hasMarker(request, Once) {
+			r.applyMark(request, Once)
+		}
+		if hasPayloadIterator {
+			return request, r.currentPayloads, r.okCurrentPayload
+		}
+		return request, r.currentPayloads, true
+	} else {
+		return "", nil, false
+	}
+}
+
+func (r *requestGenerator) findNextIteration(sequence []string, index int) (string, int, bool) {
+	for i, request := range sequence[index:] {
+		if !r.wasMarked(request, Once) {
+			return request, index + i, true
 		}
 	}
 
-	return "", nil, false
+	if r.payloadIterator != nil {
+		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
+	}
+
+	return "", 0, false
+}
+
+func (r *requestGenerator) applyMark(request string, mark flowMark) {
+	switch mark {
+	case Once:
+		r.onceFlow[request] = struct{}{}
+	}
+
+}
+
+func (r *requestGenerator) wasMarked(request string, mark flowMark) bool {
+	switch mark {
+	case Once:
+		_, ok := r.onceFlow[request]
+		return ok
+	}
+	return false
+}
+
+func (r *requestGenerator) hasMarker(request string, mark flowMark) bool {
+	fo, hasOverrides := parseFlowAnnotations(request)
+	return hasOverrides && fo == mark
 }

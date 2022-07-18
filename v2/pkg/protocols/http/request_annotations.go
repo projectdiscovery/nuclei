@@ -24,7 +24,29 @@ var (
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
 	// @timeout:duration overrides the input timout with a custom duration
 	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
+	// @once sets the request to be executed only once for a specific URL
+	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
 )
+
+type flowMark int
+
+const (
+	Once flowMark = iota
+)
+
+// parseFlowAnnotations and override requests flow
+func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
+	var fm flowMark
+	// parse request for known ovverride annotations
+	var hasFlowOveride bool
+	// @once
+	if reOnceAnnotation.MatchString(rawRequest) {
+		fm = Once
+		hasFlowOveride = true
+	}
+
+	return fm, hasFlowOveride
+}
 
 // parseAnnotations and override requests settings
 func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
