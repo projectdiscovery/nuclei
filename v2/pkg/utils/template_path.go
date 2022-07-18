@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 )
 
@@ -35,7 +35,7 @@ func TemplatePathURL(fullPath string) (string, string) {
 
 // GetDefaultTemplatePath on default settings
 func GetDefaultTemplatePath() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}

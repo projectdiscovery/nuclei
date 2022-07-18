@@ -3,11 +3,11 @@ package runner
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -29,7 +29,7 @@ func DoHealthCheck(options *types.Options) string {
 	var testResult string
 
 	nucleiIgnorePath := filepath.Join(cfgFileFolder, ".nuclei-ignore")
-	homedir, _ := os.UserHomeDir()
+	homedir, _ := homedir.Dir()
 	nucleiTemplatePath := filepath.Join(homedir, "nuclei-templates/.checksum")
 	for _, filename := range []string{cfgFilePath, nucleiIgnorePath, nucleiTemplatePath} {
 		ok, err := fileutil.IsReadable(filename)

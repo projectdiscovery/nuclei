@@ -73,10 +73,10 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 			TemplatesDirectory: defaultTemplatesDirectory,
 			NucleiVersion:      config.Version,
 		}
+		r.templatesConfig = currentConfig
 		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
-		r.templatesConfig = currentConfig
 	}
 	if r.options.TemplatesDirectory == "" {
 		if r.templatesConfig.TemplatesDirectory != "" {
