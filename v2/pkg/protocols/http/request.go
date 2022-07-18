@@ -408,12 +408,12 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 			hostname = parsed.Host
 		}
-		options := generatedRequest.original.rawhttpClient.Options
+		options := *generatedRequest.original.rawhttpClient.Options
 		options.FollowRedirects = request.Redirects
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), options)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
