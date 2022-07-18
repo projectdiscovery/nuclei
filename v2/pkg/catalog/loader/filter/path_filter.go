@@ -43,3 +43,9 @@ func (p *PathFilter) Match(templates []string) map[string]struct{} {
 	}
 	return templatesMap
 }
+
+// MatchIncluded returns true if the template was included explicitly
+func (p *PathFilter) MatchIncluded(template string) bool {
+	_, found := p.alwaysIncludedTemplatesMap[template]
+	return found
+}

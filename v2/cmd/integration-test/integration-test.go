@@ -32,6 +32,7 @@ var (
 		"templatesPath": templatesPathTestCases,
 		"templatesDir":  templatesDirTestCases,
 		"file":          fileTestcases,
+		"offlineHttp":   offlineHttpTestcases,
 	}
 )
 
