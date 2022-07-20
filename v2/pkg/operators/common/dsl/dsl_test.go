@@ -260,6 +260,7 @@ func TestDslExpressions(t *testing.T) {
 		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
 		`hmac('sha1', 'test', 'scrt')`:                     "8856b111056d946d5c6c92a21b43c233596623c6",
 		`hmac('sha256', 'test', 'scrt')`:                   "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
+		`ip_format('127.0.0.1', 5)`:                        "2130706433",
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {

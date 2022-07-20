@@ -1,8 +1,6 @@
 package output
 
-import (
-	jsoniter "github.com/json-iterator/go"
-)
+import "encoding/json"
 
 // formatJSON formats the output for json based formatting
 func (w *StandardWriter) formatJSON(output *ResultEvent) ([]byte, error) {
@@ -10,5 +8,5 @@ func (w *StandardWriter) formatJSON(output *ResultEvent) ([]byte, error) {
 		output.Request = ""
 		output.Response = ""
 	}
-	return jsoniter.Marshal(output)
+	return json.Marshal(output)
 }

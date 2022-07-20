@@ -312,7 +312,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{"dns/cname-service-detection.yaml"}
+	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service-detection.yaml"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
