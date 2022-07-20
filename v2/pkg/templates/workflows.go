@@ -66,7 +66,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	var workflowTemplates []*Template
 
 	for _, path := range paths {
-		template, err := Parse(path, preprocessor, options.Copy())
+		template, err := Parse(path, nil, preprocessor, options.Copy())
 		if err != nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue

@@ -89,7 +89,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	defer interactClient.Close()
 
 	home, _ := os.UserHomeDir()
-	catalog := catalog.New(path.Join(home, "nuclei-templates"))
+	catalog := catalog.NewDisk(path.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,

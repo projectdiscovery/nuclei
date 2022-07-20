@@ -15,7 +15,7 @@ import (
 // It checks if the filename is an absolute path, looks in the current directory
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
-func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
+func (c *DiskCatalog) ResolvePath(templateName, second string) (string, error) {
 	if filepath.IsAbs(templateName) {
 		return templateName, nil
 	}
@@ -48,7 +48,7 @@ func (c *Catalog) ResolvePath(templateName, second string) (string, error) {
 var errNoValidCombination = errors.New("no valid combination found")
 
 // tryResolve attempts to load locate the target by iterating across all the folders tree
-func (c *Catalog) tryResolve(fullPath string) (string, error) {
+func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 	dir, filename := filepath.Split(fullPath)
 	pathInfo, err := folderutil.NewPathInfo(dir)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 func TestBatteringRamGenerator(t *testing.T) {
 	usernames := []string{"admin", "password"}
 
-	catalogInstance := catalog.New("")
+	catalogInstance := catalog.NewDisk("")
 	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRamAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
@@ -31,7 +31,7 @@ func TestPitchforkGenerator(t *testing.T) {
 	usernames := []string{"admin", "token"}
 	passwords := []string{"password1", "password2", "password3"}
 
-	catalogInstance := catalog.New("")
+	catalogInstance := catalog.NewDisk("")
 	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchForkAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
@@ -53,7 +53,7 @@ func TestClusterbombGenerator(t *testing.T) {
 	usernames := []string{"admin"}
 	passwords := []string{"admin", "password", "token"}
 
-	catalogInstance := catalog.New("")
+	catalogInstance := catalog.NewDisk("")
 	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBombAttack, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 

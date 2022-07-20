@@ -58,7 +58,7 @@ type Runner struct {
 	templatesConfig   *config.Config
 	options           *types.Options
 	projectFile       *projectfile.ProjectFile
-	catalog           *catalog.Catalog
+	catalog           catalog.Catalog
 	progress          progress.Progress
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
@@ -110,7 +110,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.browser = browser
 	}
 
-	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
+	runner.catalog = catalog.NewDisk(runner.options.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {

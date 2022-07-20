@@ -15,7 +15,7 @@ type PayloadGenerator struct {
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, attackType AttackType, templatePath string, catalog *catalog.Catalog) (*PayloadGenerator, error) {
+func New(payloads map[string]interface{}, attackType AttackType, templatePath string, catalog catalog.Catalog) (*PayloadGenerator, error) {
 	if attackType.String() == "" {
 		attackType = BatteringRamAttack
 	}

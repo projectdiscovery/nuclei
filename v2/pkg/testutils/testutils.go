@@ -85,7 +85,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalog:      catalog.New(options.TemplatesDirectory),
+		Catalog:      catalog.NewDisk(options.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(options.RateLimit),
 	}
 	return executerOpts

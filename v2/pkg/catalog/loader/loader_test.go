@@ -4,12 +4,16 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadTemplates(t *testing.T) {
+	catalog := catalog.NewDisk("")
+
 	store, err := New(&Config{
 		Templates: []string{"cves/CVE-2021-21315.yaml"},
+		Catalog:   catalog,
 	})
 	require.Nil(t, err, "could not load templates")
 	require.Equal(t, []string{"cves/CVE-2021-21315.yaml"}, store.finalTemplates, "could not get correct templates")
@@ -18,6 +22,7 @@ func TestLoadTemplates(t *testing.T) {
 	t.Run("blank", func(t *testing.T) {
 		store, err := New(&Config{
 			TemplatesDirectory: templatesDirectory,
+			Catalog:            catalog,
 		})
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
@@ -26,6 +31,7 @@ func TestLoadTemplates(t *testing.T) {
 		store, err := New(&Config{
 			Tags:               []string{"cves"},
 			TemplatesDirectory: templatesDirectory,
+			Catalog:            catalog,
 		})
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
@@ -34,6 +40,7 @@ func TestLoadTemplates(t *testing.T) {
 		store, err := New(&Config{
 			Tags:               []string{"cves"},
 			TemplatesDirectory: templatesDirectory,
+			Catalog:            catalog,
 		})
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
@@ -41,6 +48,8 @@ func TestLoadTemplates(t *testing.T) {
 }
 
 func TestRemoteTemplates(t *testing.T) {
+	catalog := catalog.NewDisk("")
+
 	var nilStringSlice []string
 	type args struct {
 		config *Config
@@ -56,7 +65,8 @@ func TestRemoteTemplates(t *testing.T) {
 			args: args{
 				config: &Config{
 					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/technologies/tech-detect.yaml"},
-					RemoteTemplateDomainList: []string{"localhost","raw.githubusercontent.com"},
+					RemoteTemplateDomainList: []string{"localhost", "raw.githubusercontent.com"},
+					Catalog:                  catalog,
 				},
 			},
 			want: &Store{
@@ -70,6 +80,7 @@ func TestRemoteTemplates(t *testing.T) {
 				config: &Config{
 					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/technologies/tech-detect.yaml"},
 					RemoteTemplateDomainList: []string{"localhost"},
+					Catalog:                  catalog,
 				},
 			},
 			want: &Store{
