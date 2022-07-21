@@ -21,8 +21,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -122,6 +124,11 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	payloadValues["Hostname"] = address
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
+
+	hostnameVariables := dns.GenerateVariables(hostname)
+	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	variablesMap := request.options.Variables.Evaluate(values)
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
 	if dataErr != nil {
@@ -238,6 +245,10 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
+	for k, v := range payloadValues {
+		data[k] = v
+	}
+
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input)
