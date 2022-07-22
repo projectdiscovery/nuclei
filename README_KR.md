@@ -56,7 +56,7 @@ Nuclei를 성공적으로 설치하기 위해서 **go1.17**가 필요합니다. 
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
-**자세한 설치 방법은 [여기에서 찾을 수 있습니다.](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
+**자세한 설치 방법은 [여기](https://nuclei.projectdiscovery.io/nuclei/get-started/)에서 찾을 수 있습니다.**
 
 <table>
 <tr>
@@ -100,9 +100,9 @@ TARGET:
 TEMPLATES:
    -nt, -new-templates          nuclei-templates에 가장 최근에 추가된 새 템플릿만 실행
    -as, -automatic-scan         태그 매핑에 대한 wappalyzer 기술 탐지를 사용한 자동 웹 스캔
-   -t, -templates string[]      실행할 템플릿 또는 템플릿 디렉토리 목록(쉼표로 구분된 파일)
+   -t, -templates string[]      실행할 템플릿 또는 템플릿 디렉터리 목록(쉼표로 구분된 파일)
    -tu, -template-url string[]  실행할 템플릿 URL 목록(쉼표로 구분된 파일)
-   -w, -workflows string[]      실행할 워크플로 또는 워크플로 디렉토리 목록(쉼표로 구분된 파일)
+   -w, -workflows string[]      실행할 워크플로 또는 워크플로 디렉터리 목록(쉼표로 구분된 파일)
    -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
    -validate                    nuclei로 전달된 템플릿 검증
    -tl                          사용 가능한 모든 템플릿 목록
@@ -115,7 +115,7 @@ FILTERING:
    -id, -template-id string[]        템플릿 ID들을 기준으로 실행할 템플릿(쉼표로 구분된 파일)
    -eid, -exclude-id string[]        템플릿 ID들을 기준으로 제외할 템플릿(쉼표로 구분된 파일)
    -it, -include-templates string[]  템플릿이 기본 또는 구성에 의해 제외된 경우에도 실행됨
-   -et, -exclude-templates string[]  제외할 템플릿 또는 템플릿 디렉토리(파일로 구분됨, 파일)
+   -et, -exclude-templates string[]  제외할 템플릿 또는 템플릿 디렉터리(파일로 구분됨, 파일)
    -s, -severity value[]             심각도를 기준으로 실행할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]    심각도를 기준으로 제외할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
    -pt, -type value[]                프로토콜 유형을 기준으로 실행할 템플릿. 가능한 값: dns, file, http, headless, network, workflow, ssl, websocket, whois
@@ -123,8 +123,8 @@ FILTERING:
 
 OUTPUT:
    -o, -output string            발견된 문제/취약점를 쓰기 위한 출력 파일
-   -sresp, -store-resp           nuclei을 통해 전달된 모든 요청/응답을 출력 디렉토리에 저장
-   -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉토리에 저장(기본 "output")
+   -sresp, -store-resp           nuclei을 통해 전달된 모든 요청/응답을 출력 디렉터리에 저장
+   -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉터리에 저장(기본 "output")
    -silent                       결과만 표시
    -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
    -json                         JSONL(ines) 형식으로 출력
@@ -133,105 +133,105 @@ OUTPUT:
    -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
    -rdb, -report-db string       nuclei 보고 데이터베이스(보고서 데이터를 유지하려면 항상 이것을 사용)
    -ms, -matcher-status          매치 실패 상태 표시
-   -me, -markdown-export string  마크다운 형식으로 결과를 내보낼 디렉토리
+   -me, -markdown-export string  마크다운 형식으로 결과를 내보낼 디렉터리
    -se, -sarif-export string     결과를 SARIF 형식으로 내보내는 파일
 
 CONFIGURATIONS:
-   -config string              path to the nuclei configuration file
-   -fr, -follow-redirects      enable following redirects for http templates
-   -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
-   -dr, -disable-redirects     disable redirects for http templates
-   -rc, -report-config string  nuclei reporting module configuration file
-   -H, -header string[]        custom header/cookie to include in all http request in header:value format (cli, file)
-   -V, -var value              custom vars in key=value format
-   -r, -resolvers string       file containing resolver list for nuclei
-   -sr, -system-resolvers      use system DNS resolving as error fallback
-   -passive                    enable passive HTTP response processing mode
-   -ev, -env-vars              enable environment variables to be used in template
-   -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
-   -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
-   -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
-   -sml, -show-match-line      show match lines for file templates, works with extractors only
-   -ztls                       use ztls library with autofallback to standard one for tls13
-   -sni string                 tls sni hostname to use (default: input domain name)
+   -config string              nuclei 환경 설정 파일 경로
+   -fr, -follow-redirects      http 템플릿에 following redirects 활성화
+   -mr, -max-redirects int     http 템플릿에 따라야 할 최대 리디렉션 수(기본값 10)
+   -dr, -disable-redirects     http 템플릿에 대한 리디렉션 비활성화
+   -rc, -report-config string  nuclei 보고 모듈 환경 설정 파일
+   -H, -header string[]        헤더:값 형식의 모든 http 요청에 포함할 사용자 정의 헤더/쿠키(cli, file)
+   -V, -var value              키=값 형식의 사용자 정의 변수
+   -r, -resolvers string       nuclei에 대한 리졸버 목록이 포함된 파일
+   -sr, -system-resolvers      에러 fallback으로 시스템 DNS 리졸빙 사용
+   -passive                    수동 HTTP 응답 처리 모드 활성화
+   -ev, -env-vars              템플릿에서 환경 변수를 사용할 수 있도록 설정
+   -cc, -client-cert string    스캔된 호스트에 인증하는 데 사용되는 클라이언트 인증서 파일(PEM-encoded)
+   -ck, -client-key string     스캔된 호스트에 인증하는 데 사용되는 클라이언트 key 파일(PEM-encoded)
+   -ca, -client-ca string      스캔된 호스트에 인증하는 데 사용되는 클라이언트 인증 기관 파일(PEM-encoded)
+   -sml, -show-match-line      파일 템플릿에 대해 일치하는 줄 표시, extractors에서만 작동
+   -ztls                       tls13의 표준으로 autofallback과 함께 ztls 라이브러리 사용
+   -sni string                 사용할 tls sni 호스트 이름(기본: 입력한 도메인 이름)
 
 INTERACTSH:
-   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
-   -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
-   -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
-   -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
-   -interactions-poll-duration int      number of seconds to wait before each interaction poll request (default 5)
-   -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
-   -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
+   -iserver, -interactsh-server string  자체 호스팅된 인스턴스에 대한 interactsh 서버 URL (기본: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
+   -itoken, -interactsh-token string    자체 호스팅된 interactsh 서버에 대한 인증 토큰
+   -interactions-cache-size int         상호 작용 캐시에 유지할 요청 수 (기본 5000)
+   -interactions-eviction int           캐시에서 요청을 제거하기 전에 대기할 시간(초) (기본 60)
+   -interactions-poll-duration int      각 상호 작용 폴링 요청 전에 대기할 시간(초) (기본 5)
+   -interactions-cooldown-period int    종료 전 상호작용 폴링을 위한 추가 시간 (기본 5)
+   -ni, -no-interactsh                  OAST 테스트를 위해 interactsh 서버 비활성화, OAST 기반 템플릿 제외
 
 RATE-LIMIT:
-   -rl, -rate-limit int            maximum number of requests to send per second (default 150)
-   -rlm, -rate-limit-minute int    maximum number of requests to send per minute
-   -bs, -bulk-size int             maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int            maximum number of templates to be executed in parallel (default 25)
-   -hbs, -headless-bulk-size int   maximum number of headless hosts to be analyzed in parallel per template (default 10)
-   -hc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
+   -rl, -rate-limit int            초당 보낼 최대 요청 수 (기본 150)
+   -rlm, -rate-limit-minute int    분당 보낼 최대 요청 수
+   -bs, -bulk-size int             템플릿당 병렬로 분석할 최대 호스트 수 (기본 25)
+   -c, -concurrency int            병렬로 실행할 최대 템플릿 수 (기본 25)
+   -hbs, -headless-bulk-size int   템플릿당 병렬로 분석할 최대 headless 호스트 수 (기본 10)
+   -hc, -headless-concurrency int  병렬로 실행할 최대 headless 템플릿 수 (기본 10)
 
 OPTIMIZATIONS:
-   -timeout int                time to wait in seconds before timeout (default 5)
-   -retries int                number of times to retry a failed request (default 1)
+   -timeout int                타임아웃 전 대기 시간(초) (기본 5)
+   -retries int                실패한 요청을 재시도하는 횟수 (기본 1)
    -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
-   -mhe, -max-host-error int   max errors for a host before skipping from scan (default 30)
-   -project                    use a project folder to avoid sending same request multiple times
-   -project-path string        set a specific project path
-   -spm, -stop-at-first-path   stop processing HTTP requests after the first match (may break template/workflow logic)
-   -stream                     stream mode - start elaborating without sorting the input
+   -mhe, -max-host-error int   스캔을 건너뛰기 전에 호스트에 대한 최대 오류 수 (기본 30)
+   -project                    프로젝트 폴더를 사용하여 동일한 요청을 여러 번 보내지 않음
+   -project-path string        특정 프로젝트 경로 설정
+   -spm, -stop-at-first-path   첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
+   -stream                     stream 모드 - 입력을 정렬하지 않고 elaborating 시작
 
 HEADLESS:
-   -headless            enable templates that require headless browser support (root user on linux will disable sandbox)
-   -page-timeout int    seconds to wait for each page in headless mode (default 20)
-   -sb, -show-browser   show the browser on the screen when running templates with headless mode
-   -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
+   -headless            헤드리스 브라우저 지원이 필요한 템플릿 활성화(root user on linux will disable sandbox)
+   -page-timeout int    헤드리스 모드에서 각 페이지를 기다리는 시간(초)(기본 20)
+   -sb, -show-browser   헤드리스 모드로 템플릿을 실행할 때 화면에 브라우저 표시
+   -sc, -system-chrome  설치된 nuclei 대신 로컬에 설치된 chrome 브라우저 사용
 
 DEBUG:
-   -debug                    show all requests and responses
-   -dreq, -debug-req         show all sent requests
-   -dresp, -debug-resp       show all received responses
-   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal      proxy all internal requests
-   -tlog, -trace-log string  file to write sent requests trace log
-   -elog, -error-log string  file to write sent requests error log
-   -version                  show nuclei version
-   -hm, -hang-monitor        enable nuclei hang monitoring
-   -v, -verbose              show verbose output
-   -vv                       display templates loaded for scan
-   -ep, -enable-pprof        enable pprof debugging server
-   -tv, -templates-version   shows the version of the installed nuclei-templates
+   -debug                    모든 요청 및 응답 표시
+   -dreq, -debug-req         보낸 모든 요청 표시
+   -dresp, -debug-resp       받은 모든 응답 표시
+   -p, -proxy string[]       사용할 http/socks5 프록시 목록(쉼표로 구분하거나 파일 입력)
+   -pi, -proxy-internal      모든 내부 요청을 프록시
+   -tlog, -trace-log string  보낸 요청 추적 로그를 기록할 파일
+   -elog, -error-log string  보낸 요청 오류 로그를 기록할 파일
+   -version                  nuclei 버전 출력
+   -hm, -hang-monitor        nuclei hang monitoring 활성화
+   -v, -verbose              상세 출력 표시
+   -vv                       스캔을 위해 로드된 디스플레이 템플릿 표시
+   -ep, -enable-pprof        pprof debugging server 활성화
+   -tv, -templates-version   설치된 nuclei-templates 버전 출력
 
 UPDATE:
-   -update                        update nuclei engine to the latest released version
-   -ut, -update-templates         update nuclei-templates to latest released version
-   -ud, -update-directory string  overwrite the default directory to install nuclei-templates
-   -duc, -disable-update-check    disable automatic nuclei/templates update check
+   -update                        최신 릴리스 버전으로 nuclei 엔진 업데이트
+   -ut, -update-templates         최신 릴리스 버전으로 nuclei-templates 엔진 업데이트
+   -ud, -update-directory string  nuclei-templates를 설치할 기본 디렉터리를 덮어씀
+   -duc, -disable-update-check    자동 nuclei/templates 업데이트 확인 비활성화
 
 STATISTICS:
-   -stats                    display statistics about the running scan
-   -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
-   -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
+   -stats                    실행 중인 스캔에 대한 통계 표시
+   -sj, -stats-json          JSONL(ines) 형식으로 출력 파일에 통계 데이터 쓰기
+   -si, -stats-interval int  통계 업데이트를 표시할 때까지 대기하는 시간(초) (기본 5)
    -m, -metrics              expose nuclei metrics on a port
-   -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+   -mp, -metrics-port int    port to expose nuclei metrics on (기본 9092)
 ```
 
-### Running Nuclei
+### Nuclei 실행
 
-Scanning target domain with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
+[community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei 템플릿으로 대상 도메인을 스캔합니다.
 
 ```sh
 nuclei -u https://example.com
 ```
 
-Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
+[community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei 템플릿으로 대상 URL들을 스캔합니다.
 
 ```sh
 nuclei -list urls.txt
 ```
 
-Example of `urls.txt`:
+`urls.txt`의 예시:
 
 ```yaml
 http://example.com
@@ -240,15 +240,16 @@ http://test.example.com
 http://uat.example.com
 ```
 
-**More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
+**nuclei를 실행하는 자세한 예는 [여기](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei)에서 찾을 수 있습니다.**
 
-# For Security Engineers
+# 보안 엔지니어를 위한
 
-Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organisation. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
+Nuclei는 보안 엔지니어가 조직에서 워크플로를 커스텀하는 데 도움이 되는 많은 기능을 제공합니다.
+다양한 스캔 기능(DNS, HTTP, TCP 등)을 통해 보안 엔지니어는 Nuclei를 사용하여 맞춤형 검사 세트를 쉽게 만들 수 있습니다.
 
-- Varieties of protocols supported: TCP, DNS, HTTP, File, etc
-- Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
-- Easy to integrate into CI/CD, designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
+- 다양한 프로토콜 지원: TCP, DNS, HTTP, File, etc
+- 워크플로 및 [동적 요청](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)을 통한 복잡한 취약점 탐색 달성
+- CI/CD에 쉽게 통합할 수 있으며, 회귀 주기에 쉽게 통합되어 취약점의 수정 및 재출현을 능동적으로 확인할 수 있도록 설계됨.
 
 <h1 align="left">
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
@@ -258,15 +259,16 @@ Nuclei offers great number of features that are helpful for security engineers t
 <tr>
 <td>  
 
-**For Bug Bounty hunters:**
+**Bug Bounty hunter들을 위해:**
 
-Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moreover, Nuclei can be easily integrated into any continuous scanning workflow.
+Nuclei를 사용하면 자체 검사 모음으로 테스트 접근 방식을 사용자 정의하고 버그 바운티 프로그램에서 쉽게 실행할 수 있습니다.
+또한 Nuclei는 모든 연속 스캔 워크플로에 쉽게 통합될 수 있습니다.
 
-- Designed to be easily integrated into other tool workflow.
-- Can process thousands of hosts in few minutes.
-- Easily automate your custom testing approach with our simple YAML DSL.
+- 다른 도구 워크플로에 쉽게 통합되도록 설계됨.
+- 몇 분 안에 수천 개의 호스트를 처리할 수 있음.
+- 간단한 YAML DSL로 사용자 지정 테스트 접근 방식을 쉽게 자동화할 수 있음.
 
-Please check our other open-source projects that might fit into your bug bounty workflow: [github.com/projectdiscovery](http://github.com/projectdiscovery), we also host daily [refresh of DNS data at Chaos](http://chaos.projectdiscovery.io).
+버그 바운티 워크플로에 맞는 다른 오픈 소스 프로젝트를 확인할 수 있습니다.: [github.com/projectdiscovery](http://github.com/projectdiscovery), 또한, 우리는 매일 [Chaos에서 DNS 데이터를 갱신해 호스팅합니다.](http://chaos.projectdiscovery.io).
 
 </td>
 </tr>
@@ -276,29 +278,34 @@ Please check our other open-source projects that might fit into your bug bounty 
 <tr>
 <td>
   
-**For Penetration Testers:**
+**침투 테스터들을 위해:**
 
-Nuclei immensely improve how you approach security assessment by augmenting the manual, repetitive processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
+Nuclei는 수동적이고 반복적인 프로세스를 보강하여 보안 평가에 접근하는 방식을 크게 개선합니다.
+컨설턴트들은 이미 Nuclei를 사용해 수동 평가 단계를 전환하고 있으며 이를 통해 수천 개의 호스트에서 자동화된 방식으로 맞춤형 평가 접근 방식을 실행할 수 있습니다.
 
-Pen-testers get the full power of our public templates and customization capabilities to speed up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
+침투 테스터는 평가 프로세스, 특히 수정 사항을 쉽게 확인할 수 있는 회귀 주기를 통해 공개 템플릿 및 사용자 지정 기능을 최대한 활용할 수 있습니다.
 
-- Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
-- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
-- Easy to re-test vulnerability-fix by just re-running the template.
+- 규정 준수, 표준 제품군(예: OWASP Top 10) 체크리스트 쉽게 생성.
+- Nuclei의 [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) 및 [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows) 같은 기능으로 복잡한 수동 단계와 반복 평가를 쉽게 자동화할 수 있음.
+- 템플릿 재실행으로 취약점 수정 재테스트 용이.
 
 </td>
 </tr>
 </table>
 
 
-# For Developers and Organisations
+# 개발자를 위한
 
-Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with the latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and eliminate vulnerabilities from occurring in the future.
+Nuclei는 단순성을 염두에 두고 구축되었으며 수백 명의 보안 연구원들이 지원하는 커뮤니티 템플릿을 사용하여 호스트에서 지속적인 Nuclei 스캔을 사용하여 최신 보안 위협에 대한 업데이트를 유지할 수 있습니다.
 
-- **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
-- **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
+수정 사항을 검증하고 향후 발생하는 취약점을 제거하기 위해 회귀 테스트 주기에 쉽게 통합되도록 설계되었습니다.
 
-We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organisation, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
+- **CI/CD:** 엔지니어들은 이미 CI/CD 파이프라인 내에서 Nuclei를 활용하고 있으며 이를 통해 맞춤형 템플릿으로 스테이징 및 프로덕션 환경을 지속적으로 모니터링할 수 있습니다.
+- **Continuous Regression Cycle:** Nuclei를 사용하면 새로 식별된 모든 취약점에 대한 사용자 지정 템플릿을 만들고 Nuclei 엔진에 넣어 지속적인 회귀 주기에서 제거할 수 있습니다.
+
+[이 문제에 대한 논의 스레드](https://github.com/projectdiscovery/nuclei-templates/discussions/693)가 있으며, Nuclei 템플릿을 작성해 제출할 때마다 해커에게 인센티브를 제공하는 버그 바운티 프로그램들이 존재합니다. 이 프로그램은 모든 자산에서 취약점을 제거할 뿐만 아니라 미래에 프로덕션에 다시 등장할 위험을 제거할 수 있도록 도와줍니다.
+이것을 당신의 조직에서 구현하는 것에 관심이 있다면 언제든지 [저희에게 연락하십시오](mailto:contact@projectdiscovery.io).
+시작하는 과정에서 기꺼이 도와드리거나 [도움이 필요한 경우 논의 스레드](https://github.com/projectdiscovery/nuclei-templates/discussions/693)에 게시할 수도 있습니다.
 
 <h3 align="center">
   <img src="static/regression-with-nuclei.jpg" alt="regression-cycle-with-nuclei" width="1100px"></a>
