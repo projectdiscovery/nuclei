@@ -19,6 +19,7 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
+	_ "github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -581,7 +582,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if netIP := net.ParseIP(hostname); netIP != nil {
 			ipAddr = netIP.String()
 		} else {
-			ipAddr = httpclientpool.Dialer.GetDialedIP(hostname)
+			dns, _ := httpclientpool.Dialer.GetDNSData(hostname)
+			if dns != nil {
+				ipAddr = dns.A[0]
+			}
 		}
 		outputEvent["curl-command"] = curlCommand
 		outputEvent["ip"] = ipAddr
