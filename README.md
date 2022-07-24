@@ -30,7 +30,8 @@
 
 <p align="center">
   <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">한국어</a>
 </p>
 
 ---
