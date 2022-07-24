@@ -62,7 +62,7 @@ type ExecuterOptions struct {
 	// Interactsh is a client for interactsh oob polling server
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
-	HostErrorsCache *hosterrorscache.Cache
+	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found
 	StopAtFirstMatch bool
 	// Variables is a list of variables from template
