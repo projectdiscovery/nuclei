@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 	if !ok {
 		return nil
 	}
-	requestForDump, err := generator.Make(reqURL, inputData, payloads, nil)
+	requestForDump, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (request *Request) executeRaceRequest(reqURL string, previous output.Intern
 		if !ok {
 			break
 		}
-		generatedRequest, err := generator.Make(reqURL, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -129,7 +130,7 @@ func (request *Request) executeParallelHTTP(reqURL string, dynamicValues output.
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(context.Background(), reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -196,7 +197,7 @@ func (request *Request) executeTurboHTTP(reqURL string, dynamicValues, previous 
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(reqURL, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(context.Background(), reqURL, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -254,7 +255,10 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 			variablesMap, interactURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, payloads), request.options.Interactsh)
 			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
-			generatedHttpRequest, err := generator.Make(reqURL, data, payloads, dynamicValue)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(request.options.Options.Timeout)*time.Second)
+			defer cancel()
+
+			generatedHttpRequest, err := generator.Make(ctx, reqURL, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
 					return true, nil
