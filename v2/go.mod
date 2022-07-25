@@ -61,7 +61,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.60
+require github.com/aws/aws-sdk-go v1.44.61
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -79,7 +79,7 @@ require (
 	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
 	github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.51
+	github.com/projectdiscovery/wappalyzergo v0.0.52
 	github.com/stretchr/testify v1.8.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 	gopkg.in/yaml.v3 v3.0.1
