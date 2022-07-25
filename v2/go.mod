@@ -28,11 +28,10 @@ require (
 	github.com/projectdiscovery/cryptoutil v1.0.0
 	github.com/projectdiscovery/fastdialer v0.0.16-0.20220609092737-7e3c7dcecf16
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
-	github.com/projectdiscovery/fileutil v0.0.0-20220626180823-b24f0847f8e6
 	github.com/projectdiscovery/goflags v0.0.8-0.20220610073650-5d31a8c159e3
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
-	github.com/projectdiscovery/interactsh v1.0.5
+	github.com/projectdiscovery/interactsh v1.0.6
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.0.8-0.20220526170355-03de6bb78f37
 	github.com/projectdiscovery/retryabledns v1.0.13
@@ -49,7 +48,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.68.2
+	github.com/xanzy/go-gitlab v0.69.0
 	github.com/ysmood/gson v0.7.1 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
 	go.uber.org/atomic v1.9.0
@@ -62,7 +61,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.55
+require github.com/aws/aws-sdk-go v1.44.60
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -75,12 +74,13 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
+	github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963
 	github.com/projectdiscovery/iputil v0.0.0-20220620153941-036d511e4097
 	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
 	github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.50
-	github.com/stretchr/testify v1.7.5
+	github.com/projectdiscovery/wappalyzergo v0.0.51
+	github.com/stretchr/testify v1.8.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -128,7 +128,7 @@ require (
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.15.6 // indirect
+	github.com/klauspost/compress v1.15.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.11 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -138,7 +138,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mholt/acmez v1.0.2 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.18 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect

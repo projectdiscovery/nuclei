@@ -57,11 +57,10 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
+		return r.makeSelfContainedRequest(ctx, data, payloads, dynamicValues)
 	}
-	ctx := context.Background()
 	if r.options.Interactsh != nil {
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, []string{})
 		for payloadName, payloadValue := range payloads {
@@ -105,9 +104,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
 }
 
-func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	ctx := context.Background()
-
+func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
 	// If the request is a raw request, get the URL from the request
