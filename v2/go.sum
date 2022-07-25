@@ -451,6 +451,7 @@ github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345/go.mod
 github.com/projectdiscovery/cryptoutil v1.0.0 h1:5rQfnWDthJ5ZFcqze+rmT1N7l1HJQ6EB26MrjaYB7I0=
 github.com/projectdiscovery/cryptoutil v1.0.0/go.mod h1:VJvSNE8f8A1MgpjgAL2GPJSQcJa4jbdaeQJstARFrU4=
 github.com/projectdiscovery/fastdialer v0.0.12/go.mod h1:RkRbxqDCcCFhfNUbkzBIz/ieD4uda2JuUA4WJ+RLee0=
+github.com/projectdiscovery/fastdialer v0.0.15/go.mod h1:Q28lw9oTpiZHq09uFG6YYYLUsUjsOypZ7PXWwQGBB80=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220609092737-7e3c7dcecf16 h1:oinl80GbA16c6Et6YxcYw/QfwsZgRE0ZswxL43/MNhY=
 github.com/projectdiscovery/fastdialer v0.0.16-0.20220609092737-7e3c7dcecf16/go.mod h1:/l2A7NuQPkHH4mDyScm4N9cDltPB1XMhE5y+9mt00Ak=
 github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08 h1:NwD1R/du1dqrRKN3SJl9kT6tN3K9puuWFXEvYF2ihew=
@@ -499,6 +500,8 @@ github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d/go.mod h1:n
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/rawhttp v0.0.8-0.20220526170355-03de6bb78f37 h1:odvvszpfUvNq5UMzUhimete71/ph+XQzzL11C/u3lUc=
 github.com/projectdiscovery/rawhttp v0.0.8-0.20220526170355-03de6bb78f37/go.mod h1:kulxvr2aKZPB6jhq4ZQn/E+ArwRWczs1O6b1ZdcZAxo=
+github.com/projectdiscovery/rawhttp v0.0.9-0.20220725150718-7a618e7e32fa h1:j23KSP7w2YRU1d5XqY4Elq5LRjQtW2nSB7MSB58HICY=
+github.com/projectdiscovery/rawhttp v0.0.9-0.20220725150718-7a618e7e32fa/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
@@ -780,6 +783,7 @@ golang.org/x/net v0.0.0-20210521195947-fe42d452be8f/go.mod h1:9nx3DQGgdP8bBQD5qx
 golang.org/x/net v0.0.0-20210614182718-04defd469f4e/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
+golang.org/x/net v0.0.0-20210916014120-12bc252f5db8/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20211216030914-fe4d6282115f/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
@@ -865,6 +869,7 @@ golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210915083310-ed5796bab164/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a h1:dGzPydgVsqGcTRVwiLJ1jVbufYwmzD3LfVPLKsKg+0k=

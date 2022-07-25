@@ -586,10 +586,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if netIP := net.ParseIP(hostname); netIP != nil {
 			ipAddr = netIP.String()
 		} else {
-			dns, _ := httpclientpool.Dialer.GetDNSData(hostname)
-			if dns != nil {
-				ipAddr = dns.A[0]
-			}
+			ipAddr = httpclientpool.Dialer.GetDialedIP(hostname)
 		}
 		outputEvent["curl-command"] = curlCommand
 		outputEvent["ip"] = ipAddr
