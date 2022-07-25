@@ -150,6 +150,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mhmac[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mip_format[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mjoin[0m(separator [38;5;208mstring[0m, elements [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mmd5[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -260,6 +261,7 @@ func TestDslExpressions(t *testing.T) {
 		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
 		`hmac('sha1', 'test', 'scrt')`:                     "8856b111056d946d5c6c92a21b43c233596623c6",
 		`hmac('sha256', 'test', 'scrt')`:                   "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
+		`ip_format('127.0.0.1', 3)`:                        "0177.0.0.01",
 	}
 
 	for dslExpression, expectedResult := range dslExpressions {
