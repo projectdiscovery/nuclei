@@ -45,7 +45,10 @@ type Client struct {
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
-	hostname       string
+	dataMutex *sync.RWMutex
+
+	hostname string
+
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
 	matched        bool
@@ -58,7 +61,7 @@ var (
 
 const (
 	stopAtFirstMatchAttribute = "stop-at-first-match"
-	templateIdAttribute = "template-id"
+	templateIdAttribute       = "template-id"
 )
 
 // Options contains configuration options for interactsh nuclei integration.
@@ -123,6 +126,7 @@ func New(options *Options) (*Client, error) {
 		requests:         cache,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.CooldownPeriod,
+		dataMutex:        &sync.RWMutex{},
 	}
 	return interactClient, nil
 }
@@ -161,7 +165,10 @@ func (c *Client) firstTimeInitializeClient() error {
 	interactURL := interactsh.URL()
 	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
 	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
+
+	c.dataMutex.Lock()
 	c.hostname = interactDomain
+	c.dataMutex.Unlock()
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		item := c.requests.Get(interaction.UniqueID)
@@ -281,7 +288,7 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
-	data["interactsh-server"] = c.hostname
+	data["interactsh-server"] = c.getInteractServerHostname()
 	for _, url := range urls {
 		if interactshURLMarker := c.interactshURLs.Get(url); interactshURLMarker != nil {
 			if interactshURLMarker, ok := interactshURLMarker.Value().(string); ok {
@@ -430,4 +437,11 @@ func hash(templateID, host string) string {
 	h.Write([]byte(templateID))
 	h.Write([]byte(host))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (c *Client) getInteractServerHostname() string {
+	c.dataMutex.RLock()
+	defer c.dataMutex.RUnlock()
+
+	return c.hostname
 }
