@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -20,7 +19,6 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
-	_ "github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -581,15 +579,8 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
-		var ipAddr string
-		// Check if the hostname is a valid IP address
-		if netIP := net.ParseIP(hostname); netIP != nil {
-			ipAddr = netIP.String()
-		} else {
-			ipAddr = httpclientpool.Dialer.GetDialedIP(hostname)
-		}
 		outputEvent["curl-command"] = curlCommand
-		outputEvent["ip"] = ipAddr
+		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
