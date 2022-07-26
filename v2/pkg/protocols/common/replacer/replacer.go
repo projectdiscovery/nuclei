@@ -11,8 +11,12 @@ import (
 
 // Replace replaces placeholders in template with values on the fly.
 func Replace(template string, values map[string]interface{}) string {
-	replaced := fasttemplate.ExecuteStringStd(template, marker.ParenthesisOpen, marker.ParenthesisClose, values)
-	final := fasttemplate.ExecuteStringStd(replaced, marker.General, marker.General, values)
+	valuesMap := make(map[string]interface{}, len(values))
+	for k, v := range values {
+		valuesMap[k] = types.ToString(v)
+	}
+	replaced := fasttemplate.ExecuteStringStd(template, marker.ParenthesisOpen, marker.ParenthesisClose, valuesMap)
+	final := fasttemplate.ExecuteStringStd(replaced, marker.General, marker.General, valuesMap)
 	return final
 }
 
