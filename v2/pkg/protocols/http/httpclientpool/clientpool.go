@@ -112,6 +112,8 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 			rawHttpOptions.Proxy = types.ProxyURL
 		} else if types.ProxySocksURL != "" {
 			rawHttpOptions.Proxy = types.ProxySocksURL
+		} else if Dialer != nil {
+			rawHttpOptions.FastDialer = Dialer
 		}
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
