@@ -40,7 +40,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, mergeFunctions(dsl.HelperFunctions, mapToFunctions(base)))
+	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
@@ -63,7 +63,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 // maxIterations to avoid infinite loop
 const maxIterations = 250
 
-func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]govaluate.ExpressionFunction) []string {
+func findExpressions(data, OpenMarker, CloseMarker string, base map[string]interface{}) []string {
 	var (
 		iterations int
 		exps       []string
@@ -100,7 +100,7 @@ func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]
 			indexCloseMarkerOffset = indexCloseMarker + len(CloseMarker)
 
 			potentialMatch = innerData[indexOpenMarkerOffset:indexCloseMarker]
-			if isExpression(potentialMatch, functions) {
+			if isExpression(potentialMatch, base) {
 				closeMarkerFound = true
 				shouldSearchCloseMarker = false
 				exps = append(exps, potentialMatch)
@@ -120,45 +120,21 @@ func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]
 	return exps
 }
 
-func hasLiteralsOnly(data string) bool {
-	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
-	if err == nil && expr != nil {
-		_, err = expr.Evaluate(nil)
-		return err == nil
-	}
-	return true
-}
-
-func isExpression(data string, functions map[string]govaluate.ExpressionFunction) bool {
+func isExpression(data string, base map[string]interface{}) bool {
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
-		return stringsutil.ContainsAny(data, getFunctionsNames(functions)...)
+		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
+			return true
+		} else if stringsutil.ContainsAny(data, dsl.FunctionNames...) {
+			return true
+		}
+		return false
 	}
-
-	// check if it's a complex expression
 	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
 }
 
-func mapToFunctions(vars map[string]interface{}) map[string]govaluate.ExpressionFunction {
-	f := make(map[string]govaluate.ExpressionFunction)
-	for k := range vars {
-		f[k] = nil
-	}
-	return f
-}
-
-func mergeFunctions(m ...map[string]govaluate.ExpressionFunction) map[string]govaluate.ExpressionFunction {
-	o := make(map[string]govaluate.ExpressionFunction)
-	for _, mm := range m {
-		for k, v := range mm {
-			o[k] = v
-		}
-	}
-	return o
-}
-
-func getFunctionsNames(m map[string]govaluate.ExpressionFunction) []string {
-	var keys []string
+func getFunctionsNames(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
