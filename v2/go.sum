@@ -503,12 +503,14 @@ github.com/projectdiscovery/rawhttp v0.0.9-0.20220726060557-a045ab711701/go.mod 
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
-github.com/projectdiscovery/retryabledns v1.0.13 h1:Ogfv0fl3Nszb+Nq2S2qQmE+PJDlStVxyLkmTotMohZY=
 github.com/projectdiscovery/retryabledns v1.0.13/go.mod h1:EeqHcAPp0g2GljT4qkxKSAE47Dj0ZrJQ46R9ct3Muhk=
+github.com/projectdiscovery/retryabledns v1.0.14 h1:RX7thJK9q7sVQZOpc7Qv5Ts13AyZhJK5G6xFqTtRhWU=
+github.com/projectdiscovery/retryabledns v1.0.14/go.mod h1:g+NlPMyYzoFuHZpJHNCYMpqHKQu/ov4aG/YTdd8oht8=
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
+github.com/projectdiscovery/sliceutil v0.0.0-20220225084130-8392ac12fa6d/go.mod h1:QHXvznfPfA5f0AZUIBkbLapoUJJlsIDgUlkKva6dOr4=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9 h1:dQO4FNxOhkZqZHW5nUh6f1NXIRUyoZ57bXETXjsyfNk=
 github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9/go.mod h1:crCchiT/KYrAlEY8JbuMGE6XKym61mhAd1E7REq2VwQ=
 github.com/projectdiscovery/stringsutil v0.0.0-20210524051937-51dabe3b72c0/go.mod h1:TVSdZC0rRQeMIbsNSiGPhbmhyRtxqqtAGA9JiiNp2r4=
