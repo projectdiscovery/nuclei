@@ -246,6 +246,61 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"starts_with": makeDslWithOptionalArgsFunction(
+			"(args ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, prefix := range args[1:] {
+					if strings.HasPrefix(types.ToString(args[0]), types.ToString(prefix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			}),
+		"split_starts_with": makeDslWithOptionalArgsFunction(
+			"(args ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, prefix := range args[1:] {
+						if strings.HasPrefix(line, types.ToString(prefix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			}),
+		"ends_with": makeDslWithOptionalArgsFunction(
+			"(args ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, suffix := range args[1:] {
+					if strings.HasSuffix(types.ToString(args[0]), types.ToString(suffix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			}),
+		"split_ends_with": makeDslWithOptionalArgsFunction(
+			"(args ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, suffix := range args[1:] {
+						if strings.HasSuffix(line, types.ToString(suffix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			}),
+
 		"concat": makeDslWithOptionalArgsFunction(
 			"(args ...interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
