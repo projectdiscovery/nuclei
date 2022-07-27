@@ -15,7 +15,7 @@ import (
 )
 
 func TestDSLURLEncodeDecode(t *testing.T) {
-	functions := HelperFunctions()
+	functions := HelperFunctions
 
 	encoded, err := functions["url_encode"]("&test\"")
 	require.Nil(t, err, "could not url encode")
@@ -27,7 +27,7 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 }
 
 func TestDSLTimeComparison(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("unixtime() > not_after", HelperFunctions())
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("unixtime() > not_after", HelperFunctions)
 	require.Nil(t, err, "could not compare time")
 
 	result, err := compiled.Evaluate(map[string]interface{}{"not_after": float64(time.Now().Unix() - 1000)})
@@ -36,13 +36,13 @@ func TestDSLTimeComparison(t *testing.T) {
 }
 
 func TestDSLGzipSerialize(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("gzip(\"hello world\")", HelperFunctions())
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("gzip(\"hello world\")", HelperFunctions)
 	require.Nil(t, err, "could not compile encoder")
 
 	result, err := compiled.Evaluate(make(map[string]interface{}))
 	require.Nil(t, err, "could not evaluate compare time")
 
-	compiled, err = govaluate.NewEvaluableExpressionWithFunctions("gzip_decode(data)", HelperFunctions())
+	compiled, err = govaluate.NewEvaluableExpressionWithFunctions("gzip_decode(data)", HelperFunctions)
 	require.Nil(t, err, "could not compile decoder")
 
 	data, err := compiled.Evaluate(map[string]interface{}{"data": result})
@@ -68,7 +68,7 @@ func TestDateTimeDSLFunction(t *testing.T) {
 	}
 
 	t.Run("with Unix time", func(t *testing.T) {
-		dateTimeFunction, err := govaluate.NewEvaluableExpressionWithFunctions("date_time(dateTimeFormat)", HelperFunctions())
+		dateTimeFunction, err := govaluate.NewEvaluableExpressionWithFunctions("date_time(dateTimeFormat)", HelperFunctions)
 		require.Nil(t, err, "could not compile encoder")
 
 		currentTime := time.Now()
@@ -78,7 +78,7 @@ func TestDateTimeDSLFunction(t *testing.T) {
 	})
 
 	t.Run("without Unix time", func(t *testing.T) {
-		dateTimeFunction, err := govaluate.NewEvaluableExpressionWithFunctions("date_time(dateTimeFormat, unixTime)", HelperFunctions())
+		dateTimeFunction, err := govaluate.NewEvaluableExpressionWithFunctions("date_time(dateTimeFormat, unixTime)", HelperFunctions)
 		require.Nil(t, err, "could not compile encoder")
 
 		currentTime := time.Now()
@@ -112,7 +112,7 @@ func TestDslFunctionSignatures(t *testing.T) {
 		{"remove_bad_chars", []interface{}{"a", "b", "c"}, nil, removeBadCharsSignatureError},
 	}
 
-	helperFunctions := HelperFunctions()
+	helperFunctions := HelperFunctions
 	for _, currentTestCase := range testCases {
 		methodName := currentTestCase.methodName
 		t.Run(methodName, func(t *testing.T) {
@@ -335,7 +335,7 @@ func TestRandIntDslExpressions(t *testing.T) {
 }
 
 func evaluateExpression(t *testing.T, dslExpression string) interface{} {
-	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, HelperFunctions())
+	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, HelperFunctions)
 	require.NoError(t, err, "Error while compiling the %q expression", dslExpression)
 
 	actualResult, err := compiledExpression.Evaluate(make(map[string]interface{}))

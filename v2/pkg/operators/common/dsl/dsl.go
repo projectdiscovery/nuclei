@@ -49,6 +49,7 @@ var invalidDslFunctionError = errors.New("invalid DSL function signature")
 var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
+var HelperFunctions map[string]govaluate.ExpressionFunction
 
 var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
@@ -534,6 +535,7 @@ func init() {
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+	HelperFunctions = helperFunctions()
 }
 
 func makeDslWithOptionalArgsFunction(signaturePart string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
@@ -568,8 +570,8 @@ func createSignaturePart(numberOfParameters int) string {
 	return fmt.Sprintf("(%s interface{}) interface{}", strings.Join(params, ", "))
 }
 
-// HelperFunctions returns the dsl helper functions
-func HelperFunctions() map[string]govaluate.ExpressionFunction {
+// helperFunctions returns the dsl helper functions
+func helperFunctions() map[string]govaluate.ExpressionFunction {
 	helperFunctions := make(map[string]govaluate.ExpressionFunction, len(dslFunctions))
 
 	for functionName, dslFunction := range dslFunctions {

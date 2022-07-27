@@ -40,12 +40,12 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, mergeFunctions(dsl.HelperFunctions(), mapToFunctions(base)))
+	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, mergeFunctions(dsl.HelperFunctions, mapToFunctions(base)))
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
 		// turns expressions (either helper functions+base values or base values)
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions())
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
 			continue
 		}
@@ -121,7 +121,7 @@ func findExpressions(data, OpenMarker, CloseMarker string, functions map[string]
 }
 
 func hasLiteralsOnly(data string) bool {
-	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions())
+	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	if err == nil && expr != nil {
 		_, err = expr.Evaluate(nil)
 		return err == nil
@@ -135,7 +135,7 @@ func isExpression(data string, functions map[string]govaluate.ExpressionFunction
 	}
 
 	// check if it's a complex expression
-	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions())
+	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
 }
 
