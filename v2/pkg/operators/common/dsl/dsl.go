@@ -260,7 +260,7 @@ func init() {
 				return false, nil
 			},
 		),
-		"split_starts_with": makeDslWithOptionalArgsFunction(
+		"line_starts_with": makeDslWithOptionalArgsFunction(
 			"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
@@ -289,7 +289,7 @@ func init() {
 				return false, nil
 			},
 		),
-		"split_ends_with": makeDslWithOptionalArgsFunction(
+		"line_ends_with": makeDslWithOptionalArgsFunction(
 			"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError

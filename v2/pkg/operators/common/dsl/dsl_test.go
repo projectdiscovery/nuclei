@@ -153,6 +153,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mjoin[0m(separator [38;5;208mstring[0m, elements [38;5;208m...interface{}[0m)[38;5;208m string[0m
 	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	[93mline_ends_with[0m(str [38;5;208mstring[0m, suffix [38;5;208m...string[0m)[38;5;208m bool[0m
+	[93mline_starts_with[0m(str [38;5;208mstring[0m, prefix [38;5;208m...string[0m)[38;5;208m bool[0m
 	[93mmd5[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mmmh3[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mprint_debug[0m(args [38;5;208m...interface{}[0m)[38;5;208m[0m
@@ -171,8 +173,6 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	[93mreverse[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93msplit_ends_with[0m(str [38;5;208mstring[0m, suffix [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93msplit_starts_with[0m(str [38;5;208mstring[0m, prefix [38;5;208m...string[0m)[38;5;208m bool[0m
 	[93mstarts_with[0m(str [38;5;208mstring[0m, prefix [38;5;208m...string[0m)[38;5;208m bool[0m
 	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
 	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
@@ -254,8 +254,8 @@ func TestDslExpressions(t *testing.T) {
 		`contains("Hello", "lo")`:                          true,
 		`starts_with("Hello", "He")`:                       true,
 		`ends_with("Hello", "lo")`:                         true,
-		"split_starts_with('Hi\nHello', 'He')":             true, // back quotes do not support escape sequences
-		"split_ends_with('Hii\nHello', 'ii')":              true, // back quotes do not support escape sequences
+		"line_starts_with('Hi\nHello', 'He')":              true, // back quotes do not support escape sequences
+		"line_ends_with('Hii\nHello', 'ii')":               true, // back quotes do not support escape sequences
 		`regex("H([a-z]+)o", "Hello")`:                     true,
 		`wait_for(1)`:                                      nil,
 		`print_debug(1+2, "Hello")`:                        nil,
