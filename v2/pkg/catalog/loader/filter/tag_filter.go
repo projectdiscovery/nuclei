@@ -119,14 +119,10 @@ func isTagMatch(tagFilter *TagFilter, templateTags []string) bool {
 	if len(tagFilter.allowedTags) == 0 {
 		return true
 	}
-
-	for _, templateTag := range templateTags {
-		if _, ok := tagFilter.allowedTags[templateTag]; ok {
-			return true
-		}
-	}
-
-	return false
+	tagOperation := TagOperation{}
+	tagOperation.Parse(tagFilter.allowedTags)
+	matched := tagOperation.Match(templateTags)
+	return matched
 }
 
 func isTemplateTypeMatch(tagFilter *TagFilter, templateType types.ProtocolType) bool {

@@ -13,6 +13,7 @@
 {{binary}} -tags cve -author geeknik,pdteam
 {{binary}} -tags cve -author geeknik -severity high
 {{binary}} -tags cve
+{{binary}} -tags "dns&&ns"
 {{binary}} -tags cve,exposure
 {{binary}} -tags cve,exposure -tags token
 {{binary}} -tags cve,exposure -tags token,logs
