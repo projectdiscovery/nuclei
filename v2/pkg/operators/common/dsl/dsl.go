@@ -247,7 +247,7 @@ func init() {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
 		"starts_with": makeDslWithOptionalArgsFunction(
-			"(args ...string) bool",
+			"(str string, prefix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
@@ -258,9 +258,10 @@ func init() {
 					}
 				}
 				return false, nil
-			}),
+			},
+		),
 		"split_starts_with": makeDslWithOptionalArgsFunction(
-			"(args ...string) bool", func(args ...interface{}) (interface{}, error) {
+			"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
 				}
@@ -272,9 +273,10 @@ func init() {
 					}
 				}
 				return false, nil
-			}),
+			},
+		),
 		"ends_with": makeDslWithOptionalArgsFunction(
-			"(args ...string) bool",
+			"(str string, suffix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
@@ -285,9 +287,10 @@ func init() {
 					}
 				}
 				return false, nil
-			}),
+			},
+		),
 		"split_ends_with": makeDslWithOptionalArgsFunction(
-			"(args ...string) bool", func(args ...interface{}) (interface{}, error) {
+			"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
 					return nil, invalidDslFunctionError
 				}
@@ -299,8 +302,8 @@ func init() {
 					}
 				}
 				return false, nil
-			}),
-
+			},
+		),
 		"concat": makeDslWithOptionalArgsFunction(
 			"(args ...interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
