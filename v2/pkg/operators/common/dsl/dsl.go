@@ -487,6 +487,35 @@ func init() {
 				return true, nil
 			},
 		),
+		"substr": makeDslWithOptionalArgsFunction(
+			"(args ...interface{})",
+			func(args ...interface{}) (interface{}, error) {
+				argStr := types.ToString(args[0])
+				a1 := types.ToString(args[1])
+				if len(args) == 2 {
+					n1, err := strconv.Atoi(a1)
+					if nil != err {
+						return nil, err
+					}
+					return argStr[n1:], nil
+				} else if len(args) == 3 {
+					a2 := types.ToString(args[2])
+					n1, err1 := strconv.Atoi(a1)
+					if nil != err1 {
+						return nil, err1
+					}
+					n2, err := strconv.Atoi(a2)
+					if nil != err {
+						return nil, err
+					}
+					if 0 > n2 {
+						n2 = len([]byte(argStr)) + n2
+					}
+					return argStr[n1:n2], nil
+				}
+				return nil, nil
+			},
+		),
 		"to_number": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			argStr := types.ToString(args[0])
 			if govalidator.IsInt(argStr) {
@@ -507,6 +536,22 @@ func init() {
 				return types.ToString(hexNum), nil
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
+		}),
+		"aes_cbc": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			key := args[0].(string)
+			value := args[1].(string)
+			Content := []byte(value)
+			block, _ := aes.NewCipher([]byte(key))
+			blockSize := block.BlockSize()
+			n := blockSize - len(Content)%blockSize
+			temp := bytes.Repeat([]byte{byte(n)}, n)
+			Content = append(Content, temp...)
+
+			iv := []byte{5, 191, 171, 231, 240, 243, 72, 96, 148, 5, 128, 157, 95, 154, 84, 102}
+			blockMode := cipher.NewCBCEncrypter(block, iv)
+			cipherText := make([]byte, len(Content))
+			blockMode.CryptBlocks(cipherText, Content)
+			return append(iv[:], cipherText[:]...), nil
 		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			key := args[0].(string)

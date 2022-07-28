@@ -150,6 +150,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
