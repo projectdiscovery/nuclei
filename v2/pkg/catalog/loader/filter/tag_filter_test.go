@@ -200,4 +200,21 @@ func TestTagBasedFilter(t *testing.T) {
 		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
+	advancedFilter, err := New(&Config{
+		IncludeConditions: []string{
+			"id=='test'",
+			"'test' in tags",
+		},
+	})
+	require.Nil(t, err)
+	t.Run("advanced-filtering-positive", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("test", []string{"jira", "test"}, []string{"test1", "test2"}, severity.High, types.HTTPProtocol)
+		matched, _ := advancedFilter.Match(dummyTemplate, nil)
+		require.True(t, matched, "could not get correct match")
+	})
+	t.Run("advanced-filtering-negative", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("test", []string{"jira"}, []string{"test1", "test2"}, severity.High, types.HTTPProtocol)
+		matched, _ := advancedFilter.Match(dummyTemplate, nil)
+		require.False(t, matched, "could not get correct match")
+	})
 }
