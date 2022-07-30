@@ -55,7 +55,8 @@ func TestLoadTemplate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
 
-			tagFilter := filter.New(&filter.Config{})
+			tagFilter, err := filter.New(&filter.Config{})
+			require.Nil(t, err)
 			success, err := LoadTemplate(tc.name, tagFilter, nil)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
@@ -96,7 +97,8 @@ func TestLoadTemplate(t *testing.T) {
 				}
 				parsedTemplatesCache.Store(name, template, nil)
 
-				tagFilter := filter.New(&filter.Config{})
+				tagFilter, err := filter.New(&filter.Config{})
+				require.Nil(t, err)
 				success, err := LoadTemplate(name, tagFilter, nil)
 				if tc.success {
 					require.NoError(t, err)

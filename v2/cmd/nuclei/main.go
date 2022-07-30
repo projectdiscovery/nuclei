@@ -98,7 +98,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
-		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion,"new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
+		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
 		flagSet.BoolVarP(&options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
@@ -124,6 +124,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
+		flagSet.FileStringSliceVarP(&options.IncludeConditions, "template-condition", "tc", nil, "templates to run based on expression condition"),
 	)
 
 	flagSet.CreateGroup("output", "Output",

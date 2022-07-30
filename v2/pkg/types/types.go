@@ -234,6 +234,8 @@ type Options struct {
 	InputReadTimeout time.Duration
 	// Disable stdin for input processing
 	DisableStdin bool
+	// IncludeConditions is the list of conditions templates should match
+	IncludeConditions goflags.FileStringSlice
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
