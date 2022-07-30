@@ -8,86 +8,66 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
-// original
-// Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string, templateType types.ProtocolType, templateId string)
-
 func TestTagBasedFilter(t *testing.T) {
-	{
-		filter, err := New(&Config{
-			Tags: []string{"cves", "2021", "jira"},
-		})
-		require.Nil(t, err)
-
-		t.Run("true", func(t *testing.T) {
-			dummyTemplate := &templates.Template{
-				Info: model.Info{
-					Tags:           stringslice.StringSlice{Value: []string{"jira"}},
-					Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-					SeverityHolder: severity.Holder{Severity: severity.Low},
-				},
-				RequestsHTTP: []*http.Request{{}, {}},
-			}
-			matched, _ := filter.Match(dummyTemplate, nil)
-			require.True(t, matched, "could not get correct match")
-		})
-		t.Run("false", func(t *testing.T) {
-			dummyTemplate := &templates.Template{
-				Info: model.Info{
-					Tags:           stringslice.StringSlice{Value: []string{"consul"}},
-					Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-					SeverityHolder: severity.Holder{Severity: severity.Low},
-				},
-				RequestsHTTP: []*http.Request{{}, {}},
-			}
-			matched, _ := filter.Match(dummyTemplate, nil)
-			require.False(t, matched, "could not get correct match")
-		})
-		t.Run("match-extra-tags-positive", func(t *testing.T) {
-			dummyTemplate := &templates.Template{
-				Info: model.Info{
-					Tags:           stringslice.StringSlice{Value: []string{"cves", "vuln"}},
-					Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-					SeverityHolder: severity.Holder{Severity: severity.Low},
-				},
-				RequestsHTTP: []*http.Request{{}, {}},
-			}
-			matched, _ := filter.Match(dummyTemplate, []string{"vuln"})
-			require.True(t, matched, "could not get correct match")
-		})
-		t.Run("match-extra-tags-negative", func(t *testing.T) {
-			dummyTemplate := &templates.Template{
-				Info: model.Info{
-					Tags:           stringslice.StringSlice{Value: []string{"cves"}},
-					Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-					SeverityHolder: severity.Holder{Severity: severity.Low},
-				},
-				RequestsHTTP: []*http.Request{{}, {}},
-			}
-			matched, _ := filter.Match(dummyTemplate, []string{"vuln"})
-			require.False(t, matched, "could not get correct match")
-		})
+	newDummyTemplate := func(id string, tags, authors []string, severityValue severity.Severity, protocolType types.ProtocolType) *templates.Template {
+		dummyTemplate := &templates.Template{}
+		if id != "" {
+			dummyTemplate.ID = id
+		}
+		if len(tags) > 0 {
+			dummyTemplate.Info.Tags = stringslice.StringSlice{Value: tags}
+		}
+		if len(authors) > 0 {
+			dummyTemplate.Info.Authors = stringslice.StringSlice{Value: authors}
+		}
+		dummyTemplate.Info.SeverityHolder = severity.Holder{Severity: severityValue}
+		switch protocolType {
+		case types.DNSProtocol:
+			dummyTemplate.RequestsDNS = []*dns.Request{{}}
+		case types.HTTPProtocol:
+			dummyTemplate.RequestsHTTP = []*http.Request{{}}
+		}
+		return dummyTemplate
 	}
+
+	filter, err := New(&Config{
+		Tags: []string{"cves", "2021", "jira"},
+	})
+	require.Nil(t, err)
+
+	t.Run("true", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("", []string{"jira"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
+		require.True(t, matched, "could not get correct match")
+	})
+	t.Run("false", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("", []string{"consul"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
+		require.False(t, matched, "could not get correct match")
+	})
+	t.Run("match-extra-tags-positive", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("", []string{"cves", "vuln"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, []string{"vuln"})
+		require.True(t, matched, "could not get correct match")
+	})
+	t.Run("match-extra-tags-negative", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("", []string{"cves"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, []string{"vuln"})
+		require.False(t, matched, "could not get correct match")
+	})
 
 	t.Run("not-match-excludes", func(t *testing.T) {
 		filter, err := New(&Config{
 			ExcludeTags: []string{"dos"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"dos"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"dos"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
 		matched, err := filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 		require.Equal(t, ErrExcluded, err, "could not get correct error")
@@ -99,14 +79,7 @@ func TestTagBasedFilter(t *testing.T) {
 			IncludeTags: []string{"fuzz"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
 		matched, err := filter.Match(dummyTemplate, nil)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
@@ -117,14 +90,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"fuzz"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
 		matched, err := filter.Match(dummyTemplate, nil)
 		require.Nil(t, err, "could not get match")
 		require.True(t, matched, "could not get correct match")
@@ -134,14 +100,7 @@ func TestTagBasedFilter(t *testing.T) {
 			Authors: []string{"pdteam"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
 		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
 	})
@@ -150,14 +109,7 @@ func TestTagBasedFilter(t *testing.T) {
 			Severities: severity.Severities{severity.High},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.High, types.HTTPProtocol)
 		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
 	})
@@ -166,13 +118,7 @@ func TestTagBasedFilter(t *testing.T) {
 			IncludeIds: []string{"cve-test"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			ID: "cve-test",
-			Info: model.Info{
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("cve-test", nil, nil, severity.Low, types.HTTPProtocol)
 		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
 	})
@@ -181,26 +127,11 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeSeverities: severity.Severities{severity.Low},
 		})
 		require.Nil(t, err)
-		dummyTemplate1 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ := filter.Match(dummyTemplate1, nil)
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.High, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
-
-		dummyTemplate2 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ = filter.Match(dummyTemplate2, nil)
+		dummyTemplate = newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-with-tags", func(t *testing.T) {
@@ -209,14 +140,7 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeTags: []string{"another"},
 		})
 		require.Nil(t, err)
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"another"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"another"}, []string{"pdteam"}, severity.High, types.HTTPProtocol)
 		matched, _ := filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
@@ -228,48 +152,17 @@ func TestTagBasedFilter(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		dummyTemplate1 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"jira", "cve"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam", "someOtherUser"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ := filter.Match(dummyTemplate1, nil)
+		dummyTemplate := newDummyTemplate("", []string{"jira", "cve"}, []string{"pdteam", "someOtherUser"}, severity.High, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
-
-		dummyTemplate2 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"jira"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ = filter.Match(dummyTemplate2, nil)
+		dummyTemplate = newDummyTemplate("", []string{"jira"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
-
-		dummyTemplate3 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"jira"}},
-				Authors:        stringslice.StringSlice{Value: []string{"random"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ = filter.Match(dummyTemplate3, nil)
+		dummyTemplate = newDummyTemplate("", []string{"jira"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
-
-		dummyTemplate4 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"consul"}},
-				Authors:        stringslice.StringSlice{Value: []string{"random"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ = filter.Match(dummyTemplate4, nil)
+		dummyTemplate = newDummyTemplate("", []string{"consul"}, []string{"random"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-type", func(t *testing.T) {
@@ -278,14 +171,7 @@ func TestTagBasedFilter(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		dummyTemplate := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.High, types.HTTPProtocol)
 		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
 	})
@@ -294,26 +180,11 @@ func TestTagBasedFilter(t *testing.T) {
 			ExcludeIds: []string{"cve-test"},
 		})
 		require.Nil(t, err)
-		dummyTemplate1 := &templates.Template{
-			ID: "cve-test1",
-			Info: model.Info{
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsDNS: []*dns.Request{{}, {}},
-		}
-		matched, _ := filter.Match(dummyTemplate1, nil)
+		dummyTemplate := newDummyTemplate("cve-test1", nil, nil, severity.High, types.DNSProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
-
-		dummyTemplate2 := &templates.Template{
-			ID: "cve-test",
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}, {}},
-		}
-		matched, _ = filter.Match(dummyTemplate2, nil)
+		dummyTemplate = newDummyTemplate("cve-test", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-type", func(t *testing.T) {
@@ -322,26 +193,11 @@ func TestTagBasedFilter(t *testing.T) {
 		})
 		require.Nil(t, err)
 
-		dummyTemplate1 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.High},
-			},
-			RequestsDNS: []*dns.Request{{}, {}},
-		}
-		matched, _ := filter.Match(dummyTemplate1, nil)
+		dummyTemplate := newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.High, types.DNSProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
 		require.True(t, matched, "could not get correct match")
-
-		dummyTemplate2 := &templates.Template{
-			Info: model.Info{
-				Tags:           stringslice.StringSlice{Value: []string{"fuzz"}},
-				Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
-				SeverityHolder: severity.Holder{Severity: severity.Low},
-			},
-			RequestsHTTP: []*http.Request{{}},
-		}
-		matched, _ = filter.Match(dummyTemplate2, nil)
+		dummyTemplate = newDummyTemplate("", []string{"fuzz"}, []string{"pdteam"}, severity.Low, types.HTTPProtocol)
+		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
 }
