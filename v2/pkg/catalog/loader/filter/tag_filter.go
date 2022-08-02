@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -198,6 +199,8 @@ func isConditionMatch(tagFilter *TagFilter, template *templates.Template) bool {
 		result, err := expr.Evaluate(parameters)
 		// in case of errors  => skip
 		if err != nil {
+			// Using debug as the failure here might be legitimate (eg. template not having optional metadata fields => missing required fields)
+			gologger.Debug().Msgf("The expression condition couldn't be evaluated correctly for template \"%s\": %s\n", template.ID, err)
 			return false
 		}
 		resultBool, ok := result.(bool)
