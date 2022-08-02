@@ -687,7 +687,7 @@
         "waitload",
         "getresource",
         "extract",
-        "set-method",
+        "setmethod",
         "addheader",
         "setheader",
         "deleteheader",
