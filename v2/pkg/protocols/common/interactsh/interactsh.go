@@ -148,7 +148,7 @@ func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progre
 }
 
 func (c *Client) firstTimeInitializeClient() error {
-	if c.options.NoInteractsh {
+	if c.options.NoInteractsh || nil == c.interactions {
 		return nil // do not init if disabled
 	}
 	interactsh, err := client.New(&client.Options{
@@ -204,6 +204,9 @@ func (c *Client) firstTimeInitializeClient() error {
 
 // processInteractionForRequest processes an interaction for a request
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
+	if nil == c.matchedTemplates {
+		return false
+	}
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
@@ -254,6 +257,28 @@ func (c *Client) URL() string {
 
 // Close closes the interactsh clients after waiting for cooldown period.
 func (c *Client) Close() bool {
+	defer func() {
+		if nil != c.interactions {
+			c.interactions.Clear()
+			c.interactions.Stop()
+			c.interactions = nil
+		}
+		if nil != c.requests {
+			c.requests.Clear()
+			c.requests.Stop()
+			c.requests = nil
+		}
+		if nil != c.matchedTemplates {
+			c.matchedTemplates.Clear()
+			c.matchedTemplates.Stop()
+			c.matchedTemplates = nil
+		}
+		if nil != c.interactshURLs {
+			c.interactshURLs.Clear()
+			c.interactshURLs.Stop()
+			c.interactshURLs = nil
+		}
+	}()
 	if c.cooldownDuration > 0 && atomic.LoadUint32(&c.generated) == 1 {
 		time.Sleep(c.cooldownDuration)
 	}
@@ -270,6 +295,9 @@ func (c *Client) Close() bool {
 // It accepts data to replace as well as the URL to replace placeholders
 // with generated uniquely for each request.
 func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
+	if nil == c.interactshURLs {
+		return data, interactshURLs
+	}
 	for interactshURLMarkerRegex.Match([]byte(data)) {
 		url := c.URL()
 		interactshURLs = append(interactshURLs, url)
@@ -288,6 +316,9 @@ func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, [
 
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
+	if nil == c.interactshURLs {
+		return
+	}
 	data["interactsh-server"] = c.getInteractServerHostname()
 	for _, url := range urls {
 		if interactshURLMarker := c.interactshURLs.Get(url); interactshURLMarker != nil {
@@ -326,6 +357,9 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	if nil == c.matchedTemplates || c.interactions == nil || c.requests == nil {
+		return
+	}
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
