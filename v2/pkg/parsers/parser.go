@@ -7,11 +7,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-<<<<<<< HEAD
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-=======
->>>>>>> 821f0a48ea292754210b8df7e220c71b9f0b3561
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
