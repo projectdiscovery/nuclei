@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadTemplates(t *testing.T) {
-	catalog := catalog.NewDisk("")
+	catalog := disk.NewCatalog("")
 
 	store, err := New(&Config{
 		Templates: []string{"cves/CVE-2021-21315.yaml"},
@@ -48,7 +48,7 @@ func TestLoadTemplates(t *testing.T) {
 }
 
 func TestRemoteTemplates(t *testing.T) {
-	catalog := catalog.NewDisk("")
+	catalog := disk.NewCatalog("")
 
 	var nilStringSlice []string
 	type args struct {

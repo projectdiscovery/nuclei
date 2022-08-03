@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
@@ -110,7 +111,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.browser = browser
 	}
 
-	runner.catalog = catalog.NewDisk(runner.options.TemplatesDirectory)
+	runner.catalog = disk.NewCatalog(runner.options.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {

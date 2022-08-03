@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -23,8 +24,8 @@ const (
 )
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
-func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string) (bool, error) {
-	template, templateParseError := ParseTemplate(templatePath)
+func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
+	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
 		return false, templateParseError
 	}
@@ -44,8 +45,8 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
-func LoadWorkflow(templatePath string) (bool, error) {
-	template, templateParseError := ParseTemplate(templatePath)
+func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
+	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
 		return false, templateParseError
 	}
@@ -124,11 +125,11 @@ func init() {
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
-func ParseTemplate(templatePath string) (*templates.Template, error) {
+func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Template, error) {
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-	data, err := utils.ReadFromPathOrURL(templatePath)
+	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
 	if err != nil {
 		return nil, err
 	}

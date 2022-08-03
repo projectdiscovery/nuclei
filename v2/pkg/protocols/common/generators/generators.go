@@ -11,6 +11,7 @@ import (
 // PayloadGenerator is the generator struct for generating payloads
 type PayloadGenerator struct {
 	Type     AttackType
+	catalog  catalog.Catalog
 	payloads map[string][]string
 }
 
@@ -36,12 +37,12 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 		}
 	}
 
-	generator := &PayloadGenerator{}
+	generator := &PayloadGenerator{catalog: catalog}
 	if err := generator.validate(payloadsFinal, templatePath); err != nil {
 		return nil, err
 	}
 
-	compiled, err := loadPayloads(payloadsFinal)
+	compiled, err := generator.loadPayloads(payloadsFinal)
 	if err != nil {
 		return nil, err
 	}

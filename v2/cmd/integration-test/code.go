@@ -13,8 +13,8 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
@@ -89,7 +89,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	defer interactClient.Close()
 
 	home, _ := os.UserHomeDir()
-	catalog := catalog.NewDisk(path.Join(home, "nuclei-templates"))
+	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,

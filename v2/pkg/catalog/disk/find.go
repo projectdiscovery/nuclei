@@ -1,4 +1,4 @@
-package catalog
+package disk
 
 import (
 	"io/fs"
@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	"github.com/projectdiscovery/gologger"
 )
 

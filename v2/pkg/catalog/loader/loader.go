@@ -180,13 +180,13 @@ func (store *Store) ValidateTemplates() error {
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, true, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadWorkflow(templatePath)
+		return parsers.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
 func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, false, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadTemplate(templatePath, store.tagFilter, nil)
+		return parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
@@ -201,7 +201,7 @@ func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]
 			}
 		}
 
-		template, err := templates.Parse(templatePath, nil, store.preprocessor, store.config.ExecutorOptions)
+		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 		if err != nil {
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
@@ -260,9 +260,9 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
-			parsed, err := templates.Parse(templatePath, nil, store.preprocessor, store.config.ExecutorOptions)
+			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
@@ -283,12 +283,12 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
 	for workflowPath := range workflowPathMap {
-		loaded, err := parsers.LoadWorkflow(workflowPath)
+		loaded, err := parsers.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
 		if loaded {
-			parsed, err := templates.Parse(workflowPath, nil, store.preprocessor, store.config.ExecutorOptions)
+			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
 			} else if parsed != nil {
@@ -307,9 +307,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags)
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
-			parsed, err := templates.Parse(templatePath, nil, store.preprocessor, store.config.ExecutorOptions)
+			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
