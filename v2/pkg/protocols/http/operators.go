@@ -121,7 +121,12 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["response"] = rawResp
 	data["status_code"] = resp.StatusCode
 	data["body"] = body
-	data["content_length"] = resp.ContentLength
+	if resp.ContentLength > -1 {
+		data["content_length"] = resp.ContentLength
+	}
+	if len(body) >= 0 {
+		data["content_length"] = len(body)
+	}
 	data["all_headers"] = headers
 	data["header"] = headers
 	data["duration"] = duration.Seconds()
