@@ -234,6 +234,8 @@ type Options struct {
 	InputReadTimeout time.Duration
 	// Disable stdin for input processing
 	DisableStdin bool
+	// Custom Config Directory
+	CustomConfigDir string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

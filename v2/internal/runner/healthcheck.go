@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -18,7 +17,6 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
 	cfgFilePath, _ := goflags.GetConfigFilePath()
-	cfgFileFolder := filepath.Dir(cfgFilePath)
 	var test strings.Builder
 	test.WriteString(fmt.Sprintf("Version: %s\n", config.Version))
 	test.WriteString(fmt.Sprintf("Operative System: %s\n", runtime.GOOS))
@@ -28,9 +26,13 @@ func DoHealthCheck(options *types.Options) string {
 
 	var testResult string
 
-	nucleiIgnorePath := filepath.Join(cfgFileFolder, ".nuclei-ignore")
-	homedir, _ := homedir.Dir()
-	nucleiTemplatePath := filepath.Join(homedir, "nuclei-templates/.checksum")
+	nucleiIgnorePath := config.GetIgnoreFilePath()
+	cf, _ := config.ReadConfiguration()
+	templatePath := ""
+	if cf != nil {
+		templatePath = cf.TemplatesDirectory
+	}
+	nucleiTemplatePath := filepath.Join(templatePath, "/", ".checksum")
 	for _, filename := range []string{cfgFilePath, nucleiIgnorePath, nucleiTemplatePath} {
 		ok, err := fileutil.IsReadable(filename)
 		if ok {

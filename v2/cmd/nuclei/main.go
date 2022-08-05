@@ -160,6 +160,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
+		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -238,7 +239,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-
+	if options.CustomConfigDir != "" {
+		config.SetCustomConfigDirectory(options.CustomConfigDir)
+	}
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
