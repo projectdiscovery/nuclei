@@ -210,6 +210,22 @@ Accept-Encoding: gzip`},
 	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
 }
 
+func TestFixTrailingSlashFilename(t *testing.T) {
+	tests := []struct {
+		value    string
+		expected string
+	}{
+		{"https://example.com", "https://example.com"},
+		{"https://example.com/test/", "https://example.com/test/"},
+		{"https://example.com/example.html/", "https://example.com/example.html"},
+		{"https://example.com/example.php?test=1/", "https://example.com/example.php?test=1"},
+	}
+	for _, item := range tests {
+		returned := fixTrailingSlashFilename(item.value)
+		require.Equal(t, item.expected, returned, "could not get fixed filename")
+	}
+}
+
 func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	options := testutils.DefaultOptions

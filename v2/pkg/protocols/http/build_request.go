@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -214,7 +215,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	}
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, method, data, nil)
+	req, err := http.NewRequestWithContext(ctx, method, fixTrailingSlashFilename(data), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +270,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, rawRequestData.Method, rawRequestData.FullURL, body)
+	req, err := http.NewRequestWithContext(ctx, rawRequestData.Method, fixTrailingSlashFilename(rawRequestData.FullURL), body)
 	if err != nil {
 		return nil, err
 	}
@@ -414,4 +415,27 @@ func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"Scheme":   parsed.Scheme,
 	}
 	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain))
+}
+
+// fixTrailingSlashFilename tries to fix a file with an unnecessary trailing slash at
+// the end.
+//
+// The logic works by identifying if the last element of path contains an extension and if that's
+// the case, or contains a query string. If so, the trailing slash is removed.
+func fixTrailingSlashFilename(input string) string {
+	parsed, err := url.Parse(input)
+	if err != nil {
+		return input
+	}
+
+	if parsed.RawQuery != "" && strings.HasSuffix(input, "/") {
+		corrected := strings.TrimSuffix(input, "/")
+		return corrected
+	}
+	if filepath.Ext(filepath.Base(parsed.EscapedPath())) != "" {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+		corrected := parsed.String()
+		return corrected
+	}
+	return input
 }
