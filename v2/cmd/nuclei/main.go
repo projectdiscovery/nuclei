@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/mitchellh/go-homedir"
+	"io"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -29,7 +32,6 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-
 	readConfig()
 
 	runner.ParseOptions(options)
@@ -241,6 +243,15 @@ on extensive configurability, massive extensibility and ease of use.`)
 	}
 	if options.CustomConfigDir != "" {
 		config.SetCustomConfigDirectory(options.CustomConfigDir)
+		configPath := path.Join(options.CustomConfigDir, "config.yaml")
+	readConfigFile:
+		if err := flagSet.MergeConfigFile(configPath); err != nil && err != io.EOF {
+			if home, err := homedir.Dir(); err == nil {
+				path := filepath.Join(home, ".config", "nuclei", "config.yaml")
+				fileutil.CopyFile(path, configPath)
+				goto readConfigFile
+			}
+		}
 	}
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
