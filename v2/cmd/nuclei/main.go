@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -40,17 +39,17 @@ func main() {
 	if memProfile != "" {
 		f, err := os.Create(memProfile)
 		if err != nil {
-			log.Fatalf("profile: could not create memory profile %q: %v", memProfile, err)
+			gologger.Fatal().Msgf("profile: could not create memory profile %q: %v", memProfile, err)
 		}
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = 4096
-		log.Printf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
 
 		defer func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
-			log.Printf("profile: memory profiling disabled, %s", memProfile)
+			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
 		}()
 	}
 
