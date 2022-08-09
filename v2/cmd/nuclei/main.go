@@ -248,7 +248,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		if err := flagSet.MergeConfigFile(configPath); err != nil && err != io.EOF {
 			if home, err := homedir.Dir(); err == nil {
 				path := filepath.Join(home, ".config", "nuclei", "config.yaml")
-				fileutil.CopyFile(path, configPath)
+				_ =fileutil.CopyFile(path, configPath)
 				goto readConfigFile
 			}
 		}
