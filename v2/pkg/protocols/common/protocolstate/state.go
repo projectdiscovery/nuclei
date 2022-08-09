@@ -33,7 +33,7 @@ func Init(options *types.Options) error {
 				},
 			}
 		} else {
-			return fmt.Errorf("sourceIP (%s) is not associated with the interface (%s)", options.SourceIP, options.Interface)
+			return fmt.Errorf("source ip (%s) is not associated with the interface (%s)", options.SourceIP, options.Interface)
 		}
 	case options.SourceIP != "":
 		isAssociated, err := isIpAssociatedWithInterface(options.SourceIP, "any")
@@ -47,7 +47,7 @@ func Init(options *types.Options) error {
 				},
 			}
 		} else {
-			return fmt.Errorf("sourceIP (%s) is not associated with any network interface", options.SourceIP)
+			return fmt.Errorf("source ip (%s) is not associated with any network interface", options.SourceIP)
 		}
 	case options.Interface != "":
 		ifadrr, err := interfaceAddress(options.Interface)
