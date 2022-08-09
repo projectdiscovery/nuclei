@@ -46,7 +46,7 @@ func main() {
 		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
 
 		defer func() {
-			pprof.Lookup("heap").WriteTo(f, 0)
+			_ = pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
 			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
