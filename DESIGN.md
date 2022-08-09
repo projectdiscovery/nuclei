@@ -559,11 +559,10 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 
 ## Profiling Instructions
 
-To enable dumping of either CPU or Memory profiling data, `-profile` flag can be used along with either `cpu`/`mem` option. This writes a pprof formatted file which can be used for investigate resource usage with `pprof` tool.
+To enable dumping of Memory profiling data, `-profile-mem` flag can be used along with path to a file. This writes a pprof formatted file which can be used for investigate resource usage with `pprof` tool.
 
 ```console
-$ nuclei -t nuclei-templates/ -u https://example.com -profile cpu
-$ nuclei -t nuclei-templates/ -u https://example.com -profile mem
+$ nuclei -t nuclei-templates/ -u https://example.com -profile-mem mem.pprof
 ```
 
 To view profile data in pprof, first install pprof. Then run the below command -

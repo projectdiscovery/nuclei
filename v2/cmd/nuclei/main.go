@@ -234,7 +234,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.StringVar(&memProfile, "profile", "", "optional nuclei memory profile"),
+		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),

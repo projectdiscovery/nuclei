@@ -30,7 +30,8 @@
 
 <p align="center">
   <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a>
 </p>
 
 ---
@@ -98,15 +99,16 @@ TARGET:
    -resume string        Resume scan using resume.cfg (clustering will be disabled)
 
 TEMPLATES:
-   -nt, -new-templates          run only new templates added in latest nuclei-templates release
-   -ntv, -new-templates-version run new templates added in specific version
-   -as, -automatic-scan         automatic web scan using wappalyzer technology detection to tags mapping
-   -t, -templates string[]      list of template or template directory to run (comma-separated, file)
-   -tu, -template-url string[]  list of template urls to run (comma-separated, file)
-   -w, -workflows string[]      list of workflow or workflow directory to run (comma-separated, file)
-   -wu, -workflow-url string[]  list of workflow urls to run (comma-separated, file)
-   -validate                    validate the passed templates to nuclei
-   -tl                          list all available templates
+   -nt, -new-templates                    run only new templates added in latest nuclei-templates release
+   -ntv, -new-templates-version string[]  run new templates added in specific version
+   -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -t, -templates string[]                list of template or template directory to run (comma-separated, file)
+   -tu, -template-url string[]            list of template urls to run (comma-separated, file)
+   -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
+   -wu, -workflow-url string[]            list of workflow urls to run (comma-separated, file)
+   -validate                              validate the passed templates to nuclei
+   -nss, -no-strict-syntax                Disable strict syntax check on templates
+   -tl                                    list all available templates
 
 FILTERING:
    -a, -author string[]              templates to run based on authors (comma-separated, file)
