@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestLoadTemplate(t *testing.T) {
+	catalog := disk.NewCatalog("")
 	origTemplatesCache := parsedTemplatesCache
 	defer func() { parsedTemplatesCache = origTemplatesCache }()
 
@@ -56,7 +58,7 @@ func TestLoadTemplate(t *testing.T) {
 			parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
 
 			tagFilter := filter.New(&filter.Config{})
-			success, err := LoadTemplate(tc.name, tagFilter, nil)
+			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
 				require.True(t, success)
@@ -97,7 +99,7 @@ func TestLoadTemplate(t *testing.T) {
 				parsedTemplatesCache.Store(name, template, nil)
 
 				tagFilter := filter.New(&filter.Config{})
-				success, err := LoadTemplate(name, tagFilter, nil)
+				success, err := LoadTemplate(name, tagFilter, nil, catalog)
 				if tc.success {
 					require.NoError(t, err)
 					require.True(t, success)
