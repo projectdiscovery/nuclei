@@ -15,7 +15,7 @@ type PathFilterConfig struct {
 }
 
 // NewPathFilter creates a new path filter from provided config
-func NewPathFilter(config *PathFilterConfig, catalogClient *catalog.Catalog) *PathFilter {
+func NewPathFilter(config *PathFilterConfig, catalogClient catalog.Catalog) *PathFilter {
 	filter := &PathFilter{
 		excludedTemplates:          catalogClient.GetTemplatesPath(config.ExcludedTemplates),
 		alwaysIncludedTemplatesMap: make(map[string]struct{}),

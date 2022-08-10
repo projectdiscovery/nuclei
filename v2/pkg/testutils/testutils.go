@@ -6,7 +6,7 @@ import (
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger/levels"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -85,7 +85,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalog:      catalog.New(options.TemplatesDirectory),
+		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(options.RateLimit),
 	}
 	return executerOpts

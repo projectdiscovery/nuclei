@@ -3,7 +3,6 @@ package generators
 import (
 	"bufio"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,7 +10,7 @@ import (
 )
 
 // loadPayloads loads the input payloads from a map to a data map
-func loadPayloads(payloads map[string]interface{}) (map[string][]string, error) {
+func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}) (map[string][]string, error) {
 	loadedPayloads := make(map[string][]string)
 
 	for name, payload := range payloads {
@@ -22,7 +21,7 @@ func loadPayloads(payloads map[string]interface{}) (map[string][]string, error) 
 			if len(elements) >= 2 {
 				loadedPayloads[name] = elements
 			} else {
-				payloads, err := loadPayloadsFromFile(pt)
+				payloads, err := generator.loadPayloadsFromFile(pt)
 				if err != nil {
 					return nil, errors.Wrap(err, "could not load payloads")
 				}
@@ -36,10 +35,10 @@ func loadPayloads(payloads map[string]interface{}) (map[string][]string, error) 
 }
 
 // loadPayloadsFromFile loads a file to a string slice
-func loadPayloadsFromFile(filepath string) ([]string, error) {
+func (generator *PayloadGenerator) loadPayloadsFromFile(filepath string) ([]string, error) {
 	var lines []string
 
-	file, err := os.Open(filepath)
+	file, err := generator.catalog.OpenFile(filepath)
 	if err != nil {
 		return nil, err
 	}

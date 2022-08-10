@@ -5,8 +5,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 )
 
 func IsBlank(value string) bool {
@@ -44,7 +45,7 @@ func IsURL(input string) bool {
 }
 
 // ReadFromPathOrURL reads and returns the contents of a file or url.
-func ReadFromPathOrURL(templatePath string) (data []byte, err error) {
+func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byte, err error) {
 	if IsURL(templatePath) {
 		resp, err := http.Get(templatePath)
 		if err != nil {
@@ -56,7 +57,7 @@ func ReadFromPathOrURL(templatePath string) (data []byte, err error) {
 			return nil, err
 		}
 	} else {
-		f, err := os.Open(templatePath)
+		f, err := catalog.OpenFile(templatePath)
 		if err != nil {
 			return nil, err
 		}
