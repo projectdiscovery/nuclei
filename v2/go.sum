@@ -559,8 +559,8 @@ github.com/projectdiscovery/networkpolicy v0.0.1/go.mod h1:asvdg5wMy3LPVMGALateb
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df h1:CvTNAUD5JbLMqpMFoGNgfk2gOcN0NC57ICu0+oK84vs=
 github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df/go.mod h1:pxWVDgq88t9dWv4+J2AIaWgY+EqOE1AyfHS0Tn23w4M=
 github.com/projectdiscovery/nuclei/v2 v2.5.1/go.mod h1:sU2qcY0MQFS0CqP1BgkR8ZnUyFhqK0BdnY6bvTKNjXY=
-github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d h1:WK/zpWYGuZhAudzVjbnCYk12L4SqH66jagBzHRm3eCo=
-github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiBoKqAQrn3X4Og=
+github.com/projectdiscovery/nvd v1.0.9 h1:2DdMm7lu3GnCQsyYDEQiQ/LRYDmpEm654kvGQS6jzjE=
+github.com/projectdiscovery/nvd v1.0.9/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiBoKqAQrn3X4Og=
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/rawhttp v0.0.9-0.20220726060557-a045ab711701 h1:yD0xcwbqfxluOpThWJKBaIFJmsHYsBqVU5n5+6EoRJE=
 github.com/projectdiscovery/rawhttp v0.0.9-0.20220726060557-a045ab711701/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
