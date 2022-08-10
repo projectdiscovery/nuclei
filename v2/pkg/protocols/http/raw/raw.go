@@ -51,6 +51,9 @@ read_line:
 	}
 
 	parts := strings.Split(s, " ")
+	if len(parts) == 2 {
+		parts = []string{parts[0], "", parts[1]}
+	}
 	if len(parts) < 3 && !unsafe {
 		return nil, fmt.Errorf("malformed request supplied")
 	}
