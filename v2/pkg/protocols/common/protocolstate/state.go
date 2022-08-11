@@ -52,7 +52,7 @@ func Init(options *types.Options) error {
 	case options.Interface != "":
 		ifadrr, err := interfaceAddress(options.Interface)
 		if err != nil {
-			return nil
+			return err
 		}
 		opts.Dialer = &net.Dialer{
 			LocalAddr: &net.TCPAddr{
