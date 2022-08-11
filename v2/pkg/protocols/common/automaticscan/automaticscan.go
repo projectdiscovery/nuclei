@@ -2,7 +2,6 @@ package automaticscan
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -160,7 +159,7 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		return
 	}
 	reader := io.LimitReader(resp.Body, maxDefaultBody)
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		resp.Body.Close()
 		return

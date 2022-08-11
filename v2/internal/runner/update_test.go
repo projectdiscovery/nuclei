@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,21 +21,21 @@ import (
 func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
-	templatesDirectory, err := ioutil.TempDir("", "template-*")
+	templatesDirectory, err := os.MkdirTemp("", "template-*")
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
 	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}, options: testutils.DefaultOptions}
 
-	newTempDir, err := ioutil.TempDir("", "new-tmp-*")
+	newTempDir, err := os.MkdirTemp("", "new-tmp-*")
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(newTempDir)
 
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), os.ModePerm)
+	err = os.WriteFile(filepath.Join(newTempDir, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create base file")
-	err = ioutil.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), os.ModePerm)
+	err = os.WriteFile(filepath.Join(newTempDir, "new.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
-	err = ioutil.WriteFile(filepath.Join(newTempDir, ".new-additions"), []byte("new.yaml"), os.ModePerm)
+	err = os.WriteFile(filepath.Join(newTempDir, ".new-additions"), []byte("new.yaml"), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("new.zip", newTempDir)
@@ -57,13 +56,13 @@ func TestDownloadReleaseAndUnzipAddition(t *testing.T) {
 func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
-	baseTemplates, err := ioutil.TempDir("", "old-temp-*")
+	baseTemplates, err := os.MkdirTemp("", "old-temp-*")
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(baseTemplates)
 
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
+	err = os.WriteFile(filepath.Join(baseTemplates, "base.yaml"), []byte("id: test"), os.ModePerm)
 	require.Nil(t, err, "could not create write base file")
-	err = ioutil.WriteFile(filepath.Join(baseTemplates, ".new-additions"), []byte("base.yaml"), os.ModePerm)
+	err = os.WriteFile(filepath.Join(baseTemplates, ".new-additions"), []byte("base.yaml"), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("base.zip", baseTemplates)
@@ -75,7 +74,7 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	templatesDirectory, err := ioutil.TempDir("", "template-*")
+	templatesDirectory, err := os.MkdirTemp("", "template-*")
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(templatesDirectory)
 
@@ -85,11 +84,11 @@ func TestDownloadReleaseAndUnzipDeletion(t *testing.T) {
 	require.Nil(t, err, "could not download release and unzip")
 	require.Equal(t, "base.yaml", results.additions[0], "could not get correct base addition")
 
-	newTempDir, err := ioutil.TempDir("", "new-tmp-*")
+	newTempDir, err := os.MkdirTemp("", "new-tmp-*")
 	require.Nil(t, err, "could not create temp directory")
 	defer os.RemoveAll(newTempDir)
 
-	err = ioutil.WriteFile(filepath.Join(newTempDir, ".new-additions"), []byte(""), os.ModePerm)
+	err = os.WriteFile(filepath.Join(newTempDir, ".new-additions"), []byte(""), os.ModePerm)
 	require.Nil(t, err, "could not create new file")
 
 	err = zipFromDirectory("new.zip", newTempDir)

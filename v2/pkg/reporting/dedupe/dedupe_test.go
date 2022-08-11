@@ -1,7 +1,6 @@
 package dedupe
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func TestDedupeDuplicates(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "nuclei")
+	tempDir, err := os.MkdirTemp("", "nuclei")
 	require.Nil(t, err, "could not create temporary storage")
 	defer os.RemoveAll(tempDir)
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -262,7 +261,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 
 	// retryablehttp
 	var body io.ReadCloser
-	body = ioutil.NopCloser(strings.NewReader(rawRequestData.Data))
+	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
 	if r.request.Race {
 		// More or less this ensures that all requests hit the endpoint at the same approximated time
 		// Todo: sync internally upon writing latest request byte
@@ -327,7 +326,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if err != nil {
 			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
-		req.Body = ioutil.NopCloser(strings.NewReader(body))
+		req.Body = io.NopCloser(strings.NewReader(body))
 	}
 	if !r.request.Unsafe {
 		setHeader(req, "User-Agent", uarand.GetRandom())
