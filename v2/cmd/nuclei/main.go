@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/projectdiscovery/fileutil"
@@ -21,8 +23,9 @@ import (
 )
 
 var (
-	cfgFile string
-	options = &types.Options{}
+	cfgFile    string
+	memProfile string // optional profile file path
+	options    = &types.Options{}
 )
 
 func main() {
@@ -31,6 +34,24 @@ func main() {
 	}
 
 	readConfig()
+
+	// Profiling related code
+	if memProfile != "" {
+		f, err := os.Create(memProfile)
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create memory profile %q: %v", memProfile, err)
+		}
+		old := runtime.MemProfileRate
+		runtime.MemProfileRate = 4096
+		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+
+		defer func() {
+			_ = pprof.Lookup("heap").WriteTo(f, 0)
+			f.Close()
+			runtime.MemProfileRate = old
+			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
+		}()
+	}
 
 	runner.ParseOptions(options)
 
@@ -213,6 +234,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
+		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
