@@ -1,12 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"github.com/mitchellh/go-homedir"
 	"io"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"time"
 
@@ -100,7 +99,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
-		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion,"new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
+		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
 		flagSet.BoolVarP(&options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
 		flagSet.FileNormalizedOriginalStringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
@@ -243,14 +242,20 @@ on extensive configurability, massive extensibility and ease of use.`)
 	}
 	if options.CustomConfigDir != "" {
 		config.SetCustomConfigDirectory(options.CustomConfigDir)
-		configPath := path.Join(options.CustomConfigDir, "config.yaml")
-	readConfigFile:
-		if err := flagSet.MergeConfigFile(configPath); err != nil && err != io.EOF {
-			if home, err := homedir.Dir(); err == nil {
-				path := filepath.Join(home, ".config", "nuclei", "config.yaml")
-				_ =fileutil.CopyFile(path, configPath)
-				goto readConfigFile
+		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
+		readConfigFile := func() error {
+			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
+				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				err = fileutil.CopyFile(defaultConfigPath, configPath)
+				if err != nil {
+					return err
+				}
+				return errors.New("reload the config file")
 			}
+			return nil
+		}
+		if err := readConfigFile(); err != nil {
+			readConfigFile()
 		}
 	}
 	if cfgFile != "" {
