@@ -59,9 +59,6 @@ func TestLoadTemplate(t *testing.T) {
 
 			tagFilter, err := filter.New(&filter.Config{})
 			require.Nil(t, err)
-			success, err := LoadTemplate(tc.name, tagFilter, nil)
-			tagFilter, err := filter.New(&filter.Config{})
-			require.Nil(t, err)
 			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
