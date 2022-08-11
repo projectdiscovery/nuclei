@@ -255,7 +255,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 			return nil
 		}
 		if err := readConfigFile(); err != nil {
-			readConfigFile()
+			_=readConfigFile()
 		}
 	}
 	if cfgFile != "" {
