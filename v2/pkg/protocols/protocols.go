@@ -54,7 +54,7 @@ type ExecuterOptions struct {
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter ratelimit.Limiter
 	// Catalog is a template catalog implementation for nuclei
-	Catalog *catalog.Catalog
+	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
 	ProjectFile *projectfile.ProjectFile
 	// Browser is a browser engine for running headless templates

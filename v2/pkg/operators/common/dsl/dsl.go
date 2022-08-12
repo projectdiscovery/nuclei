@@ -246,6 +246,64 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"starts_with": makeDslWithOptionalArgsFunction(
+			"(str string, prefix ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, prefix := range args[1:] {
+					if strings.HasPrefix(types.ToString(args[0]), types.ToString(prefix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+		),
+		"line_starts_with": makeDslWithOptionalArgsFunction(
+			"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, prefix := range args[1:] {
+						if strings.HasPrefix(line, types.ToString(prefix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			},
+		),
+		"ends_with": makeDslWithOptionalArgsFunction(
+			"(str string, suffix ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, suffix := range args[1:] {
+					if strings.HasSuffix(types.ToString(args[0]), types.ToString(suffix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+		),
+		"line_ends_with": makeDslWithOptionalArgsFunction(
+			"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, suffix := range args[1:] {
+						if strings.HasSuffix(line, types.ToString(suffix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			},
+		),
 		"concat": makeDslWithOptionalArgsFunction(
 			"(args ...interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
