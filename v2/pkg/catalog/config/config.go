@@ -35,7 +35,7 @@ var customConfigDirectory string
 func SetCustomConfigDirectory(dir string) {
 	customConfigDirectory = dir
 	if !fileutil.FolderExists(dir) {
-		fileutil.CreateFolder(dir)
+		_ = fileutil.CreateFolder(dir)
 	}
 }
 func getConfigDetails() (string, error) {
