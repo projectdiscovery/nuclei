@@ -268,7 +268,7 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
-					gologger.Warning().Msgf("Headless flag is required for headless templates %s\n", templatePath)
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
@@ -319,7 +319,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
-					gologger.Warning().Msgf("Headless flag is required for headless templates %s\n", templatePath)
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
