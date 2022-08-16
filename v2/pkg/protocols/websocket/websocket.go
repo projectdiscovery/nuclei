@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -205,6 +206,12 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
 		NetDial:   request.dialer.Dial,
 		TLSConfig: tlsConfig,
+	}
+
+	if request.options.Options.Debug || request.options.Options.DebugResponse {
+		gologger.Debug().Msgf("Protocol request variables")
+		vardump.Variables(payloadValues)
+		gologger.Print().Msgf("\n")
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
