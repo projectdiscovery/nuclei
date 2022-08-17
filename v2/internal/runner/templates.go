@@ -13,7 +13,7 @@ import (
 )
 
 func (r *Runner) logAvailableTemplate(tplPath string) {
-	t, err := parsers.ParseTemplate(tplPath)
+	t, err := parsers.ParseTemplate(tplPath, r.catalog)
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {

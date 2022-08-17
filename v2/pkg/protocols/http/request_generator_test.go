@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
@@ -33,7 +33,7 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
-	catalogInstance := catalog.New("")
+	catalogInstance := disk.NewCatalog("")
 	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
@@ -57,7 +57,7 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
-	catalogInstance := catalog.New("")
+	catalogInstance := disk.NewCatalog("")
 	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
