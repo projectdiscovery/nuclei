@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	numericalExpressionRegex = regexp.MustCompile(`[0-9+\-*/]+`)
+	numericalExpressionRegex = regexp.MustCompile(`^[0-9+\-/\W]+$`)
 	unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
 )
 

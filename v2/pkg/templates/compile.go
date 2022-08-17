@@ -36,7 +36,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	template := &Template{}
 
-	data, err := utils.ReadFromPathOrURL(filePath)
+	data, err := utils.ReadFromPathOrURL(filePath, options.Catalog)
 	if err != nil {
 		return nil, err
 	}

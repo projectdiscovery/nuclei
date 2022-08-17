@@ -124,7 +124,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionWaitLoad:     "waitload",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
-	ActionSetMethod:    "set-method",
+	ActionSetMethod:    "setmethod",
 	ActionAddHeader:    "addheader",
 	ActionSetHeader:    "setheader",
 	ActionDeleteHeader: "deleteheader",

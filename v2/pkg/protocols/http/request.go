@@ -409,6 +409,10 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		formedURL = generatedRequest.rawRequest.FullURL
+		// use request url as matched url if empty
+		if formedURL == "" {
+			formedURL = reqURL
+		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 			hostname = parsed.Host
 		}
@@ -462,7 +466,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			}
 		}
 	}
-
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
@@ -578,7 +581,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		}
 		outputEvent["curl-command"] = curlCommand
 		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
-
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
