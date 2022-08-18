@@ -3,7 +3,6 @@ package httpclientpool
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -213,7 +212,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
 		if err != nil {
-			fmt.Println("Unable to setup socks proxy:", err)
 			gologger.Error().Msgf("Unable to setup socks proxy: %s\n", err)
 			return nil, err
 		}
