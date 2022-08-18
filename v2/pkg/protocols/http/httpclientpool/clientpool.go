@@ -13,14 +13,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -210,14 +210,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	} else if types.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
+		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
+		if err != nil {
+			fmt.Println("Unable to setup socks proxy:", err)
+			gologger.Error().Msgf("Unable to setup socks proxy: %s\n", err)
+			return nil, err
 		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
