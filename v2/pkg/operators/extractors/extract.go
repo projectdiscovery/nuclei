@@ -67,7 +67,7 @@ func (e *Extractor) ExtractXPath(corpus string) map[string]struct{} {
 	return e.ExtractHTML(corpus)
 }
 
-// ExtractHTML extracts items from text using XPath selectors
+// ExtractHTML extracts items from HTML using XPath selectors
 func (e *Extractor) ExtractHTML(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
@@ -96,7 +96,7 @@ func (e *Extractor) ExtractHTML(corpus string) map[string]struct{} {
 	return results
 }
 
-// ExtractXML extracts items from text using XPath selectors
+// ExtractXML extracts items from XML using XPath selectors
 func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
