@@ -71,9 +71,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	defer instance.Close()
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(payloads)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)

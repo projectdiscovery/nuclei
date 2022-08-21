@@ -209,9 +209,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(payloadValues)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)

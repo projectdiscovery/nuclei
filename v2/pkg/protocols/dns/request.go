@@ -49,9 +49,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	vars = generators.MergeMaps(variablesMap, vars)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(vars)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
 
 	// Compile each request for the template based on the URL

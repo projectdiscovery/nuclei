@@ -91,9 +91,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	variables := generateVariables(input)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(variables)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
 	}
 
 	// and replace placeholders

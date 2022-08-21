@@ -130,9 +130,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	interimValues := generators.MergeMaps(variables, payloads)
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(interimValues)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(interimValues))
 	}
 
 	inputEvents := make(map[string]interface{})

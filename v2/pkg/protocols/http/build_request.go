@@ -98,9 +98,7 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 	if r.options.Options.Debug || r.options.Options.DebugResponse {
-		gologger.Debug().Msgf("Protocol request variables")
-		vardump.Variables(values)
-		gologger.Print().Msgf("\n")
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
 	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
