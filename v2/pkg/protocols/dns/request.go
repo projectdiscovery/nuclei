@@ -48,7 +48,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
 

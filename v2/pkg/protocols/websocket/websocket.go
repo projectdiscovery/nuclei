@@ -208,7 +208,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 		TLSConfig: tlsConfig,
 	}
 
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 

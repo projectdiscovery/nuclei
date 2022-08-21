@@ -97,7 +97,7 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
-	if r.options.Options.Debug || r.options.Options.DebugResponse {
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
 	}
 
