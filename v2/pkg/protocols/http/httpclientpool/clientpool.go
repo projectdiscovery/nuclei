@@ -17,7 +17,6 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -210,9 +209,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	} else if types.ProxySocksURL != "" {
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+		if proxyErr != nil {
+			return nil, proxyErr
+		}
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
 		if err != nil {
-			gologger.Error().Msgf("Unable to setup socks proxy: %s\n", err)
 			return nil, err
 		}
 

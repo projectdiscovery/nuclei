@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/net/proxy"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -53,9 +52,11 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		}
 	} else if types.ProxySocksURL != "" {
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+		if proxyErr != nil {
+			return nil, err
+		}
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
 		if err != nil {
-			gologger.Error().Msgf("Unable to setup socks proxy: %s\n", err)
 			return nil, err
 		}
 
