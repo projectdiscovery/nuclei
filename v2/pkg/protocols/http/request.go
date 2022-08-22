@@ -346,7 +346,6 @@ func (request *Request) ExecuteWithResults(reqURL string, dynamicValues, previou
 const drainReqSize = int64(8 * 1024)
 
 var errStopExecution = errors.New("stop execution due to unresolved variables")
-var someMapMutex = sync.RWMutex{}
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(reqURL string, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
@@ -585,7 +584,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
-		someMapMutex.Lock()
 		for k, v := range previousEvent {
 			finalEvent[k] = v
 		}
@@ -601,7 +599,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				finalEvent[key] = v
 			}
 		}
-		someMapMutex.Unlock()
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
