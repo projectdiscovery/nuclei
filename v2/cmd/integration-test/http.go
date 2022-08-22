@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -52,6 +53,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni.yaml":                             &customCLISNI{},
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
+	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 }
 
 type httpInteractshRequest struct{}
@@ -904,6 +906,25 @@ func (h *customCLISNIUnsafe) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-sni", "test")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type annotationTimeout struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *annotationTimeout) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		time.Sleep(4 * time.Second)
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-timeout", "1")
 	if err != nil {
 		return err
 	}
