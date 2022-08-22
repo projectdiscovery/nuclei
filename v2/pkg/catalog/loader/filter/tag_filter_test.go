@@ -209,13 +209,13 @@ func TestTagBasedFilter(t *testing.T) {
 		// basic properties
 		testAdvancedFiltering(t, []string{"id=='test'"}, dummyTemplate, false, true)
 		// simple element in slice with 'in' operator, multiple slice elements will require a custom helper function
-		testAdvancedFiltering(t, []string{"'test' in tags"}, dummyTemplate, false, true)
-		testAdvancedFiltering(t, []string{"'test1' in authors"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(tags,'test')"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(authors,'test1')"}, dummyTemplate, false, true)
 		// helper function
 		testAdvancedFiltering(t, []string{"contains(id, 'te')"}, dummyTemplate, false, true)
 		testAdvancedFiltering(t, []string{"md5(id)=='098f6bcd4621d373cade4e832627b4f6'"}, dummyTemplate, false, true)
 		// boolean operators
-		testAdvancedFiltering(t, []string{"id!='nothing' && (contains(id, 'te') && id=='test')&& !('no_tag' in tags)"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"id!='nothing' && (contains(id, 'te') && id=='test')&& !contains(tags,'no_tag')"}, dummyTemplate, false, true)
 		// create some metadata
 		dummyTemplate.Info.Metadata = make(map[string]interface{})
 		dummyTemplate.Info.Metadata["test_value"] = "test"
@@ -229,11 +229,11 @@ func TestTagBasedFilter(t *testing.T) {
 
 		// basic properties
 		testAdvancedFiltering(t, []string{"id=='test1'"}, dummyTemplate, false, false)
-		testAdvancedFiltering(t, []string{"!(id==test') && !('bla' in tags)'"}, dummyTemplate, true, false)
+		testAdvancedFiltering(t, []string{"!(id==test') && !contains(tags,'bla')"}, dummyTemplate, true, false)
 		// helper function
 		testAdvancedFiltering(t, []string{"!contains(id, 'bah')"}, dummyTemplate, false, true)
 		// boolean operators with nested negations
-		testAdvancedFiltering(t, []string{"id!='nothing' && !(!contains(id, 'te') && id=='test')&& !('no_tag' in tags)"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"id!='nothing' && !(!contains(id, 'te') && id=='test')&& !contains(tags,'no_tag')"}, dummyTemplate, false, true)
 		// create some metadata
 		dummyTemplate.Info.Metadata = make(map[string]interface{})
 		testAdvancedFiltering(t, []string{"non_existent_value == 'test'"}, dummyTemplate, false, false)
