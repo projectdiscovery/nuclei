@@ -3,18 +3,16 @@ package engine
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -53,14 +51,15 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	} else if types.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
+		if proxyErr != nil {
+			return nil, err
 		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
+		if err != nil {
+			return nil, err
+		}
+
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
