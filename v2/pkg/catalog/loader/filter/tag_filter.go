@@ -188,8 +188,8 @@ func isConditionMatch(tagFilter *TagFilter, template *templates.Template) bool {
 		"id":          template.ID,
 		"name":        template.Info.Name,
 		"description": template.Info.Description,
-		"tags":        toSliceOfInterfaces(template.Info.Tags.ToSlice()),
-		"authors":     toSliceOfInterfaces(template.Info.Authors.ToSlice()),
+		"tags":        template.Info.Tags.ToSlice(),
+		"authors":     template.Info.Authors.ToSlice(),
 		"severity":    template.Info.SeverityHolder.Severity.String(),
 	}
 	for k, v := range template.Info.Metadata {
@@ -348,12 +348,4 @@ func toMap(slice []string) map[string]struct{} {
 		}
 	}
 	return result
-}
-
-func toSliceOfInterfaces(slice []string) []interface{} {
-	interfaces := make([]interface{}, len(slice))
-	for i, item := range slice {
-		interfaces[i] = item
-	}
-	return interfaces
 }
