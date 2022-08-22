@@ -163,7 +163,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(itemStr)
 	case extractors.XPathExtractor:
-		return extractor.ExtractHTML(itemStr)
+		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
 	}
