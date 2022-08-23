@@ -50,6 +50,13 @@ var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
 
+var (
+	// FunctionNames is a list of function names for expression evaluation usages
+	FunctionNames []string
+	// HelperFunctions is a pre-compiled list of govaluate DSL functions
+	HelperFunctions map[string]govaluate.ExpressionFunction
+)
+
 var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
 
@@ -592,6 +599,11 @@ func init() {
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
+	HelperFunctions = helperFunctions()
+	FunctionNames = make([]string, 0, len(HelperFunctions))
+	for k := range HelperFunctions {
+		FunctionNames = append(FunctionNames, k)
+	}
 }
 
 func makeDslWithOptionalArgsFunction(signaturePart string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
@@ -626,8 +638,8 @@ func createSignaturePart(numberOfParameters int) string {
 	return fmt.Sprintf("(%s interface{}) interface{}", strings.Join(params, ", "))
 }
 
-// HelperFunctions returns the dsl helper functions
-func HelperFunctions() map[string]govaluate.ExpressionFunction {
+// helperFunctions returns the dsl helper functions
+func helperFunctions() map[string]govaluate.ExpressionFunction {
 	helperFunctions := make(map[string]govaluate.ExpressionFunction, len(dslFunctions))
 
 	for functionName, dslFunction := range dslFunctions {
