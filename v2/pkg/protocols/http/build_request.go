@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 var (
@@ -112,9 +113,14 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	if isRawRequest {
 		// Get the hostname from the URL section to build the request.
 		reader := bufio.NewReader(strings.NewReader(data))
+	read_line:
 		s, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("could not read request: %w", err)
+		}
+		// ignore all annotations
+		if stringsutil.HasPrefixAny(s, "@") {
+			goto read_line
 		}
 
 		parts := strings.Split(s, " ")
@@ -288,8 +294,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	}
 
 	if reqWithAnnotations, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		req = reqWithAnnotations
-		request = request.WithContext(req.Context())
+		request.Request = reqWithAnnotations
 	}
 
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil

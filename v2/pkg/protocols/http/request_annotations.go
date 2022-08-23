@@ -102,12 +102,12 @@ func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*h
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
 				//nolint:govet // cancelled automatically by withTimeout
-				ctx, _ := context.WithTimeout(request.Context(), parsed)
+				ctx, _ := context.WithTimeout(context.Background(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
-			ctx, _ := context.WithTimeout(request.Context(), time.Duration(r.options.Options.Timeout)*time.Second)
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
 			request = request.Clone(ctx)
 		}
 	}
