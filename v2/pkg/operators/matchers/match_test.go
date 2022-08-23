@@ -75,7 +75,7 @@ func TestHexEncoding(t *testing.T) {
 }
 
 func TestMatcher_MatchDSL(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions())
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
 	require.Nil(t, err, "couldn't compile expression")
 
 	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}

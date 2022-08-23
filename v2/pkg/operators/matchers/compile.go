@@ -62,7 +62,7 @@ func (matcher *Matcher) CompileMatchers() error {
 
 	// Compile the dsl expressions
 	for _, dslExpression := range matcher.DSL {
-		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions())
+		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions)
 		if err != nil {
 			return &DslCompilationError{DslSignature: dslExpression, WrappedError: err}
 		}
