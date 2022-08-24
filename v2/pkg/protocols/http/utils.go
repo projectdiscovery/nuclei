@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -115,31 +116,25 @@ func normalizeResponseBody(resp *http.Response, response *redirectedResponse) er
 // dump creates a dump of the http request in form of a byte slice
 func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
+		cloned := req.request.Clone(context.Background())
+
 		// Create a copy on the fly of the request body - ignore errors
 		bodyBytes, _ := req.request.BodyBytes()
 		var dumpBody bool
 		if len(bodyBytes) > 0 {
 			dumpBody = true
-			req.request.Request.ContentLength = int64(len(bodyBytes))
-			req.request.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+			cloned.ContentLength = int64(len(bodyBytes))
+			cloned.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
 		} else {
-			req.request.Request.ContentLength = 0
-			req.request.Request.Body = nil
-			delete(req.request.Request.Header, "Content-length")
+			cloned.ContentLength = 0
+			cloned.Body = nil
+			delete(cloned.Header, "Content-length")
 		}
 
-		dumpBytes, err := httputil.DumpRequestOut(req.request.Request, dumpBody)
+		dumpBytes, err := httputil.DumpRequestOut(cloned, dumpBody)
 		if err != nil {
 			return nil, err
 		}
-
-		// The original req.Body gets modified indirectly by httputil.DumpRequestOut so we set it again to nil if it was empty
-		// Otherwise redirects like 307/308 would fail (as they require the body to be sent along)
-		if len(bodyBytes) == 0 {
-			req.request.Request.ContentLength = 0
-			req.request.Request.Body = nil
-		}
-
 		return dumpBytes, nil
 	}
 	rawHttpOptions := &rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes}
