@@ -586,7 +586,7 @@ func (h *httpRawUnsafeRequest) Execute(filePath string) error {
 
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
-		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
+		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
 	})
 	defer ts.Close()
 
