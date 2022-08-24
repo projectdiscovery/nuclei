@@ -246,7 +246,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
 		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
 		if !fileutil.FileExists(ignoreFile) {
-			fileutil.CopyFile(originalIgnorePath, ignoreFile)
+			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
