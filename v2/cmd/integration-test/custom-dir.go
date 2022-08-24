@@ -6,11 +6,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-func getCustomConfigsDir() string {
-	temp := os.TempDir()
-	return temp
-}
-
 type customConfigDirTest struct{}
 
 var customConfigDirTestCases = map[string]testutils.TestCase{
@@ -19,16 +14,25 @@ var customConfigDirTestCases = map[string]testutils.TestCase{
 
 // Execute executes a test case and returns an error if occurred
 func (h *customConfigDirTest) Execute(filePath string) error {
-	defer os.RemoveAll(getCustomConfigsDir())
-
-	var routerErr error
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-config-directory", getCustomConfigsDir())
+	customTempDirectory, err := os.MkdirTemp("", "")
 	if err != nil {
 		return err
 	}
-	if routerErr != nil {
-		return routerErr
+	defer os.RemoveAll(customTempDirectory)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-config-directory", customTempDirectory)
+	if err != nil {
+		return err
 	}
-	return expectResultsCount(results, 1)
+	if len(results) == 0 {
+		return nil
+	}
+	files, err := os.ReadDir(customTempDirectory)
+	if err != nil {
+		return err
+	}
+	var fileNames []string
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+	return expectResultsCount(fileNames, 3)
 }
