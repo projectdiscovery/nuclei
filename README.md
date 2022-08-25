@@ -142,6 +142,7 @@ OUTPUT:
 
 CONFIGURATIONS:
    -config string              path to the nuclei configuration file
+   -config-directory string    override the default config path ($home/.config)
    -fr, -follow-redirects      enable following redirects for http templates
    -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
    -dr, -disable-redirects     disable redirects for http templates
@@ -158,6 +159,8 @@ CONFIGURATIONS:
    -sml, -show-match-line      show match lines for file templates, works with extractors only
    -ztls                       use ztls library with autofallback to standard one for tls13
    -sni string                 tls sni hostname to use (default: input domain name)
+   -i, -interface string       network interface to use for network scan
+   -sip, -source-ip string     source ip address to use for network scan
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
