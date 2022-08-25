@@ -173,7 +173,7 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false
 			}
-			expression, err = govaluate.NewEvaluableExpressionWithFunctions(resolvedExpression, dsl.HelperFunctions())
+			expression, err = govaluate.NewEvaluableExpressionWithFunctions(resolvedExpression, dsl.HelperFunctions)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false

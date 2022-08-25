@@ -193,6 +193,7 @@ HEADLESS:
    -page-timeout int    seconds to wait for each page in headless mode (default 20)
    -sb, -show-browser   show the browser on the screen when running templates with headless mode
    -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
+   -lha, -list-headless-action  list available headless actions
 
 DEBUG:
    -debug                    show all requests and responses

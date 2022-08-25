@@ -16,15 +16,18 @@ import (
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 var (
@@ -94,6 +97,9 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
+	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
@@ -111,9 +117,14 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	if isRawRequest {
 		// Get the hostname from the URL section to build the request.
 		reader := bufio.NewReader(strings.NewReader(data))
+	read_line:
 		s, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("could not read request: %w", err)
+		}
+		// ignore all annotations
+		if stringsutil.HasPrefixAny(s, "@") {
+			goto read_line
 		}
 
 		parts := strings.Split(s, " ")
@@ -287,8 +298,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	}
 
 	if reqWithAnnotations, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		req = reqWithAnnotations
-		request = request.WithContext(req.Context())
+		request.Request = reqWithAnnotations
 	}
 
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil

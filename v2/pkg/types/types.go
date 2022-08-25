@@ -143,6 +143,8 @@ type Options struct {
 	UseInstalledChrome bool
 	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
+	// ShowActions displays a list of all headless actions
+	ShowActions bool
 	// Metrics enables display of metrics via an http endpoint
 	Metrics bool
 	// Debug mode allows debugging request/responses for the engine
@@ -236,6 +238,8 @@ type Options struct {
 	DisableStdin bool
 	// IncludeConditions is the list of conditions templates should match
 	IncludeConditions goflags.FileStringSlice
+	// Custom Config Directory
+	CustomConfigDir string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

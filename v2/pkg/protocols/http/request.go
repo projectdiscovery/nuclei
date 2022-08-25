@@ -598,7 +598,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				finalEvent[key] = v
 			}
 		}
-
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 

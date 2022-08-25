@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -32,7 +34,6 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-
 	readConfig()
 
 	// Profiling related code
@@ -182,6 +183,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
+		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -221,6 +223,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
 		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
+		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
 
 	flagSet.CreateGroup("debug", "Debug",
@@ -261,7 +264,29 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-
+	if options.CustomConfigDir != "" {
+		originalIgnorePath := config.GetIgnoreFilePath()
+		config.SetCustomConfigDirectory(options.CustomConfigDir)
+		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
+		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
+		if !fileutil.FileExists(ignoreFile) {
+			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
+		}
+		readConfigFile := func() error {
+			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
+				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				err = fileutil.CopyFile(defaultConfigPath, configPath)
+				if err != nil {
+					return err
+				}
+				return errors.New("reload the config file")
+			}
+			return nil
+		}
+		if err := readConfigFile(); err != nil {
+			_ = readConfigFile()
+		}
+	}
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
