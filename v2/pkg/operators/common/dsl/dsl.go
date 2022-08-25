@@ -573,6 +573,49 @@ func init() {
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
 		}),
+		"substr": makeDslWithOptionalArgsFunction(
+			"(str string, start int, optionalEnd int)",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				argStr := types.ToString(args[0])
+				start, err := strconv.Atoi(types.ToString(args[1]))
+				if err != nil {
+					return nil, errors.Wrap(err, "invalid start position")
+				}
+				if len(args) == 2 {
+					return argStr[start:], nil
+				}
+
+				end, err := strconv.Atoi(types.ToString(args[2]))
+				if err != nil {
+					return nil, errors.Wrap(err, "invalid end position")
+				}
+				if end < 0 {
+					end += len(argStr)
+				}
+				return argStr[start:end], nil
+			},
+		),
+		"aes_cbc": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			key := []byte(types.ToString(args[0]))
+			cleartext := []byte(types.ToString(args[1]))
+			block, _ := aes.NewCipher(key)
+			blockSize := block.BlockSize()
+			n := blockSize - len(cleartext)%blockSize
+			temp := bytes.Repeat([]byte{byte(n)}, n)
+			cleartext = append(cleartext, temp...)
+			iv := make([]byte, 16)
+			if _, err := crand.Read(iv); err != nil {
+				return nil, err
+			}
+			blockMode := cipher.NewCBCEncrypter(block, iv)
+			ciphertext := make([]byte, len(cleartext))
+			blockMode.CryptBlocks(ciphertext, cleartext)
+			ciphertext = append(iv, ciphertext...)
+			return ciphertext, nil
+		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			key := args[0].(string)
 			value := args[1].(string)
@@ -651,6 +694,7 @@ func helperFunctions() map[string]govaluate.ExpressionFunction {
 }
 
 // AddHelperFunction allows creation of additional helper functions to be supported with templates
+//
 //goland:noinspection GoUnusedExportedFunction
 func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
 	if _, ok := dslFunctions[key]; !ok {
