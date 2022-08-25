@@ -2,7 +2,6 @@ package markdown
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,7 +66,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
-	return ioutil.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
+	return os.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation
