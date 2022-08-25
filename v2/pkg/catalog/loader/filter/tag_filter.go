@@ -314,7 +314,7 @@ func New(config *Config) (*TagFilter, error) {
 		}
 	}
 	for _, includeCondition := range config.IncludeConditions {
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(includeCondition, dsl.HelperFunctions())
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(includeCondition, dsl.HelperFunctions)
 		if err != nil {
 			return nil, err
 		}
