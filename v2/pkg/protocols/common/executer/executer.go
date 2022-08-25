@@ -8,7 +8,6 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
@@ -33,7 +32,7 @@ func (e *Executer) Compile() error {
 
 	for _, request := range e.requests {
 		if err := request.Compile(e.options); err != nil {
-			var dslCompilationError *matchers.DslCompilationError
+			var dslCompilationError *dsl.CompilationError
 			if errors.As(err, &dslCompilationError) {
 				if cliOptions.Verbose {
 					rawErrorMessage := dslCompilationError.Error()
