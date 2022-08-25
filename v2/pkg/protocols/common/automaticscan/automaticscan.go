@@ -2,7 +2,6 @@ package automaticscan
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/sliceutil"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"gopkg.in/yaml.v2"
 )
@@ -159,7 +159,7 @@ func (s *Service) processWappalyzerInputPair(input string) {
 		return
 	}
 	reader := io.LimitReader(resp.Body, maxDefaultBody)
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		resp.Body.Close()
 		return
@@ -196,7 +196,7 @@ func (s *Service) processWappalyzerInputPair(input string) {
 	if len(items) == 0 {
 		return
 	}
-	uniqueTags := uniqueSlice(items)
+	uniqueTags := sliceutil.Dedupe(items)
 
 	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, uniqueTags)
 	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(uniqueTags, ","), input, len(templatesList))
@@ -220,18 +220,4 @@ func normalizeAppName(appName string) string {
 		}
 	}
 	return strings.ToLower(appName)
-}
-
-func uniqueSlice(slice []string) []string {
-	data := make(map[string]struct{}, len(slice))
-	for _, item := range slice {
-		if _, ok := data[item]; !ok {
-			data[item] = struct{}{}
-		}
-	}
-	finalSlice := make([]string, 0, len(data))
-	for item := range data {
-		finalSlice = append(finalSlice, item)
-	}
-	return finalSlice
 }

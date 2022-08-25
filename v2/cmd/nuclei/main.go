@@ -1,10 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/projectdiscovery/fileutil"
@@ -21,16 +25,34 @@ import (
 )
 
 var (
-	cfgFile string
-	options = &types.Options{}
+	cfgFile    string
+	memProfile string // optional profile file path
+	options    = &types.Options{}
 )
 
 func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-
 	readConfig()
+
+	// Profiling related code
+	if memProfile != "" {
+		f, err := os.Create(memProfile)
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create memory profile %q: %v", memProfile, err)
+		}
+		old := runtime.MemProfileRate
+		runtime.MemProfileRate = 4096
+		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+
+		defer func() {
+			_ = pprof.Lookup("heap").WriteTo(f, 0)
+			f.Close()
+			runtime.MemProfileRate = old
+			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
+		}()
+	}
 
 	runner.ParseOptions(options)
 
@@ -124,6 +146,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
+		flagSet.FileStringSliceVarP(&options.IncludeConditions, "template-condition", "tc", nil, "templates to run based on expression condition"),
 	)
 
 	flagSet.CreateGroup("output", "Output",
@@ -162,6 +185,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
+		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -201,6 +225,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
 		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
+		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
 
 	flagSet.CreateGroup("debug", "Debug",
@@ -214,6 +239,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
+		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
@@ -240,7 +266,29 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-
+	if options.CustomConfigDir != "" {
+		originalIgnorePath := config.GetIgnoreFilePath()
+		config.SetCustomConfigDirectory(options.CustomConfigDir)
+		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
+		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
+		if !fileutil.FileExists(ignoreFile) {
+			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
+		}
+		readConfigFile := func() error {
+			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
+				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				err = fileutil.CopyFile(defaultConfigPath, configPath)
+				if err != nil {
+					return err
+				}
+				return errors.New("reload the config file")
+			}
+			return nil
+		}
+		if err := readConfigFile(); err != nil {
+			_ = readConfigFile()
+		}
+	}
 	if cfgFile != "" {
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)

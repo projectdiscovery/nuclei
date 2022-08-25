@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -49,7 +48,7 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := ioutil.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := ioutil.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
 	if err != nil {
 		return err
 	}

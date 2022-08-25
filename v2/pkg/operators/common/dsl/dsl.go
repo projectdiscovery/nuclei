@@ -50,6 +50,13 @@ var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
 
+var (
+	// FunctionNames is a list of function names for expression evaluation usages
+	FunctionNames []string
+	// HelperFunctions is a pre-compiled list of govaluate DSL functions
+	HelperFunctions map[string]govaluate.ExpressionFunction
+)
+
 var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
 
@@ -246,6 +253,64 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"starts_with": makeDslWithOptionalArgsFunction(
+			"(str string, prefix ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, prefix := range args[1:] {
+					if strings.HasPrefix(types.ToString(args[0]), types.ToString(prefix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+		),
+		"line_starts_with": makeDslWithOptionalArgsFunction(
+			"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, prefix := range args[1:] {
+						if strings.HasPrefix(line, types.ToString(prefix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			},
+		),
+		"ends_with": makeDslWithOptionalArgsFunction(
+			"(str string, suffix ...string) bool",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, suffix := range args[1:] {
+					if strings.HasSuffix(types.ToString(args[0]), types.ToString(suffix)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			},
+		),
+		"line_ends_with": makeDslWithOptionalArgsFunction(
+			"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
+					for _, suffix := range args[1:] {
+						if strings.HasSuffix(line, types.ToString(suffix)) {
+							return true, nil
+						}
+					}
+				}
+				return false, nil
+			},
+		),
 		"concat": makeDslWithOptionalArgsFunction(
 			"(args ...interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
@@ -508,6 +573,49 @@ func init() {
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
 		}),
+		"substr": makeDslWithOptionalArgsFunction(
+			"(str string, start int, optionalEnd int)",
+			func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, invalidDslFunctionError
+				}
+				argStr := types.ToString(args[0])
+				start, err := strconv.Atoi(types.ToString(args[1]))
+				if err != nil {
+					return nil, errors.Wrap(err, "invalid start position")
+				}
+				if len(args) == 2 {
+					return argStr[start:], nil
+				}
+
+				end, err := strconv.Atoi(types.ToString(args[2]))
+				if err != nil {
+					return nil, errors.Wrap(err, "invalid end position")
+				}
+				if end < 0 {
+					end += len(argStr)
+				}
+				return argStr[start:end], nil
+			},
+		),
+		"aes_cbc": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			key := []byte(types.ToString(args[0]))
+			cleartext := []byte(types.ToString(args[1]))
+			block, _ := aes.NewCipher(key)
+			blockSize := block.BlockSize()
+			n := blockSize - len(cleartext)%blockSize
+			temp := bytes.Repeat([]byte{byte(n)}, n)
+			cleartext = append(cleartext, temp...)
+			iv := make([]byte, 16)
+			if _, err := crand.Read(iv); err != nil {
+				return nil, err
+			}
+			blockMode := cipher.NewCBCEncrypter(block, iv)
+			ciphertext := make([]byte, len(cleartext))
+			blockMode.CryptBlocks(ciphertext, cleartext)
+			ciphertext = append(iv, ciphertext...)
+			return ciphertext, nil
+		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			key := args[0].(string)
 			value := args[1].(string)
@@ -533,6 +641,11 @@ func init() {
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
 	for funcName, dslFunc := range tempDslFunctions {
 		dslFunctions[funcName] = dslFunc(funcName)
+	}
+	HelperFunctions = helperFunctions()
+	FunctionNames = make([]string, 0, len(HelperFunctions))
+	for k := range HelperFunctions {
+		FunctionNames = append(FunctionNames, k)
 	}
 }
 
@@ -568,8 +681,8 @@ func createSignaturePart(numberOfParameters int) string {
 	return fmt.Sprintf("(%s interface{}) interface{}", strings.Join(params, ", "))
 }
 
-// HelperFunctions returns the dsl helper functions
-func HelperFunctions() map[string]govaluate.ExpressionFunction {
+// helperFunctions returns the dsl helper functions
+func helperFunctions() map[string]govaluate.ExpressionFunction {
 	helperFunctions := make(map[string]govaluate.ExpressionFunction, len(dslFunctions))
 
 	for functionName, dslFunction := range dslFunctions {
@@ -581,6 +694,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 }
 
 // AddHelperFunction allows creation of additional helper functions to be supported with templates
+//
 //goland:noinspection GoUnusedExportedFunction
 func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
 	if _, ok := dslFunctions[key]; !ok {

@@ -85,7 +85,22 @@ func runTestCase(testCase string, debug bool) bool {
 }
 
 func runIndividualTestCase(testcase string, debug bool) error {
-	parts := strings.Fields(testcase)
+	quoted := false
+
+	// split upon unquoted spaces
+	parts := strings.FieldsFunc(testcase, func(r rune) bool {
+		if r == '"' {
+			quoted = !quoted
+		}
+		return !quoted && r == ' '
+	})
+
+	// Quoted strings containing spaces are expressions and must have trailing \" removed
+	for index, part := range parts {
+		if strings.Contains(part, " ") {
+			parts[index] = strings.Trim(part, "\"")
+		}
+	}
 
 	var finalArgs []string
 	if len(parts) > 1 {

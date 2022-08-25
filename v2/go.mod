@@ -5,14 +5,14 @@ go 1.17
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
-	github.com/andygrunwald/go-jira v1.15.1
+	github.com/andygrunwald/go-jira v1.16.0
 	github.com/antchfx/htmlquery v1.2.5
 	github.com/apex/log v1.9.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.0
-	github.com/go-rod/rod v0.108.1
+	github.com/go-rod/rod v0.109.0
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.8
@@ -33,7 +33,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v1.0.6
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
-	github.com/projectdiscovery/rawhttp v0.0.9-0.20220726060557-a045ab711701
+	github.com/projectdiscovery/rawhttp v0.1.1
 	github.com/projectdiscovery/retryabledns v1.0.13
 	github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d
 	github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3
@@ -41,32 +41,31 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.22.6
+	github.com/shirou/gopsutil/v3 v3.22.7
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.5.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210928183822-5ee35905bd95
-	github.com/xanzy/go-gitlab v0.69.0
-	github.com/ysmood/gson v0.7.1 // indirect
-	github.com/ysmood/leakless v0.8.0 // indirect
+	github.com/xanzy/go-gitlab v0.73.1
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.8.0
 	go.uber.org/ratelimit v0.2.0
-	golang.org/x/net v0.0.0-20220615171555-694bf12d69de
-	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
+	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48
+	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	golang.org/x/text v0.3.7
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.65
+require github.com/aws/aws-sdk-go v1.44.83
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
 require (
 	github.com/DataDog/gostackparse v0.5.0
+	github.com/antchfx/xmlquery v1.3.12
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
 	github.com/h2non/filetype v1.1.3
@@ -76,10 +75,10 @@ require (
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963
 	github.com/projectdiscovery/iputil v0.0.0-20220620153941-036d511e4097
-	github.com/projectdiscovery/nvd v1.0.9-0.20220314070650-d4a214c1f87d
+	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/sliceutil v0.0.0-20220511171050-c7d9bc5cadd9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.52
+	github.com/projectdiscovery/wappalyzergo v0.0.56
 	github.com/stretchr/testify v1.8.0
 	github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b
 	gopkg.in/yaml.v3 v3.0.1
@@ -112,7 +111,7 @@ require (
 	github.com/goburrow/cache v0.1.4 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -159,6 +158,8 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
+	github.com/ysmood/gson v0.7.1 // indirect
+	github.com/ysmood/leakless v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
@@ -166,12 +167,13 @@ require (
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
 )
