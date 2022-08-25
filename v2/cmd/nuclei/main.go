@@ -220,6 +220,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
 		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
+		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
 
 	flagSet.CreateGroup("debug", "Debug",
@@ -231,7 +232,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
 		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
-		flagSet.BoolVarP(&options.ShowActions, "show-actions", "sa", false, "show available headless actions"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
