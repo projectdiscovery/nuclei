@@ -230,6 +230,10 @@ type Options struct {
 	DisableRedirects bool
 	// SNI custom hostname
 	SNI string
+	// Interface to use for network scan
+	Interface string
+	// SourceIP sets custom source IP address for network requests
+	SourceIP string
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
