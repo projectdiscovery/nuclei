@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -55,6 +56,13 @@ func ParseOptions(options *types.Options) {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
+		os.Exit(0)
+	}
+	if options.ShowActions {
+		gologger.Info().Msgf("Showing available headless actions: ")
+		for action := range engine.ActionStringToAction {
+			gologger.Print().Msgf("\t%s", action)
+		}
 		os.Exit(0)
 	}
 	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
