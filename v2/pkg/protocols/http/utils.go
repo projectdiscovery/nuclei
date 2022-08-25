@@ -6,7 +6,6 @@ import (
 	"compress/zlib"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -124,7 +123,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		if len(bodyBytes) > 0 {
 			dumpBody = true
 			cloned.ContentLength = int64(len(bodyBytes))
-			cloned.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+			cloned.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 		} else {
 			cloned.ContentLength = 0
 			cloned.Body = nil
@@ -138,7 +137,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		return dumpBytes, nil
 	}
 	rawHttpOptions := &rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes}
-	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
+	return rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), io.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
 }
 
 // handleDecompression if the user specified a custom encoding (as golang transport doesn't do this automatically)
