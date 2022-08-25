@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -560,7 +560,7 @@ func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, erro
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("version not found")
 	}
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
@@ -30,7 +29,7 @@ type Browser struct {
 
 // New creates a new nuclei headless browser module
 func New(options *types.Options) (*Browser, error) {
-	dataStore, err := ioutil.TempDir("", "nuclei-*")
+	dataStore, err := os.MkdirTemp("", "nuclei-*")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
