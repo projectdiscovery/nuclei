@@ -237,6 +237,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		NoTimeout:       false,
 		FollowRedirects: request.Redirects,
 		CookieReuse:     request.CookieReuse,
+		Connection:      &httpclientpool.ConnectionConfiguration{},
 	}
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
@@ -248,7 +249,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
 	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
-		connectionConfiguration.Connection = &httpclientpool.ConnectionConfiguration{DisableKeepAlive: false}
+		connectionConfiguration.Connection.DisableKeepAlive = true
 	}
 
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)

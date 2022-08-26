@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -111,7 +110,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	req.Body = ioutil.NopCloser(bytes.NewReader(b))
+	req.Body = io.NopCloser(bytes.NewReader(b))
 
 	res, err := exporter.elasticsearch.Do(req)
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -403,7 +402,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 				hostname = parsed.Host
 			}
-			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
@@ -421,7 +420,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), ioutil.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, reqURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
@@ -469,7 +468,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
-			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
 		}
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
@@ -494,7 +493,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	}
 	defer func() {
 		if resp.StatusCode != http.StatusSwitchingProtocols {
-			_, _ = io.CopyN(ioutil.Discard, resp.Body, drainReqSize)
+			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
 		}
 		resp.Body.Close()
 	}()
@@ -502,7 +501,7 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		resp.Request.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 		command, _ := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
@@ -599,7 +598,6 @@ func (request *Request) executeRequest(reqURL string, generatedRequest *generate
 				finalEvent[key] = v
 			}
 		}
-
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
