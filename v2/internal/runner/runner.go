@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -377,7 +377,11 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.templatesConfig, r.catalog, executerOpts))
+	templateConfig := r.templatesConfig
+	if templateConfig == nil {
+		templateConfig = &config.Config{}
+	}
+	store, err := loader.New(loader.NewConfig(r.options, templateConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -556,7 +560,7 @@ func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, erro
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("version not found")
 	}
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

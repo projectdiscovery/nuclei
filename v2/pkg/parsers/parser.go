@@ -9,10 +9,8 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 )
@@ -38,9 +36,7 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 		return false, validationError
 	}
 
-	templateId := strings.ToLower(template.ID)
-
-	return isTemplateInfoMetadataMatch(tagFilter, &template.Info, extraTags, template.Type(), templateId)
+	return isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
@@ -60,12 +56,8 @@ func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
 	return false, nil
 }
 
-func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, templateInfo *model.Info, extraTags []string, templateType types.ProtocolType, templateId string) (bool, error) {
-	templateTags := templateInfo.Tags.ToSlice()
-	templateAuthors := templateInfo.Authors.ToSlice()
-	templateSeverity := templateInfo.SeverityHolder.Severity
-
-	match, err := tagFilter.Match(templateTags, templateAuthors, templateSeverity, extraTags, templateType, templateId)
+func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *templates.Template, extraTags []string) (bool, error) {
+	match, err := tagFilter.Match(template, extraTags)
 
 	if err == filter.ErrExcluded {
 		return false, filter.ErrExcluded

@@ -111,19 +111,20 @@ TEMPLATES:
    -tl                                    list all available templates
 
 FILTERING:
-   -a, -author string[]              templates to run based on authors (comma-separated, file)
-   -tags string[]                    templates to run based on tags (comma-separated, file)
-   -etags, -exclude-tags string[]    templates to exclude based on tags (comma-separated, file)
-   -itags, -include-tags string[]    tags to be executed even if they are excluded either by default or configuration
-   -id, -template-id string[]        templates to run based on template ids (comma-separated, file)
-   -eid, -exclude-id string[]        templates to exclude based on template ids (comma-separated, file)
-   -it, -include-templates string[]  templates to be executed even if they are excluded either by default or configuration
-   -et, -exclude-templates string[]  template or template directory to exclude (comma-separated, file)
-   -em, -exclude-matchers string[]   template matchers to exclude in result
-   -s, -severity value[]             templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
-   -es, -exclude-severity value[]    templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]       templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -a, -author string[]               templates to run based on authors (comma-separated, file)
+   -tags string[]                     templates to run based on tags (comma-separated, file)
+   -etags, -exclude-tags string[]     templates to exclude based on tags (comma-separated, file)
+   -itags, -include-tags string[]     tags to be executed even if they are excluded either by default or configuration
+   -id, -template-id string[]         templates to run based on template ids (comma-separated, file)
+   -eid, -exclude-id string[]         templates to exclude based on template ids (comma-separated, file)
+   -it, -include-templates string[]   templates to be executed even if they are excluded either by default or configuration
+   -et, -exclude-templates string[]   template or template directory to exclude (comma-separated, file)
+   -em, -exclude-matchers string[]    template matchers to exclude in result
+   -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
+   -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
@@ -158,6 +159,9 @@ CONFIGURATIONS:
    -sml, -show-match-line      show match lines for file templates, works with extractors only
    -ztls                       use ztls library with autofallback to standard one for tls13
    -sni string                 tls sni hostname to use (default: input domain name)
+   -i, -interface string       network interface to use for network scan
+   -sip, -source-ip string     source ip address to use for network scan
+   -config-directory string    Override the default config path ($home/.config)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -189,10 +193,11 @@ OPTIMIZATIONS:
    -no-stdin                           Disable Stdin processing
 
 HEADLESS:
-   -headless            enable templates that require headless browser support (root user on linux will disable sandbox)
-   -page-timeout int    seconds to wait for each page in headless mode (default 20)
-   -sb, -show-browser   show the browser on the screen when running templates with headless mode
-   -sc, -system-chrome  Use local installed chrome browser instead of nuclei installed
+   -headless                    enable templates that require headless browser support (root user on linux will disable sandbox)
+   -page-timeout int            seconds to wait for each page in headless mode (default 20)
+   -sb, -show-browser           show the browser on the screen when running templates with headless mode
+   -sc, -system-chrome          Use local installed chrome browser instead of nuclei installed
+   -lha, -list-headless-action  list available headless actions
 
 DEBUG:
    -debug                    show all requests and responses
@@ -205,6 +210,7 @@ DEBUG:
    -version                  show nuclei version
    -hm, -hang-monitor        enable nuclei hang monitoring
    -v, -verbose              show verbose output
+   -profile-mem string       optional nuclei memory profile dump file
    -vv                       display templates loaded for scan
    -ep, -enable-pprof        enable pprof debugging server
    -tv, -templates-version   shows the version of the installed nuclei-templates
