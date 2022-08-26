@@ -2,9 +2,9 @@ package engine
 
 import (
 	"context"
-	"io/ioutil"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -348,7 +348,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-	err = ioutil.WriteFile(to+".png", data, 0540)
+	err = os.WriteFile(to+".png", data, 0540)
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}

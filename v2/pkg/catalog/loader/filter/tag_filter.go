@@ -4,7 +4,11 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -20,6 +24,7 @@ type TagFilter struct {
 	excludeTypes      map[types.ProtocolType]struct{}
 	allowedIds        map[string]struct{}
 	excludeIds        map[string]struct{}
+	includeConditions map[string]*govaluate.EvaluableExpression
 }
 
 // ErrExcluded is returned for excluded templates
@@ -30,7 +35,8 @@ var ErrExcluded = errors.New("the template was excluded")
 // unless it is explicitly specified by user using the includeTags (matchAllows field).
 // Matching rule: (tag1 OR tag2...) AND (author1 OR author2...) AND (severity1 OR severity2...) AND (extraTags1 OR extraTags2...)
 // Returns true if the template matches the filter criteria, false otherwise.
-func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templateSeverity severity.Severity, extraTags []string, templateType types.ProtocolType, templateId string) (bool, error) {
+func (tagFilter *TagFilter) Match(template *templates.Template, extraTags []string) (bool, error) {
+	templateTags := template.Info.Tags.ToSlice()
 	for _, templateTag := range templateTags {
 		_, blocked := tagFilter.block[templateTag]
 		_, allowed := tagFilter.matchAllows[templateTag]
@@ -48,19 +54,23 @@ func (tagFilter *TagFilter) Match(templateTags, templateAuthors []string, templa
 		return false, nil
 	}
 
-	if !isAuthorMatch(tagFilter, templateAuthors) {
+	if !isAuthorMatch(tagFilter, template.Info.Authors.ToSlice()) {
 		return false, nil
 	}
 
-	if !isSeverityMatch(tagFilter, templateSeverity) {
+	if !isSeverityMatch(tagFilter, template.Info.SeverityHolder.Severity) {
 		return false, nil
 	}
 
-	if !isTemplateTypeMatch(tagFilter, templateType) {
+	if !isTemplateTypeMatch(tagFilter, template.Type()) {
 		return false, nil
 	}
 
-	if !isIdMatch(tagFilter, templateId) {
+	if !isIdMatch(tagFilter, strings.ToLower(template.ID)) {
+		return false, nil
+	}
+
+	if !isConditionMatch(tagFilter, template) {
 		return false, nil
 	}
 
@@ -167,6 +177,46 @@ func isIdMatch(tagFilter *TagFilter, templateId string) bool {
 	return included && !excluded
 }
 
+func isConditionMatch(tagFilter *TagFilter, template *templates.Template) bool {
+	if len(tagFilter.includeConditions) == 0 {
+		return true
+	}
+
+	// attempts to unwrap fields to their basic types
+	// mapping must be manual because of various abstraction layers, custom marshaling and forceful validation
+	parameters := map[string]interface{}{
+		"id":          template.ID,
+		"name":        template.Info.Name,
+		"description": template.Info.Description,
+		"tags":        template.Info.Tags.ToSlice(),
+		"authors":     template.Info.Authors.ToSlice(),
+		"severity":    template.Info.SeverityHolder.Severity.String(),
+	}
+	for k, v := range template.Info.Metadata {
+		parameters[k] = v
+	}
+	for _, expr := range tagFilter.includeConditions {
+		result, err := expr.Evaluate(parameters)
+		// in case of errors  => skip
+		if err != nil {
+			// Using debug as the failure here might be legitimate (eg. template not having optional metadata fields => missing required fields)
+			gologger.Debug().Msgf("The expression condition couldn't be evaluated correctly for template \"%s\": %s\n", template.ID, err)
+			return false
+		}
+		resultBool, ok := result.(bool)
+		// in case the result is not boolean => skip
+		if !ok {
+			return false
+		}
+		// in case the result is false => skip
+		if !resultBool {
+			return false
+		}
+	}
+
+	return true
+}
+
 type Config struct {
 	Tags              []string
 	ExcludeTags       []string
@@ -178,12 +228,13 @@ type Config struct {
 	ExcludeIds        []string
 	Protocols         types.ProtocolTypes
 	ExcludeProtocols  types.ProtocolTypes
+	IncludeConditions []string
 }
 
 // New returns a tag filter for nuclei tag based execution
 //
-// It takes into account Tags, Severities, ExcludeSeverities, Authors, IncludeTags, ExcludeTags.
-func New(config *Config) *TagFilter {
+// It takes into account Tags, Severities, ExcludeSeverities, Authors, IncludeTags, ExcludeTags, Conditions.
+func New(config *Config) (*TagFilter, error) {
 	filter := &TagFilter{
 		allowedTags:       make(map[string]struct{}),
 		authors:           make(map[string]struct{}),
@@ -195,6 +246,7 @@ func New(config *Config) *TagFilter {
 		excludeTypes:      make(map[types.ProtocolType]struct{}),
 		allowedIds:        make(map[string]struct{}),
 		excludeIds:        make(map[string]struct{}),
+		includeConditions: make(map[string]*govaluate.EvaluableExpression),
 	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
@@ -261,7 +313,14 @@ func New(config *Config) *TagFilter {
 			delete(filter.excludeIds, val)
 		}
 	}
-	return filter
+	for _, includeCondition := range config.IncludeConditions {
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(includeCondition, dsl.HelperFunctions)
+		if err != nil {
+			return nil, err
+		}
+		filter.includeConditions[includeCondition] = compiled
+	}
+	return filter, nil
 }
 
 /*

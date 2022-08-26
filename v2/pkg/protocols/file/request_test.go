@@ -1,7 +1,6 @@
 package file
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,7 +49,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
-	tempDir, err := ioutil.TempDir("", "test-*")
+	tempDir, err := os.MkdirTemp("", "test-*")
 	require.Nil(t, err, "could not create temporary directory")
 	defer os.RemoveAll(tempDir)
 
@@ -58,7 +57,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 		"config.yaml": "TEST\r\n1.1.1.1\r\n",
 	}
 	for k, v := range files {
-		err = ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
+		err = os.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
 		require.Nil(t, err, "could not write temporary file")
 	}
 

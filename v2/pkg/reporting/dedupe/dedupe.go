@@ -6,7 +6,6 @@ package dedupe
 
 import (
 	"crypto/sha1"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"unsafe"
@@ -30,7 +29,7 @@ func New(dbPath string) (*Storage, error) {
 
 	var err error
 	if dbPath == "" {
-		dbPath, err = ioutil.TempDir("", "nuclei-report-*")
+		dbPath, err = os.MkdirTemp("", "nuclei-report-*")
 		storage.temporary = dbPath
 	}
 	if err != nil {

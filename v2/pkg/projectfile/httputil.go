@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -105,6 +104,6 @@ func fromInternalResponse(intResp *InternalResponse) *http.Response {
 		StatusCode:    intResp.StatusCode,
 		Header:        intResp.Headers,
 		ContentLength: contentLength,
-		Body:          ioutil.NopCloser(bytes.NewReader(intResp.Body)),
+		Body:          io.NopCloser(bytes.NewReader(intResp.Body)),
 	}
 }

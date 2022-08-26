@@ -38,6 +38,7 @@ type Config struct {
 	IncludeTags       []string
 	IncludeIds        []string
 	ExcludeIds        []string
+	IncludeConditions []string
 
 	Catalog            catalog.Catalog
 	ExecutorOptions    protocols.ExecuterOptions
@@ -79,6 +80,7 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog ca
 		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
+		IncludeConditions:        options.IncludeConditions,
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
 	}
@@ -87,21 +89,26 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog ca
 
 // New creates a new template store based on provided configuration
 func New(config *Config) (*Store, error) {
+	tagFilter, err := filter.New(&filter.Config{
+		Tags:              config.Tags,
+		ExcludeTags:       config.ExcludeTags,
+		Authors:           config.Authors,
+		Severities:        config.Severities,
+		ExcludeSeverities: config.ExcludeSeverities,
+		IncludeTags:       config.IncludeTags,
+		IncludeIds:        config.IncludeIds,
+		ExcludeIds:        config.ExcludeIds,
+		Protocols:         config.Protocols,
+		ExcludeProtocols:  config.ExcludeProtocols,
+		IncludeConditions: config.IncludeConditions,
+	})
+	if err != nil {
+		return nil, err
+	}
 	// Create a tag filter based on provided configuration
 	store := &Store{
-		config: config,
-		tagFilter: filter.New(&filter.Config{
-			Tags:              config.Tags,
-			ExcludeTags:       config.ExcludeTags,
-			Authors:           config.Authors,
-			Severities:        config.Severities,
-			ExcludeSeverities: config.ExcludeSeverities,
-			IncludeTags:       config.IncludeTags,
-			IncludeIds:        config.IncludeIds,
-			ExcludeIds:        config.ExcludeIds,
-			Protocols:         config.Protocols,
-			ExcludeProtocols:  config.ExcludeProtocols,
-		}),
+		config:    config,
+		tagFilter: tagFilter,
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,
 			ExcludedTemplates: config.ExcludeTemplates,
@@ -267,7 +274,11 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-				loadedTemplates = append(loadedTemplates, parsed)
+				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else {
+					loadedTemplates = append(loadedTemplates, parsed)
+				}
 			}
 		} else if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
@@ -314,7 +325,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-				loadedTemplates = append(loadedTemplates, parsed)
+				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else {
+					loadedTemplates = append(loadedTemplates, parsed)
+				}
 			}
 		} else if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
