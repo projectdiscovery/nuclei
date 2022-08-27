@@ -345,6 +345,24 @@ func init() {
 				return strings.Join(stringElements, separator), nil
 			},
 		),
+		"join_slice": makeDslWithOptionalArgsFunction(
+			"(separator string, elements ...interface{}) string",
+			func(arguments ...interface{}) (interface{}, error) {
+				argumentsSize := len(arguments)
+				if argumentsSize != 2 {
+					return nil, errors.New("incorrect number of arguments received")
+				}
+
+				separator := types.ToString(arguments[0])
+				elements, ok := arguments[1].([]string)
+
+				if !ok {
+					return nil, errors.New("cannot cast elements into string")
+				}
+
+				return strings.Join(elements, separator), nil
+			},
+		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			compiled, err := regexp.Compile(types.ToString(args[0]))
 			if err != nil {
