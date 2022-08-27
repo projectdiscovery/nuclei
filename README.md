@@ -200,21 +200,22 @@ HEADLESS:
    -lha, -list-headless-action  list available headless actions
 
 DEBUG:
-   -debug                    show all requests and responses
-   -dreq, -debug-req         show all sent requests
-   -dresp, -debug-resp       show all received responses
-   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal      proxy all internal requests
-   -tlog, -trace-log string  file to write sent requests trace log
-   -elog, -error-log string  file to write sent requests error log
-   -version                  show nuclei version
-   -hm, -hang-monitor        enable nuclei hang monitoring
-   -v, -verbose              show verbose output
-   -profile-mem string       optional nuclei memory profile dump file
-   -vv                       display templates loaded for scan
-   -ep, -enable-pprof        enable pprof debugging server
-   -tv, -templates-version   shows the version of the installed nuclei-templates
-   -hc, -health-check        run diagnostic check up
+   -debug                        show all requests and responses
+   -dreq, -debug-req             show all sent requests
+   -dresp, -debug-resp           show all received responses
+   -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal          proxy all internal requests
+   -lds, -list-dsl-signatures    show all supported DSL signatures
+   -tlog, -trace-log string      file to write sent requests trace log
+   -elog, -error-log string      file to write sent requests error log
+   -version                      show nuclei version
+   -hm, -hang-monitor            enable nuclei hang monitoring
+   -v, -verbose                  show verbose output
+   -profile-mem string           optional nuclei memory profile dump file
+   -vv                           display templates loaded for scan
+   -ep, -enable-pprof            enable pprof debugging server
+   -tv, -templates-version       shows the version of the installed nuclei-templates
+   -hc, -health-check            run diagnostic check up
 
 UPDATE:
    -update                        update nuclei engine to the latest released version
