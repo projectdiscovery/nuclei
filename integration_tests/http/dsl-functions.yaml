@@ -87,6 +87,8 @@ requests:
         75: {{ends_with("Hello", "lo")}}
         76: {{line_starts_with("Hi\nHello", "He")}}
         77: {{line_ends_with("Hello\nHi", "lo")}}
+        78: {{uniq("abcabdaabbccd")}}
+        79: {{join_slice(" ", uniq("ab", "cd", "12", "34", "12", "cd"))}}
 
     extractors:
       - type: regex

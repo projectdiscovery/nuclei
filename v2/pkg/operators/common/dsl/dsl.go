@@ -78,6 +78,35 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"uniq": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount <= 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					builder := &strings.Builder{}
+					visited := make(map[rune]struct{})
+					for _, i := range types.ToString(args[0]) {
+						if _, isRuneSeen := visited[i]; !isRuneSeen {
+							builder.WriteRune(i)
+							visited[i] = struct{}{}
+						}
+					}
+					return builder.String(), nil
+				} else {
+					result := make([]string, 0, argCount)
+					visited := make(map[string]struct{})
+					for _, i := range args[0:] {
+						if _, isStringSeen := visited[types.ToString(i)]; !isStringSeen {
+							result = append(result, types.ToString(i))
+							visited[types.ToString(i)] = struct{}{}
+						}
+					}
+					return result, nil
+				}
+			},
+		),
 		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			count, err := strconv.Atoi(types.ToString(args[1]))
 			if err != nil {
