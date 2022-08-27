@@ -78,7 +78,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{templatePath}
+	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
