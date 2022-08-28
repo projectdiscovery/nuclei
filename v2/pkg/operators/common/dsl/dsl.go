@@ -365,16 +365,30 @@ func init() {
 				argumentsSize := len(arguments)
 				if argumentsSize < 2 {
 					return nil, errors.New("incorrect number of arguments received")
-				}
+				} else if argumentsSize == 2 {
+					separator := types.ToString(arguments[0])
+					elements, ok := arguments[1].([]string)
 
-				separator := types.ToString(arguments[0])
-				elements := arguments[1:argumentsSize]
+					if !ok {
+						return nil, errors.New("cannot cast elements into string")
+					}
 
-				stringElements := make([]string, 0, argumentsSize)
-				for _, element := range elements {
-					stringElements = append(stringElements, types.ToString(element))
+					return strings.Join(elements, separator), nil
+				} else {
+					separator := types.ToString(arguments[0])
+					elements := arguments[1:argumentsSize]
+
+					stringElements := make([]string, 0, argumentsSize)
+					for _, element := range elements {
+
+						if _, ok := element.([]string); ok {
+							return nil, errors.New("cannot use join on more than one slice element")
+						}
+
+						stringElements = append(stringElements, types.ToString(element))
+					}
+					return strings.Join(stringElements, separator), nil
 				}
-				return strings.Join(stringElements, separator), nil
 			},
 		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
