@@ -205,7 +205,7 @@ DEBUG:
    -dresp, -debug-resp           show all received responses
    -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal          proxy all internal requests
-   -lds, -list-dsl-signatures    show all supported DSL signatures
+   -ldf, -list-dsl-function      list all supported DSL function signatures
    -tlog, -trace-log string      file to write sent requests trace log
    -elog, -error-log string      file to write sent requests error log
    -version                      show nuclei version
