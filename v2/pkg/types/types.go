@@ -73,6 +73,8 @@ type Options struct {
 	Output string
 	// ProxyInternal requests
 	ProxyInternal bool
+	// Show all supported DSL signatures
+	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.NormalizedOriginalStringSlice
 	// TemplatesDirectory is the directory to use for storing templates
