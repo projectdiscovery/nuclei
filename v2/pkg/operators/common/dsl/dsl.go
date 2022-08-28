@@ -88,6 +88,28 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"sort": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					runes := []rune(types.ToString(args[0]))
+					sort.Slice(runes, func(i int, j int) bool {
+						return runes[i] < runes[j]
+					})
+					return string(runes), nil
+				} else {
+					tokens := make([]string, 0, argCount)
+					for _, arg := range args {
+						tokens = append(tokens, types.ToString(arg))
+					}
+					sort.Strings(tokens)
+					return tokens, nil
+				}
+			},
+		),
 		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			count, err := strconv.Atoi(types.ToString(args[1]))
 			if err != nil {

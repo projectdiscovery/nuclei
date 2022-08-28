@@ -89,6 +89,8 @@ requests:
         77: {{ends_with("Hello", "lo")}}
         78: {{line_starts_with("Hi\nHello", "He")}}
         79: {{line_ends_with("Hello\nHi", "lo")}}
+        80: {{sort("a1b2c3d4e5")}}
+        81: {{join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))}}
 
     extractors:
       - type: regex
