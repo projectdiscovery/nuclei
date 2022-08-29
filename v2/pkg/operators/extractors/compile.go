@@ -45,7 +45,7 @@ func (e *Extractor) CompileExtractors() error {
 	for _, dslExp := range e.DSL {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions)
 		if err != nil {
-			return fmt.Errorf("could not compile dsl: %s", dslExp)
+			return &dsl.CompilationError{DslSignature: dslExp, WrappedError: err}
 		}
 		e.dslCompiled = append(e.dslCompiled, compiled)
 	}

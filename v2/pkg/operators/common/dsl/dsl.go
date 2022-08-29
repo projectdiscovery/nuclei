@@ -872,3 +872,16 @@ func appendSingleDigitZero(value string) string {
 	}
 	return value
 }
+
+type CompilationError struct {
+	DslSignature string
+	WrappedError error
+}
+
+func (e *CompilationError) Error() string {
+	return fmt.Sprintf("could not compile DSL expression %q: %v", e.DslSignature, e.WrappedError)
+}
+
+func (e *CompilationError) Unwrap() error {
+	return e.WrappedError
+}
