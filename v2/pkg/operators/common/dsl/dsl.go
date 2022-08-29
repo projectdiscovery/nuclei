@@ -11,6 +11,7 @@ import (
 	crand "crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -222,6 +223,8 @@ func init() {
 				hashFunction = sha1.New
 			case "sha256", "sha-256":
 				hashFunction = sha256.New
+			case "sha512", "sha-512":
+				hashFunction = sha512.New
 			default:
 				return nil, fmt.Errorf("unsupported hash algorithm: '%s'", hashAlgorithm)
 			}
@@ -238,6 +241,9 @@ func init() {
 		}),
 		"md5": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return toHexEncodedHash(md5.New(), types.ToString(args[0]))
+		}),
+		"sha512": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return toHexEncodedHash(sha512.New(), types.ToString(args[0]))
 		}),
 		"sha256": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return toHexEncodedHash(sha256.New(), types.ToString(args[0]))
