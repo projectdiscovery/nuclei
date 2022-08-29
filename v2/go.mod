@@ -28,7 +28,7 @@ require (
 	github.com/projectdiscovery/cryptoutil v1.0.0
 	github.com/projectdiscovery/fastdialer v0.0.16
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
-	github.com/projectdiscovery/goflags v0.0.10-0.20220827133735-3ff03268251a
+	github.com/projectdiscovery/goflags v0.0.10-0.20220829035232-bc74fe1cb567
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2-0.20210917080408-0fd7bd286bfa
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
@@ -120,9 +120,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
