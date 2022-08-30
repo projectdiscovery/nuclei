@@ -1,18 +1,16 @@
 package ssl
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/fatih/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -29,7 +27,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	ztls "github.com/zmap/zcrypto/tls"
+	"github.com/projectdiscovery/tlsx/pkg/tlsx"
+	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 )
 
 // Request is a request for the SSL protocol
@@ -37,6 +36,7 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
+
 	// description: |
 	//   Address contains address for the request
 	Address string `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
@@ -60,11 +60,11 @@ type Request struct {
 	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Client Cipher Suites  - auto if not specified.
-	CiperSuites  []string `yaml:"cipher_suites,omitempty"`
-	cipherSuites []uint16
+	CiperSuites []string `yaml:"cipher_suites,omitempty"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
+	tlsx    *tlsx.Service
 	options *protocols.ExecuterOptions
 }
 
@@ -78,14 +78,28 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.dialer = client
 
-	if request.options.Options.ZTLS {
-		request.cipherSuites, err = toZTLSCiphers(request.CiperSuites)
-	} else {
-		request.cipherSuites, err = toTLSCiphers(request.CiperSuites)
+	tlsxOptions := &clients.Options{
+		AllCiphers:        true,
+		ScanMode:          "ctls",
+		Expired:           true,
+		SelfSigned:        true,
+		MisMatched:        true,
+		MinVersion:        request.MinVersion,
+		MaxVersion:        request.MaxVersion,
+		Ciphers:           request.CiperSuites,
+		WildcardCertCheck: true,
+		Retries:           request.options.Options.Retries,
+		Timeout:           request.options.Options.Timeout,
+		Fastdialer:        client,
 	}
+	if options.Options.ZTLS {
+		tlsxOptions.ScanMode = "ztls"
+	}
+	tlsxService, err := tlsx.New(tlsxOptions)
 	if err != nil {
-		return errors.Wrap(err, "invalid ciphersuites specified")
+		return errors.Wrap(err, "could not create tlsx service")
 	}
+	request.tlsx = tlsxService
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -141,58 +155,18 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
-
 	addressToDial := string(finalAddress)
-	var minVersion, maxVersion uint16
-	if request.MinVersion != "" {
-		version, err := toVersion(request.MinVersion)
-		if err != nil {
-			return err
-		}
-		minVersion = version
-	}
-	if request.MaxVersion != "" {
-		version, err := toVersion(request.MaxVersion)
-		if err != nil {
-			return err
-		}
-		maxVersion = version
-	}
-	var conn net.Conn
-
-	if request.options.Options.ZTLS {
-		zconfig := &ztls.Config{InsecureSkipVerify: true, ServerName: hostname}
-		if minVersion > 0 {
-			zconfig.MinVersion = minVersion
-		}
-		if maxVersion > 0 {
-			zconfig.MaxVersion = maxVersion
-		}
-		if len(request.cipherSuites) > 0 {
-			zconfig.CipherSuites = request.cipherSuites
-		}
-		conn, err = request.dialer.DialZTLSWithConfig(context.Background(), "tcp", addressToDial, zconfig)
-	} else {
-		config := &tls.Config{InsecureSkipVerify: true, ServerName: hostname}
-		if minVersion > 0 {
-			config.MinVersion = minVersion
-		}
-		if maxVersion > 0 {
-			config.MaxVersion = maxVersion
-		}
-		if len(request.cipherSuites) > 0 {
-			config.CipherSuites = request.cipherSuites
-		}
-		conn, err = request.dialer.DialTLSWithConfig(context.Background(), "tcp", addressToDial, config)
+	host, port, err := net.SplitHostPort(addressToDial)
+	if err != nil {
+		return errors.Wrap(err, "could not split input host port")
 	}
 
+	response, err := request.tlsx.Connect(host, host, port)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
-	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(requestOptions.Options.Timeout) * time.Second))
 
 	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
 	gologger.Verbose().Msgf("Sent SSL request to %s", address)
@@ -207,36 +181,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 		}
 	}
 
-	var (
-		tlsData      interface{}
-		certNotAfter int64
-	)
-	if request.options.Options.ZTLS {
-		connTLS, ok := conn.(*ztls.Conn)
-		if !ok {
-			return nil
-		}
-		state := connTLS.ConnectionState()
-		if len(state.PeerCertificates) == 0 {
-			return nil
-		}
-		tlsData = cryptoutil.ZTLSGrab(connTLS)
-		cert := connTLS.ConnectionState().PeerCertificates[0]
-		certNotAfter = cert.NotAfter.Unix()
-	} else {
-		connTLS, ok := conn.(*tls.Conn)
-		if !ok {
-			return nil
-		}
-		state := connTLS.ConnectionState()
-		if len(state.PeerCertificates) == 0 {
-			return nil
-		}
-		tlsData = cryptoutil.TLSGrab(&state)
-		cert := connTLS.ConnectionState().PeerCertificates[0]
-		certNotAfter = cert.NotAfter.Unix()
-	}
-	jsonData, _ := jsoniter.Marshal(tlsData)
+	jsonData, _ := jsoniter.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
@@ -245,13 +190,30 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["not_after"] = float64(certNotAfter)
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
 	for k, v := range payloadValues {
 		data[k] = v
+	}
+
+	// Convert response to key value pairs and first cert chain item as well
+	responseParsed := structs.New(response)
+	for _, f := range responseParsed.Fields() {
+		tag := strings.TrimSuffix(strings.TrimSuffix(f.Tag("json"), ",omitempty"), ",inline")
+		if tag == "" || f.IsZero() {
+			continue
+		}
+		data[tag] = f.Value()
+	}
+	responseParsed = structs.New(response.CertificateResponse)
+	for _, f := range responseParsed.Fields() {
+		tag := strings.TrimSuffix(strings.TrimSuffix(f.Tag("json"), ",omitempty"), ",inline")
+		if tag == "" || f.IsZero() {
+			continue
+		}
+		data[tag] = f.Value()
 	}
 
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
