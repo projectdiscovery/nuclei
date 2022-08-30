@@ -6,8 +6,8 @@ import "github.com/projectdiscovery/stringsutil"
 func SliceToMap(s []string, sep string) map[string]interface{} {
 	m := make(map[string]interface{})
 	for _, sliceItem := range s {
-		key := stringsutil.Before(sliceItem, sep)
-		value := stringsutil.After(sliceItem, sep)
+		key, _ := stringsutil.Before(sliceItem, sep)
+		value, _ := stringsutil.After(sliceItem, sep)
 		if key != "" {
 			m[key] = value
 		}
