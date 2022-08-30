@@ -120,19 +120,19 @@ on extensive configurability, massive extensibility and ease of use.`)
 	*/
 
 	flagSet.CreateGroup("input", "Target",
-		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan"),
+		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan", goflags.StringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
-		flagSet.CommaSeparatedStringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version"),
+		flagSet.StringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", []string{}, "run new templates added in specific version", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.AutomaticScan, "automatic-scan", "as", false, "automatic web scan using wappalyzer technology detection to tags mapping"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)"),
+		flagSet.StringSliceVarP(&options.Templates, "templates", "t", []string{}, "list of template or template directory to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.TemplateURLs, "template-url", "tu", []string{}, "list of template urls to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "Disable strict syntax check on templates"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
@@ -140,20 +140,20 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
-		flagSet.FileNormalizedStringSliceVarP(&options.Authors, "author", "a", []string{}, "templates to run based on authors (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVar(&options.Tags, "tags", []string{}, "templates to run based on tags (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "templates to exclude based on tags (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.IncludeTags, "include-tags", "itags", []string{}, "tags to be executed even if they are excluded either by default or configuration"), // TODO show default deny list
-		flagSet.FileNormalizedStringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "templates to run based on template ids (comma-separated, file)"),
-		flagSet.FileNormalizedStringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "templates to exclude based on template ids (comma-separated, file)"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.IncludeTemplates, "include-templates", "it", []string{}, "templates to be executed even if they are excluded either by default or configuration"),
-		flagSet.FileNormalizedOriginalStringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory to exclude (comma-separated, file)"),
-		flagSet.FileCommaSeparatedStringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", []string{}, "template matchers to exclude in result"),
+		flagSet.StringSliceVarP(&options.Authors, "author", "a", []string{}, "templates to run based on authors (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
+		flagSet.StringSliceVar(&options.Tags, "tags", []string{}, "templates to run based on tags (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", []string{}, "templates to exclude based on tags (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.IncludeTags, "include-tags", "itags", []string{}, "tags to be executed even if they are excluded either by default or configuration", goflags.FileNormalizedStringSliceOptions), // TODO show default deny list
+		flagSet.StringSliceVarP(&options.IncludeIds, "template-id", "id", []string{}, "templates to run based on template ids (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", []string{}, "templates to exclude based on template ids (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", []string{}, "templates to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", []string{}, "template or template directory to exclude (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", []string{}, "template matchers to exclude in result", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.Protocols, "type", "pt", fmt.Sprintf("templates to run based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
-		flagSet.FileStringSliceVarP(&options.IncludeConditions, "template-condition", "tc", nil, "templates to run based on expression condition"),
+		flagSet.StringSliceVarP(&options.IncludeConditions, "template-condition", "tc", nil, "templates to run based on expression condition", goflags.StringSliceOptions),
 	)
 
 	flagSet.CreateGroup("output", "Output",
@@ -178,7 +178,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
-		flagSet.FileStringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom header/cookie to include in all http request in header:value format (cli, file)"),
+		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", []string{}, "custom header/cookie to include in all http request in header:value format (cli, file)", goflags.FileStringSliceOptions),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", []string{}, "custom vars in key=value format"),
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVarP(&options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
@@ -239,7 +239,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Debug, "debug", false, "show all requests and responses"),
 		flagSet.BoolVarP(&options.DebugRequests, "debug-req", "dreq", false, "show all sent requests"),
 		flagSet.BoolVarP(&options.DebugResponse, "debug-resp", "dresp", false, "show all received responses"),
-		flagSet.NormalizedOriginalStringSliceVarP(&options.Proxy, "proxy", "p", []string{}, "list of http/socks5 proxy to use (comma separated or file input)"),
+		flagSet.StringSliceVarP(&options.Proxy, "proxy", "p", []string{}, "list of http/socks5 proxy to use (comma separated or file input)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.ProxyInternal, "proxy-internal", "pi", false, "proxy all internal requests"),
 		flagSet.BoolVarP(&options.ListDslSignatures, "list-dsl-function", "ldf", false, "list all supported DSL function signatures"),
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
