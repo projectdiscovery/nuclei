@@ -615,6 +615,8 @@ github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e h1:JB
 github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e/go.mod h1:32NYmKyHkKsmisAOAaWrR15lz2ysz2M8x3KMeeoRHoU=
 github.com/projectdiscovery/tlsx v0.0.5-0.20220826111217-086bb1693226 h1:YZKv0CmCn3Zq1grXUAvAB8ntOmjoyDiXfR+n9VFBZ2o=
 github.com/projectdiscovery/tlsx v0.0.5-0.20220826111217-086bb1693226/go.mod h1:/ZCk/zzyuDdXx2E511yhNIj3LERnGUXghqkASBbdh5M=
+github.com/projectdiscovery/tlsx v0.0.5-0.20220831092516-27fe64be5f8d h1:U1TwHhl9NMQWOxLxbbIKSsgY8p2T/21YAWkV62GUpDg=
+github.com/projectdiscovery/tlsx v0.0.5-0.20220831092516-27fe64be5f8d/go.mod h1:JHcbxkCL3YSbGIoc4hcAmAGaBwtWy8E1bHu6P7abTeg=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921 h1:EgaxpJm7+lKppfAHkFHs+S+II0lodp4Gu3leZCCkWlc=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921/go.mod h1:oXLErqOpqEAp/ueQlknysFxHO3CUNoSiDNnkiHG+Jpo=
 github.com/projectdiscovery/wappalyzergo v0.0.57 h1:/QDYw6qEZfTelMzRaTuhIVSVImmUJlvizCHWo/MTeU4=

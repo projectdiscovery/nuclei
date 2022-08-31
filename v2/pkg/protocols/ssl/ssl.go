@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
@@ -80,7 +81,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	tlsxOptions := &clients.Options{
 		AllCiphers:        true,
-		ScanMode:          "ctls",
+		ScanMode:          "auto",
 		Expired:           true,
 		SelfSigned:        true,
 		MisMatched:        true,
@@ -201,7 +202,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	// Convert response to key value pairs and first cert chain item as well
 	responseParsed := structs.New(response)
 	for _, f := range responseParsed.Fields() {
-		tag := strings.TrimSuffix(strings.TrimSuffix(f.Tag("json"), ",omitempty"), ",inline")
+		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
@@ -209,7 +210,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	}
 	responseParsed = structs.New(response.CertificateResponse)
 	for _, f := range responseParsed.Fields() {
-		tag := strings.TrimSuffix(strings.TrimSuffix(f.Tag("json"), ",omitempty"), ",inline")
+		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
