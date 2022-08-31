@@ -258,7 +258,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	}
 
 	totalExtracted := strings.Split(submatch[1], ",")
-	numberOfDslFunctions := 75
+	numberOfDslFunctions := 77
 	if len(totalExtracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
