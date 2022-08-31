@@ -28,64 +28,66 @@ requests:
         16: {{gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))}}
         17: {{hex_decode("6161")}}
         18: {{hex_encode("aa")}}
-        19: {{hmac("sha1", "test", "scrt")}} 
+        19: {{hmac("sha1", "test", "scrt")}}
         20: {{hmac("sha256", "test", "scrt")}}
-        21: {{html_escape("<body>test</body>")}}
-        22: {{html_unescape("&lt;body&gt;test&lt;/body&gt;")}}
-        23: {{join("_", "hello", "world")}}
-        24: {{len("Hello")}}
-        25: {{len(5555)}}
-        26: {{md5("Hello")}}
-        27: {{md5(1234)}}
-        28: {{mmh3("Hello")}}
-        29: {{print_debug(1+2, "Hello")}}
-        30: {{rand_base(5, "abc")}}
-        31: {{rand_base(5, "")}}
-        32: {{rand_base(5)}}
-        33: {{rand_char("abc")}}
-        34: {{rand_char("")}}
-        35: {{rand_char()}}
-        36: {{rand_int(1, 10)}}
-        37: {{rand_int(10)}}
-        38: {{rand_int()}}
-        39: {{rand_ip("192.168.0.0/24")}}
-        40: {{rand_ip("2002:c0a8::/24")}}
-        41: {{rand_ip("192.168.0.0/24","10.0.100.0/24")}}
-        42: {{rand_text_alpha(10, "abc")}}
-        43: {{rand_text_alpha(10, "")}}
-        44: {{rand_text_alpha(10)}}
-        45: {{rand_text_alphanumeric(10, "ab12")}}
-        46: {{rand_text_alphanumeric(10)}}
-        47: {{rand_text_numeric(10, 123)}}
-        48: {{rand_text_numeric(10)}}
-        49: {{regex("H([a-z]+)o", "Hello")}}
-        50: {{remove_bad_chars("abcd", "bc")}}
-        51: {{repeat("a", 5)}}
-        52: {{replace("Hello", "He", "Ha")}}
-        53: {{replace_regex("He123llo", "(\\d+)", "")}}
-        54: {{reverse("abc")}}
-        55: {{sha1("Hello")}}
-        56: {{sha256("Hello")}}
-        57: {{to_lower("HELLO")}}
-        58: {{to_upper("hello")}}
-        59: {{trim("aaaHelloddd", "ad")}}
-        60: {{trim_left("aaaHelloddd", "ad")}}
-        61: {{trim_prefix("aaHelloaa", "aa")}}
-        62: {{trim_right("aaaHelloddd", "ad")}}
-        63: {{trim_space("  Hello  ")}}
-        64: {{trim_suffix("aaHelloaa", "aa")}}
-        65: {{unix_time(10)}}
-        66: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
-        67: {{url_encode("https://projectdiscovery.io/test?a=1")}}
-        68: {{wait_for(1)}}
-        69: {{zlib("Hello")}}
-        70: {{zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))}}
-        71: {{hex_encode(aes_gcm("AES256Key-32Characters1234567890", "exampleplaintext"))}}
-        72: {{starts_with("Hello", "He")}}
-        73: {{ends_with("Hello", "lo")}}
-        74: {{line_starts_with("Hi\nHello", "He")}}
-        75: {{line_ends_with("Hello\nHi", "lo")}}
-        
+        21: {{hmac("sha512", "test", "scrt")}}
+        22: {{html_escape("<body>test</body>")}}
+        23: {{html_unescape("&lt;body&gt;test&lt;/body&gt;")}}
+        24: {{join("_", "hello", "world")}}
+        25: {{len("Hello")}}
+        26: {{len(5555)}}
+        27: {{md5("Hello")}}
+        28: {{md5(1234)}}
+        29: {{mmh3("Hello")}}
+        30: {{print_debug(1+2, "Hello")}}
+        31: {{rand_base(5, "abc")}}
+        32: {{rand_base(5, "")}}
+        33: {{rand_base(5)}}
+        34: {{rand_char("abc")}}
+        35: {{rand_char("")}}
+        36: {{rand_char()}}
+        37: {{rand_int(1, 10)}}
+        38: {{rand_int(10)}}
+        39: {{rand_int()}}
+        40: {{rand_ip("192.168.0.0/24")}}
+        41: {{rand_ip("2002:c0a8::/24")}}
+        42: {{rand_ip("192.168.0.0/24","10.0.100.0/24")}}
+        43: {{rand_text_alpha(10, "abc")}}
+        44: {{rand_text_alpha(10, "")}}
+        45: {{rand_text_alpha(10)}}
+        46: {{rand_text_alphanumeric(10, "ab12")}}
+        47: {{rand_text_alphanumeric(10)}}
+        48: {{rand_text_numeric(10, 123)}}
+        49: {{rand_text_numeric(10)}}
+        50: {{regex("H([a-z]+)o", "Hello")}}
+        51: {{remove_bad_chars("abcd", "bc")}}
+        52: {{repeat("a", 5)}}
+        53: {{replace("Hello", "He", "Ha")}}
+        54: {{replace_regex("He123llo", "(\\d+)", "")}}
+        55: {{reverse("abc")}}
+        56: {{sha1("Hello")}}
+        57: {{sha256("Hello")}}
+        58: {{sha512("Hello")}}
+        59: {{to_lower("HELLO")}}
+        60: {{to_upper("hello")}}
+        61: {{trim("aaaHelloddd", "ad")}}
+        62: {{trim_left("aaaHelloddd", "ad")}}
+        63: {{trim_prefix("aaHelloaa", "aa")}}
+        64: {{trim_right("aaaHelloddd", "ad")}}
+        65: {{trim_space("  Hello  ")}}
+        66: {{trim_suffix("aaHelloaa", "aa")}}
+        67: {{unix_time(10)}}
+        68: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
+        69: {{url_encode("https://projectdiscovery.io/test?a=1")}}
+        70: {{wait_for(1)}}
+        71: {{zlib("Hello")}}
+        72: {{zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))}}
+        73: {{hex_encode(aes_gcm("AES256Key-32Characters1234567890", "exampleplaintext"))}}
+        74: {{starts_with("Hello", "He")}}
+        75: {{ends_with("Hello", "lo")}}
+        76: {{line_starts_with("Hi\nHello", "He")}}
+        77: {{line_ends_with("Hello\nHi", "lo")}}
+
     extractors:
       - type: regex
         name: results
