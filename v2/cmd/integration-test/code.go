@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/logrusorgru/aurora"
@@ -96,7 +97,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(150),
+		RateLimiter:     ratelimit.New(150, time.Second),
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
