@@ -1,0 +1,62 @@
+package ratelimit
+
+import (
+	"math"
+	"time"
+)
+
+// Limiter allows a burst of request during the defined duration
+type Limiter struct {
+	maxCount int
+	count    int
+	ticker   *time.Ticker
+	tokens   chan struct{}
+}
+
+func (limiter *Limiter) run() {
+	for {
+		if limiter.count <= 0 {
+			<-limiter.ticker.C
+			limiter.count = limiter.maxCount
+		}
+
+		select {
+		case limiter.tokens <- struct{}{}:
+			limiter.count--
+
+		case <-limiter.ticker.C:
+			limiter.count = limiter.maxCount
+		}
+	}
+}
+
+// Take one token from the bucket
+func (rateLimiter *Limiter) Take() {
+	<-rateLimiter.tokens
+}
+
+// New creates a new limiter instance with the tokens amount and the interval
+func New(max int, duration time.Duration) *Limiter {
+	limiter := &Limiter{
+		maxCount: max,
+		count:    max,
+		ticker:   time.NewTicker(duration),
+		tokens:   make(chan struct{}),
+	}
+	go limiter.run()
+
+	return limiter
+}
+
+// NewUnlimited create a bucket with approximated unlimited tokens
+func NewUnlimited() *Limiter {
+	limiter := &Limiter{
+		maxCount: math.MaxInt64,
+		count:    math.MaxInt64,
+		ticker:   time.NewTicker(time.Millisecond),
+		tokens:   make(chan struct{}),
+	}
+	go limiter.run()
+
+	return limiter
+}

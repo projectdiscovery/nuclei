@@ -1,7 +1,7 @@
 package testutils
 
 import (
-	"go.uber.org/ratelimit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
