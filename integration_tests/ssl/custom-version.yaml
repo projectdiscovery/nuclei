@@ -1,4 +1,4 @@
-id: expired-ssl
+id: custom-version
 
 info:
   name: Basic SSL Request
@@ -7,10 +7,12 @@ info:
 
 ssl:
   - address: "{{Host}}:{{Port}}"
+
     min_version: tls12
     max_version: tls12
+
     matchers:
       - type: word
         part: response
         words:
-          - 'TLS12'
+          - 'tls12'
