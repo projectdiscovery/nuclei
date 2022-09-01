@@ -1,7 +1,7 @@
 package testutils
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/ratelimit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
