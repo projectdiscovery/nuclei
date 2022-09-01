@@ -18,12 +18,12 @@ func TestRateLimit(t *testing.T) {
 			limiter.Take()
 			count++
 		}
-		took := time.Now().Sub(start)
+		took := time.Since(start)
 		require.Equal(t, count, 10)
 		require.True(t, took < expected)
 		// take another one above max
 		limiter.Take()
-		took = time.Now().Sub(start)
+		took = time.Since(start)
 		require.True(t, took >= expected)
 	})
 
@@ -36,7 +36,7 @@ func TestRateLimit(t *testing.T) {
 			limiter.Take()
 			count++
 		}
-		took := start.Sub(time.Now())
+		took := time.Since(start)
 		require.Equal(t, count, 1000)
 		require.True(t, took < time.Duration(1*time.Second))
 	})
