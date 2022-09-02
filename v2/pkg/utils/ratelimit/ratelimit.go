@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"math"
 	"time"
 )
@@ -11,6 +12,7 @@ type Limiter struct {
 	count    int
 	ticker   *time.Ticker
 	tokens   chan struct{}
+	ctx      context.Context
 }
 
 func (limiter *Limiter) run() {
@@ -21,9 +23,11 @@ func (limiter *Limiter) run() {
 		}
 
 		select {
+		case <-limiter.ctx.Done():
+			limiter.ticker.Stop()
+			return
 		case limiter.tokens <- struct{}{}:
 			limiter.count--
-
 		case <-limiter.ticker.C:
 			limiter.count = limiter.maxCount
 		}
@@ -36,12 +40,13 @@ func (rateLimiter *Limiter) Take() {
 }
 
 // New creates a new limiter instance with the tokens amount and the interval
-func New(max int, duration time.Duration) *Limiter {
+func New(ctx context.Context, max int, duration time.Duration) *Limiter {
 	limiter := &Limiter{
 		maxCount: max,
 		count:    max,
 		ticker:   time.NewTicker(duration),
 		tokens:   make(chan struct{}),
+		ctx:      ctx,
 	}
 	go limiter.run()
 
@@ -49,12 +54,13 @@ func New(max int, duration time.Duration) *Limiter {
 }
 
 // NewUnlimited create a bucket with approximated unlimited tokens
-func NewUnlimited() *Limiter {
+func NewUnlimited(ctx context.Context) *Limiter {
 	limiter := &Limiter{
 		maxCount: math.MaxInt64,
 		count:    math.MaxInt64,
 		ticker:   time.NewTicker(time.Millisecond),
 		tokens:   make(chan struct{}),
+		ctx:      ctx,
 	}
 	go limiter.run()
 

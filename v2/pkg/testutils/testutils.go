@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
@@ -88,7 +89,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		IssuesClient: nil,
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(options.RateLimit, time.Second),
+		RateLimiter:  ratelimit.New(context.Background(), options.RateLimit, time.Second),
 	}
 	return executerOpts
 }

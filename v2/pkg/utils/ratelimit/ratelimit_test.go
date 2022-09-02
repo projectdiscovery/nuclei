@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 func TestRateLimit(t *testing.T) {
 	t.Run("Standard Rate Limit", func(t *testing.T) {
 		expected := time.Duration(15 * time.Second)
-		limiter := New(10, expected)
+		limiter := New(context.Background(), 10, expected)
 		require.NotNil(t, limiter)
 		var count int
 		start := time.Now()
@@ -28,7 +29,7 @@ func TestRateLimit(t *testing.T) {
 	})
 
 	t.Run("Unlimited Rate Limit", func(t *testing.T) {
-		limiter := NewUnlimited()
+		limiter := NewUnlimited(context.Background())
 		require.NotNil(t, limiter)
 		var count int
 		start := time.Now()

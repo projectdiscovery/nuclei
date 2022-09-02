@@ -243,11 +243,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(options.RateLimitMinute, time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(options.RateLimit, time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
 	} else {
-		runner.ratelimiter = ratelimit.NewUnlimited()
+		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	return runner, nil
 }

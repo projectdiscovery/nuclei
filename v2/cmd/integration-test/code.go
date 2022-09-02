@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -97,7 +98,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(150, time.Second),
+		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
