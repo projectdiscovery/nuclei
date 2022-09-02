@@ -259,6 +259,26 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"contains_all":makeDslWithOptionalArgsFunction(
+			"(body interface{}, substrrs ...string) bool",
+			func(arguments ...interface{}) (interface{}, error) {
+				for _, value := range arguments[1:] {
+					if !strings.Contains(types.ToString(arguments[0]), types.ToString(value)) {
+						return false, nil
+					}
+				}
+				return true, nil
+			}),
+		"contains_any":makeDslWithOptionalArgsFunction(
+			"(body interface{}, substrrs ...string) bool",
+			func(arguments ...interface{}) (interface{}, error) {
+				for _, value := range arguments[1:] {
+					if strings.Contains(types.ToString(arguments[0]), types.ToString(value)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			}),
 		"starts_with": makeDslWithOptionalArgsFunction(
 			"(str string, prefix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
