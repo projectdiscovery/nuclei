@@ -175,7 +175,7 @@ func init() {
 
 				argumentsSize := len(arguments)
 				if argumentsSize < 1 && argumentsSize > 2 {
-					return nil, errors.New("invalid number of arguments")
+					return nil, invalidDslFunctionError
 				}
 
 				currentTime, err := getCurrentTimeFromUserInput(arguments)
@@ -513,6 +513,48 @@ func init() {
 				return float64(offset.Unix()), nil
 			},
 		),
+		"to_unix_time": makeDslWithOptionalArgsFunction(
+			"(input string, optionalLayout string) int64",
+			func(args ...interface{}) (interface{}, error) {
+				input := types.ToString(args[0])
+
+				nr, err := strconv.ParseFloat(input, 64)
+				if err == nil {
+					return int64(nr), nil
+				}
+
+				if len(args) == 1 {
+					layouts := []string{
+						time.RFC3339,
+						"2006-01-02 15:04:05 Z07:00",
+						"2006-01-02 15:04:05",
+						"2006-01-02 15:04 Z07:00",
+						"2006-01-02 15:04",
+						"2006-01-02 Z07:00",
+						"2006-01-02",
+					}
+
+					for _, layout := range layouts {
+						parsedTime, err := time.Parse(layout, input)
+						if err == nil {
+							return parsedTime.Unix(), nil
+						}
+					}
+					errorMessage := "could not parse the current input with the default layouts"
+					gologger.Debug().Msg(errorMessage + ":\n" + strings.Join(layouts, "\t\n"))
+					return nil, fmt.Errorf(errorMessage)
+				} else if len(args) == 2 {
+					layout := types.ToString(args[1])
+					parsedTime, err := time.Parse(layout, input)
+					if err != nil {
+						return nil, fmt.Errorf("could not parse the current input with the '%s' layout", layout)
+					}
+					return parsedTime.Unix(), err
+				} else {
+					return nil, invalidDslFunctionError
+				}
+			},
+		),
 		"wait_for": makeDslWithOptionalArgsFunction(
 			"(seconds uint)",
 			func(args ...interface{}) (interface{}, error) {
@@ -578,6 +620,15 @@ func init() {
 				return types.ToString(hexNum), nil
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
+		}),
+		"hex_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0x", 16)
+		}),
+		"oct_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0o", 8)
+		}),
+		"bin_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0b", 2)
 		}),
 		"substr": makeDslWithOptionalArgsFunction(
 			"(str string, start int, optionalEnd int)",
@@ -877,6 +928,17 @@ func appendSingleDigitZero(value string) string {
 		return newVal
 	}
 	return value
+}
+
+func stringNumberToDecimal(args []interface{}, prefix string, base int) (interface{}, error) {
+	input := types.ToString(args[0])
+	if strings.HasPrefix(input, prefix) {
+		base = 0
+	}
+	if number, err := strconv.ParseInt(input, base, 64); err == nil {
+		return float64(number), err
+	}
+	return nil, fmt.Errorf("invalid number: %s", input)
 }
 
 type CompilationError struct {
