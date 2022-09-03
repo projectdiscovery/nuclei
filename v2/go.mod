@@ -15,7 +15,7 @@ require (
 	github.com/go-rod/rod v0.109.3
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/itchyny/gojq v0.12.8
+	github.com/itchyny/gojq v0.12.9
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
@@ -68,6 +68,7 @@ require (
 	github.com/antchfx/xmlquery v1.3.12
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.4.0
+	github.com/fatih/structs v1.1.0
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/mholt/archiver v3.1.1+incompatible
@@ -116,7 +117,6 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -137,7 +137,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
-	github.com/itchyny/timefmt-go v0.1.3 // indirect
+	github.com/itchyny/timefmt-go v0.1.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.15.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
@@ -148,7 +148,7 @@ require (
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mholt/acmez v1.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
@@ -186,7 +186,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/sys v0.0.0-20220731174439-a90be440212d // indirect
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
