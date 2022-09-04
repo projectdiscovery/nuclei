@@ -1,6 +1,7 @@
 package severity
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -28,6 +29,23 @@ func (severities *Severities) Set(values string) error {
 func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var stringSliceValue stringslice.StringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {
+		return err
+	}
+
+	stringSLice := stringSliceValue.ToSlice()
+	var result = make(Severities, 0, len(stringSLice))
+	for _, severityString := range stringSLice {
+		if err := setSeverity(&result, severityString); err != nil {
+			return err
+		}
+	}
+	*severities = result
+	return nil
+}
+
+func (severities *Severities) UnmarshalJSON(data []byte) error {
+	var stringSliceValue stringslice.StringSlice
+	if err := json.Unmarshal(data, &stringSliceValue); err != nil {
 		return err
 	}
 
