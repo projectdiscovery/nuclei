@@ -66,6 +66,16 @@ type dslFunction struct {
 	expressFunc govaluate.ExpressionFunction
 }
 
+var defaultDateTimeLayouts = []string{
+	time.RFC3339,
+	"2006-01-02 15:04:05 Z07:00",
+	"2006-01-02 15:04:05",
+	"2006-01-02 15:04 Z07:00",
+	"2006-01-02 15:04",
+	"2006-01-02 Z07:00",
+	"2006-01-02",
+}
+
 func init() {
 	tempDslFunctions := map[string]func(string) dslFunction{
 		"len": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
@@ -524,24 +534,14 @@ func init() {
 				}
 
 				if len(args) == 1 {
-					layouts := []string{
-						time.RFC3339,
-						"2006-01-02 15:04:05 Z07:00",
-						"2006-01-02 15:04:05",
-						"2006-01-02 15:04 Z07:00",
-						"2006-01-02 15:04",
-						"2006-01-02 Z07:00",
-						"2006-01-02",
-					}
-
-					for _, layout := range layouts {
+					for _, layout := range defaultDateTimeLayouts {
 						parsedTime, err := time.Parse(layout, input)
 						if err == nil {
 							return parsedTime.Unix(), nil
 						}
 					}
 					errorMessage := "could not parse the current input with the default layouts"
-					gologger.Debug().Msg(errorMessage + ":\n" + strings.Join(layouts, "\t\n"))
+					gologger.Debug().Msg(errorMessage + ":\n" + strings.Join(defaultDateTimeLayouts, "\t\n"))
 					return nil, fmt.Errorf(errorMessage)
 				} else if len(args) == 2 {
 					layout := types.ToString(args[1])
