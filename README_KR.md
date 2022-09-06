@@ -50,7 +50,7 @@ Nuclei는 템플릿을 기반으로 대상 간에 요청을 보내기 위해 사
 
 # 설치
 
-Nuclei를 성공적으로 설치하기 위해서 **go1.17**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
+Nuclei를 성공적으로 설치하기 위해서 **go1.18**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
