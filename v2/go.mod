@@ -49,7 +49,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.1
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220329081811-9a40b608a236
 	github.com/xanzy/go-gitlab v0.73.1
-	go.uber.org/atomic v1.9.0
+	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48
