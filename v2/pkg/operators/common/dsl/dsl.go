@@ -260,20 +260,22 @@ func init() {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
 		"contains_all":makeDslWithOptionalArgsFunction(
-			"(body interface{}, substrrs ...string) bool",
+			"(body interface{}, substrs ...string) bool",
 			func(arguments ...interface{}) (interface{}, error) {
+				body := types.ToString(arguments[0])
 				for _, value := range arguments[1:] {
-					if !strings.Contains(types.ToString(arguments[0]), types.ToString(value)) {
+					if !strings.Contains(body, types.ToString(value)) {
 						return false, nil
 					}
 				}
 				return true, nil
 			}),
 		"contains_any":makeDslWithOptionalArgsFunction(
-			"(body interface{}, substrrs ...string) bool",
+			"(body interface{}, substrs ...string) bool",
 			func(arguments ...interface{}) (interface{}, error) {
+				body := types.ToString(arguments[0])
 				for _, value := range arguments[1:] {
-					if strings.Contains(types.ToString(arguments[0]), types.ToString(value)) {
+					if strings.Contains(body, types.ToString(value)) {
 						return true, nil
 					}
 				}

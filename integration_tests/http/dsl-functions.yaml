@@ -18,7 +18,7 @@ requests:
         06: {{concat("Hello", "world")}}
         07: {{contains("Hello", "lo")}}
         08: {{contains_all("Hello everyone", "lo", "every")}}
-        09: {{contains_any("Hello everyone", "llo", "abc")}}
+        09: {{contains_any("Hello everyone", "abc", "llo")}}
         10: {{date_time("%Y-%M-%D")}}
         11: {{date_time("%Y-%M-%D", unix_time())}}
         12: {{date_time("%H-%m")}}
