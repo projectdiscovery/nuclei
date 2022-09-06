@@ -13,6 +13,5 @@ v2/cmd/docgen/docgen
 v2/pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
-.vscode
 *.exe
 
