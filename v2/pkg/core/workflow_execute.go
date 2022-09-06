@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
 
-const workflowExecutionErrorMessageTemplate = "[%s] Could not execute workflow step: %s\n"
+const workflowStepExecutionError = "[%s] Could not execute workflow step: %s\n"
 
 // executeWorkflow runs a workflow on an input and returns true or false
 func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
@@ -20,7 +20,7 @@ func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 		swg.Add()
 		func(template *workflows.WorkflowTemplate) {
 			if err := e.runWorkflowStep(template, input, results, &swg, w); err != nil {
-				gologger.Warning().Msgf(workflowExecutionErrorMessageTemplate, template.Template, err)
+				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 			swg.Done()
 		}(template)
@@ -64,7 +64,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {
-					gologger.Warning().Msgf(workflowExecutionErrorMessageTemplate, template.Template, err)
+					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				continue
 			}
@@ -94,7 +94,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 
 						go func(subtemplate *workflows.WorkflowTemplate) {
 							if err := e.runWorkflowStep(subtemplate, input, results, swg, w); err != nil {
-								gologger.Warning().Msgf(workflowExecutionErrorMessageTemplate, subtemplate.Template, err)
+								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 							swg.Done()
 						}(subtemplate)
@@ -105,7 +105,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {
-					gologger.Warning().Msgf(workflowExecutionErrorMessageTemplate, template.Template, err)
+					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				continue
 			}
@@ -118,7 +118,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 
 			go func(template *workflows.WorkflowTemplate) {
 				if err := e.runWorkflowStep(template, input, results, swg, w); err != nil {
-					gologger.Warning().Msgf(workflowExecutionErrorMessageTemplate, template.Template, err)
+					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				swg.Done()
 			}(subtemplate)
