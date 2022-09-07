@@ -67,7 +67,17 @@ func Init(options *types.Options) error {
 		if err != nil {
 			return err
 		}
-		dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+		var forward *net.Dialer
+		if opts.Dialer != nil {
+			forward = opts.Dialer
+		} else {
+			forward = &net.Dialer{
+				Timeout:   opts.DialerTimeout,
+				KeepAlive: opts.DialerKeepAlive,
+				DualStack: true,
+			}
+		}
+		dialer, err := proxy.FromURL(proxyURL, forward)
 		if err != nil {
 			return err
 		}
