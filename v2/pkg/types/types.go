@@ -91,6 +91,10 @@ type Options struct {
 	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
+	// CloudURL is the URL for the nuclei cloud endpoint
+	CloudURL string
+	// CloudAPIKey is the api-key for the nuclei cloud endpoint
+	CloudAPIKey string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -178,6 +182,8 @@ type Options struct {
 	JSON bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// Cloud enables nuclei cloud scan execution
+	Cloud bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version

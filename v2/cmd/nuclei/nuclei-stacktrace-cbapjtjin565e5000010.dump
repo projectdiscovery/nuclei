@@ -1,0 +1,853 @@
+goroutine 51 [running]:
+github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor.glob..func1(0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/utils/monitor/monitor.go:96 +0x68
+github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor.(*Agent).monitorWorker(0x14000220e40)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/utils/monitor/monitor.go:72 +0x7c
+github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor.NewStackMonitor.func1({0x103ec57f8, 0x140004e5000}, 0x14000861400, 0x14000220e40)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/utils/monitor/monitor.go:44 +0xa8
+created by github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor.NewStackMonitor
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/utils/monitor/monitor.go:38 +0xd4
+
+goroutine 1 [select, 1 minutes]:
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).AddWithContext(0x140003bb6a0, {0x103ec5830, 0x1400013c008})
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:63 +0x80
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Add(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:51
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts(0x14000788600, {0x14007b18000, 0xc01, 0xe43}, {0x103eb8550, 0x140003ba740}, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:44 +0x23c
+github.com/projectdiscovery/nuclei/v2/internal/runner.(*Runner).executeTemplatesInput(0x140006d1cc0, 0x140006ab200, 0x14000788600)
+	/Users/ice3man/projectdiscovery/nuclei/v2/internal/runner/runner.go:496 +0x4c4
+github.com/projectdiscovery/nuclei/v2/internal/runner.(*Runner).RunEnumeration(0x140006d1cc0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/internal/runner/runner.go:405 +0xe48
+main.main()
+	/Users/ice3man/projectdiscovery/nuclei/v2/cmd/nuclei/main.go:69 +0x3d4
+
+goroutine 8 [select]:
+github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain(0x1400021a2a0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:206 +0xa4
+created by github.com/syndtr/goleveldb/leveldb/util.NewBufferPool
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:237 +0x16c
+
+goroutine 9 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).compactionError(0x140000936c0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:90 +0x130
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:142 +0x484
+
+goroutine 10 [select]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain(0x140000936c0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_state.go:101 +0x98
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:143 +0x4a4
+
+goroutine 11 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction(0x140000936c0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:825 +0x550
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:149 +0x4f4
+
+goroutine 12 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction(0x140000936c0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:762 +0xd0
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:150 +0x514
+
+goroutine 13 [select]:
+github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain(0x1400021a0e0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:206 +0xa4
+created by github.com/syndtr/goleveldb/leveldb/util.NewBufferPool
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:237 +0x16c
+
+goroutine 14 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).compactionError(0x14000093d40)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:90 +0x130
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:142 +0x484
+
+goroutine 15 [select]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain(0x14000093d40)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_state.go:101 +0x98
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:143 +0x4a4
+
+goroutine 16 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction(0x14000093d40)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:825 +0x550
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:149 +0x4f4
+
+goroutine 50 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction(0x14000093d40)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:762 +0xd0
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:150 +0x514
+
+goroutine 60 [select]:
+github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain(0x140011ef960)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:206 +0xa4
+created by github.com/syndtr/goleveldb/leveldb/util.NewBufferPool
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/util/buffer_pool.go:237 +0x16c
+
+goroutine 58 [IO wait, 1 minutes]:
+internal/poll.runtime_pollWait(0x12bf4bc58, 0x72)
+	/usr/local/go/src/runtime/netpoll.go:229 +0xa4
+internal/poll.(*pollDesc).wait(0x1400007ed98, 0x72, 0x0)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:84 +0x38
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x1400007ed80, {0x140003ec000, 0xf5b, 0xf5b})
+	/usr/local/go/src/internal/poll/fd_unix.go:167 +0x1dc
+net.(*netFD).Read(0x1400007ed80, {0x140003ec000, 0xf5b, 0xf5b})
+	/usr/local/go/src/net/fd_posix.go:56 +0x44
+net.(*conn).Read(0x14000138768, {0x140003ec000, 0xf5b, 0xf5b})
+	/usr/local/go/src/net/net.go:183 +0x4c
+crypto/tls.(*atLeastReader).Read(0x14001204858, {0x140003ec000, 0xf5b, 0xf5b})
+	/usr/local/go/src/crypto/tls/conn.go:777 +0x58
+bytes.(*Buffer).ReadFrom(0x140005ee5f8, {0x103eabf60, 0x14001204858})
+	/usr/local/go/src/bytes/buffer.go:204 +0xa4
+crypto/tls.(*Conn).readFromUntil(0x140005ee380, {0x103eae3a0, 0x14000138768}, 0x5)
+	/usr/local/go/src/crypto/tls/conn.go:799 +0xe0
+crypto/tls.(*Conn).readRecordOrCCS(0x140005ee380, 0x0)
+	/usr/local/go/src/crypto/tls/conn.go:606 +0xf4
+crypto/tls.(*Conn).readRecord(...)
+	/usr/local/go/src/crypto/tls/conn.go:574
+crypto/tls.(*Conn).Read(0x140005ee380, {0x14000858000, 0x1000, 0x1000})
+	/usr/local/go/src/crypto/tls/conn.go:1277 +0x164
+bufio.(*Reader).Read(0x14001248a20, {0x140011ef8b8, 0x9, 0x9})
+	/usr/local/go/src/bufio/bufio.go:227 +0x20c
+io.ReadAtLeast({0x103eabd20, 0x14001248a20}, {0x140011ef8b8, 0x9, 0x9}, 0x9)
+	/usr/local/go/src/io/io.go:328 +0xa0
+io.ReadFull(...)
+	/usr/local/go/src/io/io.go:347
+net/http.http2readFrameHeader({0x140011ef8b8, 0x9, 0x9}, {0x103eabd20, 0x14001248a20})
+	/usr/local/go/src/net/http/h2_bundle.go:1553 +0x5c
+net/http.(*http2Framer).ReadFrame(0x140011ef880)
+	/usr/local/go/src/net/http/h2_bundle.go:1811 +0x90
+net/http.(*http2clientConnReadLoop).run(0x14000951fa8)
+	/usr/local/go/src/net/http/h2_bundle.go:8428 +0x13c
+net/http.(*http2ClientConn).readLoop(0x14000789500)
+	/usr/local/go/src/net/http/h2_bundle.go:8350 +0x60
+created by net/http.(*http2Transport).newClientConn
+	/usr/local/go/src/net/http/h2_bundle.go:7302 +0xb48
+
+goroutine 66 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).compactionError(0x14000503ba0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:90 +0x130
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:142 +0x484
+
+goroutine 67 [select]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain(0x14000503ba0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_state.go:101 +0x98
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:143 +0x4a4
+
+goroutine 68 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction(0x14000503ba0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:825 +0x550
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:149 +0x4f4
+
+goroutine 69 [select, 1 minutes]:
+github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction(0x14000503ba0)
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db_compaction.go:762 +0xd0
+created by github.com/syndtr/goleveldb/leveldb.openDB
+	/Users/ice3man/go/pkg/mod/github.com/syndtr/goleveldb@v1.0.0/leveldb/db.go:150 +0x514
+
+goroutine 70 [select, 1 minutes]:
+github.com/karlseguin/ccache.(*Cache).worker(0x140005400f0)
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:167 +0xa0
+created by github.com/karlseguin/ccache.(*Cache).restart
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:136 +0x110
+
+goroutine 71 [select, 1 minutes]:
+github.com/karlseguin/ccache.(*Cache).worker(0x14000540140)
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:167 +0xa0
+created by github.com/karlseguin/ccache.(*Cache).restart
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:136 +0x110
+
+goroutine 72 [select, 1 minutes]:
+github.com/karlseguin/ccache.(*Cache).worker(0x14000540190)
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:167 +0xa0
+created by github.com/karlseguin/ccache.(*Cache).restart
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:136 +0x110
+
+goroutine 73 [select, 1 minutes]:
+github.com/karlseguin/ccache.(*Cache).worker(0x140005401e0)
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:167 +0xa0
+created by github.com/karlseguin/ccache.(*Cache).restart
+	/Users/ice3man/go/pkg/mod/github.com/karlseguin/ccache@v2.0.3+incompatible/cache.go:136 +0x110
+
+goroutine 75 [syscall, 1 minutes]:
+os/signal.signal_recv()
+	/usr/local/go/src/runtime/sigqueue.go:166 +0x34
+os/signal.loop()
+	/usr/local/go/src/os/signal/signal_unix.go:24 +0x20
+created by os/signal.Notify.func1.1
+	/usr/local/go/src/os/signal/signal.go:151 +0x38
+
+goroutine 76 [chan receive, 1 minutes]:
+main.main.func1(0x1400007cba0, 0x140006d1cc0, {0x1400124c080, 0x3d})
+	/Users/ice3man/projectdiscovery/nuclei/v2/cmd/nuclei/main.go:55 +0x4c
+created by main.main
+	/Users/ice3man/projectdiscovery/nuclei/v2/cmd/nuclei/main.go:54 +0x3c8
+
+goroutine 38 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14004f5c018)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14004f5c010)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140045eda40, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140045eda40)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 39 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a0238)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a0230)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140048e4960, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140048e4960)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 40 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x1400666c018)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x1400666c010)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14007b10000, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14007b10000)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 41 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aec958)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aec950)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140033463c0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140033463c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 42 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a01b8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a01b0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14001b27e00, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14001b27e00)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 43 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x1400666c0b8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x1400666c0b0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140033e8b40, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140033e8b40)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 44 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14004e36098)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14004e36090)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14002d954a0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14002d954a0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 46 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14004e36178)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14004e36170)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14007b101e0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14007b101e0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 47 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aec9d8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aec9d0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14005958b40, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14005958b40)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 49 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14004e36018)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14004e36010)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140050eed20, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140050eed20)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 82 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aecad8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aecad0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140056c32c0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140056c32c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 83 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aecb58)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aecb50)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14006f4a1e0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14006f4a1e0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 84 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aeca58)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aeca50)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140020c72c0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140020c72c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 85 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aecbd8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aecbd0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x1400382e780, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x1400382e780)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 86 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a02f8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a02f0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14007a89860, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14007a89860)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 87 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x1400644e018)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x1400644e010)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14007b103c0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14007b103c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 88 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a0018)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a0010)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14006ff03c0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14006ff03c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 89 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007f5c058)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007f5c050)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14007b10780, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14007b10780)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 91 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a0118)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a0110)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x1400524f0e0, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x1400524f0e0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 92 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x140088a0098)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x140088a0090)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14004112960, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14004112960)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 93 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aec8d8)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aec8d0)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x140031e8f00, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x140031e8f00)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 94 [semacquire, 1 minutes]:
+sync.runtime_Semacquire(0x14007aec858)
+	/usr/local/go/src/runtime/sema.go:56 +0x38
+sync.(*WaitGroup).Wait(0x14007aec850)
+	/usr/local/go/src/sync/waitgroup.go:130 +0xa4
+github.com/remeh/sizedwaitgroup.(*SizedWaitGroup).Wait(...)
+	/Users/ice3man/go/pkg/mod/github.com/remeh/sizedwaitgroup@v1.0.0/sizedwaitgroup.go:83
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput(0x14000788600, 0x3, 0x14003451c20, {0x103eb8550, 0x140003ba740}, 0x14007ac03f8)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:161 +0x3b0
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts.func1(0x14000788600, 0x14007ac03f8, 0x3, {0x103eb8550, 0x140003ba740}, 0x14003451c20)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:53 +0x74
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).ExecuteWithOpts
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:46 +0x10c
+
+goroutine 95 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140049a9a00, {0x140077d3980, 0x11}, 0x14001a46d20, 0x14007b6ae40, 0x0, 0x140088c9c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140048d6310, 0x66}, 0x0, 0x14007b6ae10)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140049a9a00, {0x140077d3980, 0x11}, 0x14007b6ae10, 0x14007b6ae40, 0x14007b6ae70)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14004200040, {0x140077d3980, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3980, 0x11}, 0x14003451c20, 0x14007b64468, 0x14007acb460, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 77 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x1400508ab60, {0x14007b8e018, 0x11}, 0x1400171d360, 0x14004e620f0, 0x0, 0x1400094dc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14004a1baa0, 0x55}, 0x0, 0x14004e620c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x1400508ab60, {0x14007b8e018, 0x11}, 0x14004e620c0, 0x14004e620f0, 0x14004e62120)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x140057d16a0, {0x14007b8e018, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14007b8e018, 0x11}, 0x140050eed20, 0x14004e46000, 0x14004e72000, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 98 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14003a991e0, {0x14007c84018, 0x11}, 0x14007ca5b80, 0x140064720c0, 0x0, 0x14007c97c88, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14003969050, 0x15}, 0x0, 0x140064720f0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14003a991e0, {0x14007c84018, 0x11}, 0x140064720f0, 0x140064720c0, 0x1400647e048)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/templates.(*ClusterExecuter).Execute(0x14007a7d920, {0x14007c84018, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/templates/cluster.go:187 +0xdc
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14007c84018, 0x11}, 0x14007b103c0, 0x14006464000, 0x1400647c000, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 22 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14001bbbd40, {0x14004f6e018, 0x11}, 0x140017476d0, 0x14004f640f0, 0x0, 0x14007d09c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140048d7ce0, 0x70}, 0x0, 0x14004f640c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14001bbbd40, {0x14004f6e018, 0x11}, 0x14004f640c0, 0x14004f640f0, 0x14004f64120)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x140024fa420, {0x14004f6e018, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14004f6e018, 0x11}, 0x140045eda40, 0x14004f60000, 0x14004f66000, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 114 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14006f196c0, {0x140088b2018, 0x11}, 0x14001914cd0, 0x140088a80f0, 0x0, 0x140088cdc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140059c85a0, 0x1f}, 0x0, 0x140088a80c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14006f196c0, {0x140088b2018, 0x11}, 0x140088a80c0, 0x140088a80f0, 0x140088a8120)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x140075caa20, {0x140088b2018, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b2018, 0x11}, 0x14006ff03c0, 0x140088a4000, 0x140088aa000, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 130 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14004fcba00, {0x1400667e018, 0x11}, 0x140053e0640, 0x140066740c0, 0x0, 0x14007c93c88, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14004eb6300, 0xb}, 0x0, 0x140066740f0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14004fcba00, {0x1400667e018, 0x11}, 0x140066740f0, 0x140066740c0, 0x14006678048)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/templates.(*ClusterExecuter).Execute(0x14007a7d8c0, {0x1400667e018, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/templates/cluster.go:187 +0xdc
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x1400667e018, 0x11}, 0x14007b10000, 0x14006670000, 0x14006676000, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 78 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140024e8000, {0x14007b8e0d8, 0x11}, 0x1400188a820, 0x14004e625a0, 0x0, 0x14000953c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14002034b40, 0x25}, 0x0, 0x14004e62570)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140024e8000, {0x14007b8e0d8, 0x11}, 0x14004e62570, 0x14004e625a0, 0x14004e625d0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14002081900, {0x14007b8e0d8, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14007b8e0d8, 0x11}, 0x14002d954a0, 0x14004e46008, 0x14004e72170, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 146 [sleep]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14003a984e0, {0x14007f440c0, 0x11}, 0x14007f71b80, 0x14007f2a510, 0x0, 0x14007d07c88, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14004b80480, 0x11}, 0x0, 0x14007f2a540)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14003a984e0, {0x14007f440c0, 0x11}, 0x14007f2a540, 0x14007f2a510, 0x14007f42108)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/templates.(*ClusterExecuter).Execute(0x14007a7d950, {0x14007f440c0, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/templates/cluster.go:187 +0xdc
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14007f440c0, 0x11}, 0x14007b10780, 0x14007f5a010, 0x14007f2c080, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 79 [sleep]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14004fb0340, {0x14007b8e210, 0x11}, 0x14007c64be0, 0x14004e62db0, 0x0, 0x140088c7c88, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14005a77700, 0xb}, 0x0, 0x14004e62de0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14004fb0340, {0x14007b8e210, 0x11}, 0x14004e62de0, 0x14004e62db0, 0x14004e74270)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/templates.(*ClusterExecuter).Execute(0x14007a7d8f0, {0x14007b8e210, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/templates/cluster.go:187 +0xdc
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x14007b8e210, 0x11}, 0x14007b101e0, 0x14004e46018, 0x14004e72350, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 115 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x1400408eea0, {0x140088b20d8, 0x11}, 0x14001ee8190, 0x140088a85a0, 0x0, 0x14007d03c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14004a18060, 0x5e}, 0x0, 0x140088a8570)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x1400408eea0, {0x140088b20d8, 0x11}, 0x140088a8570, 0x140088a85a0, 0x140088a85d0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14004e4bac0, {0x140088b20d8, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b20d8, 0x11}, 0x14004112960, 0x140088a4008, 0x140088aa170, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 96 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140031ecb60, {0x140077d3a40, 0x11}, 0x14001f22190, 0x14007b6b2f0, 0x0, 0x140088cbc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140027e30e0, 0x1c}, 0x0, 0x14007b6b2c0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140031ecb60, {0x140077d3a40, 0x11}, 0x14007b6b2c0, 0x14007b6b2f0, 0x14007b6b320)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x140023e68c0, {0x140077d3a40, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3a40, 0x11}, 0x140031e8f00, 0x14007b64470, 0x14007acb5d0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 97 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140032e91e0, {0x140077d3b00, 0x11}, 0x140020e5540, 0x14007b6b7a0, 0x0, 0x14007c4fc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14003b9d440, 0x32}, 0x0, 0x14007b6b770)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140032e91e0, {0x140077d3b00, 0x11}, 0x14007b6b770, 0x14007b6b7a0, 0x14007b6b7d0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14004710620, {0x140077d3b00, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3b00, 0x11}, 0x140033463c0, 0x14007b64478, 0x14007acb740, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 116 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14003074000, {0x140088b2198, 0x11}, 0x14002129810, 0x140088a8a50, 0x0, 0x140088fbc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14000707c00, 0x35f}, 0x0, 0x140088a8a20)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14003074000, {0x140088b2198, 0x11}, 0x140088a8a20, 0x140088a8a50, 0x140088a8a80)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14003807160, {0x140088b2198, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b2198, 0x11}, 0x1400524f0e0, 0x140088a4010, 0x140088aa2f0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 162 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14006b8ba00, {0x140077d3bc0, 0x11}, 0x140027285a0, 0x14007b6bc50, 0x0, 0x14007c51c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14006a99680, 0x4b}, 0x0, 0x14007b6bc20)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14006b8ba00, {0x140077d3bc0, 0x11}, 0x14007b6bc20, 0x14007b6bc50, 0x14007b6bc80)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14006f17de0, {0x140077d3bc0, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3bc0, 0x11}, 0x14005958b40, 0x14007b64480, 0x14007acb8b0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 117 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14002b6f860, {0x140088b2258, 0x11}, 0x140023b1b30, 0x140088a8f00, 0x0, 0x14007c4dc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14001ed3920, 0x1b}, 0x0, 0x140088a8ed0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14002b6f860, {0x140088b2258, 0x11}, 0x140088a8ed0, 0x140088a8f00, 0x140088a8f30)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14001b68240, {0x140088b2258, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b2258, 0x11}, 0x14001b27e00, 0x140088a4018, 0x140088aa460, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 163 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14002d45a00, {0x140077d3c80, 0x11}, 0x14002a3d040, 0x14007e38120, 0x0, 0x140088f7c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140025a98f0, 0x17}, 0x0, 0x14007e380f0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14002d45a00, {0x140077d3c80, 0x11}, 0x14007e380f0, 0x14007e38120, 0x14007e38150)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14001e4c8c0, {0x140077d3c80, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3c80, 0x11}, 0x140020c72c0, 0x14007b64488, 0x14007acba20, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 118 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x1400498a1a0, {0x140088b2318, 0x11}, 0x14003c59540, 0x140088a93b0, 0x0, 0x14007ecbc08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14004986d20, 0x19}, 0x0, 0x140088a9380)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x1400498a1a0, {0x140088b2318, 0x11}, 0x140088a9380, 0x140088a93b0, 0x140088a93e0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14004a020a0, {0x140088b2318, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b2318, 0x11}, 0x140048e4960, 0x140088a4020, 0x140088aa5d0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 164 [sleep]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x1400564d520, {0x140077d3da0, 0x11}, 0x14004ff5c20, 0x14007e385d0, 0x0, 0x140088f9c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140048dca80, 0x7d}, 0x0, 0x14007e385a0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x1400564d520, {0x140077d3da0, 0x11}, 0x14007e385a0, 0x14007e385d0, 0x14007e38600)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14005d3e540, {0x140077d3da0, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3da0, 0x11}, 0x140056c32c0, 0x14007b64490, 0x14007acbb90, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 165 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14006f18680, {0x140077d3e60, 0x11}, 0x14007e6c820, 0x14007e38a80, 0x0, 0x14007ec7c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14006e60b40, 0x28}, 0x0, 0x14007e38a50)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14006f18680, {0x140077d3e60, 0x11}, 0x14007e38a50, 0x14007e38a80, 0x14007e38ab0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14007572a60, {0x140077d3e60, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3e60, 0x11}, 0x14006f4a1e0, 0x14007b64498, 0x14007acbd00, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 119 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x14001eebba0, {0x140088b2468, 0x11}, 0x14007eec4b0, 0x140088a9c20, 0x0, 0x14007ee9c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14005c4bd10, 0x21}, 0x0, 0x140088a9bf0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x14001eebba0, {0x140088b2468, 0x11}, 0x140088a9bf0, 0x140088a9c20, 0x140088a9c50)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14001c8a500, {0x140088b2468, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140088b2468, 0x11}, 0x14007a89860, 0x140088a4030, 0x140088aa7b0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 131 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140033ed040, {0x1400667e108, 0x11}, 0x14007db1900, 0x140066745a0, 0x0, 0x14007c95c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x14002f44880, 0x7c}, 0x0, 0x14006674570)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140033ed040, {0x1400667e108, 0x11}, 0x14006674570, 0x140066745a0, 0x140066745d0)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x14001975420, {0x1400667e108, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x1400667e108, 0x11}, 0x140033e8b40, 0x14006670008, 0x140066761b0, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670
+
+goroutine 166 [sleep, 1 minutes]:
+time.Sleep(0x45d964b800)
+	/usr/local/go/src/runtime/time.go:193 +0x138
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).executeRequest(0x140037d11e0, {0x140077d3f20, 0x11}, 0x14007e7b400, 0x14007e38f30, 0x0, 0x14007ec9c08, 0x1)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:462 +0x1290
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults.func1({0x140038170c0, 0x40}, 0x0, 0x14007e38f00)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:278 +0x4d4
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/http.(*Request).ExecuteWithResults(0x140037d11e0, {0x140077d3f20, 0x11}, 0x14007e38f00, 0x14007e38f30, 0x14007e38f60)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/http/request.go:330 +0x31c
+github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer.(*Executer).Execute(0x140038072a0, {0x140077d3f20, 0x11})
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/executer.go:68 +0x1c4
+github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2.1({0x140077d3f20, 0x11}, 0x1400382e780, 0x14007b644a0, 0x14007acbe70, 0x3, 0x14000788600, 0x14007ac03f8, 0x0, 0x0, ...)
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:151 +0x150
+created by github.com/projectdiscovery/nuclei/v2/pkg/core.(*Engine).executeModelWithInput.func2
+	/Users/ice3man/projectdiscovery/nuclei/v2/pkg/core/execute.go:135 +0x670

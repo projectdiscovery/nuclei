@@ -1,0 +1,25 @@
+{
+ "targets": 19,
+ "templates": 19,
+ "inflight": [
+  "springboot-actuator:https://scanme.sh",
+  "CVE-2010-1302:https://scanme.sh",
+  "cobbler-webgui:https://scanme.sh",
+  "cluster-48f7db48dfe2ef530d4acf5d2317f7144cb2ba735019cb6af516b21ab916a21e:https://scanme.sh",
+  "magento-config:https://scanme.sh",
+  "CNVD-2021-26422:https://scanme.sh",
+  "vmware-vcenter-lfi:https://scanme.sh",
+  "openam-panel:https://scanme.sh",
+  "CVE-2015-4050:https://scanme.sh",
+  "glpi-directory-listing:https://scanme.sh",
+  "styleci-yml-disclosure:https://scanme.sh",
+  "CVE-2019-10758:https://scanme.sh",
+  "oliver-library-lfi:https://scanme.sh",
+  "dvwa-default-login:https://scanme.sh",
+  "itop-panel:https://scanme.sh",
+  "CVE-2019-1010290:https://scanme.sh",
+  "CVE-2018-2894:https://scanme.sh",
+  "cluster-f2a985f9745ce5d9ca6a07c272e8b3b2fde12911d7a9307fbcf0baabe659e591:https://scanme.sh",
+  "CVE-2010-1878:https://scanme.sh"
+ ]
+}

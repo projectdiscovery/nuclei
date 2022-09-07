@@ -269,6 +269,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
 	)
 
+	flagSet.CreateGroup("cloud", "Cloud",
+		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
+		flagSet.StringVarP(&options.CloudURL, "cloud-url", "cu", "http://cloud-dev.nuclei.sh", "url for the nuclei cloud server"),
+		flagSet.StringVarP(&options.CloudAPIKey, "cloud-api-key", "cak", "", "api-key for the nuclei cloud server"),
+	)
+
 	_ = flagSet.Parse()
 
 	if options.LeaveDefaultPorts {
