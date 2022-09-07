@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/iputil"
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -30,13 +31,13 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
-	if utils.IsURL(input) {
-		domain = extractDomain(input)
+	if utils.IsURL(input.Input) {
+		domain = extractDomain(input.Input)
 	} else {
-		domain = input
+		domain = input.Input
 	}
 
 	var err error
@@ -107,7 +108,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input.Input, input.Input, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}

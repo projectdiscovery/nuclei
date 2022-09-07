@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -65,7 +66,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(tempDir, metadata, previous, func(event *output.InternalWrappedEvent) {
+		err := request.ExecuteWithResults(contextargs.Input{Input: tempDir}, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute file request")

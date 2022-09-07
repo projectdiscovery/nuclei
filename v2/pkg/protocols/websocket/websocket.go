@@ -18,6 +18,7 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -135,8 +136,8 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	hostname, err := getAddress(input)
+func (request *Request) ExecuteWithResults(input contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	hostname, err := getAddress(input.Input)
 	if err != nil {
 		return err
 	}
@@ -149,13 +150,13 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
 			return err
 		}
 	}

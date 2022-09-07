@@ -1,10 +1,13 @@
 package core
 
 import (
+	"net/http/cookiejar"
+
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
@@ -15,11 +18,16 @@ const workflowStepExecutionError = "[%s] Could not execute workflow step: %s\n"
 func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 	results := &atomic.Bool{}
 
+	// at this point we should be at the start root execution of a workflow tree, hence we create global shared instances
+	workflowArgs := make(map[string]interface{})
+	workflowCookieJar, _ := cookiejar.New(nil)
+	contextargs := contextargs.Context{Input: input, Args: workflowArgs, CookieJar: workflowCookieJar}
+
 	swg := sizedwaitgroup.New(w.Options.Options.TemplateThreads)
 	for _, template := range w.Workflows {
 		swg.Add()
 		func(template *workflows.WorkflowTemplate) {
-			if err := e.runWorkflowStep(template, input, results, &swg, w); err != nil {
+			if err := e.runWorkflowStep(template, contextargs, results, &swg, w); err != nil {
 				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 			swg.Done()
@@ -31,7 +39,7 @@ func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input string, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input contextargs.Context, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -49,6 +57,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 					if len(result.Results) > 0 {
 						firstMatched = true
 					}
+					// this will cause race - test only
+					for k, v := range result.OperatorsResult.Extracts {
+						input.Args[k] = v
+					}
 				})
 			} else {
 				var matched bool
@@ -59,7 +71,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(input, err)
+					w.Options.HostErrorsCache.MarkFailed(input.Input, err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -80,6 +92,11 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 			err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
 				if event.OperatorsResult == nil {
 					return
+				}
+
+				// this will cause race - test only
+				for k, v := range event.OperatorsResult.Extracts {
+					input.Args[k] = v
 				}
 
 				for _, matcher := range template.Matchers {

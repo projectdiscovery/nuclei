@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -29,10 +30,10 @@ import (
 // The equality check is performed as described below -
 //
 // Cases where clustering is not perfomed (request is considered different)
-//  - If request contains payloads,raw,body,unsafe,req-condition,name attributes
-//	- If request methods,max-redirects,cookie-reuse,redirects are not equal
-//  - If request paths aren't identical.
-//  - If request headers aren't identical
+//   - If request contains payloads,raw,body,unsafe,req-condition,name attributes
+//   - If request methods,max-redirects,cookie-reuse,redirects are not equal
+//   - If request paths aren't identical.
+//   - If request headers aren't identical
 //
 // If multiple requests are identified as identical, they are appended to a slice.
 // Finally, the engine creates a single executer with a clusteredexecuter for all templates
@@ -179,7 +180,7 @@ func (e *ClusterExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *ClusterExecuter) Execute(input string) (bool, error) {
+func (e *ClusterExecuter) Execute(input contextargs.Context) (bool, error) {
 	var results bool
 
 	previous := make(map[string]interface{})
@@ -207,13 +208,13 @@ func (e *ClusterExecuter) Execute(input string) (bool, error) {
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input, err)
+		e.options.HostErrorsCache.MarkFailed(input.Input, err)
 	}
 	return results, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *ClusterExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (e *ClusterExecuter) ExecuteWithResults(input contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
@@ -229,7 +230,7 @@ func (e *ClusterExecuter) ExecuteWithResults(input string, callback protocols.Ou
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input, err)
+		e.options.HostErrorsCache.MarkFailed(input.Input, err)
 	}
 	return err
 }

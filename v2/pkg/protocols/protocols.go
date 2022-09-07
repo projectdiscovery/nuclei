@@ -6,6 +6,7 @@ import (
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -30,9 +31,9 @@ type Executer interface {
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
 	// Execute executes the protocol group and returns true or false if results were found.
-	Execute(input string) (bool, error)
+	Execute(input contextargs.Context) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, callback OutputEventCallback) error
+	ExecuteWithResults(input contextargs.Context, callback OutputEventCallback) error
 }
 
 // ExecuterOptions contains the configuration options for executer clients
@@ -100,7 +101,7 @@ type Request interface {
 	// Extract performs extracting operation for an extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
+	ExecuteWithResults(input contextargs.Context, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
 	// MakeResultEventItem creates a result event from internal wrapped event. Intended to be used by MakeResultEventItem internally
 	MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent
 	// MakeResultEvent creates a flat list of result events from an internal wrapped event, based on successful matchers and extracted data
