@@ -66,7 +66,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(contextargs.Input{Input: tempDir}, metadata, previous, func(event *output.InternalWrappedEvent) {
+		err := request.ExecuteWithResults(contextargs.Context{Input: tempDir}, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute file request")
