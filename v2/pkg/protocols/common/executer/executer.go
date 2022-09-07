@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
@@ -63,6 +64,9 @@ func (e *Executer) Execute(input contextargs.Context) (bool, error) {
 	var results bool
 
 	dynamicValues := make(map[string]interface{})
+	if input.Args != nil {
+		dynamicValues = generators.MergeMaps(dynamicValues, input.Args)
+	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
