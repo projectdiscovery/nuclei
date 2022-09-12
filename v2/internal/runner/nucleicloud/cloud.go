@@ -53,7 +53,7 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 
 	resp, err := c.httpclient.Do(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not do request")
+		return "", errors.Wrap(err, "could not do add scan request")
 	}
 	if resp.StatusCode != 200 {
 		data, _ := ioutil.ReadAll(resp.Body)
@@ -83,7 +83,7 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent)) error
 
 		resp, err := c.httpclient.Do(httpReq)
 		if err != nil {
-			return errors.Wrap(err, "could not do request")
+			return errors.Wrap(err, "could not do ger result request")
 		}
 		if resp.StatusCode != 200 {
 			data, _ := ioutil.ReadAll(resp.Body)
