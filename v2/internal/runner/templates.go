@@ -47,6 +47,28 @@ func (r *Runner) listAvailableTemplates() {
 			if err != nil {
 				return nil
 			}
+			if len(r.options.Templates) > 0 {
+				anyMatch := false
+				for _, tl := range r.options.Templates {
+					if strings.Contains(strings.ToLower(path), strings.ToLower(tl)) {
+						anyMatch = true
+					}
+				}
+				if !anyMatch {
+					return nil
+				}
+			}
+			if len(r.options.IncludeIds) > 0 {
+				anyMatch := false
+				for _, id := range r.options.IncludeIds {
+					if strings.Contains(strings.ToLower(d.Name()), id) {
+						anyMatch = true
+					}
+				}
+				if !anyMatch {
+					return nil
+				}
+			}
 			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
 				gologger.Print().Msgf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(d.Name())).String())
 			} else if strings.HasSuffix(path, ".yaml") {
