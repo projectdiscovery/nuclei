@@ -1,7 +1,10 @@
 package workflows
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 )
 
@@ -46,9 +49,84 @@ type ProtocolExecuterPair struct {
 // Matcher performs conditional matching on the workflow template results.
 type Matcher struct {
 	// description: |
+	//    Names is the name of the multiple items to match.
+	Names []string `yaml:"names,omitempty" jsonschema:"title=name of multiple items to match,description=Name of multiple items to match"`
+	// description: |
+	//   Condition is the optional condition between names. By default,
+	//   the condition is assumed to be OR.
+	// values:
+	//   - "and"
+	//   - "or"
+	Condition string `yaml:"condition,omitempty" jsonschema:"title=condition between names,description=Condition between the names,enum=and,enum=or"`
+	// description: |
 	//    Name is the name of the item to match.
 	Name string `yaml:"name,omitempty" jsonschema:"title=name of item to match,description=Name of item to match"`
 	// description: |
 	//    Subtemplates are run if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=templates to run after match,description=Templates to run after match"`
+
+	condition ConditionType
+}
+
+// ConditionType is the type of condition for matcher
+type ConditionType int
+
+const (
+	// ANDCondition matches responses with AND condition in arguments.
+	ANDCondition ConditionType = iota + 1
+	// ORCondition matches responses with AND condition in arguments.
+	ORCondition
+)
+
+// ConditionTypes is a table for conversion of condition type from string.
+var ConditionTypes = map[string]ConditionType{
+	"and": ANDCondition,
+	"or":  ORCondition,
+}
+
+// Compile compiles the matcher for workflow
+func (matcher *Matcher) Compile() error {
+	var ok bool
+	if matcher.Condition != "" {
+		matcher.condition, ok = ConditionTypes[matcher.Condition]
+		if !ok {
+			return fmt.Errorf("unknown condition specified: %s", matcher.Condition)
+		}
+	} else {
+		matcher.condition = ORCondition
+	}
+	return nil
+}
+
+// Match matches a name for matcher names or name
+func (matcher *Matcher) Match(result *operators.Result) bool {
+	if matcher.Name != "" {
+		_, matchOK := result.Matches[matcher.Name]
+		_, extractOK := result.Extracts[matcher.Name]
+		if matchOK || extractOK {
+			return true
+		}
+	}
+	if len(matcher.Names) == 0 {
+		return false
+	}
+
+	for i, name := range matcher.Names {
+		_, matchOK := result.Matches[name]
+		_, extractOK := result.Extracts[name]
+
+		if !matchOK && !extractOK {
+			if matcher.condition == ANDCondition {
+				return false
+			} else if matcher.condition == ORCondition {
+				continue
+			}
+		}
+		if matcher.condition == ORCondition {
+			return true
+		} else if len(matcher.Names)-1 == i {
+			return true
+		}
+	}
+	return false
 }

@@ -39,6 +39,11 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 		}
 	}
 	for _, matcher := range workflow.Matchers {
+		if len(matcher.Names) > 0 {
+			if err := matcher.Compile(); err != nil {
+				return errors.Wrap(err, "could not compile workflow matcher")
+			}
+		}
 		for _, subtemplates := range matcher.Subtemplates {
 			if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
 				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
