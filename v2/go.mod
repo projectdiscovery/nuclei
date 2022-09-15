@@ -78,7 +78,7 @@ require (
 	github.com/projectdiscovery/iputil v0.0.0-20220712175312-b9406f31cdd8
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
-	github.com/projectdiscovery/tlsx v0.0.5-0.20220831115114-feb379e88900
+	github.com/projectdiscovery/tlsx v0.0.5-0.20220904111850-42ede338074e
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/wappalyzergo v0.0.58
 	github.com/stretchr/testify v1.8.0
