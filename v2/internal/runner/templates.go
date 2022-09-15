@@ -1,8 +1,7 @@
 package runner
 
 import (
-	"io/fs"
-	"os"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+// log available templates for verbose (-vv)
 func (r *Runner) logAvailableTemplate(tplPath string) {
 	t, err := parsers.ParseTemplate(tplPath, r.catalog)
 	if err != nil {
@@ -24,61 +24,29 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	}
 }
 
-// listAvailableTemplates prints available templates to stdout
-func (r *Runner) listAvailableTemplates() {
-	if r.templatesConfig == nil {
-		return
-	}
-
-	if _, err := os.Stat(r.templatesConfig.TemplatesDirectory); os.IsNotExist(err) {
-		gologger.Error().Msgf("%s does not exists", r.templatesConfig.TemplatesDirectory)
-		return
-	}
-
+func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	gologger.Print().Msgf(
 		"\nListing available v.%s nuclei templates for %s",
 		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	err := filepath.WalkDir(
-		r.templatesConfig.TemplatesDirectory,
-		func(path string, d fs.DirEntry, err error) error {
-			// continue on errors
-			if err != nil {
-				return nil
-			}
-			if len(r.options.Templates) > 0 {
-				anyMatch := false
-				for _, tl := range r.options.Templates {
-					if strings.Contains(strings.ToLower(path), strings.ToLower(tl)) {
-						anyMatch = true
-					}
-				}
-				if !anyMatch {
-					return nil
-				}
-			}
-			if len(r.options.IncludeIds) > 0 {
-				anyMatch := false
-				for _, id := range r.options.IncludeIds {
-					if strings.Contains(strings.ToLower(d.Name()), id) {
-						anyMatch = true
-					}
-				}
-				if !anyMatch {
-					return nil
-				}
-			}
-			if d.IsDir() && path != r.templatesConfig.TemplatesDirectory {
-				gologger.Print().Msgf("\n%s:\n\n", r.colorizer.Bold(r.colorizer.BgBrightBlue(d.Name())).String())
-			} else if strings.HasSuffix(path, ".yaml") {
-				r.logAvailableTemplate(path)
-			}
-			return nil
-		},
-	)
-	// directory couldn't be walked
-	if err != nil {
-		gologger.Error().Msgf("Could not find templates in directory '%s': %s\n", r.templatesConfig.TemplatesDirectory, err)
+	extraFlags := r.options.Templates != nil || r.options.Authors != nil ||
+		r.options.Tags != nil ||
+		r.options.IncludeTags != nil || r.options.IncludeIds != nil ||
+		r.options.ExcludeIds != nil || r.options.IncludeTemplates != nil ||
+		r.options.ExcludedTemplates != nil || r.options.ExcludeMatchers != nil ||
+		r.options.Severities != nil || r.options.ExcludeSeverities != nil ||
+		r.options.Protocols != nil || r.options.ExcludeProtocols != nil ||
+		r.options.IncludeConditions != nil
+	for _, tl := range store.Templates() {
+		if extraFlags {
+			path := strings.TrimPrefix(tl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
+			gologger.Print().Msgf("%s\n", path)
+		} else {
+			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tl.ID,
+				types.ToString(tl.Info.Name),
+				tl.Info.Authors.ToSlice(),
+				tl.Info.SeverityHolder.Severity))
+		}
 	}
 }
