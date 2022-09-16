@@ -31,7 +31,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		r.templatesConfig.TemplatesDirectory,
 	)
 	extraFlags := r.options.Templates != nil || r.options.Authors != nil ||
-		r.options.Tags != nil ||
+		r.options.Tags != nil || len(r.options.ExcludeTags) > 3 ||
 		r.options.IncludeTags != nil || r.options.IncludeIds != nil ||
 		r.options.ExcludeIds != nil || r.options.IncludeTemplates != nil ||
 		r.options.ExcludedTemplates != nil || r.options.ExcludeMatchers != nil ||
