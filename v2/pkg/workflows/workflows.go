@@ -49,8 +49,8 @@ type ProtocolExecuterPair struct {
 // Matcher performs conditional matching on the workflow template results.
 type Matcher struct {
 	// description: |
-	//    Names is the name of the multiple items to match.
-	Names []string `yaml:"names,omitempty" jsonschema:"title=name of multiple items to match,description=Name of multiple items to match"`
+	//    Name is the name of the items to match.
+	Name stringslice.StringSlice `yaml:"names,omitempty" jsonschema:"title=name of items to match,description=Name of items to match"`
 	// description: |
 	//   Condition is the optional condition between names. By default,
 	//   the condition is assumed to be OR.
@@ -58,9 +58,6 @@ type Matcher struct {
 	//   - "and"
 	//   - "or"
 	Condition string `yaml:"condition,omitempty" jsonschema:"title=condition between names,description=Condition between the names,enum=and,enum=or"`
-	// description: |
-	//    Name is the name of the item to match.
-	Name string `yaml:"name,omitempty" jsonschema:"title=name of item to match,description=Name of item to match"`
 	// description: |
 	//    Subtemplates are run if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=templates to run after match,description=Templates to run after match"`
@@ -100,18 +97,13 @@ func (matcher *Matcher) Compile() error {
 
 // Match matches a name for matcher names or name
 func (matcher *Matcher) Match(result *operators.Result) bool {
-	if matcher.Name != "" {
-		_, matchOK := result.Matches[matcher.Name]
-		_, extractOK := result.Extracts[matcher.Name]
-		if matchOK || extractOK {
-			return true
-		}
-	}
-	if len(matcher.Names) == 0 {
+	names := matcher.Name.ToSlice()
+
+	if len(names) == 0 {
 		return false
 	}
 
-	for i, name := range matcher.Names {
+	for i, name := range names {
 		_, matchOK := result.Matches[name]
 		_, extractOK := result.Extracts[name]
 
@@ -124,7 +116,7 @@ func (matcher *Matcher) Match(result *operators.Result) bool {
 		}
 		if matcher.condition == ORCondition {
 			return true
-		} else if len(matcher.Names)-1 == i {
+		} else if len(names)-1 == i {
 			return true
 		}
 	}

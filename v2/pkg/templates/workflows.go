@@ -39,7 +39,7 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 		}
 	}
 	for _, matcher := range workflow.Matchers {
-		if len(matcher.Names) > 0 {
+		if len(matcher.Name.ToSlice()) > 0 {
 			if err := matcher.Compile(); err != nil {
 				return errors.Wrap(err, "could not compile workflow matcher")
 			}
