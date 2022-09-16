@@ -3,8 +3,10 @@ package protocolstate
 import (
 	"fmt"
 	"net"
+	"net/url"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -59,6 +61,27 @@ func Init(options *types.Options) error {
 				IP: ifadrr,
 			},
 		}
+	}
+	if types.ProxySocksURL != "" {
+		proxyURL, err := url.Parse(types.ProxySocksURL)
+		if err != nil {
+			return err
+		}
+		var forward *net.Dialer
+		if opts.Dialer != nil {
+			forward = opts.Dialer
+		} else {
+			forward = &net.Dialer{
+				Timeout:   opts.DialerTimeout,
+				KeepAlive: opts.DialerKeepAlive,
+				DualStack: true,
+			}
+		}
+		dialer, err := proxy.FromURL(proxyURL, forward)
+		if err != nil {
+			return err
+		}
+		opts.ProxyDialer = &dialer
 	}
 
 	if options.SystemResolvers {
