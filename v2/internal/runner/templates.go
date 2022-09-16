@@ -37,7 +37,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		r.options.ExcludedTemplates != nil || r.options.ExcludeMatchers != nil ||
 		r.options.Severities != nil || r.options.ExcludeSeverities != nil ||
 		r.options.Protocols != nil || r.options.ExcludeProtocols != nil ||
-		r.options.IncludeConditions != nil
+		r.options.IncludeConditions != nil || r.options.TemplateList
 	for _, tl := range store.Templates() {
 		if extraFlags {
 			path := strings.TrimPrefix(tl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
