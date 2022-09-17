@@ -278,8 +278,8 @@ import (
 	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
@@ -312,7 +312,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service-detection.yaml"}
+	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service.yaml"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -323,7 +323,7 @@ func main() {
 	defer interactClient.Close()
 
 	home, _ := os.UserHomeDir()
-	catalog := catalog.New(path.Join(home, "nuclei-templates"))
+	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
