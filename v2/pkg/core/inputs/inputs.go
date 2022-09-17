@@ -17,15 +17,3 @@ func (s *SimpleInputProvider) Scan(callback func(value string) bool) {
 		}
 	}
 }
-
-var nonURLInput bool
-options.Inputs.Scan(func(value string) bool {
-	if !strings.Contains(value, "://") {
-		nonURLInput = true
-		return false
-	}
-	return true
-})
-if !nonURLInput {
-	return nil
-}
