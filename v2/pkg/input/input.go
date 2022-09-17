@@ -85,11 +85,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType) string {
 		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && notURL {
 			return input
 		}
-		return ""
-	}
-
-	switch inputType {
-	case inputTypeHost:
+	} else if inputType == inputTypeHost {
 		if host != "" {
 			return host
 		}
@@ -98,7 +94,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType) string {
 		} else {
 			return input
 		}
-	case inputTypeURL:
+	} else if inputType == inputTypeURL {
 		if parsed != nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
 			return input
 		}
@@ -107,14 +103,14 @@ func (h *Helper) convertInputToType(input string, inputType inputType) string {
 				return string(probed)
 			}
 		}
-	case inputTypeHostPort:
+	} else if inputType == inputTypeHostPort {
 		if host != "" && port != "" {
 			return net.JoinHostPort(host, port)
 		}
 		if parsed != nil && port == "" && parsed.Scheme == "https" {
 			return net.JoinHostPort(parsed.Host, "443")
 		}
-	case inputTypeWebsocket:
+	} else if inputType == inputTypeWebsocket {
 		if parsed != nil && (parsed.Scheme == "ws" || parsed.Scheme == "wss") {
 			return input
 		}
