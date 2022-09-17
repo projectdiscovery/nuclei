@@ -1,7 +1,6 @@
 package input
 
 import (
-	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -35,7 +34,6 @@ func (h *Helper) Close() error {
 // Transform transforms an input based on protocol type and returns
 // appropriate input based on it.
 func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) string {
-	fmt.Printf("value: 1- %v 2- %v\n", input, protocol)
 	switch protocol {
 	case templateTypes.DNSProtocol, templateTypes.WHOISProtocol:
 		return h.convertInputToType(input, inputTypeHost)
@@ -105,8 +103,6 @@ func (h *Helper) convertInputToType(input string, inputType inputType) string {
 			return input
 		}
 		if h.InputsHTTP != nil {
-			data, _ := h.InputsHTTP.Get(input)
-			fmt.Printf("inputs: 1- %v 2- %v 3- %v\n", h.InputsHTTP, data, input)
 			if probed, ok := h.InputsHTTP.Get(input); ok {
 				return string(probed)
 			}
