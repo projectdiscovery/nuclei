@@ -12,7 +12,7 @@ func TestConvertInputToType(t *testing.T) {
 
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	require.NoError(t, err, "could not create hybrid map")
-	helper.inputsHTTP = hm
+	helper.InputsHTTP = hm
 	defer hm.Close()
 
 	_ = hm.Set("google.com", []byte("https://google.com"))
