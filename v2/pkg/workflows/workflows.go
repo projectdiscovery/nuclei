@@ -50,7 +50,7 @@ type ProtocolExecuterPair struct {
 type Matcher struct {
 	// description: |
 	//    Name is the name of the items to match.
-	Name stringslice.StringSlice `yaml:"names,omitempty" jsonschema:"title=name of items to match,description=Name of items to match"`
+	Name stringslice.StringSlice `yaml:"name,omitempty" jsonschema:"title=name of items to match,description=Name of items to match"`
 	// description: |
 	//   Condition is the optional condition between names. By default,
 	//   the condition is assumed to be OR.
