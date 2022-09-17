@@ -123,9 +123,11 @@ func (i *Input) Count() int64 {
 
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
-func (i *Input) Scan(callback func(value string)) {
+func (i *Input) Scan(callback func(value string) bool) {
 	callbackFunc := func(k, _ []byte) error {
-		callback(string(k))
+		if !callback(string(k)) {
+			return io.EOF
+		}
 		return nil
 	}
 	if i.hostMapStream != nil {

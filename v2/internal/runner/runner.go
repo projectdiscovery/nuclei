@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -367,6 +368,7 @@ func (r *Runner) RunEnumeration() error {
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:     input.NewHelper(),
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -399,6 +401,17 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// If not explicitly disabled, check if http based protocols
+	// are used and if inputs are non-http to pre-perform probing
+	// of urls and storing them for execution.
+	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
+		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		if err != nil {
+			return errors.Wrap(err, "could not probe http input")
+		}
+		executerOpts.InputHelper.InputsHTTP = inputHelpers
+	}
+
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
@@ -421,6 +434,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.progress.Stop()
 
+	if executerOpts.InputHelper != nil {
+		_ = executerOpts.InputHelper.Close()
+	}
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
 	}
@@ -432,6 +448,18 @@ func (r *Runner) RunEnumeration() error {
 		r.browser.Close()
 	}
 	return err
+}
+
+func (r *Runner) isInputNonHTTP() bool {
+	var nonURLInput bool
+	r.hmapInputProvider.Scan(func(value string) bool {
+		if !strings.Contains(value, "://") {
+			nonURLInput = true
+			return false
+		}
+		return true
+	})
+	return nonURLInput
 }
 
 func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {

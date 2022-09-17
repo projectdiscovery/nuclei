@@ -64,7 +64,15 @@ func (e *Executer) Execute(input string) (bool, error) {
 	dynamicValues := make(map[string]interface{})
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		var inputItem string
+		if e.options.InputHelper != nil {
+			inputItem = e.options.InputHelper.Transform(input, req.Type())
+		}
+		if inputItem == "" {
+			inputItem = input
+		}
+
+		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -116,7 +124,15 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 	for _, req := range e.requests {
 		req := req
 
-		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		var inputItem string
+		if e.options.InputHelper != nil {
+			inputItem = e.options.InputHelper.Transform(input, req.Type())
+		}
+		if inputItem == "" {
+			inputItem = input
+		}
+
+		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}

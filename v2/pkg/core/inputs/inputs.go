@@ -10,8 +10,22 @@ func (s *SimpleInputProvider) Count() int64 {
 }
 
 // Scan calls a callback function till the input provider is exhausted
-func (s *SimpleInputProvider) Scan(callback func(value string)) {
+func (s *SimpleInputProvider) Scan(callback func(value string) bool) {
 	for _, v := range s.Inputs {
-		callback(v)
+		if !callback(v) {
+			return
+		}
 	}
+}
+
+var nonURLInput bool
+options.Inputs.Scan(func(value string) bool {
+	if !strings.Contains(value, "://") {
+		nonURLInput = true
+		return false
+	}
+	return true
+})
+if !nonURLInput {
+	return nil
 }

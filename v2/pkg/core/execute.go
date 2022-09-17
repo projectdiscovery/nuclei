@@ -97,7 +97,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		currentInfo.Unlock()
 	}
 
-	target.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue string) bool {
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
@@ -122,7 +122,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
-			return
+			return true
 		}
 
 		wg.WaitGroup.Add()
@@ -148,6 +148,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		}(index, skip, scannedValue)
 
 		index++
+		return true
 	})
 	wg.WaitGroup.Wait()
 
@@ -184,10 +185,10 @@ func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target 
 func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool, callback func(*output.ResultEvent)) {
 	wg := e.workPool.InputPool(templateType)
 
-	target.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue string) bool {
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
-			return
+			return true
 		}
 
 		wg.WaitGroup.Add()
@@ -211,6 +212,7 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 			}
 			results.CAS(false, match)
 		}(scannedValue)
+		return true
 	})
 	wg.WaitGroup.Wait()
 }
