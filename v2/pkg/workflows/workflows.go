@@ -100,7 +100,6 @@ func (matcher *Matcher) Compile() error {
 // Match matches a name for matcher names or name
 func (matcher *Matcher) Match(result *operators.Result) bool {
 	names := matcher.Name.ToSlice()
-
 	if len(names) == 0 {
 		return false
 	}
@@ -112,9 +111,8 @@ func (matcher *Matcher) Match(result *operators.Result) bool {
 		if !matchOK && !extractOK {
 			if matcher.condition == ANDCondition {
 				return false
-			} else if matcher.condition == ORCondition {
-				continue
 			}
+			continue
 		}
 		if matcher.condition == ORCondition {
 			return true

@@ -14,6 +14,11 @@ func TestWorkflowMatchAndCompile(t *testing.T) {
 		matched := matcher.Match(&operators.Result{Matches: map[string][]string{"sphinx": {}}, Extracts: map[string][]string{}})
 		require.True(t, matched, "could not match value")
 	})
+	t.Run("name-negative", func(t *testing.T) {
+		matcher := &Matcher{Name: stringslice.StringSlice{Value: "tomcat"}}
+		matched := matcher.Match(&operators.Result{Matches: map[string][]string{"apache": {}}, Extracts: map[string][]string{}})
+		require.False(t, matched, "could not match value")
+	})
 	t.Run("names-or", func(t *testing.T) {
 		matcher := &Matcher{Name: stringslice.StringSlice{Value: []string{"sphinx", "elastic"}}, Condition: "or"}
 		_ = matcher.Compile()
