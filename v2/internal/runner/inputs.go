@@ -31,7 +31,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	swg := sizedwaitgroup.New(r.options.BulkSize)
 	count := 0
 	r.hmapInputProvider.Scan(func(value string) bool {
-		if strings.Contains(value, "://") {
+		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 			return true
 		}
 
