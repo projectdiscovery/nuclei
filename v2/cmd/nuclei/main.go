@@ -271,8 +271,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarP(&options.CloudURL, "cloud-url", "cu", "http://cloud-dev.nuclei.sh", "url for the nuclei cloud server"),
-		flagSet.StringVarP(&options.CloudAPIKey, "cloud-api-key", "cak", "", "api-key for the nuclei cloud server"),
+		flagSet.StringVarEnv(&options.CloudURL, "cloud-url", "cu", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_HOST", "url for the nuclei cloud server"),
+		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "cak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
 	)
 
 	_ = flagSet.Parse()

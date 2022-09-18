@@ -51,7 +51,6 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 	}
 
 	result := make([]string, 0, len(marshalledSlice))
-	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
 	}
@@ -90,7 +89,6 @@ func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 	}
 
 	values := make([]string, 0, len(result))
-	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range result {
 		values = append(values, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
 	}
