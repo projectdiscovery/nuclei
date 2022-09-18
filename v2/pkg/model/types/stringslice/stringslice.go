@@ -51,7 +51,6 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 	}
 
 	result := make([]string, 0, len(marshalledSlice))
-	//nolint:gosimple,nolintlint //cannot be replaced with result = append(result, slices...) because the values are being normalized
 	for _, value := range marshalledSlice {
 		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
 	}
@@ -65,6 +64,36 @@ func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {
 
 func (stringSlice StringSlice) MarshalJSON() ([]byte, error) {
 	return json.Marshal(stringSlice.Value)
+}
+
+func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
+	var marshalledValueAsString string
+	var marshalledValuesAsSlice []string
+
+	sliceMarshalError := json.Unmarshal(data, &marshalledValuesAsSlice)
+	if sliceMarshalError != nil {
+		stringMarshalError := json.Unmarshal(data, &marshalledValueAsString)
+		if stringMarshalError != nil {
+			return stringMarshalError
+		}
+	}
+
+	var result []string
+	switch {
+	case len(marshalledValuesAsSlice) > 0:
+		result = marshalledValuesAsSlice
+	case utils.IsNotBlank(marshalledValueAsString):
+		result = strings.Split(marshalledValueAsString, ",")
+	default:
+		result = []string{}
+	}
+
+	values := make([]string, 0, len(result))
+	for _, value := range result {
+		values = append(values, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
+	}
+	stringSlice.Value = values
+	return nil
 }
 
 func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
