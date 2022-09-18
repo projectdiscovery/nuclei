@@ -97,6 +97,21 @@ func (severityHolder *Holder) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
+func (severityHolder *Holder) UnmarshalJSON(data []byte) error {
+	var marshalledSeverity string
+	if err := json.Unmarshal(data, &marshalledSeverity); err != nil {
+		return err
+	}
+
+	computedSeverity, err := toSeverity(marshalledSeverity)
+	if err != nil {
+		return err
+	}
+
+	severityHolder.Severity = computedSeverity
+	return nil
+}
+
 func (severityHolder *Holder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(severityHolder.Severity.String())
 }
