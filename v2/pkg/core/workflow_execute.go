@@ -21,13 +21,16 @@ func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 	// at this point we should be at the start root execution of a workflow tree, hence we create global shared instances
 	workflowArgs := make(map[string]interface{})
 	workflowCookieJar, _ := cookiejar.New(nil)
-	contextargs := contextargs.Context{Input: input, Args: workflowArgs, CookieJar: workflowCookieJar}
+	ctxArgs := contextargs.New()
+	ctxArgs.Input = input
+	ctxArgs.Args = workflowArgs
+	ctxArgs.CookieJar = workflowCookieJar
 
 	swg := sizedwaitgroup.New(w.Options.Options.TemplateThreads)
 	for _, template := range w.Workflows {
 		swg.Add()
 		func(template *workflows.WorkflowTemplate) {
-			if err := e.runWorkflowStep(template, contextargs, results, &swg, w); err != nil {
+			if err := e.runWorkflowStep(template, ctxArgs, results, &swg, w); err != nil {
 				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 			swg.Done()
@@ -57,9 +60,13 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input con
 					if len(result.Results) > 0 {
 						firstMatched = true
 					}
-					// this will cause race - test only
-					for k, v := range result.OperatorsResult.Extracts {
-						input.Args[k] = v
+
+					if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
+						input.Lock()
+						for k, v := range result.OperatorsResult.Extracts {
+							input.Args[k] = v
+						}
+						input.Unlock()
 					}
 				})
 			} else {
@@ -94,9 +101,12 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input con
 					return
 				}
 
-				// this will cause race - test only
-				for k, v := range event.OperatorsResult.Extracts {
-					input.Args[k] = v
+				if event.OperatorsResult.Extracts != nil {
+					input.Lock()
+					for k, v := range event.OperatorsResult.Extracts {
+						input.Args[k] = v
+					}
+					input.Unlock()
 				}
 
 				for _, matcher := range template.Matchers {

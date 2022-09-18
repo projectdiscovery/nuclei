@@ -65,7 +65,9 @@ func (e *Executer) Execute(input contextargs.Context) (bool, error) {
 
 	dynamicValues := make(map[string]interface{})
 	if input.Args != nil {
+		input.RLock()
 		dynamicValues = generators.MergeMaps(dynamicValues, input.Args)
+		input.RUnlock()
 	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
