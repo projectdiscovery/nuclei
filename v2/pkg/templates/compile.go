@@ -27,8 +27,9 @@ func init() {
 }
 
 // Parse parses a yaml request template file
-//nolint:gocritic // this cannot be passed by pointer
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
+//
+//nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
 	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
 		return value.(*Template), err
@@ -147,30 +148,30 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	}
 
 	var requests []protocols.Request
-	switch {
-	case len(template.RequestsDNS) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsDNS)
 
-	case len(template.RequestsFile) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsFile)
-
-	case len(template.RequestsNetwork) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsNetwork)
-
-	case len(template.RequestsHTTP) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsHTTP)
-
-	case len(template.RequestsHeadless) > 0 && options.Options.Headless:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsHeadless)
-
-	case len(template.RequestsSSL) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsSSL)
-
-	case len(template.RequestsWebsocket) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsWebsocket)
-
-	case len(template.RequestsWHOIS) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsWHOIS)
+	if len(template.RequestsDNS) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+	}
+	if len(template.RequestsFile) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+	}
+	if len(template.RequestsNetwork) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+	}
+	if len(template.RequestsHTTP) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+	}
+	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+	}
+	if len(template.RequestsSSL) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+	}
+	if len(template.RequestsWebsocket) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+	}
+	if len(template.RequestsWHOIS) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
