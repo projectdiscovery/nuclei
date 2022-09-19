@@ -3,7 +3,7 @@ package nucleicloud
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -56,7 +56,7 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 		return "", errors.Wrap(err, "could not do add scan request")
 	}
 	if resp.StatusCode != 200 {
-		data, _ := ioutil.ReadAll(resp.Body)
+		data, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		return "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
 	}
@@ -86,7 +86,7 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent)) error
 			return errors.Wrap(err, "could not do ger result request")
 		}
 		if resp.StatusCode != 200 {
-			data, _ := ioutil.ReadAll(resp.Body)
+			data, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
 		}
