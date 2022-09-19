@@ -28,8 +28,16 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.7.5-dev`
+const Version = `2.7.8-dev`
 
+var customConfigDirectory string
+
+func SetCustomConfigDirectory(dir string) {
+	customConfigDirectory = dir
+	if !fileutil.FolderExists(dir) {
+		_ = fileutil.CreateFolder(dir)
+	}
+}
 func getConfigDetails() (string, error) {
 	configDir, err := GetConfigDir()
 	if err != nil {
@@ -42,7 +50,15 @@ func getConfigDetails() (string, error) {
 
 // GetConfigDir returns the nuclei configuration directory
 func GetConfigDir() (string, error) {
-	home, err := homedir.Dir()
+	var (
+		home string
+		err  error
+	)
+	if customConfigDirectory != "" {
+		home = customConfigDirectory
+		return home, nil
+	}
+	home, err = homedir.Dir()
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +71,6 @@ func ReadConfiguration() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	file, err := os.Open(templatesConfigFile)
 	if err != nil {
 		return nil, err
@@ -100,7 +115,7 @@ type IgnoreFile struct {
 
 // ReadIgnoreFile reads the nuclei ignore file returning blocked tags and paths
 func ReadIgnoreFile() IgnoreFile {
-	file, err := os.Open(getIgnoreFilePath())
+	file, err := os.Open(GetIgnoreFilePath())
 	if err != nil {
 		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
 		return IgnoreFile{}
@@ -138,8 +153,8 @@ func OverrideIgnoreFilePath(customPath string) error {
 	return nil
 }
 
-// getIgnoreFilePath returns the ignore file path for the runner
-func getIgnoreFilePath() string {
+// GetIgnoreFilePath returns the ignore file path for the runner
+func GetIgnoreFilePath() string {
 	var defIgnoreFilePath string
 
 	if customIgnoreFilePath != "" {

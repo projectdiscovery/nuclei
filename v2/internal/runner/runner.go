@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
@@ -58,7 +59,7 @@ type Runner struct {
 	templatesConfig   *config.Config
 	options           *types.Options
 	projectFile       *projectfile.ProjectFile
-	catalog           *catalog.Catalog
+	catalog           catalog.Catalog
 	progress          progress.Progress
 	colorizer         aurora.Aurora
 	issuesClient      *reporting.Client
@@ -110,7 +111,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.browser = browser
 	}
 
-	runner.catalog = catalog.New(runner.options.TemplatesDirectory)
+	runner.catalog = disk.NewCatalog(runner.options.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
@@ -376,11 +377,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.templatesConfig, r.catalog, executerOpts))
+	templateConfig := r.templatesConfig
+	if templateConfig == nil {
+		templateConfig = &config.Config{}
+	}
+
+	store, err := loader.New(loader.NewConfig(r.options, templateConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -397,21 +402,18 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
-	if r.options.AutomaticScan {
-		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
-			return err
-		}
 
+	if r.options.Cloud {
+		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+		results, err = r.runCloudEnumeration(store)
 	} else {
-		if results, err = r.executeTemplatesInput(store, engine); err != nil {
-			return err
-		}
+		results, err = r.runStandardEnumeration(executerOpts, store, engine)
 	}
 
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
-			results.CAS(false, true)
+			results.CompareAndSwap(false, true)
 		}
 	}
 	r.progress.Stop()
@@ -555,7 +557,7 @@ func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, erro
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("version not found")
 	}
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

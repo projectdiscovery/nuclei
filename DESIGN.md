@@ -278,8 +278,8 @@ import (
 	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
@@ -312,7 +312,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{"dns/cname-service-detection.yaml"}
+	defaultOpts.Templates = goflags.StringSlice{"dns/cname-service.yaml"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -323,7 +323,7 @@ func main() {
 	defer interactClient.Close()
 
 	home, _ := os.UserHomeDir()
-	catalog := catalog.New(path.Join(home, "nuclei-templates"))
+	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -555,6 +555,27 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 ```
 
 That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
+
+
+## Profiling Instructions
+
+To enable dumping of Memory profiling data, `-profile-mem` flag can be used along with path to a file. This writes a pprof formatted file which can be used for investigate resource usage with `pprof` tool.
+
+```console
+$ nuclei -t nuclei-templates/ -u https://example.com -profile-mem mem.pprof
+```
+
+To view profile data in pprof, first install pprof. Then run the below command -
+
+```console
+$ go tool pprof mem.pprof
+```
+
+To open a web UI on a port to visualize debug data, the below command can be used.
+
+```console
+$ go tool pprof -http=:8081 mem.pprof
+```
 
 ## Project Structure
 

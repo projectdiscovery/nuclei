@@ -1,4 +1,4 @@
-id: expired-ssl
+id: basic-ssl
 
 info:
   name: Basic SSL Request
@@ -7,7 +7,8 @@ info:
 
 ssl:
   - address: "{{Host}}:{{Port}}"
+
     matchers:
       - type: dsl
         dsl:
-          - "not_after>=0"
+          - "probe_status == true"
