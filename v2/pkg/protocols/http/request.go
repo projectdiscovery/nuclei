@@ -254,6 +254,8 @@ func (request *Request) ExecuteWithResults(input contextargs.Context, dynamicVal
 			variablesMap, interactURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, payloads), request.options.Interactsh)
 			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
+			request.options.RateLimiter.Take()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
 
@@ -278,8 +280,6 @@ func (request *Request) ExecuteWithResults(input contextargs.Context, dynamicVal
 				return true, nil
 			}
 			var gotMatches bool
-			request.options.RateLimiter.Take()
-
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
