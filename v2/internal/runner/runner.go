@@ -17,8 +17,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
 	"go.uber.org/atomic"
-	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -66,7 +66,7 @@ type Runner struct {
 	issuesClient      *reporting.Client
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
-	ratelimiter       ratelimit.Limiter
+	ratelimiter       *ratelimit.Limiter
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
@@ -244,11 +244,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(options.RateLimitMinute, ratelimit.Per(60*time.Second))
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(options.RateLimit)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
 	} else {
-		runner.ratelimiter = ratelimit.NewUnlimited()
+		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	return runner, nil
 }
@@ -383,11 +383,11 @@ func (r *Runner) RunEnumeration() error {
 	if templateConfig == nil {
 		templateConfig = &config.Config{}
 	}
+
 	store, err := loader.New(loader.NewConfig(r.options, templateConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -415,21 +415,18 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
-	if r.options.AutomaticScan {
-		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
-			return err
-		}
 
+	if r.options.Cloud {
+		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+		results, err = r.runCloudEnumeration(store)
 	} else {
-		if results, err = r.executeTemplatesInput(store, engine); err != nil {
-			return err
-		}
+		results, err = r.runStandardEnumeration(executerOpts, store, engine)
 	}
 
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
-			results.CAS(false, true)
+			results.CompareAndSwap(false, true)
 		}
 	}
 	r.progress.Stop()
