@@ -13,6 +13,8 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 )
 
+const probeBulkSize = 50
+
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
 func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
@@ -25,10 +27,14 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
-	gologger.Verbose().Msgf("Started probing of non-http URLs")
+	gologger.Info().Msgf("Started probing of non-http URLs")
 
+	var bulkSize = probeBulkSize
+	if r.options.BulkSize > probeBulkSize {
+		bulkSize = r.options.BulkSize
+	}
 	// Probe the non-standard URLs and store them in cache
-	swg := sizedwaitgroup.New(r.options.BulkSize)
+	swg := sizedwaitgroup.New(bulkSize)
 	count := 0
 	r.hmapInputProvider.Scan(func(value string) bool {
 		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
