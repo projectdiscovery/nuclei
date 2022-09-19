@@ -413,7 +413,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
-			results.CAS(false, true)
+			results.CompareAndSwap(false, true)
 		}
 	}
 	r.progress.Stop()
