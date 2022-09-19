@@ -69,7 +69,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 			inputItem = e.options.InputHelper.Transform(input, req.Type())
 		}
 		if inputItem == "" {
-			inputItem = input
+			return false, nil
 		}
 
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
@@ -129,7 +129,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 			inputItem = e.options.InputHelper.Transform(input, req.Type())
 		}
 		if inputItem == "" {
-			inputItem = input
+			return nil
 		}
 
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {

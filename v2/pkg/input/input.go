@@ -36,15 +36,17 @@ func (h *Helper) Close() error {
 func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) string {
 	switch protocol {
 	case templateTypes.DNSProtocol, templateTypes.WHOISProtocol:
-		return h.convertInputToType(input, inputTypeHost)
+		return h.convertInputToType(input, inputTypeHost, "")
 	case templateTypes.FileProtocol:
-		return h.convertInputToType(input, inputTypeFilepath)
+		return h.convertInputToType(input, inputTypeFilepath, "")
 	case templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol:
-		return h.convertInputToType(input, inputTypeURL)
-	case templateTypes.NetworkProtocol, templateTypes.SSLProtocol:
-		return h.convertInputToType(input, inputTypeHostPort)
+		return h.convertInputToType(input, inputTypeURL, "")
+	case templateTypes.NetworkProtocol:
+		return h.convertInputToType(input, inputTypeHostPort, "")
+	case templateTypes.SSLProtocol:
+		return h.convertInputToType(input, inputTypeHostPort, "443")
 	case templateTypes.WebsocketProtocol:
-		return h.convertInputToType(input, inputTypeWebsocket)
+		return h.convertInputToType(input, inputTypeWebsocket, "")
 	}
 	return input
 }
@@ -61,7 +63,7 @@ const (
 
 // convertInputToType converts an input based on an inputType.
 // Various formats are supported for inputs and their transformation
-func (h *Helper) convertInputToType(input string, inputType inputType) string {
+func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	notURL := !strings.Contains(input, "://")
 
 	parsed, _ := url.Parse(input)
@@ -106,6 +108,9 @@ func (h *Helper) convertInputToType(input string, inputType inputType) string {
 	} else if inputType == inputTypeHostPort {
 		if host != "" && port != "" {
 			return net.JoinHostPort(host, port)
+		}
+		if defaultPort != "" {
+			return net.JoinHostPort(input, defaultPort)
 		}
 		if parsed != nil && port == "" && parsed.Scheme == "https" {
 			return net.JoinHostPort(parsed.Host, "443")
