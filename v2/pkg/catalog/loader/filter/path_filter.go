@@ -1,6 +1,8 @@
 package filter
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+)
 
 // PathFilter is a path based template filter
 type PathFilter struct {
