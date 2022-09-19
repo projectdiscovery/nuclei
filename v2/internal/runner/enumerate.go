@@ -51,7 +51,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store) (*atomic.Bool, error) 
 	time.Sleep(3 * time.Second)
 
 	err = client.GetResults(taskID, func(re *output.ResultEvent) {
-		results.CAS(false, true)
+		results.CompareAndSwap(false, true)
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)
