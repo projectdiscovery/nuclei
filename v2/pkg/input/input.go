@@ -37,7 +37,7 @@ func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) st
 	switch protocol {
 	case templateTypes.DNSProtocol, templateTypes.WHOISProtocol:
 		return h.convertInputToType(input, inputTypeHost, "")
-	case templateTypes.FileProtocol:
+	case templateTypes.FileProtocol, templateTypes.OfflineHTTPProtocol:
 		return h.convertInputToType(input, inputTypeFilepath, "")
 	case templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol:
 		return h.convertInputToType(input, inputTypeURL, "")

@@ -65,7 +65,7 @@ func (e *Executer) Execute(input string) (bool, error) {
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		inputItem := input
-		if e.options.InputHelper != nil {
+		if e.options.InputHelper != nil && input != "" {
 			if inputItem = e.options.InputHelper.Transform(input, req.Type()); inputItem == "" {
 				return false, nil
 			}
@@ -124,7 +124,7 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 		req := req
 
 		inputItem := input
-		if e.options.InputHelper != nil {
+		if e.options.InputHelper != nil && input != "" {
 			if inputItem = e.options.InputHelper.Transform(input, req.Type()); inputItem == "" {
 				return nil
 			}

@@ -24,7 +24,7 @@ const maxSize = 5 * 1024 * 1024
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
-	return templateTypes.HTTPProtocol
+	return templateTypes.OfflineHTTPProtocol
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
