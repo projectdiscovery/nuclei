@@ -83,9 +83,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 				}
 
 				for _, matcher := range template.Matchers {
-					_, matchOK := event.OperatorsResult.Matches[matcher.Name]
-					_, extractOK := event.OperatorsResult.Extracts[matcher.Name]
-					if !matchOK && !extractOK {
+					if !matcher.Match(event.OperatorsResult) {
 						continue
 					}
 
