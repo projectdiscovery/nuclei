@@ -109,11 +109,11 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if host != "" && port != "" {
 			return net.JoinHostPort(host, port)
 		}
-		if defaultPort != "" {
-			return net.JoinHostPort(input, defaultPort)
-		}
 		if parsed != nil && port == "" && parsed.Scheme == "https" {
 			return net.JoinHostPort(parsed.Host, "443")
+		}
+		if defaultPort != "" {
+			return net.JoinHostPort(input, defaultPort)
 		}
 	} else if inputType == inputTypeWebsocket {
 		if parsed != nil && (parsed.Scheme == "ws" || parsed.Scheme == "wss") {
