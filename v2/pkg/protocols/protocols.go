@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	"go.uber.org/ratelimit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
@@ -52,7 +52,7 @@ type ExecuterOptions struct {
 	// Progress is a progress client for scan reporting
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
-	RateLimiter ratelimit.Limiter
+	RateLimiter *ratelimit.Limiter
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
