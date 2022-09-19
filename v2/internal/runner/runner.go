@@ -381,11 +381,11 @@ func (r *Runner) RunEnumeration() error {
 	if templateConfig == nil {
 		templateConfig = &config.Config{}
 	}
+
 	store, err := loader.New(loader.NewConfig(r.options, templateConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
-
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -402,21 +402,18 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
-	if r.options.AutomaticScan {
-		if results, err = r.executeSmartWorkflowInput(executerOpts, store, engine); err != nil {
-			return err
-		}
 
+	if r.options.Cloud {
+		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+		results, err = r.runCloudEnumeration(store)
 	} else {
-		if results, err = r.executeTemplatesInput(store, engine); err != nil {
-			return err
-		}
+		results, err = r.runStandardEnumeration(executerOpts, store, engine)
 	}
 
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
-			results.CAS(false, true)
+			results.CompareAndSwap(false, true)
 		}
 	}
 	r.progress.Stop()

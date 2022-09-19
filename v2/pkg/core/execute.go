@@ -64,7 +64,7 @@ func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Templ
 	if err != nil {
 		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 	}
-	results.CAS(false, match)
+	results.CompareAndSwap(false, match)
 }
 
 // executeModelWithInput executes a type of template with input
@@ -147,7 +147,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
-			results.CAS(false, match)
+			results.CompareAndSwap(false, match)
 		}(index, skip, scannedValue)
 
 		index++
@@ -214,7 +214,7 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
-			results.CAS(false, match)
+			results.CompareAndSwap(false, match)
 		}(scannedValue)
 	})
 	wg.WaitGroup.Wait()
@@ -251,7 +251,7 @@ func (e *ChildExecuter) Execute(template *templates.Template, URL string) {
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 		}
-		e.results.CAS(false, match)
+		e.results.CompareAndSwap(false, match)
 		wg.Done()
 	}(template)
 }
