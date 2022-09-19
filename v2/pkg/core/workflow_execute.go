@@ -71,7 +71,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 		}
 	}
 	if len(template.Subtemplates) == 0 {
-		results.CAS(false, firstMatched)
+		results.CompareAndSwap(false, firstMatched)
 	}
 	if len(template.Matchers) > 0 {
 		for _, executer := range template.Executers {
