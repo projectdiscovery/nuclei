@@ -255,9 +255,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
-		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
+		flagSet.BoolVarP(&options.UpdateNuclei, "nuclei-update", "nu", false, "update nuclei engine to the latest released version"),
+		flagSet.StringVarP(&options.UpdateTemplates, "template-update", "tup", "", "update nuclei-templates to latest released version (community,github)"),
+		flagSet.StringVarP(&options.GithubToken, "github-token", "gt", "", "github token to download templates from private project"),
+		flagSet.StringSliceVarP(&options.GithubTemplateRepo, "github-template-repo", "gtr", []string{}, "github template repository to download / update from", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringVarP(&options.TemplatesDirectory, "template-update-dir", "tud", "", "custom directory / location to install nuclei-templates"),
 		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
@@ -279,6 +281,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
+	}
+	if options.GithubToken != "" {
+		os.Setenv("GITHUB_TOKEN", options.GithubToken)
 	}
 	if options.CustomConfigDir != "" {
 		originalIgnorePath := config.GetIgnoreFilePath()

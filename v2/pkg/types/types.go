@@ -177,7 +177,7 @@ type Options struct {
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup
-	UpdateTemplates bool
+	UpdateTemplates string
 	// JSON writes json output to files
 	JSON bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -252,6 +252,10 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// Github token used to clone/pull from private repos for custom templates
+	GithubToken string
+	// GithubTemplateRepo is the list of custom public/private templates github repos
+	GithubTemplateRepo goflags.StringSlice
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

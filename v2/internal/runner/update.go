@@ -52,13 +52,14 @@ var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // If the path exists but does not contain the latest version of public templates,
 // the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error { // TODO this method does more than just update templates. Should be refactored.
+
 	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return err
 	}
 	_ = os.MkdirAll(configDir, 0755)
 
-	if err := r.readInternalConfigurationFile(configDir); err != nil {
+	if err := r.readInternalConfigurationFile(configDir); err != nil { // stores the .config/nuclei/.templates-config.json into r.templatesConfig
 		return errors.Wrap(err, "could not read configuration file")
 	}
 
@@ -66,6 +67,10 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	defaultTemplatesDirectory, err := utils.GetDefaultTemplatePath()
 	if err != nil {
 		return err
+	}
+	// if disabled update and update both flags are passed
+	if r.options.NoUpdateTemplates && r.options.UpdateTemplates != "" {
+		return nil
 	}
 	if r.templatesConfig == nil {
 		currentConfig := &config.Config{
@@ -77,16 +82,16 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
 	}
+	// if no -tud flag passed
 	if r.options.TemplatesDirectory == "" {
 		if r.templatesConfig.TemplatesDirectory != "" {
 			r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
 		} else {
 			r.options.TemplatesDirectory = defaultTemplatesDirectory
 		}
-	}
-
-	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
-		return nil
+	} else if r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
+		// if no -tud flag passed and its diff than the default
+		r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 	}
 
 	client.InitNucleiVersion(config.Version)
@@ -94,17 +99,24 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 
 	ctx := context.Background()
 
-	var noTemplatesFound bool
-	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
-		noTemplatesFound = true
+	// Set community and custom template path
+	communityTemplatePath := filepath.Join(r.options.TemplatesDirectory, "community")
+	customTemplatePath := filepath.Join(r.options.TemplatesDirectory, "github")
+
+	var noCommunityTemplatesFound bool
+	if !fileutil.FolderExists(communityTemplatePath) {
+		noCommunityTemplatesFound = true
 	}
+	//download custom template repo if any passed
+	if r.options.GithubTemplateRepo != nil {
+		r.downloadCustomTemplates(customTemplatePath, ctx)
+	}
+	// TODO: Function for the first time installation
+	// look for community template default behaviour
+	if r.templatesConfig.TemplateVersion == "" || noCommunityTemplatesFound { //|| (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory)
+		// Set templateDirectory to community template path
+		r.options.TemplatesDirectory = communityTemplatePath
 
-	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
-		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
-
-		if r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
-			r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
-		}
 		r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
 		version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
@@ -131,21 +143,24 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return nil
 	}
 
+	//TODO: function for the update flag
+
 	latestVersion, currentVersion, err := getVersions(r)
 	if err != nil {
 		return err
 	}
 
 	if latestVersion.EQ(currentVersion) {
-		if r.options.UpdateTemplates {
+		if r.options.UpdateTemplates == "community" {
 			gologger.Info().Msgf("No new updates found for nuclei templates")
 		}
 		return config.WriteConfiguration(r.templatesConfig)
 	}
-
 	if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
 		return err
 	}
+	fmt.Println("Inside update.go 160")
+
 	return nil
 }
 
@@ -297,10 +312,9 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	// Create the template folder if it doesn't exist
-	if err := os.MkdirAll(r.templatesConfig.TemplatesDirectory, 0755); err != nil {
+	if err := os.MkdirAll(r.options.TemplatesDirectory, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %w", err)
 	}
-
 	results, err := r.compareAndWriteTemplates(zipReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write templates: %w", err)
@@ -336,7 +350,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	configuredTemplateDirectory := r.templatesConfig.TemplatesDirectory
+	configuredTemplateDirectory := r.options.TemplatesDirectory
 	checksumFile := filepath.Join(configuredTemplateDirectory, ".checksum")
 	templateChecksumsMap, _ := createTemplateChecksumsMap(checksumFile)
 	for _, zipTemplateFile := range zipReader.File {
