@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -116,7 +117,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: "tomcat", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
@@ -145,7 +146,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: "apache", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
