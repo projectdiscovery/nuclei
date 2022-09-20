@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -35,7 +36,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	// Probe the non-standard URLs and store them in cache
 	swg := sizedwaitgroup.New(bulkSize)
-	count := 0
+	count := int32(0)
 	r.hmapInputProvider.Scan(func(value string) bool {
 		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 			return true
@@ -46,7 +47,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 			defer swg.Done()
 
 			if result := probeURL(input, httpclient); result != "" {
-				count++
+				atomic.AddInt32(&count, 1)
 				_ = hm.Set(input, []byte(result))
 			}
 		}(value)
@@ -54,7 +55,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Discovered %d http urls from input", count)
+	gologger.Info().Msgf("Discovered %d http urls from input", atomic.LoadInt32(&count))
 	return hm, nil
 }
 
