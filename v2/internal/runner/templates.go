@@ -41,7 +41,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	for _, tl := range store.Templates() {
 		if extraFlags {
 			path := strings.TrimPrefix(tl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
-			gologger.Print().Msgf("%s\n", path)
+			gologger.Info().Msgf("%s\n", path)
 		} else {
 			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tl.ID,
 				types.ToString(tl.Info.Name),
