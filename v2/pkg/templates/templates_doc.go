@@ -252,6 +252,10 @@ func init() {
 			TypeName:  "workflows.WorkflowTemplate",
 			FieldName: "tags",
 		},
+		{
+			TypeName:  "workflows.Matcher",
+			FieldName: "name",
+		},
 	}
 	STRINGSLICEStringSliceDoc.Fields = make([]encoder.Doc, 0)
 
@@ -1890,17 +1894,26 @@ func init() {
 			FieldName: "matchers",
 		},
 	}
-	WORKFLOWSMatcherDoc.Fields = make([]encoder.Doc, 2)
+	WORKFLOWSMatcherDoc.Fields = make([]encoder.Doc, 3)
 	WORKFLOWSMatcherDoc.Fields[0].Name = "name"
-	WORKFLOWSMatcherDoc.Fields[0].Type = "string"
+	WORKFLOWSMatcherDoc.Fields[0].Type = "stringslice.StringSlice"
 	WORKFLOWSMatcherDoc.Fields[0].Note = ""
-	WORKFLOWSMatcherDoc.Fields[0].Description = "Name is the name of the item to match."
-	WORKFLOWSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the item to match."
-	WORKFLOWSMatcherDoc.Fields[1].Name = "subtemplates"
-	WORKFLOWSMatcherDoc.Fields[1].Type = "[]workflows.WorkflowTemplate"
+	WORKFLOWSMatcherDoc.Fields[0].Description = "Name is the name of the items to match."
+	WORKFLOWSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the items to match."
+	WORKFLOWSMatcherDoc.Fields[1].Name = "condition"
+	WORKFLOWSMatcherDoc.Fields[1].Type = "string"
 	WORKFLOWSMatcherDoc.Fields[1].Note = ""
-	WORKFLOWSMatcherDoc.Fields[1].Description = "Subtemplates are run if the name of matcher matches."
-	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[1].Description = "Condition is the optional condition between names. By default,\nthe condition is assumed to be OR."
+	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Condition is the optional condition between names. By default,"
+	WORKFLOWSMatcherDoc.Fields[1].Values = []string{
+		"and",
+		"or",
+	}
+	WORKFLOWSMatcherDoc.Fields[2].Name = "subtemplates"
+	WORKFLOWSMatcherDoc.Fields[2].Type = "[]workflows.WorkflowTemplate"
+	WORKFLOWSMatcherDoc.Fields[2].Note = ""
+	WORKFLOWSMatcherDoc.Fields[2].Description = "Subtemplates are run if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[2].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
 
 	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
 	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
