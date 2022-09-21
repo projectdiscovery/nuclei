@@ -581,7 +581,7 @@ func (r *Runner) readNewTemplatesFile() ([]string, error) {
 	if r.templatesConfig == nil {
 		return nil, nil
 	}
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.getCommunityTemplateDirectory(), ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return nil, err
@@ -607,7 +607,7 @@ func (r *Runner) countNewTemplates() int {
 	if r.templatesConfig == nil {
 		return 0
 	}
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
+	additionsFile := filepath.Join(r.getCommunityTemplateDirectory(), ".new-additions")
 	file, err := os.Open(additionsFile)
 	if err != nil {
 		return 0

@@ -18,7 +18,7 @@ import (
 // scenario 1: -gtr custom-template.txt  flag has passed => Only download the repos. Do not update
 // scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
 // Reason to add update and download logic in single function is scenario 2
-func (r *Runner) downloadCustomTemplates(downloadPath string, ctx context.Context) error {
+func (r *Runner) downloadCustomTemplates(downloadPath string, ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, repoName := range r.options.GithubTemplateRepo {
 		wg.Add(1)
@@ -48,7 +48,6 @@ func (r *Runner) downloadCustomTemplates(downloadPath string, ctx context.Contex
 		}(repoName)
 	}
 	wg.Wait()
-	return nil
 }
 
 // performs git clone

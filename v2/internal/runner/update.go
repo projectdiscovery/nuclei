@@ -159,8 +159,6 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
 		return err
 	}
-	fmt.Println("Inside update.go 160")
-
 	return nil
 }
 
@@ -312,7 +310,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	}
 
 	// Create the template folder if it doesn't exist
-	if err := os.MkdirAll(r.options.TemplatesDirectory, 0755); err != nil {
+	if err := os.MkdirAll(r.getCommunityTemplateDirectory(), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create template base folder: %w", err)
 	}
 	results, err := r.compareAndWriteTemplates(zipReader)
@@ -323,7 +321,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 	if r.options.Verbose {
 		r.printUpdateChangelog(results, version)
 	}
-	checksumFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".checksum")
+	checksumFile := filepath.Join(r.getCommunityTemplateDirectory(), ".checksum")
 	if err := writeTemplatesChecksum(checksumFile, results.checksums); err != nil {
 		return nil, errors.Wrap(err, "could not write checksum")
 	}
@@ -350,7 +348,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 	// If the path isn't found in new update after being read from the previous checksum,
 	// it is removed. This allows us fine-grained control over the download process
 	// as well as solves a long problem with nuclei-template updates.
-	configuredTemplateDirectory := r.options.TemplatesDirectory
+	configuredTemplateDirectory := r.getCommunityTemplateDirectory()
 	checksumFile := filepath.Join(configuredTemplateDirectory, ".checksum")
 	templateChecksumsMap, _ := createTemplateChecksumsMap(checksumFile)
 	for _, zipTemplateFile := range zipReader.File {
@@ -619,4 +617,9 @@ func updateNucleiVersionToLatest(verbose bool) error {
 	}
 	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
 	return nil
+}
+
+// Return community template path
+func (r *Runner) getCommunityTemplateDirectory() string {
+	return filepath.Join(r.templatesConfig.TemplatesDirectory, "community")
 }

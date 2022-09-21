@@ -31,7 +31,7 @@ var DefaultOptions = &types.Options{
 	Version:                    false,
 	Verbose:                    false,
 	NoColor:                    true,
-	UpdateTemplates:            false,
+	UpdateTemplates:            "",
 	JSON:                       false,
 	JSONRequests:               false,
 	EnableProgressBar:          false,
@@ -63,6 +63,8 @@ var DefaultOptions = &types.Options{
 	InteractionsEviction:       60,
 	InteractionsCoolDownPeriod: 5,
 	InteractionsPollDuration:   5,
+	GithubTemplateRepo:         []string{},
+	GithubToken:                "",
 }
 
 // TemplateInfo contains info for a mock executed template.
