@@ -58,7 +58,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.100
+require github.com/aws/aws-sdk-go v1.44.102
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
