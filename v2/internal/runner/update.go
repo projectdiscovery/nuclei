@@ -100,7 +100,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	ctx := context.Background()
 
 	// Set community and custom template path
-	communityTemplatePath := filepath.Join(r.options.TemplatesDirectory, "community")
+	communityTemplatePath := r.getCommunityTemplateDirectory()
 	customTemplatePath := filepath.Join(r.options.TemplatesDirectory, "github")
 
 	var noCommunityTemplatesFound bool

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
@@ -10,7 +11,7 @@ import (
 
 func getTemplatePath() string {
 	templatePath, _ := utils.GetDefaultTemplatePath()
-	return templatePath
+	return filepath.Join(templatePath, "community")
 }
 
 var templatesPathTestCases = map[string]testutils.TestCase{

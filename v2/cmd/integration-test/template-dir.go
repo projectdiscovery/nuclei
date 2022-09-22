@@ -23,7 +23,7 @@ func (h *templateDirWithTargetTest) Execute(filePath string) error {
 
 	var routerErr error
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-ud", getTemplatesDir())
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-tud", getTemplatesDir())
 	if err != nil {
 		return err
 	}
