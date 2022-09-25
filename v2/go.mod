@@ -63,7 +63,7 @@ require github.com/aws/aws-sdk-go v1.44.104
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
 require (
-	github.com/DataDog/gostackparse v0.5.0
+	github.com/DataDog/gostackparse v0.6.0
 	github.com/antchfx/xmlquery v1.3.12
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.5.0
