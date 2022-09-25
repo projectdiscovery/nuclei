@@ -91,6 +91,8 @@ requests:
         79: {{line_ends_with("Hello\nHi", "lo")}}
         80: {{sort("a1b2c3d4e5")}}
         81: {{join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))}}
+        82: {{uniq("abcabdaabbccd")}}
+        83: {{join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))}}
 
     extractors:
       - type: regex

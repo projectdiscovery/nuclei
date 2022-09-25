@@ -249,6 +249,9 @@ func TestDslExpressions(t *testing.T) {
 		`sort("a1b2c3d4e5")`:                                      "12345abcde",
 		`sort("b", "a", "2", "c", "3", "1", "d", "4")`:            []string{"1", "2", "3", "4", "a", "b", "c", "d"},
 		`join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))`: "1 2 3 4 a b c d",
+		`uniq("abcabdaabbccd")`:                                   "abcd",
+		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
+		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)
