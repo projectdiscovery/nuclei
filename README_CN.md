@@ -14,7 +14,7 @@
 <a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
 <a href="https://github.com/projectdiscovery/nuclei/actions/workflows/build-test.yml"><img src="https://github.com/projectdiscovery/nuclei/actions/workflows/build-test.yml/badge.svg?branch=master"></a>
 </p>
-      
+
 <p align="center">
   <a href="#工作流程">工作流程</a> •
   <a href="#安装Nuclei">安装</a> •
@@ -49,7 +49,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对大�
 
 # 安装Nuclei
 
-Nuclei需要**go1.17**才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要**go1.18**才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -96,6 +96,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
 模板：
    -t, -templates string[]              指定需要扫描的模板或者模板的路径
    -nt, -new-templates                  只扫描最新版本中添加的模板
+   -ntv， -new-templates-version        运行在特定版本中添加的新模板
    -w, -workflows string[]              指定扫描中的工作流或者工作流目录
    -validate                            验证通过的模板
    -tl                                  列出所有可用的模板
@@ -142,7 +143,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -ni, -no-interactsh                  禁用反连检测平台，同时排除基于反连检测的模板
 
 限速：
-   -r1, -rate-limit int                 每秒最大请求量（默认：150）
+   -rl, -rate-limit int                 每秒最大请求量（默认：150）
    -rlm, -rate-limit-minute int         每分钟最大请求量
    -bs, -bulk-size int                  每个模板最大并行检测数（默认：25）
    -c, -concurrency int                 并行执行的最大模板数量（默认：25）

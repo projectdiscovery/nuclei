@@ -11,6 +11,15 @@ import (
 	"github.com/projectdiscovery/gologger"
 )
 
+// CacheInterface defines the signature of the hosterrorscache so that
+// users of Nuclei as embedded lib may implement their own cache
+type CacheInterface interface {
+	SetVerbose(verbose bool)            // log verbosely
+	Close()                             // close the cache
+	Check(value string) bool            // return true if the host should be skipped
+	MarkFailed(value string, err error) // record a failure (and cause) for the host
+}
+
 // Cache is a cache for host based errors. It allows skipping
 // certain hosts based on an error threshold.
 //
@@ -33,9 +42,8 @@ func New(maxHostError, maxHostsCount int) *Cache {
 }
 
 // SetVerbose sets the cache to log at verbose level
-func (c *Cache) SetVerbose(verbose bool) *Cache {
+func (c *Cache) SetVerbose(verbose bool) {
 	c.verbose = verbose
-	return c
 }
 
 // Close closes the host errors cache
@@ -99,7 +107,10 @@ func (c *Cache) Check(value string) bool {
 }
 
 // MarkFailed marks a host as failed previously
-func (c *Cache) MarkFailed(value string) {
+func (c *Cache) MarkFailed(value string, err error) {
+	if !c.checkError(err) {
+		return
+	}
 	finalValue := c.normalizeCacheValue(value)
 	if !c.failedTargets.Has(finalValue) {
 		_ = c.failedTargets.Set(finalValue, 1)
@@ -118,9 +129,9 @@ func (c *Cache) MarkFailed(value string) {
 
 var checkErrorRegexp = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host)`)
 
-// CheckError checks if an error represents a type that should be
+// checkError checks if an error represents a type that should be
 // added to the host skipping table.
-func (c *Cache) CheckError(err error) bool {
+func (c *Cache) checkError(err error) bool {
 	errString := err.Error()
 	return checkErrorRegexp.MatchString(errString)
 }

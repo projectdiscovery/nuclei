@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -64,6 +65,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
+		compiled.ExcludeMatchers = options.ExcludeMatchers
+		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
@@ -86,6 +89,11 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// generate variables
 	variables := generateVariables(input)
+
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+	}
+
 	// and replace placeholders
 	query := replacer.Replace(request.Query, variables)
 	// build an rdap request

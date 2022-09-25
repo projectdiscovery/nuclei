@@ -59,9 +59,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					if w.Options.HostErrorsCache.CheckError(err) {
-						w.Options.HostErrorsCache.MarkFailed(input)
-					}
+					w.Options.HostErrorsCache.MarkFailed(input, err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -73,7 +71,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 		}
 	}
 	if len(template.Subtemplates) == 0 {
-		results.CAS(false, firstMatched)
+		results.CompareAndSwap(false, firstMatched)
 	}
 	if len(template.Matchers) > 0 {
 		for _, executer := range template.Executers {
@@ -85,9 +83,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input str
 				}
 
 				for _, matcher := range template.Matchers {
-					_, matchOK := event.OperatorsResult.Matches[matcher.Name]
-					_, extractOK := event.OperatorsResult.Extracts[matcher.Name]
-					if !matchOK && !extractOK {
+					if !matcher.Match(event.OperatorsResult) {
 						continue
 					}
 

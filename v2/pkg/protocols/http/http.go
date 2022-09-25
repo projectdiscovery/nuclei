@@ -120,12 +120,13 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 
-	options       *protocols.ExecuterOptions
-	totalRequests int
-	customHeaders map[string]string
-	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient    *retryablehttp.Client
-	rawhttpClient *rawhttp.Client
+	options           *protocols.ExecuterOptions
+	connConfiguration *httpclientpool.Configuration
+	totalRequests     int
+	customHeaders     map[string]string
+	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
+	httpClient        *retryablehttp.Client
+	rawhttpClient     *rawhttp.Client
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -233,13 +234,22 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:         request.Threads,
 		MaxRedirects:    request.MaxRedirects,
+		NoTimeout:       false,
 		FollowRedirects: request.Redirects,
 		CookieReuse:     request.CookieReuse,
+		Connection:      &httpclientpool.ConnectionConfiguration{},
 	}
+	// If we have request level timeout, ignore http client timeouts
+	for _, req := range request.Raw {
+		if reTimeoutAnnotation.MatchString(req) {
+			connectionConfiguration.NoTimeout = true
+		}
+	}
+	request.connConfiguration = connectionConfiguration
 
 	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
 	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
-		connectionConfiguration.Connection = &httpclientpool.ConnectionConfiguration{DisableKeepAlive: false}
+		connectionConfiguration.Connection.DisableKeepAlive = true
 	}
 
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
@@ -270,6 +280,8 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
+		compiled.ExcludeMatchers = options.ExcludeMatchers
+		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}

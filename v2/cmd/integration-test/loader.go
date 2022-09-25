@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +15,7 @@ import (
 var loaderTestcases = map[string]testutils.TestCase{
 	"loader/template-list.yaml":             &remoteTemplateList{},
 	"loader/workflow-list.yaml":             &remoteWorkflowList{},
+	"loader/excluded-template.yaml":         &excludedTemplate{},
 	"loader/nonexistent-template-list.yaml": &nonExistentTemplateList{},
 	"loader/nonexistent-workflow-list.yaml": &nonExistentWorkflowList{},
 	"loader/template-list-not-allowed.yaml": &remoteTemplateListNotAllowed{},
@@ -48,7 +48,7 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := ioutil.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -60,6 +60,29 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	}
 
 	return expectResultsCount(results, 2)
+}
+
+type excludedTemplate struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *excludedTemplate) Execute(templateList string) error {
+	router := httprouter.New()
+
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
+			fmt.Fprintf(w, "This is test headers matcher text")
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-t", templateList, "-include-templates", templateList)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
 
 type remoteTemplateListNotAllowed struct{}
@@ -124,7 +147,7 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := ioutil.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
 	if err != nil {
 		return err
 	}

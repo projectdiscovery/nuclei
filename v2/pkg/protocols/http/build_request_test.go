@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/url"
 	"testing"
 	"time"
@@ -88,7 +89,7 @@ func TestMakeRequestFromModal(t *testing.T) {
 
 	generator := request.newGenerator()
 	inputData, payloads, _ := generator.nextValue()
-	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
 	bodyBytes, _ := req.request.BodyBytes()
@@ -116,13 +117,13 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 
 	generator := request.newGenerator()
 	inputData, payloads, _ := generator.nextValue()
-	req, err := generator.Make("https://example.com/test.php", inputData, payloads, map[string]interface{}{})
+	req, err := generator.Make(context.Background(), "https://example.com/test.php", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
 
 	generator = request.newGenerator()
 	inputData, payloads, _ = generator.nextValue()
-	req, err = generator.Make("https://example.com/test/", inputData, payloads, map[string]interface{}{})
+	req, err = generator.Make(context.Background(), "https://example.com/test/", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	require.Equal(t, "https://example.com/test/?query=example", req.request.URL.String(), "could not get correct request path")
 }
@@ -156,13 +157,13 @@ Accept-Encoding: gzip`},
 
 	generator := request.newGenerator()
 	inputData, payloads, _ := generator.nextValue()
-	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization := req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic admin:admin", authorization, "could not get correct authorization headers from raw")
 
 	inputData, payloads, _ = generator.nextValue()
-	req, err = generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	req, err = generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization = req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic admin:guest", authorization, "could not get correct authorization headers from raw")
@@ -197,13 +198,13 @@ Accept-Encoding: gzip`},
 
 	generator := request.newGenerator()
 	inputData, payloads, _ := generator.nextValue()
-	req, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization := req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic YWRtaW46YWRtaW4=", authorization, "could not get correct authorization headers from raw")
 
 	inputData, payloads, _ = generator.nextValue()
-	req, err = generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	req, err = generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	authorization = req.request.Header.Get("Authorization")
 	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
@@ -241,7 +242,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	require.Nil(t, err, "could not create interactsh client")
 
 	inputData, payloads, _ := generator.nextValue()
-	got, err := generator.Make("https://example.com", inputData, payloads, map[string]interface{}{})
+	got, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 
 	// check if all the interactsh markers are replaced with unique urls

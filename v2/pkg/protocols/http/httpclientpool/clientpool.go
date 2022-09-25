@@ -3,7 +3,6 @@ package httpclientpool
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -13,14 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -69,6 +67,8 @@ type Configuration struct {
 	Threads int
 	// MaxRedirects is the maximum number of redirects to follow
 	MaxRedirects int
+	// NoTimeout disables http request timeout for context based usage
+	NoTimeout bool
 	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
 	CookieReuse bool
 	// FollowRedirects specifies whether to follow redirects
@@ -85,6 +85,8 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.Itoa(c.Threads))
 	builder.WriteString("m")
 	builder.WriteString(strconv.Itoa(c.MaxRedirects))
+	builder.WriteString("n")
+	builder.WriteString(strconv.FormatBool(c.NoTimeout))
 	builder.WriteString("f")
 	builder.WriteString(strconv.FormatBool(c.FollowRedirects))
 	builder.WriteString("r")
@@ -97,7 +99,7 @@ func (c *Configuration) Hash() string {
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil
+	return c.Threads == 0 && c.MaxRedirects == 0 && !c.FollowRedirects && !c.CookieReuse && c.Connection == nil && !c.NoTimeout
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -108,6 +110,8 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 			rawHttpOptions.Proxy = types.ProxyURL
 		} else if types.ProxySocksURL != "" {
 			rawHttpOptions.Proxy = types.ProxySocksURL
+		} else if Dialer != nil {
+			rawHttpOptions.FastDialer = Dialer
 		}
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
@@ -204,19 +208,28 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	} else if types.ProxySocksURL != "" {
-		var proxyAuth *proxy.Auth
 		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
-		if proxyErr == nil {
-			proxyAuth = &proxy.Auth{}
-			proxyAuth.User = socksURL.User.Username()
-			proxyAuth.Password, _ = socksURL.User.Password()
+		if proxyErr != nil {
+			return nil, proxyErr
 		}
-		dialer, proxyErr := proxy.SOCKS5("tcp", fmt.Sprintf("%s:%s", socksURL.Hostname(), socksURL.Port()), proxyAuth, proxy.Direct)
+		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
+		if err != nil {
+			return nil, err
+		}
+
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
 		if proxyErr == nil {
 			transport.DialContext = dc.DialContext
+			transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// upgrade proxy connection to tls
+				conn, err := dc.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, err
+				}
+				return tls.Client(conn, tlsConfig), nil
+			}
 		}
 	}
 
@@ -227,11 +240,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 
-	client := retryablehttp.NewWithHTTPClient(&http.Client{
+	httpclient := &http.Client{
 		Transport:     transport,
-		Timeout:       time.Duration(options.Timeout) * time.Second,
 		CheckRedirect: makeCheckRedirectFunc(followRedirects, maxRedirects),
-	}, retryableHttpOptions)
+	}
+	if !configuration.NoTimeout {
+		httpclient.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {
 		client.HTTPClient.Jar = jar
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -26,15 +27,16 @@ func ConfigureOptions() error {
 	isFromFileFunc := func(s string) bool {
 		return !isTemplate(s)
 	}
-	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
-	goflags.DefaultFileOriginalNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileCommaSeparatedStringSliceOptions.IsFromFile = isFromFileFunc
 	return nil
 }
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
-	options.Stdin = hasStdin()
+	options.Stdin = !options.DisableStdin && fileutil.HasStdin()
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -55,6 +57,13 @@ func ParseOptions(options *types.Options) {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
+		os.Exit(0)
+	}
+	if options.ShowActions {
+		gologger.Info().Msgf("Showing available headless actions: ")
+		for action := range engine.ActionStringToAction {
+			gologger.Print().Msgf("\t%s", action)
+		}
 		os.Exit(0)
 	}
 	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
@@ -84,18 +93,6 @@ func ParseOptions(options *types.Options) {
 	}
 }
 
-// hasStdin returns true if we have stdin input
-func hasStdin() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	if fi.Mode()&os.ModeNamedPipe == 0 {
-		return false
-	}
-	return true
-}
-
 // validateOptions validates the configuration options passed
 func validateOptions(options *types.Options) error {
 	validate := validator.New()
@@ -120,7 +117,6 @@ func validateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 

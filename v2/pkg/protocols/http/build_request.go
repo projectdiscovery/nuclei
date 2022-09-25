@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,15 +16,18 @@ import (
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 var (
@@ -57,11 +59,10 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(data, payloads, dynamicValues)
+		return r.makeSelfContainedRequest(ctx, data, payloads, dynamicValues)
 	}
-	ctx := context.Background()
 	if r.options.Interactsh != nil {
 		data, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(data, []string{})
 		for payloadName, payloadValue := range payloads {
@@ -96,6 +97,9 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
+	if r.options.Options.Debug || r.options.Options.DebugRequests {
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
+	}
 
 	// If data contains \n it's a raw request, process it like raw. Else
 	// continue with the template based request flow.
@@ -105,9 +109,7 @@ func (r *requestGenerator) Make(baseURL, data string, payloads, dynamicValues ma
 	return r.makeHTTPRequestFromModel(ctx, data, values, payloads)
 }
 
-func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	ctx := context.Background()
-
+func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
 	// If the request is a raw request, get the URL from the request
@@ -115,9 +117,14 @@ func (r *requestGenerator) makeSelfContainedRequest(data string, payloads, dynam
 	if isRawRequest {
 		// Get the hostname from the URL section to build the request.
 		reader := bufio.NewReader(strings.NewReader(data))
+	read_line:
 		s, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("could not read request: %w", err)
+		}
+		// ignore all annotations
+		if stringsutil.HasPrefixAny(s, "@") {
+			goto read_line
 		}
 
 		parts := strings.Split(s, " ")
@@ -265,7 +272,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 
 	// retryablehttp
 	var body io.ReadCloser
-	body = ioutil.NopCloser(strings.NewReader(rawRequestData.Data))
+	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
 	if r.request.Race {
 		// More or less this ensures that all requests hit the endpoint at the same approximated time
 		// Todo: sync internally upon writing latest request byte
@@ -290,9 +297,8 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	if reqWithAnnotations, hasAnnotations := parseAnnotations(rawRequest, req); hasAnnotations {
-		req = reqWithAnnotations
-		request = request.WithContext(req.Context())
+	if reqWithAnnotations, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		request.Request = reqWithAnnotations
 	}
 
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
@@ -330,7 +336,7 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if err != nil {
 			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
-		req.Body = ioutil.NopCloser(strings.NewReader(body))
+		req.Body = io.NopCloser(strings.NewReader(body))
 	}
 	if !r.request.Unsafe {
 		setHeader(req, "User-Agent", uarand.GetRandom())

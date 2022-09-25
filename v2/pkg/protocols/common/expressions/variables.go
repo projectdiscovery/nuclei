@@ -4,10 +4,13 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 )
 
 var (
-	numericalExpressionRegex = regexp.MustCompile(`[0-9+\-*/]+`)
+	numericalExpressionRegex = regexp.MustCompile(`^[0-9+\-/\W]+$`)
 	unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
 )
 
@@ -110,4 +113,13 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 	}
 
 	return nil
+}
+
+func hasLiteralsOnly(data string) bool {
+	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	if err == nil && expr != nil {
+		_, err = expr.Evaluate(nil)
+		return err == nil
+	}
+	return true
 }

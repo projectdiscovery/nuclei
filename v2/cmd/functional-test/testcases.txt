@@ -1,4 +1,5 @@
 {{binary}}
+{{binary}} -tags cve -ntv 8.8.8,8.8.9
 {{binary}} -tags cve
 {{binary}} -tags cve,exposure
 {{binary}} -tags cve,exposure -tags token
@@ -45,6 +46,9 @@
 {{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates cves/2021/
 {{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates cves/2017/CVE-2017-7269.yaml
 {{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -include-templates cves/2017/CVE-2017-7269.yaml
+{{binary}} -tags cve -author geeknik,pdteam  -tc severity=='high'
+{{binary}} -tc contains(authors,'pdteam')
+{{binary}} -t cves/ -t exposures/ -tc contains(tags,'cve') -exclude-templates cves/2020/CVE-2020-9757.yaml
 {{binary}} -w workflows
 {{binary}} -w workflows -author geeknik,pdteam
 {{binary}} -w workflows -severity high,critical

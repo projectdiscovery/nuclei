@@ -1,9 +1,12 @@
 package variables
 
 import (
+	"strings"
+
 	"github.com/alecthomas/jsonschema"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
@@ -42,6 +45,21 @@ func (variables *Variable) Evaluate(values map[string]interface{}) map[string]in
 		result[key] = evaluateVariableValue(types.ToString(value), values, result)
 	})
 	return result
+}
+
+// EvaluateWithInteractsh returns evaluation results of variables with interactsh
+func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{}, interact *interactsh.Client) (map[string]interface{}, []string) {
+	result := make(map[string]interface{}, variables.Len())
+
+	var interactURLs []string
+	variables.ForEach(func(key string, value interface{}) {
+		valueString := types.ToString(value)
+		if strings.Contains(valueString, "interactsh-url") {
+			valueString, interactURLs = interact.ReplaceMarkers(valueString, interactURLs)
+		}
+		result[key] = evaluateVariableValue(valueString, values, result)
+	})
+	return result, interactURLs
 }
 
 // evaluateVariableValue expression and returns final value

@@ -38,6 +38,29 @@ type ResumeInfo struct {
 	DoAbove   uint32              `json:"-"`
 }
 
+// Clone the ResumeInfo structure
+func (resumeInfo *ResumeInfo) Clone() *ResumeInfo {
+	resumeInfo.Lock()
+	defer resumeInfo.Unlock()
+
+	inFlight := make(map[uint32]struct{})
+	for u := range resumeInfo.InFlight {
+		inFlight[u] = struct{}{}
+	}
+	repeat := make(map[uint32]struct{})
+	for u := range resumeInfo.Repeat {
+		repeat[u] = struct{}{}
+	}
+
+	return &ResumeInfo{
+		Completed: resumeInfo.Completed,
+		InFlight:  inFlight,
+		SkipUnder: resumeInfo.SkipUnder,
+		Repeat:    repeat,
+		DoAbove:   resumeInfo.DoAbove,
+	}
+}
+
 // NewResumeCfg creates a new scan progression structure
 func NewResumeCfg() *ResumeCfg {
 	return &ResumeCfg{
@@ -47,10 +70,22 @@ func NewResumeCfg() *ResumeCfg {
 }
 
 // Clone the resume structure
-func (resumeCfg *ResumeCfg) Clone() ResumeCfg {
-	return ResumeCfg{
-		ResumeFrom: resumeCfg.ResumeFrom,
-		Current:    resumeCfg.Current,
+func (resumeCfg *ResumeCfg) Clone() *ResumeCfg {
+	resumeCfg.Lock()
+	defer resumeCfg.Unlock()
+
+	resumeFrom := make(map[string]*ResumeInfo)
+	for id, resumeInfo := range resumeCfg.ResumeFrom {
+		resumeFrom[id] = resumeInfo.Clone()
+	}
+	current := make(map[string]*ResumeInfo)
+	for id, resumeInfo := range resumeCfg.Current {
+		current[id] = resumeInfo.Clone()
+	}
+
+	return &ResumeCfg{
+		ResumeFrom: resumeFrom,
+		Current:    current,
 	}
 }
 

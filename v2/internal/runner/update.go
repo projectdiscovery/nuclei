@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -73,10 +72,10 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 			TemplatesDirectory: defaultTemplatesDirectory,
 			NucleiVersion:      config.Version,
 		}
+		r.templatesConfig = currentConfig
 		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
 			return errors.Wrap(writeErr, "could not write template configuration")
 		}
-		r.templatesConfig = currentConfig
 	}
 	if r.options.TemplatesDirectory == "" {
 		if r.templatesConfig.TemplatesDirectory != "" {
@@ -220,7 +219,7 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 		return false
 	}
 	if len(data) > 0 {
-		_ = ioutil.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
+		_ = os.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
 	}
 	if r.templatesConfig != nil {
 		if err := config.WriteConfiguration(r.templatesConfig); err != nil {

@@ -38,8 +38,9 @@ type Config struct {
 	IncludeTags       []string
 	IncludeIds        []string
 	ExcludeIds        []string
+	IncludeConditions []string
 
-	Catalog            *catalog.Catalog
+	Catalog            catalog.Catalog
 	ExecutorOptions    protocols.ExecuterOptions
 	TemplatesDirectory string
 }
@@ -59,7 +60,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, templateConfig *config.Config, catalog *catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, templateConfig *config.Config, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -79,6 +80,7 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog *c
 		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
+		IncludeConditions:        options.IncludeConditions,
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
 	}
@@ -87,21 +89,26 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog *c
 
 // New creates a new template store based on provided configuration
 func New(config *Config) (*Store, error) {
+	tagFilter, err := filter.New(&filter.Config{
+		Tags:              config.Tags,
+		ExcludeTags:       config.ExcludeTags,
+		Authors:           config.Authors,
+		Severities:        config.Severities,
+		ExcludeSeverities: config.ExcludeSeverities,
+		IncludeTags:       config.IncludeTags,
+		IncludeIds:        config.IncludeIds,
+		ExcludeIds:        config.ExcludeIds,
+		Protocols:         config.Protocols,
+		ExcludeProtocols:  config.ExcludeProtocols,
+		IncludeConditions: config.IncludeConditions,
+	})
+	if err != nil {
+		return nil, err
+	}
 	// Create a tag filter based on provided configuration
 	store := &Store{
-		config: config,
-		tagFilter: filter.New(&filter.Config{
-			Tags:              config.Tags,
-			ExcludeTags:       config.ExcludeTags,
-			Authors:           config.Authors,
-			Severities:        config.Severities,
-			ExcludeSeverities: config.ExcludeSeverities,
-			IncludeTags:       config.IncludeTags,
-			IncludeIds:        config.IncludeIds,
-			ExcludeIds:        config.ExcludeIds,
-			Protocols:         config.Protocols,
-			ExcludeProtocols:  config.ExcludeProtocols,
-		}),
+		config:    config,
+		tagFilter: tagFilter,
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
 			IncludedTemplates: config.IncludeTemplates,
 			ExcludedTemplates: config.ExcludeTemplates,
@@ -180,13 +187,13 @@ func (store *Store) ValidateTemplates() error {
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, true, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadWorkflow(templatePath)
+		return parsers.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
 func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, false, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadTemplate(templatePath, store.tagFilter, nil)
+		return parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
@@ -260,18 +267,21 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		}
-		if loaded {
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-				loadedTemplates = append(loadedTemplates, parsed)
+				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else {
+					loadedTemplates = append(loadedTemplates, parsed)
+				}
 			}
+		} else if err != nil {
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
 	return loadedTemplates
@@ -284,7 +294,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
 	for workflowPath := range workflowPathMap {
-		loaded, err := parsers.LoadWorkflow(workflowPath)
+		loaded, err := parsers.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
@@ -308,18 +318,21 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		}
-		if loaded {
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
+		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				stats.Increment(parsers.RuntimeWarningsStats)
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-				loadedTemplates = append(loadedTemplates, parsed)
+				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else {
+					loadedTemplates = append(loadedTemplates, parsed)
+				}
 			}
+		} else if err != nil {
+			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
 	return loadedTemplates

@@ -37,7 +37,7 @@ jobs:
           bash run.sh ${{ matrix.os }}
         working-directory: integration_tests/
 
-      # At the bottom for known issue on OSX - https://github.com/projectdiscovery/nuclei/issues/1309
       - name: Race Condition Tests
-        run: go build -race .
+        if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
+        run: go run -race . -u scanme.sh
         working-directory: v2/cmd/nuclei/

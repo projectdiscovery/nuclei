@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -14,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 var (
@@ -27,8 +27,9 @@ func init() {
 }
 
 // Parse parses a yaml request template file
-//nolint:gocritic // this cannot be passed by pointer
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
+//
+//nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
 	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
 		return value.(*Template), err
@@ -36,7 +37,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	template := &Template{}
 
-	data, err := utils.ReadFromPathOrURL(filePath)
+	data, err := utils.ReadFromPathOrURL(filePath, options.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -147,30 +148,30 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	}
 
 	var requests []protocols.Request
-	switch {
-	case len(template.RequestsDNS) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsDNS)
 
-	case len(template.RequestsFile) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsFile)
-
-	case len(template.RequestsNetwork) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsNetwork)
-
-	case len(template.RequestsHTTP) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsHTTP)
-
-	case len(template.RequestsHeadless) > 0 && options.Options.Headless:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsHeadless)
-
-	case len(template.RequestsSSL) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsSSL)
-
-	case len(template.RequestsWebsocket) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsWebsocket)
-
-	case len(template.RequestsWHOIS) > 0:
-		requests = template.convertRequestToProtocolsRequest(template.RequestsWHOIS)
+	if len(template.RequestsDNS) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+	}
+	if len(template.RequestsFile) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+	}
+	if len(template.RequestsNetwork) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+	}
+	if len(template.RequestsHTTP) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+	}
+	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+	}
+	if len(template.RequestsSSL) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+	}
+	if len(template.RequestsWebsocket) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+	}
+	if len(template.RequestsWHOIS) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
@@ -203,8 +204,13 @@ func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOp
 
 mainLoop:
 	for _, req := range template.RequestsHTTP {
+		hasPaths := len(req.Path) > 0
+		if !hasPaths {
+			break mainLoop
+		}
 		for _, path := range req.Path {
-			if !(strings.EqualFold(path, "{{BaseURL}}") || strings.EqualFold(path, "{{BaseURL}}/")) {
+			pathIsBaseURL := stringsutil.EqualFoldAny(path, "{{BaseURL}}", "{{BaseURL}}/", "/")
+			if !pathIsBaseURL {
 				break mainLoop
 			}
 		}
