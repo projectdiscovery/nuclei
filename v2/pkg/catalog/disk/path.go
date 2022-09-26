@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -38,12 +37,7 @@ func (c *DiskCatalog) ResolvePath(templateName, second string) (string, error) {
 	}
 
 	if c.templatesDirectory != "" {
-		var templatePath string
-		if strings.HasPrefix(templateName, "github") {
-			templatePath = filepath.Join(c.templatesDirectory, templateName)
-		} else {
-			templatePath = filepath.Join(c.templatesDirectory, "community", templateName)
-		}
+		templatePath := filepath.Join(c.templatesDirectory, templateName)
 		if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
 			return potentialPath, nil
 		}
