@@ -237,7 +237,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		NoTimeout:       false,
 		FollowRedirects: request.Redirects,
 		CookieReuse:     request.CookieReuse,
-		Connection:      &httpclientpool.ConnectionConfiguration{},
+		Connection:      &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
 	}
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
