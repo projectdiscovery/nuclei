@@ -32,8 +32,9 @@ type Options struct {
 	// Password is the password for elasticsearch instance
 	Password string `yaml:"password"  validate:"required"`
 	// IndexName is the name of the elasticsearch index
-	IndexName  string `yaml:"index-name"  validate:"required"`
-	HttpClient *retryablehttp.Client
+	IndexName string `yaml:"index-name"  validate:"required"`
+
+	HttpClient *retryablehttp.Client `yaml:"-"`
 }
 
 type data struct {
