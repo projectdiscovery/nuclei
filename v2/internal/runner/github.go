@@ -46,8 +46,6 @@ func (r *Runner) downloadCustomTemplates(downloadPath string, ctx context.Contex
 	}
 }
 
-// If same repos are passed then do not download in concurrency
-
 // performs git clone
 func cloneRepo(repo *github.Repository, clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
