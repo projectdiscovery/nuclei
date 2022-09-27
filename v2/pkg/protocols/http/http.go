@@ -232,12 +232,15 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         request.Threads,
-		MaxRedirects:    request.MaxRedirects,
-		NoTimeout:       false,
-		FollowRedirects: request.Redirects,
-		CookieReuse:     request.CookieReuse,
-		Connection:      &httpclientpool.ConnectionConfiguration{},
+		Threads:      request.Threads,
+		MaxRedirects: request.MaxRedirects,
+		NoTimeout:    false,
+		CookieReuse:  request.CookieReuse,
+		Connection:   &httpclientpool.ConnectionConfiguration{},
+		RedirectFlow: httpclientpool.DontFollowRedirect,
+	}
+	if request.Redirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
 	}
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
