@@ -98,16 +98,6 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
 		noTemplatesFound = true
 	}
-	// download/update the custom templates
-	for _, repoName := range r.options.GithubTemplateRepo {
-		msg, err := r.downloadCustomTemplateRepo(repoName, ctx)
-		if msg != "" {
-			gologger.Info().Msgf("%s", msg)
-		}
-		if err != nil {
-			gologger.Info().Label("GITHUB").Msgf("%s", err)
-		}
-	}
 	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
@@ -137,8 +127,14 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 			return err
 		}
 		gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
+
+		// case where -gtr flag is passed for the first time installation
+		r.downloadCustomTemplateRepos(ctx)
 		return nil
 	}
+
+	// download/update the custom templates repos
+	r.downloadCustomTemplateRepos(ctx)
 
 	latestVersion, currentVersion, err := getVersions(r)
 	if err != nil {

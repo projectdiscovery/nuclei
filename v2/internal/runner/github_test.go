@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDownloadCustomTemplates(t *testing.T) {
+func TestDownloadCustomTemplateRepo(t *testing.T) {
 	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
 	templatesDirectory, err := os.MkdirTemp("", "template-custom-*")

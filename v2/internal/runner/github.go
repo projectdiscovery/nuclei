@@ -10,10 +10,24 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
-// This function download the custom template repositories in given location
+// downloadCustomTemplateRepos downloads the custom template repositories
+func (r Runner) downloadCustomTemplateRepos(ctx context.Context) {
+	for _, repoName := range r.options.GithubTemplateRepo {
+		msg, err := r.downloadCustomTemplateRepo(repoName, ctx)
+		if msg != "" {
+			gologger.Info().Msgf("%s", msg)
+		}
+		if err != nil {
+			gologger.Info().Label("GITHUB").Msgf("%s", err)
+		}
+	}
+}
+
+// This function download the custom template repository
 // scenario 1: -gtr custom-template.txt  flag has passed => Only download the repos. Do not update
 // scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
 // Reason to add update and download logic in single function is scenario 2
