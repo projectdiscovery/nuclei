@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Test Builds
+    name: Debug
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -16,22 +16,13 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.18
-
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Build
-        run: go build .
-        working-directory: v2/cmd/nuclei/
-
-      - name: Test
-        run: go test ./...
-        working-directory: v2/
+      
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
 
       - name: Integration Tests
         env:
           GH_ACTION: true
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}
@@ -39,5 +30,5 @@ jobs:
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
-        run: go run -race . -u scanme.sh
+        run: go run . -tud /tmp && go run -race . -u scanme.sh
         working-directory: v2/cmd/nuclei/
