@@ -39,5 +39,5 @@ jobs:
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
-        run: go run -race . -u scanme.sh
+        run: go run -race . -u scanme.sh -tud /tmp
         working-directory: v2/cmd/nuclei/
