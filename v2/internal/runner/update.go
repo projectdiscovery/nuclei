@@ -85,7 +85,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		}
 	}
 
-	if r.options.NoUpdateTemplates && r.options.UpdateTemplates != "" {
+	if r.options.NoUpdateTemplates && r.options.UpdateTemplates == "" {
 		return nil
 	}
 
