@@ -247,11 +247,6 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.connConfiguration = connectionConfiguration
 
-	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
-	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
-		connectionConfiguration.Connection.DisableKeepAlive = true
-	}
-
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
