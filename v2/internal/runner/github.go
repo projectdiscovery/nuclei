@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
@@ -17,33 +17,34 @@ import (
 // scenario 1: -gtr custom-template.txt  flag has passed => Only download the repos. Do not update
 // scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
 // Reason to add update and download logic in single function is scenario 2
-func (r *Runner) downloadCustomTemplates(downloadPath string, ctx context.Context) {
-	for _, repoName := range r.options.GithubTemplateRepo {
-		// check if that repo exists or not
-		repo, err := getRepo(repoName)
-		if err != nil {
-			gologger.Info().Msgf("%s\n", err.Error())
-			return
-		}
-		clonePath := getLocalRepoClonePath(repo, downloadPath)
-		// check if repo already cloned or not in the given/default path
-		if r.options.UpdateTemplates == "github" && isDirectory(clonePath) {
-			err = pullChanges(repo, clonePath, r.options.GithubToken)
-			if err == nil {
-				gologger.Info().Msgf("Repo %s successfully pulled the changes.\n", repoName)
-			} else {
-				gologger.Info().Msgf("Repo %s %s.\n", repoName, err)
-			}
+func (r *Runner) downloadCustomTemplateRepo(repoName string, ctx context.Context) (string, error) {
+	downloadPath := filepath.Join(r.templatesConfig.TemplatesDirectory, "github")
+	// check if that repo exists or not
+	repo, err := getRepo(repoName)
+	if err != nil {
+		return "", err
+	}
+	clonePath := getLocalRepoClonePath(repo, downloadPath)
+	// check if repo already cloned or not in the given/default path
+	if r.options.UpdateTemplates == "github" && isDirectory(clonePath) {
+		err = pullChanges(repo, clonePath, r.options.GithubToken)
+		if err == nil {
+			return fmt.Sprintf("Repo %s successfully pulled the changes.\n", repoName), nil
 		} else {
-			// only clone if repo does not exits otherwise it fails to update .git/config
-			if !isDirectory(clonePath) {
-				err = cloneRepo(repo, clonePath, r.options.GithubToken)
-				if err == nil {
-					gologger.Info().Msgf("%s successfully cloned.\n", repoName)
-				}
+			return "", err
+		}
+	} else {
+		// only clone if repo does not exits otherwise it fails to update .git/config
+		if !isDirectory(clonePath) {
+			err = cloneRepo(repo, clonePath, r.options.GithubToken)
+			if err == nil {
+				return fmt.Sprintf("%s successfully cloned.\n", repoName), nil
+			} else {
+				return "", err
 			}
 		}
 	}
+	return "", nil
 }
 
 // performs git clone

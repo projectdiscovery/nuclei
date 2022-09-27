@@ -98,9 +98,15 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
 		noTemplatesFound = true
 	}
-	//download the custom templates
-	if r.options.GithubTemplateRepo != nil {
-		r.downloadCustomTemplates(filepath.Join(r.templatesConfig.TemplatesDirectory, "github"), ctx)
+	// download/update the custom templates
+	for _, repoName := range r.options.GithubTemplateRepo {
+		msg, err := r.downloadCustomTemplateRepo(repoName, ctx)
+		if msg != "" {
+			gologger.Info().Msgf("%s", msg)
+		}
+		if err != nil {
+			gologger.Info().Label("GITHUB").Msgf("%s", err)
+		}
 	}
 	if r.templatesConfig.TemplateVersion == "" || (r.options.TemplatesDirectory != "" && r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory) || noTemplatesFound {
 		gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
