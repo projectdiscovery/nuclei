@@ -61,7 +61,7 @@ var DefaultOptions = &types.Options{
 	Templates:                  []string{},
 	ExcludedTemplates:          []string{},
 	CustomHeaders:              []string{},
-	InteractshURL:              "https://oast.me",
+	InteractshURL:              "https://oast.fun",
 	InteractionsCacheSize:      5000,
 	InteractionsEviction:       60,
 	InteractionsCoolDownPeriod: 5,
