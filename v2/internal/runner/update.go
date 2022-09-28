@@ -102,8 +102,8 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return r.freshTemplateInstallation(configDir, ctx)
 	}
 
-	// download/update the custom templates repos
-	r.downloadCustomTemplateRepos(ctx)
+	// download | update the custom templates repos
+	r.downloadCustomTemplates(ctx)
 
 	latestVersion, currentVersion, err := getVersions(r)
 	if err != nil {
@@ -167,7 +167,7 @@ func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context
 	gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 	// case where -gtr flag is passed for the first time installation
-	r.downloadCustomTemplateRepos(ctx)
+	r.downloadCustomTemplates(ctx)
 	return nil
 }
 

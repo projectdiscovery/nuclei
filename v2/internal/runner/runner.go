@@ -69,6 +69,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	customTemplates   []customTemplateRepo
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -96,6 +97,9 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	parsers.NoStrictSyntax = options.NoStrictSyntax
+
+	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
+	runner.parseCustomTemplates()
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
