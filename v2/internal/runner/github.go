@@ -24,20 +24,26 @@ type customTemplateRepo struct {
 // scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
 // Reason to add update and download logic in single function is scenario 2
 func (r *Runner) downloadCustomTemplates(ctx context.Context) {
-	downloadPath := filepath.Join(r.templatesConfig.TemplatesDirectory, "github")
+	downloadPath := filepath.Join(r.templatesConfig.TemplatesDirectory, customTemplateType)
+
 	for _, customTemplate := range r.customTemplates {
 		clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
-		if r.options.UpdateTemplates == "github" && isDirectory(clonePath) {
-			err := customTemplate.pullChanges(clonePath, r.options.GithubToken)
-			if err == nil {
-				gologger.Info().Label("GITHUB").Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
-			} else {
-				gologger.Error().Label("GITHUB").Msgf("%s", err)
-			}
-		} else {
+
+		if !isDirectory(clonePath) {
 			err := customTemplate.cloneRepo(clonePath, r.options.GithubToken)
 			if err != nil {
-				gologger.Error().Label("GITHUB").Msgf("%s", err)
+				gologger.Info().Msgf("%s", err)
+			} else {
+				gologger.Info().Msgf("Repo %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
+			}
+			continue
+		}
+		if r.options.UpdateTemplates == customTemplateType {
+			err := customTemplate.pullChanges(clonePath, r.options.GithubToken)
+			if err == nil {
+				gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+			} else {
+				gologger.Info().Msgf("%s", err)
 			}
 		}
 	}
@@ -46,15 +52,17 @@ func (r *Runner) downloadCustomTemplates(ctx context.Context) {
 // parseCustomTemplates function reads the options.GithubTemplateRepo list,
 // Checks the given repos are valid or not and stores them into runner.CustomTemplates
 func (r *Runner) parseCustomTemplates() {
+	gitHubClient := getGHClientIncognito()
+
 	for _, repoName := range r.options.GithubTemplateRepo {
 		owner, repo, err := getOwnerAndRepo(repoName)
 		if err != nil {
-			gologger.Error().Label("GITHUB").Msgf("%s", err)
+			gologger.Info().Msgf("%s", err)
 			continue
 		}
-		githubRepo, err := getRepo(owner, repo)
+		githubRepo, err := getGithubRepo(gitHubClient, owner, repo)
 		if err != nil {
-			gologger.Error().Label("GITHUB").Msgf("%s", err)
+			gologger.Info().Msgf("%s", err)
 			continue
 		}
 		customTemplateRepo := &customTemplateRepo{
@@ -71,23 +79,18 @@ func (r *Runner) parseCustomTemplates() {
 // returns owner=> projectdiscovery , repo => nuclei-templates
 func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 	s := strings.Split(reponame, "/")
-	if len(s) < 2 || len(s) > 2 {
+	if len(s) != 2 {
 		err = errors.Errorf("wrong Repo name: %s", reponame)
-	} else {
-		owner = strings.Split(reponame, "/")[0]
-		repo = strings.Split(reponame, "/")[1]
+		return
 	}
+	owner = strings.Split(reponame, "/")[0]
+	repo = strings.Split(reponame, "/")[1]
 	return
 }
 
 // returns *github.Repository if passed github repo name
-func getRepo(repoOwner, repoName string) (*github.Repository, error) {
-	var (
-		gitHubClient *github.Client
-		retried      bool
-	)
-	gitHubClient = getGHClientIncognito()
-
+func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName string) (*github.Repository, error) {
+	var retried bool
 getRepo:
 	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
 	if err != nil {
@@ -107,9 +110,8 @@ getRepo:
 // download the git repo to given path
 func (ctr *customTemplateRepo) cloneRepo(clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
-		URL:      ctr.gitCloneURL,
-		Progress: os.Stdout,
-		Auth:     getAuth(ctr.owner, githubToken),
+		URL:  ctr.gitCloneURL,
+		Auth: getAuth(ctr.owner, githubToken),
 	})
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
@@ -117,8 +119,7 @@ func (ctr *customTemplateRepo) cloneRepo(clonePath, githubToken string) error {
 	// Add the user as well in the config. By default user is not set
 	config, _ := r.Storer.Config()
 	config.User.Name = ctr.owner
-	err = r.SetConfig(config)
-	return err
+	return r.SetConfig(config)
 }
 
 // performs the git pull on given repo
@@ -152,11 +153,7 @@ func (ctr *customTemplateRepo) getLocalRepoClonePath(downloadPath string) string
 func (ctr *customTemplateRepo) isRepoDirExists(repoPath string) bool {
 	r, _ := git.PlainOpen(repoPath)
 	local, _ := r.Config()
-	if local.User.Name == ctr.owner {
-		return true // repo already cloned no need to rename and clone
-	} else {
-		return false
-	}
+	return local.User.Name == ctr.owner // repo already cloned no need to rename and clone
 }
 
 // returns the auth object with username and github token as password
