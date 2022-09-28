@@ -12,7 +12,7 @@ func TestExtractor_ExtractRegex(t *testing.T) {
 	require.Nil(t, err)
 
 	got := e.ExtractRegex("RegEx")
-	require.Equal(t, map[string]struct{}{"RegEx": struct{}{}}, got)
+	require.Equal(t, map[string]struct{}{"RegEx": {}}, got)
 
 	got = e.ExtractRegex("regex")
 	require.Equal(t, map[string]struct{}{}, got)
@@ -24,7 +24,7 @@ func TestExtractor_ExtractKval(t *testing.T) {
 	require.Nil(t, err)
 
 	got := e.ExtractKval(map[string]interface{}{"content_type": "text/html"})
-	require.Equal(t, map[string]struct{}{"text/html": struct{}{}}, got)
+	require.Equal(t, map[string]struct{}{"text/html": {}}, got)
 
 	got = e.ExtractKval(map[string]interface{}{"authorization": "Basic YWxhZGRpbjpvcGVuc2VzYW1l"})
 	require.Equal(t, map[string]struct{}{}, got)
@@ -58,7 +58,7 @@ func TestExtractor_ExtractXPath(t *testing.T) {
 	require.Nil(t, err)
 
 	got := e.ExtractXPath(body)
-	require.Equal(t, map[string]struct{}{"More information...": struct{}{}}, got)
+	require.Equal(t, map[string]struct{}{"More information...": {}}, got)
 
 	e = &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}, XPath: []string{"/html/body/div/p[3]/a"}}
 	got = e.ExtractXPath(body)
@@ -71,7 +71,7 @@ func TestExtractor_ExtractJSON(t *testing.T) {
 	require.Nil(t, err)
 
 	got := e.ExtractJSON(`[{"id": 1}]`)
-	require.Equal(t, map[string]struct{}{"1": struct{}{}}, got)
+	require.Equal(t, map[string]struct{}{"1": {}}, got)
 
 	got = e.ExtractJSON(`{"id": 1}`)
 	require.Equal(t, map[string]struct{}{}, got)
@@ -83,7 +83,7 @@ func TestExtractor_ExtractDSL(t *testing.T) {
 	require.Nil(t, err)
 
 	got := e.ExtractDSL(map[string]interface{}{"hello": "hi"})
-	require.Equal(t, map[string]struct{}{"HI": struct{}{}}, got)
+	require.Equal(t, map[string]struct{}{"HI": {}}, got)
 
 	got = e.ExtractDSL(map[string]interface{}{"hi": "hello"})
 	require.Equal(t, map[string]struct{}{}, got)
