@@ -245,10 +245,10 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
 
-	if request.Redirects {
+	if request.Redirects || options.Options.FollowRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
 	}
-	if request.HostRedirects {
+	if request.HostRedirects || options.Options.FollowHostRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameHostRedirect
 	}
 

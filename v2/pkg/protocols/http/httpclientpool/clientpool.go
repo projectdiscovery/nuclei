@@ -165,7 +165,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	if forceMaxRedirects > 0 {
 		// by default we enable general redirects following
-		redirectFlow = FollowAllRedirect
+		switch {
+		case options.FollowHostRedirects:
+			redirectFlow = FollowSameHostRedirect
+		default:
+			redirectFlow = FollowAllRedirect
+		}
 		maxRedirects = forceMaxRedirects
 	}
 	if options.DisableRedirects {
