@@ -68,7 +68,7 @@ go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 
 Nuclei has built-in support for automatic template download/update as default since version [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
 
-You may still use the `update-templates` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
+You may still use the `template-update` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
 
 The YAML DSL reference syntax is available [here](SYNTAX-REFERENCE.md).
 
@@ -218,10 +218,12 @@ DEBUG:
    -hc, -health-check            run diagnostic check up
 
 UPDATE:
-   -update                        update nuclei engine to the latest released version
-   -ut, -update-templates         update nuclei-templates to latest released version
-   -ud, -update-directory string  overwrite the default directory to install nuclei-templates
-   -duc, -disable-update-check    disable automatic nuclei/templates update check
+   -nu, -nuclei-update                   update nuclei engine to the latest released version
+   -tup, -template-update string         update nuclei-templates to latest released version (community,github)
+   -gt, -github-token string             github token to download templates from private project
+   -gtr, -github-template-repo string[]  github template repository to download / update from
+   -tud, -template-update-dir string     custom directory / location to install nuclei-templates
+   -duc, -disable-update-check           disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
