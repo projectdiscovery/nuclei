@@ -303,7 +303,7 @@ func (p *Page) ClickElement(act *Action, out map[string]string /*TODO review unu
 	if err = element.ScrollIntoView(); err != nil {
 		return errors.Wrap(err, couldNotScrollErrorMessage)
 	}
-	if err = element.Click(proto.InputMouseButtonLeft); err != nil {
+	if err = element.Click(proto.InputMouseButtonLeft, 1); err != nil {
 		return errors.Wrap(err, "could not click element")
 	}
 	return nil
@@ -323,7 +323,7 @@ func (p *Page) RightClickElement(act *Action, out map[string]string /*TODO revie
 	if err = element.ScrollIntoView(); err != nil {
 		return errors.Wrap(err, couldNotScrollErrorMessage)
 	}
-	if err = element.Click(proto.InputMouseButtonRight); err != nil {
+	if err = element.Click(proto.InputMouseButtonRight, 1); err != nil {
 		return errors.Wrap(err, "could not right click element")
 	}
 	return nil
