@@ -135,6 +135,8 @@ type Options struct {
 	MaxRedirects int
 	// FollowRedirects enables following redirects for http request module
 	FollowRedirects bool
+	// FollowRedirects enables following redirects for http request module only on the same host
+	FollowHostRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -274,6 +276,11 @@ func (options *Options) ShouldLoadResume() bool {
 // ShouldSaveResume file
 func (options *Options) ShouldSaveResume() bool {
 	return true
+}
+
+// ShouldFollowHTTPRedirects determines if http redirects should be followed
+func (options *Options) ShouldFollowHTTPRedirects() bool {
+	return options.FollowRedirects || options.FollowHostRedirects
 }
 
 // DefaultOptions returns default options for nuclei
