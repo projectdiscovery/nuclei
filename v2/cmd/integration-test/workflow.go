@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -15,6 +16,7 @@ var workflowTestcases = map[string]testutils.TestCase{
 	"workflow/condition-matched.yaml":   &workflowConditionMatched{},
 	"workflow/condition-unmatched.yaml": &workflowConditionUnmatch{},
 	"workflow/matcher-name.yaml":        &workflowMatcherName{},
+	"workflow/value-share.yaml":         &workflowKeyValueShare{},
 }
 
 type workflowBasic struct{}
@@ -81,6 +83,29 @@ func (h *workflowMatcherName) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type workflowKeyValueShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowKeyValueShare) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "href=\"test-value\"")
+	})
+	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		body, _ := io.ReadAll(r.Body)
+		fmt.Fprintf(w, "%s", body)
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()

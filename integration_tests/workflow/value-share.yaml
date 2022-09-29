@@ -1,0 +1,10 @@
+id: value-sharing-workflow
+info:
+  name: Value Sharing Test
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: workflow/value-share-template1.yaml
+    subtemplates:
+      - template: workflow/value-share-template2.yaml
