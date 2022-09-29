@@ -237,12 +237,11 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         request.Threads,
-		MaxRedirects:    request.MaxRedirects,
-		NoTimeout:       false,
-		FollowRedirects: request.Redirects,
-		CookieReuse:     request.CookieReuse,
-		Connection:      &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
+		Threads:      request.Threads,
+		MaxRedirects: request.MaxRedirects,
+		NoTimeout:    false,
+		CookieReuse:  request.CookieReuse,
+		Connection:   &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
 
