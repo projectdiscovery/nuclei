@@ -40,8 +40,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/CloudyKit/fastprinter v0.0.0-20170127035650-74b38d55f37a/go.mod h1:EFZQ978U7x8IRnstaskI3IysnWY5Ao3QgZUKOXlsAdw=
 github.com/CloudyKit/jet v2.1.3-0.20180809161101-62edd43e4f88+incompatible/go.mod h1:HPYO+50pSWkPoj9Q/eq0aRGByCL6ScRlUmiEX5Zgm+w=
-github.com/DataDog/gostackparse v0.5.0 h1:jb72P6GFHPHz2W0onsN51cS3FkaMDcjb0QzgxxA4gDk=
-github.com/DataDog/gostackparse v0.5.0/go.mod h1:lTfqcJKqS9KnXQGnyQMCugq3u1FP6UZMfWR0aitKFMM=
+github.com/DataDog/gostackparse v0.6.0 h1:egCGQviIabPwsyoWpGvIBGrEnNWez35aEO7OJ1vBI4o=
+github.com/DataDog/gostackparse v0.6.0/go.mod h1:lTfqcJKqS9KnXQGnyQMCugq3u1FP6UZMfWR0aitKFMM=
 github.com/DataDog/zstd v1.4.5 h1:EndNeuB0l9syBZhut0wns3gV1hL8zX8LIu6ZiVHWLIQ=
 github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/Ice3man543/nvd v1.0.8/go.mod h1:0DxLJk6revOcJKiZxa2K+rNF/HO1zJO97lqQtXhXfSc=
@@ -101,8 +101,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.100 h1:7I86bWNQB+HGDT5z/dJy61J7qgbgLoZ7O51C9eL6hrA=
-github.com/aws/aws-sdk-go v1.44.100/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.107 h1:VP7Rq3wzsOV7wrfHqjAAKRksD4We58PaoVSDPKhm8nw=
+github.com/aws/aws-sdk-go v1.44.107/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
@@ -226,8 +226,8 @@ github.com/go-playground/validator/v10 v10.11.1 h1:prmOlTVv+YjZjmRmNSF3VmspqJIxJ
 github.com/go-playground/validator/v10 v10.11.1/go.mod h1:i+3WkQ1FvaUjjxh1kSvIA4dMGDBiPU55YFDl0WbKdWU=
 github.com/go-redis/redis v6.15.5+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
 github.com/go-rod/rod v0.91.1/go.mod h1:/W4lcZiCALPD603MnJGIvhtywP3R6yRB9EDfFfsHiiI=
-github.com/go-rod/rod v0.109.3 h1:MxuSJGK9lEUq07K+QPfnxnuvQpsQT+YI4SoQjSE0LVg=
-github.com/go-rod/rod v0.109.3/go.mod h1:GZDtmEs6RpF6kBRYpGCZXxXlKNneKVPiKOjaMbmVVjE=
+github.com/go-rod/rod v0.111.0 h1:aMNNdz10GYPYec9z1WsFqwAdRYVsuufVTOrah7whG3I=
+github.com/go-rod/rod v0.111.0/go.mod h1:GZDtmEs6RpF6kBRYpGCZXxXlKNneKVPiKOjaMbmVVjE=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
 github.com/goburrow/cache v0.1.4 h1:As4KzO3hgmzPlnaMniZU9+VmoNYseUhuELbxy9mRBfw=
 github.com/goburrow/cache v0.1.4/go.mod h1:cDFesZDnIlrHoNlMYqqMpCRawuXulgx+y7mXU8HZ+/c=
@@ -620,8 +620,8 @@ github.com/projectdiscovery/tlsx v0.0.7 h1:McoDo4Ju7aetogatU4lVTRcQpxkf0qgQSoWgt
 github.com/projectdiscovery/tlsx v0.0.7/go.mod h1:/ZCk/zzyuDdXx2E511yhNIj3LERnGUXghqkASBbdh5M=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921 h1:EgaxpJm7+lKppfAHkFHs+S+II0lodp4Gu3leZCCkWlc=
 github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921/go.mod h1:oXLErqOpqEAp/ueQlknysFxHO3CUNoSiDNnkiHG+Jpo=
-github.com/projectdiscovery/wappalyzergo v0.0.60 h1:xD1l+LrW3LLY7OlsKYtizEwfv7gnttF/w8at8ZHJ2s0=
-github.com/projectdiscovery/wappalyzergo v0.0.60/go.mod h1:9aSADdt5z/pw9LFZF7Q8RrLnkyqZl1H4Ezivi8Td7l0=
+github.com/projectdiscovery/wappalyzergo v0.0.61 h1:c7azmo5tEWqRUzq60Jfevqdjhn6FHEdaq/UARIHKIeY=
+github.com/projectdiscovery/wappalyzergo v0.0.61/go.mod h1:9aSADdt5z/pw9LFZF7Q8RrLnkyqZl1H4Ezivi8Td7l0=
 github.com/projectdiscovery/yamldoc-go v1.0.2/go.mod h1:7uSxfMXaBmzvw8m5EhOEjB6nhz0rK/H9sUjq1ciZu24=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6/go.mod h1:8OfZj8p/axkUM/TJoS/O9LDjj/S8u17rxRbqluE9CU4=

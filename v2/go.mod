@@ -12,7 +12,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.1
-	github.com/go-rod/rod v0.109.3
+	github.com/go-rod/rod v0.111.0
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.9
@@ -58,12 +58,12 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.100
+require github.com/aws/aws-sdk-go v1.44.107
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
 require (
-	github.com/DataDog/gostackparse v0.5.0
+	github.com/DataDog/gostackparse v0.6.0
 	github.com/antchfx/xmlquery v1.3.12
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.5.0
@@ -79,7 +79,7 @@ require (
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
 	github.com/projectdiscovery/tlsx v0.0.7
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.60
+	github.com/projectdiscovery/wappalyzergo v0.0.61
 	github.com/stretchr/testify v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )

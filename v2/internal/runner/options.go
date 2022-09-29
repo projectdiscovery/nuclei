@@ -109,7 +109,11 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	if options.FollowRedirects && options.DisableRedirects {
+
+	if options.FollowHostRedirects && options.FollowRedirects {
+		return errors.New("both follow host redirects and follow redirects specified")
+	}
+	if options.ShouldFollowHTTPRedirects() && options.DisableRedirects {
 		return errors.New("both follow redirects and disable redirects specified")
 	}
 	// loading the proxy server list from file or cli and test the connectivity

@@ -88,6 +88,57 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"sort": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					runes := []rune(types.ToString(args[0]))
+					sort.Slice(runes, func(i int, j int) bool {
+						return runes[i] < runes[j]
+					})
+					return string(runes), nil
+				} else {
+					tokens := make([]string, 0, argCount)
+					for _, arg := range args {
+						tokens = append(tokens, types.ToString(arg))
+					}
+					sort.Strings(tokens)
+					return tokens, nil
+				}
+			},
+		),
+		"uniq": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					builder := &strings.Builder{}
+					visited := make(map[rune]struct{})
+					for _, i := range types.ToString(args[0]) {
+						if _, isRuneSeen := visited[i]; !isRuneSeen {
+							builder.WriteRune(i)
+							visited[i] = struct{}{}
+						}
+					}
+					return builder.String(), nil
+				} else {
+					result := make([]string, 0, argCount)
+					visited := make(map[string]struct{})
+					for _, i := range args[0:] {
+						if _, isStringSeen := visited[types.ToString(i)]; !isStringSeen {
+							result = append(result, types.ToString(i))
+							visited[types.ToString(i)] = struct{}{}
+						}
+					}
+					return result, nil
+				}
+			},
+		),
 		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			count, err := strconv.Atoi(types.ToString(args[1]))
 			if err != nil {
@@ -365,16 +416,30 @@ func init() {
 				argumentsSize := len(arguments)
 				if argumentsSize < 2 {
 					return nil, errors.New("incorrect number of arguments received")
-				}
+				} else if argumentsSize == 2 {
+					separator := types.ToString(arguments[0])
+					elements, ok := arguments[1].([]string)
 
-				separator := types.ToString(arguments[0])
-				elements := arguments[1:argumentsSize]
+					if !ok {
+						return nil, errors.New("cannot cast elements into string")
+					}
 
-				stringElements := make([]string, 0, argumentsSize)
-				for _, element := range elements {
-					stringElements = append(stringElements, types.ToString(element))
+					return strings.Join(elements, separator), nil
+				} else {
+					separator := types.ToString(arguments[0])
+					elements := arguments[1:argumentsSize]
+
+					stringElements := make([]string, 0, argumentsSize)
+					for _, element := range elements {
+
+						if _, ok := element.([]string); ok {
+							return nil, errors.New("cannot use join on more than one slice element")
+						}
+
+						stringElements = append(stringElements, types.ToString(element))
+					}
+					return strings.Join(stringElements, separator), nil
 				}
-				return strings.Join(stringElements, separator), nil
 			},
 		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
