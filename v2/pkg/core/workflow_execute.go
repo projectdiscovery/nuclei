@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"net/http/cookiejar"
 
 	"github.com/remeh/sizedwaitgroup"
@@ -64,7 +65,20 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input con
 					if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
 						input.Lock()
 						for k, v := range result.OperatorsResult.Extracts {
-							input.Args[k] = v
+							// normalize items:
+							switch len(v) {
+							case 0, 1:
+								// - key:[item] => key: item
+								input.Args[k] = v[0]
+							default:
+								// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
+								for vIdx, vVal := range v {
+									normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
+									input.Args[normalizedKIdx] = vVal
+								}
+								// also add the original name with full slice
+								input.Args[k] = v
+							}
 						}
 						input.Unlock()
 					}
