@@ -117,6 +117,11 @@ func (e *Executer) Execute(input contextargs.Context) (bool, error) {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *Executer) ExecuteWithResults(input contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
+	if input.Args != nil {
+		input.RLock()
+		dynamicValues = generators.MergeMaps(dynamicValues, input.Args)
+		input.RUnlock()
+	}
 	previous := make(map[string]interface{})
 	var results bool
 

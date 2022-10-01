@@ -31,7 +31,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if utils.IsURL(input.Input) {
@@ -46,6 +46,8 @@ func (request *Request) ExecuteWithResults(input contextargs.Context, metadata /
 		return errors.Wrap(err, "could not build request")
 	}
 	vars := GenerateVariables(domain)
+	// merge with metadata (eg. from workflow context)
+	vars = generators.MergeMaps(vars, metadata)
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
@@ -116,7 +118,6 @@ func (request *Request) ExecuteWithResults(input contextargs.Context, metadata /
 		outputEvent[k] = v
 	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request, request.options, response.String(), domain)
 	if request.Trace {
