@@ -1,0 +1,11 @@
+id: dns-value-sharing-workflow
+info:
+  name: DNS Value Sharing Test
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: dns-value-share-template-1.yaml
+    subtemplates:
+      - template: dns-value-share-template-2.yaml
+      - template: dns-value-share-template-3.yaml

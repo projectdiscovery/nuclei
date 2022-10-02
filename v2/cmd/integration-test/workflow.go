@@ -12,11 +12,12 @@ import (
 )
 
 var workflowTestcases = map[string]testutils.TestCase{
-	"workflow/basic.yaml":               &workflowBasic{},
-	"workflow/condition-matched.yaml":   &workflowConditionMatched{},
-	"workflow/condition-unmatched.yaml": &workflowConditionUnmatch{},
-	"workflow/matcher-name.yaml":        &workflowMatcherName{},
-	"workflow/value-share.yaml":         &workflowKeyValueShare{},
+	"workflow/basic.yaml":                     &workflowBasic{},
+	"workflow/condition-matched.yaml":         &workflowConditionMatched{},
+	"workflow/condition-unmatched.yaml":       &workflowConditionUnmatch{},
+	"workflow/matcher-name.yaml":              &workflowMatcherName{},
+	"workflow/http-value-share-workflow.yaml": &workflowHttpKeyValueShare{},
+	"workflow/dns-value-share-workflow.yaml":  &workflowDnsKeyValueShare{},
 }
 
 type workflowBasic struct{}
@@ -95,10 +96,10 @@ func (h *workflowMatcherName) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
-type workflowKeyValueShare struct{}
+type workflowHttpKeyValueShare struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *workflowKeyValueShare) Execute(filePath string) error {
+func (h *workflowHttpKeyValueShare) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "href=\"test-value\"")
@@ -115,5 +116,18 @@ func (h *workflowKeyValueShare) Execute(filePath string) error {
 		return err
 	}
 
+	return expectResultsCount(results, 1)
+}
+
+type workflowDnsKeyValueShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowDnsKeyValueShare) Execute(filePath string) error {
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, "http://scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+
+	// no results - ensure that the variable sharing works
 	return expectResultsCount(results, 1)
 }
