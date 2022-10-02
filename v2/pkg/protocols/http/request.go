@@ -46,7 +46,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (request *Request) executeRaceRequest(input contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.Input
 	var generatedRequests []*generatedRequest
 
@@ -115,7 +115,7 @@ func (request *Request) executeRaceRequest(input contextargs.Context, previous o
 }
 
 // executeRaceRequest executes parallel requests for a template
-func (request *Request) executeParallelHTTP(input contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator()
 
 	// Workers that keeps enqueuing new requests
@@ -161,7 +161,7 @@ func (request *Request) executeParallelHTTP(input contextargs.Context, dynamicVa
 }
 
 // executeTurboHTTP executes turbo http request for a URL
-func (request *Request) executeTurboHTTP(input contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator()
 
 	// need to extract the target from the url
@@ -223,7 +223,7 @@ func (request *Request) executeTurboHTTP(input contextargs.Context, dynamicValue
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (request *Request) ExecuteWithResults(input contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
 		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
 		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
@@ -349,7 +349,7 @@ const drainReqSize = int64(8 * 1024)
 var errStopExecution = errors.New("stop execution due to unresolved variables")
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (request *Request) executeRequest(input contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
+func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
 	request.setCustomHeaders(generatedRequest)
 
 	// Try to evaluate any payloads before replacement

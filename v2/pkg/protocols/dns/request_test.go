@@ -71,7 +71,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("url-to-domain", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(contextargs.Context{Input: "https://example.com"}, metadata, previous, func(event *output.InternalWrappedEvent) {
+		err := request.ExecuteWithResults(contextargs.NewWithInput("https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute dns request")

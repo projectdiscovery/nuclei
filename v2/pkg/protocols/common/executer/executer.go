@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
@@ -60,14 +59,14 @@ func (e *Executer) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input contextargs.Context) (bool, error) {
+func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	var results bool
 
 	dynamicValues := make(map[string]interface{})
-	if input.Args != nil {
-		input.RLock()
-		dynamicValues = generators.MergeMaps(dynamicValues, input.Args)
-		input.RUnlock()
+	if input.HasArgs() {
+		input.ForEach(func(key string, value interface{}) {
+			dynamicValues[key] = value
+		})
 	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
@@ -115,12 +114,12 @@ func (e *Executer) Execute(input contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input contextargs.Context, callback protocols.OutputEventCallback) error {
+func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
-	if input.Args != nil {
-		input.RLock()
-		dynamicValues = generators.MergeMaps(dynamicValues, input.Args)
-		input.RUnlock()
+	if input.HasArgs() {
+		input.ForEach(func(key string, value interface{}) {
+			dynamicValues[key] = value
+		})
 	}
 	previous := make(map[string]interface{})
 	var results bool

@@ -20,11 +20,9 @@ func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 	results := &atomic.Bool{}
 
 	// at this point we should be at the start root execution of a workflow tree, hence we create global shared instances
-	workflowArgs := make(map[string]interface{})
 	workflowCookieJar, _ := cookiejar.New(nil)
 	ctxArgs := contextargs.New()
 	ctxArgs.Input = input
-	ctxArgs.Args = workflowArgs
 	ctxArgs.CookieJar = workflowCookieJar
 
 	swg := sizedwaitgroup.New(w.Options.Options.TemplateThreads)
@@ -43,7 +41,7 @@ func (e *Engine) executeWorkflow(input string, w *workflows.Workflow) bool {
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input contextargs.Context, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *contextargs.Context, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -63,24 +61,22 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input con
 					}
 
 					if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
-						input.Lock()
 						for k, v := range result.OperatorsResult.Extracts {
 							// normalize items:
 							switch len(v) {
 							case 0, 1:
 								// - key:[item] => key: item
-								input.Args[k] = v[0]
+								input.Set(k, v[0])
 							default:
 								// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
 								for vIdx, vVal := range v {
 									normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
-									input.Args[normalizedKIdx] = vVal
+									input.Set(normalizedKIdx, vVal)
 								}
 								// also add the original name with full slice
-								input.Args[k] = v
+								input.Set(k, v)
 							}
 						}
-						input.Unlock()
 					}
 				})
 			} else {
@@ -116,11 +112,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input con
 				}
 
 				if event.OperatorsResult.Extracts != nil {
-					input.Lock()
 					for k, v := range event.OperatorsResult.Extracts {
-						input.Args[k] = v
+						input.Set(k, v)
 					}
-					input.Unlock()
 				}
 
 				for _, matcher := range template.Matchers {

@@ -180,7 +180,7 @@ func (e *ClusterExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *ClusterExecuter) Execute(input contextargs.Context) (bool, error) {
+func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
 	var results bool
 
 	previous := make(map[string]interface{})
@@ -214,7 +214,7 @@ func (e *ClusterExecuter) Execute(input contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *ClusterExecuter) ExecuteWithResults(input contextargs.Context, callback protocols.OutputEventCallback) error {
+func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(input, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
