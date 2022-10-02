@@ -123,6 +123,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	if err := reporting.CreateConfigIfNotExists(); err != nil {
+		return nil, err
+	}
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
@@ -145,10 +148,6 @@ func New(options *types.Options) (*Runner, error) {
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
-	if options.TemplateList {
-		runner.listAvailableTemplates()
-		os.Exit(0)
-	}
 	if options.EnablePprof {
 		server := &http.Server{
 			Addr:    pprofServerAddress,
@@ -412,6 +411,11 @@ func (r *Runner) RunEnumeration() error {
 		executerOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	// list all templates
+	if r.options.TemplateList {
+		r.listAvailableStoreTemplates(store)
+		os.Exit(0)
+	}
 	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool

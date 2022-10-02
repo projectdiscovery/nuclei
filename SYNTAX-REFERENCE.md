@@ -597,6 +597,8 @@ Appears in:
 
 - <code><a href="#workflowsworkflowtemplate">workflows.WorkflowTemplate</a>.tags</code>
 
+- <code><a href="#workflowsmatcher">workflows.Matcher</a>.name</code>
+
 
 ```yaml
 <username>
@@ -1281,6 +1283,21 @@ any specified content length headers.
 <div class="dt">
 
 Redirects specifies whether redirects should be followed by the HTTP Client.
+
+This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>host-redirects</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.
 
 This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
 
@@ -4146,13 +4163,34 @@ Appears in:
 
 <div class="dd">
 
-<code>name</code>  <i>string</i>
+<code>name</code>  <i><a href="#stringslicestringslice">stringslice.StringSlice</a></i>
 
 </div>
 <div class="dt">
 
-Name is the name of the item to match.
+Name is the name of the items to match.
 
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Condition is the optional condition between names. By default,
+the condition is assumed to be OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
 </div>
 
 <hr />
