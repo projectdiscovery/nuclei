@@ -1,0 +1,32 @@
+{{- if .Values.nuclei.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Chart.Name }}-nuclei-cron
+spec:
+  schedule: "{{ .Values.nuclei.cron }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: {{ .Chart.Name }}-nuclei-cron
+            image: "{{ .Values.nuclei.image.repository }}:{{ .Values.nuclei.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy: {{ .Values.nuclei.image.pullPolicy }}
+            command: [ "nuclei", "-config", "/config/nuclei.conf" ]
+            volumeMounts:
+              - name: nuclei-conf
+                mountPath: /config/nuclei.conf
+                subPath: nuclei.conf
+              - name: nuclei-target-list
+                mountPath: /config/target-list.txt
+                subPath: target-list.txt
+          restartPolicy: OnFailure
+          volumes:
+            - name: nuclei-conf
+              configMap:
+                name: nuclei-conf
+            - name: nuclei-target-list
+              configMap:
+                name: nuclei-target-list
+{{- end }}
