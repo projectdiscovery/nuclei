@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -30,13 +31,13 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
-	if utils.IsURL(input) {
-		domain = extractDomain(input)
+	if utils.IsURL(input.Input) {
+		domain = extractDomain(input.Input)
 	} else {
-		domain = input
+		domain = input.Input
 	}
 
 	var err error
@@ -45,6 +46,8 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		return errors.Wrap(err, "could not build request")
 	}
 	vars := GenerateVariables(domain)
+	// merge with metadata (eg. from workflow context)
+	vars = generators.MergeMaps(vars, metadata)
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
@@ -107,7 +110,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input, input, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input.Input, input.Input, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
@@ -115,7 +118,6 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		outputEvent[k] = v
 	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-	// TODO: dynamic values are not supported yet
 
 	dumpResponse(event, request, request.options, response.String(), domain)
 	if request.Trace {
