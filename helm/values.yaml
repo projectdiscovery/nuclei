@@ -1,0 +1,121 @@
+# Default values for nuclei.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+nuclei:
+  enabled: true
+  image:
+    repository: docker.io/projectdiscovery/nuclei
+    pullPolicy: IfNotPresent
+    tag: "v2.7.5"
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+  cron: "0 0 * * Sun"
+  
+  config: |
+    interactsh-server: http://nuclei-interactsh # should match the name of interactsh.service.name 
+    list: /config/target-list.txt 
+    # Headers to include with all HTTP request
+    #header:
+    #  - 'X-BugBounty-Hacker: h1/geekboy'
+    
+    # Directory based template execution
+    #templates:
+    #  - cves/
+    #  - vulnerabilities/
+    #  - misconfiguration/
+    
+    # Tags based template execution
+    #tags: exposures,cve
+    
+    # Template Filters
+    #tags: exposures,cve
+    #author: geeknik,pikpikcu,dhiyaneshdk
+    #severity: critical,high,medium
+    
+    # Template Allowlist
+    #include-tags: dos,fuzz # Tag based inclusion (allows overwriting nuclei-ignore list)
+    #include-templates: # Template based inclusion (allows overwriting nuclei-ignore list)
+      #- vulnerabilities/xxx
+      #- misconfiguration/xxxx
+    
+    # Template Denylist
+    #exclude-tags: info # Tag based exclusion
+    #exclude-templates: # Template based exclusion
+      #- vulnerabilities/xxx
+      #- misconfiguration/xxxx
+    
+    # Rate Limit configuration
+    #rate-limit: 500
+    #bulk-size: 50
+    #concurrency: 50
+ 
+  target_list: |
+    https://10.50.50.2
+
+interactsh:
+  image:
+    repository: docker.io/projectdiscovery/interactsh-server
+    pullPolicy: IfNotPresent
+    tag: "v1.0.6"
+
+  service:
+    name: "nuclei-interactsh"
+    type: ClusterIP
+    port: 80
+  
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
