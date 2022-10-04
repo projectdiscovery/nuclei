@@ -101,8 +101,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.109 h1:+Na5JPeS0kiEHoBp5Umcuuf+IDqXqD0lXnM920E31YI=
-github.com/aws/aws-sdk-go v1.44.109/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.110 h1:unno3l2FYQo6p0wYCp9gUk8YNzhOxqSktM0Y1vukl9k=
+github.com/aws/aws-sdk-go v1.44.110/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
@@ -468,7 +468,6 @@ github.com/mholt/archiver v3.1.1+incompatible h1:1dCVxuqs0dJseYEhi5pl7MYPH9zDa1w
 github.com/mholt/archiver v3.1.1+incompatible/go.mod h1:Dh2dOXnSdiLxRiPoVfIr/fI1TwETms9B8CTWfeh7ROU=
 github.com/microcosm-cc/bluemonday v1.0.2/go.mod h1:iVP4YcDBq+n/5fb23BhYFvIMq/leAFZyRl6bYmGDlGc=
 github.com/microcosm-cc/bluemonday v1.0.18/go.mod h1:Z0r70sCuXHig8YpBzCc5eGHAap2K7e/u082ZUpDRRqM=
-github.com/microcosm-cc/bluemonday v1.0.19 h1:OI7hoF5FY4pFz2VA//RN8TfM0YJ2dJcl4P4APrCWy6c=
 github.com/microcosm-cc/bluemonday v1.0.19/go.mod h1:QNzV2UbLK2/53oIIwTOyLUSABMkjZ4tqiyC1g/DyqxE=
 github.com/microcosm-cc/bluemonday v1.0.20 h1:flpzsq4KU3QIYAYGV/szUat7H+GPOXR0B2JU5A1Wp8Y=
 github.com/microcosm-cc/bluemonday v1.0.20/go.mod h1:yfBmMi8mxvaZut3Yytv+jTXRY8mxyjJ0/kQBTElld50=
@@ -557,7 +556,6 @@ github.com/projectdiscovery/fileutil v0.0.0-20210914153648-31f843feaad4/go.mod h
 github.com/projectdiscovery/fileutil v0.0.0-20210928100737-cab279c5d4b5/go.mod h1:U+QCpQnX8o2N2w0VUGyAzjM3yBAe4BKedVElxiImsx0=
 github.com/projectdiscovery/fileutil v0.0.0-20220308101036-16c79af1cf5d/go.mod h1:Pm0f+MWgDFMSSI9NBedNh48LyYPs8gD3Jd8DXGmp4aQ=
 github.com/projectdiscovery/fileutil v0.0.0-20220609150212-453ac591c36c/go.mod h1:g8wsrb0S5NtEN0JgVyyPeb3FQdArx+UMESmFX94bcGY=
-github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963 h1:4o97N9ftX1J3iKlIRVMPVOVZs4qbCczJvoFF2WA40t4=
 github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963/go.mod h1:DaY7wmLPMleyHDCD/14YApPCDtrARY4J8Eny2ZGsG/g=
 github.com/projectdiscovery/fileutil v0.0.1 h1:3K3UqCDOan3LsvWhV0nyvVuMWSwCloNPUJIGcXsi1os=
 github.com/projectdiscovery/fileutil v0.0.1/go.mod h1:Oo6ZEvXmQz/xPF0YukzmwpdW2LYinWCSEmzZOQsJCLg=
@@ -565,8 +563,6 @@ github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 h1:m1p
 github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/goflags v0.0.8/go.mod h1:GDSkWyXa6kfQjpJu10SO64DN8lXuKXVENlBMk8N7H80=
-github.com/projectdiscovery/goflags v0.0.10-0.20220829035232-bc74fe1cb567 h1:0CFt+l9ZO7lT1ZPU/NCTAdRzkZZ5OH+b4FvxsJo1GhE=
-github.com/projectdiscovery/goflags v0.0.10-0.20220829035232-bc74fe1cb567/go.mod h1:t/dEhv2VDOzayugXZCkbkX8n+pPeVmRD+WgQRSgReeI=
 github.com/projectdiscovery/goflags v0.1.0 h1:Z7sUVK8wgH6aGJWinmGQEtsn+GNf/0RQ+z1wQcpCeeA=
 github.com/projectdiscovery/goflags v0.1.0/go.mod h1:/YBPA+1igSkQbwD7a91o0HUIwMDlsmQDRZL2oSYSyEQ=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
@@ -621,7 +617,6 @@ github.com/projectdiscovery/stringsutil v0.0.0-20210830151154-f567170afdd9/go.mo
 github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/stringsutil v0.0.0-20220422150559-b54fb5dc6833/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
 github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3/go.mod h1:mF5sh4jTghoGWwgUb9qWi5waTFklClDbtrqtJU93awc=
-github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e h1:JBdwX+DJNq5FIJGsZCSKLGV4EhSRiPtNk22Vi+3cTDg=
 github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e/go.mod h1:32NYmKyHkKsmisAOAaWrR15lz2ysz2M8x3KMeeoRHoU=
 github.com/projectdiscovery/stringsutil v0.0.1 h1:a6TCMT+D1aUsoZxNiYf9O30wiDOoLOHDwj89HBjr5BQ=
 github.com/projectdiscovery/stringsutil v0.0.1/go.mod h1:TDi2LEqR3OML0BxGoMbbfAHSk5AdfHX762Oc302sgmM=
@@ -929,8 +924,6 @@ golang.org/x/net v0.0.0-20220617184016-355a448f1bc9/go.mod h1:XRhObCWvk6IyKnWLug
 golang.org/x/net v0.0.0-20220630215102-69896b714898/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
 golang.org/x/net v0.0.0-20220722155237-a158d28d115b/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
 golang.org/x/net v0.0.0-20220728211354-c7608f3a8462/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
-golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48 h1:N9Vc/rorQUDes6B9CNdIxAn5jODGj2wzfrei2x4wNj4=
-golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
 golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
 golang.org/x/net v0.0.0-20221002022538-bcab6841153b h1:6e93nYa3hNqAvLr0pD4PN1fFS+gKzp2zAXqrnTCstqU=
 golang.org/x/net v0.0.0-20221002022538-bcab6841153b/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
