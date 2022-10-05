@@ -146,7 +146,7 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
 
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 

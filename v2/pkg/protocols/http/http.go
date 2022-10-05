@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -117,6 +118,9 @@ type Request struct {
 	//   - name: Read max 2048 bytes of the response
 	//     value: 2048
 	MaxSize int `yaml:"max-size,omitempty" jsonschema:"title=maximum http response body size,description=Maximum size of http response body to read in bytes"`
+
+	// Rule describes schema to fuzz http requests
+	Rule []*fuzz.Rule `yaml:"fuzz,omitempty" jsonschema:"title=fuzz rule for http fuzzing,description=Fuzz describes rule schema to fuzz http requests"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 
@@ -353,6 +357,14 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.options = options
 	request.totalRequests = request.Requests()
+
+	if len(request.Rule) > 0 {
+		for _, rule := range request.Rule {
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
 	return nil
 }
 

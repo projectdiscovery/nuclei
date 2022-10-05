@@ -70,7 +70,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	}
 	defer instance.Close()
 
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
