@@ -224,15 +224,15 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 }
 
 // executeFuzzingRule executes fuzzing request for a URL
-func (request *Request) executeFuzzingRule(reqURL string, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := url.Parse(reqURL)
+func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	parsed, err := url.Parse(input.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 		hasInteractMarkers := len(gr.InteractURLs) > 0
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(reqURL) {
+		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.Input) {
 			return false
 		}
 
@@ -243,7 +243,7 @@ func (request *Request) executeFuzzingRule(reqURL string, previous output.Intern
 			original:       request,
 		}
 		var gotMatches bool
-		requestErr := request.executeRequest(reqURL, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 			// Add the extracts to the dynamic values if any.
 			if event.OperatorsResult != nil {
 				gotMatches = event.OperatorsResult.Matched
@@ -266,7 +266,7 @@ func (request *Request) executeFuzzingRule(reqURL string, previous output.Intern
 		}
 		if requestErr != nil {
 			if request.options.HostErrorsCache != nil {
-				request.options.HostErrorsCache.MarkFailed(reqURL, requestErr)
+				request.options.HostErrorsCache.MarkFailed(input.Input, requestErr)
 			}
 		}
 		request.options.Progress.IncrementRequests()
@@ -315,7 +315,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// verify if parallel elaboration was requested
 	if request.Rule != nil {
-		return request.executeFuzzingRule(reqURL, dynamicValues, callback)
+		return request.executeFuzzingRule(input, dynamicValues, callback)
 	}
 
 	generator := request.newGenerator()

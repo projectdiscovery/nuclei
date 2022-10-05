@@ -25,6 +25,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
 	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
+	"http/fuzz-query.yaml":                          &httpFuzzQuery{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
 	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
@@ -954,6 +955,26 @@ func (h *annotationTimeout) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-timeout", "1")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type httpFuzzQuery struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpFuzzQuery) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		value := r.URL.Query().Get("id")
+		fmt.Fprintf(w, "This is test matcher text: %v", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
 	if err != nil {
 		return err
 	}

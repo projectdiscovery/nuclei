@@ -1,0 +1,24 @@
+id: fuzz-query
+
+info:
+  name: Basic Fuzz URL Query
+  author: pdteam
+  severity: info
+
+requests:
+  - fuzz:
+      - part: query
+        type: postfix
+        mode: single
+        keys: ["id"] 
+        payloads: ["6842'\"><"]
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "6842'\"><"
+      - type: word
+        part: header
+        words:
+          - "text/html"
