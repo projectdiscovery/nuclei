@@ -84,7 +84,8 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, inter
 // returns completed values to be replaced and processed
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload string, interactshURLs []string) (string, []string) {
-	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(payload, interactshURLs)
+	firstpass := replacer.Replace(payload, input.Values)
+	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
 	evaluated := replacer.Replace(interactData, input.Values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs
