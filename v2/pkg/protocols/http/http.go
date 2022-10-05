@@ -331,22 +331,24 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	// tries to drop unused payloads - by marshaling sections that might contain the payload
-	unusedPayloads := make(map[string]struct{})
-	requestSectionsToCheck := []interface{}{
-		request.customHeaders, request.Headers, request.Matchers,
-		request.Extractors, request.Body, request.Path, request.Raw,
-	}
-	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
-		for payload := range request.Payloads {
-			if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
-				continue
-			}
-			unusedPayloads[payload] = struct{}{}
+	if len(request.Rule) == 0 {
+		unusedPayloads := make(map[string]struct{})
+		requestSectionsToCheck := []interface{}{
+			request.customHeaders, request.Headers, request.Matchers,
+			request.Extractors, request.Body, request.Path, request.Raw,
 		}
-	}
+		if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
+			for payload := range request.Payloads {
+				if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
+					continue
+				}
+				unusedPayloads[payload] = struct{}{}
+			}
+		}
 
-	for payload := range unusedPayloads {
-		delete(request.Payloads, payload)
+		for payload := range unusedPayloads {
+			delete(request.Payloads, payload)
+		}
 	}
 
 	if len(request.Payloads) > 0 {

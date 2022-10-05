@@ -48,12 +48,12 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	iterator := rule.generator.NewIterator()
 	for {
 		values, finished := iterator.Value()
-		if finished {
-			return nil
-		}
 		input.Values = values
 		if err := rule.executeRuleValues(input); err != nil {
 			return err
+		}
+		if finished {
+			return nil
 		}
 	}
 }
@@ -127,6 +127,13 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 			return errors.Wrap(err, "could not compile value regex")
 		}
 		rule.valuesRegex = append(rule.valuesRegex, compiled)
+	}
+	for _, value := range rule.KeysRegex {
+		compiled, err := regexp.Compile(value)
+		if err != nil {
+			return errors.Wrap(err, "could not compile key regex")
+		}
+		rule.keysRegex = append(rule.keysRegex, compiled)
 	}
 	return nil
 }

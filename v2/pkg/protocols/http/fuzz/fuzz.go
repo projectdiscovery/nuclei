@@ -49,6 +49,14 @@ type Rule struct {
 	Keys    []string `yaml:"keys,omitempty" jsonschema:"title=keys of parameters to fuzz,description=Keys of parameters to fuzz"`
 	keysMap map[string]struct{}
 	// description: |
+	//   KeysRegex is the optional list of regex key parameters to fuzz.
+	// examples:
+	//   - name: Examples of key regex
+	//     value: >
+	//       []string{"url.*"}
+	KeysRegex []string `yaml:"keys-regex,omitempty" jsonschema:"title=keys regex to fuzz,description=Regex of parameter keys to fuzz"`
+	keysRegex []*regexp.Regexp
+	// description: |
 	//   Values is the optional list of regex value parameters to fuzz.
 	// examples:
 	//   - name: Examples of value regex
@@ -112,7 +120,7 @@ var stringToModeType = map[string]modeType{
 
 // matchKeyOrValue matches key value parameters with rule parameters
 func (rule *Rule) matchKeyOrValue(key, value string) bool {
-	if len(rule.keysMap) == 0 && len(rule.valuesRegex) == 0 {
+	if len(rule.keysMap) == 0 && len(rule.valuesRegex) == 0 && len(rule.keysRegex) == 0 {
 		return true
 	}
 	if value != "" {
@@ -122,9 +130,14 @@ func (rule *Rule) matchKeyOrValue(key, value string) bool {
 			}
 		}
 	}
-	if len(rule.keysMap) > 0 && key != "" {
+	if (len(rule.keysMap) > 0 || len(rule.keysRegex) > 0) && key != "" {
 		if _, ok := rule.keysMap[strings.ToLower(key)]; ok {
 			return true
+		}
+		for _, regex := range rule.keysRegex {
+			if regex.MatchString(key) {
+				return true
+			}
 		}
 	}
 	return false
