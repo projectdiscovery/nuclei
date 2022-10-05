@@ -1,0 +1,10 @@
+id: dns-value-sharing-template2
+
+info:
+  name: dns-value-sharing-template2
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{extracted}}"
+    type: PTR

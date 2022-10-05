@@ -12,7 +12,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.1
-	github.com/go-rod/rod v0.110.0
+	github.com/go-rod/rod v0.111.0
 	github.com/gobwas/ws v1.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.9
@@ -26,9 +26,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
 	github.com/projectdiscovery/cryptoutil v1.0.0
-	github.com/projectdiscovery/fastdialer v0.0.16-0.20220908084548-3eab0c2a02d5
+	github.com/projectdiscovery/fastdialer v0.0.17
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
-	github.com/projectdiscovery/goflags v0.0.10-0.20220829035232-bc74fe1cb567
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
@@ -36,12 +35,12 @@ require (
 	github.com/projectdiscovery/rawhttp v0.1.1
 	github.com/projectdiscovery/retryabledns v1.0.15
 	github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d
-	github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e
+	github.com/projectdiscovery/stringsutil v0.0.1
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.22.8
+	github.com/shirou/gopsutil/v3 v3.22.9
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.5.0
 	github.com/syndtr/goleveldb v1.0.0
@@ -51,14 +50,14 @@ require (
 	github.com/xanzy/go-gitlab v0.73.1
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
-	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	golang.org/x/text v0.3.7
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.105
+require github.com/aws/aws-sdk-go v1.44.111
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -73,13 +72,14 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
-	github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963
+	github.com/projectdiscovery/fileutil v0.0.1
+	github.com/projectdiscovery/goflags v0.1.0
 	github.com/projectdiscovery/iputil v0.0.0-20220712175312-b9406f31cdd8
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
 	github.com/projectdiscovery/tlsx v0.0.7
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.61
+	github.com/projectdiscovery/wappalyzergo v0.0.62
 	github.com/stretchr/testify v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -148,7 +148,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mholt/acmez v1.0.4 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect
@@ -180,7 +180,7 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
-	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 // indirect
+	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
