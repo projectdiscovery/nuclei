@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -27,7 +28,9 @@ func TestSSLProtocol(t *testing.T) {
 	require.Nil(t, err, "could not compile ssl request")
 
 	var gotEvent output.InternalEvent
-	err = request.ExecuteWithResults("google.com:443", nil, nil, func(event *output.InternalWrappedEvent) {
+	ctxArgs := contextargs.New()
+	ctxArgs.Input = "google.com:443"
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
 		gotEvent = event.InternalEvent
 	})
 	require.Nil(t, err, "could not run ssl request")

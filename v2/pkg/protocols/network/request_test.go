@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -64,7 +65,9 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(parsed.Host, metadata, previous, func(event *output.InternalWrappedEvent) {
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = parsed.Host
+		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute network request")
@@ -79,7 +82,9 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("invalid-port-override", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults("127.0.0.1:11211", metadata, previous, func(event *output.InternalWrappedEvent) {
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = "127.0.0.1:11211"
+		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute network request")
@@ -92,7 +97,9 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("hex-to-string", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(parsed.Host, metadata, previous, func(event *output.InternalWrappedEvent) {
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = parsed.Host
+		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute network request")
