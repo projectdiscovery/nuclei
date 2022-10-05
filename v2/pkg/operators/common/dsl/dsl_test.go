@@ -166,6 +166,9 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 
 	signatures := GetPrintableDslFunctionSignatures(true)
 	assert.Equal(t, expected, signatures)
+
+	coloredSignatures := GetPrintableDslFunctionSignatures(false)
+	require.Contains(t, coloredSignatures, `[93maes_cbc[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m`, "could not get colored signatures")
 }
 
 func TestDslExpressions(t *testing.T) {
