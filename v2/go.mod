@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/iputil v0.0.0-20220712175312-b9406f31cdd8
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
-	github.com/projectdiscovery/tlsx v0.0.7
+	github.com/projectdiscovery/tlsx v0.0.8
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/wappalyzergo v0.0.62
 	github.com/stretchr/testify v1.8.0
@@ -121,7 +121,7 @@ require (
 	github.com/goburrow/cache v0.1.4 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -156,8 +156,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
-	github.com/projectdiscovery/mapcidr v1.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.0.1 // indirect
+	github.com/projectdiscovery/mapcidr v1.0.2 // indirect
+	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
