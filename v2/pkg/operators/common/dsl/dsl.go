@@ -320,7 +320,7 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
-		"contains_all":makeDslWithOptionalArgsFunction(
+		"contains_all": makeDslWithOptionalArgsFunction(
 			"(body interface{}, substrs ...string) bool",
 			func(arguments ...interface{}) (interface{}, error) {
 				body := types.ToString(arguments[0])
@@ -331,7 +331,7 @@ func init() {
 				}
 				return true, nil
 			}),
-		"contains_any":makeDslWithOptionalArgsFunction(
+		"contains_any": makeDslWithOptionalArgsFunction(
 			"(body interface{}, substrs ...string) bool",
 			func(arguments ...interface{}) (interface{}, error) {
 				body := types.ToString(arguments[0])

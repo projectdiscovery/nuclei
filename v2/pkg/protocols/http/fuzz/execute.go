@@ -17,6 +17,8 @@ type ExecuteRuleInput struct {
 	URL *url.URL
 	// Callback is the callback for generated rule requests
 	Callback func(GeneratedRequest) bool
+	// InteractURLs contains interact urls for execute call
+	InteractURLs []string
 	// Values contains dynamic values for the rule
 	Values map[string]interface{}
 }
@@ -48,7 +50,10 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	iterator := rule.generator.NewIterator()
 	for {
 		values, finished := iterator.Value()
-		input.Values = values
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(values, rule.options.Interactsh)
+		input.InteractURLs = interactURLs
+		input.Values = generators.MergeMaps(values, evaluatedValues)
+
 		if err := rule.executeRuleValues(input); err != nil {
 			return err
 		}

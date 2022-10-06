@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/corpix/uarand"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -28,7 +28,6 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 		temp[k] = v
 	}
 
-	var interactURLs []string
 	for key, values := range input.URL.Query() {
 		var value string
 		if len(values) > 0 {
@@ -38,12 +37,12 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 			continue
 		}
 		var evaluated string
-		evaluated, interactURLs = rule.executeEvaluate(input, key, value, payload, interactURLs)
+		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, value, payload, input.InteractURLs)
 		temp.Set(key, evaluated)
 
 		if rule.modeType == singleModeType {
 			requestURL.RawQuery = temp.Encode()
-			if err := rule.buildQueryInput(input, requestURL, interactURLs); err != nil {
+			if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 				return err
 			}
 			temp.Set(key, value) // change back to previous value for temp
@@ -52,7 +51,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 
 	if rule.modeType == multipleModeType {
 		requestURL.RawQuery = temp.Encode()
-		if err := rule.buildQueryInput(input, requestURL, interactURLs); err != nil {
+		if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 			return err
 		}
 	}
@@ -84,9 +83,10 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, inter
 // returns completed values to be replaced and processed
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload string, interactshURLs []string) (string, []string) {
-	firstpass := replacer.Replace(payload, input.Values)
+	// TODO: Handle errors
+	firstpass, _ := expressions.Evaluate(payload, input.Values)
 	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
-	evaluated := replacer.Replace(interactData, input.Values)
+	evaluated, _ := expressions.Evaluate(interactData, input.Values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs
 }
