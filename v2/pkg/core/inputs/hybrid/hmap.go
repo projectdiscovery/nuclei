@@ -5,7 +5,6 @@ package hybrid
 import (
 	"bufio"
 	"io"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -71,7 +71,7 @@ func (i *Input) Close() {
 func (i *Input) initializeInputSources(options *types.Options) error {
 	// Handle targets flags
 	for _, target := range options.Targets {
-		if isCIDR(target) {
+		if iputil.IsCIDR(target) {
 			i.expandCIDRInputValue(target)
 			continue
 		}
@@ -99,7 +99,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		if isCIDR(scanner.Text()) {
+		if iputil.IsCIDR(scanner.Text()) {
 			i.expandCIDRInputValue(scanner.Text())
 			continue
 		}
@@ -147,8 +147,8 @@ func (i *Input) Scan(callback func(value string)) {
 
 // expandCIDRInputValue expands CIDR and stores expanded IPs
 func (i *Input) expandCIDRInputValue(value string) {
-	ips, _ := mapcidr.IPAddresses(value)
-	for _, ip := range ips {
+	ips, _ := mapcidr.IPAddressesAsStream(value)
+	for ip := range ips {
 		if _, ok := i.hostMap.Get(ip); ok {
 			i.dupeCount++
 			continue
@@ -159,12 +159,4 @@ func (i *Input) expandCIDRInputValue(value string) {
 			_ = i.hostMapStream.Set([]byte(ip), nil)
 		}
 	}
-}
-
-// isCIDR returns true if given value is CIDR otherwise false
-func isCIDR(value string) bool {
-	if _, _, err := net.ParseCIDR(value); err != nil {
-		return false
-	}
-	return true
 }
