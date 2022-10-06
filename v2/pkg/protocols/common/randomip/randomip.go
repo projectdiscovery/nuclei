@@ -28,6 +28,8 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 	}
 
 	switch {
+	case 255 == ipnet.Mask[len(ipnet.Mask)-1]:
+		return baseIp, nil
 	case iputil.IsIPv4(baseIp.String()):
 		return getRandomIP(ipnet, 4), nil
 	case iputil.IsIPv6(baseIp.String()):
@@ -59,7 +61,7 @@ func getRandomIP(ipnet *net.IPNet, size int) net.IP {
 		for i := 0; i <= quotient; i++ {
 			if i == quotient {
 				shifted := byte(r[i]) >> remainder
-				r[i] = ^ipnet.IP[i] & shifted
+				r[i] = ipnet.IP[i] + (^ipnet.IP[i] & shifted)
 			} else {
 				r[i] = ipnet.IP[i]
 			}
