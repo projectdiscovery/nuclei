@@ -158,8 +158,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         types.ToString(wrapped.InternalEvent["response"]),
+		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 	}
 	return data
+}
+
+func (request *Request) truncateResponse(response interface{}) string {
+	responseString := types.ToString(response)
+	if len(responseString) > request.options.Options.ResponseSaveSize {
+		return responseString[:request.options.Options.ResponseSaveSize]
+	}
+	return responseString
 }
