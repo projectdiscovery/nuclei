@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/fileutil"
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -16,7 +15,6 @@ import (
 // DoHealthCheck performs self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
-	cfgFilePath, _ := goflags.GetConfigFilePath()
 	var test strings.Builder
 	test.WriteString(fmt.Sprintf("Version: %s\n", config.Version))
 	test.WriteString(fmt.Sprintf("Operative System: %s\n", runtime.GOOS))
@@ -33,7 +31,7 @@ func DoHealthCheck(options *types.Options) string {
 		templatePath = cf.TemplatesDirectory
 	}
 	nucleiTemplatePath := filepath.Join(templatePath, "/", ".checksum")
-	for _, filename := range []string{cfgFilePath, nucleiIgnorePath, nucleiTemplatePath} {
+	for _, filename := range []string{options.ConfigPath, nucleiIgnorePath, nucleiTemplatePath} {
 		ok, err := fileutil.IsReadable(filename)
 		if ok {
 			testResult = "Ok"
