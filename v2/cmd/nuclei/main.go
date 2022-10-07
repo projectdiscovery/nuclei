@@ -35,7 +35,8 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	readConfig()
+	flagSet := readConfig()
+	configPath, _ := flagSet.GetConfigFilePath()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -62,6 +63,7 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
+	options.ConfigPath = configPath
 
 	if options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
@@ -109,7 +111,7 @@ func main() {
 	}
 }
 
-func readConfig() {
+func readConfig() *goflags.FlagSet {
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -194,6 +196,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
+		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
+		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -273,7 +277,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "url for the nuclei cloud server"),
+		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use"),
 		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
 	)
 
@@ -292,7 +296,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
-				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				defaultConfigPath, _ := flagSet.GetConfigFilePath()
 				err = fileutil.CopyFile(defaultConfigPath, configPath)
 				if err != nil {
 					return err
@@ -315,6 +319,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 	}
 	cleanupOldResumeFiles()
+	return flagSet
 }
 
 func cleanupOldResumeFiles() {

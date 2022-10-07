@@ -891,13 +891,13 @@ func colorizeDslFunctionSignatures() []string {
 	for _, signature := range signatures {
 		subMatchSlices := functionSignaturePattern.FindAllStringSubmatch(signature, -1)
 		if len(subMatchSlices) != 1 {
-			// TODO log when #1166 is implemented
-			return signatures
+			result = append(result, signature)
+			continue
 		}
 		matches := subMatchSlices[0]
 		if len(matches) != 5 {
-			// TODO log when #1166 is implemented
-			return signatures
+			result = append(result, signature)
+			continue
 		}
 
 		functionParameters := strings.Split(matches[2], ",")
