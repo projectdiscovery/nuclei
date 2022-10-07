@@ -8,8 +8,8 @@ import (
 
 // Limiter allows a burst of request during the defined duration
 type Limiter struct {
-	maxCount int
-	count    int
+	maxCount int64
+	count    int64
 	ticker   *time.Ticker
 	tokens   chan struct{}
 	ctx      context.Context
@@ -40,7 +40,7 @@ func (rateLimiter *Limiter) Take() {
 }
 
 // New creates a new limiter instance with the tokens amount and the interval
-func New(ctx context.Context, max int, duration time.Duration) *Limiter {
+func New(ctx context.Context, max int64, duration time.Duration) *Limiter {
 	limiter := &Limiter{
 		maxCount: max,
 		count:    max,
