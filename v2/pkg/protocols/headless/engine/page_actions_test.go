@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils/testheadless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -516,7 +517,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	t.Helper()
 	_ = protocolstate.Init(&types.Options{})
 
-	browser, err := New(&types.Options{ShowBrowser: false})
+	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
 

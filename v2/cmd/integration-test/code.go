@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/logrusorgru/aurora"
@@ -28,7 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/ratelimit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
 )
 
 var codeTestcases = map[string]testutils.TestCase{
@@ -78,7 +80,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
 
-	defaultOpts.Templates = goflags.FileOriginalNormalizedStringSlice{templatePath}
+	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -96,7 +98,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(150),
+		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),

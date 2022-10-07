@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -81,7 +82,9 @@ Disallow: /c`))
 	t.Run("test", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(ts.URL, metadata, previous, func(event *output.InternalWrappedEvent) {
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = ts.URL
+		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 				matchCount++
 			}

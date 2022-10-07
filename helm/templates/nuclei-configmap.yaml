@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nuclei-conf
+data:
+  nuclei.conf: |-
+{{ .Values.nuclei.config | indent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nuclei-target-list
+data:
+  target-list.txt: |-
+{{ .Values.nuclei.target_list | indent 4 }}
