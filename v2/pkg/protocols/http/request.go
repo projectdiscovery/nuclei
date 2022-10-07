@@ -539,7 +539,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.MaxSize != 0 {
 			bodyReader = io.LimitReader(resp.Body, int64(request.MaxSize))
 		} else {
-			bodyReader = resp.Body
+			bodyReader = io.LimitReader(resp.Body, int64(request.options.Options.ResponseReadSize))
 		}
 		data, err := io.ReadAll(bodyReader)
 		if err != nil {
