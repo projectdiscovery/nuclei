@@ -14,25 +14,25 @@ type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
-	Tags goflags.FileNormalizedStringSlice
+	Tags goflags.StringSlice
 	// ExcludeTags is the list of tags to exclude
-	ExcludeTags goflags.FileNormalizedStringSlice
+	ExcludeTags goflags.StringSlice
 	// Workflows specifies any workflows to run by nuclei
-	Workflows goflags.FileOriginalNormalizedStringSlice
+	Workflows goflags.StringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
-	WorkflowURLs goflags.FileOriginalNormalizedStringSlice
+	WorkflowURLs goflags.StringSlice
 	// Templates specifies the template/templates to use
-	Templates goflags.FileOriginalNormalizedStringSlice
+	Templates goflags.StringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
-	TemplateURLs goflags.FileOriginalNormalizedStringSlice
+	TemplateURLs goflags.StringSlice
 	// RemoteTemplates specifies list of allowed URLs to load remote templates from
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
-	ExcludedTemplates goflags.FileOriginalNormalizedStringSlice
+	ExcludedTemplates goflags.StringSlice
 	// ExcludeMatchers is a list of matchers to exclude processing
-	ExcludeMatchers goflags.FileCommaSeparatedStringSlice
+	ExcludeMatchers goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
-	CustomHeaders goflags.FileStringSlice
+	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
 	// vars to use as iterative payload
@@ -42,19 +42,19 @@ type Options struct {
 	// ExcludeSeverities specifies severities to exclude
 	ExcludeSeverities severity.Severities
 	// Authors filters templates based on their author and only run the matching ones.
-	Authors goflags.FileNormalizedStringSlice
+	Authors goflags.StringSlice
 	// Protocols contains the protocols to be allowed executed
 	Protocols types.ProtocolTypes
 	// ExcludeProtocols contains protocols to not be executed
 	ExcludeProtocols types.ProtocolTypes
 	// IncludeTags includes specified tags to be run even while being in denylist
-	IncludeTags goflags.FileNormalizedStringSlice
+	IncludeTags goflags.StringSlice
 	// IncludeTemplates includes specified templates to be run even while being in denylist
-	IncludeTemplates goflags.FileOriginalNormalizedStringSlice
+	IncludeTemplates goflags.StringSlice
 	// IncludeIds includes specified ids to be run even while being in denylist
-	IncludeIds goflags.FileNormalizedStringSlice
+	IncludeIds goflags.StringSlice
 	// ExcludeIds contains templates ids to not be executed
-	ExcludeIds goflags.FileNormalizedStringSlice
+	ExcludeIds goflags.StringSlice
 
 	InternalResolversList []string // normalized from resolvers flag as well as file provided.
 	// ProjectPath allows nuclei to use a user defined project folder
@@ -73,8 +73,10 @@ type Options struct {
 	Output string
 	// ProxyInternal requests
 	ProxyInternal bool
+	// Show all supported DSL signatures
+	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
-	Proxy goflags.NormalizedOriginalStringSlice
+	Proxy goflags.StringSlice
 	// TemplatesDirectory is the directory to use for storing templates
 	TemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -89,6 +91,10 @@ type Options struct {
 	MarkdownExportDirectory string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
+	// CloudURL is the URL for the nuclei cloud endpoint
+	CloudURL string
+	// CloudAPIKey is the api-key for the nuclei cloud endpoint
+	CloudAPIKey string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -129,6 +135,8 @@ type Options struct {
 	MaxRedirects int
 	// FollowRedirects enables following redirects for http request module
 	FollowRedirects bool
+	// FollowRedirects enables following redirects for http request module only on the same host
+	FollowHostRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -176,6 +184,8 @@ type Options struct {
 	JSON bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// Cloud enables nuclei cloud scan execution
+	Cloud bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
@@ -199,7 +209,7 @@ type Options struct {
 	// NewTemplates only runs newly added templates from the repository
 	NewTemplates bool
 	// NewTemplatesWithVersion runs new templates added in specific version
-	NewTemplatesWithVersion goflags.CommaSeparatedStringSlice
+	NewTemplatesWithVersion goflags.StringSlice
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
 	// UpdateNuclei checks for an update for the nuclei engine
@@ -234,6 +244,10 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// ResponseReadSize is the maximum size of response to read
+	ResponseReadSize int
+	// ResponseSaveSize is the maximum size of response to save
+	ResponseSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -241,9 +255,11 @@ type Options struct {
 	// Disable stdin for input processing
 	DisableStdin bool
 	// IncludeConditions is the list of conditions templates should match
-	IncludeConditions goflags.FileStringSlice
+	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+
+	ConfigPath string // Used by healthcheck
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
@@ -266,6 +282,11 @@ func (options *Options) ShouldLoadResume() bool {
 // ShouldSaveResume file
 func (options *Options) ShouldSaveResume() bool {
 	return true
+}
+
+// ShouldFollowHTTPRedirects determines if http redirects should be followed
+func (options *Options) ShouldFollowHTTPRedirects() bool {
+	return options.FollowRedirects || options.FollowHostRedirects
 }
 
 // DefaultOptions returns default options for nuclei

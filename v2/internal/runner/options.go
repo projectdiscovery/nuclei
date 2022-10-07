@@ -27,8 +27,9 @@ func ConfigureOptions() error {
 	isFromFileFunc := func(s string) bool {
 		return !isTemplate(s)
 	}
-	goflags.DefaultFileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
-	goflags.DefaultFileOriginalNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileStringSliceOptions.IsFromFile = isFromFileFunc
+	goflags.FileCommaSeparatedStringSliceOptions.IsFromFile = isFromFileFunc
 	return nil
 }
 
@@ -108,7 +109,11 @@ func validateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	if options.FollowRedirects && options.DisableRedirects {
+
+	if options.FollowHostRedirects && options.FollowRedirects {
+		return errors.New("both follow host redirects and follow redirects specified")
+	}
+	if options.ShouldFollowHTTPRedirects() && options.DisableRedirects {
 		return errors.New("both follow redirects and disable redirects specified")
 	}
 	// loading the proxy server list from file or cli and test the connectivity
@@ -116,7 +121,6 @@ func validateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		options.Headless = true // required for correct validation of headless templates
 		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
