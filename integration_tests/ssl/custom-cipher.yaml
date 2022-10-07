@@ -1,4 +1,4 @@
-id: expired-ssl
+id: custom-cipher
 
 info:
   name: Basic SSL Request
@@ -7,8 +7,10 @@ info:
 
 ssl:
   - address: "{{Host}}:{{Port}}"
-    cipher_suites: 
+
+    cipher_suites:
       - TLS_AES_128_GCM_SHA256
+
     matchers:
       - type: word
         part: response

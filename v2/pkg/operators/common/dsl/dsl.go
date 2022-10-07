@@ -11,6 +11,7 @@ import (
 	crand "crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -65,6 +66,16 @@ type dslFunction struct {
 	expressFunc govaluate.ExpressionFunction
 }
 
+var defaultDateTimeLayouts = []string{
+	time.RFC3339,
+	"2006-01-02 15:04:05 Z07:00",
+	"2006-01-02 15:04:05",
+	"2006-01-02 15:04 Z07:00",
+	"2006-01-02 15:04",
+	"2006-01-02 Z07:00",
+	"2006-01-02",
+}
+
 func init() {
 	tempDslFunctions := map[string]func(string) dslFunction{
 		"len": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
@@ -77,6 +88,57 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
+		"sort": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					runes := []rune(types.ToString(args[0]))
+					sort.Slice(runes, func(i int, j int) bool {
+						return runes[i] < runes[j]
+					})
+					return string(runes), nil
+				} else {
+					tokens := make([]string, 0, argCount)
+					for _, arg := range args {
+						tokens = append(tokens, types.ToString(arg))
+					}
+					sort.Strings(tokens)
+					return tokens, nil
+				}
+			},
+		),
+		"uniq": makeDslWithOptionalArgsFunction(
+			"(args ...interface{}) interface{}",
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 {
+					return nil, invalidDslFunctionError
+				} else if argCount == 1 {
+					builder := &strings.Builder{}
+					visited := make(map[rune]struct{})
+					for _, i := range types.ToString(args[0]) {
+						if _, isRuneSeen := visited[i]; !isRuneSeen {
+							builder.WriteRune(i)
+							visited[i] = struct{}{}
+						}
+					}
+					return builder.String(), nil
+				} else {
+					result := make([]string, 0, argCount)
+					visited := make(map[string]struct{})
+					for _, i := range args[0:] {
+						if _, isStringSeen := visited[types.ToString(i)]; !isStringSeen {
+							result = append(result, types.ToString(i))
+							visited[types.ToString(i)] = struct{}{}
+						}
+					}
+					return result, nil
+				}
+			},
+		),
 		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			count, err := strconv.Atoi(types.ToString(args[1]))
 			if err != nil {
@@ -174,7 +236,7 @@ func init() {
 
 				argumentsSize := len(arguments)
 				if argumentsSize < 1 && argumentsSize > 2 {
-					return nil, errors.New("invalid number of arguments")
+					return nil, invalidDslFunctionError
 				}
 
 				currentTime, err := getCurrentTimeFromUserInput(arguments)
@@ -222,6 +284,8 @@ func init() {
 				hashFunction = sha1.New
 			case "sha256", "sha-256":
 				hashFunction = sha256.New
+			case "sha512", "sha-512":
+				hashFunction = sha512.New
 			default:
 				return nil, fmt.Errorf("unsupported hash algorithm: '%s'", hashAlgorithm)
 			}
@@ -239,6 +303,9 @@ func init() {
 		"md5": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return toHexEncodedHash(md5.New(), types.ToString(args[0]))
 		}),
+		"sha512": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return toHexEncodedHash(sha512.New(), types.ToString(args[0]))
+		}),
 		"sha256": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return toHexEncodedHash(sha256.New(), types.ToString(args[0]))
 		}),
@@ -253,6 +320,28 @@ func init() {
 		"contains": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			return strings.Contains(types.ToString(args[0]), types.ToString(args[1])), nil
 		}),
+		"contains_all": makeDslWithOptionalArgsFunction(
+			"(body interface{}, substrs ...string) bool",
+			func(arguments ...interface{}) (interface{}, error) {
+				body := types.ToString(arguments[0])
+				for _, value := range arguments[1:] {
+					if !strings.Contains(body, types.ToString(value)) {
+						return false, nil
+					}
+				}
+				return true, nil
+			}),
+		"contains_any": makeDslWithOptionalArgsFunction(
+			"(body interface{}, substrs ...string) bool",
+			func(arguments ...interface{}) (interface{}, error) {
+				body := types.ToString(arguments[0])
+				for _, value := range arguments[1:] {
+					if strings.Contains(body, types.ToString(value)) {
+						return true, nil
+					}
+				}
+				return false, nil
+			}),
 		"starts_with": makeDslWithOptionalArgsFunction(
 			"(str string, prefix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
@@ -327,16 +416,30 @@ func init() {
 				argumentsSize := len(arguments)
 				if argumentsSize < 2 {
 					return nil, errors.New("incorrect number of arguments received")
-				}
+				} else if argumentsSize == 2 {
+					separator := types.ToString(arguments[0])
+					elements, ok := arguments[1].([]string)
 
-				separator := types.ToString(arguments[0])
-				elements := arguments[1:argumentsSize]
+					if !ok {
+						return nil, errors.New("cannot cast elements into string")
+					}
 
-				stringElements := make([]string, 0, argumentsSize)
-				for _, element := range elements {
-					stringElements = append(stringElements, types.ToString(element))
+					return strings.Join(elements, separator), nil
+				} else {
+					separator := types.ToString(arguments[0])
+					elements := arguments[1:argumentsSize]
+
+					stringElements := make([]string, 0, argumentsSize)
+					for _, element := range elements {
+
+						if _, ok := element.([]string); ok {
+							return nil, errors.New("cannot use join on more than one slice element")
+						}
+
+						stringElements = append(stringElements, types.ToString(element))
+					}
+					return strings.Join(stringElements, separator), nil
 				}
-				return strings.Join(stringElements, separator), nil
 			},
 		),
 		"regex": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
@@ -507,6 +610,38 @@ func init() {
 				return float64(offset.Unix()), nil
 			},
 		),
+		"to_unix_time": makeDslWithOptionalArgsFunction(
+			"(input string, optionalLayout string) int64",
+			func(args ...interface{}) (interface{}, error) {
+				input := types.ToString(args[0])
+
+				nr, err := strconv.ParseFloat(input, 64)
+				if err == nil {
+					return int64(nr), nil
+				}
+
+				if len(args) == 1 {
+					for _, layout := range defaultDateTimeLayouts {
+						parsedTime, err := time.Parse(layout, input)
+						if err == nil {
+							return parsedTime.Unix(), nil
+						}
+					}
+					errorMessage := "could not parse the current input with the default layouts"
+					gologger.Debug().Msg(errorMessage + ":\n" + strings.Join(defaultDateTimeLayouts, "\t\n"))
+					return nil, fmt.Errorf(errorMessage)
+				} else if len(args) == 2 {
+					layout := types.ToString(args[1])
+					parsedTime, err := time.Parse(layout, input)
+					if err != nil {
+						return nil, fmt.Errorf("could not parse the current input with the '%s' layout", layout)
+					}
+					return parsedTime.Unix(), err
+				} else {
+					return nil, invalidDslFunctionError
+				}
+			},
+		),
 		"wait_for": makeDslWithOptionalArgsFunction(
 			"(seconds uint)",
 			func(args ...interface{}) (interface{}, error) {
@@ -572,6 +707,15 @@ func init() {
 				return types.ToString(hexNum), nil
 			}
 			return nil, fmt.Errorf("invalid number: %T", args[0])
+		}),
+		"hex_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0x", 16)
+		}),
+		"oct_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0o", 8)
+		}),
+		"bin_to_dec": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			return stringNumberToDecimal(args, "0b", 2)
 		}),
 		"substr": makeDslWithOptionalArgsFunction(
 			"(str string, start int, optionalEnd int)",
@@ -747,13 +891,13 @@ func colorizeDslFunctionSignatures() []string {
 	for _, signature := range signatures {
 		subMatchSlices := functionSignaturePattern.FindAllStringSubmatch(signature, -1)
 		if len(subMatchSlices) != 1 {
-			// TODO log when #1166 is implemented
-			return signatures
+			result = append(result, signature)
+			continue
 		}
 		matches := subMatchSlices[0]
 		if len(matches) != 5 {
-			// TODO log when #1166 is implemented
-			return signatures
+			result = append(result, signature)
+			continue
 		}
 
 		functionParameters := strings.Split(matches[2], ",")
@@ -871,4 +1015,28 @@ func appendSingleDigitZero(value string) string {
 		return newVal
 	}
 	return value
+}
+
+func stringNumberToDecimal(args []interface{}, prefix string, base int) (interface{}, error) {
+	input := types.ToString(args[0])
+	if strings.HasPrefix(input, prefix) {
+		base = 0
+	}
+	if number, err := strconv.ParseInt(input, base, 64); err == nil {
+		return float64(number), err
+	}
+	return nil, fmt.Errorf("invalid number: %s", input)
+}
+
+type CompilationError struct {
+	DslSignature string
+	WrappedError error
+}
+
+func (e *CompilationError) Error() string {
+	return fmt.Sprintf("could not compile DSL expression %q: %v", e.DslSignature, e.WrappedError)
+}
+
+func (e *CompilationError) Unwrap() error {
+	return e.WrappedError
 }

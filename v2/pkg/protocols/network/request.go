@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -35,17 +36,17 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
 
 	if request.SelfContained {
 		address = ""
 	} else {
-		address, err = getAddress(input)
+		address, err = getAddress(input.Input)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input, request.Type().String(), err)
+		request.options.Output.Request(request.options.TemplatePath, input.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
@@ -56,7 +57,7 @@ func (request *Request) ExecuteWithResults(input string, metadata /*TODO review 
 		variables = generators.MergeMaps(variablesMap, variables)
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err := request.executeAddress(variables, actualAddress, address, input.Input, kv.tls, previous, callback); err != nil {
 			gologger.Warning().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}

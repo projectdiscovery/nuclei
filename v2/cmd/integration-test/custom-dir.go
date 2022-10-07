@@ -34,5 +34,5 @@ func (h *customConfigDirTest) Execute(filePath string) error {
 	for _, file := range files {
 		fileNames = append(fileNames, file.Name())
 	}
-	return expectResultsCount(fileNames, 3)
+	return expectResultsCount(fileNames, 4)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
@@ -53,7 +54,9 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults("example.com", metadata, previous, func(event *output.InternalWrappedEvent) {
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = "example.com"
+		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute dns request")
@@ -68,7 +71,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("url-to-domain", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults("https://example.com", metadata, previous, func(event *output.InternalWrappedEvent) {
+		err := request.ExecuteWithResults(contextargs.NewWithInput("https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute dns request")

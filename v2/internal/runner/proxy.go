@@ -84,6 +84,8 @@ func runProxyConnectivity(proxyURL url.URL, options *types.Options, done chan bo
 			assignProxyURL(proxyURL, options)
 			done <- true
 		}
+	} else {
+		gologger.Debug().Msgf("Proxy validation failed for '%s': %s", proxyURL.String(), err)
 	}
 	exitCounter <- true
 }
