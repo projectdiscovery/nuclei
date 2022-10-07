@@ -1292,6 +1292,21 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 <div class="dd">
 
+<code>host-redirects</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.
+
+This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>pipeline</code>  <i>bool</i>
 
 </div>
