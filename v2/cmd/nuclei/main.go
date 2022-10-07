@@ -35,7 +35,8 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	readConfig()
+	flagSet := readConfig()
+	configPath, _ := flagSet.GetConfigFilePath()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -62,6 +63,7 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
+	options.ConfigPath = configPath
 
 	if options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
@@ -109,7 +111,7 @@ func main() {
 	}
 }
 
-func readConfig() {
+func readConfig() *goflags.FlagSet {
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -293,7 +295,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
-				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				defaultConfigPath, _ := flagSet.GetConfigFilePath()
 				err = fileutil.CopyFile(defaultConfigPath, configPath)
 				if err != nil {
 					return err
@@ -316,6 +318,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 	}
 	cleanupOldResumeFiles()
+	return flagSet
 }
 
 func cleanupOldResumeFiles() {
