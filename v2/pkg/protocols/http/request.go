@@ -538,8 +538,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		var bodyReader io.Reader
 		if request.MaxSize != 0 {
 			bodyReader = io.LimitReader(resp.Body, int64(request.MaxSize))
-		} else {
+		} else if request.options.Options.ResponseReadSize != 0 {
 			bodyReader = io.LimitReader(resp.Body, int64(request.options.Options.ResponseReadSize))
+		} else {
+			bodyReader = resp.Body
 		}
 		data, err := io.ReadAll(bodyReader)
 		if err != nil {
