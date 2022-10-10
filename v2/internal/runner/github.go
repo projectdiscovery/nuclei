@@ -2,13 +2,13 @@ package runner
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
@@ -29,7 +29,7 @@ func (r *Runner) downloadCustomTemplates(ctx context.Context) {
 	for _, customTemplate := range r.customTemplates {
 		clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
-		if !isDirectory(clonePath) {
+		if !fileutil.FolderExists(clonePath) {
 			err := customTemplate.cloneRepo(clonePath, r.options.GithubToken)
 			if err != nil {
 				gologger.Info().Msgf("%s", err)
@@ -40,10 +40,10 @@ func (r *Runner) downloadCustomTemplates(ctx context.Context) {
 		}
 		if r.options.UpdateTemplates == customTemplateType {
 			err := customTemplate.pullChanges(clonePath, r.options.GithubToken)
-			if err == nil {
-				gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
-			} else {
+			if err != nil {
 				gologger.Info().Msgf("%s", err)
+			} else {
+				gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 			}
 		}
 	}
@@ -83,8 +83,8 @@ func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 		err = errors.Errorf("wrong Repo name: %s", reponame)
 		return
 	}
-	owner = strings.Split(reponame, "/")[0]
-	repo = strings.Split(reponame, "/")[1]
+	owner = s[0]
+	repo = s[1]
 	return
 }
 
@@ -143,7 +143,7 @@ func (ctr *customTemplateRepo) pullChanges(repoPath, githubToken string) error {
 // if same name repo directory exists from another owner then it appends the owner then and returns the path
 // eg. for nuclei-templates directory exists for projectdiscovery owner, then for ehsandeep/nuclei-templates it will return nuclei-templates-ehsandeep
 func (ctr *customTemplateRepo) getLocalRepoClonePath(downloadPath string) string {
-	if isDirectory(filepath.Join(downloadPath, ctr.reponame)) && !ctr.isRepoDirExists(filepath.Join(downloadPath, ctr.reponame)) {
+	if fileutil.FolderExists(filepath.Join(downloadPath, ctr.reponame)) && !ctr.isRepoDirExists(filepath.Join(downloadPath, ctr.reponame)) {
 		return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
 	}
 	return filepath.Join(downloadPath, ctr.reponame)
@@ -162,13 +162,4 @@ func getAuth(username, password string) *http.BasicAuth {
 		return &http.BasicAuth{Username: username, Password: password}
 	}
 	return nil
-}
-
-// isDirectory returns true if path is directory
-func isDirectory(path string) bool {
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return fileInfo.IsDir()
 }
