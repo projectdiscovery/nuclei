@@ -35,6 +35,15 @@ func (r *Runner) deleteScan(id string) {
 	fmt.Println(items)
 }
 
+func (r *Runner) getResults(id string) {
+	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
+	client.GetResults(id, func(re *output.ResultEvent) {
+		if outputErr := r.output.Write(re); outputErr != nil {
+			gologger.Warning().Msgf("Could not write output: %s", outputErr)
+		}
+	}, false)
+}
+
 // runCloudEnumeration runs cloud based enumeration
 func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic.Bool, error) {
 	now := time.Now()
@@ -75,7 +84,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-	})
+	}, true)
 	return results, err
 }
 

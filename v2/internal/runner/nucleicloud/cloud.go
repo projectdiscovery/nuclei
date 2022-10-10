@@ -72,7 +72,7 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 
 // GetResults gets results from nuclei server for an ID
 // until there are no more results left to retrieve.
-func (c *Client) GetResults(ID string, callback func(*output.ResultEvent)) error {
+func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool) error {
 	lastID := int64(0)
 	for {
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/results?id=%s&from=%d&size=100", c.baseURL, ID, lastID), nil)
@@ -106,9 +106,15 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent)) error
 			}
 			callback(&result)
 		}
-		if items.Finished && len(items.Items) == 0 {
+
+		if checkProgress {
+			if items.Finished && len(items.Items) == 0 {
+				break
+			}
+		} else {
 			break
 		}
+
 		time.Sleep(pollInterval)
 	}
 	return nil

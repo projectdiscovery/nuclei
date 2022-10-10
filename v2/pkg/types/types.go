@@ -101,6 +101,8 @@ type Options struct {
 	NoStore bool
 	// Delete scan
 	DeleteScan string
+	// Get issues for a scan
+	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after

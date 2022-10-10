@@ -413,6 +413,8 @@ func (r *Runner) RunEnumeration() error {
 			r.getCloudList()
 		} else if r.options.DeleteScan != "" {
 			r.deleteScan(r.options.DeleteScan)
+		} else if r.options.ScanOutput != "" {
+			r.getResults(r.options.ScanOutput)
 		} else {
 			results, err = r.runCloudEnumeration(store, r.options.NoStore)
 			if r.interactsh != nil {
