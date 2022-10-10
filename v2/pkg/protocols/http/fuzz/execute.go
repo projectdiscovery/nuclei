@@ -44,6 +44,9 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	}
 
 	if rule.generator == nil {
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(map[string]interface{}{}, rule.options.Interactsh)
+		input.Values = evaluatedValues
+		input.InteractURLs = interactURLs
 		err := rule.executeRuleValues(input)
 		return err
 	}
