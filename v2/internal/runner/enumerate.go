@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	_ "net/http/pprof"
 	"strings"
 	"time"
@@ -22,8 +23,20 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 	return r.executeTemplatesInput(store, engine)
 }
 
+func (r *Runner) getCloudList() {
+	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
+	items, _ := client.GetScans()
+	fmt.Println(items)
+}
+
+func (r *Runner) deleteScan(id string) {
+	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
+	items, _ := client.DeleteScan(id)
+	fmt.Println(items)
+}
+
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic.Bool, error) {
 	now := time.Now()
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
@@ -43,6 +56,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store) (*atomic.Bool, error) 
 	taskID, err := client.AddScan(&nucleicloud.AddScanRequest{
 		RawTargets:      targets,
 		PublicTemplates: templates,
+		IsTemporary:     nostore,
 	})
 	if err != nil {
 		return results, err

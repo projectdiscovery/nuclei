@@ -409,29 +409,35 @@ func (r *Runner) RunEnumeration() error {
 
 	if r.options.Cloud {
 		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-		results, err = r.runCloudEnumeration(store)
+		if r.options.ScanList {
+			r.getCloudList()
+		} else if r.options.DeleteScan != "" {
+			r.deleteScan(r.options.DeleteScan)
+		} else {
+			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			if r.interactsh != nil {
+				matched := r.interactsh.Close()
+				if matched {
+					results.CompareAndSwap(false, true)
+				}
+			}
+			r.progress.Stop()
+
+			if r.issuesClient != nil {
+				r.issuesClient.Close()
+			}
+
+			if !results.Load() {
+				gologger.Info().Msgf("No results found. Better luck next time!")
+			}
+			if r.browser != nil {
+				r.browser.Close()
+			}
+		}
 	} else {
 		results, err = r.runStandardEnumeration(executerOpts, store, engine)
 	}
 
-	if r.interactsh != nil {
-		matched := r.interactsh.Close()
-		if matched {
-			results.CompareAndSwap(false, true)
-		}
-	}
-	r.progress.Stop()
-
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
-	}
-
-	if !results.Load() {
-		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
-	}
 	return err
 }
 

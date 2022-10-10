@@ -274,6 +274,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
 		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "url for the nuclei cloud server"),
 		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
+		flagSet.BoolVarP(&options.ScanList, "scan-list", "sl", false, "Enable scan list."),
+		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "Do not store scan output on cloud."),
+		flagSet.StringVar(&options.DeleteScan, "delete-output", "do", "", "Delete scan output by id."),
+		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "Get scan output by id."),
 	)
 
 	_ = flagSet.Parse()

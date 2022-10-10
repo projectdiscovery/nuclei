@@ -95,6 +95,12 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
+	// Scanlist feature to get all the scan ids for a user
+	ScanList bool
+	// Nostore
+	NoStore bool
+	// Delete scan
+	DeleteScan string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after

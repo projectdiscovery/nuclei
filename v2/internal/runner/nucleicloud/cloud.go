@@ -113,3 +113,55 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent)) error
 	}
 	return nil
 }
+
+func (c *Client) GetScans() ([]GetScanRequest, error) {
+	var items []GetScanRequest
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan", c.baseURL), nil)
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := c.httpclient.Do(httpReq)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request.")
+	}
+	if err != nil {
+		return items, errors.Wrap(err, "could not do get response.")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return items, errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+	}
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		resp.Body.Close()
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	resp.Body.Close()
+
+	return items, nil
+}
+
+func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
+	deletescan := DeleteScanResults{}
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%s", c.baseURL, id), nil)
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := c.httpclient.Do(httpReq)
+	if err != nil {
+		return deletescan, errors.Wrap(err, "could not make request")
+	}
+	if err != nil {
+		return deletescan, errors.Wrap(err, "could not do ger result request")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return deletescan, errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+	}
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&deletescan); err != nil {
+		resp.Body.Close()
+		return deletescan, errors.Wrap(err, "could not delete scan")
+	}
+	resp.Body.Close()
+
+	return deletescan, nil
+}
