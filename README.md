@@ -142,26 +142,29 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
 
 CONFIGURATIONS:
-   -config string              path to the nuclei configuration file
-   -fr, -follow-redirects      enable following redirects for http templates
-   -mr, -max-redirects int     max number of redirects to follow for http templates (default 10)
-   -dr, -disable-redirects     disable redirects for http templates
-   -rc, -report-config string  nuclei reporting module configuration file
-   -H, -header string[]        custom header/cookie to include in all http request in header:value format (cli, file)
-   -V, -var value              custom vars in key=value format
-   -r, -resolvers string       file containing resolver list for nuclei
-   -sr, -system-resolvers      use system DNS resolving as error fallback
-   -passive                    enable passive HTTP response processing mode
-   -ev, -env-vars              enable environment variables to be used in template
-   -cc, -client-cert string    client certificate file (PEM-encoded) used for authenticating against scanned hosts
-   -ck, -client-key string     client key file (PEM-encoded) used for authenticating against scanned hosts
-   -ca, -client-ca string      client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
-   -sml, -show-match-line      show match lines for file templates, works with extractors only
-   -ztls                       use ztls library with autofallback to standard one for tls13
-   -sni string                 tls sni hostname to use (default: input domain name)
-   -i, -interface string       network interface to use for network scan
-   -sip, -source-ip string     source ip address to use for network scan
-   -config-directory string    Override the default config path ($home/.config)
+   -config string                 path to the nuclei configuration file
+   -fr, -follow-redirects         enable following redirects for http templates
+   -fhr, -follow-host-redirects   follow redirects on the same host
+   -mr, -max-redirects int        max number of redirects to follow for http templates (default 10)
+   -dr, -disable-redirects        disable redirects for http templates
+   -rc, -report-config string     nuclei reporting module configuration file
+   -H, -header string[]           custom header/cookie to include in all http request in header:value format (cli, file)
+   -V, -var value                 custom vars in key=value format
+   -r, -resolvers string          file containing resolver list for nuclei
+   -sr, -system-resolvers         use system DNS resolving as error fallback
+   -passive                       enable passive HTTP response processing mode
+   -ev, -env-vars                 enable environment variables to be used in template
+   -cc, -client-cert string       client certificate file (PEM-encoded) used for authenticating against scanned hosts
+   -ck, -client-key string        client key file (PEM-encoded) used for authenticating against scanned hosts
+   -ca, -client-ca string         client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+   -sml, -show-match-line         show match lines for file templates, works with extractors only
+   -ztls                          use ztls library with autofallback to standard one for tls13
+   -sni string                    tls sni hostname to use (default: input domain name)
+   -i, -interface string          network interface to use for network scan
+   -sip, -source-ip string        source ip address to use for network scan
+   -config-directory string       Override the default config path ($home/.config)
+   -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
+   -rss, -response-size-save int  max response size to read in bytes (default 1048576)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -181,7 +184,7 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
-   -timeout int                        time to wait in seconds before timeout (default 5)
+   -timeout int                        time to wait in seconds before timeout (default 10)
    -retries int                        number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
@@ -200,22 +203,22 @@ HEADLESS:
    -lha, -list-headless-action  list available headless actions
 
 DEBUG:
-   -debug                        show all requests and responses
-   -dreq, -debug-req             show all sent requests
-   -dresp, -debug-resp           show all received responses
-   -p, -proxy string[]           list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal          proxy all internal requests
-   -ldf, -list-dsl-function      list all supported DSL function signatures
-   -tlog, -trace-log string      file to write sent requests trace log
-   -elog, -error-log string      file to write sent requests error log
-   -version                      show nuclei version
-   -hm, -hang-monitor            enable nuclei hang monitoring
-   -v, -verbose                  show verbose output
-   -profile-mem string           optional nuclei memory profile dump file
-   -vv                           display templates loaded for scan
-   -ep, -enable-pprof            enable pprof debugging server
-   -tv, -templates-version       shows the version of the installed nuclei-templates
-   -hc, -health-check            run diagnostic check up
+   -debug                    show all requests and responses
+   -dreq, -debug-req         show all sent requests
+   -dresp, -debug-resp       show all received responses
+   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal      proxy all internal requests
+   -ldf, -list-dsl-function  list all supported DSL function signatures
+   -tlog, -trace-log string  file to write sent requests trace log
+   -elog, -error-log string  file to write sent requests error log
+   -version                  show nuclei version
+   -hm, -hang-monitor        enable nuclei hang monitoring
+   -v, -verbose              show verbose output
+   -profile-mem string       optional nuclei memory profile dump file
+   -vv                       display templates loaded for scan
+   -ep, -enable-pprof        enable pprof debugging server
+   -tv, -templates-version   shows the version of the installed nuclei-templates
+   -hc, -health-check        run diagnostic check up
 
 UPDATE:
    -nu, -nuclei-update                   update nuclei engine to the latest released version

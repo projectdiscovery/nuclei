@@ -114,8 +114,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkY
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.112 h1:AhwiWadvJGRlJb2cs5UnmCUhz2Nw7BgEo7YDz4M7xPY=
-github.com/aws/aws-sdk-go v1.44.112/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.113 h1:ZBrxWP9A2cUpVrzr7o6p1koBXNfBkJ6E94cUkIyBWt4=
+github.com/aws/aws-sdk-go v1.44.113/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
@@ -609,6 +609,8 @@ github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJ
 github.com/projectdiscovery/goflags v0.0.8/go.mod h1:GDSkWyXa6kfQjpJu10SO64DN8lXuKXVENlBMk8N7H80=
 github.com/projectdiscovery/goflags v0.1.0 h1:Z7sUVK8wgH6aGJWinmGQEtsn+GNf/0RQ+z1wQcpCeeA=
 github.com/projectdiscovery/goflags v0.1.0/go.mod h1:/YBPA+1igSkQbwD7a91o0HUIwMDlsmQDRZL2oSYSyEQ=
+github.com/projectdiscovery/goflags v0.1.1 h1:AEtT14D9OC10HWyZwDQaSLjuK8ZKoBrSYlsLItvMKZI=
+github.com/projectdiscovery/goflags v0.1.1/go.mod h1:/YBPA+1igSkQbwD7a91o0HUIwMDlsmQDRZL2oSYSyEQ=
 github.com/projectdiscovery/gologger v1.0.1/go.mod h1:Ok+axMqK53bWNwDSU1nTNwITLYMXMdZtRc8/y1c7sWE=
 github.com/projectdiscovery/gologger v1.1.4 h1:qWxGUq7ukHWT849uGPkagPKF3yBPYAsTtMKunQ8O2VI=
 github.com/projectdiscovery/gologger v1.1.4/go.mod h1:Bhb6Bdx2PV1nMaFLoXNBmHIU85iROS9y1tBuv7T5pMY=

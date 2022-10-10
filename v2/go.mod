@@ -57,7 +57,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.112
+require github.com/aws/aws-sdk-go v1.44.113
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -74,7 +74,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/fileutil v0.0.1
-	github.com/projectdiscovery/goflags v0.1.0
+	github.com/projectdiscovery/goflags v0.1.1
 	github.com/projectdiscovery/iputil v0.0.0-20220712175312-b9406f31cdd8
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
