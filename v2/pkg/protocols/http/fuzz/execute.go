@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -42,9 +43,10 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	if !rule.isExecutable(input.URL) {
 		return nil
 	}
+	requestVars := utils.GenerateVariables(input.URL, false)
 
 	if rule.generator == nil {
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(map[string]interface{}{}, rule.options.Interactsh)
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(requestVars, rule.options.Interactsh)
 		input.Values = evaluatedValues
 		input.InteractURLs = interactURLs
 		err := rule.executeRuleValues(input)
@@ -53,7 +55,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	iterator := rule.generator.NewIterator()
 	for {
 		values, finished := iterator.Value()
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(values, rule.options.Interactsh)
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, requestVars), rule.options.Interactsh)
 		input.InteractURLs = interactURLs
 		input.Values = generators.MergeMaps(values, evaluatedValues)
 
