@@ -267,6 +267,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 				return true, err
 			}
+
+			if generatedHttpRequest.customCancelFunction != nil {
+				defer generatedHttpRequest.customCancelFunction()
+			}
+
 			// If the variables contain interactsh urls, use them
 			if len(interactURLs) > 0 {
 				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)

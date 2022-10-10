@@ -49,9 +49,13 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 }
 
 // parseAnnotations and override requests settings
-func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*http.Request, bool) {
+func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*http.Request, context.CancelFunc, bool) {
+	var (
+		modified   bool
+		cancelFunc context.CancelFunc
+	)
 	// parse request for known ovverride annotations
-	var modified bool
+
 	// @Host:target
 	if hosts := reHostAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
 		value := strings.TrimSpace(hosts[1])
@@ -97,22 +101,23 @@ func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*h
 	// @timeout:duration
 	if r.connConfiguration.NoTimeout {
 		modified = true
+		var ctx context.Context
 
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
 				//nolint:govet // cancelled automatically by withTimeout
-				ctx, _ := context.WithTimeout(context.Background(), parsed)
+				ctx, cancelFunc = context.WithTimeout(context.Background(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
-			ctx, _ := context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
+			ctx, cancelFunc = context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
 			request = request.Clone(ctx)
 		}
 	}
 
-	return request, modified
+	return request, cancelFunc, modified
 }
 
 func isHostPort(value string) bool {
