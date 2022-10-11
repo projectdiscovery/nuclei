@@ -17,11 +17,15 @@ import (
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/stringsutil"
+	"github.com/projectdiscovery/urlutil"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
 type Input struct {
+	ipOptions     *ipOptions
 	inputCount    int64
 	dupeCount     int64
 	hostMap       *hybrid.HybridMap
@@ -36,7 +40,14 @@ func New(options *types.Options) (*Input, error) {
 		return nil, errors.Wrap(err, "could not create temporary input file")
 	}
 
-	input := &Input{hostMap: hm}
+	input := &Input{
+		hostMap: hm,
+		ipOptions: &ipOptions{
+			ScanAllIPs: options.ScanAllIPs,
+			IPV4:       stringsutil.ContainsAny(options.IPVersion, "4", "any"),
+			IPV6:       stringsutil.ContainsAny(options.IPVersion, "6", "any"),
+		},
+	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
 		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
@@ -109,20 +120,51 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 
 // normalizeStoreInputValue normalizes and stores passed input values
 func (i *Input) normalizeStoreInputValue(value string) {
-	url := strings.TrimSpace(value)
-	if url == "" {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
 		return
 	}
 
-	if _, ok := i.hostMap.Get(url); ok {
+	if _, ok := i.hostMap.Get(URL); ok {
 		i.dupeCount++
 		return
 	}
 
-	i.inputCount++
-	_ = i.hostMap.Set(url, nil)
-	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(url), nil)
+	switch {
+	case i.ipOptions.ScanAllIPs:
+		// we need to resolve the hostname
+		if parsedURL, err := urlutil.Parse(value); err == nil {
+			if dnsData, err := protocolstate.Dialer.GetDNSData(parsedURL.Host); err == nil {
+				var ips []string
+				if i.ipOptions.IPV4 {
+					ips = append(ips, dnsData.A...)
+				}
+				if i.ipOptions.IPV6 {
+					ips = append(ips, dnsData.AAAA...)
+				}
+				for _, ip := range ips {
+					i.inputCount++
+					if iputil.IsIPv4(ip) {
+						parsedURL.Host = ip
+					} else if iputil.IsIPv6(ip) {
+						parsedURL.Host = "[" + ip + "]"
+					}
+					_ = i.hostMap.Set(parsedURL.String(), nil)
+					if i.hostMapStream != nil {
+						_ = i.hostMapStream.Set([]byte(parsedURL.String()), nil)
+					}
+				}
+				break
+			}
+		}
+		// in case we have an error just fallthrough
+		fallthrough
+	default:
+		i.inputCount++
+		_ = i.hostMap.Set(URL, nil)
+		if i.hostMapStream != nil {
+			_ = i.hostMapStream.Set([]byte(URL), nil)
+		}
 	}
 }
 

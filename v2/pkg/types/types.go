@@ -258,8 +258,12 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-
-	ConfigPath string // Used by healthcheck
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6,any)
+	IPVersion string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
