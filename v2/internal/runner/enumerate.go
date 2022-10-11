@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	_ "net/http/pprof"
 	"strings"
 	"time"
@@ -23,10 +22,13 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 	return r.executeTemplatesInput(store, engine)
 }
 
-func (r *Runner) getCloudList() {
+// Get all the scan lists for a user/apikey.
+func (r *Runner) getScanList() {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
 	items, _ := client.GetScans()
-	fmt.Println(items)
+	for _, v := range items {
+		gologger.Info().Msgf("Created at: %s,  Id: %s", v.CreatedAt, v.Id)
+	}
 }
 
 func (r *Runner) deleteScan(id string) {

@@ -1,5 +1,7 @@
 package nucleicloud
 
+import "time"
+
 // AddScanRequest is a nuclei scan input item.
 type AddScanRequest struct {
 	// RawTargets is a list of raw target URLs for the scan.
@@ -18,10 +20,11 @@ type GetResultsResponse struct {
 }
 
 type GetScanRequest struct {
-	Id       string `json:"id"`
-	Total    int32  `json:"total"`
-	Current  int32  `json:"current"`
-	Finished bool   `json:"finished"`
+	Id        string    `json:"id"`
+	Total     int32     `json:"total"`
+	Current   int32     `json:"current"`
+	Finished  bool      `json:"finished"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type GetResultsResponseItem struct {
