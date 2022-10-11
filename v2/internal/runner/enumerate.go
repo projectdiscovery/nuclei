@@ -31,8 +31,12 @@ func (r *Runner) getCloudList() {
 
 func (r *Runner) deleteScan(id string) {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	items, _ := client.DeleteScan(id)
-	fmt.Println(items)
+	deleted, _ := client.DeleteScan(id)
+	if !deleted.OK {
+		gologger.Info().Msgf("Error in deleting the scan %s.", id)
+	} else {
+		gologger.Info().Msgf("Scan deleted %s.", id)
+	}
 }
 
 func (r *Runner) getResults(id string) {

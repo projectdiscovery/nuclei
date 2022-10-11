@@ -146,6 +146,7 @@ func (c *Client) GetScans() ([]GetScanRequest, error) {
 	return items, nil
 }
 
+//Delete a scan and it's issues by the scan id.
 func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 	deletescan := DeleteScanResults{}
 	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%s", c.baseURL, id), nil)
