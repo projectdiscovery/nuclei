@@ -28,7 +28,7 @@ func (r *Runner) getScanList() error {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
 	items, err := client.GetScans()
 	for _, v := range items {
-		fmt.Printf("[%s] [%s]", v.CreatedAt, v.Id)
+		fmt.Printf("[%s] [%s]\n", v.CreatedAt, v.Id)
 	}
 	return err
 }

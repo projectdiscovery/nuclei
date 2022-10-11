@@ -407,6 +407,7 @@ func (r *Runner) RunEnumeration() error {
 
 	var results *atomic.Bool
 
+	enumeration := false
 	if r.options.Cloud {
 		if r.options.ScanList {
 			err = r.getScanList()
@@ -414,15 +415,18 @@ func (r *Runner) RunEnumeration() error {
 			err = r.deleteScan(r.options.DeleteScan)
 		} else if r.options.ScanOutput != "" {
 			err = r.getResults(r.options.ScanOutput)
+		} else {
+			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			enumeration = true
 		}
-		return err
-	}
-
-	if r.options.Cloud {
-		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-		results, err = r.runCloudEnumeration(store, r.options.NoStore)
 	} else {
 		results, err = r.runStandardEnumeration(executerOpts, store, engine)
+		enumeration = true
+	}
+
+	if !enumeration {
+		return err
 	}
 
 	if r.interactsh != nil {

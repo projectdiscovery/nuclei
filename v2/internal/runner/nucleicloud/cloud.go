@@ -24,6 +24,7 @@ type Client struct {
 const (
 	pollInterval   = 1 * time.Second
 	defaultBaseURL = "http://webapp.localhost"
+	resultSize     = 100
 )
 
 // New returns a nuclei-cloud API client
@@ -75,7 +76,7 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool) error {
 	lastID := int64(0)
 	for {
-		httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/results?id=%s&from=%d&size=100", c.baseURL, ID, lastID), nil)
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, resultSize), nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
 		}
@@ -107,11 +108,12 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), check
 			callback(&result)
 		}
 
+		//This is checked during scan is added else if no item found break out of loop.
 		if checkProgress {
 			if items.Finished && len(items.Items) == 0 {
 				break
 			}
-		} else {
+		} else if len(items.Items) == 0 {
 			break
 		}
 
