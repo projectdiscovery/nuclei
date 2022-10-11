@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	_ "net/http/pprof"
 	"strings"
 	"time"
@@ -23,31 +24,34 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 }
 
 // Get all the scan lists for a user/apikey.
-func (r *Runner) getScanList() {
+func (r *Runner) getScanList() error {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	items, _ := client.GetScans()
+	items, err := client.GetScans()
 	for _, v := range items {
-		gologger.Info().Msgf("Created at: %s,  Id: %s", v.CreatedAt, v.Id)
+		fmt.Printf("[%s] [%s]", v.CreatedAt, v.Id)
 	}
+	return err
 }
 
-func (r *Runner) deleteScan(id string) {
+func (r *Runner) deleteScan(id string) error {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	deleted, _ := client.DeleteScan(id)
+	deleted, err := client.DeleteScan(id)
 	if !deleted.OK {
 		gologger.Info().Msgf("Error in deleting the scan %s.", id)
 	} else {
 		gologger.Info().Msgf("Scan deleted %s.", id)
 	}
+	return err
 }
 
-func (r *Runner) getResults(id string) {
+func (r *Runner) getResults(id string) error {
 	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	client.GetResults(id, func(re *output.ResultEvent) {
+	err := client.GetResults(id, func(re *output.ResultEvent) {
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
 		}
 	}, false)
+	return err
 }
 
 // runCloudEnumeration runs cloud based enumeration

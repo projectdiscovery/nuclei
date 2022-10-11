@@ -123,6 +123,9 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), check
 func (c *Client) GetScans() ([]GetScanRequest, error) {
 	var items []GetScanRequest
 	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan", c.baseURL), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
 	httpReq.Header.Set("X-API-Key", c.apiKey)
 
 	resp, err := c.httpclient.Do(httpReq)
@@ -150,6 +153,9 @@ func (c *Client) GetScans() ([]GetScanRequest, error) {
 func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 	deletescan := DeleteScanResults{}
 	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%s", c.baseURL, id), nil)
+	if err != nil {
+		return deletescan, errors.Wrap(err, "could not make request")
+	}
 	httpReq.Header.Set("X-API-Key", c.apiKey)
 
 	resp, err := c.httpclient.Do(httpReq)
