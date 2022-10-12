@@ -1,6 +1,8 @@
 package hybrid
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
@@ -32,6 +34,41 @@ func Test_expandCIDRInputValue(t *testing.T) {
 			got = append(got, string(k))
 			return nil
 		})
-		require.ElementsMatch(t, tt.expected, got, "could not get correct ips")
+		require.ElementsMatch(t, tt.expected, got, "could not get correct cidrs")
+	}
+}
+
+func Test_expandASNInputValue(t *testing.T) {
+	tests := []struct {
+		asn                string
+		expectedOutputFile string
+	}{
+		{
+			asn:                "AS14421",
+			expectedOutputFile: "goldenfiles/AS14421.txt",
+		},
+		{
+			asn:                "AS134029",
+			expectedOutputFile: "goldenfiles/AS134029.txt",
+		},
+	}
+	for _, tt := range tests {
+		hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+		require.Nil(t, err, "could not create temporary input file")
+		input := &Input{hostMap: hm}
+		// get the IP addresses for ASN number
+		input.expandASNInputValue(tt.asn)
+		// scan the hmap
+		got := []string{}
+		input.hostMap.Scan(func(k, v []byte) error {
+			got = append(got, string(k))
+			return nil
+		})
+		// read the expected IPs from the file
+		fileContent, err := os.ReadFile(tt.expectedOutputFile)
+		require.Nil(t, err, "could not read the expectedOutputFile file")
+		items := strings.Split(string(fileContent), "\n")
+
+		require.ElementsMatch(t, items, got, "could not get correct ips")
 	}
 }
