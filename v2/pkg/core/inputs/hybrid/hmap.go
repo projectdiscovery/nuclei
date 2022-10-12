@@ -5,6 +5,7 @@ package hybrid
 import (
 	"bufio"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
-	"github.com/projectdiscovery/urlutil"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
@@ -133,29 +133,56 @@ func (i *Input) normalizeStoreInputValue(value string) {
 	switch {
 	case i.ipOptions.ScanAllIPs:
 		// we need to resolve the hostname
-		if parsedURL, err := urlutil.Parse(value); err == nil {
-			if dnsData, err := protocolstate.Dialer.GetDNSData(parsedURL.Host); err == nil {
-				var ips []string
-				if i.ipOptions.IPV4 {
-					ips = append(ips, dnsData.A...)
-				}
-				if i.ipOptions.IPV6 {
-					ips = append(ips, dnsData.AAAA...)
-				}
-				for _, ip := range ips {
-					i.inputCount++
-					if iputil.IsIPv4(ip) {
+		// check if it's an url
+		var host string
+		parsedURL, err := url.Parse(value)
+		if err == nil && parsedURL.Host != "" {
+			host = parsedURL.Host
+		} else {
+			parsedURL = nil
+			host = value
+		}
+
+		if dnsData, err := protocolstate.Dialer.GetDNSData(host); err == nil {
+			var ips []string
+			if i.ipOptions.IPV4 {
+				ips = append(ips, dnsData.A...)
+			}
+			if i.ipOptions.IPV6 {
+				ips = append(ips, dnsData.AAAA...)
+			}
+
+			for _, ip := range ips {
+				i.inputCount++
+				var newHost string
+				if iputil.IsIPv4(ip) {
+					newHost = ip
+					if parsedURL != nil {
 						parsedURL.Host = ip
-					} else if iputil.IsIPv6(ip) {
+					}
+				} else if iputil.IsIPv6(ip) {
+					newHost = ip
+					if parsedURL != nil {
 						parsedURL.Host = "[" + ip + "]"
 					}
-					_ = i.hostMap.Set(parsedURL.String(), nil)
-					if i.hostMapStream != nil {
-						_ = i.hostMapStream.Set([]byte(parsedURL.String()), nil)
-					}
 				}
-				break
+
+				var finalHost string
+				if parsedURL != nil {
+					finalHost = parsedURL.String()
+					if !stringsutil.HasPrefixAny(value, "http://", "https://") {
+						finalHost = stringsutil.TrimPrefixAny(value, "http://", "https://")
+					}
+				} else {
+					finalHost = newHost
+				}
+
+				_ = i.hostMap.Set(finalHost, nil)
+				if i.hostMapStream != nil {
+					_ = i.hostMapStream.Set([]byte(finalHost), nil)
+				}
 			}
+			break
 		}
 		// in case we have an error just fallthrough
 		fallthrough
