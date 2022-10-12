@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"github.com/karlseguin/ccache"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,19 +45,20 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json             bool
-	jsonReqResp      bool
-	noTimestamp      bool
-	noMetadata       bool
-	matcherStatus    bool
-	mutex            *sync.Mutex
-	aurora           aurora.Aurora
-	outputFile       io.WriteCloser
-	traceFile        io.WriteCloser
-	errorFile        io.WriteCloser
-	severityColors   func(severity.Severity) string
-	storeResponse    bool
-	storeResponseDir string
+	json               bool
+	jsonReqResp        bool
+	noTimestamp        bool
+	noMetadata         bool
+	matcherStatus      bool
+	mutex              *sync.Mutex
+	aurora             aurora.Aurora
+	outputFile         io.WriteCloser
+	traceFile          io.WriteCloser
+	errorFile          io.WriteCloser
+	severityColors     func(severity.Severity) string
+	storeResponse      bool
+	storeResponseDir   string
+	matcherStatusItems *ccache.Cache
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -157,19 +159,20 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		}
 	}
 	writer := &StandardWriter{
-		json:             json,
-		jsonReqResp:      jsonReqResp,
-		noMetadata:       noMetadata,
-		matcherStatus:    MatcherStatus,
-		noTimestamp:      noTimestamp,
-		aurora:           auroraColorizer,
-		mutex:            &sync.Mutex{},
-		outputFile:       outputFile,
-		traceFile:        traceOutput,
-		errorFile:        errorOutput,
-		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    storeResponse,
-		storeResponseDir: storeResponseDir,
+		json:               json,
+		jsonReqResp:        jsonReqResp,
+		noMetadata:         noMetadata,
+		matcherStatus:      MatcherStatus,
+		noTimestamp:        noTimestamp,
+		aurora:             auroraColorizer,
+		mutex:              &sync.Mutex{},
+		outputFile:         outputFile,
+		traceFile:          traceOutput,
+		errorFile:          errorOutput,
+		severityColors:     colorizer.New(auroraColorizer),
+		storeResponse:      storeResponse,
+		storeResponseDir:   storeResponseDir,
+		matcherStatusItems: ccache.New(ccache.Configure()),
 	}
 	return writer, nil
 }

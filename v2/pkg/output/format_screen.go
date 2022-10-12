@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"strconv"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -29,6 +30,10 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		}
 
 		if w.matcherStatus {
+			if item := w.matcherStatusItems.Get(output.TemplateID); item != nil {
+				return nil
+			}
+			w.matcherStatusItems.Set(output.TemplateID, struct{}{}, time.Second*60)
 			builder.WriteString("] [")
 			if !output.MatcherStatus {
 				builder.WriteString(w.aurora.Red("failed").String())
