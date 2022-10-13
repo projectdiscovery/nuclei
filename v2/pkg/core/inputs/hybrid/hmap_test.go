@@ -67,7 +67,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		// read the expected IPs from the file
 		fileContent, err := os.ReadFile(tt.expectedOutputFile)
 		require.Nil(t, err, "could not read the expectedOutputFile file")
-		items := strings.Split(string(fileContent), "\n")
+		items := strings.Split(strings.TrimRight(string(fileContent), "\r"), "\n")
 
 		require.ElementsMatch(t, items, got, "could not get correct ips")
 	}
