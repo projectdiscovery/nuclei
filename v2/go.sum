@@ -540,6 +540,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c h1:ncq/mPwQF4JjgDlrVEn3C11VoGHZN7m8qihwgMEtzYw=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
+github.com/projectdiscovery/asnmap v0.0.1 h1:n4YCz1ljUaDA3dOUCkjI/bUOtiS7ge1KJ39qpURCd/o=
+github.com/projectdiscovery/asnmap v0.0.1/go.mod h1:CjCVDhQPVtmlE247L6YFeIVX9c4m8pOX8V8BmB0JkX8=
 github.com/projectdiscovery/blackrock v0.0.0-20210415162320-b38689ae3a2e/go.mod h1:/IsapnEYiWG+yEDPXp0e8NWj3npzB9Ccy9lXEUJwMZs=
 github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc h1:jqZK68yPOnNNRmwuXqytl+T9EbwneEUCvMDRjLe0J04=
 github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc/go.mod h1:5tNGQP9kOfW+X5+40pZP8aqPYLHs45nJkFaSHLxdeH8=
