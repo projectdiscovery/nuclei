@@ -17,7 +17,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
