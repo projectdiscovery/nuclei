@@ -45,11 +45,11 @@ func Test_expandASNInputValue(t *testing.T) {
 	}{
 		{
 			asn:                "AS14421",
-			expectedOutputFile: "goldenfiles/AS14421.txt",
+			expectedOutputFile: "tests/AS14421.txt",
 		},
 		{
 			asn:                "AS134029",
-			expectedOutputFile: "goldenfiles/AS134029.txt",
+			expectedOutputFile: "tests/AS134029.txt",
 		},
 	}
 	for _, tt := range tests {
