@@ -104,7 +104,6 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-
 		if iputil.IsCIDR(scanner.Text()) {
 			i.expandCIDRInputValue(scanner.Text())
 			continue
