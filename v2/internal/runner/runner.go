@@ -17,7 +17,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -246,9 +246,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), int64(options.RateLimitMinute), time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), int64(options.RateLimit), time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}

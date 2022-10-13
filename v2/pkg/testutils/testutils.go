@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
@@ -91,7 +91,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		IssuesClient: nil,
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), int64(options.RateLimit), time.Second),
+		RateLimiter:  ratelimit.New(context.Background(), options.RateLimit, time.Second),
 	}
 	return executerOpts
 }

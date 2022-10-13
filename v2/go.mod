@@ -52,12 +52,12 @@ require (
 	go.uber.org/multierr v1.8.0
 	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.113
+require github.com/aws/aws-sdk-go v1.44.114
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -77,10 +77,11 @@ require (
 	github.com/projectdiscovery/goflags v0.1.1
 	github.com/projectdiscovery/iputil v0.0.0-20220712175312-b9406f31cdd8
 	github.com/projectdiscovery/nvd v1.0.9
+	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
 	github.com/projectdiscovery/tlsx v0.0.8
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.62
+	github.com/projectdiscovery/wappalyzergo v0.0.64
 	github.com/stretchr/testify v1.8.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -158,7 +159,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
-	github.com/projectdiscovery/mapcidr v1.0.2 // indirect
+	github.com/projectdiscovery/mapcidr v1.0.3
 	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
@@ -182,7 +183,7 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
-	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
+	golang.org/x/exp v0.0.0-20220907003533-145caa8ea1d0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
@@ -209,6 +210,7 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
+	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
