@@ -32,6 +32,7 @@ jobs:
         env:
           GH_ACTION: true
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          DEBUG: true
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}
