@@ -19,6 +19,7 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
@@ -34,7 +35,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-get.yaml":                             &httpRawGet{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
