@@ -76,7 +76,13 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool) error {
 	lastID := int64(0)
 	for {
-		httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, resultSize), nil)
+		var uri string
+		if checkProgress {
+			uri = fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, resultSize)
+		} else {
+			uri = fmt.Sprintf("%s/results?id=%s&from=%d&size=%d&filter_deleted=%s", c.baseURL, ID, lastID, resultSize, "1")
+		}
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
 		}
