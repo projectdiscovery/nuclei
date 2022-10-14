@@ -13,7 +13,6 @@ requests:
         Content-Length: 4
 
     unsafe: true
-    matchers-condition: and
     matchers:
       - type: word
         words:
