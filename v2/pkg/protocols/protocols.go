@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
