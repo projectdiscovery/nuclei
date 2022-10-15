@@ -3,7 +3,7 @@ package http
 import "github.com/pkg/errors"
 
 func (request *Request) validate() error {
-	if request.Race && request.ReqCondition {
+	if request.Race && request.NeedsRequestCondition() {
 		return errors.New("'race' and 'req-condition' can't be used together")
 	}
 
