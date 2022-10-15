@@ -6,12 +6,12 @@ info:
   severity: info
 
 requests:
-  - fuzz:
+  - fuzzing:
       - part: query
         type: postfix
         mode: single
         keys: ["id"] 
-        payloads: ["6842'\"><"]
+        fuzz: ["6842'\"><"]
     matchers-condition: and
     matchers:
       - type: word

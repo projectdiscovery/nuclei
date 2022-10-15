@@ -277,7 +277,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		return true
 	}
-	for _, rule := range request.Rule {
+	for _, rule := range request.Fuzzing {
 		err = rule.Execute(&fuzz.ExecuteRuleInput{
 			URL:      parsed,
 			Callback: fuzzRequestCallback,
@@ -313,8 +313,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
-	// verify if parallel elaboration was requested
-	if request.Rule != nil {
+	// verify if fuzz elaboration was requested
+	if len(request.Fuzzing) > 0 {
 		return request.executeFuzzingRule(input, dynamicValues, callback)
 	}
 

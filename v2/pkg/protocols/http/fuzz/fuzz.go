@@ -66,12 +66,12 @@ type Rule struct {
 	valuesRegex []*regexp.Regexp
 
 	// description: |
-	//   Payloads is the list of payloads to perform substitutions with.
+	//   Fuzz is the list of payloads to perform substitutions with.
 	// examples:
-	//   - name: Examples of payloads
+	//   - name: Examples of fuzz
 	//     value: >
 	//       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
-	Payloads []string `yaml:"payloads,omitempty" jsonschema:"title=payloads of rule,description=Payloads to perform substitutions with"`
+	Fuzz []string `yaml:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
 
 	options   *protocols.ExecuterOptions
 	generator *generators.PayloadGenerator

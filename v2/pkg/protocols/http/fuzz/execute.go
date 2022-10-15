@@ -78,7 +78,7 @@ func (rule *Rule) isExecutable(parsed *url.URL) bool {
 
 // executeRuleValues executes a rule with a set of values
 func (rule *Rule) executeRuleValues(input *ExecuteRuleInput) error {
-	for _, payload := range rule.Payloads {
+	for _, payload := range rule.Fuzz {
 		if err := rule.executePartRule(input, payload); err != nil {
 			return err
 		}
