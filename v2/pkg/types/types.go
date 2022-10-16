@@ -244,6 +244,8 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// AttackType overrides template level attack-type configuration
+	AttackType string
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save

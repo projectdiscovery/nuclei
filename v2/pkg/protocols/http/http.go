@@ -347,7 +347,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
