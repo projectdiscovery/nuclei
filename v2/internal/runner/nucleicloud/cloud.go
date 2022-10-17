@@ -76,12 +76,7 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool) error {
 	lastID := int64(0)
 	for {
-		var uri string
-		if checkProgress {
-			uri = fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, resultSize)
-		} else {
-			uri = fmt.Sprintf("%s/results?id=%s&from=%d&size=%d&filter_deleted=%s", c.baseURL, ID, lastID, resultSize, "1")
-		}
+		uri := fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, resultSize)
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
@@ -171,7 +166,7 @@ func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 		return deletescan, errors.Wrap(err, "could not make request")
 	}
 	if err != nil {
-		return deletescan, errors.Wrap(err, "could not do ger result request")
+		return deletescan, errors.Wrap(err, "could not do get result request")
 	}
 	if resp.StatusCode != 200 {
 		data, _ := io.ReadAll(resp.Body)

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
@@ -69,6 +70,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	cloudClient       *nucleicloud.Client
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -82,6 +84,10 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HealthCheck {
 		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
+	}
+
+	if options.Cloud {
+		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
 	if options.UpdateNuclei {

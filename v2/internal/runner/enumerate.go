@@ -25,8 +25,7 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList() error {
-	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	items, err := client.GetScans()
+	items, err := r.cloudClient.GetScans()
 	for _, v := range items {
 		fmt.Printf("[%s] [%s]\n", v.CreatedAt, v.Id)
 	}
@@ -34,8 +33,7 @@ func (r *Runner) getScanList() error {
 }
 
 func (r *Runner) deleteScan(id string) error {
-	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	deleted, err := client.DeleteScan(id)
+	deleted, err := r.cloudClient.DeleteScan(id)
 	if !deleted.OK {
 		gologger.Info().Msgf("Error in deleting the scan %s.", id)
 	} else {
@@ -45,8 +43,7 @@ func (r *Runner) deleteScan(id string) error {
 }
 
 func (r *Runner) getResults(id string) error {
-	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
-	err := client.GetResults(id, func(re *output.ResultEvent) {
+	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
 		}
@@ -60,7 +57,6 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
 	}()
-	client := nucleicloud.New(r.options.CloudURL, r.options.CloudAPIKey)
 
 	results := &atomic.Bool{}
 
@@ -72,7 +68,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	for _, template := range store.Templates() {
 		templates = append(templates, getTemplateRelativePath(template.Path))
 	}
-	taskID, err := client.AddScan(&nucleicloud.AddScanRequest{
+	taskID, err := r.cloudClient.AddScan(&nucleicloud.AddScanRequest{
 		RawTargets:      targets,
 		PublicTemplates: templates,
 		IsTemporary:     nostore,
@@ -83,7 +79,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	gologger.Info().Msgf("Created task with ID: %s", taskID)
 	time.Sleep(3 * time.Second)
 
-	err = client.GetResults(taskID, func(re *output.ResultEvent) {
+	err = r.cloudClient.GetResults(taskID, func(re *output.ResultEvent) {
 		results.CompareAndSwap(false, true)
 
 		if outputErr := r.output.Write(re); outputErr != nil {
