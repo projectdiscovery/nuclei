@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -22,6 +21,8 @@ type ExecuteRuleInput struct {
 	InteractURLs []string
 	// Values contains dynamic values for the rule
 	Values map[string]interface{}
+	// BaseRequest is the base http request for fuzzing rule
+	BaseRequest *retryablehttp.Request
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -43,27 +44,26 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	if !rule.isExecutable(input.URL) {
 		return nil
 	}
-	requestVars := utils.GenerateVariables(input.URL, false)
-
+	baseValues := input.Values
 	if rule.generator == nil {
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(requestVars, rule.options.Interactsh)
-		input.Values = generators.MergeMaps(evaluatedValues, requestVars)
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
+		input.Values = generators.MergeMaps(evaluatedValues, baseValues)
 		input.InteractURLs = interactURLs
 		err := rule.executeRuleValues(input)
 		return err
 	}
 	iterator := rule.generator.NewIterator()
 	for {
-		values, finished := iterator.Value()
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, requestVars), rule.options.Interactsh)
+		values, next := iterator.Value()
+		if !next {
+			return nil
+		}
+		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
 		input.InteractURLs = interactURLs
-		input.Values = generators.MergeMaps(values, evaluatedValues, requestVars)
+		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues)
 
 		if err := rule.executeRuleValues(input); err != nil {
 			return err
-		}
-		if finished {
-			return nil
 		}
 	}
 }

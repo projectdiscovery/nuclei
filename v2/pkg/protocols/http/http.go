@@ -332,24 +332,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	// tries to drop unused payloads - by marshaling sections that might contain the payload
-	if len(request.Fuzzing) == 0 {
-		unusedPayloads := make(map[string]struct{})
-		requestSectionsToCheck := []interface{}{
-			request.customHeaders, request.Headers, request.Matchers,
-			request.Extractors, request.Body, request.Path, request.Raw,
-		}
-		if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
-			for payload := range request.Payloads {
-				if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
-					continue
-				}
-				unusedPayloads[payload] = struct{}{}
+	unusedPayloads := make(map[string]struct{})
+	requestSectionsToCheck := []interface{}{
+		request.customHeaders, request.Headers, request.Matchers,
+		request.Extractors, request.Body, request.Path, request.Raw, request.Fuzzing,
+	}
+	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
+		for payload := range request.Payloads {
+			if bytes.Contains(requestSectionsToCheckData, []byte(payload)) {
+				continue
 			}
+			unusedPayloads[payload] = struct{}{}
 		}
-
-		for payload := range unusedPayloads {
-			delete(request.Payloads, payload)
-		}
+	}
+	for payload := range unusedPayloads {
+		delete(request.Payloads, payload)
 	}
 
 	if len(request.Payloads) > 0 {
@@ -362,6 +359,9 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.totalRequests = request.Requests()
 
 	if len(request.Fuzzing) > 0 {
+		if request.Unsafe {
+			return errors.New("cannot use unsafe with http fuzzing templates")
+		}
 		for _, rule := range request.Fuzzing {
 			if err := rule.Compile(request.generator, request.options); err != nil {
 				return errors.Wrap(err, "could not compile fuzzing rule")

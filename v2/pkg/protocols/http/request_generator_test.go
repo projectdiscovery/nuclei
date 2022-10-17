@@ -13,7 +13,7 @@ func TestRequestGeneratorPaths(t *testing.T) {
 	req := &Request{
 		Path: []string{"{{BaseURL}}/test", "{{BaseURL}}/test.php"},
 	}
-	generator := req.newGenerator()
+	generator := req.newGenerator(false)
 	var payloads []string
 	for {
 		raw, _, ok := generator.nextValue()
@@ -37,7 +37,7 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
-	generator := req.newGenerator()
+	generator := req.newGenerator(false)
 	var payloads []map[string]interface{}
 	for {
 		_, data, ok := generator.nextValue()
@@ -61,7 +61,7 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance)
 	require.Nil(t, err, "could not create generator")
 
-	generator := req.newGenerator()
+	generator := req.newGenerator(false)
 	var payloads []map[string]interface{}
 	for {
 		_, data, ok := generator.nextValue()

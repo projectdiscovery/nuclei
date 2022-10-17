@@ -53,7 +53,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	inputData, payloads, ok := generator.nextValue()
 	if !ok {
@@ -82,7 +82,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		generator := request.newGenerator()
+		generator := request.newGenerator(false)
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
@@ -117,7 +117,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
@@ -163,7 +163,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 // executeTurboHTTP executes turbo http request for a URL
 func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	// need to extract the target from the url
 	URL, err := url.Parse(input.Input)
@@ -277,16 +277,31 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		return true
 	}
-	for _, rule := range request.Fuzzing {
-		err = rule.Execute(&fuzz.ExecuteRuleInput{
-			URL:      parsed,
-			Callback: fuzzRequestCallback,
-		})
-		if err == io.EOF {
-			return nil
+
+	// Iterate through all requests for template and queue them for fuzzing
+	generator := request.newGenerator(true)
+	for {
+		value, payloads, result := generator.nextValue()
+		if !result {
+			break
 		}
+		generated, err := generator.Make(context.Background(), input.Input, value, payloads, nil)
 		if err != nil {
-			return errors.Wrap(err, "could not execute rule")
+			continue
+		}
+		for _, rule := range request.Fuzzing {
+			err = rule.Execute(&fuzz.ExecuteRuleInput{
+				URL:         parsed,
+				Callback:    fuzzRequestCallback,
+				Values:      generated.dynamicValues,
+				BaseRequest: generated.request,
+			})
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return errors.Wrap(err, "could not execute rule")
+			}
 		}
 	}
 	return nil
@@ -318,7 +333,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeFuzzingRule(input, dynamicValues, callback)
 	}
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	var gotDynamicValues map[string][]string
 	var requestErr error

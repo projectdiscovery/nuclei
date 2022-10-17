@@ -48,7 +48,7 @@ func TestMakeRequestFromModal(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
@@ -76,13 +76,13 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), "https://example.com/test.php", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
 	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
 
-	generator = request.newGenerator()
+	generator = request.newGenerator(false)
 	inputData, payloads, _ = generator.nextValue()
 	req, err = generator.Make(context.Background(), "https://example.com/test/", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
@@ -116,7 +116,7 @@ Accept-Encoding: gzip`},
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
@@ -157,7 +157,7 @@ Accept-Encoding: gzip`},
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), "https://example.com", inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
@@ -190,7 +190,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
 		ServerURL:           options.InteractshURL,

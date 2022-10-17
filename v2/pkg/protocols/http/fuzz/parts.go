@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -60,16 +61,26 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 
 // buildQueryInput returns created request for a Query Input
 func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, interactURLs []string) error {
-	req, err := retryablehttp.NewRequest(http.MethodGet, parsed.String(), nil)
+	var req *http.Request
+	var err error
+	if input.BaseRequest == nil {
+		req, err = http.NewRequest(http.MethodGet, parsed.String(), nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("User-Agent", uarand.GetRandom())
+		req.Header.Set("Accept", "*/*")
+		req.Header.Set("Accept-Language", "en")
+	} else {
+		req = input.BaseRequest.Clone(context.Background())
+		req.URL = &parsed
+	}
+	httpreq, err := retryablehttp.FromRequest(req)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", uarand.GetRandom())
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Accept-Language", "en")
-
 	request := GeneratedRequest{
-		Request:       req,
+		Request:       httpreq,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 	}
