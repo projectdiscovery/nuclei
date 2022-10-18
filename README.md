@@ -161,6 +161,7 @@ CONFIGURATIONS:
    -ztls                          use ztls library with autofallback to standard one for tls13
    -sni string                    tls sni hostname to use (default: input domain name)
    -i, -interface string          network interface to use for network scan
+   -at, -attack-type string       type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       Override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
