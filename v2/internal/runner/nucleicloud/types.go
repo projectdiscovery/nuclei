@@ -25,6 +25,8 @@ type GetScanRequest struct {
 	Current   int32     `json:"current"`
 	Finished  bool      `json:"finished"`
 	CreatedAt time.Time `json:"created_at"`
+	Targets   int32     `json:"targets"`
+	Templates int32     `json:"templates"`
 }
 
 type GetResultsResponseItem struct {

@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	_ "net/http/pprof"
 	"strings"
 	"time"
@@ -27,7 +26,11 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
 	for _, v := range items {
-		fmt.Printf("[%s] [%s]\n", v.CreatedAt, v.Id)
+		status := "RUNNING"
+		if v.Finished {
+			status = "FINISHED"
+		}
+		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [TARGETS: %d] [TEMPLATES: %d]\n", v.Id, v.CreatedAt, status, v.Targets, v.Templates)
 	}
 	return err
 }
