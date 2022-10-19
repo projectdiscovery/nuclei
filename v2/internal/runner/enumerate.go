@@ -14,6 +14,9 @@ import (
 	"go.uber.org/atomic"
 )
 
+const timeFormat = "2006-01-02 15:04:05 +0000 UTC"
+const DDMMYYYYhhmmss = "2006-01-02 15:04:05"
+
 // runStandardEnumeration runs standard enumeration
 func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	if r.options.AutomaticScan {
@@ -25,12 +28,21 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
+	loc, _ := time.LoadLocation("Local")
+
 	for _, v := range items {
-		status := "RUNNING"
-		if v.Finished {
-			status = "FINISHED"
+		status := "FINISHED"
+		t := v.FinishedAt
+		duration := t.Sub(v.CreatedAt)
+		if !v.Finished {
+			status = "RUNNING"
+			t = time.Now().UTC()
+			duration = t.Sub(v.CreatedAt)
 		}
-		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [TARGETS: %d] [TEMPLATES: %d]\n", v.Id, v.CreatedAt, status, v.Targets, v.Templates)
+
+		val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
+
+		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
 	}
 	return err
 }

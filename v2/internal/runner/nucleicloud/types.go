@@ -20,13 +20,15 @@ type GetResultsResponse struct {
 }
 
 type GetScanRequest struct {
-	Id        string    `json:"id"`
-	Total     int32     `json:"total"`
-	Current   int32     `json:"current"`
-	Finished  bool      `json:"finished"`
-	CreatedAt time.Time `json:"created_at"`
-	Targets   int32     `json:"targets"`
-	Templates int32     `json:"templates"`
+	Id         string    `json:"id"`
+	Total      int32     `json:"total"`
+	Current    int32     `json:"current"`
+	Finished   bool      `json:"finished"`
+	CreatedAt  time.Time `json:"created_at"`
+	FinishedAt time.Time `json:"finished_at"`
+	Targets    int32     `json:"targets"`
+	Templates  int32     `json:"templates"`
+	Matches    int64     `json:"matches"`
 }
 
 type GetResultsResponseItem struct {
