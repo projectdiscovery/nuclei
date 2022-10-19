@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -30,10 +31,11 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		}
 
 		if w.matcherStatus {
-			if item := w.matcherStatusItems.Get(output.TemplateID); item != nil {
+			id := fmt.Sprintf("%s-%s", output.TemplateID, output.Host)
+			if item := w.matcherStatusItems.Get(id); item != nil {
 				return nil
 			}
-			w.matcherStatusItems.Set(output.TemplateID, struct{}{}, time.Second*60)
+			w.matcherStatusItems.Set(id, struct{}{}, time.Second*60)
 			builder.WriteString("] [")
 			if !output.MatcherStatus {
 				builder.WriteString(w.aurora.Red("failed").String())
