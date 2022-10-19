@@ -45,7 +45,7 @@ require (
 	github.com/spf13/cast v1.5.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
-	github.com/valyala/fasttemplate v1.2.1
+	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220329081811-9a40b608a236
 	github.com/xanzy/go-gitlab v0.73.1
 	go.uber.org/atomic v1.10.0
