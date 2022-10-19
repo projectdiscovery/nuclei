@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
+	asn "github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
@@ -86,6 +87,10 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 			i.expandCIDRInputValue(target)
 			continue
 		}
+		if asn.IsASN(target) {
+			i.expandASNInputValue(target)
+			continue
+		}
 		i.normalizeStoreInputValue(target)
 	}
 
@@ -112,6 +117,10 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 	for scanner.Scan() {
 		if iputil.IsCIDR(scanner.Text()) {
 			i.expandCIDRInputValue(scanner.Text())
+			continue
+		}
+		if asn.IsASN(scanner.Text()) {
+			i.expandASNInputValue(scanner.Text())
 			continue
 		}
 		i.normalizeStoreInputValue(scanner.Text())
@@ -227,5 +236,14 @@ func (i *Input) expandCIDRInputValue(value string) {
 		if i.hostMapStream != nil {
 			_ = i.hostMapStream.Set([]byte(ip), nil)
 		}
+	}
+}
+
+// expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
+func (i *Input) expandASNInputValue(value string) {
+	asnClient := asn.New()
+	cidrs, _ := asnClient.GetCIDRsForASNNum(value)
+	for _, cidr := range cidrs {
+		i.expandCIDRInputValue(cidr.String())
 	}
 }
