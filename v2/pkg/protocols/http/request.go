@@ -611,7 +611,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// Add to history the current request number metadata if asked by the user.
-		if request.ReqCondition {
+		if request.NeedsRequestCondition() {
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
 				previousEvent[key] = v
