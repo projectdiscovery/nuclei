@@ -28,7 +28,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
-	gologger.Info().Msgf("Started probing of non-http URLs")
+	gologger.Info().Msgf("Running httpx on input to execute http based template")
 
 	var bulkSize = probeBulkSize
 	if r.options.BulkSize > probeBulkSize {
@@ -55,7 +55,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Discovered %d http urls from input", atomic.LoadInt32(&count))
+	gologger.Info().Msgf("Discovered %d URL from input", atomic.LoadInt32(&count))
 	return hm, nil
 }
 
