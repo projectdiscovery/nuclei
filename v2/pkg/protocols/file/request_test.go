@@ -66,8 +66,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.New()
-		ctxArgs.Input = tempDir
+		ctxArgs := contextargs.NewWithInput(tempDir)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})

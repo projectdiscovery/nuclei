@@ -65,8 +65,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.New()
-		ctxArgs.Input = parsed.Host
+		ctxArgs := contextargs.NewWithInput(parsed.Host)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -82,8 +81,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("invalid-port-override", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.New()
-		ctxArgs.Input = "127.0.0.1:11211"
+		ctxArgs := contextargs.NewWithInput("127.0.0.1:11211")
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -97,8 +95,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("hex-to-string", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.New()
-		ctxArgs.Input = parsed.Host
+		ctxArgs := contextargs.NewWithInput(parsed.Host)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})

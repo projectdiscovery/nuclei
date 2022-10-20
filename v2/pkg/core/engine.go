@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -29,7 +30,7 @@ type InputProvider interface {
 	Count() int64
 	// Scan iterates the input and each found item is passed to the
 	// callback consumer.
-	Scan(callback func(value string))
+	Scan(callback func(value *contextargs.MetaInput))
 }
 
 // New returns a new Engine instance

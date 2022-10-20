@@ -89,7 +89,7 @@ func (request *Request) GetID() string {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// generate variables
-	variables := generateVariables(input.Input)
+	variables := generateVariables(input.MetaInput.Input)
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))

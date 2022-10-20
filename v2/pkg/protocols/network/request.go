@@ -43,10 +43,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 	if request.SelfContained {
 		address = ""
 	} else {
-		address, err = getAddress(input.Input)
+		address, err = getAddress(input.MetaInput.Input)
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.Input, request.Type().String(), err)
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
@@ -57,7 +57,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 		variables = generators.MergeMaps(variablesMap, variables)
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if err := request.executeAddress(variables, actualAddress, address, input.Input, kv.tls, previous, callback); err != nil {
+		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
 			gologger.Warning().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
 			continue
 		}

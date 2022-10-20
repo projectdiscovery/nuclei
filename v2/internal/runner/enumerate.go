@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"go.uber.org/atomic"
 )
 
@@ -32,8 +33,8 @@ func (r *Runner) runCloudEnumeration(store *loader.Store) (*atomic.Bool, error) 
 
 	results := &atomic.Bool{}
 
-	targets := make([]string, 0, r.hmapInputProvider.Count())
-	r.hmapInputProvider.Scan(func(value string) {
+	targets := make([]*contextargs.MetaInput, 0, r.hmapInputProvider.Count())
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) {
 		targets = append(targets, value)
 	})
 	templates := make([]string, 0, len(store.Templates()))
