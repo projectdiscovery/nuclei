@@ -78,7 +78,7 @@ require (
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
-	github.com/projectdiscovery/tlsx v0.0.8
+	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/wappalyzergo v0.0.65
 	github.com/stretchr/testify v1.8.0
@@ -180,7 +180,7 @@ require (
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
+	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503 // indirect
 	golang.org/x/exp v0.0.0-20220907003533-145caa8ea1d0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
@@ -198,4 +198,5 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 // indirect
 )
