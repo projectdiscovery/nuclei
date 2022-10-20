@@ -70,14 +70,14 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		inputItem := input
-		if e.options.InputHelper != nil && input != "" {
-			if inputItem = e.options.InputHelper.Transform(input, req.Type()); inputItem == "" {
+		inputItem := *input
+		if e.options.InputHelper != nil && input.Input != "" {
+			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
 				return false, nil
 			}
 		}
 
-		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -134,14 +134,14 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 	for _, req := range e.requests {
 		req := req
 
-		inputItem := input
-		if e.options.InputHelper != nil && input != "" {
-			if inputItem = e.options.InputHelper.Transform(input, req.Type()); inputItem == "" {
+		inputItem := *input
+		if e.options.InputHelper != nil && input.Input != "" {
+			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
 				return nil
 			}
 		}
 
-		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
