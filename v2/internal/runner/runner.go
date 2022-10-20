@@ -419,7 +419,6 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	var results *atomic.Bool
-
 	if r.options.Cloud {
 		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
 		results, err = r.runCloudEnumeration(store)
