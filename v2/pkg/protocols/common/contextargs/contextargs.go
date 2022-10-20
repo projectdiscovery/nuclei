@@ -9,8 +9,9 @@ import (
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
 type Context struct {
-	// Input target for the executor
-	Input string
+	// Meta is the target for the executor
+	MetaInput *MetaInput
+
 	// CookieJar shared within workflow's http templates
 	CookieJar *cookiejar.Jar
 
@@ -27,7 +28,7 @@ func New() *Context {
 
 // Create a new contextargs instance with input string
 func NewWithInput(input string) *Context {
-	return &Context{Input: input}
+	return &Context{MetaInput: &MetaInput{Input: input}}
 }
 
 func (ctx *Context) initialize() {

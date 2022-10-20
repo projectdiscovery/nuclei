@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
@@ -134,7 +135,14 @@ func (i *Input) normalizeStoreInputValue(value string) {
 		return
 	}
 
-	if _, ok := i.hostMap.Get(URL); ok {
+	metaInput := &contextargs.MetaInput{Input: URL}
+	keyURL, err := metaInput.Marshal()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+
+	if _, ok := i.hostMap.Get(keyURL); ok {
 		i.dupeCount++
 		return
 	}
@@ -162,33 +170,15 @@ func (i *Input) normalizeStoreInputValue(value string) {
 			}
 
 			for _, ip := range ips {
-				i.inputCount++
-				var newHost string
-				if iputil.IsIPv4(ip) {
-					newHost = ip
-					if parsedURL != nil {
-						parsedURL.Host = ip
-					}
-				} else if iputil.IsIPv6(ip) {
-					newHost = ip
-					if parsedURL != nil {
-						parsedURL.Host = "[" + ip + "]"
-					}
+				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+				key, err := metaInput.Marshal()
+				if err != nil {
+					gologger.Warning().Msgf("%s\n", err)
+					continue
 				}
-
-				var finalHost string
-				if parsedURL != nil {
-					finalHost = parsedURL.String()
-					if !stringsutil.HasPrefixAny(value, "http://", "https://") {
-						finalHost = stringsutil.TrimPrefixAny(value, "http://", "https://")
-					}
-				} else {
-					finalHost = newHost
-				}
-
-				_ = i.hostMap.Set(finalHost, nil)
+				_ = i.hostMap.Set(key, nil)
 				if i.hostMapStream != nil {
-					_ = i.hostMapStream.Set([]byte(finalHost), nil)
+					_ = i.hostMapStream.Set([]byte(key), nil)
 				}
 			}
 			break
@@ -197,9 +187,9 @@ func (i *Input) normalizeStoreInputValue(value string) {
 		fallthrough
 	default:
 		i.inputCount++
-		_ = i.hostMap.Set(URL, nil)
+		_ = i.hostMap.Set(keyURL, nil)
 		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(URL), nil)
+			_ = i.hostMapStream.Set([]byte(keyURL), nil)
 		}
 	}
 }
@@ -211,9 +201,13 @@ func (i *Input) Count() int64 {
 
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
-func (i *Input) Scan(callback func(value string)) {
+func (i *Input) Scan(callback func(value *contextargs.MetaInput)) {
 	callbackFunc := func(k, _ []byte) error {
-		callback(string(k))
+		metaInput := &contextargs.MetaInput{}
+		if err := metaInput.Unmarshal(string(k)); err != nil {
+			return err
+		}
+		callback(metaInput)
 		return nil
 	}
 	if i.hostMapStream != nil {
@@ -227,14 +221,20 @@ func (i *Input) Scan(callback func(value string)) {
 func (i *Input) expandCIDRInputValue(value string) {
 	ips, _ := mapcidr.IPAddressesAsStream(value)
 	for ip := range ips {
-		if _, ok := i.hostMap.Get(ip); ok {
+		metaInput := &contextargs.MetaInput{Input: ip}
+		key, err := metaInput.Marshal()
+		if err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+			return
+		}
+		if _, ok := i.hostMap.Get(key); ok {
 			i.dupeCount++
 			continue
 		}
 		i.inputCount++
-		_ = i.hostMap.Set(ip, nil)
+		_ = i.hostMap.Set(key, nil)
 		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(ip), nil)
+			_ = i.hostMapStream.Set([]byte(key), nil)
 		}
 	}
 }
