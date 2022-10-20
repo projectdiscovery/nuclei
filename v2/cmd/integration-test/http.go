@@ -19,9 +19,11 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
+	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
 	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
 	"http/post-body.yaml":                           &httpPostBody{},
@@ -33,7 +35,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-get.yaml":                             &httpRawGet{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
@@ -54,6 +55,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
+	"http/custom-attack-type.yaml":                  &customAttackType{},
 }
 
 type httpInteractshRequest struct{}
@@ -167,6 +169,34 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+type httpGetHostRedirects struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetHostRedirects) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected1", http.StatusFound)
+	})
+	router.GET("/redirected1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "redirected2", http.StatusFound)
+	})
+	router.GET("/redirected2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "/redirected3", http.StatusFound)
+	})
+	router.GET("/redirected3", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.Redirect(w, r, "https://scanme.sh", http.StatusTemporaryRedirect)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
 type httpDisableRedirects struct{}
 
 // Execute executes a test case and returns an error if occurred
@@ -258,7 +288,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	}
 
 	totalExtracted := strings.Split(submatch[1], ",")
-	numberOfDslFunctions := 79
+	numberOfDslFunctions := 83
 	if len(totalExtracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
@@ -929,4 +959,24 @@ func (h *annotationTimeout) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type customAttackType struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customAttackType) Execute(filePath string) error {
+	router := httprouter.New()
+	got := []string{}
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		got = append(got, r.URL.RawQuery)
+		fmt.Fprintf(w, "This is test custom payload")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-attack-type", "clusterbomb")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 4)
 }

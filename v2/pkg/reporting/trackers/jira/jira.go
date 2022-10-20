@@ -43,9 +43,9 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
-	HttpClient      *retryablehttp.Client
-}
 
+	HttpClient *retryablehttp.Client `yaml:"-"`
+}
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {

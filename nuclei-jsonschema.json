@@ -873,6 +873,11 @@
           "title": "follow http redirects",
           "description": "Specifies whether redirects should be followed by the HTTP Client"
         },
+        "host-redirects": {
+          "type": "boolean",
+          "title": "follow same host http redirects",
+          "description": "Specifies whether redirects to the same host should be followed by the HTTP Client"
+        },
         "pipeline": {
           "type": "boolean",
           "title": "perform HTTP 1.1 pipelining",
@@ -1407,9 +1412,18 @@
     "workflows.Matcher": {
       "properties": {
         "name": {
+          "$ref": "#/definitions/stringslice.StringSlice",
+          "title": "name of items to match",
+          "description": "Name of items to match"
+        },
+        "condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
           "type": "string",
-          "title": "name of item to match",
-          "description": "Name of item to match"
+          "title": "condition between names",
+          "description": "Condition between the names"
         },
         "subtemplates": {
           "items": {

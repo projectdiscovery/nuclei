@@ -6,6 +6,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -59,7 +60,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 
 // processSelfContainedTemplates execute a self-contained template.
 func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Template, results *atomic.Bool) {
-	match, err := template.Executer.Execute("")
+	match, err := template.Executer.Execute(contextargs.New())
 	if err != nil {
 		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 	}
@@ -139,7 +140,9 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
-				match, err = template.Executer.Execute(value)
+				ctxArgs := contextargs.New()
+				ctxArgs.Input = value
+				match, err = template.Executer.Execute(ctxArgs)
 			}
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
@@ -201,7 +204,9 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
-				err = template.Executer.ExecuteWithResults(value, func(event *output.InternalWrappedEvent) {
+				ctxArgs := contextargs.New()
+				ctxArgs.Input = value
+				err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
 					for _, result := range event.Results {
 						callback(result)
 					}
@@ -242,7 +247,9 @@ func (e *ChildExecuter) Execute(template *templates.Template, URL string) {
 
 	wg.Add()
 	go func(tpl *templates.Template) {
-		match, err := template.Executer.Execute(URL)
+		ctxArgs := contextargs.New()
+		ctxArgs.Input = URL
+		match, err := template.Executer.Execute(ctxArgs)
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 		}

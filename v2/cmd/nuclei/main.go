@@ -35,7 +35,8 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	readConfig()
+	flagSet := readConfig()
+	configPath, _ := flagSet.GetConfigFilePath()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -62,6 +63,7 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
+	options.ConfigPath = configPath
 
 	if options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
@@ -109,7 +111,7 @@ func main() {
 	}
 }
 
-func readConfig() {
+func readConfig() *goflags.FlagSet {
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -175,6 +177,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("configs", "Configurations",
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
+		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
@@ -191,8 +194,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
+		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
+		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
+		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -272,7 +278,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "url for the nuclei cloud server"),
+		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use"),
 		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
 	)
 
@@ -291,7 +297,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
-				defaultConfigPath, _ := goflags.GetConfigFilePath()
+				defaultConfigPath, _ := flagSet.GetConfigFilePath()
 				err = fileutil.CopyFile(defaultConfigPath, configPath)
 				if err != nil {
 					return err
@@ -314,6 +320,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}
 	}
 	cleanupOldResumeFiles()
+	return flagSet
 }
 
 func cleanupOldResumeFiles() {

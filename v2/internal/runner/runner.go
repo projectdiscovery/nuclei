@@ -17,7 +17,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -123,6 +123,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	if err := reporting.CreateConfigIfNotExists(); err != nil {
+		return nil, err
+	}
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
@@ -145,10 +148,6 @@ func New(options *types.Options) (*Runner, error) {
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
-	if options.TemplateList {
-		runner.listAvailableTemplates()
-		os.Exit(0)
-	}
 	if options.EnablePprof {
 		server := &http.Server{
 			Addr:    pprofServerAddress,
@@ -401,6 +400,13 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// list all templates
+	if r.options.TemplateList {
+		r.listAvailableStoreTemplates(store)
+		os.Exit(0)
+	}
+	r.displayExecutionInfo(store)
+
 	// If not explicitly disabled, check if http based protocols
 	// are used and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
@@ -411,8 +417,6 @@ func (r *Runner) RunEnumeration() error {
 		}
 		executerOpts.InputHelper.InputsHTTP = inputHelpers
 	}
-
-	r.displayExecutionInfo(store)
 
 	var results *atomic.Bool
 
