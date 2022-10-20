@@ -29,7 +29,7 @@ type InputProvider interface {
 	Count() int64
 	// Scan iterates the input and each found item is passed to the
 	// callback consumer.
-	Scan(callback func(value string))
+	Scan(callback func(value string) bool)
 }
 
 // New returns a new Engine instance
