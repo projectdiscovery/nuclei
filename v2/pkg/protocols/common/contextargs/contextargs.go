@@ -23,7 +23,7 @@ type Context struct {
 
 // Create a new contextargs instance
 func New() *Context {
-	return &Context{}
+	return &Context{MetaInput: &MetaInput{}}
 }
 
 // Create a new contextargs instance with input string

@@ -84,15 +84,14 @@ func (i *Input) Close() {
 func (i *Input) initializeInputSources(options *types.Options) error {
 	// Handle targets flags
 	for _, target := range options.Targets {
-		if iputil.IsCIDR(target) {
+		switch {
+		case iputil.IsCIDR(target):
 			i.expandCIDRInputValue(target)
-			continue
-		}
-		if asn.IsASN(target) {
+		case asn.IsASN(target):
 			i.expandASNInputValue(target)
-			continue
+		default:
+			i.normalizeStoreInputValue(target)
 		}
-		i.normalizeStoreInputValue(target)
 	}
 
 	// Handle stdin
@@ -106,8 +105,9 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		if inputErr != nil {
 			return errors.Wrap(inputErr, "could not open targets file")
 		}
+		defer input.Close()
+
 		i.scanInputFromReader(input)
-		input.Close()
 	}
 	return nil
 }
@@ -116,15 +116,15 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		if iputil.IsCIDR(scanner.Text()) {
-			i.expandCIDRInputValue(scanner.Text())
-			continue
+		item := scanner.Text()
+		switch {
+		case iputil.IsCIDR(item):
+			i.expandCIDRInputValue(item)
+		case asn.IsASN(item):
+			i.expandASNInputValue(item)
+		default:
+			i.normalizeStoreInputValue(item)
 		}
-		if asn.IsASN(scanner.Text()) {
-			i.expandASNInputValue(scanner.Text())
-			continue
-		}
-		i.normalizeStoreInputValue(scanner.Text())
 	}
 }
 
