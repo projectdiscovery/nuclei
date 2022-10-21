@@ -71,8 +71,8 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
 		inputItem := *input
-		if e.options.InputHelper != nil && input.Input != "" {
-			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
+			if input.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, req.Type()); input.MetaInput.Input == "" {
 				return false, nil
 			}
 		}
@@ -135,8 +135,8 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 		req := req
 
 		inputItem := *input
-		if e.options.InputHelper != nil && input.Input != "" {
-			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
+			if input.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, req.Type()); input.MetaInput.Input == "" {
 				return nil
 			}
 		}

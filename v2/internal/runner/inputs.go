@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
@@ -37,18 +38,18 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	// Probe the non-standard URLs and store them in cache
 	swg := sizedwaitgroup.New(bulkSize)
 	count := int32(0)
-	r.hmapInputProvider.Scan(func(value string) bool {
-		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+		if strings.HasPrefix(value.Input, "http://") || strings.HasPrefix(value.Input, "https://") {
 			return true
 		}
 
 		swg.Add()
-		go func(input string) {
+		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
 
-			if result := probeURL(input, httpclient); result != "" {
+			if result := probeURL(input.Input, httpclient); result != "" {
 				atomic.AddInt32(&count, 1)
-				_ = hm.Set(input, []byte(result))
+				_ = hm.Set(input.String(), []byte(result))
 			}
 		}(value)
 		return true
