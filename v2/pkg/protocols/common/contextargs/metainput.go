@@ -35,3 +35,10 @@ func (metaInput *MetaInput) String() string {
 	metaInput.jsonMarsheled, _ = metaInput.Marshal()
 	return metaInput.jsonMarsheled
 }
+
+func (metaInput *MetaInput) Clone() *MetaInput {
+	return &MetaInput{
+		Input:    metaInput.Input,
+		CustomIP: metaInput.CustomIP,
+	}
+}

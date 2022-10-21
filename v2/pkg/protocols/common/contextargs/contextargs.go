@@ -108,3 +108,13 @@ func (ctx *Context) Has(key string) bool {
 func (ctx *Context) HasArgs() bool {
 	return ctx.hasArgs()
 }
+
+func (ctx *Context) Clone() *Context {
+	newCtx := &Context{
+		MetaInput: ctx.MetaInput.Clone(),
+		RWMutex:   ctx.RWMutex,
+		args:      ctx.args,
+		CookieJar: ctx.CookieJar,
+	}
+	return newCtx
+}
