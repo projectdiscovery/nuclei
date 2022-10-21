@@ -10,8 +10,7 @@ requests:
     path:
       - "{{BaseURL}}/200"
       - "{{BaseURL}}/400"
- 
-    req-condition: true
+
     matchers:
       - type: dsl
         dsl:

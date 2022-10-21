@@ -169,6 +169,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// DisableHTTPProbe disables http probing feature of input normalization
+	DisableHTTPProbe bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -252,6 +254,12 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// AttackType overrides template level attack-type configuration
+	AttackType string
+	// ResponseReadSize is the maximum size of response to read
+	ResponseReadSize int
+	// ResponseSaveSize is the maximum size of response to save
+	ResponseSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -262,6 +270,8 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+
+	ConfigPath string // Used by healthcheck
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

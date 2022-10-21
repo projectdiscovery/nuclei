@@ -19,6 +19,7 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
@@ -34,7 +35,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-get.yaml":                             &httpRawGet{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
@@ -55,6 +55,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
+	"http/custom-attack-type.yaml":                  &customAttackType{},
 }
 
 type httpInteractshRequest struct{}
@@ -958,4 +959,24 @@ func (h *annotationTimeout) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type customAttackType struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customAttackType) Execute(filePath string) error {
+	router := httprouter.New()
+	got := []string{}
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		got = append(got, r.URL.RawQuery)
+		fmt.Fprintf(w, "This is test custom payload")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-attack-type", "clusterbomb")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 4)
 }

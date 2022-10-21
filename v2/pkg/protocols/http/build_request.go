@@ -38,13 +38,14 @@ const evaluateHelperExpressionErrorMessage = "could not evaluate helper expressi
 
 // generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
-	original        *Request
-	rawRequest      *raw.Request
-	meta            map[string]interface{}
-	pipelinedClient *rawhttp.PipelineClient
-	request         *retryablehttp.Request
-	dynamicValues   map[string]interface{}
-	interactshURLs  []string
+	original             *Request
+	rawRequest           *raw.Request
+	meta                 map[string]interface{}
+	pipelinedClient      *rawhttp.PipelineClient
+	request              *retryablehttp.Request
+	dynamicValues        map[string]interface{}
+	interactshURLs       []string
+	customCancelFunction context.CancelFunc
 }
 
 func (g *generatedRequest) URL() string {
@@ -297,11 +298,20 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return nil, err
 	}
 
-	if reqWithAnnotations, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		request.Request = reqWithAnnotations
+	generatedRequest := &generatedRequest{
+		request:        request,
+		meta:           generatorValues,
+		original:       r.request,
+		dynamicValues:  finalValues,
+		interactshURLs: r.interactshURLs,
 	}
 
-	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalValues, interactshURLs: r.interactshURLs}, nil
+	if reqWithAnnotations, cancelFunc, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		generatedRequest.request.Request = reqWithAnnotations
+		generatedRequest.customCancelFunction = cancelFunc
+	}
+
+	return generatedRequest, nil
 }
 
 // fillRequest fills various headers in the request with values
