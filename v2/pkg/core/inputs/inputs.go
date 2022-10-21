@@ -12,8 +12,10 @@ func (s *SimpleInputProvider) Count() int64 {
 }
 
 // Scan calls a callback function till the input provider is exhausted
-func (s *SimpleInputProvider) Scan(callback func(value *contextargs.MetaInput)) {
+func (s *SimpleInputProvider) Scan(callback func(value *contextargs.MetaInput) bool) {
 	for _, v := range s.Inputs {
-		callback(v)
+		if !callback(v) {
+			return
+		}
 	}
 }

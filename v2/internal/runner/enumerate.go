@@ -34,8 +34,9 @@ func (r *Runner) runCloudEnumeration(store *loader.Store) (*atomic.Bool, error) 
 	results := &atomic.Bool{}
 
 	targets := make([]*contextargs.MetaInput, 0, r.hmapInputProvider.Count())
-	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) {
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
 		targets = append(targets, value)
+		return true
 	})
 	templates := make([]string, 0, len(store.Templates()))
 	for _, template := range store.Templates() {

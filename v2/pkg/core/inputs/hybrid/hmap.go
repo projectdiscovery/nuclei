@@ -201,13 +201,15 @@ func (i *Input) Count() int64 {
 
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
-func (i *Input) Scan(callback func(value *contextargs.MetaInput)) {
+func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 	callbackFunc := func(k, _ []byte) error {
 		metaInput := &contextargs.MetaInput{}
 		if err := metaInput.Unmarshal(string(k)); err != nil {
 			return err
 		}
-		callback(metaInput)
+		if !callback(metaInput) {
+			return io.EOF
+		}
 		return nil
 	}
 	if i.hostMapStream != nil {

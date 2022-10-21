@@ -133,7 +133,7 @@ func (s *Service) executeWappalyzerTechDetection() error {
 	// Iterate through each target making http request and identifying fingerprints
 	inputPool := s.engine.WorkPool().InputPool(types.HTTPProtocol)
 
-	s.target.Scan(func(value *contextargs.MetaInput) {
+	s.target.Scan(func(value *contextargs.MetaInput) bool {
 		inputPool.WaitGroup.Add()
 
 		go func(input *contextargs.MetaInput) {
@@ -141,6 +141,7 @@ func (s *Service) executeWappalyzerTechDetection() error {
 
 			s.processWappalyzerInputPair(input)
 		}(value)
+		return true
 	})
 	inputPool.WaitGroup.Wait()
 	return nil
