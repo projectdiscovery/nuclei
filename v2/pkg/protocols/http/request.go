@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -19,6 +20,7 @@ import (
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -58,7 +60,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	if !ok {
 		return nil
 	}
-	requestForDump, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
+	ctx := request.newContext(input)
+	requestForDump, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -86,7 +89,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		if !ok {
 			break
 		}
-		generatedRequest, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
+		ctx := request.newContext(input)
+		generatedRequest, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -129,7 +133,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(context.Background(), input.MetaInput.Input, inputData, payloads, dynamicValues)
+		ctx := request.newContext(input)
+		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -196,7 +201,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(context.Background(), input.MetaInput.Input, inputData, payloads, dynamicValues)
+		ctx := request.newContext(input)
+		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -256,10 +262,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			request.options.RateLimiter.Take()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(request.options.Options.Timeout)*time.Second)
+			ctx := request.newContext(input)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
 
-			generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input.MetaInput.Input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
 					return true, nil
@@ -748,4 +755,18 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 			delete(m, fieldName)
 		}
 	}
+}
+
+func (request *Request) newContext(input *contextargs.Context) context.Context {
+	if input.MetaInput.CustomIP != "" {
+		log.Println(input.MetaInput.CustomIP)
+		var requestIP string
+		if iputil.IsIPv6(input.MetaInput.CustomIP) {
+			requestIP = fmt.Sprintf("[%s]", input.MetaInput.CustomIP)
+		} else {
+			requestIP = input.MetaInput.CustomIP
+		}
+		return context.WithValue(context.Background(), "ip", requestIP) //nolint
+	}
+	return context.Background()
 }
