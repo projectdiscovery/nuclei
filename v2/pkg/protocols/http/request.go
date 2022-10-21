@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -759,7 +758,6 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		log.Println(input.MetaInput.CustomIP)
 		var requestIP string
 		if iputil.IsIPv6(input.MetaInput.CustomIP) {
 			requestIP = fmt.Sprintf("[%s]", input.MetaInput.CustomIP)
