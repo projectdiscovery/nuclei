@@ -101,8 +101,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.119 h1:TPkpDsanBMcZaF5wHwpKhjkapRV/b7d2qdC+a+IPbmY=
-github.com/aws/aws-sdk-go v1.44.119/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.120 h1:dsOxGf17H9hCVCA4aWpFWEcJMHkX+Uw7l4pGcxb27wM=
+github.com/aws/aws-sdk-go v1.44.120/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
@@ -609,8 +609,9 @@ github.com/projectdiscovery/rawhttp v0.1.1/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxC
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
-github.com/projectdiscovery/retryabledns v1.0.15 h1:3Nn119UwYsfUPC3g0q57ftz0Wb5Zl5ppvw8R0Xu0DEI=
 github.com/projectdiscovery/retryabledns v1.0.15/go.mod h1:3YbsQVqP7jbQ3CDmarhyVtkJaJ8XcB7S19vMeyMxZxk=
+github.com/projectdiscovery/retryabledns v1.0.16 h1:yn5+W4roniHnte41mWkZO2mYV4plvasDuJLvotB2nH0=
+github.com/projectdiscovery/retryabledns v1.0.16/go.mod h1:3YbsQVqP7jbQ3CDmarhyVtkJaJ8XcB7S19vMeyMxZxk=
 github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1D+SBxoqfAF4nyzvmevkTkWsek=
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
