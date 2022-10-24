@@ -38,3 +38,11 @@ func AddConfiguredClientCertToRequest(tlsConfig *tls.Config, options *types.Opti
 	}
 	return tlsConfig, nil
 }
+
+// CalculateContentLength calculates content-length of the http response
+func CalculateContentLength(contentLength, bodyLength int64) int64 {
+	if contentLength > -1 {
+		return contentLength
+	}
+	return bodyLength
+}
