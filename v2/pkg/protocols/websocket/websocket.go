@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
@@ -103,7 +104,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -135,8 +136,8 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	hostname, err := getAddress(input)
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	hostname, err := getAddress(input.Input)
 	if err != nil {
 		return err
 	}
@@ -149,13 +150,13 @@ func (request *Request) ExecuteWithResults(input string, dynamicValues, previous
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
 			return err
 		}
 	}

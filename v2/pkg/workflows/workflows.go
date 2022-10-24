@@ -1,8 +1,12 @@
 package workflows
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // Workflow is a workflow to execute with chained requests, etc.
@@ -39,16 +43,82 @@ type WorkflowTemplate struct {
 
 // ProtocolExecuterPair is a pair of protocol executer and its options
 type ProtocolExecuterPair struct {
-	Executer protocols.Executer
-	Options  *protocols.ExecuterOptions
+	Executer     protocols.Executer
+	Options      *protocols.ExecuterOptions
+	TemplateType templateTypes.ProtocolType
 }
 
 // Matcher performs conditional matching on the workflow template results.
 type Matcher struct {
 	// description: |
-	//    Name is the name of the item to match.
-	Name string `yaml:"name,omitempty" jsonschema:"title=name of item to match,description=Name of item to match"`
+	//    Name is the name of the items to match.
+	Name stringslice.StringSlice `yaml:"name,omitempty" jsonschema:"title=name of items to match,description=Name of items to match"`
+	// description: |
+	//   Condition is the optional condition between names. By default,
+	//   the condition is assumed to be OR.
+	// values:
+	//   - "and"
+	//   - "or"
+	Condition string `yaml:"condition,omitempty" jsonschema:"title=condition between names,description=Condition between the names,enum=and,enum=or"`
 	// description: |
 	//    Subtemplates are run if the name of matcher matches.
 	Subtemplates []*WorkflowTemplate `yaml:"subtemplates,omitempty" jsonschema:"title=templates to run after match,description=Templates to run after match"`
+
+	condition ConditionType
+}
+
+// ConditionType is the type of condition for matcher
+type ConditionType int
+
+const (
+	// ANDCondition matches responses with AND condition in arguments.
+	ANDCondition ConditionType = iota + 1
+	// ORCondition matches responses with AND condition in arguments.
+	ORCondition
+)
+
+// ConditionTypes is a table for conversion of condition type from string.
+var ConditionTypes = map[string]ConditionType{
+	"and": ANDCondition,
+	"or":  ORCondition,
+}
+
+// Compile compiles the matcher for workflow
+func (matcher *Matcher) Compile() error {
+	var ok bool
+	if matcher.Condition != "" {
+		matcher.condition, ok = ConditionTypes[matcher.Condition]
+		if !ok {
+			return fmt.Errorf("unknown condition specified: %s", matcher.Condition)
+		}
+	} else {
+		matcher.condition = ORCondition
+	}
+	return nil
+}
+
+// Match matches a name for matcher names or name
+func (matcher *Matcher) Match(result *operators.Result) bool {
+	names := matcher.Name.ToSlice()
+	if len(names) == 0 {
+		return false
+	}
+
+	for i, name := range names {
+		_, matchOK := result.Matches[name]
+		_, extractOK := result.Extracts[name]
+
+		if !matchOK && !extractOK {
+			if matcher.condition == ANDCondition {
+				return false
+			}
+			continue
+		}
+		if matcher.condition == ORCondition {
+			return true
+		} else if len(names)-1 == i {
+			return true
+		}
+	}
+	return false
 }

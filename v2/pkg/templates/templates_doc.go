@@ -252,6 +252,10 @@ func init() {
 			TypeName:  "workflows.WorkflowTemplate",
 			FieldName: "tags",
 		},
+		{
+			TypeName:  "workflows.Matcher",
+			FieldName: "name",
+		},
 	}
 	STRINGSLICEStringSliceDoc.Fields = make([]encoder.Doc, 0)
 
@@ -396,7 +400,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 31)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 32)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -539,51 +543,56 @@ func init() {
 	HTTPRequestDoc.Fields[21].Note = ""
 	HTTPRequestDoc.Fields[21].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
 	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[22].Name = "pipeline"
+	HTTPRequestDoc.Fields[22].Name = "host-redirects"
 	HTTPRequestDoc.Fields[22].Type = "bool"
 	HTTPRequestDoc.Fields[22].Note = ""
-	HTTPRequestDoc.Fields[22].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
-	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-	HTTPRequestDoc.Fields[23].Name = "unsafe"
+	HTTPRequestDoc.Fields[22].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[23].Name = "pipeline"
 	HTTPRequestDoc.Fields[23].Type = "bool"
 	HTTPRequestDoc.Fields[23].Note = ""
-	HTTPRequestDoc.Fields[23].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
-	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
-	HTTPRequestDoc.Fields[24].Name = "race"
+	HTTPRequestDoc.Fields[23].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
+	HTTPRequestDoc.Fields[24].Name = "unsafe"
 	HTTPRequestDoc.Fields[24].Type = "bool"
 	HTTPRequestDoc.Fields[24].Note = ""
-	HTTPRequestDoc.Fields[24].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
-	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
-	HTTPRequestDoc.Fields[25].Name = "req-condition"
+	HTTPRequestDoc.Fields[24].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
+	HTTPRequestDoc.Fields[25].Name = "race"
 	HTTPRequestDoc.Fields[25].Type = "bool"
 	HTTPRequestDoc.Fields[25].Note = ""
-	HTTPRequestDoc.Fields[25].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
-	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[26].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[25].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
+	HTTPRequestDoc.Fields[26].Name = "req-condition"
 	HTTPRequestDoc.Fields[26].Type = "bool"
 	HTTPRequestDoc.Fields[26].Note = ""
-	HTTPRequestDoc.Fields[26].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[27].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[26].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[27].Name = "stop-at-first-match"
 	HTTPRequestDoc.Fields[27].Type = "bool"
 	HTTPRequestDoc.Fields[27].Note = ""
-	HTTPRequestDoc.Fields[27].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[28].Name = "iterate-all"
+	HTTPRequestDoc.Fields[27].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[28].Name = "skip-variables-check"
 	HTTPRequestDoc.Fields[28].Type = "bool"
 	HTTPRequestDoc.Fields[28].Note = ""
-	HTTPRequestDoc.Fields[28].Description = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[29].Name = "digest-username"
-	HTTPRequestDoc.Fields[29].Type = "string"
+	HTTPRequestDoc.Fields[28].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[29].Name = "iterate-all"
+	HTTPRequestDoc.Fields[29].Type = "bool"
 	HTTPRequestDoc.Fields[29].Note = ""
-	HTTPRequestDoc.Fields[29].Description = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[30].Name = "digest-password"
+	HTTPRequestDoc.Fields[29].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[30].Name = "digest-username"
 	HTTPRequestDoc.Fields[30].Type = "string"
 	HTTPRequestDoc.Fields[30].Note = ""
-	HTTPRequestDoc.Fields[30].Description = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[30].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[31].Name = "digest-password"
+	HTTPRequestDoc.Fields[31].Type = "string"
+	HTTPRequestDoc.Fields[31].Note = ""
+	HTTPRequestDoc.Fields[31].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -1890,17 +1899,26 @@ func init() {
 			FieldName: "matchers",
 		},
 	}
-	WORKFLOWSMatcherDoc.Fields = make([]encoder.Doc, 2)
+	WORKFLOWSMatcherDoc.Fields = make([]encoder.Doc, 3)
 	WORKFLOWSMatcherDoc.Fields[0].Name = "name"
-	WORKFLOWSMatcherDoc.Fields[0].Type = "string"
+	WORKFLOWSMatcherDoc.Fields[0].Type = "stringslice.StringSlice"
 	WORKFLOWSMatcherDoc.Fields[0].Note = ""
-	WORKFLOWSMatcherDoc.Fields[0].Description = "Name is the name of the item to match."
-	WORKFLOWSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the item to match."
-	WORKFLOWSMatcherDoc.Fields[1].Name = "subtemplates"
-	WORKFLOWSMatcherDoc.Fields[1].Type = "[]workflows.WorkflowTemplate"
+	WORKFLOWSMatcherDoc.Fields[0].Description = "Name is the name of the items to match."
+	WORKFLOWSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the items to match."
+	WORKFLOWSMatcherDoc.Fields[1].Name = "condition"
+	WORKFLOWSMatcherDoc.Fields[1].Type = "string"
 	WORKFLOWSMatcherDoc.Fields[1].Note = ""
-	WORKFLOWSMatcherDoc.Fields[1].Description = "Subtemplates are run if the name of matcher matches."
-	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[1].Description = "Condition is the optional condition between names. By default,\nthe condition is assumed to be OR."
+	WORKFLOWSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Condition is the optional condition between names. By default,"
+	WORKFLOWSMatcherDoc.Fields[1].Values = []string{
+		"and",
+		"or",
+	}
+	WORKFLOWSMatcherDoc.Fields[2].Name = "subtemplates"
+	WORKFLOWSMatcherDoc.Fields[2].Type = "[]workflows.WorkflowTemplate"
+	WORKFLOWSMatcherDoc.Fields[2].Note = ""
+	WORKFLOWSMatcherDoc.Fields[2].Description = "Subtemplates are run if the name of matcher matches."
+	WORKFLOWSMatcherDoc.Fields[2].Comments[encoder.LineComment] = "Subtemplates are run if the name of matcher matches."
 
 	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
 	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"

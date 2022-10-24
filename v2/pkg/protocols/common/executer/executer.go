@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
@@ -58,13 +59,25 @@ func (e *Executer) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *Executer) Execute(input string) (bool, error) {
+func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	var results bool
 
 	dynamicValues := make(map[string]interface{})
+	if input.HasArgs() {
+		input.ForEach(func(key string, value interface{}) {
+			dynamicValues[key] = value
+		})
+	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		inputItem := *input
+		if e.options.InputHelper != nil && input.Input != "" {
+			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+				return false, nil
+			}
+		}
+
+		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -95,9 +108,9 @@ func (e *Executer) Execute(input string) (bool, error) {
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				e.options.HostErrorsCache.MarkFailed(input, err)
+				e.options.HostErrorsCache.MarkFailed(input.Input, err)
 			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.Input, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
@@ -108,15 +121,27 @@ func (e *Executer) Execute(input string) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
+	if input.HasArgs() {
+		input.ForEach(func(key string, value interface{}) {
+			dynamicValues[key] = value
+		})
+	}
 	previous := make(map[string]interface{})
 	var results bool
 
 	for _, req := range e.requests {
 		req := req
 
-		err := req.ExecuteWithResults(input, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		inputItem := *input
+		if e.options.InputHelper != nil && input.Input != "" {
+			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+				return nil
+			}
+		}
+
+		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -136,9 +161,9 @@ func (e *Executer) ExecuteWithResults(input string, callback protocols.OutputEve
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				e.options.HostErrorsCache.MarkFailed(input, err)
+				e.options.HostErrorsCache.MarkFailed(input.Input, err)
 			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.Input, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {

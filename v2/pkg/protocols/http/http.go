@@ -152,6 +152,11 @@ type Request struct {
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
 	Redirects bool `yaml:"redirects,omitempty" jsonschema:"title=follow http redirects,description=Specifies whether redirects should be followed by the HTTP Client"`
 	// description: |
+	//   Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.
+	//
+	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
+	HostRedirects bool `yaml:"host-redirects,omitempty" jsonschema:"title=follow same host http redirects,description=Specifies whether redirects to the same host should be followed by the HTTP Client"`
+	// description: |
 	//   Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 	//
 	//   All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
@@ -171,6 +176,7 @@ type Request struct {
 	//   ReqCondition automatically assigns numbers to requests and preserves their history.
 	//
 	//   This allows matching on them later for multi-request conditions.
+	// Deprecated: request condition will be detected automatically (https://github.com/projectdiscovery/nuclei/issues/2393)
 	ReqCondition bool `yaml:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
@@ -232,13 +238,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         request.Threads,
-		MaxRedirects:    request.MaxRedirects,
-		NoTimeout:       false,
-		FollowRedirects: request.Redirects,
-		CookieReuse:     request.CookieReuse,
-		Connection:      &httpclientpool.ConnectionConfiguration{},
+		Threads:      request.Threads,
+		MaxRedirects: request.MaxRedirects,
+		NoTimeout:    false,
+		CookieReuse:  request.CookieReuse,
+		Connection:   &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
+		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
+
+	if request.Redirects || options.Options.FollowRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
+	}
+	if request.HostRedirects || options.Options.FollowHostRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameHostRedirect
+	}
+
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
 		if reTimeoutAnnotation.MatchString(req) {
@@ -246,11 +260,6 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 	request.connConfiguration = connectionConfiguration
-
-	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
-	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
-		connectionConfiguration.Connection.DisableKeepAlive = true
-	}
 
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
@@ -338,7 +347,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

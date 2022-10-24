@@ -5,10 +5,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 )
@@ -116,7 +118,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: "tomcat", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
@@ -145,7 +147,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: "apache", Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input string) {
 				secondInput = input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
@@ -177,17 +179,17 @@ func (m *mockExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and  returns true or false if results were found.
-func (m *mockExecuter) Execute(input string) (bool, error) {
+func (m *mockExecuter) Execute(input *contextargs.Context) (bool, error) {
 	if m.executeHook != nil {
-		m.executeHook(input)
+		m.executeHook(input.Input)
 	}
 	return m.result, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input string, callback protocols.OutputEventCallback) error {
+func (m *mockExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
-		m.executeHook(input)
+		m.executeHook(input.Input)
 	}
 	for _, output := range m.outputs {
 		callback(output)

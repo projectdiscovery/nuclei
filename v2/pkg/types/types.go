@@ -95,6 +95,14 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
+	// Scanlist feature to get all the scan ids for a user
+	ScanList bool
+	// Nostore
+	NoStore bool
+	// Delete scan
+	DeleteScan string
+	// Get issues for a scan
+	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -135,6 +143,8 @@ type Options struct {
 	MaxRedirects int
 	// FollowRedirects enables following redirects for http request module
 	FollowRedirects bool
+	// FollowRedirects enables following redirects for http request module only on the same host
+	FollowHostRedirects bool
 	// OfflineHTTP is a flag that specific offline processing of http response
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
@@ -159,6 +169,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// DisableHTTPProbe disables http probing feature of input normalization
+	DisableHTTPProbe bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -242,6 +254,12 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// AttackType overrides template level attack-type configuration
+	AttackType string
+	// ResponseReadSize is the maximum size of response to read
+	ResponseReadSize int
+	// ResponseSaveSize is the maximum size of response to save
+	ResponseSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -252,6 +270,8 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+
+	ConfigPath string // Used by healthcheck
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
@@ -274,6 +294,11 @@ func (options *Options) ShouldLoadResume() bool {
 // ShouldSaveResume file
 func (options *Options) ShouldSaveResume() bool {
 	return true
+}
+
+// ShouldFollowHTTPRedirects determines if http redirects should be followed
+func (options *Options) ShouldFollowHTTPRedirects() bool {
+	return options.FollowRedirects || options.FollowHostRedirects
 }
 
 // DefaultOptions returns default options for nuclei
