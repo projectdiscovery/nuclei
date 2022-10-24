@@ -121,7 +121,6 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
 	data["template-path"] = request.options.TemplatePath
-
 	data["content_length"] = utils.CalculateContentLength(resp.ContentLength, int64(len(body)))
 
 	return data
