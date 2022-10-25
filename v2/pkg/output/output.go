@@ -2,7 +2,6 @@ package output
 
 import (
 	"fmt"
-	"github.com/karlseguin/ccache"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/karlseguin/ccache"
 
 	"github.com/pkg/errors"
 
@@ -41,6 +42,7 @@ type Writer interface {
 	Request(templateID, url, requestType string, err error)
 	//  WriteStoreDebugData writes the request/response debug data to file
 	WriteStoreDebugData(host, templateID, eventType string, data string)
+	SetTotalRequestCount(int)
 }
 
 // StandardWriter is a writer writing output to file and screen for results.
@@ -59,6 +61,7 @@ type StandardWriter struct {
 	storeResponse      bool
 	storeResponseDir   string
 	matcherStatusItems *ccache.Cache
+	totalRequestCount  int
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -175,6 +178,11 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		matcherStatusItems: ccache.New(ccache.Configure()),
 	}
 	return writer, nil
+}
+
+// SetTotalRequestCount Setting total request count for the given template
+func (w *StandardWriter) SetTotalRequestCount(v int) {
+	w.totalRequestCount = v
 }
 
 // Write writes the event to file and/or screen.

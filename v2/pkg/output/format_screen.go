@@ -9,6 +9,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
+// holds the console request filter data
+type stdIORequestFilter struct {
+	hasAnyMatched bool
+	currentIndex  int
+}
+
 // formatScreen formats the output for showing on screen.
 func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 	builder := &bytes.Buffer{}
@@ -29,21 +35,31 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteString(":")
 			builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
 		}
-
 		if w.matcherStatus {
-			id := fmt.Sprintf("%s-%s", output.TemplateID, output.Host)
-			if item := w.matcherStatusItems.Get(id); item != nil {
-				return nil
-			}
-			w.matcherStatusItems.Set(id, struct{}{}, time.Second*60)
 			builder.WriteString("] [")
-			if !output.MatcherStatus {
-				builder.WriteString(w.aurora.Red("failed").String())
+			id := fmt.Sprintf("%s-%s", output.TemplateID, output.Host)
+			item := w.matcherStatusItems.Get(id)
+			var filter stdIORequestFilter
+			if item != nil {
+				filter = item.Value().(stdIORequestFilter)
+				filter.currentIndex++
+				w.matcherStatusItems.Replace(id, filter)
 			} else {
+				filter = stdIORequestFilter{currentIndex: 1}
+				w.matcherStatusItems.Set(id, filter, time.Second*60)
+			}
+			if !output.MatcherStatus {
+				if !filter.hasAnyMatched && filter.currentIndex == w.totalRequestCount {
+					builder.WriteString(w.aurora.Red("failed").String())
+				} else {
+					return nil
+				}
+			} else {
+				filter.hasAnyMatched = true
 				builder.WriteString(w.aurora.Green("matched").String())
+				w.matcherStatusItems.Replace(id, filter)
 			}
 		}
-
 		builder.WriteString("] [")
 		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
 		builder.WriteString("] ")
