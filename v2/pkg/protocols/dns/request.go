@@ -32,6 +32,8 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	request.options.RateLimiter.Take()
+
 	// Parse the URL and return domain if URL.
 	var domain string
 	if utils.IsURL(input.Input) {
