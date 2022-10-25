@@ -317,7 +317,7 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 					result.Lines = append(result.Lines, exprLines[extractedResult]...)
 				}
 			}
-			result.Lines = sliceutil.DedupeInt(result.Lines)
+			result.Lines = sliceutil.Dedupe(result.Lines)
 		}
 	}
 	return event
