@@ -78,5 +78,5 @@ func sanitizeFilename(filename string) string {
 	if len(filename) > 256 {
 		filename = filename[0:255]
 	}
-	return stringsutil.ReplaceAny(filename, "_", "?", "/", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
+	return stringsutil.ReplaceAll(filename, "_", "?", "/", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
 }
