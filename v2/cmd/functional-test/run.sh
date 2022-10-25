@@ -16,7 +16,7 @@ go build -o nuclei_dev$extension ../nuclei
 echo "::endgroup::"
 
 echo "::group::Installing nuclei templates"
-./nuclei_dev$extension -template-update "community"
+./nuclei_dev$extension -update-template "community"
 echo "::endgroup::"
 
 echo "::group::Building latest release of nuclei"
