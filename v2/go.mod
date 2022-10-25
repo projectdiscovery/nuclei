@@ -81,10 +81,9 @@ require (
 	github.com/projectdiscovery/sliceutil v0.0.0-20220625085859-c3a4ecb669f4
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/stretchr/testify v1.8.0
-	gopkg.in/src-d/go-git.v4 v4.13.1
 	github.com/projectdiscovery/wappalyzergo v0.0.66
 	github.com/stretchr/testify v1.8.1
+	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -208,11 +207,11 @@ require (
 	github.com/klauspost/compress v1.15.8 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
+	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	gopkg.in/warnings.v0 v0.1.2 // indirect
 	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
