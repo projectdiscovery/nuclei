@@ -112,6 +112,9 @@ func NewMockOutputWriter() *MockOutputWriter {
 	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
 }
 
+// SetTotalRequests sets the total requests counter.
+func (m *MockOutputWriter) SetTotalRequestCount(v int) {}
+
 // Close closes the output writer interface
 func (m *MockOutputWriter) Close() {}
 
