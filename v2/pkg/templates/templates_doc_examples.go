@@ -1,5 +1,5 @@
 // Package templates
-//nolint //do not lint as examples with no usage
+// nolint //do not lint as examples with no usage
 package templates
 
 import (
@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/tcp"
 )
 
 var (
@@ -61,8 +61,8 @@ var (
 	}
 	_ = exampleNormalFileRequest
 
-	exampleNormalNetworkRequest = &network.Request{
-		Inputs:   []*network.Input{{Data: "envi\r\nquit\r\n"}},
+	exampleNormalNetworkRequest = &tcp.Request{
+		Inputs:   []*tcp.Input{{Data: "envi\r\nquit\r\n"}},
 		Address:  []string{"{{Hostname}}", "{{Hostname}}:2181"},
 		ReadSize: 2048,
 		Operators: operators.Operators{

@@ -1,4 +1,4 @@
-package network
+package tcp
 
 import (
 	"strings"
@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/tcp/networkclientpool"
 )
 
 // Request contains a Network protocol request to be made from a template

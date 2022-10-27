@@ -1,4 +1,4 @@
-package network
+package tcp
 
 import (
 	"encoding/hex"

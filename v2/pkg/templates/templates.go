@@ -12,8 +12,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/ssl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/tcp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -67,7 +67,7 @@ type Template struct {
 	//   Network contains the network request to make in the template
 	// examples:
 	//   - value: exampleNormalNetworkRequest
-	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
+	RequestsNetwork []*tcp.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
 	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless,omitempty" jsonschema:"title=headless requests to make,description=Headless requests to make for the template"`
