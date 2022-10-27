@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
+	uncover "github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -96,6 +97,13 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		}
 		i.scanInputFromReader(input)
 		input.Close()
+	}
+	if options.Uncover {
+		ch, err := uncover.GetTargetsFromUncover(options)
+		for c := range ch {
+			i.normalizeStoreInputValue(c)
+		}
+		return err
 	}
 	return nil
 }

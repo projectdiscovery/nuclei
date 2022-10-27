@@ -211,6 +211,15 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
+	flagSet.CreateGroup("uncover", "Uncover",
+		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
+		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", []string{}, "uncover search query", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{"shodan"}, "uncover search engine (shodan,shodan-idb,fofa,censys) ", goflags.FileStringSliceOptions),
+		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
+		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
+		flagSet.IntVarP(&options.RateLimit, "uncover-delay", "udl", 1, "delay between uncover query requests in seconds (0 to disable)"),
+	)
+
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),

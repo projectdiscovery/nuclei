@@ -91,6 +91,10 @@ func ParseOptions(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
+
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+	}
 }
 
 // validateOptions validates the configuration options passed

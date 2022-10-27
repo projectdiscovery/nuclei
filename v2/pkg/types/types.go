@@ -270,6 +270,18 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// Enable uncover egine
+	Uncover bool
+	// Uncover search query
+	UncoverQuery goflags.StringSlice
+	// Uncover search engine
+	UncoverEngine goflags.StringSlice
+	// Uncover search field
+	UncoverField string
+	// Uncover search limit
+	UncoverLimit int
+	// Uncover search delay
+	UncoverDelay int
 
 	ConfigPath string // Used by healthcheck
 }
