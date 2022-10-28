@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -70,6 +72,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	cloudClient       *nucleicloud.Client
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -83,6 +86,10 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HealthCheck {
 		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
+	}
+
+	if options.Cloud {
+		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
 	if options.UpdateNuclei {
@@ -418,12 +425,27 @@ func (r *Runner) RunEnumeration() error {
 		executerOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	enumeration := false
 	var results *atomic.Bool
 	if r.options.Cloud {
-		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-		results, err = r.runCloudEnumeration(store)
+		if r.options.ScanList {
+			err = r.getScanList()
+		} else if r.options.DeleteScan != "" {
+			err = r.deleteScan(r.options.DeleteScan)
+		} else if r.options.ScanOutput != "" {
+			err = r.getResults(r.options.ScanOutput)
+		} else {
+			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			enumeration = true
+		}
 	} else {
 		results, err = r.runStandardEnumeration(executerOpts, store, engine)
+		enumeration = true
+	}
+
+	if !enumeration {
+		return err
 	}
 
 	if r.interactsh != nil {
