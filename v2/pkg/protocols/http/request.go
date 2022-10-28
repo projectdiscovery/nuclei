@@ -508,6 +508,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// use request url as matched url if empty
 		if formedURL == "" {
 			formedURL = input.Input
+			if generatedRequest.rawRequest.Path != "" {
+				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
+			}
 		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 			hostname = parsed.Host

@@ -95,6 +95,14 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
+	// Scanlist feature to get all the scan ids for a user
+	ScanList bool
+	// Nostore
+	NoStore bool
+	// Delete scan
+	DeleteScan string
+	// Get issues for a scan
+	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -161,6 +169,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// DisableHTTPProbe disables http probing feature of input normalization
+	DisableHTTPProbe bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -246,6 +256,8 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// AttackType overrides template level attack-type configuration
+	AttackType string
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
