@@ -8,6 +8,7 @@ import (
 	"io"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -98,11 +99,10 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 		newhash := hex.EncodeToString(h.Sum(nil))
 
 		templateRelativePath := getTemplateRelativePath(template.Path)
-
 		if hash, ok := catalogChecksums[templateRelativePath]; ok || newhash == hash {
 			templates = append(templates, templateRelativePath)
 		} else {
-			privateTemplates[templateRelativePath] = gzipBase64EncodeData(data)
+			privateTemplates[filepath.Base(template.Path)] = gzipBase64EncodeData(data)
 		}
 	}
 
