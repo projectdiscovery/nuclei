@@ -32,8 +32,6 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	request.options.RateLimiter.Take()
-
 	// Parse the URL and return domain if URL.
 	var domain string
 	if utils.IsURL(input.Input) {
@@ -88,6 +86,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, requestString))
 		}
 	}
+
+	request.options.RateLimiter.Take()
 
 	// Send the request to the target servers
 	response, err := dnsClient.Do(compiledRequest)
