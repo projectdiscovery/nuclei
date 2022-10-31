@@ -507,7 +507,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if i := strings.LastIndex(hostname, ":"); i != -1 {
 				hostname = hostname[:i]
 			}
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+			if input.MetaInput.CustomIP != "" {
+				outputEvent["ip"] = input.MetaInput.CustomIP
+			} else {
+				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			}
 
 			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 			if request.CompiledOperators != nil {

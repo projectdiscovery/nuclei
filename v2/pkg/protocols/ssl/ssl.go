@@ -192,7 +192,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if input.MetaInput.CustomIP != "" {
+		data["ip"] = input.MetaInput.CustomIP
+	} else {
+		data["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
