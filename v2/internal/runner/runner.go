@@ -119,7 +119,11 @@ func New(options *types.Options) (*Runner, error) {
 		runner.browser = browser
 	}
 
+	//if runner.options.Sandbox {
+	//		runner.catalog = disk.NewCatalogWithSandbox(runner.options.TemplatesDirectory)
+	//	} else {
 	runner.catalog = disk.NewCatalog(runner.options.TemplatesDirectory)
+	//}
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {

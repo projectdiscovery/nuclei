@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -93,6 +94,10 @@ func Init(options *types.Options) error {
 	opts.WithDialerHistory = true
 	opts.WithZTLS = options.ZTLS
 	opts.SNIName = options.SNI
+
+	if options.Sandbox {
+		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
+	}
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")

@@ -3,6 +3,7 @@ package generators
 import (
 	"bufio"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -10,7 +11,7 @@ import (
 )
 
 // loadPayloads loads the input payloads from a map to a data map
-func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}) (map[string][]string, error) {
+func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}, templatePath, templateDirectory string, sandbox bool) (map[string][]string, error) {
 	loadedPayloads := make(map[string][]string)
 
 	for name, payload := range payloads {
@@ -21,6 +22,12 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{})
 			if len(elements) >= 2 {
 				loadedPayloads[name] = elements
 			} else {
+				if sandbox {
+					pt = filepath.Clean(templatePath)
+					if !strings.HasPrefix(pt, templatePath) || !strings.HasPrefix(pt, templateDirectory) {
+						return nil, errors.New("invalid payload file path specified")
+					}
+				}
 				payloads, err := generator.loadPayloadsFromFile(pt)
 				if err != nil {
 					return nil, errors.Wrap(err, "could not load payloads")
