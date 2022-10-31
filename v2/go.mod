@@ -47,7 +47,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220329081811-9a40b608a236
-	github.com/xanzy/go-gitlab v0.73.1
+	github.com/xanzy/go-gitlab v0.74.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
 	golang.org/x/net v0.1.0
@@ -69,6 +69,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
+	github.com/klauspost/compress v1.15.8
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
@@ -193,7 +194,6 @@ require (
 )
 
 require (
-	github.com/klauspost/compress v1.15.8 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
