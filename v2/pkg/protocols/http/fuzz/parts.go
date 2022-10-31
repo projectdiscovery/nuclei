@@ -30,23 +30,21 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 	}
 
 	for key, values := range input.URL.Query() {
-		var value string
-		if len(values) > 0 {
-			value = values[0]
-		}
-		if !rule.matchKeyOrValue(key, value) {
-			continue
-		}
-		var evaluated string
-		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, value, payload, input.InteractURLs)
-		temp.Set(key, evaluated)
-
-		if rule.modeType == singleModeType {
-			requestURL.RawQuery = temp.Encode()
-			if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
-				return err
+		for i, value := range values {
+			if !rule.matchKeyOrValue(key, value) {
+				continue
 			}
-			temp.Set(key, value) // change back to previous value for temp
+			var evaluated string
+			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, value, payload, input.InteractURLs)
+			temp[key][i] = evaluated
+
+			if rule.modeType == singleModeType {
+				requestURL.RawQuery = temp.Encode()
+				if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
+					return err
+				}
+				temp[key][i] = value // change back to previous value for temp
+			}
 		}
 	}
 
