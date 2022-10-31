@@ -19,7 +19,6 @@ import (
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -761,13 +760,7 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		var requestIP string
-		if iputil.IsIPv6(input.MetaInput.CustomIP) {
-			requestIP = fmt.Sprintf("[%s]", input.MetaInput.CustomIP)
-		} else {
-			requestIP = input.MetaInput.CustomIP
-		}
-		return context.WithValue(context.Background(), "ip", requestIP) //nolint
+		return context.WithValue(context.Background(), "ip", input.MetaInput.CustomIP) //nolint
 	}
 	return context.Background()
 }
