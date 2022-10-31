@@ -50,7 +50,7 @@ type Request struct {
 	//   - "tls11"
 	//   - "tls12"
 	//   - "tls13"
-	MinVersion string `yaml:"min_version,omitempty" jsonschema:"title=TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	MinVersion string `yaml:"min_version,omitempty" jsonschema:"title=Min. TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Max tls version - auto if not specified.
 	// values:
@@ -59,10 +59,17 @@ type Request struct {
 	//   - "tls11"
 	//   - "tls12"
 	//   - "tls13"
-	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=Max. TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Client Cipher Suites  - auto if not specified.
 	CiperSuites []string `yaml:"cipher_suites,omitempty"`
+	// description: |
+	//   Tls Scan Mode - auto if not specified
+	// values:
+	//   - "ctls"
+	//   - "ztls"
+	//   - "auto"
+	ScanMode string `yaml:"scan_mode,omitempty" jsonschema:"title=Scan Mode,description=Scan Mode - auto if not specified.,enum=ctls,enum=ztls,enum=auto"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -93,9 +100,13 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		Retries:           request.options.Options.Retries,
 		Timeout:           request.options.Options.Timeout,
 		Fastdialer:        client,
+		ClientHello:       true,
+		ServerHello:       true,
 	}
 	if options.Options.ZTLS {
 		tlsxOptions.ScanMode = "ztls"
+	} else if request.ScanMode != "" {
+		tlsxOptions.ScanMode = request.ScanMode
 	}
 	tlsxService, err := tlsx.New(tlsxOptions)
 	if err != nil {
