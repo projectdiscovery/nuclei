@@ -25,7 +25,7 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 				if sandbox {
 					pt = filepath.Clean(templatePath)
 					if !strings.HasPrefix(pt, templatePath) || !strings.HasPrefix(pt, templateDirectory) {
-						return nil, errors.New("invalid payload file path specified")
+						return nil, errors.New("denied payload file path specified")
 					}
 				}
 				payloads, err := generator.loadPayloadsFromFile(pt)
