@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	ucRunner "github.com/projectdiscovery/uncover/runner"
 	"github.com/projectdiscovery/uncover/uncover"
@@ -24,28 +23,28 @@ import (
 	"github.com/projectdiscovery/uncover/uncover/agent/zoomeye"
 )
 
-func GetTargetsFromUncover(options *types.Options) (chan string, error) {
+func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan string, error) {
 
 	uncoverOptions := &ucRunner.Options{
 		Provider: &ucRunner.Provider{},
-		Delay:    options.UncoverDelay,
-		Limit:    options.UncoverLimit,
-		Query:    options.UncoverQuery,
+		Delay:    delay,
+		Limit:    limit,
+		Query:    query,
+		Engine:   engine,
 	}
 	err := loadProvidersFromEnv(uncoverOptions)
 	if err != nil {
 		return nil, err
 	}
 	var censysRateLimiter, fofaRateLimiter, shodanRateLimiter, shodanIdbRateLimiter, quakeRatelimiter, hunterRatelimiter, zoomeyeRatelimiter *ratelimit.Limiter
-	// delay := time.Duration(r.options.UncoverDelay) * time.Second
-	if options.UncoverDelay > 0 {
-		censysRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		fofaRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		shodanRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		shodanIdbRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		quakeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		hunterRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
-		zoomeyeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(options.UncoverDelay))
+	if uncoverOptions.Delay > 0 {
+		censysRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		fofaRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		shodanRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		shodanIdbRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		quakeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		hunterRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		zoomeyeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
 	} else {
 		censysRateLimiter = ratelimit.NewUnlimited(context.Background())
 		fofaRateLimiter = ratelimit.NewUnlimited(context.Background())
@@ -56,9 +55,8 @@ func GetTargetsFromUncover(options *types.Options) (chan string, error) {
 		zoomeyeRatelimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	var agents []uncover.Agent
-	query := options.UncoverQuery
 	// declare clients
-	for _, engine := range options.UncoverEngine {
+	for _, engine := range uncoverOptions.Engine {
 		var (
 			agent uncover.Agent
 			err   error
@@ -90,10 +88,10 @@ func GetTargetsFromUncover(options *types.Options) (chan string, error) {
 	var wg sync.WaitGroup
 	ret := make(chan string)
 	go func() {
-		for _, q := range query {
+		for _, q := range uncoverOptions.Query {
 			uncoverQuery := &uncover.Query{
 				Query: q,
-				Limit: options.UncoverLimit,
+				Limit: uncoverOptions.Limit,
 			}
 			for _, agent := range agents {
 				wg.Add(1)
@@ -104,7 +102,7 @@ func GetTargetsFromUncover(options *types.Options) (chan string, error) {
 						gologger.Error().Label(agent.Name()).Msgf("empty keys\n")
 						return
 					}
-					session, err := uncover.NewSession(&keys, options.Retries, options.Timeout)
+					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
 					if err != nil {
 						gologger.Error().Label(agent.Name()).Msgf("couldn't create new session: %s\n", err)
 					}

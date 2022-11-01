@@ -1,13 +1,16 @@
 package loader
 
 import (
+	"fmt"
 	"os"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
+	uncover "github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -375,4 +378,50 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 		}
 	}
 	return false
+}
+
+func (store *Store) GetUncoverTargetsFromMetadata(delay, limit int) chan string {
+	templatePaths := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
+	ret := make(chan string)
+	go func() {
+		var wg sync.WaitGroup
+		for _, templatePath := range templatePaths {
+			template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+			if err != nil {
+				continue
+			}
+			for k, v := range template.Info.Metadata {
+				var engine []string
+				var query []string
+				switch k {
+				case "shodan-query":
+					engine = append(engine, "shodan")
+				case "fofa-query":
+					engine = append(engine, "fofa")
+				case "censys-query":
+					engine = append(engine, "censys")
+				case "quake-query":
+					engine = append(engine, "quake")
+				case "hunter-query":
+					engine = append(engine, "hunter")
+				case "zoomeye-query":
+					engine = append(engine, "zoomeye")
+				default:
+					continue
+				}
+				query = append(query, fmt.Sprintf("%v", v))
+				wg.Add(1)
+				go func(engine, query []string) {
+					ch, _ := uncover.GetTargetsFromUncover(delay, limit, engine, query)
+					for c := range ch {
+						ret <- c
+					}
+					wg.Done()
+				}(engine, query)
+			}
+		}
+		wg.Wait()
+		close(ret)
+	}()
+	return ret
 }

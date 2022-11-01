@@ -81,7 +81,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 			i.expandASNInputValue(target)
 			continue
 		}
-		i.normalizeStoreInputValue(target)
+		i.NormalizeStoreInputValue(target)
 	}
 
 	// Handle stdin
@@ -99,9 +99,9 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		input.Close()
 	}
 	if options.Uncover {
-		ch, err := uncover.GetTargetsFromUncover(options)
+		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverEngine, options.UncoverQuery)
 		for c := range ch {
-			i.normalizeStoreInputValue(c)
+			i.NormalizeStoreInputValue(c)
 		}
 		return err
 	}
@@ -120,12 +120,12 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 			i.expandASNInputValue(scanner.Text())
 			continue
 		}
-		i.normalizeStoreInputValue(scanner.Text())
+		i.NormalizeStoreInputValue(scanner.Text())
 	}
 }
 
-// normalizeStoreInputValue normalizes and stores passed input values
-func (i *Input) normalizeStoreInputValue(value string) {
+// NormalizeStoreInputValue normalizes and stores passed input values
+func (i *Input) NormalizeStoreInputValue(value string) {
 	url := strings.TrimSpace(value)
 	if url == "" {
 		return

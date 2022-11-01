@@ -405,6 +405,15 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
+
+	// parse the loaded templates if only uncover flag is passed
+	// add the hosts from the metadata queries into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := store.GetUncoverTargetsFromMetadata(r.options.UncoverDelay, r.options.UncoverLimit)
+		for host := range ret {
+			r.hmapInputProvider.NormalizeStoreInputValue(host)
+		}
+	}
 	store.Load()
 
 	// list all templates
