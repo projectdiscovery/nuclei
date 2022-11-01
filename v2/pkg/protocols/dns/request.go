@@ -87,6 +87,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	}
 
+	request.options.RateLimiter.Take()
+
 	// Send the request to the target servers
 	response, err := dnsClient.Do(compiledRequest)
 	if err != nil {
