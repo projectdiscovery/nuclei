@@ -244,7 +244,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	generator := request.newGenerator()
-	request.options.Output.SetTotalRequestCount(generator.Total())
 	var gotDynamicValues map[string][]string
 	var requestErr error
 	for {

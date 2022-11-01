@@ -2,9 +2,7 @@ package output
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -37,27 +35,10 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		}
 		if w.matcherStatus {
 			builder.WriteString("] [")
-			id := fmt.Sprintf("%s-%s", output.TemplateID, output.Host)
-			item := w.matcherStatusItems.Get(id)
-			var filter stdIORequestFilter
-			if item != nil {
-				filter = item.Value().(stdIORequestFilter)
-				filter.currentIndex++
-				w.matcherStatusItems.Replace(id, filter)
-			} else {
-				filter = stdIORequestFilter{currentIndex: 1}
-				w.matcherStatusItems.Set(id, filter, time.Second*60)
-			}
 			if !output.MatcherStatus {
-				if !filter.hasAnyMatched && filter.currentIndex == w.totalRequestCount {
-					builder.WriteString(w.aurora.Red("failed").String())
-				} else {
-					return nil
-				}
+				builder.WriteString(w.aurora.Red("failed").String())
 			} else {
-				filter.hasAnyMatched = true
 				builder.WriteString(w.aurora.Green("matched").String())
-				w.matcherStatusItems.Replace(id, filter)
 			}
 		}
 		builder.WriteString("] [")
