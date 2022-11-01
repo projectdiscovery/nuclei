@@ -95,7 +95,7 @@ func Init(options *types.Options) error {
 	opts.WithZTLS = options.ZTLS
 	opts.SNIName = options.SNI
 
-	if options.Sandbox {
+	if !options.NoSandbox {
 		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
 	}
 	dialer, err := fastdialer.NewDialer(opts)

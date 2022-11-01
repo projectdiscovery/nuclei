@@ -95,7 +95,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	if len(request.Payloads) > 0 {
 		var err error
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, options.TemplatePath, options.Options.TemplatesDirectory, request.options.Options.Sandbox, options.Catalog, options.Options.AttackType)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, options.TemplatePath, options.Options.TemplatesDirectory, request.options.Options.NoSandbox, options.Catalog, options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

@@ -238,8 +238,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
-	// Sandbox enables sandboxing of nuclei for unsafe template execution
-	Sandbox bool
+	// NoSandbox disables sandboxing of nuclei for safe template execution
+	NoSandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
