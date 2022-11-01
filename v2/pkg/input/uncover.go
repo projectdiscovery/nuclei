@@ -1,7 +1,5 @@
 package input
 
-// TODO: Decide the location for this file
-
 import (
 	"context"
 	"fmt"
