@@ -7,12 +7,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-// holds the console request filter data
-type stdIORequestFilter struct {
-	hasAnyMatched bool
-	currentIndex  int
-}
-
 // formatScreen formats the output for showing on screen.
 func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 	builder := &bytes.Buffer{}
