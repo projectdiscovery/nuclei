@@ -73,6 +73,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
+	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/fileutil v0.0.3
 	github.com/projectdiscovery/goflags v0.1.3
 	github.com/projectdiscovery/iputil v0.0.2
