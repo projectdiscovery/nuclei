@@ -112,7 +112,6 @@ func NewMockOutputWriter() *MockOutputWriter {
 	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
 }
 
-
 // Close closes the output writer interface
 func (m *MockOutputWriter) Close() {}
 

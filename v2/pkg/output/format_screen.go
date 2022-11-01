@@ -36,7 +36,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 				builder.WriteString(w.aurora.Green("matched").String())
 			}
 		}
-		
+
 		builder.WriteString("] [")
 		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
 		builder.WriteString("] ")
