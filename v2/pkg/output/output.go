@@ -174,7 +174,6 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 	return writer, nil
 }
 
-
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
