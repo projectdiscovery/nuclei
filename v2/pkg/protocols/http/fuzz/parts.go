@@ -9,6 +9,7 @@ import (
 
 	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -93,9 +94,12 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, inter
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload string, interactshURLs []string) (string, []string) {
 	// TODO: Handle errors
-	firstpass, _ := expressions.Evaluate(payload, input.Values)
+	values := generators.MergeMaps(input.Values, map[string]interface{}{
+		"value": value,
+	})
+	firstpass, _ := expressions.Evaluate(payload, values)
 	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
-	evaluated, _ := expressions.Evaluate(interactData, input.Values)
+	evaluated, _ := expressions.Evaluate(interactData, values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs
 }
