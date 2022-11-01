@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
@@ -52,7 +53,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	inputData, payloads, ok := generator.nextValue()
 	if !ok {
@@ -81,7 +82,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		generator := request.newGenerator()
+		generator := request.newGenerator(false)
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
@@ -116,7 +117,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
@@ -162,7 +163,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 // executeTurboHTTP executes turbo http request for a URL
 func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator()
+	generator := request.newGenerator(false)
 
 	// need to extract the target from the url
 	URL, err := url.Parse(input.Input)
@@ -222,6 +223,90 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	return requestErr
 }
 
+// executeFuzzingRule executes fuzzing request for a URL
+func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	parsed, err := url.Parse(input.Input)
+	if err != nil {
+		return errors.Wrap(err, "could not parse url")
+	}
+	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
+		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+		hasInteractMarkers := len(gr.InteractURLs) > 0
+		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.Input) {
+			return false
+		}
+
+		req := &generatedRequest{
+			request:        gr.Request,
+			dynamicValues:  gr.DynamicValues,
+			interactshURLs: gr.InteractURLs,
+			original:       request,
+		}
+		var gotMatches bool
+		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotMatches = event.OperatorsResult.Matched
+			}
+			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
+				request.options.Interactsh.RequestEvent(gr.InteractURLs, &interactsh.RequestData{
+					MakeResultFunc: request.MakeResultEvent,
+					Event:          event,
+					Operators:      request.CompiledOperators,
+					MatchFunc:      request.Match,
+					ExtractFunc:    request.Extract,
+				})
+			} else {
+				callback(event)
+			}
+		}, 0)
+		// If a variable is unresolved, skip all further requests
+		if requestErr == errStopExecution {
+			return false
+		}
+		if requestErr != nil {
+			if request.options.HostErrorsCache != nil {
+				request.options.HostErrorsCache.MarkFailed(input.Input, requestErr)
+			}
+		}
+		request.options.Progress.IncrementRequests()
+
+		// If this was a match, and we want to stop at first match, skip all further requests.
+		if (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+			return false
+		}
+		return true
+	}
+
+	// Iterate through all requests for template and queue them for fuzzing
+	generator := request.newGenerator(true)
+	for {
+		value, payloads, result := generator.nextValue()
+		if !result {
+			break
+		}
+		generated, err := generator.Make(context.Background(), input.Input, value, payloads, nil)
+		if err != nil {
+			continue
+		}
+		for _, rule := range request.Fuzzing {
+			err = rule.Execute(&fuzz.ExecuteRuleInput{
+				URL:         parsed,
+				Callback:    fuzzRequestCallback,
+				Values:      generated.dynamicValues,
+				BaseRequest: generated.request,
+			})
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return errors.Wrap(err, "could not execute rule")
+			}
+		}
+	}
+	return nil
+}
+
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
@@ -243,7 +328,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
-	generator := request.newGenerator()
+	// verify if fuzz elaboration was requested
+	if len(request.Fuzzing) > 0 {
+		return request.executeFuzzingRule(input, dynamicValues, callback)
+	}
+
+	generator := request.newGenerator(false)
 
 	var gotDynamicValues map[string][]string
 	var requestErr error

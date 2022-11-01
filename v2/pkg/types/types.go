@@ -186,6 +186,8 @@ type Options struct {
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool
+	// ShowVarDump displays variable dump
+	ShowVarDump bool
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup

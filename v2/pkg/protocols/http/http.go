@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -117,6 +118,9 @@ type Request struct {
 	//   - name: Read max 2048 bytes of the response
 	//     value: 2048
 	MaxSize int `yaml:"max-size,omitempty" jsonschema:"title=maximum http response body size,description=Maximum size of http response body to read in bytes"`
+
+	// Fuzzing describes schema to fuzz http requests
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz http requests"`
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 
@@ -331,7 +335,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	unusedPayloads := make(map[string]struct{})
 	requestSectionsToCheck := []interface{}{
 		request.customHeaders, request.Headers, request.Matchers,
-		request.Extractors, request.Body, request.Path, request.Raw,
+		request.Extractors, request.Body, request.Path, request.Raw, request.Fuzzing,
 	}
 	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
 		for payload := range request.Payloads {
@@ -341,7 +345,6 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			unusedPayloads[payload] = struct{}{}
 		}
 	}
-
 	for payload := range unusedPayloads {
 		delete(request.Payloads, payload)
 	}
@@ -354,6 +357,17 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.options = options
 	request.totalRequests = request.Requests()
+
+	if len(request.Fuzzing) > 0 {
+		if request.Unsafe {
+			return errors.New("cannot use unsafe with http fuzzing templates")
+		}
+		for _, rule := range request.Fuzzing {
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
 	return nil
 }
 
