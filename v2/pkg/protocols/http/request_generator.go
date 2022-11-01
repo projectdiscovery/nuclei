@@ -26,14 +26,14 @@ type requestGenerator struct {
 var LeaveDefaultPorts = false
 
 // newGenerator creates a new request generator instance
-func (request *Request) newGenerator() *requestGenerator {
+func (request *Request) newGenerator(disablePayloads bool) *requestGenerator {
 	generator := &requestGenerator{
 		request:  request,
 		options:  request.options,
 		onceFlow: make(map[string]struct{}),
 	}
 
-	if len(request.Payloads) > 0 {
+	if len(request.Payloads) > 0 && !disablePayloads {
 		generator.payloadIterator = request.generator.NewIterator()
 	}
 	return generator

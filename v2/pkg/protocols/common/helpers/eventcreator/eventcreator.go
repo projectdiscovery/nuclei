@@ -20,7 +20,7 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 
 	// Dump response variables if ran in debug mode
-	if isResponseDebug {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol response variables: \n%s\n", vardump.DumpVariables(outputEvent))
 	}
 	for _, compiledOperator := range request.GetCompiledOperators() {

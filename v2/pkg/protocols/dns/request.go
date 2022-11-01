@@ -51,7 +51,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
 
