@@ -1221,6 +1221,19 @@ max-size: 2048
 
 <div class="dd">
 
+<code>fuzzing</code>  <i>[]<a href="#fuzzrule">fuzz.Rule</a></i>
+
+</div>
+<div class="dt">
+
+Fuzzing describes schema to fuzz http requests
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>signature</code>  <i><a href="#signaturetypeholder">SignatureTypeHolder</a></i>
 
 </div>
@@ -2274,6 +2287,197 @@ Enum Values:
   - <code>PURGE</code>
 
   - <code>Debug</code>
+</div>
+
+<hr />
+
+
+
+
+
+## fuzz.Rule
+Rule is a single rule which describes how to fuzz the request
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.fuzzing</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>type</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Type is the type of fuzzing rule to perform.
+
+replace replaces the values entirely. prefix prefixes the value. postfix postfixes the value
+and infix places between the values.
+
+
+Valid values:
+
+
+  - <code>replace</code>
+
+  - <code>prefix</code>
+
+  - <code>postfix</code>
+
+  - <code>infix</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>part</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Part is the part of request to fuzz.
+
+query fuzzes the query part of url. More parts will be added later.
+
+
+Valid values:
+
+
+  - <code>query</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>mode</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Mode is the mode of fuzzing to perform.
+
+single fuzzes one value at a time. multiple fuzzes all values at same time.
+
+
+Valid values:
+
+
+  - <code>single</code>
+
+  - <code>multiple</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>keys</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Keys is the optional list of key named parameters to fuzz.
+
+
+
+Examples:
+
+
+```yaml
+# Examples of keys
+keys:
+    - url
+    - file
+    - host
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>keys-regex</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+KeysRegex is the optional list of regex key parameters to fuzz.
+
+
+
+Examples:
+
+
+```yaml
+# Examples of key regex
+keys-regex:
+    - url.*
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>values</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Values is the optional list of regex value parameters to fuzz.
+
+
+
+Examples:
+
+
+```yaml
+# Examples of value regex
+values:
+    - https?://.*
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>fuzz</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Fuzz is the list of payloads to perform substitutions with.
+
+
+
+Examples:
+
+
+```yaml
+# Examples of fuzz
+fuzz:
+    - '{{ssrf}}'
+    - '{{interactsh-url}}'
+    - example-value
+```
+
+
 </div>
 
 <hr />
