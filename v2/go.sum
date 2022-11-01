@@ -101,8 +101,8 @@ github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go v1.44.122 h1:p6mw01WBaNpbdP2xrisz5tIkcNwzj/HysobNoaAHjgo=
-github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
+github.com/aws/aws-sdk-go v1.44.125 h1:yIyCs6HX1BOj6SFTirvBwVM1tTfplKrJOyilIZPtKV8=
+github.com/aws/aws-sdk-go v1.44.125/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
@@ -607,8 +607,8 @@ github.com/projectdiscovery/nvd v1.0.9/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiB
 github.com/projectdiscovery/ratelimit v0.0.1 h1:GnCfbKmkLdDLXT3QS4KS0zCsuDGkoRQE0YDbTqzQmS8=
 github.com/projectdiscovery/ratelimit v0.0.1/go.mod h1:zenrIElIcKg0Y9h7pMfTlw5vaI/kCl8uxXm+PfgbBSw=
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
-github.com/projectdiscovery/rawhttp v0.1.1 h1:VRpPAGwgLzKyApUbVqW2NjCMPxrjAmRkeIS+WPKwhFI=
-github.com/projectdiscovery/rawhttp v0.1.1/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
+github.com/projectdiscovery/rawhttp v0.1.2 h1:fCK42+qc5qYR4Dj/BVoukQ182h4n/w0dRcGVO92T7eI=
+github.com/projectdiscovery/rawhttp v0.1.2/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
@@ -759,8 +759,8 @@ github.com/weppos/publicsuffix-go v0.15.1-0.20220329081811-9a40b608a236/go.mod h
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 h1:3UeQBvD0TFrlVjOeLOBz+CPAI8dnbqNSVwUwRrkp7vQ=
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0/go.mod h1:IXCdmsXIht47RaVFLEdVnh1t+pgYtTAhQGj73kz+2DM=
 github.com/xanzy/go-gitlab v0.50.3/go.mod h1:Q+hQhV508bDPoBijv7YjK/Lvlb4PhVhJdKqXVQrUoAE=
-github.com/xanzy/go-gitlab v0.73.1 h1:UMagqUZLJdjss1SovIC+kJCH4k2AZWXl58gJd38Y/hI=
-github.com/xanzy/go-gitlab v0.73.1/go.mod h1:d/a0vswScO7Agg1CZNz15Ic6SSvBG9vfw8egL99t4kA=
+github.com/xanzy/go-gitlab v0.74.0 h1:Ha1cokbjn0PXy6B19t3W324dwM4AOT52fuHr7nERPrc=
+github.com/xanzy/go-gitlab v0.74.0/go.mod h1:d/a0vswScO7Agg1CZNz15Ic6SSvBG9vfw8egL99t4kA=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=

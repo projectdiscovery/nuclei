@@ -1,10 +1,18 @@
 package runner
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/hex"
+	"io"
 	_ "net/http/pprof"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/zlib"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
@@ -71,8 +79,10 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
 	}()
-
 	results := &atomic.Bool{}
+
+	// TODO: Add payload file and workflow support for private templates
+	catalogChecksums := nucleicloud.ReadCatalogChecksum()
 
 	targets := make([]string, 0, r.hmapInputProvider.Count())
 	r.hmapInputProvider.Scan(func(value string) bool {
@@ -80,13 +90,27 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 		return true
 	})
 	templates := make([]string, 0, len(store.Templates()))
+	privateTemplates := make(map[string]string)
+
 	for _, template := range store.Templates() {
-		templates = append(templates, getTemplateRelativePath(template.Path))
+		data, _ := os.ReadFile(template.Path)
+		h := sha1.New()
+		_, _ = io.Copy(h, bytes.NewReader(data))
+		newhash := hex.EncodeToString(h.Sum(nil))
+
+		templateRelativePath := getTemplateRelativePath(template.Path)
+		if hash, ok := catalogChecksums[templateRelativePath]; ok || newhash == hash {
+			templates = append(templates, templateRelativePath)
+		} else {
+			privateTemplates[filepath.Base(template.Path)] = gzipBase64EncodeData(data)
+		}
 	}
+
 	taskID, err := r.cloudClient.AddScan(&nucleicloud.AddScanRequest{
-		RawTargets:      targets,
-		PublicTemplates: templates,
-		IsTemporary:     nostore,
+		RawTargets:       targets,
+		PublicTemplates:  templates,
+		PrivateTemplates: privateTemplates,
+		IsTemporary:      nostore,
 	})
 	if err != nil {
 		return results, err
@@ -115,4 +139,13 @@ func getTemplateRelativePath(templatePath string) string {
 		return ""
 	}
 	return strings.TrimPrefix(splitted[1], "/")
+}
+
+func gzipBase64EncodeData(data []byte) string {
+	var buf bytes.Buffer
+	writer, _ := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+	_, _ = writer.Write(data)
+	_ = writer.Close()
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return encoded
 }
