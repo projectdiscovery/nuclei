@@ -37,9 +37,9 @@ type Operators struct {
 	matchersCondition matchers.ConditionType
 
 	// TemplateID is the ID of the template for matcher
-	TemplateID string
+	TemplateID string `json:"-" yaml:"-" jsonschema:"-"`
 	// ExcludeMatchers is a list of excludeMatchers items
-	ExcludeMatchers *excludematchers.ExcludeMatchers
+	ExcludeMatchers *excludematchers.ExcludeMatchers `json:"-" yaml:"-" jsonschema:"-"`
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors
