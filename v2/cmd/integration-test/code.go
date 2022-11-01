@@ -77,6 +77,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	}
 
 	defaultOpts := types.DefaultOptions()
+	defaultOpts.NoSandbox = true
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
 

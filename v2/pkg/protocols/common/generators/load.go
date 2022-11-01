@@ -23,8 +23,9 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 				loadedPayloads[name] = elements
 			} else {
 				if !noSandbox {
-					pt = filepath.Clean(templatePath)
-					if !strings.HasPrefix(pt, templatePath) || !strings.HasPrefix(pt, templateDirectory) {
+					pt = filepath.Clean(pt)
+					templatePathDir := filepath.Dir(templatePath)
+					if !(templatePathDir != "/" && strings.HasPrefix(pt, templatePathDir)) && !strings.HasPrefix(pt, templateDirectory) {
 						return nil, errors.New("denied payload file path specified")
 					}
 				}
