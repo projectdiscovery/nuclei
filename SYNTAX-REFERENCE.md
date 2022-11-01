@@ -101,8 +101,6 @@ requests:
           status:
             - 200
     matchers-condition: and
-    templateid: ""
-    excludematchers: null
     path:
         - '{{BaseURL}}/.git/config'
     method: GET
@@ -135,8 +133,6 @@ dns:
             - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
             - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
           dsl: []
-    templateid: ""
-    excludematchers: null
     name: '{{FQDN}}'
     type: CNAME
     class: inet
@@ -170,8 +166,6 @@ file:
           regex:
             - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
           dsl: []
-    templateid: ""
-    excludematchers: null
     extensions:
         - all
     archive: false
@@ -209,8 +203,6 @@ network:
         - type: word
           words:
             - zookeeper.version
-    templateid: ""
-    excludematchers: null
 ```
 
 
@@ -802,8 +794,6 @@ matchers:
       status:
         - 200
 matchers-condition: and
-templateid: ""
-excludematchers: null
 path:
     - '{{BaseURL}}/.git/config'
 method: GET
@@ -2322,8 +2312,6 @@ extractors:
         - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
         - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
       dsl: []
-templateid: ""
-excludematchers: null
 name: '{{FQDN}}'
 type: CNAME
 class: inet
@@ -2644,8 +2632,6 @@ extractors:
       regex:
         - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
       dsl: []
-templateid: ""
-excludematchers: null
 extensions:
     - all
 archive: false
@@ -2849,8 +2835,6 @@ matchers:
     - type: word
       words:
         - zookeeper.version
-templateid: ""
-excludematchers: null
 ```
 
 Part Definitions: 
