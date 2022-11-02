@@ -56,7 +56,6 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		// replace incrementally
 		data = replacer.ReplaceOne(data, expression, result)
 	}
-
 	return data, nil
 }
 
