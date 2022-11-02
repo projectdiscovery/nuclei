@@ -229,14 +229,14 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := url.Parse(input.Input)
+	parsed, err := url.Parse(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 		hasInteractMarkers := len(gr.InteractURLs) > 0
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.Input) {
+		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
 
@@ -270,7 +270,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		if requestErr != nil {
 			if request.options.HostErrorsCache != nil {
-				request.options.HostErrorsCache.MarkFailed(input.Input, requestErr)
+				request.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, requestErr)
 			}
 		}
 		request.options.Progress.IncrementRequests()
@@ -289,7 +289,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input.Input, value, payloads, nil)
+		generated, err := generator.Make(context.Background(), input.MetaInput.Input, value, payloads, nil)
 		if err != nil {
 			continue
 		}
