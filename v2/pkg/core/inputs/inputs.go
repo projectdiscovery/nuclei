@@ -17,3 +17,8 @@ func (s *SimpleInputProvider) Scan(callback func(value string) bool) {
 		}
 	}
 }
+
+// Set adds item to input provider
+func (s *SimpleInputProvider) Set(value string) {
+	s.Inputs = append(s.Inputs, value)
+}

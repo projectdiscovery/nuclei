@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
-	uncover "github.com/projectdiscovery/nuclei/v2/pkg/input"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -81,7 +81,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 			i.expandASNInputValue(target)
 			continue
 		}
-		i.NormalizeStoreInputValue(target)
+		i.Set(target)
 	}
 
 	// Handle stdin
@@ -101,7 +101,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 	if options.Uncover {
 		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverEngine, options.UncoverQuery)
 		for c := range ch {
-			i.NormalizeStoreInputValue(c)
+			i.Set(c)
 		}
 		return err
 	}
@@ -120,12 +120,12 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 			i.expandASNInputValue(scanner.Text())
 			continue
 		}
-		i.NormalizeStoreInputValue(scanner.Text())
+		i.Set(scanner.Text())
 	}
 }
 
-// NormalizeStoreInputValue normalizes and stores passed input values
-func (i *Input) NormalizeStoreInputValue(value string) {
+// Set normalizes and stores passed input values
+func (i *Input) Set(value string) {
 	url := strings.TrimSpace(value)
 	if url == "" {
 		return

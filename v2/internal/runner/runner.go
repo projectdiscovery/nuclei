@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -405,17 +406,15 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
-
-	// parse the loaded templates if only uncover flag is passed
-	// add the hosts from the metadata queries into input provider
-	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
-		ret := store.GetUncoverTargetsFromMetadata(r.options.UncoverDelay, r.options.UncoverLimit)
-		for host := range ret {
-			r.hmapInputProvider.NormalizeStoreInputValue(host)
-		}
-	}
 	store.Load()
 
+	// add the hosts from the metadata queries of loaded templates into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit)
+		for host := range ret {
+			r.hmapInputProvider.Set(host)
+		}
+	}
 	// list all templates
 	if r.options.TemplateList {
 		r.listAvailableStoreTemplates(store)

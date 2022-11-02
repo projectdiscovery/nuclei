@@ -1,4 +1,4 @@
-package input
+package uncover
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/ratelimit"
 	ucRunner "github.com/projectdiscovery/uncover/runner"
 	"github.com/projectdiscovery/uncover/uncover"
@@ -19,7 +20,10 @@ import (
 	"github.com/projectdiscovery/uncover/uncover/agent/shodan"
 	"github.com/projectdiscovery/uncover/uncover/agent/shodanidb"
 	"github.com/projectdiscovery/uncover/uncover/agent/zoomeye"
+	"github.com/remeh/sizedwaitgroup"
 )
+
+const maxConcurrentAgents = 50
 
 func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan string, error) {
 
@@ -34,23 +38,12 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 	if err != nil {
 		return nil, err
 	}
-	var censysRateLimiter, fofaRateLimiter, shodanRateLimiter, shodanIdbRateLimiter, quakeRatelimiter, hunterRatelimiter, zoomeyeRatelimiter *ratelimit.Limiter
+	var rateLimiter *ratelimit.Limiter
+	// create rateLimiter for uncover delay
 	if uncoverOptions.Delay > 0 {
-		censysRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		fofaRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		shodanRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		shodanIdbRateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		quakeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		hunterRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-		zoomeyeRatelimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
+		rateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
 	} else {
-		censysRateLimiter = ratelimit.NewUnlimited(context.Background())
-		fofaRateLimiter = ratelimit.NewUnlimited(context.Background())
-		shodanRateLimiter = ratelimit.NewUnlimited(context.Background())
-		shodanIdbRateLimiter = ratelimit.NewUnlimited(context.Background())
-		quakeRatelimiter = ratelimit.NewUnlimited(context.Background())
-		hunterRatelimiter = ratelimit.NewUnlimited(context.Background())
-		zoomeyeRatelimiter = ratelimit.NewUnlimited(context.Background())
+		rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	var agents []uncover.Agent
 	// declare clients
@@ -61,19 +54,19 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 		)
 		switch engine {
 		case "shodan":
-			agent, err = shodan.NewWithOptions(&uncover.AgentOptions{RateLimiter: shodanRateLimiter})
+			agent, err = shodan.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "censys":
-			agent, err = censys.NewWithOptions(&uncover.AgentOptions{RateLimiter: censysRateLimiter})
+			agent, err = censys.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "fofa":
-			agent, err = fofa.NewWithOptions(&uncover.AgentOptions{RateLimiter: fofaRateLimiter})
+			agent, err = fofa.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "shodan-idb":
-			agent, err = shodanidb.NewWithOptions(&uncover.AgentOptions{RateLimiter: shodanIdbRateLimiter})
+			agent, err = shodanidb.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "quake":
-			agent, err = quake.NewWithOptions(&uncover.AgentOptions{RateLimiter: quakeRatelimiter})
+			agent, err = quake.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "hunter":
-			agent, err = hunter.NewWithOptions(&uncover.AgentOptions{RateLimiter: hunterRatelimiter})
+			agent, err = hunter.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "zoomeye":
-			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: zoomeyeRatelimiter})
+			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		default:
 			err = errors.New("unknown agent type")
 		}
@@ -83,7 +76,8 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 		agents = append(agents, agent)
 	}
 	// enumerate
-	var wg sync.WaitGroup
+	swg := sizedwaitgroup.New(maxConcurrentAgents)
+
 	ret := make(chan string)
 	go func() {
 		for _, q := range uncoverOptions.Query {
@@ -92,21 +86,21 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 				Limit: uncoverOptions.Limit,
 			}
 			for _, agent := range agents {
-				wg.Add(1)
+				swg.Add()
 				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
-					defer wg.Done()
+					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
 					if keys.Empty() && agent.Name() != "shodan-idb" {
-						gologger.Error().Label(agent.Name()).Msgf("empty keys\n")
+						gologger.Error().Label(agent.Name()).Msgf("no API key environment variable found")
 						return
 					}
 					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
 					if err != nil {
-						gologger.Error().Label(agent.Name()).Msgf("couldn't create new session: %s\n", err)
+						gologger.Error().Label(agent.Name()).Msgf("couldn't create uncover new session: %s", err)
 					}
 					ch, err := agent.Query(session, uncoverQuery)
 					if err != nil {
-						gologger.Warning().Msgf("%s\n", err)
+						gologger.Warning().Msgf("%s", err)
 						return
 					}
 					for result := range ch {
@@ -115,7 +109,7 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 				}(agent, uncoverQuery)
 			}
 		}
-		wg.Wait()
+		swg.Wait()
 		close(ret)
 	}()
 	return ret, nil
@@ -149,4 +143,45 @@ func loadProvidersFromEnv(options *ucRunner.Options) error {
 		options.Provider.ZoomEye = append(options.Provider.ZoomEye, key)
 	}
 	return nil
+}
+
+func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int) chan string {
+	ret := make(chan string)
+	go func() {
+		var wg sync.WaitGroup
+		for _, template := range templates {
+			for k, v := range template.Info.Metadata {
+				var engine []string
+				var query []string
+				switch k {
+				case "shodan-query":
+					engine = append(engine, "shodan")
+				case "fofa-query":
+					engine = append(engine, "fofa")
+				case "censys-query":
+					engine = append(engine, "censys")
+				case "quake-query":
+					engine = append(engine, "quake")
+				case "hunter-query":
+					engine = append(engine, "hunter")
+				case "zoomeye-query":
+					engine = append(engine, "zoomeye")
+				default:
+					continue
+				}
+				query = append(query, fmt.Sprintf("%v", v))
+				wg.Add(1)
+				go func(engine, query []string) {
+					ch, _ := GetTargetsFromUncover(delay, limit, engine, query)
+					for c := range ch {
+						ret <- c
+					}
+					wg.Done()
+				}(engine, query)
+			}
+		}
+		wg.Wait()
+		close(ret)
+	}()
+	return ret
 }
