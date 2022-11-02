@@ -702,7 +702,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
-		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		if input.MetaInput.CustomIP != "" {
+			outputEvent["ip"] = input.MetaInput.CustomIP
+		} else {
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
