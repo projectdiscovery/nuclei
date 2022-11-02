@@ -57,6 +57,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 	"http/custom-attack-type.yaml":                  &customAttackType{},
+	"http/get-all-ips.yaml":                         &scanAllIPS{},
 }
 
 type httpInteractshRequest struct{}
@@ -1000,4 +1001,17 @@ func (h *customAttackType) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 4)
+}
+
+type scanAllIPS struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *scanAllIPS) Execute(filePath string) error {
+	got := []string{}
+	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips")
+	if err != nil {
+		return err
+	}
+	// ipv4 + ipv6
+	return expectResultsCount(got, 2)
 }
