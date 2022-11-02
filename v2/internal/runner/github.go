@@ -38,7 +38,7 @@ func (r *Runner) downloadCustomTemplates(ctx context.Context) {
 			}
 			continue
 		}
-		if r.options.UpdateTemplates == customTemplateType {
+		if r.options.UpdateTemplates {
 			err := customTemplate.pullChanges(clonePath, r.options.GithubToken)
 			if err != nil {
 				gologger.Info().Msgf("%s", err)

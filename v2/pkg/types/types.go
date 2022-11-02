@@ -179,7 +179,7 @@ type Options struct {
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup
-	UpdateTemplates string
+	UpdateTemplates bool
 	// JSON writes json output to files
 	JSON bool
 	// JSONRequests writes requests/responses for matches in JSON output

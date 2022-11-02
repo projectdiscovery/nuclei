@@ -131,12 +131,6 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
-	if options.UpdateTemplates != "" && (options.UpdateTemplates != customTemplateType && options.UpdateTemplates != communityTemplateType) {
-		return errors.New("wrong -template-update value. Only community/github options are valid.")
-	}
-	if options.UpdateTemplates == customTemplateType && options.GithubTemplateRepo == nil {
-		return errors.New("No custom template repos provided to update. Provide github repos using -github-template-repo/-gtr.")
-	}
 	return nil
 }
 

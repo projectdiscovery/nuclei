@@ -261,7 +261,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("update", "Update",
 		flagSet.BoolVarP(&options.UpdateNuclei, "nuclei-update", "nu", false, "update nuclei engine to the latest released version"),
-		flagSet.StringVarP(&options.UpdateTemplates, "template-update", "tup", "", "update nuclei-templates to latest released version (community,github)"),
+		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarEnv(&options.GithubToken, "github-token", "gt", "", "GITHUB_TOKEN", "github token to download templates from private project. Can be passed as GITHUB_TOKEN env variable"),
 		flagSet.StringSliceVarP(&options.GithubTemplateRepo, "github-template-repo", "gtr", []string{}, "github template repository to download / update from Can be passed as GITHUB_TEMPLATE_REPO env variable", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TemplatesDirectory, "template-update-dir", "tud", "", "custom directory / location to install nuclei-templates"),

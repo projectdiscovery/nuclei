@@ -37,12 +37,11 @@ import (
 )
 
 const (
-	userName              = "projectdiscovery"
-	repoName              = "nuclei-templates"
-	nucleiIgnoreFile      = ".nuclei-ignore"
-	nucleiConfigFilename  = ".templates-config.json"
-	customTemplateType    = "github"
-	communityTemplateType = "community"
+	userName             = "projectdiscovery"
+	repoName             = "nuclei-templates"
+	nucleiIgnoreFile     = ".nuclei-ignore"
+	nucleiConfigFilename = ".templates-config.json"
+	customTemplateType   = "github"
 )
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -87,7 +86,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// if disable update check flag is passed and no update template flag is passed
-	if r.options.NoUpdateTemplates && r.options.UpdateTemplates == "" {
+	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
 		return nil
 	}
 
@@ -113,7 +112,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	if latestVersion.EQ(currentVersion) {
-		if r.options.UpdateTemplates == communityTemplateType {
+		if r.options.UpdateTemplates {
 			gologger.Info().Msgf("No new updates found for nuclei templates")
 		}
 		return config.WriteConfiguration(r.templatesConfig)
