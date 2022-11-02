@@ -57,7 +57,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 	"http/custom-attack-type.yaml":                  &customAttackType{},
-	"http/get-all-ips.yaml":                         &scanAllIPS{},
+	// "http/get-all-ips.yaml":                         &scanAllIPS{}, // disabled as GH doesn't support yet IPV6 connectivity
 }
 
 type httpInteractshRequest struct{}
@@ -1003,15 +1003,16 @@ func (h *customAttackType) Execute(filePath string) error {
 	return expectResultsCount(got, 4)
 }
 
-type scanAllIPS struct{}
+// Disabled as GH doesn't support ipv6
+// type scanAllIPS struct{}
 
-// Execute executes a test case and returns an error if occurred
-func (h *scanAllIPS) Execute(filePath string) error {
-	got := []string{}
-	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips")
-	if err != nil {
-		return err
-	}
-	// ipv4 + ipv6
-	return expectResultsCount(got, 2)
-}
+// // Execute executes a test case and returns an error if occurred
+// func (h *scanAllIPS) Execute(filePath string) error {
+// 	got := []string{}
+// 	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	// ipv4 + ipv6
+// 	return expectResultsCount(got, 2)
+// }
