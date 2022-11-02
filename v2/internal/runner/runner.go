@@ -14,10 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -28,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -70,6 +73,7 @@ type Runner struct {
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
 	customTemplates   []customTemplateRepo
+	cloudClient       *nucleicloud.Client
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -83,6 +87,10 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HealthCheck {
 		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
+	}
+
+	if options.Cloud {
+		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
 	if options.UpdateNuclei {
@@ -246,9 +254,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), int64(options.RateLimitMinute), time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), int64(options.RateLimit), time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
@@ -370,6 +378,7 @@ func (r *Runner) RunEnumeration() error {
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:     input.NewHelper(),
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -409,13 +418,38 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.displayExecutionInfo(store)
 
-	var results *atomic.Bool
+	// If not explicitly disabled, check if http based protocols
+	// are used and if inputs are non-http to pre-perform probing
+	// of urls and storing them for execution.
+	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
+		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		if err != nil {
+			return errors.Wrap(err, "could not probe http input")
+		}
+		executerOpts.InputHelper.InputsHTTP = inputHelpers
+	}
 
+	enumeration := false
+	var results *atomic.Bool
 	if r.options.Cloud {
-		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-		results, err = r.runCloudEnumeration(store)
+		if r.options.ScanList {
+			err = r.getScanList()
+		} else if r.options.DeleteScan != "" {
+			err = r.deleteScan(r.options.DeleteScan)
+		} else if r.options.ScanOutput != "" {
+			err = r.getResults(r.options.ScanOutput)
+		} else {
+			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			enumeration = true
+		}
 	} else {
 		results, err = r.runStandardEnumeration(executerOpts, store, engine)
+		enumeration = true
+	}
+
+	if !enumeration {
+		return err
 	}
 
 	if r.interactsh != nil {
@@ -426,6 +460,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.progress.Stop()
 
+	if executerOpts.InputHelper != nil {
+		_ = executerOpts.InputHelper.Close()
+	}
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
 	}
@@ -437,6 +474,18 @@ func (r *Runner) RunEnumeration() error {
 		r.browser.Close()
 	}
 	return err
+}
+
+func (r *Runner) isInputNonHTTP() bool {
+	var nonURLInput bool
+	r.hmapInputProvider.Scan(func(value string) bool {
+		if !strings.Contains(value, "://") {
+			nonURLInput = true
+			return false
+		}
+		return true
+	})
+	return nonURLInput
 }
 
 func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {

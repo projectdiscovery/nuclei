@@ -15,7 +15,7 @@ cd ../../../integration_tests
 echo "::endgroup::"
 
 echo "::group::Installing nuclei templates"
-./nuclei -template-update community
+./nuclei -update-templates
 echo "::endgroup::"
 
 ./integration-test

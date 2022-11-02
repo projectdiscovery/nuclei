@@ -267,6 +267,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 				return true, err
 			}
+
+			if generatedHttpRequest.customCancelFunction != nil {
+				defer generatedHttpRequest.customCancelFunction()
+			}
+
 			// If the variables contain interactsh urls, use them
 			if len(interactURLs) > 0 {
 				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
@@ -606,7 +611,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// Add to history the current request number metadata if asked by the user.
-		if request.ReqCondition {
+		if request.NeedsRequestCondition() {
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
 				previousEvent[key] = v
