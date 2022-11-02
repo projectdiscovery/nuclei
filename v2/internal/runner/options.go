@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -50,6 +51,9 @@ func ParseOptions(options *types.Options) {
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
+	}
+	if options.ShowVarDump {
+		vardump.EnableVarDump = true
 	}
 	if options.TemplatesVersion {
 		configuration, err := config.ReadConfiguration()

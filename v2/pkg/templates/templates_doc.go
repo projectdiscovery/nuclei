@@ -21,6 +21,7 @@ var (
 	ExtractorTypeHolderDoc        encoder.Doc
 	GENERATORSAttackTypeHolderDoc encoder.Doc
 	HTTPMethodTypeHolderDoc       encoder.Doc
+	FUZZRuleDoc                   encoder.Doc
 	SignatureTypeHolderDoc        encoder.Doc
 	DNSRequestDoc                 encoder.Doc
 	DNSRequestTypeHolderDoc       encoder.Doc
@@ -400,7 +401,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 32)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 33)
 	HTTPRequestDoc.Fields[0].Name = "matchers"
 	HTTPRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -520,79 +521,84 @@ func init() {
 	HTTPRequestDoc.Fields[17].Comments[encoder.LineComment] = "MaxSize is the maximum size of http response body to read in bytes."
 
 	HTTPRequestDoc.Fields[17].AddExample("Read max 2048 bytes of the response", 2048)
-	HTTPRequestDoc.Fields[18].Name = "signature"
-	HTTPRequestDoc.Fields[18].Type = "SignatureTypeHolder"
+	HTTPRequestDoc.Fields[18].Name = "fuzzing"
+	HTTPRequestDoc.Fields[18].Type = "[]fuzz.Rule"
 	HTTPRequestDoc.Fields[18].Note = ""
-	HTTPRequestDoc.Fields[18].Description = "Signature is the request signature method"
-	HTTPRequestDoc.Fields[18].Comments[encoder.LineComment] = "Signature is the request signature method"
-	HTTPRequestDoc.Fields[18].Values = []string{
+	HTTPRequestDoc.Fields[18].Description = "Fuzzing describes schema to fuzz http requests"
+	HTTPRequestDoc.Fields[18].Comments[encoder.LineComment] = " Fuzzing describes schema to fuzz http requests"
+	HTTPRequestDoc.Fields[19].Name = "signature"
+	HTTPRequestDoc.Fields[19].Type = "SignatureTypeHolder"
+	HTTPRequestDoc.Fields[19].Note = ""
+	HTTPRequestDoc.Fields[19].Description = "Signature is the request signature method"
+	HTTPRequestDoc.Fields[19].Comments[encoder.LineComment] = "Signature is the request signature method"
+	HTTPRequestDoc.Fields[19].Values = []string{
 		"AWS",
 	}
-	HTTPRequestDoc.Fields[19].Name = "cookie-reuse"
-	HTTPRequestDoc.Fields[19].Type = "bool"
-	HTTPRequestDoc.Fields[19].Note = ""
-	HTTPRequestDoc.Fields[19].Description = "CookieReuse is an optional setting that enables cookie reuse for\nall requests defined in raw section."
-	HTTPRequestDoc.Fields[19].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse for"
-	HTTPRequestDoc.Fields[20].Name = "read-all"
+	HTTPRequestDoc.Fields[20].Name = "cookie-reuse"
 	HTTPRequestDoc.Fields[20].Type = "bool"
 	HTTPRequestDoc.Fields[20].Note = ""
-	HTTPRequestDoc.Fields[20].Description = "Enables force reading of the entire raw unsafe request body ignoring\nany specified content length headers."
-	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "Enables force reading of the entire raw unsafe request body ignoring"
-	HTTPRequestDoc.Fields[21].Name = "redirects"
+	HTTPRequestDoc.Fields[20].Description = "CookieReuse is an optional setting that enables cookie reuse for\nall requests defined in raw section."
+	HTTPRequestDoc.Fields[20].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse for"
+	HTTPRequestDoc.Fields[21].Name = "read-all"
 	HTTPRequestDoc.Fields[21].Type = "bool"
 	HTTPRequestDoc.Fields[21].Note = ""
-	HTTPRequestDoc.Fields[21].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
-	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[22].Name = "host-redirects"
+	HTTPRequestDoc.Fields[21].Description = "Enables force reading of the entire raw unsafe request body ignoring\nany specified content length headers."
+	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "Enables force reading of the entire raw unsafe request body ignoring"
+	HTTPRequestDoc.Fields[22].Name = "redirects"
 	HTTPRequestDoc.Fields[22].Type = "bool"
 	HTTPRequestDoc.Fields[22].Note = ""
-	HTTPRequestDoc.Fields[22].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
-	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[23].Name = "pipeline"
+	HTTPRequestDoc.Fields[22].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[23].Name = "host-redirects"
 	HTTPRequestDoc.Fields[23].Type = "bool"
 	HTTPRequestDoc.Fields[23].Note = ""
-	HTTPRequestDoc.Fields[23].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
-	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-	HTTPRequestDoc.Fields[24].Name = "unsafe"
+	HTTPRequestDoc.Fields[23].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[24].Name = "pipeline"
 	HTTPRequestDoc.Fields[24].Type = "bool"
 	HTTPRequestDoc.Fields[24].Note = ""
-	HTTPRequestDoc.Fields[24].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
-	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
-	HTTPRequestDoc.Fields[25].Name = "race"
+	HTTPRequestDoc.Fields[24].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
+	HTTPRequestDoc.Fields[25].Name = "unsafe"
 	HTTPRequestDoc.Fields[25].Type = "bool"
 	HTTPRequestDoc.Fields[25].Note = ""
-	HTTPRequestDoc.Fields[25].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
-	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
-	HTTPRequestDoc.Fields[26].Name = "req-condition"
+	HTTPRequestDoc.Fields[25].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
+	HTTPRequestDoc.Fields[26].Name = "race"
 	HTTPRequestDoc.Fields[26].Type = "bool"
 	HTTPRequestDoc.Fields[26].Note = ""
-	HTTPRequestDoc.Fields[26].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
-	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[27].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[26].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
+	HTTPRequestDoc.Fields[27].Name = "req-condition"
 	HTTPRequestDoc.Fields[27].Type = "bool"
 	HTTPRequestDoc.Fields[27].Note = ""
-	HTTPRequestDoc.Fields[27].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[28].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[27].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
+	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[28].Name = "stop-at-first-match"
 	HTTPRequestDoc.Fields[28].Type = "bool"
 	HTTPRequestDoc.Fields[28].Note = ""
-	HTTPRequestDoc.Fields[28].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[29].Name = "iterate-all"
+	HTTPRequestDoc.Fields[28].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[29].Name = "skip-variables-check"
 	HTTPRequestDoc.Fields[29].Type = "bool"
 	HTTPRequestDoc.Fields[29].Note = ""
-	HTTPRequestDoc.Fields[29].Description = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[30].Name = "digest-username"
-	HTTPRequestDoc.Fields[30].Type = "string"
+	HTTPRequestDoc.Fields[29].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[30].Name = "iterate-all"
+	HTTPRequestDoc.Fields[30].Type = "bool"
 	HTTPRequestDoc.Fields[30].Note = ""
-	HTTPRequestDoc.Fields[30].Description = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[31].Name = "digest-password"
+	HTTPRequestDoc.Fields[30].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[31].Name = "digest-username"
 	HTTPRequestDoc.Fields[31].Type = "string"
 	HTTPRequestDoc.Fields[31].Note = ""
-	HTTPRequestDoc.Fields[31].Description = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[31].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[32].Name = "digest-password"
+	HTTPRequestDoc.Fields[32].Type = "string"
+	HTTPRequestDoc.Fields[32].Note = ""
+	HTTPRequestDoc.Fields[32].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
 
 	MATCHERSMatcherDoc.Type = "matchers.Matcher"
 	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
@@ -970,6 +976,73 @@ func init() {
 		"PURGE",
 		"Debug",
 	}
+
+	FUZZRuleDoc.Type = "fuzz.Rule"
+	FUZZRuleDoc.Comments[encoder.LineComment] = " Rule is a single rule which describes how to fuzz the request"
+	FUZZRuleDoc.Description = "Rule is a single rule which describes how to fuzz the request"
+	FUZZRuleDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "http.Request",
+			FieldName: "fuzzing",
+		},
+	}
+	FUZZRuleDoc.Fields = make([]encoder.Doc, 7)
+	FUZZRuleDoc.Fields[0].Name = "type"
+	FUZZRuleDoc.Fields[0].Type = "string"
+	FUZZRuleDoc.Fields[0].Note = ""
+	FUZZRuleDoc.Fields[0].Description = "Type is the type of fuzzing rule to perform.\n\nreplace replaces the values entirely. prefix prefixes the value. postfix postfixes the value\nand infix places between the values."
+	FUZZRuleDoc.Fields[0].Comments[encoder.LineComment] = "Type is the type of fuzzing rule to perform."
+	FUZZRuleDoc.Fields[0].Values = []string{
+		"replace",
+		"prefix",
+		"postfix",
+		"infix",
+	}
+	FUZZRuleDoc.Fields[1].Name = "part"
+	FUZZRuleDoc.Fields[1].Type = "string"
+	FUZZRuleDoc.Fields[1].Note = ""
+	FUZZRuleDoc.Fields[1].Description = "Part is the part of request to fuzz.\n\nquery fuzzes the query part of url. More parts will be added later."
+	FUZZRuleDoc.Fields[1].Comments[encoder.LineComment] = "Part is the part of request to fuzz."
+	FUZZRuleDoc.Fields[1].Values = []string{
+		"query",
+	}
+	FUZZRuleDoc.Fields[2].Name = "mode"
+	FUZZRuleDoc.Fields[2].Type = "string"
+	FUZZRuleDoc.Fields[2].Note = ""
+	FUZZRuleDoc.Fields[2].Description = "Mode is the mode of fuzzing to perform.\n\nsingle fuzzes one value at a time. multiple fuzzes all values at same time."
+	FUZZRuleDoc.Fields[2].Comments[encoder.LineComment] = "Mode is the mode of fuzzing to perform."
+	FUZZRuleDoc.Fields[2].Values = []string{
+		"single",
+		"multiple",
+	}
+	FUZZRuleDoc.Fields[3].Name = "keys"
+	FUZZRuleDoc.Fields[3].Type = "[]string"
+	FUZZRuleDoc.Fields[3].Note = ""
+	FUZZRuleDoc.Fields[3].Description = "Keys is the optional list of key named parameters to fuzz."
+	FUZZRuleDoc.Fields[3].Comments[encoder.LineComment] = "Keys is the optional list of key named parameters to fuzz."
+
+	FUZZRuleDoc.Fields[3].AddExample("Examples of keys", []string{"url", "file", "host"})
+	FUZZRuleDoc.Fields[4].Name = "keys-regex"
+	FUZZRuleDoc.Fields[4].Type = "[]string"
+	FUZZRuleDoc.Fields[4].Note = ""
+	FUZZRuleDoc.Fields[4].Description = "KeysRegex is the optional list of regex key parameters to fuzz."
+	FUZZRuleDoc.Fields[4].Comments[encoder.LineComment] = "KeysRegex is the optional list of regex key parameters to fuzz."
+
+	FUZZRuleDoc.Fields[4].AddExample("Examples of key regex", []string{"url.*"})
+	FUZZRuleDoc.Fields[5].Name = "values"
+	FUZZRuleDoc.Fields[5].Type = "[]string"
+	FUZZRuleDoc.Fields[5].Note = ""
+	FUZZRuleDoc.Fields[5].Description = "Values is the optional list of regex value parameters to fuzz."
+	FUZZRuleDoc.Fields[5].Comments[encoder.LineComment] = "Values is the optional list of regex value parameters to fuzz."
+
+	FUZZRuleDoc.Fields[5].AddExample("Examples of value regex", []string{"https?://.*"})
+	FUZZRuleDoc.Fields[6].Name = "fuzz"
+	FUZZRuleDoc.Fields[6].Type = "[]string"
+	FUZZRuleDoc.Fields[6].Note = ""
+	FUZZRuleDoc.Fields[6].Description = "Fuzz is the list of payloads to perform substitutions with."
+	FUZZRuleDoc.Fields[6].Comments[encoder.LineComment] = "Fuzz is the list of payloads to perform substitutions with."
+
+	FUZZRuleDoc.Fields[6].AddExample("Examples of fuzz", []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"})
 
 	SignatureTypeHolderDoc.Type = "SignatureTypeHolder"
 	SignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
@@ -1961,6 +2034,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&ExtractorTypeHolderDoc,
 			&GENERATORSAttackTypeHolderDoc,
 			&HTTPMethodTypeHolderDoc,
+			&FUZZRuleDoc,
 			&SignatureTypeHolderDoc,
 			&DNSRequestDoc,
 			&DNSRequestTypeHolderDoc,
