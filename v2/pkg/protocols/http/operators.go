@@ -121,6 +121,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["request"] = rawReq
 	data["response"] = rawResp
 	data["status_code"] = resp.StatusCode
+	data["timeout"] = resp.StatusCode == 408
 	data["body"] = body
 	data["all_headers"] = headers
 	data["header"] = headers

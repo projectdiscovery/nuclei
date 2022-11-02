@@ -487,36 +487,43 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 	if err != nil {
-		// rawhttp doesn't support draining response bodies.
-		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
-			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-			resp.Body.Close()
-		}
-		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
-		request.options.Progress.IncrementErrorsBy(1)
 
-		// If we have interactsh markers and request times out, still send
-		// a callback event so in case we receive an interaction, correlation is possible.
-		if hasInteractMatchers {
-			outputEvent := request.responseToDSLMap(&http.Response{}, input.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
-			if i := strings.LastIndex(hostname, ":"); i != -1 {
-				hostname = hostname[:i]
-			}
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "context deadline exceeded") {
+			resp = &http.Response{StatusCode: 408}
+			// If we have interactsh markers and request times out, still send
+			// a callback event so in case we receive an interaction, correlation is possible.
+			if hasInteractMatchers {
+				outputEvent := request.responseToDSLMap(&http.Response{}, input.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+				if i := strings.LastIndex(hostname, ":"); i != -1 {
+					hostname = hostname[:i]
+				}
+				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+				outputEvent["timeout"] = true
 
-			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-			if request.CompiledOperators != nil {
-				event.InternalEvent = outputEvent
+				event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+				if request.CompiledOperators != nil {
+					event.InternalEvent = outputEvent
+				}
+				callback(event)
 			}
-			callback(event)
+		} else {
+			// rawhttp doesn't support draining response bodies.
+			if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
+				_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
+				resp.Body.Close()
+			}
+			request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
+			request.options.Progress.IncrementErrorsBy(1)
+			return err
 		}
-		return err
 	}
 	defer func() {
-		if resp.StatusCode != http.StatusSwitchingProtocols {
+		if resp.StatusCode != http.StatusSwitchingProtocols && resp.StatusCode != http.StatusRequestTimeout {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
 		}
-		resp.Body.Close()
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
 	}()
 
 	var curlCommand string
@@ -542,7 +549,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var dumpedResponse []redirectedResponse
 	var gotData []byte
 	// If the status code is HTTP 101, we should not proceed with reading body.
-	if resp.StatusCode != http.StatusSwitchingProtocols {
+	if resp.StatusCode != http.StatusSwitchingProtocols && resp.StatusCode != http.StatusRequestTimeout {
 		var bodyReader io.Reader
 		if request.MaxSize != 0 {
 			bodyReader = io.LimitReader(resp.Body, int64(request.MaxSize))
