@@ -2,6 +2,7 @@ package contextargs
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -13,38 +14,44 @@ type MetaInput struct {
 	Input string
 	// CustomIP to use for connection
 	CustomIP string
-	// jsonMarsheled contains the marshaled version of metainput
-	// it's ok to marshal once since the struct it's supposed to be static
-	jsonMarsheled string
+}
+
+func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
+	var b bytes.Buffer
+	err := jsoniter.NewEncoder(&b).Encode(metaInput)
+	return b, err
+}
+
+// ID returns a unique id/hash for metainput
+func (metaInput *MetaInput) ID() string {
+	if metaInput.CustomIP != "" {
+		return fmt.Sprintf("%s-%s", metaInput.Input, metaInput.CustomIP)
+	}
+	return metaInput.Input
 }
 
 func (metaInput *MetaInput) MarshalString() (string, error) {
-	var b bytes.Buffer
-	err := jsoniter.NewEncoder(&b).Encode(metaInput)
+	b, err := metaInput.marshalToBuffer()
 	return b.String(), err
 }
 
+func (metaInput *MetaInput) MustMarshalString() string {
+	marshaled, _ := metaInput.MarshalString()
+	return marshaled
+}
+
 func (metaInput *MetaInput) MarshalBytes() ([]byte, error) {
-	var b bytes.Buffer
-	err := jsoniter.NewEncoder(&b).Encode(metaInput)
+	b, err := metaInput.marshalToBuffer()
 	return b.Bytes(), err
+}
+
+func (metaInput *MetaInput) MustMarshalBytes() []byte {
+	marshaled, _ := metaInput.MarshalBytes()
+	return marshaled
 }
 
 func (metaInput *MetaInput) Unmarshal(data string) error {
 	return jsoniter.NewDecoder(strings.NewReader(data)).Decode(metaInput)
-}
-
-func (metaInput *MetaInput) String() string {
-	if metaInput.jsonMarsheled != "" {
-		return metaInput.jsonMarsheled
-	}
-	metaInput.jsonMarsheled, _ = metaInput.MarshalString()
-	return metaInput.jsonMarsheled
-}
-
-func (metaInput *MetaInput) Bytes() []byte {
-	dataBytes, _ := metaInput.MarshalBytes()
-	return dataBytes
 }
 
 func (metaInput *MetaInput) Clone() *MetaInput {
@@ -52,4 +59,11 @@ func (metaInput *MetaInput) Clone() *MetaInput {
 		Input:    metaInput.Input,
 		CustomIP: metaInput.CustomIP,
 	}
+}
+
+func (metaInput *MetaInput) PrettyPrint() string {
+	if metaInput.CustomIP != "" {
+		return fmt.Sprintf("%s [%s]", metaInput.Input, metaInput.CustomIP)
+	}
+	return metaInput.Input
 }

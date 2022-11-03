@@ -88,7 +88,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(input.MetaInput.String(), err)
+					w.Options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err

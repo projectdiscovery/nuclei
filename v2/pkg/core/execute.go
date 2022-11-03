@@ -123,7 +123,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.String()) {
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.ID()) {
 			return true
 		}
 
@@ -191,7 +191,7 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 
 	target.Scan(func(scannedValue *contextargs.MetaInput) bool {
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.String()) {
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.ID()) {
 			return true
 		}
 

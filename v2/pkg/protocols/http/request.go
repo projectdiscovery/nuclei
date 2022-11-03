@@ -376,7 +376,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				input.MetaInput.Input = generatedHttpRequest.URL()
 			}
 			// Check if hosts keep erroring
-			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.String()) {
+			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.ID()) {
 				return true, nil
 			}
 			var gotMatches bool
@@ -405,7 +405,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			if err != nil {
 				if request.options.HostErrorsCache != nil {
-					request.options.HostErrorsCache.MarkFailed(input.MetaInput.String(), err)
+					request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 				}
 				requestErr = err
 			}
