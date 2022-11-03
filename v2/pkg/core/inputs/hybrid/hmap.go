@@ -136,7 +136,7 @@ func (i *Input) normalizeStoreInputValue(value string) {
 	}
 
 	metaInput := &contextargs.MetaInput{Input: URL}
-	keyURL, err := metaInput.Marshal()
+	keyURL, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
 		return
@@ -171,7 +171,7 @@ func (i *Input) normalizeStoreInputValue(value string) {
 
 			for _, ip := range ips {
 				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-				key, err := metaInput.Marshal()
+				key, err := metaInput.MarshalString()
 				if err != nil {
 					gologger.Warning().Msgf("%s\n", err)
 					continue
@@ -224,7 +224,7 @@ func (i *Input) expandCIDRInputValue(value string) {
 	ips, _ := mapcidr.IPAddressesAsStream(value)
 	for ip := range ips {
 		metaInput := &contextargs.MetaInput{Input: ip}
-		key, err := metaInput.Marshal()
+		key, err := metaInput.MarshalString()
 		if err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 			return

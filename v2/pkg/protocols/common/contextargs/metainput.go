@@ -18,10 +18,16 @@ type MetaInput struct {
 	jsonMarsheled string
 }
 
-func (metaInput *MetaInput) Marshal() (string, error) {
+func (metaInput *MetaInput) MarshalString() (string, error) {
 	var b bytes.Buffer
 	err := jsoniter.NewEncoder(&b).Encode(metaInput)
 	return b.String(), err
+}
+
+func (metaInput *MetaInput) MarshalBytes() ([]byte, error) {
+	var b bytes.Buffer
+	err := jsoniter.NewEncoder(&b).Encode(metaInput)
+	return b.Bytes(), err
 }
 
 func (metaInput *MetaInput) Unmarshal(data string) error {
@@ -32,8 +38,13 @@ func (metaInput *MetaInput) String() string {
 	if metaInput.jsonMarsheled != "" {
 		return metaInput.jsonMarsheled
 	}
-	metaInput.jsonMarsheled, _ = metaInput.Marshal()
+	metaInput.jsonMarsheled, _ = metaInput.MarshalString()
 	return metaInput.jsonMarsheled
+}
+
+func (metaInput *MetaInput) Bytes() []byte {
+	dataBytes, _ := metaInput.MarshalBytes()
+	return dataBytes
 }
 
 func (metaInput *MetaInput) Clone() *MetaInput {
