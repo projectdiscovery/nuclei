@@ -602,7 +602,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
 
-	gologger.Info().Msgf("Hosts to scan: %d", r.hmapInputProvider.Count())
+	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
