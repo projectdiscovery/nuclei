@@ -601,7 +601,10 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
+
+	gologger.Info().Msgf("Hosts to scan: %d", r.hmapInputProvider.Count())
 }
+
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
 	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {
