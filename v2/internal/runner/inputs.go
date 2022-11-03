@@ -49,7 +49,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 			if result := probeURL(input.Input, httpclient); result != "" {
 				atomic.AddInt32(&count, 1)
-				_ = hm.Set(input.String(), []byte(result))
+				_ = hm.Set(input.Input, []byte(result))
 			}
 		}(value)
 		return true
