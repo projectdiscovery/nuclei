@@ -25,6 +25,8 @@ jobs:
         working-directory: v2/cmd/nuclei/
 
       - name: Test
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: go test ./...
         working-directory: v2/
 
