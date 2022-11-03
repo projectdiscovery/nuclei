@@ -276,8 +276,8 @@ type Options struct {
 	ConfigPath string
 	// ScanAllIPs associated to a dns record
 	ScanAllIPs bool
-	// IPVersion to scan (4,6,any)
-	IPVersion string
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos

@@ -22,7 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/stringsutil"
+	"github.com/projectdiscovery/sliceutil"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
@@ -46,8 +46,8 @@ func New(options *types.Options) (*Input, error) {
 		hostMap: hm,
 		ipOptions: &ipOptions{
 			ScanAllIPs: options.ScanAllIPs,
-			IPV4:       stringsutil.ContainsAny(options.IPVersion, "4", "any"),
-			IPV6:       stringsutil.ContainsAny(options.IPVersion, "6", "any"),
+			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
+			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
 	}
 	if options.Stream {

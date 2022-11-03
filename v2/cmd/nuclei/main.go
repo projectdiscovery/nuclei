@@ -126,7 +126,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "Scan all the ip's associated with dns record"),
-		flagSet.StringVarP(&options.IPVersion, "ip-version", "iv", "any", "IP version to scan of hostname (4,6,any) - (default any)"),
+		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", []string{"4"}, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
