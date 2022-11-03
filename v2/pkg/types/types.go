@@ -272,6 +272,10 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// Github token used to clone/pull from private repos for custom templates
+	GithubToken string
+	// GithubTemplateRepo is the list of custom public/private templates github repos
+	GithubTemplateRepo goflags.StringSlice
 
 	ConfigPath string // Used by healthcheck
 }
