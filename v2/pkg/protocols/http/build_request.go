@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -21,9 +20,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -95,10 +94,10 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 	}
 
 	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, GenerateVariables(parsed, trailingSlash)),
+		generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, trailingSlash)),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
-	if r.options.Options.Debug || r.options.Options.DebugRequests {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
 	}
 
@@ -164,7 +163,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, GenerateVariables(parsed, false)),
+			generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, false)),
 			values,
 		)
 
@@ -391,46 +390,4 @@ func setHeader(req *http.Request, name, value string) {
 	if name == "Host" {
 		req.Host = value
 	}
-}
-
-// GenerateVariables will create default variables after parsing a url
-func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
-	domain := parsed.Host
-	if strings.Contains(parsed.Host, ":") {
-		domain = strings.Split(parsed.Host, ":")[0]
-	}
-
-	port := parsed.Port()
-	if port == "" {
-		if parsed.Scheme == "https" {
-			port = "443"
-		} else if parsed.Scheme == "http" {
-			port = "80"
-		}
-	}
-
-	if trailingSlash {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
-	}
-
-	escapedPath := parsed.EscapedPath()
-	directory := path.Dir(escapedPath)
-	if directory == "." {
-		directory = ""
-	}
-	base := path.Base(escapedPath)
-	if base == "." {
-		base = ""
-	}
-	httpVariables := map[string]interface{}{
-		"BaseURL":  parsed.String(),
-		"RootURL":  fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host),
-		"Hostname": parsed.Host,
-		"Host":     domain,
-		"Port":     port,
-		"Path":     directory,
-		"File":     base,
-		"Scheme":   parsed.Scheme,
-	}
-	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain))
 }

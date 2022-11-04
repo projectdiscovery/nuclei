@@ -40,7 +40,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.22.9
+	github.com/shirou/gopsutil/v3 v3.22.10
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.5.0
 	github.com/syndtr/goleveldb v1.0.0
@@ -57,7 +57,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.125
+require github.com/aws/aws-sdk-go v1.44.129
 
 require github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08
 
@@ -67,14 +67,17 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
+	github.com/go-git/go-git/v5 v5.4.2
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
-	github.com/klauspost/compress v1.15.8
+	github.com/klauspost/compress v1.15.12
+	github.com/labstack/echo/v4 v4.9.1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
+	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/fileutil v0.0.3
-	github.com/projectdiscovery/goflags v0.1.1
+	github.com/projectdiscovery/goflags v0.1.3
 	github.com/projectdiscovery/iputil v0.0.2
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.1
@@ -82,8 +85,9 @@ require (
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/uncover v0.0.9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.66
+	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
+	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -196,9 +200,25 @@ require (
 
 require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/Microsoft/go-winio v0.4.16 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
+	github.com/acomagu/bufpipe v1.0.3 // indirect
+	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/go-git/gcfg v1.5.0 // indirect
+	github.com/go-git/go-billy/v5 v5.3.1 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
+	github.com/labstack/gommon v0.4.0 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
+	github.com/sergi/go-diff v1.1.0 // indirect
+	github.com/src-d/gcfg v1.4.0 // indirect
+	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
