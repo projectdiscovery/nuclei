@@ -90,8 +90,8 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
 					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
-					if keys.Empty() && agent.Name() != "shodan-idb" {
-						gologger.Error().Label(agent.Name()).Msgf("no API key environment variable found")
+					if !checkKeyExits(agent, keys) {
+						gologger.Error().Label(agent.Name()).Msgf("no keys provided")
 						return
 					}
 					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
@@ -184,4 +184,34 @@ func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit
 		close(ret)
 	}()
 	return ret
+}
+
+func checkKeyExits(agent uncover.Agent, keys uncover.Keys) bool {
+	switch agent.Name() {
+	case "fofa":
+		if len(keys.FofaKey) == 0 {
+			return false
+		}
+	case "shodan":
+		if len(keys.Shodan) == 0 {
+			return false
+		}
+	case "censys":
+		if len(keys.CensysToken) == 0 {
+			return false
+		}
+	case "hunter":
+		if len(keys.HunterToken) == 0 {
+			return false
+		}
+	case "zoomeye":
+		if len(keys.ZoomEyeToken) == 0 {
+			return false
+		}
+	case "quake":
+		if len(keys.QuakeToken) == 0 {
+			return false
+		}
+	}
+	return true
 }

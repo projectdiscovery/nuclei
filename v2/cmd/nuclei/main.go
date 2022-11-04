@@ -214,7 +214,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", []string{}, "uncover search query", goflags.FileStringSliceOptions),
-		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{"shodan"}, "uncover search engine (shodan,shodan-idb,fofa,censys) ", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{}, "uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)", goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
 		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "udl", 1, "delay between uncover query requests in seconds (0 to disable)"),

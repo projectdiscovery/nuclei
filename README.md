@@ -176,6 +176,14 @@ INTERACTSH:
    -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
+UNCOVER:
+   -uc, -uncover                  enable uncover engine
+   -uq, -uncover-query string[]   uncover search query
+   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)
+   -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
+   -ul, -uncover-limit int        uncover results to return (default 100)
+   -udl, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
+
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute

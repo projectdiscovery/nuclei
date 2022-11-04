@@ -94,6 +94,9 @@ func ParseOptions(options *types.Options) {
 
 	if options.UncoverQuery != nil {
 		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
 	}
 }
 
