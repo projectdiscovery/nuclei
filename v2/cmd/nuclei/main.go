@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -214,7 +215,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", []string{}, "uncover search query", goflags.FileStringSliceOptions),
-		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{}, "uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{}, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
 		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "udl", 1, "delay between uncover query requests in seconds (0 to disable)"),

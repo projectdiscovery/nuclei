@@ -26,6 +26,10 @@ import (
 
 const maxConcurrentAgents = 50
 
+func GetUncoverSupportedAgents() string {
+	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye"}
+	return strings.Join(uncoverSupportedAgents, ",")
+}
 func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
 
 	uncoverOptions := &ucRunner.Options{
@@ -69,7 +73,7 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 		case "zoomeye":
 			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		default:
-			err = errors.New("unknown agent type")
+			err = errors.Errorf("%s unknown uncover agent type", engine)
 		}
 		if err != nil {
 			return nil, err
@@ -91,8 +95,8 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
 					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
-					if !checkKeyExits(agent, keys) {
-						gologger.Error().Label(agent.Name()).Msgf("no keys provided")
+					if err := checkKeyExits(agent, keys); err != nil {
+						gologger.Error().Label("WRN").Msgf(err.Error())
 						return
 					}
 					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
@@ -192,32 +196,34 @@ func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit
 	return ret
 }
 
-func checkKeyExits(agent uncover.Agent, keys uncover.Keys) bool {
+func checkKeyExits(agent uncover.Agent, keys uncover.Keys) error {
 	switch agent.Name() {
 	case "fofa":
 		if len(keys.FofaKey) == 0 {
-			return false
+			return errors.Errorf("FOFA_EMAIL & FOFA_KEY env variables are not configured")
 		}
 	case "shodan":
 		if len(keys.Shodan) == 0 {
-			return false
+			return errors.Errorf("SHODAN_API_KEY env variable is not configured")
 		}
 	case "censys":
 		if len(keys.CensysToken) == 0 {
-			return false
+			return errors.Errorf("CENSYS_API_ID & CENSYS_API_SECRET env variable is not configured")
 		}
 	case "hunter":
 		if len(keys.HunterToken) == 0 {
-			return false
+			return errors.Errorf("HUNTER_API_KEY env variable is not configured")
 		}
 	case "zoomeye":
 		if len(keys.ZoomEyeToken) == 0 {
-			return false
+			return errors.Errorf("ZOOMEYE_API_KEY env variable is not configured")
 		}
 	case "quake":
 		if len(keys.QuakeToken) == 0 {
-			return false
+			return errors.Errorf("QUAKE_TOKEN env variable is not configured")
 		}
+	default:
+		return errors.Errorf("unknown uncover agent")
 	}
-	return true
+	return nil
 }

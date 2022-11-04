@@ -98,12 +98,15 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		i.scanInputFromReader(input)
 		input.Close()
 	}
-	if options.Uncover {
+	if options.Uncover && options.UncoverQuery != nil {
+		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
 		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverField, options.UncoverEngine, options.UncoverQuery)
+		if err != nil {
+			return err
+		}
 		for c := range ch {
 			i.Set(c)
 		}
-		return err
 	}
 	return nil
 }
