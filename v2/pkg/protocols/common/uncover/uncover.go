@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,7 +26,7 @@ import (
 
 const maxConcurrentAgents = 50
 
-func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan string, error) {
+func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
 
 	uncoverOptions := &ucRunner.Options{
 		Provider: &ucRunner.Provider{},
@@ -104,7 +105,12 @@ func GetTargetsFromUncover(delay, limit int, engine, query []string) (chan strin
 						return
 					}
 					for result := range ch {
-						ret <- result.IpPort()
+						replacer := strings.NewReplacer(
+							"ip", result.IP,
+							"host", result.Host,
+							"port", fmt.Sprint(result.Port),
+						)
+						ret <- replacer.Replace(field)
 					}
 				}(agent, uncoverQuery)
 			}
@@ -145,7 +151,7 @@ func loadProvidersFromEnv(options *ucRunner.Options) error {
 	return nil
 }
 
-func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int) chan string {
+func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int, field string) chan string {
 	ret := make(chan string)
 	go func() {
 		var wg sync.WaitGroup
@@ -172,7 +178,7 @@ func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit
 				query = append(query, fmt.Sprintf("%v", v))
 				wg.Add(1)
 				go func(engine, query []string) {
-					ch, _ := GetTargetsFromUncover(delay, limit, engine, query)
+					ch, _ := GetTargetsFromUncover(delay, limit, field, engine, query)
 					for c := range ch {
 						ret <- c
 					}

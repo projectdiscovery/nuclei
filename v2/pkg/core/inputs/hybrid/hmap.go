@@ -99,7 +99,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		input.Close()
 	}
 	if options.Uncover {
-		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverEngine, options.UncoverQuery)
+		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverField, options.UncoverEngine, options.UncoverQuery)
 		for c := range ch {
 			i.Set(c)
 		}
