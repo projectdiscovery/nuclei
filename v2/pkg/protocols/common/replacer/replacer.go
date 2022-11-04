@@ -3,7 +3,7 @@ package replacer
 import (
 	"strings"
 
-	"github.com/valyala/fasttemplate"
+	"github.com/projectdiscovery/fasttemplate"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"

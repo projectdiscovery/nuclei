@@ -20,6 +20,12 @@ func TestReplacerReplace(t *testing.T) {
 			expected: "",
 		},
 		{
+			name:     "Nested",
+			template: "{{base64_encode('{{test}}')}}",
+			values:   map[string]interface{}{"test": "random"},
+			expected: "{{base64_encode('random')}}",
+		},
+		{
 			name:     "Basic",
 			template: "{{test}} §hello§ {{data}}",
 			values:   map[string]interface{}{"test": "random", "hello": "world"},

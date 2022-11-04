@@ -222,10 +222,12 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -update                        update nuclei engine to the latest released version
-   -ut, -update-templates         update nuclei-templates to latest released version
-   -ud, -update-directory string  overwrite the default directory to install nuclei-templates
-   -duc, -disable-update-check    disable automatic nuclei/templates update check
+   -un, -update                          update nuclei engine to the latest released version
+   -ut, -update-templates                update nuclei-templates to latest released version
+   -ud, -update-template-dir string      custom directory to install / update nuclei-templates
+   -gt, -github-token string             github token to download public/private templates (GITHUB_TOKEN)
+   -gtr, -github-template-repo string[]  github template repository to download / update (GITHUB_TEMPLATE_REPO)
+   -duc, -disable-update-check           disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan

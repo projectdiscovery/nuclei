@@ -256,15 +256,18 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
+		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "sdp", false, "show variables dump for debugging"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
+		flagSet.BoolVarP(&options.UpdateNuclei, "update", "un", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
+		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
+		flagSet.StringVarEnv(&options.GithubToken, "github-token", "gt", "", "GITHUB_TOKEN", "github token to download public/private templates (GITHUB_TOKEN)"),
+		flagSet.StringSliceVarP(&options.GithubTemplateRepo, "github-template-repo", "gtr", []string{}, "github template repository to download / update (GITHUB_TEMPLATE_REPO)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
@@ -278,9 +281,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use"),
-		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
-		flagSet.BoolVarP(&options.ScanList, "list-scan", "ls", false, "list cloud scans."),
+		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use (NUCLEI_CLOUD_SERVER)"),
+		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server (NUCLEI_CLOUD_APIKEY)"),
+		flagSet.BoolVarP(&options.ScanList, "list-scan", "ls", false, "list previous cloud scans"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "disable scan/output storage on cloud"),
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
@@ -290,6 +293,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
+	}
+	if os.Getenv("GITHUB_TEMPLATE_REPO") != "" {
+		// there is no flag Env function for slice variable type yet.
+		err := options.GithubTemplateRepo.Set(os.Getenv("GITHUB_TEMPLATE_REPO"))
+		if err != nil {
+			gologger.Fatal().Msgf("Could not read GITHUB_TEMPLATE_REPO env variable: %s\n", err)
+		}
 	}
 	if options.CustomConfigDir != "" {
 		originalIgnorePath := config.GetIgnoreFilePath()
