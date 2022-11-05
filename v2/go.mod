@@ -25,7 +25,7 @@ require (
 	github.com/owenrumney/go-sarif/v2 v2.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
-	github.com/projectdiscovery/cryptoutil v1.0.0
+	github.com/projectdiscovery/cryptoutil v1.0.0 // indirect
 	github.com/projectdiscovery/fastdialer v0.0.17
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/gologger v1.1.4
@@ -78,12 +78,11 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/fileutil v0.0.3
 	github.com/projectdiscovery/goflags v0.1.3
-	github.com/projectdiscovery/iputil v0.0.2
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
 	github.com/projectdiscovery/sliceutil v0.0.1
 	github.com/projectdiscovery/tlsx v0.0.9
-	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
+	github.com/projectdiscovery/utils v0.0.1
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -213,7 +212,7 @@ require (
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
-	github.com/projectdiscovery/utils v0.0.1 // indirect
+	github.com/projectdiscovery/iputil v0.0.2 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
