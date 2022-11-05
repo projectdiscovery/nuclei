@@ -46,7 +46,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.15.1-0.20220329081811-9a40b608a236
+	github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37
 	github.com/xanzy/go-gitlab v0.74.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
@@ -181,12 +181,12 @@ require (
 	github.com/ysmood/leakless v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 // indirect
-	github.com/zmap/zcrypto v0.0.0-20220605182715-4dfcec6e9a8c // indirect
+	github.com/zmap/zcrypto v0.0.0-20220803033029-557f3e4940be // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
-	golang.org/x/exp v0.0.0-20220907003533-145caa8ea1d0
+	golang.org/x/exp v0.0.0-20221019170559-20944726eadf
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
@@ -213,6 +213,7 @@ require (
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
+	github.com/projectdiscovery/utils v0.0.1 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect

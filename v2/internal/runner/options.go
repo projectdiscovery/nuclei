@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -22,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 func ConfigureOptions() error {

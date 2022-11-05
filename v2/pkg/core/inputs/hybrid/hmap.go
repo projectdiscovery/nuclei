@@ -12,13 +12,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/filekv"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
+	iputil "github.com/projectdiscovery/utils/ip"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
