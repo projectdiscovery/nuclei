@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/projectdiscovery/cryptoutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -14,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	cryptoutil "github.com/projectdiscovery/utils/crypto"
 )
 
 // Cluster clusters a list of templates into a lesser number if possible based
