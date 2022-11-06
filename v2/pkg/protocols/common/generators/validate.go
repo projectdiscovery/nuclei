@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 // validate validates the payloads if any.

@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Config contains the internal nuclei engine configuration

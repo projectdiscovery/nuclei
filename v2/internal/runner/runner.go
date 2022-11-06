@@ -53,7 +53,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Runner is a client for running the enumeration process.
