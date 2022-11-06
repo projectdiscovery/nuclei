@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/sliceutil"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"gopkg.in/yaml.v2"
 )

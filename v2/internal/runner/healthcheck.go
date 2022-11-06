@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // DoHealthCheck performs self-diagnostic checks

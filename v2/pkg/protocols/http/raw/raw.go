@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/rawhttp/client"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Request defines a basic HTTP raw request
