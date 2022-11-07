@@ -276,6 +276,14 @@ type Options struct {
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
 	GithubTemplateRepo goflags.StringSlice
+	// AWS access key for downloading templates from s3 bucket
+	AwsAccessKey string
+	// AWS secret key for downloading templates from s3 bucket
+	AwsSecretKey string
+	// AWS bucket name for downloading templates from s3 bucket
+	AwsBucketName string
+	// AWS Region name where aws s3 bucket is located
+	AwsRegion string
 
 	ConfigPath string // Used by healthcheck
 }
