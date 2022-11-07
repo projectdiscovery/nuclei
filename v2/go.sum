@@ -83,7 +83,6 @@ github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725 h1:NjwIgLQlD
 github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725/go.mod h1:/n6+1/DWPltRLWL/VKyUxg6tzsl5kHUCcraimt4vr60=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
-github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 h1:s6gZFSlWYmbqAuRjVTiNNhvNRfY2Wxp9nhfyel4rklc=
 github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137/go.mod h1:OMCwj8VM1Kc9e19TLln2VL61YJF0x1XFtfdL4JdbSyE=
 github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129/go.mod h1:rFgpPQZYZ8vdbc+48xibu8ALc3yeyd64IhHS+PU6Yyg=
@@ -405,7 +404,6 @@ github.com/itchyny/timefmt-go v0.1.3/go.mod h1:0osSSCQSASBJMsIZnhAaF1C2fCBTJZXrn
 github.com/itchyny/timefmt-go v0.1.4 h1:hFEfWVdwsEi+CY8xY2FtgWHGQaBaC3JeHd+cve0ynVM=
 github.com/itchyny/timefmt-go v0.1.4/go.mod h1:nEP7L+2YmAbT2kZ2HfSs1d8Xtw9LY8D2stDBckWakZ8=
 github.com/jarcoal/httpmock v1.0.4 h1:jp+dy/+nonJE4g4xbVtl9QdrUNbn6/3hDT5R4nDIZnA=
-github.com/jarcoal/httpmock v1.0.4/go.mod h1:ATjnClrvW/3tijVmpL/va5Z3aAyGvqU3gCT8nX0Txik=
 github.com/jasonlvhit/gocron v0.0.1/go.mod h1:k9a3TV8VcU73XZxfVHCHWMWF9SOqgoku0/QlY2yvlA4=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
@@ -571,8 +569,6 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.16.0 h1:6gjqkI8iiRHMvdccRJM8rVKjCWk6ZIm6FTm3ddIe4/c=
 github.com/onsi/gomega v1.16.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
-github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7 h1:3Xn/CN6GVY+7mVuGgt5bfp0F9JwcWqnvwfb23Jf8Vxg=
-github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7/go.mod h1:inRbqVxN7ri77yTJY3ZtGtKegIFa3Qnarh7Xp9P7LgY=
 github.com/owenrumney/go-sarif v1.0.11/go.mod h1:hTBFbxU7GuVRUvwMx+eStp9M/Oun4xHCS3vqpPvket8=
 github.com/owenrumney/go-sarif v1.1.1/go.mod h1:dNDiPlF04ESR/6fHlPyq7gHKmrM0sHUvAGjsoh8ZH0U=
 github.com/owenrumney/go-sarif/v2 v2.1.2 h1:PMDK7tXShJ9zsB7bfvlpADH5NEw1dfA9xwU8Xtdj73U=
@@ -616,8 +612,6 @@ github.com/projectdiscovery/fileutil v0.0.0-20220609150212-453ac591c36c/go.mod h
 github.com/projectdiscovery/fileutil v0.0.0-20220705195237-01becc2a8963/go.mod h1:DaY7wmLPMleyHDCD/14YApPCDtrARY4J8Eny2ZGsG/g=
 github.com/projectdiscovery/fileutil v0.0.3 h1:GSsoey4p8ZHIRxWF2VXh4mhLr+wfEkpJwvF0Dxpn/gg=
 github.com/projectdiscovery/fileutil v0.0.3/go.mod h1:GLejWd3YerG3RNYD/Hk2pJlytlYRgHdkWfWUAdCH2YQ=
-github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 h1:m1pgJisawU7zP9lKGktOEk6KNrNAR7e4Q07Kt3ox0NM=
-github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08/go.mod h1:BMqXH4jNGByVdE2iLtKvc/6XStaiZRuCIaKv1vw9PnI=
 github.com/projectdiscovery/goflags v0.0.7/go.mod h1:Jjwsf4eEBPXDSQI2Y+6fd3dBumJv/J1U0nmpM+hy2YY=
 github.com/projectdiscovery/goflags v0.0.8/go.mod h1:GDSkWyXa6kfQjpJu10SO64DN8lXuKXVENlBMk8N7H80=
 github.com/projectdiscovery/goflags v0.1.3 h1:dnJlg19VkDp1iYkpAod4Tv+OAngr7Mq61LMMpBQlO0M=
@@ -660,6 +654,8 @@ github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa/go.mod 
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/rawhttp v0.1.2 h1:fCK42+qc5qYR4Dj/BVoukQ182h4n/w0dRcGVO92T7eI=
 github.com/projectdiscovery/rawhttp v0.1.2/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
+github.com/projectdiscovery/rdap v0.9.1-0.20221107181947-93d15783fe29 h1:T74tWGwZsKBSWbHsi6qwkY8Vig1DJSrt6Fgw2Y/FsaM=
+github.com/projectdiscovery/rdap v0.9.1-0.20221107181947-93d15783fe29/go.mod h1:ybO10oqvfNqRxsfJItzV2vuu7FyJakO16s8+IOAVNA0=
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
@@ -683,8 +679,8 @@ github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3/go.mo
 github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e/go.mod h1:32NYmKyHkKsmisAOAaWrR15lz2ysz2M8x3KMeeoRHoU=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
-github.com/projectdiscovery/tlsx v0.0.9 h1:wUC8GYUIo5jd+enqE1lnEJ3Ew7m+N6eRmFBjbSJLomU=
-github.com/projectdiscovery/tlsx v0.0.9/go.mod h1:bPKwgeGRMZaDpOQCy6TjQWr3bQ7d9lW2lVH5BnWlWMI=
+github.com/projectdiscovery/tlsx v0.0.7 h1:McoDo4Ju7aetogatU4lVTRcQpxkf0qgQSoWgtkDavCk=
+github.com/projectdiscovery/tlsx v0.0.7/go.mod h1:/ZCk/zzyuDdXx2E511yhNIj3LERnGUXghqkASBbdh5M=
 github.com/projectdiscovery/utils v0.0.1 h1:8jxai1EF3z/lpHeUCQEyNvEzs2Y53bzsMzEhoFjjwo0=
 github.com/projectdiscovery/utils v0.0.1/go.mod h1:PEYYkpCedmtydQRUvfWLPw0VRWpaFms4GFqNAziBANI=
 github.com/projectdiscovery/wappalyzergo v0.0.67 h1:4ckerDUmT/OiU+O3XZ0ZGGEJ4DDPVAlsYtXFIzLtfjQ=
@@ -862,7 +858,6 @@ github.com/zclconf/go-cty v1.8.4/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUA
 github.com/zclconf/go-cty v1.10.0/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUAzyuvAk=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 h1:kKCF7VX/wTmdg2ZjEaqlq99Bjsoiz7vH6sFniF/vI4M=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521/go.mod h1:3YZ9o3WnatTIZhuOtot4IcUfzoKVjUHqu6WALIyI0nE=
-github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 h1:17HHAgFKlLcZsDOjBOUrd5hDihb1ggf+1a5dTbkgkIY=
 github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4/go.mod h1:5iU54tB79AMBcySS0R2XIyZBAVmeHranShAFELYx7is=
 github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b/go.mod h1:5nID//bFGkx3/+iHcFIFRHQ54EOPJ0iSj0IGKpMElvw=
 github.com/zmap/zcrypto v0.0.0-20220803033029-557f3e4940be h1:M5QjuCbUeNZsup53dlJkI/cx6pVdnDOPzyy+XppoowY=

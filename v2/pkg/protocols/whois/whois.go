@@ -6,8 +6,8 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/openrdap/rdap"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/rdap"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
