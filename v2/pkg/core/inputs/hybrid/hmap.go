@@ -160,7 +160,8 @@ func (i *Input) normalizeStoreInputValue(value string) {
 			host = value
 		}
 
-		if dnsData, err := protocolstate.Dialer.GetDNSData(host); err == nil {
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
 			var ips []string
 			if i.ipOptions.IPV4 {
 				ips = append(ips, dnsData.A...)
@@ -181,16 +182,19 @@ func (i *Input) normalizeStoreInputValue(value string) {
 					_ = i.hostMapStream.Set([]byte(key), nil)
 				}
 			}
-			break
 		}
-		// in case we have an error just fallthrough
 		fallthrough
 	default:
-		i.inputCount++
-		_ = i.hostMap.Set(keyURL, nil)
-		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(keyURL), nil)
-		}
+		i.setItem(keyURL)
+	}
+}
+
+// setItem in the kv store
+func (i *Input) setItem(k string) {
+	i.inputCount++
+	_ = i.hostMap.Set(k, nil)
+	if i.hostMapStream != nil {
+		_ = i.hostMapStream.Set([]byte(k), nil)
 	}
 }
 
