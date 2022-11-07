@@ -72,7 +72,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customTemplateRepo
+	customTemplates   *[]customTemplateProvider
 	cloudClient       *nucleicloud.Client
 }
 
@@ -107,7 +107,7 @@ func New(options *types.Options) (*Runner, error) {
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.parseCustomTemplates()
+	runner.customTemplates = runner.parseCustomTemplates()
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)

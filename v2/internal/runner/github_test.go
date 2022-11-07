@@ -23,9 +23,11 @@ func TestDownloadCustomTemplates(t *testing.T) {
 	options.GithubTemplateRepo = []string{"projectdiscovery/nuclei-templates", "ehsandeep/nuclei-templates"}
 	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}, options: options}
 
-	r.parseCustomTemplates()
+	r.customTemplates = r.parseCustomTemplates()
 
-	r.downloadCustomTemplates(context.Background())
+	for _, ct := range r.customTemplates {
+		ct.Download(r.templatesConfig.TemplatesDirectory, context.Background())
+	}
 
 	require.DirExists(t, filepath.Join(templatesDirectory, "github", "nuclei-templates"), "cloned directory does not exists")
 	require.DirExists(t, filepath.Join(templatesDirectory, "github", "nuclei-templates-ehsandeep"), "cloned directory does not exists")

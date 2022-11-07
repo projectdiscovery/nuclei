@@ -95,6 +95,11 @@ func ParseOptions(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
+
+	// Set Github token in env variable. runner.getGHClientWithToken() reads token from env
+	if options.GithubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GithubToken {
+		os.Setenv("GITHUB_TOKEN", options.GithubToken)
+	}
 }
 
 // validateOptions validates the configuration options passed
