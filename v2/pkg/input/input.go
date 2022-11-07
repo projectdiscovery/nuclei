@@ -66,7 +66,6 @@ const (
 // Various formats are supported for inputs and their transformation
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	notURL := !strings.Contains(input, "://")
-
 	parsed, _ := url.Parse(input)
 	var host, port string
 	if !notURL {
@@ -74,9 +73,11 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 	} else {
 		host, port, _ = net.SplitHostPort(input)
 	}
+	hasPort := port != ""
 
 	if inputType == typeFilepath {
-		if port != "" {
+		// if it has ports most likely it's not a file
+		if hasPort {
 			return ""
 		}
 		if filepath.IsAbs(input) {
