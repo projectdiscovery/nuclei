@@ -156,7 +156,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
-	github.com/projectdiscovery/mapcidr v1.0.2 // indirect
+	github.com/projectdiscovery/mapcidr v1.0.2
 	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
