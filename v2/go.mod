@@ -79,7 +79,7 @@ require (
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/utils v0.0.1
-	github.com/projectdiscovery/wappalyzergo v0.0.67
+	github.com/projectdiscovery/wappalyzergo v0.0.68
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
