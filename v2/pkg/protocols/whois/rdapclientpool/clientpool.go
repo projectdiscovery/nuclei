@@ -1,18 +1,12 @@
 package rdapclientpool
 
 import (
-	"sync"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rdap"
 )
 
-var (
-	poolMutex    *sync.RWMutex
-	normalClient *rdap.Client
-	clientPool   map[string]*rdap.Client
-)
+var normalClient *rdap.Client
 
 // Init initializes the client pool implementation
 func Init(options *types.Options) error {
@@ -20,8 +14,6 @@ func Init(options *types.Options) error {
 	if normalClient != nil {
 		return nil
 	}
-	poolMutex = &sync.RWMutex{}
-	clientPool = make(map[string]*rdap.Client)
 
 	normalClient = &rdap.Client{}
 	if options.Verbose || options.Debug || options.DebugRequests || options.DebugResponse {
