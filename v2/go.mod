@@ -57,7 +57,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.129
+require github.com/aws/aws-sdk-go v1.44.132
 
 require (
 	github.com/DataDog/gostackparse v0.6.0
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
 	github.com/projectdiscovery/rdap v0.9.1-0.20221107181947-93d15783fe29
-	github.com/projectdiscovery/tlsx v0.0.7
+	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/utils v0.0.1
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
@@ -215,5 +215,6 @@ require (
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
