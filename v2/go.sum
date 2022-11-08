@@ -571,8 +571,6 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.16.0 h1:6gjqkI8iiRHMvdccRJM8rVKjCWk6ZIm6FTm3ddIe4/c=
 github.com/onsi/gomega v1.16.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
-github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7 h1:3Xn/CN6GVY+7mVuGgt5bfp0F9JwcWqnvwfb23Jf8Vxg=
-github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7/go.mod h1:inRbqVxN7ri77yTJY3ZtGtKegIFa3Qnarh7Xp9P7LgY=
 github.com/owenrumney/go-sarif v1.0.11/go.mod h1:hTBFbxU7GuVRUvwMx+eStp9M/Oun4xHCS3vqpPvket8=
 github.com/owenrumney/go-sarif v1.1.1/go.mod h1:dNDiPlF04ESR/6fHlPyq7gHKmrM0sHUvAGjsoh8ZH0U=
 github.com/owenrumney/go-sarif/v2 v2.1.2 h1:PMDK7tXShJ9zsB7bfvlpADH5NEw1dfA9xwU8Xtdj73U=
@@ -658,6 +656,8 @@ github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa/go.mod 
 github.com/projectdiscovery/rawhttp v0.0.7/go.mod h1:PQERZAhAv7yxI/hR6hdDPgK1WTU56l204BweXrBec+0=
 github.com/projectdiscovery/rawhttp v0.1.2 h1:fCK42+qc5qYR4Dj/BVoukQ182h4n/w0dRcGVO92T7eI=
 github.com/projectdiscovery/rawhttp v0.1.2/go.mod h1:Q5PDAmKzjAjweEp0CQr9301nyxCOkzA9ImK6qLjgk+8=
+github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
+github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.11/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.12/go.mod h1:4sMC8HZyF01HXukRleSQYwz4870bwgb4+hTSXTMrkf4=
 github.com/projectdiscovery/retryabledns v1.0.13-0.20210916165024-76c5b76fd59a/go.mod h1:tXaLDs4n3pRZHwfa8mdXpUWe/AYDNK3HlWDjldhRbjI=
