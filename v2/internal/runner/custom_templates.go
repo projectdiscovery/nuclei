@@ -32,11 +32,9 @@ type customTemplateGithubRepo struct {
 }
 
 type customTemplateS3Bucket struct {
+	s3Client   *s3.Client
 	bucketName string
 	prefix     string
-	acccessKey string
-	secretKey  string
-	region     string
 }
 
 // parseCustomTemplates function reads the options.GithubTemplateRepo list,
@@ -65,11 +63,14 @@ func (r *Runner) parseCustomTemplates() *[]customTemplateProvider {
 		customTemplates = append(customTemplates, customTemplateRepo)
 	}
 	if r.options.AwsBucketName != "" {
+		s3c, err := getS3Client(context.TODO(), r.options.AwsAccessKey, r.options.AwsSecretKey, r.options.AwsRegion)
+		if err != nil {
+			gologger.Error().Msgf("error downloading s3 bucket %s %s", r.options.AwsBucketName, err)
+			return &customTemplates
+		}
 		ctBucket := &customTemplateS3Bucket{
 			bucketName: r.options.AwsBucketName,
-			acccessKey: r.options.AwsAccessKey,
-			secretKey:  r.options.AwsSecretKey,
-			region:     r.options.AwsRegion,
+			s3Client:   s3c,
 		}
 		if strings.Contains(r.options.AwsBucketName, "/") {
 			bPath := strings.SplitN(r.options.AwsBucketName, "/", 2)
@@ -208,16 +209,8 @@ func getAuth(username, password string) *http.BasicAuth {
 func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context) {
 	downloadPath := filepath.Join(location, customS3TemplateDirectory, bk.bucketName)
 
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(bk.acccessKey, bk.secretKey, "")), config.WithRegion(bk.region))
-	if err != nil {
-		gologger.Error().Msgf("error downloading aws bucket %s %s", bk.bucketName, err)
-		return
-	}
-
-	client := s3.NewFromConfig(cfg)
-	manager := manager.NewDownloader(client)
-
-	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
+	manager := manager.NewDownloader(bk.s3Client)
+	paginator := s3.NewListObjectsV2Paginator(bk.s3Client, &s3.ListObjectsV2Input{
 		Bucket: &bk.bucketName,
 		Prefix: &bk.prefix,
 	})
@@ -225,12 +218,12 @@ func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context)
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(context.TODO())
 		if err != nil {
-			gologger.Error().Msgf("error downloading aws bucket %s %s", bk.bucketName, err)
+			gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 			return
 		}
 		for _, obj := range page.Contents {
 			if err := downloadToFile(manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
-				gologger.Error().Msgf("error downloading aws bucket %s %s", bk.bucketName, err)
+				gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 				return
 			}
 		}
@@ -261,4 +254,12 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
 
 	return err
+}
+
+func getS3Client(ctx context.Context, acccessKey, secretKey, region string) (*s3.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(acccessKey, secretKey, "")), config.WithRegion(region))
+	if err != nil {
+		return nil, err
+	}
+	return s3.NewFromConfig(cfg), nil
 }

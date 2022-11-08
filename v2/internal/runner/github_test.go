@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDownloadCustomTemplates(t *testing.T) {
+func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
 	templatesDirectory, err := os.MkdirTemp("", "template-custom-*")
@@ -25,7 +25,7 @@ func TestDownloadCustomTemplates(t *testing.T) {
 
 	r.customTemplates = r.parseCustomTemplates()
 
-	for _, ct := range r.customTemplates {
+	for _, ct := range *r.customTemplates {
 		ct.Download(r.templatesConfig.TemplatesDirectory, context.Background())
 	}
 
