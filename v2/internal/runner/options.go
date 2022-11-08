@@ -140,6 +140,10 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
+	// Verify aws secrets are passed if s3 tempalte bucket passed
+	if options.AwsBucketName != "" && (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") {
+		return errors.New("aws s3 bucket details are missing. Please provide region, access and secret key")
+	}
 	return nil
 }
 
