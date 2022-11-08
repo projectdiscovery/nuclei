@@ -679,8 +679,8 @@ github.com/projectdiscovery/stringsutil v0.0.0-20220612082425-0037ce9f89f3/go.mo
 github.com/projectdiscovery/stringsutil v0.0.0-20220731064040-4b67f194751e/go.mod h1:32NYmKyHkKsmisAOAaWrR15lz2ysz2M8x3KMeeoRHoU=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
-github.com/projectdiscovery/tlsx v0.0.7 h1:McoDo4Ju7aetogatU4lVTRcQpxkf0qgQSoWgtkDavCk=
-github.com/projectdiscovery/tlsx v0.0.7/go.mod h1:/ZCk/zzyuDdXx2E511yhNIj3LERnGUXghqkASBbdh5M=
+github.com/projectdiscovery/tlsx v0.0.9 h1:wUC8GYUIo5jd+enqE1lnEJ3Ew7m+N6eRmFBjbSJLomU=
+github.com/projectdiscovery/tlsx v0.0.9/go.mod h1:bPKwgeGRMZaDpOQCy6TjQWr3bQ7d9lW2lVH5BnWlWMI=
 github.com/projectdiscovery/utils v0.0.1 h1:8jxai1EF3z/lpHeUCQEyNvEzs2Y53bzsMzEhoFjjwo0=
 github.com/projectdiscovery/utils v0.0.1/go.mod h1:PEYYkpCedmtydQRUvfWLPw0VRWpaFms4GFqNAziBANI=
 github.com/projectdiscovery/wappalyzergo v0.0.67 h1:4ckerDUmT/OiU+O3XZ0ZGGEJ4DDPVAlsYtXFIzLtfjQ=
@@ -858,6 +858,7 @@ github.com/zclconf/go-cty v1.8.4/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUA
 github.com/zclconf/go-cty v1.10.0/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUAzyuvAk=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 h1:kKCF7VX/wTmdg2ZjEaqlq99Bjsoiz7vH6sFniF/vI4M=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521/go.mod h1:3YZ9o3WnatTIZhuOtot4IcUfzoKVjUHqu6WALIyI0nE=
+github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 h1:17HHAgFKlLcZsDOjBOUrd5hDihb1ggf+1a5dTbkgkIY=
 github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4/go.mod h1:5iU54tB79AMBcySS0R2XIyZBAVmeHranShAFELYx7is=
 github.com/zmap/zcrypto v0.0.0-20211005224000-2d0ffdec8a9b/go.mod h1:5nID//bFGkx3/+iHcFIFRHQ54EOPJ0iSj0IGKpMElvw=
 github.com/zmap/zcrypto v0.0.0-20220803033029-557f3e4940be h1:M5QjuCbUeNZsup53dlJkI/cx6pVdnDOPzyy+XppoowY=
