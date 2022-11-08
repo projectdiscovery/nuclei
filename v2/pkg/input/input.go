@@ -36,17 +36,17 @@ func (h *Helper) Close() error {
 func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) string {
 	switch protocol {
 	case templateTypes.DNSProtocol, templateTypes.WHOISProtocol:
-		return h.convertInputToType(input, inputTypeHost, "")
+		return h.convertInputToType(input, typeHostOnly, "")
 	case templateTypes.FileProtocol, templateTypes.OfflineHTTPProtocol:
-		return h.convertInputToType(input, inputTypeFilepath, "")
+		return h.convertInputToType(input, typeFilepath, "")
 	case templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol:
-		return h.convertInputToType(input, inputTypeURL, "")
+		return h.convertInputToType(input, typeURL, "")
 	case templateTypes.NetworkProtocol:
-		return h.convertInputToType(input, inputTypeHostPort, "")
+		return h.convertInputToType(input, typeHostWithOptionalPort, "")
 	case templateTypes.SSLProtocol:
-		return h.convertInputToType(input, inputTypeHostPort, "443")
+		return h.convertInputToType(input, typeHostWithPort, "443")
 	case templateTypes.WebsocketProtocol:
-		return h.convertInputToType(input, inputTypeWebsocket, "")
+		return h.convertInputToType(input, typeWebsocket, "")
 	}
 	return input
 }
@@ -54,18 +54,18 @@ func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) st
 type inputType int
 
 const (
-	inputTypeHost inputType = iota + 1
-	inputTypeURL
-	inputTypeFilepath
-	inputTypeHostPort
-	inputTypeWebsocket
+	typeHostOnly inputType = iota + 1
+	typeHostWithPort
+	typeHostWithOptionalPort
+	typeURL
+	typeFilepath
+	typeWebsocket
 )
 
 // convertInputToType converts an input based on an inputType.
 // Various formats are supported for inputs and their transformation
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	notURL := !strings.Contains(input, "://")
-
 	parsed, _ := url.Parse(input)
 	var host, port string
 	if !notURL {
@@ -73,9 +73,11 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 	} else {
 		host, port, _ = net.SplitHostPort(input)
 	}
+	hasPort := port != ""
 
-	if inputType == inputTypeFilepath {
-		if port != "" {
+	if inputType == typeFilepath {
+		// if it has ports most likely it's not a file
+		if hasPort {
 			return ""
 		}
 		if filepath.IsAbs(input) {
@@ -87,7 +89,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && notURL {
 			return input
 		}
-	} else if inputType == inputTypeHost {
+	} else if inputType == typeHostOnly {
 		if host != "" {
 			return host
 		}
@@ -96,7 +98,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		} else {
 			return input
 		}
-	} else if inputType == inputTypeURL {
+	} else if inputType == typeURL {
 		if parsed != nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
 			return input
 		}
@@ -105,7 +107,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 				return string(probed)
 			}
 		}
-	} else if inputType == inputTypeHostPort {
+	} else if inputType == typeHostWithPort {
 		if host != "" && port != "" {
 			return net.JoinHostPort(host, port)
 		}
@@ -115,7 +117,18 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if defaultPort != "" {
 			return net.JoinHostPort(input, defaultPort)
 		}
-	} else if inputType == inputTypeWebsocket {
+	} else if inputType == typeHostWithOptionalPort {
+		if host != "" && port != "" {
+			return net.JoinHostPort(host, port)
+		}
+		if parsed != nil && port == "" && parsed.Scheme == "https" {
+			return net.JoinHostPort(parsed.Host, "443")
+		}
+		if defaultPort != "" {
+			return net.JoinHostPort(input, defaultPort)
+		}
+		return input
+	} else if inputType == typeWebsocket {
 		if parsed != nil && (parsed.Scheme == "ws" || parsed.Scheme == "wss") {
 			return input
 		}
