@@ -56,7 +56,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.132
+require github.com/aws/aws-sdk-go v1.44.133
 
 require (
 	github.com/DataDog/gostackparse v0.6.0
