@@ -24,37 +24,37 @@ func TestConvertInputToType(t *testing.T) {
 		defaultPort string
 	}{
 		// host
-		{"google.com", inputTypeHost, "google.com", ""},
-		{"google.com:443", inputTypeHost, "google.com", ""},
-		{"https://google.com", inputTypeHost, "google.com", ""},
-		{"https://google.com:443", inputTypeHost, "google.com", ""},
+		{"google.com", typeHostOnly, "google.com", ""},
+		{"google.com:443", typeHostOnly, "google.com", ""},
+		{"https://google.com", typeHostOnly, "google.com", ""},
+		{"https://google.com:443", typeHostOnly, "google.com", ""},
 
 		// url
-		{"test.com", inputTypeURL, "", ""},
-		{"google.com", inputTypeURL, "https://google.com", ""},
-		{"https://google.com", inputTypeURL, "https://google.com", ""},
+		{"test.com", typeURL, "", ""},
+		{"google.com", typeURL, "https://google.com", ""},
+		{"https://google.com", typeURL, "https://google.com", ""},
 
 		// file
-		{"google.com:443", inputTypeFilepath, "", ""},
-		{"https://google.com:443", inputTypeFilepath, "", ""},
-		{"/example/path", inputTypeFilepath, "/example/path", ""},
-		{"input_test.go", inputTypeFilepath, "input_test.go", ""},
-		{"../input", inputTypeFilepath, "../input", ""},
-		{"input_test.*", inputTypeFilepath, "input_test.*", ""},
+		{"google.com:443", typeFilepath, "", ""},
+		{"https://google.com:443", typeFilepath, "", ""},
+		{"/example/path", typeFilepath, "/example/path", ""},
+		{"input_test.go", typeFilepath, "input_test.go", ""},
+		{"../input", typeFilepath, "../input", ""},
+		{"input_test.*", typeFilepath, "input_test.*", ""},
 
 		// host-port
-		{"google.com", inputTypeHostPort, "", ""},
-		{"google.com:443", inputTypeHostPort, "google.com:443", ""},
-		{"https://google.com", inputTypeHostPort, "google.com:443", ""},
-		{"https://google.com:443", inputTypeHostPort, "google.com:443", ""},
+		{"google.com", typeHostWithPort, "", ""},
+		{"google.com:443", typeHostWithPort, "google.com:443", ""},
+		{"https://google.com", typeHostWithPort, "google.com:443", ""},
+		{"https://google.com:443", typeHostWithPort, "google.com:443", ""},
 		// host-port with default port
-		{"google.com", inputTypeHostPort, "google.com:443", "443"},
+		{"google.com", typeHostWithPort, "google.com:443", "443"},
 
 		// websocket
-		{"google.com", inputTypeWebsocket, "", ""},
-		{"google.com:443", inputTypeWebsocket, "", ""},
-		{"https://google.com:443", inputTypeWebsocket, "", ""},
-		{"wss://google.com", inputTypeWebsocket, "wss://google.com", ""},
+		{"google.com", typeWebsocket, "", ""},
+		{"google.com:443", typeWebsocket, "", ""},
+		{"https://google.com:443", typeWebsocket, "", ""},
+		{"wss://google.com", typeWebsocket, "wss://google.com", ""},
 	}
 
 	for _, test := range tests {
