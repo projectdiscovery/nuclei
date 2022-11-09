@@ -6,8 +6,8 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/openrdap/rdap"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/rdap"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -57,12 +58,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	request.options = options
-	request.client = &rdap.Client{}
-	if request.options.Options.Verbose || request.options.Options.Debug || request.options.Options.DebugRequests {
-		request.client.Verbose = func(text string) {
-			gologger.Debug().Msgf("rdap: %s", text)
-		}
-	}
+	request.client, _ = rdapclientpool.Get(options.Options, nil)
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
