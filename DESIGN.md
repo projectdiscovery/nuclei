@@ -269,13 +269,14 @@ An example of using Nuclei From Go Code to run templates on targets is provided 
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"path"
+	"time"
 
 	"github.com/logrusorgru/aurora"
-	"go.uber.org/ratelimit"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -293,6 +294,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/ratelimit"
 )
 
 func main() {
@@ -330,7 +332,7 @@ func main() {
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(150),
+		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
