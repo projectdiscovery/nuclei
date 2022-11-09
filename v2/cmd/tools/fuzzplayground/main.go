@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os/exec"
 	"strconv"
@@ -66,7 +66,7 @@ func requestHandler(ctx echo.Context) error {
 	}
 	defer data.Body.Close()
 
-	body, _ := ioutil.ReadAll(data.Body)
+	body, _ := io.ReadAll(data.Body)
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(body)))
 }
 

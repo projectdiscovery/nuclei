@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"go.uber.org/atomic"
 )
 
@@ -84,8 +85,8 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	// TODO: Add payload file and workflow support for private templates
 	catalogChecksums := nucleicloud.ReadCatalogChecksum()
 
-	targets := make([]string, 0, r.hmapInputProvider.Count())
-	r.hmapInputProvider.Scan(func(value string) bool {
+	targets := make([]*contextargs.MetaInput, 0, r.hmapInputProvider.Count())
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
 		targets = append(targets, value)
 		return true
 	})

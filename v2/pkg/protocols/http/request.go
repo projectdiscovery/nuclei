@@ -48,7 +48,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	reqURL := input.Input
+	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
@@ -59,7 +59,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	if !ok {
 		return nil
 	}
-	requestForDump, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
+	ctx := request.newContext(input)
+	requestForDump, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		if !ok {
 			break
 		}
-		generatedRequest, err := generator.Make(context.Background(), reqURL, inputData, payloads, nil)
+		ctx := request.newContext(input)
+		generatedRequest, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -130,7 +132,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(context.Background(), input.Input, inputData, payloads, dynamicValues)
+		ctx := request.newContext(input)
+		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -138,8 +141,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
-		if input.Input == "" {
-			input.Input = generatedHttpRequest.URL()
+		if input.MetaInput.Input == "" {
+			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
@@ -166,7 +169,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	generator := request.newGenerator(false)
 
 	// need to extract the target from the url
-	URL, err := url.Parse(input.Input)
+	URL, err := url.Parse(input.MetaInput.Input)
 	if err != nil {
 		return err
 	}
@@ -197,13 +200,14 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		if !ok {
 			break
 		}
-		generatedHttpRequest, err := generator.Make(context.Background(), input.Input, inputData, payloads, dynamicValues)
+		ctx := request.newContext(input)
+		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
-		if input.Input == "" {
-			input.Input = generatedHttpRequest.URL()
+		if input.MetaInput.Input == "" {
+			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		swg.Add()
@@ -225,14 +229,14 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := url.Parse(input.Input)
+	parsed, err := url.Parse(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 		hasInteractMarkers := len(gr.InteractURLs) > 0
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.Input) {
+		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
 
@@ -266,7 +270,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		if requestErr != nil {
 			if request.options.HostErrorsCache != nil {
-				request.options.HostErrorsCache.MarkFailed(input.Input, requestErr)
+				request.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, requestErr)
 			}
 		}
 		request.options.Progress.IncrementRequests()
@@ -285,7 +289,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input.Input, value, payloads, nil)
+		generated, err := generator.Make(context.Background(), input.MetaInput.Input, value, payloads, nil)
 		if err != nil {
 			continue
 		}
@@ -346,10 +350,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			request.options.RateLimiter.Take()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(request.options.Options.Timeout)*time.Second)
+			ctx := request.newContext(input)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
 
-			generatedHttpRequest, err := generator.Make(ctx, input.Input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input.MetaInput.Input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
 					return true, nil
@@ -367,11 +372,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
 			}
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
-			if input.Input == "" {
-				input.Input = generatedHttpRequest.URL()
+			if input.MetaInput.Input == "" {
+				input.MetaInput.Input = generatedHttpRequest.URL()
 			}
 			// Check if hosts keep erroring
-			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.Input) {
+			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.ID()) {
 				return true, nil
 			}
 			var gotMatches bool
@@ -400,7 +405,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			if err != nil {
 				if request.options.HostErrorsCache != nil {
-					request.options.HostErrorsCache.MarkFailed(input.Input, err)
+					request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 				}
 				requestErr = err
 			}
@@ -472,7 +477,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !generatedRequest.original.Race {
 		var dumpError error
 		// TODO: dump is currently not working with post-processors - somehow it alters the signature
-		dumpedRequest, dumpError = dump(generatedRequest, input.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
@@ -480,12 +485,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
 			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.Input, varErr)
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return errStopExecution
 			}
 		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
 			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.Input, varErr)
+				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return errStopExecution
 			}
 		}
@@ -499,7 +504,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
 				hostname = parsed.Host
 			}
-			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
@@ -507,7 +512,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
-			formedURL = input.Input
+			formedURL = input.MetaInput.Input
 			if generatedRequest.rawRequest.Path != "" {
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
 			}
@@ -520,7 +525,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, input.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
@@ -553,13 +558,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
-		formedURL = input.Input
+		formedURL = input.MetaInput.Input
 	}
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
 		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
@@ -572,7 +577,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				gologger.Print().Msgf("%s", dumpedRequestString)
 			}
 			if request.options.Options.StoreResponse {
-				request.options.Output.WriteStoreDebugData(input.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 			}
 		}
 	}
@@ -588,11 +593,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// If we have interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		if hasInteractMatchers {
-			outputEvent := request.responseToDSLMap(&http.Response{}, input.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+			outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
 			if i := strings.LastIndex(hostname, ":"); i != -1 {
 				hostname = hostname[:i]
 			}
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+
+			if input.MetaInput.CustomIP != "" {
+				outputEvent["ip"] = input.MetaInput.CustomIP
+			} else {
+				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			}
 
 			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 			if request.CompiledOperators != nil {
@@ -672,7 +682,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if response.resp == nil {
 			continue // Skip nil responses
 		}
-		matchedURL := input.Input
+		matchedURL := input.MetaInput.Input
 		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 			matchedURL = generatedRequest.rawRequest.FullURL
 		}
@@ -687,12 +697,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		finalEvent := make(output.InternalEvent)
 
-		outputEvent := request.responseToDSLMap(response.resp, input.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
-		outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		if input.MetaInput.CustomIP != "" {
+			outputEvent["ip"] = input.MetaInput.CustomIP
+		} else {
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
@@ -723,7 +737,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := resp.Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && len(gotData) >= request.MaxSize
-		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, input.Input)
+		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -841,4 +855,11 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 			delete(m, fieldName)
 		}
 	}
+}
+
+func (request *Request) newContext(input *contextargs.Context) context.Context {
+	if input.MetaInput.CustomIP != "" {
+		return context.WithValue(context.Background(), "ip", input.MetaInput.CustomIP) //nolint
+	}
+	return context.Background()
 }
