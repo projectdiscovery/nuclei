@@ -45,7 +45,7 @@ func (r *Runner) getScanList() error {
 		if !v.Finished {
 			status = "RUNNING"
 			t = time.Now().UTC()
-			duration = t.Sub(v.CreatedAt)
+			duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
 		}
 
 		val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
