@@ -171,6 +171,9 @@ func (i *Input) normalizeStoreInputValue(value string) {
 			}
 
 			for _, ip := range ips {
+				if ip == "" {
+					continue
+				}
 				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
 				key, err := metaInput.MarshalString()
 				if err != nil {
@@ -182,6 +185,7 @@ func (i *Input) normalizeStoreInputValue(value string) {
 					_ = i.hostMapStream.Set([]byte(key), nil)
 				}
 			}
+			break
 		}
 		fallthrough
 	default:
