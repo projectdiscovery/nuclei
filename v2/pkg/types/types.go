@@ -272,12 +272,16 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
 	GithubTemplateRepo goflags.StringSlice
-
-	ConfigPath string // Used by healthcheck
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

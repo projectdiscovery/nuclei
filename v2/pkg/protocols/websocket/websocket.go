@@ -137,7 +137,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	hostname, err := getAddress(input.Input)
+	hostname, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		return err
 	}
@@ -150,13 +150,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input.Input, hostname, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
 			return err
 		}
 	}
