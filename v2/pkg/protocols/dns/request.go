@@ -34,10 +34,10 @@ func (request *Request) Type() templateTypes.ProtocolType {
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
-	if utils.IsURL(input.Input) {
-		domain = extractDomain(input.Input)
+	if utils.IsURL(input.MetaInput.Input) {
+		domain = extractDomain(input.MetaInput.Input)
 	} else {
-		domain = input.Input
+		domain = input.MetaInput.Input
 	}
 
 	var err error
@@ -112,7 +112,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input.Input, input.Input, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, input.MetaInput.Input, input.MetaInput.Input, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}

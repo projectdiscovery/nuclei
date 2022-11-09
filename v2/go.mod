@@ -25,8 +25,7 @@ require (
 	github.com/owenrumney/go-sarif/v2 v2.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.8
-	github.com/projectdiscovery/cryptoutil v1.0.0 // indirect
-	github.com/projectdiscovery/fastdialer v0.0.17
+	github.com/projectdiscovery/fastdialer v0.0.18-0.20221102102120-8e9343e8b0e0
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/gologger v1.1.4
 	github.com/projectdiscovery/hmap v0.0.2
@@ -208,6 +207,7 @@ require (
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
+	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect; indirectdev
 	github.com/projectdiscovery/fileutil v0.0.3 // indirect
 	github.com/projectdiscovery/iputil v0.0.2 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect

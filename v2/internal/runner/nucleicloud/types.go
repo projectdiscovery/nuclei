@@ -1,11 +1,15 @@
 package nucleicloud
 
-import "time"
+import (
+	"time"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+)
 
 // AddScanRequest is a nuclei scan input item.
 type AddScanRequest struct {
 	// RawTargets is a list of raw target URLs for the scan.
-	RawTargets []string `json:"raw_targets,omitempty"`
+	RawTargets []*contextargs.MetaInput `json:"raw_targets,omitempty"`
 	// PublicTemplates is a list of public templates for the scan
 	PublicTemplates []string `json:"public_templates,omitempty"`
 	// PrivateTemplates is a map of template-name->contents that
