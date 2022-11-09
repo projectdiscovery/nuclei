@@ -57,7 +57,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.129
+require github.com/aws/aws-sdk-go v1.44.132
 
 require (
 	github.com/DataDog/gostackparse v0.6.0
@@ -77,13 +77,13 @@ require (
 	github.com/labstack/echo/v4 v4.9.1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/openrdap/rdap v0.9.1-0.20191017185644-af93e7ef17b7
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.3
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
+	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/tlsx v0.0.9
-	github.com/projectdiscovery/utils v0.0.1
+	github.com/projectdiscovery/utils v0.0.2
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
