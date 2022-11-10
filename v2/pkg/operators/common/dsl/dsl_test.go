@@ -144,6 +144,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	sort(elements ...interface{}) []interface{}
 	sort(input number) string
 	sort(input string) string
+	split(input string, n int) []string
+	split(input string, separator string, optionalChunkSize) []string
 	starts_with(str string, prefix ...string) bool
 	substr(str string, start int, optionalEnd int)
 	to_lower(arg1 interface{}) interface{}
@@ -251,11 +253,18 @@ func TestDslExpressions(t *testing.T) {
 		`sort(12453)`:                                             "12345",
 		`sort("a1b2c3d4e5")`:                                      "12345abcde",
 		`sort("b", "a", "2", "c", "3", "1", "d", "4")`:            []string{"1", "2", "3", "4", "a", "b", "c", "d"},
+		`split("abcdefg", 2)`:                                     []string{"ab", "cd", "ef", "g"},
+		`split("ab,cd,efg", ",", 1)`:                              []string{"ab,cd,efg"},
+		`split("ab,cd,efg", ",", 2)`:                              []string{"ab", "cd,efg"},
+		`split("ab,cd,efg", ",", "3")`:                            []string{"ab", "cd", "efg"},
+		`split("ab,cd,efg", ",", -1)`:                             []string{"ab", "cd", "efg"},
+		`split("ab,cd,efg", ",")`:                                 []string{"ab", "cd", "efg"},
 		`join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))`: "1 2 3 4 a b c d",
 		`uniq(123123231)`:                                         "123",
 		`uniq("abcabdaabbccd")`:                                   "abcd",
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
+		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)

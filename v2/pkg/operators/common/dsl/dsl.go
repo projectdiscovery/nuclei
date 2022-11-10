@@ -414,6 +414,33 @@ func init() {
 				return builder.String(), nil
 			},
 		),
+		"split": makeMultiSignatureDslFunction([]string{
+			"(input string, n int) []string",
+			"(input string, separator string, optionalChunkSize) []string"},
+			func(arguments ...interface{}) (interface{}, error) {
+				argumentsSize := len(arguments)
+				if argumentsSize == 2 {
+					input := types.ToString(arguments[0])
+					separatorOrCount := types.ToString(arguments[1])
+
+					count, err := strconv.Atoi(separatorOrCount)
+					if err != nil {
+						return strings.SplitN(input, separatorOrCount, -1), nil
+					}
+					return toChunks(input, count), nil
+				} else if argumentsSize == 3 {
+					input := types.ToString(arguments[0])
+					separator := types.ToString(arguments[1])
+					count, err := strconv.Atoi(types.ToString(arguments[2]))
+					if err != nil {
+						return nil, invalidDslFunctionError
+					}
+					return strings.SplitN(input, separator, count), nil
+				} else {
+					return nil, invalidDslFunctionError
+				}
+			},
+		),
 		"join": makeMultiSignatureDslFunction([]string{
 			"(separator string, elements ...interface{}) string",
 			"(separator string, elements []interface{}) string"},
@@ -1041,6 +1068,25 @@ func stringNumberToDecimal(args []interface{}, prefix string, base int) (interfa
 		return float64(number), err
 	}
 	return nil, fmt.Errorf("invalid number: %s", input)
+}
+
+func toChunks(input string, chunkSize int) []string {
+	if chunkSize <= 0 || chunkSize >= len(input) {
+		return []string{input}
+	}
+	var chunks = make([]string, 0, (len(input)-1)/chunkSize+1)
+	currentLength := 0
+	currentStart := 0
+	for i := range input {
+		if currentLength == chunkSize {
+			chunks = append(chunks, input[currentStart:i])
+			currentLength = 0
+			currentStart = i
+		}
+		currentLength++
+	}
+	chunks = append(chunks, input[currentStart:])
+	return chunks
 }
 
 type CompilationError struct {
