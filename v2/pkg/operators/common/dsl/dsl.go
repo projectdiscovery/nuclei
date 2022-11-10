@@ -62,7 +62,7 @@ var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+(
 var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
 
 type dslFunction struct {
-	signature   string
+	signatures  []string
 	expressFunc govaluate.ExpressionFunction
 }
 
@@ -88,8 +88,10 @@ func init() {
 		"to_lower": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(types.ToString(args[0])), nil
 		}),
-		"sort": makeDslWithOptionalArgsFunction(
-			"(args ...interface{}) interface{}",
+		"sort": makeMultiSignatureDslFunction([]string{
+			"(input string) string",
+			"(input number) string",
+			"(elements ...interface{}) []interface{}"},
 			func(args ...interface{}) (interface{}, error) {
 				argCount := len(args)
 				if argCount == 0 {
@@ -110,8 +112,10 @@ func init() {
 				}
 			},
 		),
-		"uniq": makeDslWithOptionalArgsFunction(
-			"(args ...interface{}) interface{}",
+		"uniq": makeMultiSignatureDslFunction([]string{
+			"(input string) string",
+			"(input number) string",
+			"(elements ...interface{}) []interface{}"},
 			func(args ...interface{}) (interface{}, error) {
 				argCount := len(args)
 				if argCount == 0 {
@@ -410,12 +414,13 @@ func init() {
 				return builder.String(), nil
 			},
 		),
-		"join": makeDslWithOptionalArgsFunction(
+		"join": makeMultiSignatureDslFunction([]string{
 			"(separator string, elements ...interface{}) string",
+			"(separator string, elements []interface{}) string"},
 			func(arguments ...interface{}) (interface{}, error) {
 				argumentsSize := len(arguments)
 				if argumentsSize < 2 {
-					return nil, errors.New("incorrect number of arguments received")
+					return nil, invalidDslFunctionError
 				} else if argumentsSize == 2 {
 					separator := types.ToString(arguments[0])
 					elements, ok := arguments[1].([]string)
@@ -431,7 +436,6 @@ func init() {
 
 					stringElements := make([]string, 0, argumentsSize)
 					for _, element := range elements {
-
 						if _, ok := element.([]string); ok {
 							return nil, errors.New("cannot use join on more than one slice element")
 						}
@@ -794,9 +798,18 @@ func init() {
 }
 
 func makeDslWithOptionalArgsFunction(signaturePart string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
+	return makeMultiSignatureDslFunction([]string{signaturePart}, dslFunctionLogic)
+}
+
+func makeMultiSignatureDslFunction(signatureParts []string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
 	return func(functionName string) dslFunction {
+		methodSignatures := make([]string, 0, len(signatureParts))
+		for _, signaturePart := range signatureParts {
+			methodSignatures = append(methodSignatures, functionName+signaturePart)
+		}
+
 		return dslFunction{
-			functionName + signaturePart,
+			methodSignatures,
 			dslFunctionLogic,
 		}
 	}
@@ -806,7 +819,7 @@ func makeDslFunction(numberOfParameters int, dslFunctionLogic govaluate.Expressi
 	return func(functionName string) dslFunction {
 		signature := functionName + createSignaturePart(numberOfParameters)
 		return dslFunction{
-			signature,
+			[]string{signature},
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != numberOfParameters {
 					return nil, fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature)
@@ -843,7 +856,7 @@ func helperFunctions() map[string]govaluate.ExpressionFunction {
 func AddHelperFunction(key string, value func(args ...interface{}) (interface{}, error)) error {
 	if _, ok := dslFunctions[key]; !ok {
 		dslFunction := dslFunctions[key]
-		dslFunction.signature = "(args ...interface{}) interface{}"
+		dslFunction.signatures = []string{"(args ...interface{}) interface{}"}
 		dslFunction.expressFunc = value
 		return nil
 	}
@@ -873,7 +886,9 @@ func getDslFunctionSignatures() []string {
 	result := make([]string, 0, len(dslFunctions))
 
 	for _, dslFunction := range dslFunctions {
-		result = append(result, dslFunction.signature)
+		for _, signature := range dslFunction.signatures {
+			result = append(result, signature)
+		}
 	}
 
 	return result

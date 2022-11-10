@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"strconv"
 	"testing"
 	"time"
 
@@ -118,6 +117,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	html_escape(arg1 interface{}) interface{}
 	html_unescape(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
+	join(separator string, elements []interface{}) string
 	len(arg1 interface{}) interface{}
 	line_ends_with(str string, suffix ...string) bool
 	line_starts_with(str string, prefix ...string) bool
@@ -141,7 +141,9 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	sha1(arg1 interface{}) interface{}
 	sha256(arg1 interface{}) interface{}
 	sha512(arg1 interface{}) interface{}
-	sort(args ...interface{}) interface{}
+	sort(elements ...interface{}) []interface{}
+	sort(input number) string
+	sort(input string) string
 	starts_with(str string, prefix ...string) bool
 	substr(str string, start int, optionalEnd int)
 	to_lower(arg1 interface{}) interface{}
@@ -155,7 +157,9 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	trim_right(arg1, arg2 interface{}) interface{}
 	trim_space(arg1 interface{}) interface{}
 	trim_suffix(arg1, arg2 interface{}) interface{}
-	uniq(args ...interface{}) interface{}
+	uniq(elements ...interface{}) []interface{}
+	uniq(input number) string
+	uniq(input string) string
 	unix_time(optionalSeconds uint) float64
 	url_decode(arg1 interface{}) interface{}
 	url_encode(arg1 interface{}) interface{}
@@ -244,23 +248,17 @@ func TestDslExpressions(t *testing.T) {
 		`substr('xxtestxxx',2)`:                                   "testxxx",
 		`substr('xxtestxxx',2,-2)`:                                "testx",
 		`substr('xxtestxxx',2,6)`:                                 "test",
+		`sort(12453)`:                                             "12345",
 		`sort("a1b2c3d4e5")`:                                      "12345abcde",
 		`sort("b", "a", "2", "c", "3", "1", "d", "4")`:            []string{"1", "2", "3", "4", "a", "b", "c", "d"},
 		`join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))`: "1 2 3 4 a b c d",
+		`uniq(123123231)`:                                         "123",
 		`uniq("abcabdaabbccd")`:                                   "abcd",
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)
-}
-
-func Test(t *testing.T) {
-	if number, err := strconv.ParseInt("0o1234567", 0, 64); err == nil {
-		fmt.Println(number)
-	} else {
-		fmt.Println(err)
-	}
 }
 
 func TestDateTimeDSLFunction(t *testing.T) {
