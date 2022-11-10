@@ -66,6 +66,10 @@ func runTestCases(file *os.File, debug bool) (bool, []string) {
 		if testCase == "" {
 			continue
 		}
+		// skip comments
+		if strings.HasPrefix(testCase, "#") {
+			continue
+		}
 		if runTestCase(testCase, debug) {
 			errored = true
 			failedTestCases = append(failedTestCases, testCase)

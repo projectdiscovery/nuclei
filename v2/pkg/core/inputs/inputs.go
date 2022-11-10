@@ -1,7 +1,9 @@
 package inputs
 
+import "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+
 type SimpleInputProvider struct {
-	Inputs []string
+	Inputs []*contextargs.MetaInput
 }
 
 // Count returns the number of items for input provider
@@ -10,7 +12,7 @@ func (s *SimpleInputProvider) Count() int64 {
 }
 
 // Scan calls a callback function till the input provider is exhausted
-func (s *SimpleInputProvider) Scan(callback func(value string) bool) {
+func (s *SimpleInputProvider) Scan(callback func(value *contextargs.MetaInput) bool) {
 	for _, v := range s.Inputs {
 		if !callback(v) {
 			return
