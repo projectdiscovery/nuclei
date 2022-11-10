@@ -1,85 +1,25 @@
-package runner
+package customtemplates
 
 import (
 	"context"
-	"os"
+	httpclient "net/http"
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	fileutil "github.com/projectdiscovery/utils/file"
+	"golang.org/x/oauth2"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
-
-type customTemplateProvider interface {
-	Download(location string, ctx context.Context)
-	Update(location string, ctx context.Context)
-}
 
 type customTemplateGithubRepo struct {
 	owner       string
 	reponame    string
 	gitCloneURL string
 	githubToken string
-}
-
-type customTemplateS3Bucket struct {
-	s3Client   *s3.Client
-	bucketName string
-	prefix     string
-}
-
-// parseCustomTemplates function reads the options.GithubTemplateRepo list,
-// Checks the given repos are valid or not and stores them into runner.CustomTemplates
-func (r *Runner) parseCustomTemplates() *[]customTemplateProvider {
-	var customTemplates []customTemplateProvider
-	gitHubClient := getGHClientIncognito()
-
-	for _, repoName := range r.options.GithubTemplateRepo {
-		owner, repo, err := getOwnerAndRepo(repoName)
-		if err != nil {
-			gologger.Info().Msgf("%s", err)
-			continue
-		}
-		githubRepo, err := getGithubRepo(gitHubClient, owner, repo)
-		if err != nil {
-			gologger.Info().Msgf("%s", err)
-			continue
-		}
-		customTemplateRepo := &customTemplateGithubRepo{
-			owner:       owner,
-			reponame:    repo,
-			gitCloneURL: githubRepo.GetCloneURL(),
-			githubToken: r.options.GithubToken,
-		}
-		customTemplates = append(customTemplates, customTemplateRepo)
-	}
-	if r.options.AwsBucketName != "" {
-		s3c, err := getS3Client(context.TODO(), r.options.AwsAccessKey, r.options.AwsSecretKey, r.options.AwsRegion)
-		if err != nil {
-			gologger.Error().Msgf("error downloading s3 bucket %s %s", r.options.AwsBucketName, err)
-			return &customTemplates
-		}
-		ctBucket := &customTemplateS3Bucket{
-			bucketName: r.options.AwsBucketName,
-			s3Client:   s3c,
-		}
-		if strings.Contains(r.options.AwsBucketName, "/") {
-			bPath := strings.SplitN(r.options.AwsBucketName, "/", 2)
-			ctBucket.bucketName = bPath[0]
-			ctBucket.prefix = bPath[1]
-		}
-		customTemplates = append(customTemplates, ctBucket)
-	}
-	return &customTemplates
 }
 
 // This function download the custom github template repository
@@ -130,13 +70,13 @@ func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 }
 
 // returns *github.Repository if passed github repo name
-func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName string) (*github.Repository, error) {
+func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
 	var retried bool
 getRepo:
 	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
 	if err != nil {
 		// retry with authentication
-		if gitHubClient = getGHClientWithToken(); gitHubClient != nil && !retried {
+		if gitHubClient = getGHClientWithToken(githubToken); gitHubClient != nil && !retried {
 			retried = true
 			goto getRepo
 		}
@@ -205,61 +145,20 @@ func getAuth(username, password string) *http.BasicAuth {
 	return nil
 }
 
-// download custom templates from s3 bucket
-func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, customS3TemplateDirectory, bk.bucketName)
+func getGHClientWithToken(token string) *github.Client {
+	if token != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		oauthClient := oauth2.NewClient(ctx, ts)
+		return github.NewClient(oauthClient)
 
-	manager := manager.NewDownloader(bk.s3Client)
-	paginator := s3.NewListObjectsV2Paginator(bk.s3Client, &s3.ListObjectsV2Input{
-		Bucket: &bk.bucketName,
-		Prefix: &bk.prefix,
-	})
-
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(context.TODO())
-		if err != nil {
-			gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
-			return
-		}
-		for _, obj := range page.Contents {
-			if err := downloadToFile(manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
-				gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
-				return
-			}
-		}
 	}
-	gologger.Info().Msgf("AWS bucket %s successfully cloned successfully at %s", bk.bucketName, downloadPath)
+	return nil
 }
 
-// download custom templates from s3 bucket
-func (bk *customTemplateS3Bucket) Update(location string, ctx context.Context) {
-	bk.Download(location, ctx)
-}
-
-func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
-	// Create the directories in the path
-	file := filepath.Join(targetDirectory, key)
-	if err := os.MkdirAll(filepath.Dir(file), 0775); err != nil {
-		return err
-	}
-
-	// Set up the local file
-	fd, err := os.Create(file)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
-
-	// Download the file using the AWS SDK for Go
-	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
-
-	return err
-}
-
-func getS3Client(ctx context.Context, acccessKey, secretKey, region string) (*s3.Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(acccessKey, secretKey, "")), config.WithRegion(region))
-	if err != nil {
-		return nil, err
-	}
-	return s3.NewFromConfig(cfg), nil
+func getGHClientIncognito() *github.Client {
+	var tc *httpclient.Client
+	return github.NewClient(tc)
 }

@@ -1,4 +1,4 @@
-package runner
+package customtemplates
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
@@ -21,12 +20,11 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 
 	options := testutils.DefaultOptions
 	options.GithubTemplateRepo = []string{"projectdiscovery/nuclei-templates", "ehsandeep/nuclei-templates"}
-	r := &Runner{templatesConfig: &config.Config{TemplatesDirectory: templatesDirectory}, options: options}
 
-	r.customTemplates = r.parseCustomTemplates()
+	customTemplates := ParseCustomTemplates(options)
 
-	for _, ct := range *r.customTemplates {
-		ct.Download(r.templatesConfig.TemplatesDirectory, context.Background())
+	for _, ct := range *customTemplates {
+		ct.Download(templatesDirectory, context.Background())
 	}
 
 	require.DirExists(t, filepath.Join(templatesDirectory, "github", "nuclei-templates"), "cloned directory does not exists")
