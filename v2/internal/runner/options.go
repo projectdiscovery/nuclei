@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -144,6 +145,23 @@ func validateOptions(options *types.Options) error {
 	if options.AwsBucketName != "" && (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") {
 		return errors.New("aws s3 bucket details are missing. Please provide region, access and secret key")
 	}
+
+	// verify that a valid ip version type was selected (4, 6)
+	var useIPV4, useIPV6 bool
+	for _, ipv := range options.IPVersion {
+		switch ipv {
+		case "4":
+			useIPV4 = true
+		case "6":
+			useIPV6 = true
+		default:
+			return fmt.Errorf("unsupported ip version: %s", ipv)
+		}
+	}
+	if !useIPV4 && !useIPV6 {
+		return errors.New("ipv4 and/or ipv6 must be selected")
+	}
+
 	return nil
 }
 

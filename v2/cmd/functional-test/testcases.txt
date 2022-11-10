@@ -1,4 +1,7 @@
+# Simple binary invocation
 {{binary}}
+
+# Template tags filter
 {{binary}} -tags cve -ntv 8.8.8,8.8.9
 {{binary}} -tags cve
 {{binary}} -tags cve,exposure
@@ -49,7 +52,32 @@
 {{binary}} -tags cve -author geeknik,pdteam  -tc severity=='high'
 {{binary}} -tc contains(authors,'pdteam')
 {{binary}} -t cves/ -t exposures/ -tc contains(tags,'cve') -exclude-templates cves/2020/CVE-2020-9757.yaml
+
+# Workflow Filters
 {{binary}} -w workflows
 {{binary}} -w workflows -author geeknik,pdteam
 {{binary}} -w workflows -severity high,critical
 {{binary}} -w workflows -author geeknik,pdteam  -severity high,critical
+
+# Input Types
+# http protocol
+# host
+{{binary}} -id tech-detect -u scanme.sh
+# host:port
+{{binary}} -id tech-detect -u scanme.sh:80
+# scheme://host:port
+{{binary}} -id tech-detect -u http://scanme.sh:80
+# scheme://host
+{{binary}} -id tech-detect -u https://scanme.sh
+
+# Network Protocol
+# host
+{{binary}} -id ftp-weak-credentials -u scanme.sh
+# host:port
+{{binary}} -id ftp-weak-credentials -u scanme.sh:21
+
+# SSL Protocol
+# host
+{{binary}} -id tls-version -u scanme.sh
+# host:port
+{{binary}} -id tls-version -u scanme.sh:22

@@ -208,7 +208,7 @@ func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input.Input, err)
+		e.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, err)
 	}
 	return results, err
 }
@@ -230,7 +230,7 @@ func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context, callbac
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input.Input, err)
+		e.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, err)
 	}
 	return err
 }
