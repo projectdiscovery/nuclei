@@ -37,6 +37,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -52,7 +53,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Runner is a client for running the enumeration process.
@@ -72,6 +73,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	customTemplates   []customTemplateRepo
 	cloudClient       *nucleicloud.Client
 }
 
@@ -104,6 +106,9 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	parsers.NoStrictSyntax = options.NoStrictSyntax
+
+	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
+	runner.parseCustomTemplates()
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
@@ -474,8 +479,8 @@ func (r *Runner) RunEnumeration() error {
 
 func (r *Runner) isInputNonHTTP() bool {
 	var nonURLInput bool
-	r.hmapInputProvider.Scan(func(value string) bool {
-		if !strings.Contains(value, "://") {
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+		if !strings.Contains(value.Input, "://") {
 			nonURLInput = true
 			return false
 		}

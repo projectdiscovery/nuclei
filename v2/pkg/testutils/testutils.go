@@ -61,11 +61,13 @@ var DefaultOptions = &types.Options{
 	Templates:                  []string{},
 	ExcludedTemplates:          []string{},
 	CustomHeaders:              []string{},
-	InteractshURL:              "https://oast.me",
+	InteractshURL:              "https://oast.fun",
 	InteractionsCacheSize:      5000,
 	InteractionsEviction:       60,
 	InteractionsCoolDownPeriod: 5,
 	InteractionsPollDuration:   5,
+	GithubTemplateRepo:         []string{},
+	GithubToken:                "",
 }
 
 // TemplateInfo contains info for a mock executed template.

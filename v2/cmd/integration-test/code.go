@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -123,7 +124,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	}
 	store.Load()
 
-	input := &inputs.SimpleInputProvider{Inputs: []string{templateURL}}
+	input := &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{{Input: templateURL}}}
 	_ = engine.Execute(store.Templates(), input)
 	engine.WorkPool().Wait() // Wait for the scan to finish
 

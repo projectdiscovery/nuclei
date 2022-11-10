@@ -16,7 +16,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 type redirectedResponse struct {

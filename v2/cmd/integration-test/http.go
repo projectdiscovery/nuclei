@@ -26,6 +26,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
 	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
+	"http/fuzz-query.yaml":                          &httpFuzzQuery{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
 	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
@@ -56,6 +57,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 	"http/custom-attack-type.yaml":                  &customAttackType{},
+	"http/get-all-ips.yaml":                         &scanAllIPS{},
+	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 }
 
 type httpInteractshRequest struct{}
@@ -961,6 +964,26 @@ func (h *annotationTimeout) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+type httpFuzzQuery struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpFuzzQuery) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		value := r.URL.Query().Get("id")
+		fmt.Fprintf(w, "This is test matcher text: %v", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
 type customAttackType struct{}
 
 // Execute executes a test case and returns an error if occurred
@@ -979,4 +1002,29 @@ func (h *customAttackType) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 4)
+}
+
+// Disabled as GH doesn't support ipv6
+type scanAllIPS struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *scanAllIPS) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips", "-iv", "4")
+	if err != nil {
+		return err
+	}
+	// limiting test to ipv4 (GH doesn't support ipv6)
+	return expectResultsCount(got, 1)
+}
+
+// ensure that ip|host are handled without http|https scheme
+type httpGetWithoutScheme struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetWithoutScheme) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }

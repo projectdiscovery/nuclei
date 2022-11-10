@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/iputil"
-	"github.com/projectdiscovery/stringsutil"
-	"github.com/projectdiscovery/urlutil"
+	iputil "github.com/projectdiscovery/utils/ip"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (

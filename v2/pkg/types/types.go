@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -186,6 +186,8 @@ type Options struct {
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool
+	// ShowVarDump displays variable dump
+	ShowVarDump bool
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup
@@ -270,8 +272,16 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-
-	ConfigPath string // Used by healthcheck
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
+	// Github token used to clone/pull from private repos for custom templates
+	GithubToken string
+	// GithubTemplateRepo is the list of custom public/private templates github repos
+	GithubTemplateRepo goflags.StringSlice
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
