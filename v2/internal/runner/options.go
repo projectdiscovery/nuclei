@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 func ConfigureOptions() error {
@@ -142,6 +143,23 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
+
+	// verify that a valid ip version type was selected (4, 6)
+	var useIPV4, useIPV6 bool
+	for _, ipv := range options.IPVersion {
+		switch ipv {
+		case "4":
+			useIPV4 = true
+		case "6":
+			useIPV6 = true
+		default:
+			return fmt.Errorf("unsupported ip version: %s", ipv)
+		}
+	}
+	if !useIPV4 && !useIPV6 {
+		return errors.New("ipv4 and/or ipv6 must be selected")
+	}
+
 	return nil
 }
 

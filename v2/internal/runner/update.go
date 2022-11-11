@@ -24,12 +24,12 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/projectdiscovery/fileutil"
-	"github.com/projectdiscovery/folderutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"

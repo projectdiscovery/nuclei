@@ -8,8 +8,8 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	fileutil "github.com/projectdiscovery/utils/file"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 

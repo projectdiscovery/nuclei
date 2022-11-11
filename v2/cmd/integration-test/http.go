@@ -57,6 +57,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 	"http/custom-attack-type.yaml":                  &customAttackType{},
+	"http/get-all-ips.yaml":                         &scanAllIPS{},
+	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 }
 
 type httpInteractshRequest struct{}
@@ -1000,4 +1002,29 @@ func (h *customAttackType) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 4)
+}
+
+// Disabled as GH doesn't support ipv6
+type scanAllIPS struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *scanAllIPS) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips", "-iv", "4")
+	if err != nil {
+		return err
+	}
+	// limiting test to ipv4 (GH doesn't support ipv6)
+	return expectResultsCount(got, 1)
+}
+
+// ensure that ip|host are handled without http|https scheme
+type httpGetWithoutScheme struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetWithoutScheme) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }

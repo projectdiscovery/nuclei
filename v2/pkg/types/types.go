@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -284,12 +284,16 @@ type Options struct {
 	UncoverLimit int
 	// Uncover search delay
 	UncoverDelay int
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
 	GithubTemplateRepo goflags.StringSlice
-
-	ConfigPath string // Used by healthcheck
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

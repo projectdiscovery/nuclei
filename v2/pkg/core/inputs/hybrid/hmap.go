@@ -5,6 +5,7 @@ package hybrid
 import (
 	"bufio"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -12,18 +13,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/filekv"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
+	iputil "github.com/projectdiscovery/utils/ip"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
 type Input struct {
+	ipOptions     *ipOptions
 	inputCount    int64
 	dupeCount     int64
 	hostMap       *hybrid.HybridMap
@@ -38,7 +43,14 @@ func New(options *types.Options) (*Input, error) {
 		return nil, errors.Wrap(err, "could not create temporary input file")
 	}
 
-	input := &Input{hostMap: hm}
+	input := &Input{
+		hostMap: hm,
+		ipOptions: &ipOptions{
+			ScanAllIPs: options.ScanAllIPs,
+			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
+			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
+		},
+	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
 		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
@@ -73,13 +85,13 @@ func (i *Input) Close() {
 func (i *Input) initializeInputSources(options *types.Options) error {
 	// Handle targets flags
 	for _, target := range options.Targets {
-		if iputil.IsCIDR(target) {
+		switch {
+		case iputil.IsCIDR(target):
 			i.expandCIDRInputValue(target)
-			continue
-		}
-		if asn.IsASN(target) {
+		case asn.IsASN(target):
 			i.expandASNInputValue(target)
-			continue
+		default:
+			i.normalizeStoreInputValue(target)
 		}
 		i.Set(target)
 	}
@@ -95,8 +107,9 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		if inputErr != nil {
 			return errors.Wrap(inputErr, "could not open targets file")
 		}
+		defer input.Close()
+
 		i.scanInputFromReader(input)
-		input.Close()
 	}
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
@@ -115,9 +128,14 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		if iputil.IsCIDR(scanner.Text()) {
-			i.expandCIDRInputValue(scanner.Text())
-			continue
+		item := scanner.Text()
+		switch {
+		case iputil.IsCIDR(item):
+			i.expandCIDRInputValue(item)
+		case asn.IsASN(item):
+			i.expandASNInputValue(item)
+		default:
+			i.normalizeStoreInputValue(item)
 		}
 		if asn.IsASN(scanner.Text()) {
 			i.expandASNInputValue(scanner.Text())
@@ -134,15 +152,70 @@ func (i *Input) Set(value string) {
 		return
 	}
 
-	if _, ok := i.hostMap.Get(url); ok {
+	metaInput := &contextargs.MetaInput{Input: URL}
+	keyURL, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+
+	if _, ok := i.hostMap.Get(keyURL); ok {
 		i.dupeCount++
 		return
 	}
 
+	switch {
+	case i.ipOptions.ScanAllIPs:
+		// we need to resolve the hostname
+		// check if it's an url
+		var host string
+		parsedURL, err := url.Parse(value)
+		if err == nil && parsedURL.Host != "" {
+			host = parsedURL.Host
+		} else {
+			parsedURL = nil
+			host = value
+		}
+
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
+			var ips []string
+			if i.ipOptions.IPV4 {
+				ips = append(ips, dnsData.A...)
+			}
+			if i.ipOptions.IPV6 {
+				ips = append(ips, dnsData.AAAA...)
+			}
+
+			for _, ip := range ips {
+				if ip == "" {
+					continue
+				}
+				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+				key, err := metaInput.MarshalString()
+				if err != nil {
+					gologger.Warning().Msgf("%s\n", err)
+					continue
+				}
+				_ = i.hostMap.Set(key, nil)
+				if i.hostMapStream != nil {
+					_ = i.hostMapStream.Set([]byte(key), nil)
+				}
+			}
+			break
+		}
+		fallthrough
+	default:
+		i.setItem(keyURL)
+	}
+}
+
+// setItem in the kv store
+func (i *Input) setItem(k string) {
 	i.inputCount++
-	_ = i.hostMap.Set(url, nil)
+	_ = i.hostMap.Set(k, nil)
 	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(url), nil)
+		_ = i.hostMapStream.Set([]byte(k), nil)
 	}
 }
 
@@ -153,9 +226,13 @@ func (i *Input) Count() int64 {
 
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
-func (i *Input) Scan(callback func(value string) bool) {
+func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 	callbackFunc := func(k, _ []byte) error {
-		if !callback(string(k)) {
+		metaInput := &contextargs.MetaInput{}
+		if err := metaInput.Unmarshal(string(k)); err != nil {
+			return err
+		}
+		if !callback(metaInput) {
 			return io.EOF
 		}
 		return nil
@@ -171,14 +248,20 @@ func (i *Input) Scan(callback func(value string) bool) {
 func (i *Input) expandCIDRInputValue(value string) {
 	ips, _ := mapcidr.IPAddressesAsStream(value)
 	for ip := range ips {
-		if _, ok := i.hostMap.Get(ip); ok {
+		metaInput := &contextargs.MetaInput{Input: ip}
+		key, err := metaInput.MarshalString()
+		if err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+			return
+		}
+		if _, ok := i.hostMap.Get(key); ok {
 			i.dupeCount++
 			continue
 		}
 		i.inputCount++
-		_ = i.hostMap.Set(ip, nil)
+		_ = i.hostMap.Set(key, nil)
 		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(ip), nil)
+			_ = i.hostMapStream.Set([]byte(key), nil)
 		}
 	}
 }

@@ -70,14 +70,14 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	}
 	previous := make(map[string]interface{})
 	for _, req := range e.requests {
-		inputItem := *input
-		if e.options.InputHelper != nil && input.Input != "" {
-			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+		inputItem := input.Clone()
+		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, req.Type()); input.MetaInput.Input == "" {
 				return false, nil
 			}
 		}
 
-		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -108,9 +108,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				e.options.HostErrorsCache.MarkFailed(input.Input, err)
+				e.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.Input, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.MetaInput.PrettyPrint(), err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
@@ -134,14 +134,14 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 	for _, req := range e.requests {
 		req := req
 
-		inputItem := *input
-		if e.options.InputHelper != nil && input.Input != "" {
-			if inputItem.Input = e.options.InputHelper.Transform(input.Input, req.Type()); inputItem.Input == "" {
+		inputItem := input.Clone()
+		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, req.Type()); input.MetaInput.Input == "" {
 				return nil
 			}
 		}
 
-		err := req.ExecuteWithResults(&inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -161,9 +161,9 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 		})
 		if err != nil {
 			if e.options.HostErrorsCache != nil {
-				e.options.HostErrorsCache.MarkFailed(input.Input, err)
+				e.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.Input, err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", e.options.TemplateID, input.MetaInput.PrettyPrint(), err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if results && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
