@@ -62,6 +62,10 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/antchfx/xmlquery v1.3.12
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
+	github.com/aws/aws-sdk-go-v2 v1.17.1
+	github.com/aws/aws-sdk-go-v2/config v1.17.11
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.38
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.29.2
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.4.2
@@ -75,17 +79,35 @@ require (
 	github.com/projectdiscovery/goflags v0.1.3
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.1
+	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sliceutil v0.0.1
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/uncover v0.0.9
 	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
-	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/utils v0.0.2
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.9 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.12.24 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.25 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.26 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.20 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.11.25 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.17.2 // indirect
+	github.com/aws/smithy-go v1.13.4 // indirect
+	github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 // indirect
 )
 
 require (
@@ -196,7 +218,6 @@ require (
 )
 
 require (
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
@@ -204,6 +225,7 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
@@ -215,7 +237,6 @@ require (
 	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect; indirectdev
 	github.com/projectdiscovery/fileutil v0.0.3 // indirect
 	github.com/projectdiscovery/iputil v0.0.2 // indirect
-	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect

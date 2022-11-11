@@ -30,7 +30,7 @@ type InputProvider interface {
 	Count() int64
 	// Scan iterates the input and each found item is passed to the
 	// callback consumer.
-	Scan(callback func(value string) bool)
+	Scan(callback func(value *contextargs.MetaInput) bool)
 	// Set adds item to input provider
 	Set(value string)
 }

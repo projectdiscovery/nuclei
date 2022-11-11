@@ -22,5 +22,5 @@ func (s *SimpleInputProvider) Scan(callback func(value *contextargs.MetaInput) b
 
 // Set adds item to input provider
 func (s *SimpleInputProvider) Set(value string) {
-	s.Inputs = append(s.Inputs, value)
+	s.Inputs = append(s.Inputs, &contextargs.MetaInput{Input: value})
 }

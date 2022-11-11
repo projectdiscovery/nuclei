@@ -91,9 +91,8 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		case asn.IsASN(target):
 			i.expandASNInputValue(target)
 		default:
-			i.normalizeStoreInputValue(target)
+			i.Set(target)
 		}
-		i.Set(target)
 	}
 
 	// Handle stdin
@@ -135,20 +134,15 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 		case asn.IsASN(item):
 			i.expandASNInputValue(item)
 		default:
-			i.normalizeStoreInputValue(item)
+			i.Set(item)
 		}
-		if asn.IsASN(scanner.Text()) {
-			i.expandASNInputValue(scanner.Text())
-			continue
-		}
-		i.Set(scanner.Text())
 	}
 }
 
 // Set normalizes and stores passed input values
 func (i *Input) Set(value string) {
-	url := strings.TrimSpace(value)
-	if url == "" {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
 		return
 	}
 
