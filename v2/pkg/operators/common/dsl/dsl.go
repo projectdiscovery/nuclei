@@ -913,9 +913,7 @@ func getDslFunctionSignatures() []string {
 	result := make([]string, 0, len(dslFunctions))
 
 	for _, dslFunction := range dslFunctions {
-		for _, signature := range dslFunction.signatures {
-			result = append(result, signature)
-		}
+		result = append(result, dslFunction.signatures...)
 	}
 
 	return result
