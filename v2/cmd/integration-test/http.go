@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
@@ -284,19 +284,22 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 		return err
 	}
 
-	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
-	submatch := resultPattern.FindStringSubmatch(results[0])
-	if len(submatch) != 2 {
-		return errors.New("could not parse the result")
+	// get result part
+	resultPart, err := stringsutil.After(results[0], ts.URL)
+	if err != nil {
+		return err
 	}
 
-	totalExtracted := strings.Split(submatch[1], ",")
+	// remove additional characters till the first valid result and ignore last ] which doesn't alter the total count
+	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
+
+	extracted := strings.Split(resultPart, ",")
 	numberOfDslFunctions := 85
-	if len(totalExtracted) != numberOfDslFunctions {
+	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
 
-	for _, header := range totalExtracted {
+	for _, header := range extracted {
 		parts := strings.Split(header, ": ")
 		index, err := strconv.Atoi(parts[0])
 		if err != nil {

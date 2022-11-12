@@ -178,7 +178,6 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 }
 
 func TestDslExpressions(t *testing.T) {
-
 	dslExpressions := map[string]interface{}{
 		`base64("Hello")`:                                "SGVsbG8=",
 		`base64(1234)`:                                   "MTIzNA==",
@@ -271,7 +270,6 @@ func TestDslExpressions(t *testing.T) {
 }
 
 func TestDateTimeDSLFunction(t *testing.T) {
-
 	testDateTimeFormat := func(t *testing.T, dateTimeFormat string, dateTimeFunction *govaluate.EvaluableExpression, expectedFormattedTime string, currentUnixTime int64) {
 		dslFunctionParameters := map[string]interface{}{"dateTimeFormat": dateTimeFormat}
 
@@ -309,7 +307,6 @@ func TestDateTimeDSLFunction(t *testing.T) {
 }
 
 func TestDateTimeDslExpressions(t *testing.T) {
-
 	t.Run("date_time", func(t *testing.T) {
 		now := time.Now()
 

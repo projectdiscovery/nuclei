@@ -7,6 +7,7 @@ info:
 
 requests:
   - raw:
+      # Note for the integration test: dsl expression should not contain commas
       - |
         GET / HTTP/1.1
         Host: {{Hostname}}
