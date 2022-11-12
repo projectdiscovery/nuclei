@@ -182,7 +182,7 @@ UNCOVER:
    -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)
    -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
    -ul, -uncover-limit int        uncover results to return (default 100)
-   -udl, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
+   -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
 
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
