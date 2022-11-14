@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/uncover/uncover/agent/shodan"
 	"github.com/projectdiscovery/uncover/uncover/agent/shodanidb"
 	"github.com/projectdiscovery/uncover/uncover/agent/zoomeye"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/remeh/sizedwaitgroup"
 )
 
@@ -30,8 +31,8 @@ func GetUncoverSupportedAgents() string {
 	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
-func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
 
+func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
 	uncoverOptions := &ucRunner.Options{
 		Provider: &ucRunner.Provider{},
 		Delay:    delay,
@@ -39,10 +40,63 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 		Query:    query,
 		Engine:   engine,
 	}
-	err := loadProvidersFromEnv(uncoverOptions)
-	if err != nil {
-		return nil, err
+	for _, eng := range engine {
+		err := loadKeys(eng, uncoverOptions)
+		if err != nil {
+			gologger.Error().Label("WRN").Msgf(err.Error())
+			continue
+		}
 	}
+	return getTargets(uncoverOptions, field)
+}
+
+func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int, field string) chan string {
+	ret := make(chan string)
+	var uqMap = make(map[string][]string)
+	var eng, query string
+	for _, template := range templates {
+		for k, v := range template.Info.Metadata {
+			switch k {
+			case "shodan-query":
+				eng = "shodan"
+			case "fofa-query":
+				eng = "fofa"
+			case "censys-query":
+				eng = "censys"
+			case "quake-query":
+				eng = "quake"
+			case "hunter-query":
+				eng = "hunter"
+			case "zoomeye-query":
+				eng = "zoomeye"
+			default:
+				continue
+			}
+			query = fmt.Sprintf("%v", v)
+			uqMap[eng] = append(uqMap[eng], query)
+		}
+	}
+	keys := mapsutil.GetKeys(uqMap)
+	gologger.Info().Msgf("Running uncover query against: %s", strings.Join(keys, ","))
+	var wg sync.WaitGroup
+	go func() {
+		for k, v := range uqMap {
+			wg.Add(1)
+			go func(engine, query []string) {
+				ch, _ := GetTargetsFromUncover(delay, limit, field, engine, query)
+				for c := range ch {
+					ret <- c
+				}
+				wg.Done()
+			}([]string{k}, v)
+		}
+		wg.Wait()
+		close(ret)
+	}()
+	return ret
+}
+
+func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, error) {
 	var rateLimiter *ratelimit.Limiter
 	// create rateLimiter for uncover delay
 	if uncoverOptions.Delay > 0 {
@@ -82,7 +136,6 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 	}
 	// enumerate
 	swg := sizedwaitgroup.New(maxConcurrentAgents)
-
 	ret := make(chan string)
 	go func() {
 		for _, q := range uncoverOptions.Query {
@@ -95,10 +148,6 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
 					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
-					if err := checkKeyExits(agent, keys); err != nil {
-						gologger.Error().Label("WRN").Msgf(err.Error())
-						return
-					}
 					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
 					if err != nil {
 						gologger.Error().Label(agent.Name()).Msgf("couldn't create uncover new session: %s", err)
@@ -125,101 +174,50 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 	return ret, nil
 }
 
-func loadProvidersFromEnv(options *ucRunner.Options) error {
-	if key, exists := os.LookupEnv("SHODAN_API_KEY"); exists {
-		options.Provider.Shodan = append(options.Provider.Shodan, key)
-	}
-	if id, exists := os.LookupEnv("CENSYS_API_ID"); exists {
-		if secret, exists := os.LookupEnv("CENSYS_API_SECRET"); exists {
-			options.Provider.Censys = append(options.Provider.Censys, fmt.Sprintf("%s:%s", id, secret))
-		} else {
-			return errors.New("missing censys secret")
-		}
-	}
-	if email, exists := os.LookupEnv("FOFA_EMAIL"); exists {
-		if key, exists := os.LookupEnv("FOFA_KEY"); exists {
-			options.Provider.Fofa = append(options.Provider.Fofa, fmt.Sprintf("%s:%s", email, key))
-		} else {
-			return errors.New("missing fofa key")
-		}
-	}
-	if key, exists := os.LookupEnv("HUNTER_API_KEY"); exists {
-		options.Provider.Hunter = append(options.Provider.Hunter, key)
-	}
-	if key, exists := os.LookupEnv("QUAKE_TOKEN"); exists {
-		options.Provider.Quake = append(options.Provider.Quake, key)
-	}
-	if key, exists := os.LookupEnv("ZOOMEYE_API_KEY"); exists {
-		options.Provider.ZoomEye = append(options.Provider.ZoomEye, key)
-	}
-	return nil
-}
-
-func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int, field string) chan string {
-	ret := make(chan string)
-	go func() {
-		var wg sync.WaitGroup
-		for _, template := range templates {
-			for k, v := range template.Info.Metadata {
-				var engine []string
-				var query []string
-				switch k {
-				case "shodan-query":
-					engine = append(engine, "shodan")
-				case "fofa-query":
-					engine = append(engine, "fofa")
-				case "censys-query":
-					engine = append(engine, "censys")
-				case "quake-query":
-					engine = append(engine, "quake")
-				case "hunter-query":
-					engine = append(engine, "hunter")
-				case "zoomeye-query":
-					engine = append(engine, "zoomeye")
-				default:
-					continue
-				}
-				query = append(query, fmt.Sprintf("%v", v))
-				wg.Add(1)
-				go func(engine, query []string) {
-					ch, _ := GetTargetsFromUncover(delay, limit, field, engine, query)
-					for c := range ch {
-						ret <- c
-					}
-					wg.Done()
-				}(engine, query)
-			}
-		}
-		wg.Wait()
-		close(ret)
-	}()
-	return ret
-}
-
-func checkKeyExits(agent uncover.Agent, keys uncover.Keys) error {
-	switch agent.Name() {
+func loadKeys(engine string, options *ucRunner.Options) error {
+	switch engine {
 	case "fofa":
-		if len(keys.FofaKey) == 0 {
+		if email, exists := os.LookupEnv("FOFA_EMAIL"); exists {
+			if key, exists := os.LookupEnv("FOFA_KEY"); exists {
+				options.Provider.Fofa = append(options.Provider.Fofa, fmt.Sprintf("%s:%s", email, key))
+			} else {
+				return errors.New("missing FOFA_KEY env variable")
+			}
+		} else {
 			return errors.Errorf("FOFA_EMAIL & FOFA_KEY env variables are not configured")
 		}
 	case "shodan":
-		if len(keys.Shodan) == 0 {
+		if key, exists := os.LookupEnv("SHODAN_API_KEY"); exists {
+			options.Provider.Shodan = append(options.Provider.Shodan, key)
+		} else {
 			return errors.Errorf("SHODAN_API_KEY env variable is not configured")
 		}
 	case "censys":
-		if len(keys.CensysToken) == 0 {
+		if id, exists := os.LookupEnv("CENSYS_API_ID"); exists {
+			if secret, exists := os.LookupEnv("CENSYS_API_SECRET"); exists {
+				options.Provider.Censys = append(options.Provider.Censys, fmt.Sprintf("%s:%s", id, secret))
+			} else {
+				return errors.New("missing CENSYS_API_SECRET env variable")
+			}
+		} else {
 			return errors.Errorf("CENSYS_API_ID & CENSYS_API_SECRET env variable is not configured")
 		}
 	case "hunter":
-		if len(keys.HunterToken) == 0 {
+		if key, exists := os.LookupEnv("HUNTER_API_KEY"); exists {
+			options.Provider.Hunter = append(options.Provider.Hunter, key)
+		} else {
 			return errors.Errorf("HUNTER_API_KEY env variable is not configured")
 		}
 	case "zoomeye":
-		if len(keys.ZoomEyeToken) == 0 {
+		if key, exists := os.LookupEnv("ZOOMEYE_API_KEY"); exists {
+			options.Provider.ZoomEye = append(options.Provider.ZoomEye, key)
+		} else {
 			return errors.Errorf("ZOOMEYE_API_KEY env variable is not configured")
 		}
 	case "quake":
-		if len(keys.QuakeToken) == 0 {
+		if key, exists := os.LookupEnv("QUAKE_TOKEN"); exists {
+			options.Provider.Quake = append(options.Provider.Quake, key)
+		} else {
 			return errors.Errorf("QUAKE_TOKEN env variable is not configured")
 		}
 	default:

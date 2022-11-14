@@ -80,10 +80,8 @@ require (
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.1
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
-	github.com/projectdiscovery/sliceutil v0.0.1
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/uncover v0.0.9
-	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
 	github.com/projectdiscovery/utils v0.0.2
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
@@ -108,6 +106,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.2 // indirect
 	github.com/aws/smithy-go v1.13.4 // indirect
 	github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 // indirect
+	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 )
 
 require (
