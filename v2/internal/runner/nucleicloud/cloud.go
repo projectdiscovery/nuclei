@@ -152,7 +152,7 @@ func (c *Client) GetScans() ([]GetScanRequest, error) {
 	return items, nil
 }
 
-//Delete a scan and it's issues by the scan id.
+// Delete a scan and it's issues by the scan id.
 func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 	deletescan := DeleteScanResults{}
 	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%s", c.baseURL, id), nil)
@@ -180,4 +180,125 @@ func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 	resp.Body.Close()
 
 	return deletescan, nil
+}
+
+// StatusDataSource returns the status for a data source
+func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (string, error) {
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(statusRequest); err != nil {
+		return "", errors.Wrap(err, "could not json encode scan request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/status", c.baseURL), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := c.httpclient.Do(httpReq)
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "could not do get result request")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return "", errors.Errorf("invalid status code recieved %d: %s", resp.StatusCode, string(data))
+	}
+
+	var data map[string]interface{}
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
+		resp.Body.Close()
+		return "", errors.Wrap(err, "could not decode resp")
+	}
+	resp.Body.Close()
+	id := data["id"].(string)
+	return id, nil
+}
+
+// AddDataSource adds a new data source
+func (c *Client) AddDataSource(req AddDataSourceRequest) (string, error) {
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
+		return "", errors.Wrap(err, "could not json encode request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources", c.baseURL), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := c.httpclient.Do(httpReq)
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "could not do get result request")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+	}
+
+	var data map[string]interface{}
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
+		resp.Body.Close()
+		return "", errors.Wrap(err, "could not decode resp")
+	}
+	resp.Body.Close()
+	id := data["id"].(string)
+	return id, nil
+}
+
+// SyncDataSource syncs contents for a data source. The call blocks until
+// update is completed.
+func (c *Client) SyncDataSource(ID string) error {
+	httpReq, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources/%s/sync", c.baseURL, ID), nil)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+	if err != nil {
+		return errors.Wrap(err, "could not do get result request")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+	}
+	return nil
+}
+
+// ExistsDataSourceItem identifies whether data source item exist
+func (c *Client) ExistsDataSourceItem(req ExistsDataSourceItemRequest) error {
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
+		return errors.Wrap(err, "could not json encode request")
+	}
+	httpReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/%s/exists", c.baseURL, req.ID), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("X-API-Key", c.apiKey)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+	if err != nil {
+		return errors.Wrap(err, "could not do get result request")
+	}
+	if resp.StatusCode != 200 {
+		data, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+	}
+	return nil
 }

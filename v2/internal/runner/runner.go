@@ -172,7 +172,7 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && (options.UpdateTemplates && !options.Cloud) {
 		os.Exit(0)
 	}
 
@@ -399,6 +399,36 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
+
+	var cloudTemplates []string
+	var cloudTargets []string
+	// Initialize cloud data stores if specified
+	if r.options.Cloud && r.options.GithubToken != "" && len(r.options.GithubTemplateRepo) > 0 {
+		ids, err := r.initializeCloudDataSources()
+		if err != nil {
+			return err
+		}
+
+		// hook template loading
+		store.NotFoundCallback = func(template string) {
+			for _, id := range ids {
+				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Type: "templates", Contents: template}); err == nil {
+					cloudTemplates = append(cloudTemplates, template)
+					break
+				}
+			}
+		}
+		// identify cloud targets
+		r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+			for _, id := range ids {
+				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Contents: value.Input, Type: "targets"}); err == nil {
+					cloudTargets = append(cloudTargets, value.Input)
+					break
+				}
+			}
+			return true
+		})
+	}
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -441,7 +471,7 @@ func (r *Runner) RunEnumeration() error {
 			err = r.getResults(r.options.ScanOutput)
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			results, err = r.runCloudEnumeration(store, cloudTemplates, cloudTargets, r.options.NoStore)
 			enumeration = true
 		}
 	} else {

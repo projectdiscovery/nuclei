@@ -24,6 +24,10 @@ type customTemplateRepo struct {
 // scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
 // Reason to add update and download logic in single function is scenario 2
 func (r *Runner) downloadCustomTemplates(ctx context.Context) {
+	// do not sync templates in case of cloud
+	if r.options.Cloud {
+		return
+	}
 	downloadPath := filepath.Join(r.templatesConfig.TemplatesDirectory, customTemplateType)
 
 	for _, customTemplate := range r.customTemplates {
