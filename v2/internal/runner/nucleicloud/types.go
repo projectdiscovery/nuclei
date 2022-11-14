@@ -2,20 +2,23 @@ package nucleicloud
 
 import (
 	"time"
-
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 )
 
 // AddScanRequest is a nuclei scan input item.
 type AddScanRequest struct {
 	// RawTargets is a list of raw target URLs for the scan.
-	RawTargets []*contextargs.MetaInput `json:"raw_targets,omitempty"`
+	RawTargets []string `json:"raw_targets,omitempty"`
 	// PublicTemplates is a list of public templates for the scan
 	PublicTemplates []string `json:"public_templates,omitempty"`
 	// PrivateTemplates is a map of template-name->contents that
 	// are private to the user executing the scan. (TODO: TBD)
 	PrivateTemplates map[string]string `json:"private_templates,omitempty"`
-	IsTemporary      bool              `json:"is_temporary"`
+	// CloudTargets is a list of cloud targets for the scan
+	CloudTargets []string `json:"cloud_targets,omitempty"`
+	// CloudTemplates is a list of cloud templates for the scan
+	CloudTemplates []string `json:"cloud_templates,omitempty"`
+
+	IsTemporary bool `json:"is_temporary"`
 }
 
 type GetResultsResponse struct {
@@ -42,4 +45,27 @@ type GetResultsResponseItem struct {
 
 type DeleteScanResults struct {
 	OK bool `json:"ok"`
+}
+
+// StatusDataSourceRequest is a add data source request item.
+type StatusDataSourceRequest struct {
+	ID    string `json:"id"`
+	Repo  string `json:"repo"`
+	Token string `json:"token"`
+}
+
+// AddDataSourceRequest is a add data source request item.
+type AddDataSourceRequest struct {
+	Type  string `json:"type"`
+	Repo  string `json:"repo"`
+	Token string `json:"token"`
+	Sync  bool   `json:"sync"`
+}
+
+// ExistsDataSourceItemRequest is a request to identify whether a data
+// source item exists.
+type ExistsDataSourceItemRequest struct {
+	ID       string `json:"-"`
+	Type     string `json:"type"`
+	Contents string `json:"contents"`
 }

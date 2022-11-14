@@ -75,7 +75,7 @@ func (r *Runner) getResults(id string) error {
 }
 
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool) (*atomic.Bool, error) {
 	now := time.Now()
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
@@ -85,9 +85,9 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	// TODO: Add payload file and workflow support for private templates
 	catalogChecksums := nucleicloud.ReadCatalogChecksum()
 
-	targets := make([]*contextargs.MetaInput, 0, r.hmapInputProvider.Count())
+	targets := make([]string, 0, r.hmapInputProvider.Count())
 	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
-		targets = append(targets, value)
+		targets = append(targets, value.Input)
 		return true
 	})
 	templates := make([]string, 0, len(store.Templates()))
@@ -110,6 +110,8 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	taskID, err := r.cloudClient.AddScan(&nucleicloud.AddScanRequest{
 		RawTargets:       targets,
 		PublicTemplates:  templates,
+		CloudTargets:     cloudTargets,
+		CloudTemplates:   cloudTemplates,
 		PrivateTemplates: privateTemplates,
 		IsTemporary:      nostore,
 	})
