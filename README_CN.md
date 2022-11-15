@@ -155,7 +155,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -mhe, -max-host-error int            某主机扫描失败次数，跳过该主机（默认：30）
    -project                             使用项目文件夹避免多次发送同一请求
    -project-path string                 设置特定的项目文件夹
-   -spm, -stop-at-first-path            得到一个结果后停止（或许会中断模板和工作流的逻辑）
+   -spm, -stop-at-first-match           得到一个结果后停止（或许会中断模板和工作流的逻辑）
    -stream                              流模式 - 在不整理输入的情况下详细描述
 
 无界面浏览器：
