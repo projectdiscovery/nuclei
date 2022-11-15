@@ -658,6 +658,8 @@ github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d h1:VR+tDkedzHIp1pGKIDcfPFt7J8KjcjxGsJvBAP6RXFQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.3-0.20220506110515-811d938bd26d/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
+github.com/projectdiscovery/retryablehttp-go v1.0.3 h1:8kIb3LPnt6tdZvCcTmvq3cowYOed4S/B9q2Mgf/EuwI=
+github.com/projectdiscovery/retryablehttp-go v1.0.3/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
 github.com/projectdiscovery/sliceutil v0.0.1/go.mod h1:0wBmhU5uTDwMfrEZfvwH9qa5k60Q4shPVOC9E6LGsDI=
 github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=

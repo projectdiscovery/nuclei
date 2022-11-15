@@ -31,7 +31,7 @@ const (
 func New(baseURL, apiKey string) *Client {
 	options := retryablehttp.DefaultOptionsSingle
 	options.Timeout = 15 * time.Second
-	client := retryablehttp.NewClient(options)
+	client := retryablehttp.CreateClient(options, retryablehttp.HTTPErrorRetryPolicy(), retryablehttp.DefaultBackoff())
 
 	baseAppURL := baseURL
 	if baseAppURL == "" {
