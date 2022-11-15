@@ -191,7 +191,7 @@ OPTIMIZATIONS:
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
    -project                            use a project folder to avoid sending same request multiple times
    -project-path string                set a specific project path
-   -spm, -stop-at-first-path           stop processing HTTP requests after the first match (may break template/workflow logic)
+   -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -no-stdin                           Disable Stdin processing
