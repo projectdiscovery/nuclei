@@ -96,6 +96,13 @@ func ParseOptions(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
+
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
+	}
 }
 
 // validateOptions validates the configuration options passed

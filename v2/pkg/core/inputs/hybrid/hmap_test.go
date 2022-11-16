@@ -87,7 +87,7 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			},
 		}
 
-		input.normalizeStoreInputValue(tt.hostname)
+		input.Set(tt.hostname)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
