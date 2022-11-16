@@ -218,38 +218,39 @@ func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (string
 }
 
 // AddDataSource adds a new data source
-func (c *Client) AddDataSource(req AddDataSourceRequest) (string, error) {
+func (c *Client) AddDataSource(req AddDataSourceRequest) (string, string, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return "", errors.Wrap(err, "could not json encode request")
+		return "", "", errors.Wrap(err, "could not json encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return "", errors.Wrap(err, "could not make request")
+		return "", "", errors.Wrap(err, "could not make request")
 	}
 	httpReq.Header.Set("X-API-Key", c.apiKey)
 
 	resp, err := c.httpclient.Do(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not make request")
+		return "", "", errors.Wrap(err, "could not make request")
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "could not do get result request")
+		return "", "", errors.Wrap(err, "could not do get result request")
 	}
 	if resp.StatusCode != 200 {
 		data, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+		return "", "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
 	}
 
 	var data map[string]interface{}
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
 		resp.Body.Close()
-		return "", errors.Wrap(err, "could not decode resp")
+		return "", "", errors.Wrap(err, "could not decode resp")
 	}
 	resp.Body.Close()
 	id := data["id"].(string)
-	return id, nil
+	secret, _ := data["secret"].(string)
+	return id, secret, nil
 }
 
 // SyncDataSource syncs contents for a data source. The call blocks until
