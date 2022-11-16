@@ -24,7 +24,6 @@ import (
 )
 
 const DDMMYYYYhhmmss = "2006-01-02 15:04:05"
-const upperLimit = 1000
 
 // runStandardEnumeration runs standard enumeration
 func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
