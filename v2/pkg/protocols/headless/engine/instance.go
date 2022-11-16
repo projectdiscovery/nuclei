@@ -8,12 +8,14 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Instance is an isolated browser instance opened for doing operations with it.
 type Instance struct {
 	browser *Browser
 	engine  *rod.Browser
+	options *types.Options
 
 	// redundant due to dependency cycle
 	interactsh *interactsh.Client
@@ -35,11 +37,14 @@ func (b *Browser) NewInstance() (*Instance, error) {
 	// We use a custom sleeper that sleeps from 100ms to 500 ms waiting
 	// for an interaction. Used throughout rod for clicking, etc.
 	browser = browser.Sleeper(func() utils.Sleeper { return maxBackoffSleeper(10) })
-	return &Instance{browser: b, engine: browser}, nil
+	return &Instance{browser: b, engine: browser, options: b.options}, nil
 }
 
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
+	if i.options.Debug || i.options.DebugRequests || i.options.DebugResponse {
+		return nil
+	}
 	return i.engine.Close()
 }
 

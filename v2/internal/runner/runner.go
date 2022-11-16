@@ -10,6 +10,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"time"
@@ -480,6 +481,16 @@ func (r *Runner) RunEnumeration() error {
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
 	if r.browser != nil {
+		if r.options.Debug || r.options.DebugRequests || r.options.DebugResponse {
+			// update shouldSaveResume to false to avoid saving resume file
+			r.options.UpdateSaveResume(false)
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			gologger.Info().Msg("Press Ctrl+C to exit and close the browser")
+			<-c
+			r.browser.Close()
+			return nil
+		}
 		r.browser.Close()
 	}
 	return err

@@ -91,7 +91,9 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, couldGetHtmlElementErrorMessage)
 	}
-	defer page.Close()
+	if !request.options.Options.Debug && !request.options.Options.DebugResponse && !request.options.Options.DebugRequests {
+		defer page.Close()
+	}
 
 	request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), nil)
 	request.options.Progress.IncrementRequests()

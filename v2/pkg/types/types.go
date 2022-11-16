@@ -313,9 +313,16 @@ func (options *Options) ShouldLoadResume() bool {
 	return options.Resume != "" && fileutil.FileExists(options.Resume)
 }
 
+var ShouldSaveResume = true
+
 // ShouldSaveResume file
 func (options *Options) ShouldSaveResume() bool {
-	return true
+	return ShouldSaveResume
+}
+
+// UpdateSaveResume updates ShouldSaveResume
+func (options *Options) UpdateSaveResume(saveResume bool) {
+	ShouldSaveResume = saveResume
 }
 
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
