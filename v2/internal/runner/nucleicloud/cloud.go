@@ -77,15 +77,8 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool, limit int) error {
 	lastID := int64(0)
 
-	l := func(limit int) int {
-		if limit < resultSize {
-			return limit
-		}
-		return resultSize
-	}(limit)
-
 	for {
-		uri := fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, l)
+		uri := fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, limit)
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")

@@ -37,17 +37,11 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
 	loc, _ := time.LoadLocation("Local")
-	l := func(limit int) int {
-		if limit < upperLimit {
-			return limit
-		}
-		return upperLimit
-	}(limit)
 	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
 	var e error
 	for {
-		items, err := r.cloudClient.GetScans(l, lastTime)
+		items, err := r.cloudClient.GetScans(limit, lastTime)
 		if err != nil {
 			e = err
 			break
