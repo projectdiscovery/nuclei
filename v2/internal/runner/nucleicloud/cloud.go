@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -75,12 +76,14 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 // until there are no more results left to retrieve.
 func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool, limit int) error {
 	lastID := int64(0)
+
 	l := func(limit int) int {
 		if limit < resultSize {
 			return limit
 		}
 		return resultSize
 	}(limit)
+
 	for {
 		uri := fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, l)
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
@@ -129,9 +132,9 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), check
 	return nil
 }
 
-func (c *Client) GetScans(limit int, pageNumber int) ([]GetScanRequest, error) {
+func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
 	var items []GetScanRequest
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan?limit=%d&page=%d", c.baseURL, limit, pageNumber), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan?from=%s&size=%d", c.baseURL, url.QueryEscape(from), limit), nil)
 	if err != nil {
 		return items, errors.Wrap(err, "could not make request")
 	}

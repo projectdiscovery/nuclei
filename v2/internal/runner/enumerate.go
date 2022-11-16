@@ -43,11 +43,11 @@ func (r *Runner) getScanList(limit int) error {
 		}
 		return upperLimit
 	}(limit)
-	pageNumber := 0
+	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
 	var e error
 	for {
-		items, err := r.cloudClient.GetScans(l, pageNumber)
+		items, err := r.cloudClient.GetScans(l, lastTime)
 		if err != nil {
 			err = e
 			break
@@ -56,6 +56,7 @@ func (r *Runner) getScanList(limit int) error {
 			break
 		}
 		for _, v := range items {
+			lastTime = v.CreatedAt.String()
 			status := "FINISHED"
 			t := v.FinishedAt
 			duration := t.Sub(v.CreatedAt)
@@ -68,10 +69,8 @@ func (r *Runner) getScanList(limit int) error {
 			val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
 
 			gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
+
 		}
-		pageNumber += 1
-		// Add a delay in between
-		time.Sleep(1 * time.Second)
 	}
 	return e
 }
