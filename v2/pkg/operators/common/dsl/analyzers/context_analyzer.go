@@ -13,15 +13,6 @@ func AnalyzeHTMLContext(prefix, characters, suffix, response string) {
 	tokenizeHTMLDiscoverContexts(prefix, response)
 }
 
-// context is the discovered context for a XSS payload
-type context struct {
-	tag         string
-	contextType contextType
-}
-
-// contextType is the type of context
-type contextType int
-
 // tokenizeHTMLDiscoverContexts performs tokenization of response using go html parser
 func tokenizeHTMLDiscoverContexts(prefix, response string) {
 	tokenizer := html.NewTokenizer(strings.NewReader(response))

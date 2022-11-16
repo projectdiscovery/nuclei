@@ -49,7 +49,7 @@ func (r *Runner) getScanList(limit int) error {
 	for {
 		items, err := r.cloudClient.GetScans(l, lastTime)
 		if err != nil {
-			err = e
+			e = err
 			break
 		}
 		if len(items) == 0 {
