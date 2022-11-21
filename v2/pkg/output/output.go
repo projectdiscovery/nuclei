@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -319,4 +320,23 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		f.Close()
 	}
 
+}
+
+type ListScanOutput struct {
+	Timestamp  string `json:"timestamp"`
+	ScanID     string `json:"scan_id"`
+	ScanTime   string `json:"scan_time"`
+	ScanResult int    `json:"scan_result"`
+	ScanStatus string `json:"scan_status"`
+	Target     int    `json:"target"`
+	Template   int    `json:"template"`
+}
+
+func DisplayScanListInJson(output ListScanOutput) {
+	bytes, _ := json.Marshal(output)
+	os.Stdout.Write(bytes)
+}
+
+func DisplayScanList(output ListScanOutput) {
+	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, output.ScanStatus, output.ScanResult, output.Target, output.Template, output.ScanTime)
 }

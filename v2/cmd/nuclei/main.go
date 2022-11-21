@@ -289,6 +289,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "disable scan/output storage on cloud"),
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
+		flagSet.BoolVar(&options.JSON, "json-output", false, "write output in JSONL(ines) format"),
 	)
 
 	_ = flagSet.Parse()

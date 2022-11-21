@@ -36,21 +36,14 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
-	loc, _ := time.LoadLocation("Local")
 
 	for _, v := range items {
-		status := "FINISHED"
-		t := v.FinishedAt
-		duration := t.Sub(v.CreatedAt)
-		if !v.Finished {
-			status = "RUNNING"
-			t = time.Now().UTC()
-			duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+		res := prepareScanListOutput(v)
+		if r.options.JSON {
+			output.DisplayScanListInJson(res)
+		} else {
+			output.DisplayScanList(res)
 		}
-
-		val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
-
-		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
 	}
 	return err
 }
@@ -151,4 +144,30 @@ func gzipBase64EncodeData(data []byte) string {
 	_ = writer.Close()
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return encoded
+}
+
+func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
+	output := output.ListScanOutput{}
+	loc, _ := time.LoadLocation("Local")
+	status := "FINISHED"
+
+	t := v.FinishedAt
+	duration := t.Sub(v.CreatedAt)
+
+	if !v.Finished {
+		status = "RUNNING"
+		t = time.Now().UTC()
+		duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+	}
+
+	val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
+
+	output.Timestamp = val
+	output.ScanID = v.Id
+	output.ScanTime = duration.String()
+	output.ScanResult = int(v.Matches)
+	output.ScanStatus = strings.ToLower(status)
+	output.Target = int(v.Targets)
+	output.Template = int(v.Templates)
+	return output
 }
