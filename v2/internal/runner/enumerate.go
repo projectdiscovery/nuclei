@@ -155,7 +155,7 @@ func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
 	duration := t.Sub(v.CreatedAt)
 
 	if !v.Finished {
-		status = "RUNNING"
+		status = "running"
 		t = time.Now().UTC()
 		duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
 	}
