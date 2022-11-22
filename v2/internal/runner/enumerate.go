@@ -38,11 +38,11 @@ func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
 
 	for i, v := range items {
-		res := prepareScanListOutput(v, i)
+		res := r.prepareScanListOutput(v, i)
 		if r.options.JSON {
 			output.DisplayScanListInJson(res)
 		} else {
-			output.DisplayScanList(res)
+			output.DisplayScanList(res, r.options.NoColor)
 		}
 	}
 	return err
@@ -146,7 +146,7 @@ func gzipBase64EncodeData(data []byte) string {
 	return encoded
 }
 
-func prepareScanListOutput(v nucleicloud.GetScanRequest, i int) output.ListScanOutput {
+func (r *Runner) prepareScanListOutput(v nucleicloud.GetScanRequest, i int) output.ListScanOutput {
 	output := output.ListScanOutput{}
 	loc, _ := time.LoadLocation("Local")
 	status := "finished"

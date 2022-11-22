@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -322,8 +323,11 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 
 }
 
-func highlightKey(key string) string {
-	return aurora.Red(key).String()
+func highlightValue(value string) string {
+	if value == "RUNNING" {
+		return aurora.Yellow(value).String()
+	}
+	return aurora.Green(value).String()
 }
 
 type ListScanOutput struct {
@@ -341,6 +345,10 @@ func DisplayScanListInJson(output ListScanOutput) {
 	os.Stdout.Write(bytes)
 }
 
-func DisplayScanList(output ListScanOutput) {
-	gologger.Silent().Msgf("%s [%s: %d] [%s: %s] [%s: %d] [%s: %d] [%s: %d] [%s: %s]\n", output.Timestamp, highlightKey("ID"), output.ScanID, highlightKey("STATUS"), strings.ToUpper(output.ScanStatus), highlightKey("MATCHED"), output.ScanResult, highlightKey("TARGETS"), output.Target, highlightKey("TEMPLATES"), output.Template, highlightKey("DURATION"), output.ScanTime)
+func DisplayScanList(output ListScanOutput, noColor bool) {
+	if noColor {
+		gologger.Silent().Msgf("%s [ID: %d] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, strings.ToUpper(output.ScanStatus), output.ScanResult, output.Target, output.Template, output.ScanTime)
+	} else {
+		gologger.Silent().Msgf("%s [ID: %s] [STATUS: %s] [MATCHED: %s] [TARGETS: %s] [TEMPLATES: %s] [DURATION: %s]\n", highlightValue(output.Timestamp), highlightValue(strconv.Itoa(output.ScanID)), highlightValue(strings.ToUpper(output.ScanStatus)), highlightValue(strconv.Itoa(output.ScanResult)), highlightValue(strconv.Itoa(output.Target)), highlightValue(strconv.Itoa(output.Template)), highlightValue(output.ScanTime))
+	}
 }
