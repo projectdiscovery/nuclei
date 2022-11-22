@@ -338,5 +338,5 @@ func DisplayScanListInJson(output ListScanOutput) {
 }
 
 func DisplayScanList(output ListScanOutput) {
-	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, output.ScanStatus, output.ScanResult, output.Target, output.Template, output.ScanTime)
+	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, strings.ToUpper(output.ScanStatus), output.ScanResult, output.Target, output.Template, output.ScanTime)
 }

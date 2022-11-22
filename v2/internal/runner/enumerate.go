@@ -149,7 +149,7 @@ func gzipBase64EncodeData(data []byte) string {
 func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
 	output := output.ListScanOutput{}
 	loc, _ := time.LoadLocation("Local")
-	status := "FINISHED"
+	status := "finished"
 
 	t := v.FinishedAt
 	duration := t.Sub(v.CreatedAt)
@@ -166,7 +166,7 @@ func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
 	output.ScanID = v.Id
 	output.ScanTime = duration.String()
 	output.ScanResult = int(v.Matches)
-	output.ScanStatus = strings.ToLower(status)
+	output.ScanStatus = status
 	output.Target = int(v.Targets)
 	output.Template = int(v.Templates)
 	return output
