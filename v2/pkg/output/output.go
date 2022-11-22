@@ -322,9 +322,13 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 
 }
 
+func highlightKey(key string) string {
+	return aurora.Red(key).String()
+}
+
 type ListScanOutput struct {
 	Timestamp  string `json:"timestamp"`
-	ScanID     string `json:"scan_id"`
+	ScanID     int    `json:"scan_id"`
 	ScanTime   string `json:"scan_time"`
 	ScanResult int    `json:"scan_result"`
 	ScanStatus string `json:"scan_status"`
@@ -338,5 +342,5 @@ func DisplayScanListInJson(output ListScanOutput) {
 }
 
 func DisplayScanList(output ListScanOutput) {
-	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, strings.ToUpper(output.ScanStatus), output.ScanResult, output.Target, output.Template, output.ScanTime)
+	gologger.Silent().Msgf("%s [%s: %d] [%s: %s] [%s: %d] [%s: %d] [%s: %d] [%s: %s]\n", output.Timestamp, highlightKey("ID"), output.ScanID, highlightKey("STATUS"), strings.ToUpper(output.ScanStatus), highlightKey("MATCHED"), output.ScanResult, highlightKey("TARGETS"), output.Target, highlightKey("TEMPLATES"), output.Template, highlightKey("DURATION"), output.ScanTime)
 }

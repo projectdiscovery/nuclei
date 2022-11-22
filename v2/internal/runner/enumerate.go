@@ -37,8 +37,8 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
 
-	for _, v := range items {
-		res := prepareScanListOutput(v)
+	for i, v := range items {
+		res := prepareScanListOutput(v, i)
 		if r.options.JSON {
 			output.DisplayScanListInJson(res)
 		} else {
@@ -146,7 +146,7 @@ func gzipBase64EncodeData(data []byte) string {
 	return encoded
 }
 
-func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
+func prepareScanListOutput(v nucleicloud.GetScanRequest, i int) output.ListScanOutput {
 	output := output.ListScanOutput{}
 	loc, _ := time.LoadLocation("Local")
 	status := "finished"
@@ -163,7 +163,7 @@ func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
 	val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
 
 	output.Timestamp = val
-	output.ScanID = v.Id
+	output.ScanID = i + 1
 	output.ScanTime = duration.String()
 	output.ScanResult = int(v.Matches)
 	output.ScanStatus = status
