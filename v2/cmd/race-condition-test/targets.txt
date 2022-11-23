@@ -1,3 +1,0 @@
-scanme.sh
-scanme1.sh
-scanme2.sh
