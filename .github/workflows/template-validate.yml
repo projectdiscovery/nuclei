@@ -1,6 +1,8 @@
 name: 🛠 Template Validate
 
-on: [ push, pull_request ]
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,9 +21,10 @@ jobs:
           key: ${{ runner.os }}-go
 
       - name: Installing Nuclei
-#        if: steps.cache-go.outputs.cache-hit != 'true'
+        if: steps.cache-go.outputs.cache-hit != 'true'
         run: |
           go install github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+
       - name: Template Validation
         run: |
           nuclei -validate
