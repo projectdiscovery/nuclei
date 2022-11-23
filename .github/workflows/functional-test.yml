@@ -1,6 +1,6 @@
 name: 🧪 Functional Test
+
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
