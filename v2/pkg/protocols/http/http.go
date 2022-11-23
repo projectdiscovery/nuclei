@@ -8,14 +8,15 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Request contains a http request to be made from a template
@@ -118,6 +119,9 @@ type Request struct {
 	//     value: 2048
 	MaxSize int `yaml:"max-size,omitempty" jsonschema:"title=maximum http response body size,description=Maximum size of http response body to read in bytes"`
 
+	// Fuzzing describes schema to fuzz http requests
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz http requests"`
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	options           *protocols.ExecuterOptions
@@ -176,6 +180,7 @@ type Request struct {
 	//   ReqCondition automatically assigns numbers to requests and preserves their history.
 	//
 	//   This allows matching on them later for multi-request conditions.
+	// Deprecated: request condition will be detected automatically (https://github.com/projectdiscovery/nuclei/issues/2393)
 	ReqCondition bool `yaml:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
@@ -330,7 +335,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	unusedPayloads := make(map[string]struct{})
 	requestSectionsToCheck := []interface{}{
 		request.customHeaders, request.Headers, request.Matchers,
-		request.Extractors, request.Body, request.Path, request.Raw,
+		request.Extractors, request.Body, request.Path, request.Raw, request.Fuzzing,
 	}
 	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
 		for payload := range request.Payloads {
@@ -340,19 +345,29 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			unusedPayloads[payload] = struct{}{}
 		}
 	}
-
 	for payload := range unusedPayloads {
 		delete(request.Payloads, payload)
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 	}
 	request.options = options
 	request.totalRequests = request.Requests()
+
+	if len(request.Fuzzing) > 0 {
+		if request.Unsafe {
+			return errors.New("cannot use unsafe with http fuzzing templates")
+		}
+		for _, rule := range request.Fuzzing {
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
 	return nil
 }
 

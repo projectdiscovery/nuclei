@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,15 +13,16 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 func ConfigureOptions() error {
@@ -50,6 +52,9 @@ func ParseOptions(options *types.Options) {
 	if options.Version {
 		gologger.Info().Msgf("Current Version: %s\n", config.Version)
 		os.Exit(0)
+	}
+	if options.ShowVarDump {
+		vardump.EnableVarDump = true
 	}
 	if options.TemplatesVersion {
 		configuration, err := config.ReadConfiguration()
@@ -91,6 +96,13 @@ func ParseOptions(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
+
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
+	}
 }
 
 // validateOptions validates the configuration options passed
@@ -130,6 +142,22 @@ func validateOptions(options *types.Options) error {
 			return errors.New("if a client certification option is provided, then all three must be provided")
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
+	}
+
+	// verify that a valid ip version type was selected (4, 6)
+	var useIPV4, useIPV6 bool
+	for _, ipv := range options.IPVersion {
+		switch ipv {
+		case "4":
+			useIPV4 = true
+		case "6":
+			useIPV6 = true
+		default:
+			return fmt.Errorf("unsupported ip version: %s", ipv)
+		}
+	}
+	if !useIPV4 && !useIPV6 {
+		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
 
 	return nil

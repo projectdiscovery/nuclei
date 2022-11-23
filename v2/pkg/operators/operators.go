@@ -10,7 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
-	"github.com/projectdiscovery/sliceutil"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // Operators contains the operators that can be applied on protocols
@@ -37,9 +37,9 @@ type Operators struct {
 	matchersCondition matchers.ConditionType
 
 	// TemplateID is the ID of the template for matcher
-	TemplateID string
+	TemplateID string `json:"-" yaml:"-" jsonschema:"-"`
 	// ExcludeMatchers is a list of excludeMatchers items
-	ExcludeMatchers *excludematchers.ExcludeMatchers
+	ExcludeMatchers *excludematchers.ExcludeMatchers `json:"-" yaml:"-" jsonschema:"-"`
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors

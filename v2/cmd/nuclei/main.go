@@ -11,7 +11,6 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
@@ -19,10 +18,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 var (
@@ -125,6 +126,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan", goflags.StringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
+		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "Scan all the ip's associated with dns record"),
+		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", []string{"4"}, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
@@ -194,6 +197,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
+		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
@@ -208,6 +212,15 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
 		flagSet.IntVar(&options.InteractionsCoolDownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
+	)
+
+	flagSet.CreateGroup("uncover", "Uncover",
+		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
+		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", []string{}, "uncover search query", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{}, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
+		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
+		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
+		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "delay between uncover query requests in seconds (0 to disable)"),
 	)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
@@ -226,10 +239,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
-		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
+		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
 		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
-		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "Disable Stdin processing"),
+		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
+		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
@@ -254,15 +268,18 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
+		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "sdp", false, "show variables dump for debugging"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVar(&options.UpdateNuclei, "update", false, "update nuclei engine to the latest released version"),
+		flagSet.BoolVarP(&options.UpdateNuclei, "update", "un", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-directory", "ud", "", "overwrite the default directory to install nuclei-templates"),
+		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
+		flagSet.StringVarEnv(&options.GithubToken, "github-token", "gt", "", "GITHUB_TOKEN", "github token to download public/private templates (GITHUB_TOKEN)"),
+		flagSet.StringSliceVarP(&options.GithubTemplateRepo, "github-template-repo", "gtr", []string{}, "github template repository to download / update (GITHUB_TEMPLATE_REPO)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
@@ -276,14 +293,25 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use"),
-		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server"),
+		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "http://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use (NUCLEI_CLOUD_SERVER)"),
+		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server (NUCLEI_CLOUD_APIKEY)"),
+		flagSet.BoolVarP(&options.ScanList, "list-scan", "ls", false, "list previous cloud scans"),
+		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "disable scan/output storage on cloud"),
+		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
+		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
 	)
 
 	_ = flagSet.Parse()
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
+	}
+	if os.Getenv("GITHUB_TEMPLATE_REPO") != "" {
+		// there is no flag Env function for slice variable type yet.
+		err := options.GithubTemplateRepo.Set(os.Getenv("GITHUB_TEMPLATE_REPO"))
+		if err != nil {
+			gologger.Fatal().Msgf("Could not read GITHUB_TEMPLATE_REPO env variable: %s\n", err)
+		}
 	}
 	if options.CustomConfigDir != "" {
 		originalIgnorePath := config.GetIgnoreFilePath()

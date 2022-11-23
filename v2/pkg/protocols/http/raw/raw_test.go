@@ -74,6 +74,12 @@ Accept-Language: en-US,en;q=0.9
 Connection: close`, "https://test.com/test/", true)
 	require.Nil(t, err, "could not parse unsafe request")
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test/manager/html", "Could not parse unsafe method request path correctly")
+
+	request, err = Parse(`GET ?a=b HTTP/1.1
+	Host: {{Hostname}}
+	Origin: {{BaseURL}}`, "https://test.com/test.js", true)
+	require.Nil(t, err, "could not parse unsafe request")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET /test.js?a=b", "Could not parse unsafe method request path correctly")
 }
 
 func TestTryFillCustomHeaders(t *testing.T) {

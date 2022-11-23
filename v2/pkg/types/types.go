@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -95,6 +95,14 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
+	// Scanlist feature to get all the scan ids for a user
+	ScanList bool
+	// Nostore
+	NoStore bool
+	// Delete scan
+	DeleteScan string
+	// Get issues for a scan
+	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -161,6 +169,8 @@ type Options struct {
 	DebugRequests bool
 	// DebugResponse mode allows debugging response for the engine
 	DebugResponse bool
+	// DisableHTTPProbe disables http probing feature of input normalization
+	DisableHTTPProbe bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -176,6 +186,8 @@ type Options struct {
 	// Verbose flag indicates whether to show verbose output or not
 	Verbose        bool
 	VerboseVerbose bool
+	// ShowVarDump displays variable dump
+	ShowVarDump bool
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup
@@ -244,6 +256,8 @@ type Options struct {
 	Interface string
 	// SourceIP sets custom source IP address for network requests
 	SourceIP string
+	// AttackType overrides template level attack-type configuration
+	AttackType string
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
@@ -258,8 +272,28 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-
-	ConfigPath string // Used by healthcheck
+	// Enable uncover egine
+	Uncover bool
+	// Uncover search query
+	UncoverQuery goflags.StringSlice
+	// Uncover search engine
+	UncoverEngine goflags.StringSlice
+	// Uncover search field
+	UncoverField string
+	// Uncover search limit
+	UncoverLimit int
+	// Uncover search delay
+	UncoverDelay int
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
+	// Github token used to clone/pull from private repos for custom templates
+	GithubToken string
+	// GithubTemplateRepo is the list of custom public/private templates github repos
+	GithubTemplateRepo goflags.StringSlice
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
