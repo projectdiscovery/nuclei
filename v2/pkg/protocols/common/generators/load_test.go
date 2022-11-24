@@ -3,6 +3,7 @@ package generators
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
@@ -35,7 +36,10 @@ func TestLoadPayloads(t *testing.T) {
 		require.NoError(t, err, "could not load payloads")
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
 	})
-	t.Run("no-sandbox", func(t *testing.T) {
+	t.Run("no-sandbox-unix", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			return
+		}
 		_, err := generator.loadPayloads(map[string]interface{}{
 			"new": "/etc/passwd",
 		}, "/random", "/test", false)
