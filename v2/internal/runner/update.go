@@ -37,11 +37,12 @@ import (
 )
 
 const (
-	userName             = "projectdiscovery"
-	repoName             = "nuclei-templates"
-	nucleiIgnoreFile     = ".nuclei-ignore"
-	nucleiConfigFilename = ".templates-config.json"
-	customTemplateType   = "github"
+	userName                      = "projectdiscovery"
+	repoName                      = "nuclei-templates"
+	nucleiIgnoreFile              = ".nuclei-ignore"
+	nucleiConfigFilename          = ".templates-config.json"
+	customGithubTemplateDirectory = "github"
+	customS3TemplateDirectory     = "s3"
 )
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -104,7 +105,13 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// download | update the custom templates repos
-	r.downloadCustomTemplates(ctx)
+	for _, ct := range *r.customTemplates {
+		if r.options.UpdateTemplates {
+			ct.Update(r.templatesConfig.TemplatesDirectory, ctx)
+		} else {
+			ct.Download(r.templatesConfig.TemplatesDirectory, ctx)
+		}
+	}
 
 	latestVersion, currentVersion, err := getVersions(r)
 	if err != nil {
@@ -168,7 +175,9 @@ func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context
 	gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 	// case where -gtr flag is passed for the first time installation
-	r.downloadCustomTemplates(ctx)
+	for _, ct := range *r.customTemplates {
+		ct.Download(r.templatesConfig.TemplatesDirectory, ctx)
+	}
 	return nil
 }
 
