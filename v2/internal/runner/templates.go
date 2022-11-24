@@ -3,7 +3,6 @@ package runner
 import (
 	"bytes"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -41,17 +40,8 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	topLevelDir := ""
 	for _, tpl := range store.Templates() {
 		if hasExtraFlags(r.options) {
-			path := strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
-			pathParts := strings.Split(path, string(os.PathSeparator))
-			if len(pathParts) > 0 {
-				if pathParts[0] != topLevelDir {
-					topLevelDir = pathParts[0]
-					gologger.Silent().Msgf("\n%s:\n\n", topLevelDir)
-				}
-			}
 			if r.options.TemplateDisplay {
 				highlightedTpl, err := r.highlightTemplate(tpl)
 				if err != nil {
@@ -61,7 +51,8 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 
 				gologger.Silent().Msgf("File: %s\n\n%s", aurora.Cyan(tpl.Path), highlightedTpl.String())
 			} else {
-				gologger.Silent().Msgf(" ⬝ %s\n", strings.TrimPrefix(path, topLevelDir+string(filepath.Separator)))
+				path := strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
+				gologger.Silent().Msgf("%s\n", path)
 			}
 		} else {
 			r.verboseTemplate(tpl)
