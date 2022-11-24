@@ -24,7 +24,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/owenrumney/go-sarif/v2 v2.1.2
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.8
+	github.com/projectdiscovery/clistats v0.0.9
 	github.com/projectdiscovery/fastdialer v0.0.18-0.20221102102120-8e9343e8b0e0
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/gologger v1.1.5
