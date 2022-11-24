@@ -106,6 +106,7 @@ TEMPLATES:
    -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
    -validate                    nuclei로 전달된 템플릿 검증
    -tl                          사용 가능한 모든 템플릿 목록
+   -td                          템플릿 내용 표시
 
 FILTERING:
    -a, -author string[]              작성자를 기준으로 실행할 템플릿(쉼표로 구분된 파일)

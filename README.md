@@ -109,6 +109,7 @@ TEMPLATES:
    -validate                              validate the passed templates to nuclei
    -nss, -no-strict-syntax                Disable strict syntax check on templates
    -tl                                    list all available templates
+   -td                                    displays the template contents
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
