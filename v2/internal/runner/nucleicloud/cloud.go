@@ -285,7 +285,7 @@ func (c *Client) ExistsDataSourceItem(req ExistsDataSourceItemRequest) error {
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
 		return errors.Wrap(err, "could not json encode request")
 	}
-	httpReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/%s/exists", c.baseURL, req.ID), bytes.NewReader(buf.Bytes()))
+	httpReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/exists", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
