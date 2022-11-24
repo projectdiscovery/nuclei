@@ -160,12 +160,13 @@ CONFIGURATIONS:
    -sml, -show-match-line         show match lines for file templates, works with extractors only
    -ztls                          use ztls library with autofallback to standard one for tls13
    -sni string                    tls sni hostname to use (default: input domain name)
+   -sandbox                       sandbox nuclei for safe templates execution
    -i, -interface string          network interface to use for network scan
    -at, -attack-type string       type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       Override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
-   -rss, -response-size-save int  max response size to read in bytes (default 1048576)
+   -rss, -response-size-save int  max response size to save in bytes (default 10485760)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -175,6 +176,14 @@ INTERACTSH:
    -interactions-poll-duration int      number of seconds to wait before each interaction poll request (default 5)
    -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
+
+UNCOVER:
+   -uc, -uncover                  enable uncover engine
+   -uq, -uncover-query string[]   uncover search query
+   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)
+   -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
+   -ul, -uncover-limit int        uncover results to return (default 100)
+   -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
 
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
@@ -191,7 +200,7 @@ OPTIMIZATIONS:
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
    -project                            use a project folder to avoid sending same request multiple times
    -project-path string                set a specific project path
-   -spm, -stop-at-first-path           stop processing HTTP requests after the first match (may break template/workflow logic)
+   -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -no-stdin                           Disable Stdin processing
