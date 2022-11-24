@@ -34,25 +34,38 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 }
 
 // Get all the scan lists for a user/apikey.
-func (r *Runner) getScanList() error {
-	items, err := r.cloudClient.GetScans()
+func (r *Runner) getScanList(limit int) error {
 	loc, _ := time.LoadLocation("Local")
+	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
-	for _, v := range items {
-		status := "FINISHED"
-		t := v.FinishedAt
-		duration := t.Sub(v.CreatedAt)
-		if !v.Finished {
-			status = "RUNNING"
-			t = time.Now().UTC()
-			duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+	var e error
+	for {
+		items, err := r.cloudClient.GetScans(limit, lastTime)
+		if err != nil {
+			e = err
+			break
 		}
+		if len(items) == 0 {
+			break
+		}
+		for _, v := range items {
+			lastTime = v.CreatedAt.String()
+			status := "FINISHED"
+			t := v.FinishedAt
+			duration := t.Sub(v.CreatedAt)
+			if !v.Finished {
+				status = "RUNNING"
+				t = time.Now().UTC()
+				duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+			}
 
-		val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
+			val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
 
-		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
+			gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
+
+		}
 	}
-	return err
+	return e
 }
 
 func (r *Runner) deleteScan(id string) error {
@@ -65,17 +78,17 @@ func (r *Runner) deleteScan(id string) error {
 	return err
 }
 
-func (r *Runner) getResults(id string) error {
+func (r *Runner) getResults(id string, limit int) error {
 	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
 		}
-	}, false)
+	}, false, limit)
 	return err
 }
 
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
 	now := time.Now()
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
@@ -132,7 +145,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-	}, true)
+	}, true, limit)
 	return results, err
 }
 
