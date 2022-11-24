@@ -22,7 +22,7 @@ updates:
   - package-ecosystem: "gomod"
     directory: "v2/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     target-branch: "dev"
     commit-message:
       prefix: "chore"

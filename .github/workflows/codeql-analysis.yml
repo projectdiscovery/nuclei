@@ -1,7 +1,6 @@
 name: 🚨 CodeQL Analysis
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
     branches:
