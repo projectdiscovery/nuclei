@@ -1,6 +1,6 @@
 name: 🔨 Build Test
+
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -19,6 +19,10 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Download modules
+        run: go mod download
+        working-directory: v2/
 
       - name: Build
         run: go build .
