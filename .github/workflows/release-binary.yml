@@ -1,4 +1,5 @@
 name: 🎉 Release Binary
+
 on:
   push:
     tags:
