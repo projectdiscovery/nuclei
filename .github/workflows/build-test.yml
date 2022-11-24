@@ -45,5 +45,5 @@ jobs:
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
-        run: go run -race . -l ../functional-test/targets.txt -tags xss,dns
+        run: go run -race . -l ../functional-test/targets.txt
         working-directory: v2/cmd/nuclei/
