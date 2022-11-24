@@ -291,6 +291,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server (NUCLEI_CLOUD_APIKEY)"),
 		flagSet.BoolVarP(&options.ScanList, "list-scan", "ls", false, "list previous cloud scans"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "disable scan/output storage on cloud"),
+		flagSet.IntVarP(&options.OutputLimit, "limit", "ol", 100, "limit the output at a time"),
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
 	)
