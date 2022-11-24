@@ -1,9 +1,15 @@
 package runner
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"bytes"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/alecthomas/chroma/quick"
+	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -17,11 +23,16 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(t.ID,
-			types.ToString(t.Info.Name),
-			t.Info.Authors.ToSlice(),
-			t.Info.SeverityHolder.Severity))
+		r.verboseTemplate(t)
 	}
+}
+
+// log available templates for verbose (-vv)
+func (r *Runner) verboseTemplate(tpl *templates.Template) {
+	gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+		types.ToString(tpl.Info.Name),
+		tpl.Info.Authors.ToSlice(),
+		tpl.Info.SeverityHolder.Severity))
 }
 
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
@@ -30,23 +41,57 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	extraFlags := r.options.Templates != nil || r.options.Authors != nil ||
-		r.options.Tags != nil || len(r.options.ExcludeTags) > 3 ||
-		r.options.IncludeTags != nil || r.options.IncludeIds != nil ||
-		r.options.ExcludeIds != nil || r.options.IncludeTemplates != nil ||
-		r.options.ExcludedTemplates != nil || r.options.ExcludeMatchers != nil ||
-		r.options.Severities != nil || r.options.ExcludeSeverities != nil ||
-		r.options.Protocols != nil || r.options.ExcludeProtocols != nil ||
-		r.options.IncludeConditions != nil || r.options.TemplateList
-	for _, tl := range store.Templates() {
-		if extraFlags {
-			path := strings.TrimPrefix(tl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
-			gologger.Silent().Msgf("%s\n", path)
+	topLevelDir := ""
+	for _, tpl := range store.Templates() {
+		if hasExtraFlags(r.options) {
+			path := strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
+			pathParts := strings.Split(path, string(os.PathSeparator))
+			if len(pathParts) > 0 {
+				if pathParts[0] != topLevelDir {
+					topLevelDir = pathParts[0]
+					gologger.Silent().Msgf("\n%s:\n\n", topLevelDir)
+				}
+			}
+			if r.options.TemplateDisplay {
+				highlightedTpl, err := r.highlightTemplate(tpl)
+				if err != nil {
+					gologger.Error().Msgf("Could not display the template %s: %s", tpl.Path, err)
+					break
+				}
+
+				gologger.Silent().Msgf("File: %s\n\n%s", aurora.Cyan(tpl.Path), highlightedTpl.String())
+			} else {
+				gologger.Silent().Msgf(" ⬝ %s\n", strings.TrimPrefix(path, topLevelDir+string(filepath.Separator)))
+			}
 		} else {
-			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tl.ID,
-				types.ToString(tl.Info.Name),
-				tl.Info.Authors.ToSlice(),
-				tl.Info.SeverityHolder.Severity))
+			r.verboseTemplate(tpl)
 		}
 	}
+}
+
+func (r *Runner) highlightTemplate(tpl *templates.Template) (*bytes.Buffer, error) {
+	tplContent, err := ioutil.ReadFile(tpl.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	// YAML lexer, true color terminar formatter and monokai style
+	err = quick.Highlight(&buf, string(tplContent), "yaml", "terminal16m", "monokai")
+	if err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func hasExtraFlags(options *types.Options) bool {
+	return options.Templates != nil || options.Authors != nil ||
+		options.Tags != nil || len(options.ExcludeTags) > 3 ||
+		options.IncludeTags != nil || options.IncludeIds != nil ||
+		options.ExcludeIds != nil || options.IncludeTemplates != nil ||
+		options.ExcludedTemplates != nil || options.ExcludeMatchers != nil ||
+		options.Severities != nil || options.ExcludeSeverities != nil ||
+		options.Protocols != nil || options.ExcludeProtocols != nil ||
+		options.IncludeConditions != nil || options.TemplateList
 }
