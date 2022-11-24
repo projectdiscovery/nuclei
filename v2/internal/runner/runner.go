@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -73,7 +74,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customTemplateRepo
+	customTemplates   *[]customtemplates.CustomTemplateProvider
 	cloudClient       *nucleicloud.Client
 }
 
@@ -108,7 +109,7 @@ func New(options *types.Options) (*Runner, error) {
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.parseCustomTemplates()
+	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
@@ -403,7 +404,7 @@ func (r *Runner) RunEnumeration() error {
 	var cloudTemplates []string
 	var cloudTargets []string
 	// Initialize cloud data stores if specified
-	if r.options.Cloud && r.options.GithubToken != "" && len(r.options.GithubTemplateRepo) > 0 {
+	if r.options.Cloud && (r.options.GithubToken != "" || r.options.AwsBucketName != "") {
 		ids, err := r.initializeCloudDataSources()
 		if err != nil {
 			return err
