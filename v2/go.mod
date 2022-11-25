@@ -72,7 +72,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.4
+	github.com/projectdiscovery/goflags v0.1.5
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.1
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
