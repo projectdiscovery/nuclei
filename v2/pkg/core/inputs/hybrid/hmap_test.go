@@ -70,7 +70,7 @@ func (this *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			AAAA: net.ParseIP("2400:6180:0:d0::91:1001"),
 		})
 	}
-	w.WriteMsg(&msg)
+	_ = w.WriteMsg(&msg)
 }
 
 func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
