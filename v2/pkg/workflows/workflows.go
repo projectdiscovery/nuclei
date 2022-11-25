@@ -105,8 +105,8 @@ func (matcher *Matcher) Match(result *operators.Result) bool {
 	}
 
 	for i, name := range names {
-		_, matchOK := result.Matches[name]
-		_, extractOK := result.Extracts[name]
+		matchOK := result.HasMatch(name)
+		extractOK := result.HasExtract(name)
 
 		if !matchOK && !extractOK {
 			if matcher.condition == ANDCondition {
