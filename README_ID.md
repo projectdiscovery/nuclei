@@ -3,7 +3,7 @@
   <a href="https://nuclei.projectdiscovery.io"><img src="static/nuclei-logo.png" width="200px" alt="Nuclei"></a>
 </h1>
 
-<h4 align="center">Fast and customisable vulnerability scanner based on simple YAML based DSL.</h4>
+<h4 align="center">Pemindai kerentanan yang cepat dan dapat disesuaikan berdasarkan DSL berbasis YAML sederhana.</h4>
 
 
 <p align="center">
@@ -18,14 +18,14 @@
 </p>
       
 <p align="center">
-  <a href="#how-it-works">How</a> •
-  <a href="#install-nuclei">Install</a> •
-  <a href="#for-security-engineers">For Security Engineers</a> •
-  <a href="#for-developers-and-organisations">For Developers</a> •
-  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
-  <a href="#credits">Credits</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
-  <a href="https://discord.gg/projectdiscovery">Join Discord</a>
+  <a href="#cara-kerja">Cara Kerja</a> •
+  <a href="#instalasi-nuclei">Instalasi</a> •
+  <a href="#untuk-insinyur-keamanan">Untuk Teknisi Keamanan</a> •
+  <a href="#untuk-pengembang-dan-organisasi">Untuk Pengembang</a> •
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Dokumentasi</a> •
+  <a href="#kredit">Kredit</a> •
+  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">Tanya Jawab</a> •
+  <a href="https://discord.gg/projectdiscovery">Gabung Discord</a>
 </p>
 
 <p align="center">
@@ -37,13 +37,12 @@
 
 ---
 
-Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
+Nuclei digunakan untuk mengirim permintaan lintas target berdasarkan templat, yang menghasilkan nol positif palsu dan menyediakan pemindaian yang cepat pada banyak host. Nuclei menawarkan pemindaian untuk berbagai protokol, termasuk TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless, dll. Dengan templating yang kuat dan fleksibel, Nuclei dapat digunakan untuk memodelkan semua jenis pemeriksaan keamanan.
 
-We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
+Kami memiliki [repositori khusus](https://github.com/projectdiscovery/nuclei-templates) yang menampung berbagai jenis templat kerentanan yang disumbangkan oleh **lebih dari 300** peneliti dan teknisi keamanan.
 
 
-
-## How it works
+## Cara Kerja
 
 
 <h3 align="center">
@@ -51,15 +50,15 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 </h3>
 
 
-# Install Nuclei
+# Instalasi Nuclei
 
-Nuclei requires **go1.18** to install successfully. Run the following command to install the latest version -
+Nuclei membutuhkan **go1.18** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
-**More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
+**Metode [instalasi lain dapat ditemukan di sini](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
 <tr>
@@ -67,23 +66,23 @@ go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 
 ### Nuclei Templates
 
-Nuclei has built-in support for automatic template download/update as default since version [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) project provides a community-contributed list of ready-to-use templates that is constantly updated.
+Nuclei memiliki dukungan untuk unduhan/pembaruan templat otomatis sebagai bawaan sejak versi [v2.5.2](https://github.com/projectdiscovery/nuclei/releases/tag/v2.5.2). Proyek [**Nuclei-Templates**](https://github.com/projectdiscovery/nuclei-templates) menyediakan daftar template siap pakai yang dibuat oleh komunitas yang terus diperbarui.
 
-You may still use the `update-templates` flag to update the nuclei templates at any time; You can write your own checks for your individual workflow and needs following Nuclei's [templating guide](https://nuclei.projectdiscovery.io/templating-guide/).
+Anda dapat menggunakan flag `-update-templates` untuk memperbarui templat inti kapan saja; Anda juga dapat menulis pemeriksaan Anda sendiri untuk alur kerja individu dan untuk kebutuhan Anda sendiri dengan mengikuti [panduan pembuatan templat Nuclei](https://nuclei.projectdiscovery.io/templating-guide/).
 
-The YAML DSL reference syntax is available [here](SYNTAX-REFERENCE.md).
+Untuk referensi penulisan sintaks DSL berbasis YAML tersedia [di sini](SYNTAX-REFERENCE.md).
 
 </td>
 </tr>
 </table>
 
-### Usage
+### Cara Pakai
 
 ```sh
 nuclei -h
 ```
 
-This will display help for the tool. Here are all the switches it supports.
+Ini akan menampilkan bantuan untuk alat tersebut. Berikut adalah semua flag yang didukungnya.
 
 
 ```console
@@ -161,9 +160,7 @@ CONFIGURATIONS:
    -sml, -show-match-line         show match lines for file templates, works with extractors only
    -ztls                          use ztls library with autofallback to standard one for tls13
    -sni string                    tls sni hostname to use (default: input domain name)
-   -sandbox                       sandbox nuclei for safe templates execution
    -i, -interface string          network interface to use for network scan
-   -at, -attack-type string       type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       Override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
@@ -177,14 +174,6 @@ INTERACTSH:
    -interactions-poll-duration int      number of seconds to wait before each interaction poll request (default 5)
    -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
-
-UNCOVER:
-   -uc, -uncover                  enable uncover engine
-   -uq, -uncover-query string[]   uncover search query
-   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye) (default shodan)
-   -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
-   -ul, -uncover-limit int        uncover results to return (default 100)
-   -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
 
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
@@ -201,7 +190,7 @@ OPTIMIZATIONS:
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
    -project                            use a project folder to avoid sending same request multiple times
    -project-path string                set a specific project path
-   -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
+   -spm, -stop-at-first-path           stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -no-stdin                           Disable Stdin processing
@@ -232,12 +221,10 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                          update nuclei engine to the latest released version
-   -ut, -update-templates                update nuclei-templates to latest released version
-   -ud, -update-template-dir string      custom directory to install / update nuclei-templates
-   -gt, -github-token string             github token to download public/private templates (GITHUB_TOKEN)
-   -gtr, -github-template-repo string[]  github template repository to download / update (GITHUB_TEMPLATE_REPO)
-   -duc, -disable-update-check           disable automatic nuclei/templates update check
+   -update                        update nuclei engine to the latest released version
+   -ut, -update-templates         update nuclei-templates to latest released version
+   -ud, -update-directory string  overwrite the default directory to install nuclei-templates
+   -duc, -disable-update-check    disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
@@ -247,21 +234,21 @@ STATISTICS:
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 ```
 
-### Running Nuclei
+### Menjalankan Nuclei
 
-Scanning target domain with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
+Memindai domain target dengan templat Nuclei yang [dikurasi oleh komunitas](https://github.com/projectdiscovery/nuclei-templates).
 
 ```sh
 nuclei -u https://example.com
 ```
 
-Scanning target URLs with [community-curated](https://github.com/projectdiscovery/nuclei-templates) nuclei templates.
+Memindai URL target dengan templat Nuclei yang [dikurasi oleh komunitas](https://github.com/projectdiscovery/nuclei-templates).
 
 ```sh
 nuclei -list urls.txt
 ```
 
-Example of `urls.txt`:
+Contoh dari berkas `urls.txt`:
 
 ```yaml
 http://example.com
@@ -270,33 +257,33 @@ http://test.example.com
 http://uat.example.com
 ```
 
-**More detailed examples of running nuclei can be found [here](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
+**Contoh lebih detil tentang menjalankan Nuclei dapat ditemukan [di sini](https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei).**
 
-# For Security Engineers
+# Untuk Teknisi Keamanan
 
-Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organisation. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
+Nuclei menawarkan sejumlah besar fitur yang berguna bagi teknisi keamanan untuk menyesuaikan alur kerja di organisasi mereka. Dengan berbagai kemampuan pemindaian (seperti misalnya DNS, HTTP, TCP), teknisi keamanan dapat dengan mudah membuat rangkaian pemeriksaan khusus mereka dengan Nuclei.
 
-- Varieties of protocols supported: TCP, DNS, HTTP, File, etc
-- Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
-- Easy to integrate into CI/CD, designed to be easily integrated into regression cycle to actively check the fix and re-appearance of vulnerability. 
+- Berbagai protokol yang didukung: TCP, DNS, HTTP, File, dll
+- Mencapai langkah-langkah kerentanan yang kompleks dengan alur kerja dan [permintaan dinamis](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/).
+- Mudah diintegrasikan ke dalam CI/CD, dirancang agar mudah diintegrasikan ke dalam siklus regresi untuk secara aktif memeriksa perbaikan dan kemunculan kerentanan kembali.
 
 <h1 align="left">
-  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
+  <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/"><img src="static/learn-more-button.png" width="170px" alt="Pelajari Selengkapnya"></a>
 </h1>
 
 <table>
 <tr>
 <td>  
 
-**For Bug Bounty hunters:**
+**Untuk Pemburu Celah Berhadiah:**
 
-Nuclei allows you to customise your testing approach with your own suite of checks and easily run across your bug bounty programs. Moreover, Nuclei can be easily integrated into any continuous scanning workflow.
+Nuclei memungkinkan Anda untuk menyesuaikan pendekatan pengujian Anda dengan rangkaian pemeriksaan Anda sendiri dan dengan mudah menjalankan program celah berhadiah Anda. Selain itu, Nuclei dapat dengan mudah diintegrasikan ke dalam alur kerja pemindaian berkelanjutan.
 
-- Designed to be easily integrated into other tool workflow.
-- Can process thousands of hosts in few minutes.
-- Easily automate your custom testing approach with our simple YAML DSL.
+- Dirancang agar mudah diintegrasikan ke dalam alur kerja alat lainnya.
+- Dapat memproses ribuan host hanya dalam beberapa menit.
+- Mudah mengotomatiskan pendekatan pengujian khusus Anda dengan sintaks DSL berbasis YAML sederhana kami.
 
-Please check our other open-source projects that might fit into your bug bounty workflow: [github.com/projectdiscovery](http://github.com/projectdiscovery), we also host daily [refresh of DNS data at Chaos](http://chaos.projectdiscovery.io).
+Silakan periksa proyek sumber terbuka kami yang lain yang mungkin cocok dengan alur kerja celah berhadiah Anda: [github.com/projectdiscovery](http://github.com/projectdiscovery), kami juga menyediakan [penyegaran data DNS di Chaos setiap hari](http://chaos.projectdiscovery.io).
 
 </td>
 </tr>
@@ -306,62 +293,62 @@ Please check our other open-source projects that might fit into your bug bounty 
 <tr>
 <td>
   
-**For Penetration Testers:**
+**Untuk Penguji Penetrasi:**
 
-Nuclei immensely improve how you approach security assessment by augmenting the manual, repetitive processes. Consultancies are already converting their manual assessment steps with Nuclei, it allows them to run set of their custom assessment approach across thousands of hosts in an automated manner. 
+Nuclei sangat meningkatkan cara Anda mendekati penilaian keamanan dengan menambah proses manual yang berulang. Para konsultan sudah mengonversi langkah penilaian manual mereka dengan Nuclei, ini memungkinkan mereka untuk menjalankan serangkaian pendekatan penilaian khusus mereka di ribuan host secara otomatis.
 
-Pen-testers get the full power of our public templates and customization capabilities to speed up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
+Para penguji penetrasi mendapatkan kekuatan penuh dari templat publik dan kemampuan penyesuaian kami untuk mempercepat proses penilaian mereka, dan khususnya dengan siklus regresi di mana Anda dapat dengan mudah memverifikasi perbaikannya.
 
-- Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
-- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
-- Easy to re-test vulnerability-fix by just re-running the template.
+- Mudah untuk membuat daftar pemeriksa kepatuhan Anda, sederet standar (mis., OWASP 10 Teratas).
+- Dengan kemampuan seperti [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) dan [alur kerja](https://nuclei.projectdiscovery.io/templating-guide/#workflows), langkah manual yang rumit dan penilaian berulang dapat dengan mudah diotomatisasi dengan Nuclei.
+- Mudah untuk menguji ulang perbaikan kerentanan hanya dengan menjalankan ulang template.
 
 </td>
 </tr>
 </table>
 
 
-# For Developers and Organisations
+# Untuk Pengembang dan Organisasi
 
-Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with the latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and eliminate vulnerabilities from occurring in the future.
+Nuclei dibangun dengan kesederhanaan dalam pemikiran, dengan templat yang didukung komunitas oleh ratusan peneliti keamanan, memungkinkan Anda untuk tidak tertinggal dengan ancaman keamanan terbaru menggunakan pemindaian Nuclei terus menerus pada host. Ini dirancang agar mudah diintegrasikan ke dalam siklus pengujian regresi, untuk memverifikasi perbaikan dan menghilangkan kerentanan agar tidak terjadi di masa mendatang.
 
-- **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
-- **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
+- **CI/CD:** Pengembang sudah memanfaatkan Nuclei dalam aliran CI/CD mereka, ini memungkinkan mereka untuk terus memantau lingkungan pementasan dan produksi mereka dengan templat yang disesuaikan.
+- **Siklus Regresi Berkelanjutan:** Dengan Nuclei, Anda dapat membuat templat khusus pada setiap kerentanan baru yang teridentifikasi dan dimasukkan ke dalam mesin Nuclei untuk dihilangkan dalam siklus regresi berkelanjutan.
 
-We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organisation, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
+Kami memiliki [utas diskusi tentang ini](https://github.com/projectdiscovery/nuclei-templates/discussions/693), sudah ada beberapa program celah berhadiah yang memberikan insentif kepada peretas untuk menulis templat inti dengan setiap pengiriman, yang membantu mereka untuk menghilangkan kerentanan di semua aset mereka, serta untuk menghilangkan risiko masa depan yang muncul kembali pada lingkungan produksi. Jika Anda tertarik untuk menerapkannya di organisasi Anda, jangan ragu untuk [menghubungi kami](mailto:contact@projectdiscovery.io). Kami akan dengan senang hati membantu Anda dalam proses memulai, atau Anda juga dapat memposting ke [utas diskusi](https://github.com/projectdiscovery/nuclei-templates/discussions/693) untuk bantuan apapun.
 
 <h3 align="center">
-  <img src="static/regression-with-nuclei.jpg" alt="regression-cycle-with-nuclei" width="1100px"></a>
+  <img src="static/regression-with-nuclei.jpg" alt="Siklus Regresi Berkelanjutan dengan Nuclei" width="1100px"></a>
 </h3>
 
 <h1 align="left">
-  <a href="https://github.com/projectdiscovery/nuclei-action"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
+  <a href="https://github.com/projectdiscovery/nuclei-action"><img src="static/learn-more-button.png" width="170px" alt="Pelajari Selengkapnya"></a>
 </h1>
 
-### Resources
+### Sumber Daya
 
-- [Finding bugs with Nuclei with PinkDraconian (Robbe Van Roey)](https://www.youtube.com/watch?v=ewP0xVPW-Pk) by **[@PinkDraconian](https://twitter.com/PinkDraconian)** 
-- [Nuclei: Packing a Punch with Vulnerability Scanning](https://bishopfox.com/blog/nuclei-vulnerability-scan) by **Bishopfox**
-- [The WAF efficacy framework](https://www.fastly.com/blog/the-waf-efficacy-framework-measuring-the-effectiveness-of-your-waf) by **Fastly**
-- [Scanning Live Web Applications with Nuclei in CI/CD Pipeline](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) by **[@TristanKalos](https://twitter.com/TristanKalos)**
-- [Community Powered Scanning with Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
-- [Nuclei Unleashed - Quickly write complex exploits](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
-- [Nuclei - Fuzz all the things](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
-- [Nuclei + Interactsh Integration for Automating OOB Testing](https://blog.projectdiscovery.io/nuclei-interactsh-integration/)
-- [Weaponizes nuclei Workflows to Pwn All the Things](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) by **[@dwisiswant0](https://github.com/dwisiswant0)**
-- [How to Scan Continuously with Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) by **[@dwisiswant0](https://github.com/dwisiswant0)**
-- [Hack with Automation !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) by **[@DhiyaneshGeek](https://github.com/DhiyaneshGeek)**
+- [Menemukan bug dengan menggunakan Nuclei dengan PinkDraconian (Robbe Van Roey)](https://www.youtube.com/watch?v=ewP0xVPW-Pk) oleh **[@PinkDraconian](https://twitter.com/PinkDraconian)** 
+- [Nuclei: Mengemas Pukulan dengan Pemindaian Kerentanan](https://bishopfox.com/blog/nuclei-vulnerability-scan) oleh **Bishopfox**
+- [Kerangka kemanjuran WAF](https://www.fastly.com/blog/the-waf-efficacy-framework-measuring-the-effectiveness-of-your-waf) oleh **Fastly**
+- [Memindai Aplikasi Web Langsung dengan Nuclei di Aliran CI/CD](https://blog.escape.tech/devsecops-part-iii-scanning-live-web-applications/) oleh **[@TristanKalos](https://twitter.com/TristanKalos)**
+- [Pemindaian Bertenaga Komunitas dengan Nuclei](https://blog.projectdiscovery.io/community-powered-scanning-with-nuclei/)
+- [Nuclei Unleashed - Menulis eksploitasi kompleks dengan cepat](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
+- [Nuclei - Fuzz semua hal](https://blog.projectdiscovery.io/nuclei-fuzz-all-the-things/)
+- [Integrasi Nuclei + Interactsh untuk Mengotomatiskan Pengujian OOB](https://blog.projectdiscovery.io/nuclei-interactsh-integration/)
+- [Mempersenjatai Alur Kerja Nuclei untuk Menghancurkan Semua Hal](https://medium.com/@dwisiswant0/weaponizes-nuclei-workflows-to-pwn-all-the-things-cd01223feb77) oleh **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [Bagaimana Memindai Terus-menerus dengan Nuclei?](https://medium.com/@dwisiswant0/how-to-scan-continuously-with-nuclei-fcb7e9d8b8b9) oleh **[@dwisiswant0](https://github.com/dwisiswant0)**
+- [Retas dengan Otomatisasi !!!](https://dhiyaneshgeek.github.io/web/security/2021/07/19/hack-with-automation/) oleh **[@DhiyaneshGeek](https://github.com/DhiyaneshGeek)**
 
-### Credits
+### Kredit
 
-Thanks to all the amazing community [contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors). Do also check out the below similar open-source projects that may fit in your workflow:
+Terima kasih kepada semua komunitas yang luar biasa yang [berkontribusi untuk mengirimkan PR](https://github.com/projectdiscovery/nuclei/graphs/contributors). Lihat juga proyek sumber-terbuka serupa di bawah ini yang mungkin sesuai dengan alur kerja Anda:
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 
-### License
+### Lisensi
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei didistribusikan di bawah [Lisensi MIT](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
 
 <h1 align="left">
-  <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>
+  <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Cek Dokumentasi Nuclei"></a>
 </h1>
