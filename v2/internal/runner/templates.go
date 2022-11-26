@@ -61,7 +61,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 					}
 
 				}
-				gologger.Silent().Msgf("File: %s\n\n%s", path, tplBody)
+				gologger.Silent().Msgf("Template: %s\n\n%s", path, tplBody)
 			} else {
 				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator)))
 			}
