@@ -43,16 +43,27 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	for _, tpl := range store.Templates() {
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
-				highlightedTpl, err := r.highlightTemplate(tpl)
+				colorize := !r.options.NoColor
+
+				path := tpl.Path
+				tplBody, err := ioutil.ReadFile(path)
 				if err != nil {
-					gologger.Error().Msgf("Could not display the template %s: %s", tpl.Path, err)
-					break
+					gologger.Error().Msgf("Could not read the template %s: %s", path, err)
+					continue
 				}
 
-				gologger.Silent().Msgf("File: %s\n\n%s", aurora.Cyan(tpl.Path), highlightedTpl.String())
+				if colorize {
+					path = aurora.Cyan(tpl.Path).String()
+					tplBody, err = r.highlightTemplate(&tplBody)
+					if err != nil {
+						gologger.Error().Msgf("Could not hihglight the template %s: %s", tpl.Path, err)
+						continue
+					}
+
+				}
+				gologger.Silent().Msgf("File: %s\n\n%s", path, tplBody)
 			} else {
-				path := strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
-				gologger.Silent().Msgf("%s\n", path)
+				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator)))
 			}
 		} else {
 			r.verboseTemplate(tpl)
@@ -60,20 +71,15 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	}
 }
 
-func (r *Runner) highlightTemplate(tpl *templates.Template) (*bytes.Buffer, error) {
-	tplContent, err := ioutil.ReadFile(tpl.Path)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *Runner) highlightTemplate(body *[]byte) ([]byte, error) {
 	var buf bytes.Buffer
 	// YAML lexer, true color terminar formatter and monokai style
-	err = quick.Highlight(&buf, string(tplContent), "yaml", "terminal16m", "monokai")
+	err := quick.Highlight(&buf, string(*body), "yaml", "terminal16m", "monokai")
 	if err != nil {
 		return nil, err
 	}
 
-	return &buf, nil
+	return buf.Bytes(), nil
 }
 
 func hasExtraFlags(options *types.Options) bool {
