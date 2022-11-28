@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	"golang.org/x/net/http2"
+
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
@@ -70,10 +72,21 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	jar, _ := cookiejar.New(nil)
 
-	httpclient := &http.Client{
-		Transport: transport,
-		Timeout:   time.Duration(options.Timeout*3) * time.Second,
-		Jar:       jar,
+	httpclient := &http.Client{}
+
+	if options.ForceAttemptHTTP2 {
+		httpclient.Transport = &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+	} else {
+		httpclient.Transport = &http2.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+	}
+
+	httpclient = &http.Client{
+		Timeout: time.Duration(options.Timeout*3) * time.Second,
+		Jar:     jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// the browser should follow redirects not us
 			return http.ErrUseLastResponse
