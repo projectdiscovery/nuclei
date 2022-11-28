@@ -57,7 +57,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	templateID := event.TemplateID + "-" + hex.EncodeToString(h.Sum(nil))
 
 	var ruleName string
-	if utils.IsNotBlank(event.Info.Name) {
+	if !utils.IsBlank(event.Info.Name) {
 		ruleName = event.Info.Name
 	}
 
@@ -69,7 +69,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	var ruleDescription string
-	if utils.IsNotBlank(event.Info.Description) {
+	if !utils.IsBlank(event.Info.Description) {
 		ruleDescription = event.Info.Description
 	}
 

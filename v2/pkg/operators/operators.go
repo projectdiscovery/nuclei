@@ -3,6 +3,7 @@ package operators
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -89,6 +90,23 @@ type Result struct {
 
 	// Optional lineCounts for file protocol
 	LineCount string
+}
+
+func (result *Result) HasMatch(name string) bool {
+	return result.hasItem(name, result.Matches)
+}
+
+func (result *Result) HasExtract(name string) bool {
+	return result.hasItem(name, result.Extracts)
+}
+
+func (result *Result) hasItem(name string, m map[string][]string) bool {
+	for matchName := range m {
+		if strings.EqualFold(name, matchName) {
+			return true
+		}
+	}
+	return false
 }
 
 // MakeDynamicValuesCallback takes an input dynamic values map and calls
