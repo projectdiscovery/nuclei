@@ -30,7 +30,6 @@ require (
 	github.com/projectdiscovery/gologger v1.1.5
 	github.com/projectdiscovery/hmap v0.0.2
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
-	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.1.3
 	github.com/projectdiscovery/retryabledns v1.0.17
 	github.com/projectdiscovery/retryablehttp-go v1.0.4
