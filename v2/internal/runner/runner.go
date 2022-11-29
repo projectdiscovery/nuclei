@@ -421,7 +421,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 	}
 	// list all templates
-	if r.options.TemplateList {
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
