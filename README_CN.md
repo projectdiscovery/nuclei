@@ -108,6 +108,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -validate                             验证通过的模板
    -nss, -no-strict-syntax               禁用模板的严格检查
    -tl                                   列出所有可用的模板
+   -td                                   显示模板内容
 
 过滤：
    -a, -author string[]                  执行指定作者的模板（逗号分隔，文件）
