@@ -85,8 +85,8 @@ require (
 )
 
 require (
-	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
