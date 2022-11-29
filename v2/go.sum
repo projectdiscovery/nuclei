@@ -579,9 +579,6 @@ github.com/onsi/gomega v1.16.0 h1:6gjqkI8iiRHMvdccRJM8rVKjCWk6ZIm6FTm3ddIe4/c=
 github.com/onsi/gomega v1.16.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/owenrumney/go-sarif v1.0.11/go.mod h1:hTBFbxU7GuVRUvwMx+eStp9M/Oun4xHCS3vqpPvket8=
-github.com/owenrumney/go-sarif v1.1.1/go.mod h1:dNDiPlF04ESR/6fHlPyq7gHKmrM0sHUvAGjsoh8ZH0U=
-github.com/owenrumney/go-sarif/v2 v2.1.2 h1:PMDK7tXShJ9zsB7bfvlpADH5NEw1dfA9xwU8Xtdj73U=
-github.com/owenrumney/go-sarif/v2 v2.1.2/go.mod h1:MSqMMx9WqlBSY7pXoOZWgEsVB4FDNfhcaXDA1j6Sr+w=
 github.com/pelletier/go-buffruneio v0.2.0/go.mod h1:JkE26KsDizTr40EUHkXVtNPvgGtbSNq5BcowyYOWdKo=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pierrec/lz4 v2.6.0+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
@@ -666,6 +663,8 @@ github.com/projectdiscovery/retryablehttp-go v1.0.1/go.mod h1:SrN6iLZilNG1X4neq1
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.4 h1:FtRhBhyOnbCL1aDCTml+DzktAolHIbkozUkrbvzWPpY=
 github.com/projectdiscovery/retryablehttp-go v1.0.4/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
+github.com/projectdiscovery/sarif v0.0.0-20221129094123-6466fb91528b h1:8AhQGN9mfjpP1qjkoh+SaW9bROBZjDW4GtRz6u1zqFk=
+github.com/projectdiscovery/sarif v0.0.0-20221129094123-6466fb91528b/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
 github.com/projectdiscovery/sliceutil v0.0.1/go.mod h1:0wBmhU5uTDwMfrEZfvwH9qa5k60Q4shPVOC9E6LGsDI=
 github.com/projectdiscovery/stringsutil v0.0.0-20210804142656-fd3c28dbaafe/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
@@ -849,7 +848,6 @@ github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5t
 github.com/yusufpapurcu/wmi v1.2.2 h1:KBNDSne4vP5mbSWnJbO+51IMOXJB67QiYCSBrubbPRg=
 github.com/yusufpapurcu/wmi v1.2.2/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zclconf/go-cty v1.8.4/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUAzyuvAk=
-github.com/zclconf/go-cty v1.10.0/go.mod h1:vVKLxnk3puL4qRAv72AO+W99LUD4da90g3uUAzyuvAk=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521 h1:kKCF7VX/wTmdg2ZjEaqlq99Bjsoiz7vH6sFniF/vI4M=
 github.com/zmap/rc2 v0.0.0-20131011165748-24b9757f5521/go.mod h1:3YZ9o3WnatTIZhuOtot4IcUfzoKVjUHqu6WALIyI0nE=
 github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 h1:17HHAgFKlLcZsDOjBOUrd5hDihb1ggf+1a5dTbkgkIY=
