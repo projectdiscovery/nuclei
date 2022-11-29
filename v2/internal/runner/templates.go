@@ -1,9 +1,14 @@
 package runner
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"bytes"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
+
+	"github.com/alecthomas/chroma/quick"
+	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -17,11 +22,16 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(t.ID,
-			types.ToString(t.Info.Name),
-			t.Info.Authors.ToSlice(),
-			t.Info.SeverityHolder.Severity))
+		r.verboseTemplate(t)
 	}
+}
+
+// log available templates for verbose (-vv)
+func (r *Runner) verboseTemplate(tpl *templates.Template) {
+	gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+		types.ToString(tpl.Info.Name),
+		tpl.Info.Authors.ToSlice(),
+		tpl.Info.SeverityHolder.Severity))
 }
 
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
@@ -30,23 +40,55 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		r.templatesConfig.TemplateVersion,
 		r.templatesConfig.TemplatesDirectory,
 	)
-	extraFlags := r.options.Templates != nil || r.options.Authors != nil ||
-		r.options.Tags != nil || len(r.options.ExcludeTags) > 3 ||
-		r.options.IncludeTags != nil || r.options.IncludeIds != nil ||
-		r.options.ExcludeIds != nil || r.options.IncludeTemplates != nil ||
-		r.options.ExcludedTemplates != nil || r.options.ExcludeMatchers != nil ||
-		r.options.Severities != nil || r.options.ExcludeSeverities != nil ||
-		r.options.Protocols != nil || r.options.ExcludeProtocols != nil ||
-		r.options.IncludeConditions != nil || r.options.TemplateList
-	for _, tl := range store.Templates() {
-		if extraFlags {
-			path := strings.TrimPrefix(tl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator))
-			gologger.Silent().Msgf("%s\n", path)
+	for _, tpl := range store.Templates() {
+		if hasExtraFlags(r.options) {
+			if r.options.TemplateDisplay {
+				colorize := !r.options.NoColor
+
+				path := tpl.Path
+				tplBody, err := ioutil.ReadFile(path)
+				if err != nil {
+					gologger.Error().Msgf("Could not read the template %s: %s", path, err)
+					continue
+				}
+
+				if colorize {
+					path = aurora.Cyan(tpl.Path).String()
+					tplBody, err = r.highlightTemplate(&tplBody)
+					if err != nil {
+						gologger.Error().Msgf("Could not hihglight the template %s: %s", tpl.Path, err)
+						continue
+					}
+
+				}
+				gologger.Silent().Msgf("Template: %s\n\n%s", path, tplBody)
+			} else {
+				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator)))
+			}
 		} else {
-			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tl.ID,
-				types.ToString(tl.Info.Name),
-				tl.Info.Authors.ToSlice(),
-				tl.Info.SeverityHolder.Severity))
+			r.verboseTemplate(tpl)
 		}
 	}
+}
+
+func (r *Runner) highlightTemplate(body *[]byte) ([]byte, error) {
+	var buf bytes.Buffer
+	// YAML lexer, true color terminar formatter and monokai style
+	err := quick.Highlight(&buf, string(*body), "yaml", "terminal16m", "monokai")
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func hasExtraFlags(options *types.Options) bool {
+	return options.Templates != nil || options.Authors != nil ||
+		options.Tags != nil || len(options.ExcludeTags) > 3 ||
+		options.IncludeTags != nil || options.IncludeIds != nil ||
+		options.ExcludeIds != nil || options.IncludeTemplates != nil ||
+		options.ExcludedTemplates != nil || options.ExcludeMatchers != nil ||
+		options.Severities != nil || options.ExcludeSeverities != nil ||
+		options.Protocols != nil || options.ExcludeProtocols != nil ||
+		options.IncludeConditions != nil || options.TemplateList
 }
