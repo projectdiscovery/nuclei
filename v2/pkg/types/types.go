@@ -202,6 +202,8 @@ type Options struct {
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
 	TemplatesVersion bool
+	// TemplateDisplay displays the template contents
+	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
 	// HangMonitor enables nuclei hang monitoring

@@ -55,7 +55,7 @@ require (
 	moul.io/http2curl v1.0.0
 )
 
-require github.com/aws/aws-sdk-go v1.44.146
+require github.com/aws/aws-sdk-go v1.44.147
 
 require (
 	github.com/DataDog/gostackparse v0.6.0
@@ -86,6 +86,7 @@ require (
 
 require (
 	github.com/karlseguin/expect v1.0.8 // indirect
+	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
@@ -202,6 +203,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
+	github.com/alecthomas/chroma v0.10.0
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
