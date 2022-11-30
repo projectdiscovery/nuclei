@@ -105,7 +105,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// download | update the custom templates repos
-	for _, ct := range *r.customTemplates {
+	for _, ct := range r.customTemplates {
 		if r.options.UpdateTemplates {
 			ct.Update(r.templatesConfig.TemplatesDirectory, ctx)
 		} else {
@@ -175,7 +175,7 @@ func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context
 	gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 	// case where -gtr flag is passed for the first time installation
-	for _, ct := range *r.customTemplates {
+	for _, ct := range r.customTemplates {
 		ct.Download(r.templatesConfig.TemplatesDirectory, ctx)
 	}
 	return nil

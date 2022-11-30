@@ -74,7 +74,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   *[]customtemplates.CustomTemplateProvider
+	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 }
 

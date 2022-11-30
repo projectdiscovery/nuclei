@@ -23,7 +23,7 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 
 	customTemplates := ParseCustomTemplates(options)
 
-	for _, ct := range *customTemplates {
+	for _, ct := range customTemplates {
 		ct.Download(templatesDirectory, context.Background())
 	}
 
