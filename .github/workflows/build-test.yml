@@ -1,24 +1,29 @@
 name: 🔨 Build Test
+
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
 jobs:
   build:
     name: Test Builds
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        go-version: [1.18.x, 1.19.x]
+        os: [ubuntu-latest, windows-latest, macOS-12]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: ${{ matrix.go-version }}
 
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Download modules
+        run: go mod download
+        working-directory: v2/
 
       - name: Build
         run: go build .
@@ -41,5 +46,5 @@ jobs:
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
-        run: go run -race . -u scanme.sh
+        run: go run -race . -l ../functional-test/targets.txt
         working-directory: v2/cmd/nuclei/

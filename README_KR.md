@@ -106,6 +106,7 @@ TEMPLATES:
    -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
    -validate                    nuclei로 전달된 템플릿 검증
    -tl                          사용 가능한 모든 템플릿 목록
+   -td                          템플릿 내용 표시
 
 FILTERING:
    -a, -author string[]              작성자를 기준으로 실행할 템플릿(쉼표로 구분된 파일)
@@ -179,7 +180,7 @@ OPTIMIZATIONS:
    -mhe, -max-host-error int   스캔을 건너뛰기 전에 호스트에 대한 최대 오류 수 (기본 30)
    -project                    프로젝트 폴더를 사용하여 동일한 요청을 여러 번 보내지 않음
    -project-path string        특정 프로젝트 경로 설정
-   -spm, -stop-at-first-path   첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
+   -spm, -stop-at-first-match  첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
    -stream                     stream 모드 - 입력을 정렬하지 않고 elaborating 시작
 
 HEADLESS:

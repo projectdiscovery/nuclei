@@ -25,8 +25,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	client "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/updatecheck"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"

@@ -202,6 +202,8 @@ type Options struct {
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
 	TemplatesVersion bool
+	// TemplateDisplay displays the template contents
+	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
 	// HangMonitor enables nuclei hang monitoring
@@ -240,6 +242,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
+	// Sandbox enables sandboxed nuclei template execution
+	Sandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
@@ -272,6 +276,18 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// Enable uncover egine
+	Uncover bool
+	// Uncover search query
+	UncoverQuery goflags.StringSlice
+	// Uncover search engine
+	UncoverEngine goflags.StringSlice
+	// Uncover search field
+	UncoverField string
+	// Uncover search limit
+	UncoverLimit int
+	// Uncover search delay
+	UncoverDelay int
 	// ConfigPath contains the config path (used by healthcheck)
 	ConfigPath string
 	// ScanAllIPs associated to a dns record

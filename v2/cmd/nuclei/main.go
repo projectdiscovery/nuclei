@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -124,8 +125,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", []string{}, "target URLs/hosts to scan", goflags.StringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
-		flagSet.StringVar(&options.Resume, "resume", "", "Resume scan using resume.cfg (clustering will be disabled)"),
-		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "Scan all the ip's associated with dns record"),
+		flagSet.StringVar(&options.Resume, "resume", "", "resume scan using resume.cfg (clustering will be disabled)"),
+		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", []string{"4"}, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
 
@@ -138,7 +139,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", []string{}, "list of workflow or workflow directory to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wu", []string{}, "list of workflow urls to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
-		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "Disable strict syntax check on templates"),
+		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "disable strict syntax check on templates"),
+		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
 	)
@@ -195,10 +197,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13"),
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
+		flagSet.BoolVar(&options.Sandbox, "sandbox", false, "sandbox nuclei for safe templates execution"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
-		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "Override the default config path ($home/.config)"),
+		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 	)
@@ -213,6 +216,15 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
+	flagSet.CreateGroup("uncover", "Uncover",
+		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
+		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", []string{}, "uncover search query", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", []string{}, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
+		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
+		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
+		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "delay between uncover query requests in seconds (0 to disable)"),
+	)
+
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute"),
@@ -225,11 +237,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
-		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443"),
+		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
-		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-path", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
+		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
 		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
@@ -237,10 +249,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
-		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support (root user on linux will disable sandbox)"),
+		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support (root user on Linux will disable sandbox)"),
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
 		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
-		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "Use local installed chrome browser instead of nuclei installed"),
+		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "use local installed Chrome browser instead of nuclei installed"),
 		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
 
@@ -268,6 +280,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.UpdateNuclei, "update", "un", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
+		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",

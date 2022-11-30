@@ -105,6 +105,13 @@ func ParseOptions(options *types.Options) {
 	if options.GithubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GithubToken {
 		os.Setenv("GITHUB_TOKEN", options.GithubToken)
 	}
+
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
+	}
 }
 
 // validateOptions validates the configuration options passed

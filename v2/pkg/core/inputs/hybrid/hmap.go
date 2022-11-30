@@ -19,6 +19,7 @@ import (
 	asn "github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
@@ -90,7 +91,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		case asn.IsASN(target):
 			i.expandASNInputValue(target)
 		default:
-			i.normalizeStoreInputValue(target)
+			i.Set(target)
 		}
 	}
 
@@ -109,6 +110,16 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 
 		i.scanInputFromReader(input)
 	}
+	if options.Uncover && options.UncoverQuery != nil {
+		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
+		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverField, options.UncoverEngine, options.UncoverQuery)
+		if err != nil {
+			return err
+		}
+		for c := range ch {
+			i.Set(c)
+		}
+	}
 	return nil
 }
 
@@ -123,13 +134,13 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 		case asn.IsASN(item):
 			i.expandASNInputValue(item)
 		default:
-			i.normalizeStoreInputValue(item)
+			i.Set(item)
 		}
 	}
 }
 
-// normalizeStoreInputValue normalizes and stores passed input values
-func (i *Input) normalizeStoreInputValue(value string) {
+// Set normalizes and stores passed input values
+func (i *Input) Set(value string) {
 	URL := strings.TrimSpace(value)
 	if URL == "" {
 		return
