@@ -98,7 +98,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	defer exporter.mutex.Unlock()
 
 	severity := event.Info.SeverityHolder.Severity.String()
-	resultHeader := fmt.Sprintf("[Nuclei:%v] %v", severity, event.Info.Name)
+	resultHeader := fmt.Sprintf("%v (%v) found on %v", event.Info.Name, event.TemplateID, event.Host)
 	resultLevel, vulnRating := exporter.getSeverity(severity)
 
 	// Extra metdata if generated sarif is uploaded to github security page
@@ -112,14 +112,15 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		Name: event.Info.Name,
 		FullDescription: &sarif.MultiformatMessageString{
 			// Points to template URL
-			Text: "More details at\n" + event.TemplateURL + "\n",
+			Text: event.Info.Description + "\nMore details at\n" + event.TemplateURL + "\n",
 		},
 		Properties: ghmeta,
 	}
 
+	// Github Uses ShortDescription as title
 	if event.Info.Description != "" {
 		rule.ShortDescription = &sarif.MultiformatMessageString{
-			Text: event.Info.Description,
+			Text: resultHeader,
 		}
 	}
 
