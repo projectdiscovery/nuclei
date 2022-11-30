@@ -236,13 +236,7 @@ UPDATE:
    -un, -update                          update nuclei engine to the latest released version
    -ut, -update-templates                update nuclei-templates to latest released version
    -ud, -update-template-dir string      custom directory to install / update nuclei-templates
-   -gt, -github-token string             github token to download public/private templates (GITHUB_TOKEN)
-   -gtr, -github-template-repo string[]  github template repository to download / update (GITHUB_TEMPLATE_REPO)
    -duc, -disable-update-check           disable automatic nuclei/templates update check
-   -aak, -aws-access-key string          aws access key to download template from bucket (AWS_ACCESS_KEY)
-   -ask, -aws-secret-key string          aws secret key to download template from bucket (AWS_SECRET_KEY)
-   -arg, -aws-region-name string         aws s3 bucket region name to download template(AWS_REGION)
-   -abn, -aws-bucket-name string         aws s3 bucket name to download template(AWS_BUCKET_NAME)
 
 STATISTICS:
    -stats                    display statistics about the running scan
