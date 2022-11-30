@@ -76,7 +76,7 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.2
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/tlsx v0.0.9
-	github.com/projectdiscovery/uncover v0.0.9
+	github.com/projectdiscovery/uncover v1.0.0
 	github.com/projectdiscovery/utils v0.0.3
 	github.com/projectdiscovery/wappalyzergo v0.0.71
 	github.com/stretchr/testify v1.8.1
@@ -87,7 +87,6 @@ require (
 require (
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
-	github.com/projectdiscovery/folderutil v0.0.0-20220215113126-add60a1e8e08 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
