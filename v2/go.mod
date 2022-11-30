@@ -74,7 +74,7 @@ require (
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.2
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
-	github.com/projectdiscovery/sarif v0.0.0-20221129094123-6466fb91528b
+	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v0.0.9
 	github.com/projectdiscovery/uncover v0.0.9
 	github.com/projectdiscovery/utils v0.0.3

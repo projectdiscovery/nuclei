@@ -544,8 +544,8 @@ github.com/projectdiscovery/retryabledns v1.0.17/go.mod h1:Dyhq/f0sGmXueso0+Ah3L
 github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.4 h1:FtRhBhyOnbCL1aDCTml+DzktAolHIbkozUkrbvzWPpY=
 github.com/projectdiscovery/retryablehttp-go v1.0.4/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
-github.com/projectdiscovery/sarif v0.0.0-20221129094123-6466fb91528b h1:8AhQGN9mfjpP1qjkoh+SaW9bROBZjDW4GtRz6u1zqFk=
-github.com/projectdiscovery/sarif v0.0.0-20221129094123-6466fb91528b/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
+github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
+github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
 github.com/projectdiscovery/sliceutil v0.0.1/go.mod h1:0wBmhU5uTDwMfrEZfvwH9qa5k60Q4shPVOC9E6LGsDI=
 github.com/projectdiscovery/stringsutil v0.0.0-20220208075244-7c05502ca8e9/go.mod h1:oTRc18WBv9t6BpaN9XBY+QmG28PUpsyDzRht56Qf49I=
