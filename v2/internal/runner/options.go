@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/stringsutil"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -39,6 +40,9 @@ func ConfigureOptions() error {
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = !options.DisableStdin && fileutil.HasStdin()
+
+	// Read the inputs from env variables that not passed by flag.
+	readEnvInputVars(options)
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -141,9 +145,9 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
-	// Verify aws secrets are passed if s3 tempalte bucket passed
+	// Verify aws secrets are passed if s3 template bucket passed
 	if options.AwsBucketName != "" && (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") {
-		return errors.New("aws s3 bucket details are missing. Please provide region, access and secret key")
+		return errors.New("aws s3 bucket details are missing. Please provide AWS_ACCESS_KEY, AWS_SECRET_KEY and AWS_REGION")
 	}
 
 	// verify that a valid ip version type was selected (4, 6)
@@ -238,4 +242,17 @@ func validateCertificatePaths(certificatePaths []string) {
 			break
 		}
 	}
+}
+
+// Read the input from env and set options
+func readEnvInputVars(options *types.Options) {
+	options.GithubToken = os.Getenv("GITHUB_TOKEN")
+	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
+	if repolist != "" {
+		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+	}
+	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
+	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
+	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
+	options.AwsRegion = os.Getenv("AWS_REGION")
 }
