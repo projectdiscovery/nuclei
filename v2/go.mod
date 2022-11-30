@@ -71,6 +71,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.5
+	github.com/projectdiscovery/gozero v0.0.0-20221130195301-bae45b361f23
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.2
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
@@ -87,6 +88,7 @@ require (
 require (
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
+	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
@@ -146,7 +148,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
@@ -166,7 +168,7 @@ require (
 	github.com/projectdiscovery/mapcidr v1.0.3
 	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rogpeppe/go-internal v1.8.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	github.com/spacemonkeygo/openssl v0.0.0-20181017203307-c2dcc5cca94a // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
@@ -215,7 +217,6 @@ require (
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/cryptoutil v0.0.0-20210805184155-b5d2512f9345 // indirect; indirectdev
 	github.com/projectdiscovery/fileutil v0.0.3 // indirect
 	github.com/projectdiscovery/iputil v0.0.2 // indirect

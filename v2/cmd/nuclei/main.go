@@ -204,6 +204,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
+		flagSet.BoolVarP(&options.Code, "code", "co", false, "enable code templates"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",

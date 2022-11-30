@@ -7,6 +7,7 @@ import (
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/code"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
@@ -77,10 +78,13 @@ type Template struct {
 	// description: |
 	//   Websocket contains the Websocket request to make in the template.
 	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
-
 	// description: |
 	//   WHOIS contains the WHOIS request to make in the template.
 	RequestsWHOIS []*whois.Request `yaml:"whois,omitempty" json:"whois,omitempty" jsonschema:"title=whois requests to make,description=WHOIS requests to make for the template"`
+	// description: |
+	//   Code contains code snippets.
+	RequestsCode []*code.Request `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code snippets to make,description=Code snippets"`
+
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
@@ -122,6 +126,7 @@ var TemplateProtocols = []string{
 	"ssl",
 	"websocket",
 	"whois",
+	"code",
 }
 
 // Type returns the type of the template
@@ -145,6 +150,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.WebsocketProtocol
 	case len(template.RequestsWHOIS) > 0:
 		return types.WHOISProtocol
+	case len(template.RequestsCode) > 0:
+		return types.CodeProtocol
 	default:
 		return types.InvalidProtocol
 	}

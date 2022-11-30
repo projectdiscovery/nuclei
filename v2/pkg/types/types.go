@@ -298,6 +298,8 @@ type Options struct {
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
 	GithubTemplateRepo goflags.StringSlice
+	// Code enables code templates
+	Code bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

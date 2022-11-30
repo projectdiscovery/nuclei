@@ -1,4 +1,4 @@
-package ssl
+package code
 
 import (
 	"testing"
@@ -12,31 +12,27 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-func TestSSLProtocol(t *testing.T) {
+func TestCodeProtocol(t *testing.T) {
 	options := testutils.DefaultOptions
 
 	testutils.Init(options)
-	templateID := "testing-ssl"
+	templateID := "testing-code"
 	request := &Request{
-		Address: "{{Hostname}}",
+		Engine: "echo",
+		Source: "",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
 	err := request.Compile(executerOpts)
-	require.Nil(t, err, "could not compile ssl request")
+	require.Nil(t, err, "could not compile code request")
 
 	var gotEvent output.InternalEvent
-	ctxArgs := contextargs.NewWithInput("scanme.sh:443")
+	ctxArgs := contextargs.NewWithInput("")
 	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
 		gotEvent = event.InternalEvent
 	})
-	require.Nil(t, err, "could not run ssl request")
+	require.Nil(t, err, "could not run code request")
 	require.NotEmpty(t, gotEvent, "could not get event items")
-}
-
-func TestGetAddress(t *testing.T) {
-	address, _ := getAddress("https://scanme.sh")
-	require.Equal(t, "scanme.sh:443", address, "could not get correct address")
 }
