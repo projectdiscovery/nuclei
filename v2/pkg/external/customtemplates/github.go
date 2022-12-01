@@ -1,76 +1,57 @@
-package runner
+package customtemplates
 
 import (
 	"context"
+	httpclient "net/http"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	fileutil "github.com/projectdiscovery/utils/file"
+	"golang.org/x/oauth2"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
-type customTemplateRepo struct {
+type customTemplateGithubRepo struct {
 	owner       string
 	reponame    string
 	gitCloneURL string
+	githubToken string
 }
 
-// This function download the custom template repository
-// scenario 1: -gtr custom-template.txt  flag has passed => Only download the repos. Do not update
-// scenario 2: -gtr custom-template.txt -tup github   => Update the repo(git pull)  and download if any new repo
-// Reason to add update and download logic in single function is scenario 2
-func (r *Runner) downloadCustomTemplates(ctx context.Context) {
-	downloadPath := filepath.Join(r.templatesConfig.TemplatesDirectory, customTemplateType)
+// This function download the custom github template repository
+func (customTemplate *customTemplateGithubRepo) Download(location string, ctx context.Context) {
+	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
+	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
-	for _, customTemplate := range r.customTemplates {
-		clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
-
-		if !fileutil.FolderExists(clonePath) {
-			err := customTemplate.cloneRepo(clonePath, r.options.GithubToken)
-			if err != nil {
-				gologger.Info().Msgf("%s", err)
-			} else {
-				gologger.Info().Msgf("Repo %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
-			}
-			continue
+	if !fileutil.FolderExists(clonePath) {
+		err := customTemplate.cloneRepo(clonePath, customTemplate.githubToken)
+		if err != nil {
+			gologger.Info().Msgf("%s", err)
+		} else {
+			gologger.Info().Msgf("Repo %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
 		}
-		if r.options.UpdateTemplates {
-			err := customTemplate.pullChanges(clonePath, r.options.GithubToken)
-			if err != nil {
-				gologger.Info().Msgf("%s", err)
-			} else {
-				gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
-			}
-		}
+		return
 	}
 }
 
-// parseCustomTemplates function reads the options.GithubTemplateRepo list,
-// Checks the given repos are valid or not and stores them into runner.CustomTemplates
-func (r *Runner) parseCustomTemplates() {
-	gitHubClient := getGHClientIncognito()
+func (customTemplate *customTemplateGithubRepo) Update(location string, ctx context.Context) {
+	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
+	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
-	for _, repoName := range r.options.GithubTemplateRepo {
-		owner, repo, err := getOwnerAndRepo(repoName)
-		if err != nil {
-			gologger.Info().Msgf("%s", err)
-			continue
-		}
-		githubRepo, err := getGithubRepo(gitHubClient, owner, repo)
-		if err != nil {
-			gologger.Info().Msgf("%s", err)
-			continue
-		}
-		customTemplateRepo := &customTemplateRepo{
-			owner:       owner,
-			reponame:    repo,
-			gitCloneURL: githubRepo.GetCloneURL(),
-		}
-		r.customTemplates = append(r.customTemplates, *customTemplateRepo)
+	// If folder does not exits then clone/download the repo
+	if !fileutil.FolderExists(clonePath) {
+		customTemplate.Download(location, ctx)
+		return
+	}
+	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
+	if err != nil {
+		gologger.Info().Msgf("%s", err)
+	} else {
+		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 	}
 }
 
@@ -89,13 +70,13 @@ func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 }
 
 // returns *github.Repository if passed github repo name
-func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName string) (*github.Repository, error) {
+func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
 	var retried bool
 getRepo:
 	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
 	if err != nil {
 		// retry with authentication
-		if gitHubClient = getGHClientWithToken(); gitHubClient != nil && !retried {
+		if gitHubClient = getGHClientWithToken(githubToken); gitHubClient != nil && !retried {
 			retried = true
 			goto getRepo
 		}
@@ -108,7 +89,7 @@ getRepo:
 }
 
 // download the git repo to given path
-func (ctr *customTemplateRepo) cloneRepo(clonePath, githubToken string) error {
+func (ctr *customTemplateGithubRepo) cloneRepo(clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
 		URL:  ctr.gitCloneURL,
 		Auth: getAuth(ctr.owner, githubToken),
@@ -123,7 +104,7 @@ func (ctr *customTemplateRepo) cloneRepo(clonePath, githubToken string) error {
 }
 
 // performs the git pull on given repo
-func (ctr *customTemplateRepo) pullChanges(repoPath, githubToken string) error {
+func (ctr *customTemplateGithubRepo) pullChanges(repoPath, githubToken string) error {
 	r, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return err
@@ -142,7 +123,7 @@ func (ctr *customTemplateRepo) pullChanges(repoPath, githubToken string) error {
 // getLocalRepoClonePath returns the clone path.
 // if same name repo directory exists from another owner then it appends the owner then and returns the path
 // eg. for nuclei-templates directory exists for projectdiscovery owner, then for ehsandeep/nuclei-templates it will return nuclei-templates-ehsandeep
-func (ctr *customTemplateRepo) getLocalRepoClonePath(downloadPath string) string {
+func (ctr *customTemplateGithubRepo) getLocalRepoClonePath(downloadPath string) string {
 	if fileutil.FolderExists(filepath.Join(downloadPath, ctr.reponame)) && !ctr.isRepoDirExists(filepath.Join(downloadPath, ctr.reponame)) {
 		return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
 	}
@@ -150,7 +131,7 @@ func (ctr *customTemplateRepo) getLocalRepoClonePath(downloadPath string) string
 }
 
 // isRepoDirExists take the path and checks if the same repo or not
-func (ctr *customTemplateRepo) isRepoDirExists(repoPath string) bool {
+func (ctr *customTemplateGithubRepo) isRepoDirExists(repoPath string) bool {
 	r, _ := git.PlainOpen(repoPath)
 	local, _ := r.Config()
 	return local.User.Name == ctr.owner // repo already cloned no need to rename and clone
@@ -162,4 +143,22 @@ func getAuth(username, password string) *http.BasicAuth {
 		return &http.BasicAuth{Username: username, Password: password}
 	}
 	return nil
+}
+
+func getGHClientWithToken(token string) *github.Client {
+	if token != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		oauthClient := oauth2.NewClient(ctx, ts)
+		return github.NewClient(oauthClient)
+
+	}
+	return nil
+}
+
+func getGHClientIncognito() *github.Client {
+	var tc *httpclient.Client
+	return github.NewClient(tc)
 }
