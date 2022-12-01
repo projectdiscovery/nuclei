@@ -66,6 +66,8 @@ func ParseOptions(options *types.Options) {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
+		gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
+		gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
 		os.Exit(0)
 	}
 	if options.ShowActions {
@@ -153,8 +155,20 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 	// Verify aws secrets are passed if s3 template bucket passed
-	if options.AwsBucketName != "" && (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") {
-		return errors.New("aws s3 bucket details are missing. Please provide AWS_ACCESS_KEY, AWS_SECRET_KEY and AWS_REGION")
+	if options.AwsBucketName != "" && options.UpdateTemplates {
+		var missing []string
+		if options.AwsAccessKey == "" {
+			missing = append(missing, "AWS_ACCESS_KEY")
+		}
+		if options.AwsSecretKey == "" {
+			missing = append(missing, "AWS_SECRET_KEY")
+		}
+		if options.AwsRegion == "" {
+			missing = append(missing, "AWS_REGION")
+		}
+		if missing != nil {
+			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
+		}
 	}
 
 	// verify that a valid ip version type was selected (4, 6)

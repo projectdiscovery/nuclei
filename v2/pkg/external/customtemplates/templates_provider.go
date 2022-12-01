@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	customGithubTemplateDirectory = "github"
-	customS3TemplateDirectory     = "s3"
+	CustomGithubTemplateDirectory = "github"
+	CustomS3TemplateDirectory     = "s3"
 )
 
 type Provider interface {

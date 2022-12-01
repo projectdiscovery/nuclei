@@ -18,11 +18,12 @@ type customTemplateS3Bucket struct {
 	s3Client   *s3.Client
 	bucketName string
 	prefix     string
+	Location   string
 }
 
 // download custom templates from s3 bucket
 func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, customS3TemplateDirectory, bk.bucketName)
+	downloadPath := filepath.Join(location, CustomS3TemplateDirectory, bk.bucketName)
 
 	manager := manager.NewDownloader(bk.s3Client)
 	paginator := s3.NewListObjectsV2Paginator(bk.s3Client, &s3.ListObjectsV2Input{
