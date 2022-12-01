@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -74,7 +75,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customTemplateRepo
+	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 }
 
@@ -109,7 +110,7 @@ func New(options *types.Options) (*Runner, error) {
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.parseCustomTemplates()
+	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
