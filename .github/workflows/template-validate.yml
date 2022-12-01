@@ -13,10 +13,17 @@ jobs:
         with: 
           go-version: 1.18
 
-      - name: Setup Nuclei
+      - name: Get Github tag
+        id: meta
         run: |
           curl --silent "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" | jq -r .tag_name | xargs -I {} echo TAG={} >> $GITHUB_OUTPUT
-          wget -q https://github.com/projectdiscovery/nuclei/releases/download/${TAG}/nuclei_${TAG:1}_linux_amd64.zip
+
+      - name: Setup Nuclei
+        if: steps.meta.outputs.TAG != ''
+        env:
+          VERSION: ${{ steps.meta.outputs.TAG }}
+        run: |
+          wget -q https://github.com/projectdiscovery/nuclei/releases/download/${VERSION}/nuclei_${VERSION:1}_linux_amd64.zip
           sudo unzip nuclei*.zip -d /usr/local/bin
         working-directory: /tmp
 
