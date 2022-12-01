@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download modules
-        run: go mod download
+        run: go clean -modcache; go mod download
         working-directory: v2/
 
       - name: Build
@@ -46,5 +46,5 @@ jobs:
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
-        run: go run -race . -l ../functional-test/targets.txt
+        run: go run -race . -l ../functional-test/targets.txt -id tech-detect,tls-version
         working-directory: v2/cmd/nuclei/

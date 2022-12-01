@@ -13,17 +13,19 @@ jobs:
         with: 
           go-version: 1.18
 
-      - name: Cache Go
-        id: cache-go
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/go
-          key: ${{ runner.os }}-go
-
-      - name: Installing Nuclei
-        if: steps.cache-go.outputs.cache-hit != 'true'
+      - name: Get Github tag
+        id: meta
         run: |
-          go install github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+          curl --silent "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" | jq -r .tag_name | xargs -I {} echo TAG={} >> $GITHUB_OUTPUT
+
+      - name: Setup Nuclei
+        if: steps.meta.outputs.TAG != ''
+        env:
+          VERSION: ${{ steps.meta.outputs.TAG }}
+        run: |
+          wget -q https://github.com/projectdiscovery/nuclei/releases/download/${VERSION}/nuclei_${VERSION:1}_linux_amd64.zip
+          sudo unzip nuclei*.zip -d /usr/local/bin
+        working-directory: /tmp
 
       - name: Template Validation
         run: |
