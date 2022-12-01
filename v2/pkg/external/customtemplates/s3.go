@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/stringsutil"
 )
 
 type customTemplateS3Bucket struct {
@@ -53,6 +54,10 @@ func (bk *customTemplateS3Bucket) Update(location string, ctx context.Context) {
 func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
 	// Create the directories in the path
 	file := filepath.Join(targetDirectory, key)
+	// If empty dir in s3
+	if stringsutil.HasSuffixI(key, "/") {
+		return os.MkdirAll(file, 0775)
+	}
 	if err := os.MkdirAll(filepath.Dir(file), 0775); err != nil {
 		return err
 	}
