@@ -1,9 +1,7 @@
 name: ⏰ Publish Docs
 
 on:
-  push:
-    branches:
-      - dev
+  pull_request:
   workflow_dispatch:
 
 jobs:
