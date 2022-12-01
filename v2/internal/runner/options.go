@@ -66,8 +66,12 @@ func ParseOptions(options *types.Options) {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
 		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
-		gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
-		gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
+		if configuration.CustomS3TemplatesDirectory != "" {
+			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
+		}
+		if configuration.CustomGithubTemplatesDirectory != "" {
+			gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
+		}
 		os.Exit(0)
 	}
 	if options.ShowActions {
