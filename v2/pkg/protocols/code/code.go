@@ -2,7 +2,6 @@ package code
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -88,7 +87,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer metaSrc.Cleanup() //nolint
 
 	output, err := request.gozero.Eval(request.src, metaSrc)
-	log.Fatalln(output, err)
 	if err != nil {
 		return err
 	}
