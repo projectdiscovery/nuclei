@@ -1,12 +1,10 @@
 package signer
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -46,7 +44,6 @@ type AWSSigner struct {
 
 // SignHTTP
 func (a *AWSSigner) SignHTTP(ctx context.Context, request *http.Request) error {
-
 	if region, ok := ctx.Value(SignerArg("region")).(string); ok && region != "" {
 		a.options.Region = region
 	}
@@ -57,17 +54,7 @@ func (a *AWSSigner) SignHTTP(ctx context.Context, request *http.Request) error {
 		return err
 	}
 
-	// Bug Request has content-length but no body
-	rbody, _ := io.ReadAll(request.Body)
-	request.Body.Close()
-	request.Body = io.NopCloser(bytes.NewBuffer(rbody))
-	fmt.Printf("request body is :\n*=\n%v\n=*\n", string(rbody))
-	//
-
-	err := a.signer.SignHTTP(ctx, *a.creds, request, a.getPayloadHash(request), a.options.Service, a.options.Region, time.Now())
-
-	return err
-
+	return a.signer.SignHTTP(ctx, *a.creds, request, a.getPayloadHash(request), a.options.Service, a.options.Region, time.Now())
 }
 
 // getPayloadHash returns hex encoded SHA-256 of request body
@@ -77,9 +64,8 @@ func (a *AWSSigner) getPayloadHash(request *http.Request) string {
 		return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 	}
 
+	// no need to close request body since it is a reusablereadercloser
 	bin, _ := io.ReadAll(request.Body)
-	request.Body.Close()
-	request.Body = io.NopCloser(bytes.NewBuffer(bin))
 	sha256Hash := sha256.Sum256(bin)
 	return hex.EncodeToString(sha256Hash[:])
 }
