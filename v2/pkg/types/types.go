@@ -294,12 +294,20 @@ type Options struct {
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
+	// Code enables code templates
+	Code bool
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
-	GithubTemplateRepo goflags.StringSlice
-	// Code enables code templates
-	Code bool
+	GithubTemplateRepo []string
+	// AWS access key for downloading templates from s3 bucket
+	AwsAccessKey string
+	// AWS secret key for downloading templates from s3 bucket
+	AwsSecretKey string
+	// AWS bucket name for downloading templates from s3 bucket
+	AwsBucketName string
+	// AWS Region name where aws s3 bucket is located
+	AwsRegion string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
