@@ -352,11 +352,6 @@
       "title": "type of the attack",
       "description": "Type of the attack"
     },
-    "excludematchers.ExcludeMatchers": {
-      "properties": {},
-      "additionalProperties": false,
-      "type": "object"
-    },
     "variables.Variable": {
       "properties": {},
       "additionalProperties": false,
@@ -380,10 +375,6 @@
       "description": "Type is the type of DNS request to make"
     },
     "dns.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "matchers": {
           "items": {
@@ -409,12 +400,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "id": {
           "type": "string",
@@ -479,8 +464,6 @@
     },
     "file.Request": {
       "required": [
-        "TemplateID",
-        "ExcludeMatchers",
         "Archive",
         "MimeType"
       ],
@@ -509,12 +492,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "extensions": {
           "items": {
@@ -558,10 +535,6 @@
       "type": "object"
     },
     "headless.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "id": {
           "type": "string",
@@ -627,12 +600,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         }
       },
       "additionalProperties": false,
@@ -721,10 +688,6 @@
       "description": "Method is the HTTP Request Method"
     },
     "http.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "matchers": {
           "items": {
@@ -752,13 +715,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "path": {
           "items": {
@@ -852,6 +808,15 @@
           "title": "maximum http response body size",
           "description": "Maximum size of http response body to read in bytes"
         },
+        "fuzzing": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/fuzz.Rule"
+          },
+          "type": "array",
+          "title": "fuzzin rules for http fuzzing",
+          "description": "Fuzzing describes rule schema to fuzz http requests"
+        },
         "signature": {
           "$schema": "http://json-schema.org/draft-04/schema#",
           "$ref": "#/definitions/http.SignatureTypeHolder",
@@ -935,6 +900,72 @@
       "title": "type of the signature",
       "description": "Type of the signature"
     },
+    "fuzz.Rule": {
+      "properties": {
+        "type": {
+          "enum": [
+            "replace",
+            "prefix",
+            "postfix",
+            "infix"
+          ],
+          "type": "string",
+          "title": "type of rule",
+          "description": "Type of fuzzing rule to perform"
+        },
+        "part": {
+          "enum": [
+            "query"
+          ],
+          "type": "string",
+          "title": "part of rule",
+          "description": "Part of request rule to fuzz"
+        },
+        "mode": {
+          "enum": [
+            "single",
+            "multiple"
+          ],
+          "type": "string",
+          "title": "mode of rule",
+          "description": "Mode of request rule to fuzz"
+        },
+        "keys": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys of parameters to fuzz",
+          "description": "Keys of parameters to fuzz"
+        },
+        "keys-regex": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys regex to fuzz",
+          "description": "Regex of parameter keys to fuzz"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "values regex to fuzz",
+          "description": "Regex of parameter values to fuzz"
+        },
+        "fuzz": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "payloads of fuzz rule",
+          "description": "Payloads to perform fuzzing substitutions with"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "network.Input": {
       "properties": {
         "data": {
@@ -972,10 +1003,6 @@
       "description": "description=Type of input specified in data field"
     },
     "network.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1048,22 +1075,12 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
     "ssl.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "matchers": {
           "items": {
@@ -1089,12 +1106,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "address": {
           "type": "string",
@@ -1152,10 +1163,6 @@
       "type": "object"
     },
     "websocket.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "matchers": {
           "items": {
@@ -1181,12 +1188,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "address": {
           "type": "string",
@@ -1232,10 +1233,6 @@
       "type": "object"
     },
     "whois.Request": {
-      "required": [
-        "TemplateID",
-        "ExcludeMatchers"
-      ],
       "properties": {
         "matchers": {
           "items": {
@@ -1261,12 +1258,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "TemplateID": {
-          "type": "string"
-        },
-        "ExcludeMatchers": {
-          "$ref": "#/definitions/excludematchers.ExcludeMatchers"
         },
         "query": {
           "type": "string",
