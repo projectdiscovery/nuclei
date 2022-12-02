@@ -145,32 +145,19 @@ func (i *Input) Set(value string) {
 	if URL == "" {
 		return
 	}
-
-	metaInput := &contextargs.MetaInput{Input: URL}
-	keyURL, err := metaInput.MarshalString()
-	if err != nil {
-		gologger.Warning().Msgf("%s\n", err)
-		return
+	// actual hostname
+	var host string
+	// parse hostname if url is given
+	parsedURL, err := url.Parse(value)
+	if err == nil && parsedURL.Host != "" {
+		host = parsedURL.Host
+	} else {
+		parsedURL = nil
+		host = value
 	}
 
-	if _, ok := i.hostMap.Get(keyURL); ok {
-		i.dupeCount++
-		return
-	}
-
-	switch {
-	case i.ipOptions.ScanAllIPs:
-		// we need to resolve the hostname
-		// check if it's an url
-		var host string
-		parsedURL, err := url.Parse(value)
-		if err == nil && parsedURL.Host != "" {
-			host = parsedURL.Host
-		} else {
-			parsedURL = nil
-			host = value
-		}
-
+	if i.ipOptions.ScanAllIPs {
+		// scan all ips
 		dnsData, err := protocolstate.Dialer.GetDNSData(host)
 		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
 			var ips []string
@@ -186,30 +173,45 @@ func (i *Input) Set(value string) {
 					continue
 				}
 				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-				key, err := metaInput.MarshalString()
-				if err != nil {
-					gologger.Warning().Msgf("%s\n", err)
-					continue
-				}
-				_ = i.hostMap.Set(key, nil)
-				if i.hostMapStream != nil {
-					_ = i.hostMapStream.Set([]byte(key), nil)
-				}
+				i.setItem(metaInput)
 			}
-			break
+			return
 		}
-		fallthrough
-	default:
-		i.setItem(keyURL)
+		// failed to scanallips falling back to defaults
+		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
 	}
+
+	metaInput := &contextargs.MetaInput{Input: URL}
+	// only scan the target but ipv6 if it has one
+	if i.ipOptions.IPV6 {
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && len(dnsData.AAAA) > 0 {
+			// pick/ prefer 1st
+			metaInput.CustomIP = dnsData.AAAA[0]
+		} else {
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %s\n", err)
+		}
+	}
+
+	i.setItem(metaInput)
 }
 
 // setItem in the kv store
-func (i *Input) setItem(k string) {
-	i.inputCount++
-	_ = i.hostMap.Set(k, nil)
+func (i *Input) setItem(metaInput *contextargs.MetaInput) {
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+	if _, ok := i.hostMap.Get(key); ok {
+		i.dupeCount++
+		return
+	}
+
+	i.inputCount++ // tracks target count
+	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(k), nil)
+		_ = i.hostMapStream.Set([]byte(key), nil)
 	}
 }
 
