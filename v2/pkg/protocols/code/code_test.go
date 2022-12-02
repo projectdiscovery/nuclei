@@ -1,3 +1,5 @@
+//go:build !windows
+
 package code
 
 import (
@@ -18,7 +20,7 @@ func TestCodeProtocol(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-code"
 	request := &Request{
-		Engine: "echo",
+		Engine: EngineTypeHolder{EngineType: Echo},
 		Source: "",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{

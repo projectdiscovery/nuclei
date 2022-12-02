@@ -2,6 +2,7 @@ package code
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -27,8 +28,8 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	// description: |
-	//   Engine
-	Engine string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	//   Engine type
+	Engine EngineTypeHolder `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=echo"`
 	// description: |
 	//   Source Snippet
 	Source  string `yaml:"source,omitempty" jsonschema:"title=source snippet,description=Source snippet"`
@@ -42,7 +43,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 
 	gozeroOptions := &gozero.Options{
-		Engine: request.Engine,
+		Engine: request.Engine.EngineType.Executable(),
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
@@ -87,6 +88,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer metaSrc.Cleanup() //nolint
 
 	output, err := request.gozero.Eval(request.src, metaSrc)
+	log.Fatalln(output, err)
 	if err != nil {
 		return err
 	}
