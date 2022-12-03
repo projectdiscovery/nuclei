@@ -127,18 +127,18 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	address, err := getAddress(input.MetaInput.Input)
+	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		return nil
 	}
-	hostname, port, _ := net.SplitHostPort(address)
+	hostname, port, _ := net.SplitHostPort(hostPort)
 
 	requestOptions := request.options
 	payloadValues := make(map[string]interface{})
 	for k, v := range dynamicValues {
 		payloadValues[k] = v
 	}
-	payloadValues["Hostname"] = address
+	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
 
@@ -163,15 +163,22 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return errors.Wrap(err, "could not split input host port")
 	}
 
-	response, err := request.tlsx.Connect(host, host, port)
+	var hostIp string
+	if input.MetaInput.CustomIP != "" {
+		hostIp = input.MetaInput.CustomIP
+	} else {
+		hostIp = host
+	}
+
+	response, err := request.tlsx.Connect(host, hostIp, port)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
 
-	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
-	gologger.Verbose().Msgf("Sent SSL request to %s", address)
+	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
+	gologger.Verbose().Msgf("Sent SSL request to %s", hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
@@ -193,7 +200,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["host"] = input
 	data["matched"] = addressToDial
 	if input.MetaInput.CustomIP != "" {
-		data["ip"] = input.MetaInput.CustomIP
+		data["ip"] = hostIp
 	} else {
 		data["ip"] = request.dialer.GetDialedIP(hostname)
 	}
