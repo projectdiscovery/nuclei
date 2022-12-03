@@ -31,7 +31,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.3
 	github.com/projectdiscovery/retryabledns v1.0.17
-	github.com/projectdiscovery/retryablehttp-go v1.0.4
+	github.com/projectdiscovery/retryablehttp-go v1.0.5-0.20221202084821-c1a692a64751
 	github.com/projectdiscovery/stringsutil v0.0.2
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -53,8 +53,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
-
-require github.com/aws/aws-sdk-go v1.44.151
 
 require (
 	github.com/DataDog/gostackparse v0.6.0
@@ -81,8 +79,8 @@ require (
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v0.0.9-0.20221202111311-c789c957d944
-	github.com/projectdiscovery/uncover v1.0.0
-	github.com/projectdiscovery/utils v0.0.3
+	github.com/projectdiscovery/uncover v1.0.1
+	github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3
 	github.com/projectdiscovery/wappalyzergo v0.0.71
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -91,6 +89,7 @@ require (
 
 require (
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
@@ -148,10 +147,9 @@ require (
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
@@ -171,7 +169,7 @@ require (
 	github.com/projectdiscovery/mapcidr v1.0.3
 	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rogpeppe/go-internal v1.8.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	github.com/spacemonkeygo/openssl v0.0.0-20181017203307-c2dcc5cca94a // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
