@@ -72,9 +72,6 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkY
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go-v2 v1.17.1 h1:02c72fDJr87N8RAC2s3Qu0YuvMRZKNZJ9F+lAehCazk=
-github.com/aws/aws-sdk-go v1.44.151 h1:2FrJZm3kTcyTtfpE7LEQT9XW+jkoi4KEvBhFWqHEZmo=
-github.com/aws/aws-sdk-go v1.44.151/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v1.17.1/go.mod h1:JLnGeGONAyi2lWXI1p0PCIOIy333JMVK1U7Hf0aRFLw=
 github.com/aws/aws-sdk-go-v2 v1.17.2 h1:r0yRZInwiPBNpQ4aDy/Ssh3ROWsGtKDwar2JS8Lm+N8=
 github.com/aws/aws-sdk-go-v2 v1.17.2/go.mod h1:uzbQtefpm44goOPmdKyAlXSNcwlRgF3ePWVW6EtJvvw=
@@ -586,11 +583,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.17 h1:XKzI26UKYt2g7YLJ/EcyYmM04sfD1vurETecPEpeA1w=
 github.com/projectdiscovery/retryabledns v1.0.17/go.mod h1:Dyhq/f0sGmXueso0+Ah3LbJfsX4PXpBrpfiyjZZ8SDk=
-github.com/projectdiscovery/retryablehttp-go v1.0.2/go.mod h1:dx//aY9V247qHdsRf0vdWHTBZuBQ2vm6Dq5dagxrDYI=
 github.com/projectdiscovery/retryablehttp-go v1.0.5-0.20221202084821-c1a692a64751 h1:QEmZ0E6GDzlTbVE6ty7fCuKR7muWrLqMfQ07VTu6Bd0=
 github.com/projectdiscovery/retryablehttp-go v1.0.5-0.20221202084821-c1a692a64751/go.mod h1:B/xfvUmiJBeq+1kT7AMYL6B/IuPgbyKB7QCKPSfMByc=
-github.com/projectdiscovery/retryablehttp-go v1.0.4 h1:FtRhBhyOnbCL1aDCTml+DzktAolHIbkozUkrbvzWPpY=
-github.com/projectdiscovery/retryablehttp-go v1.0.4/go.mod h1:t4buiLTB0HtI+62iHfGDqQVTv/i+8OhAKwaX93TGsFE=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
@@ -600,8 +594,8 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v0.0.9-0.20221202111311-c789c957d944 h1:KRl+zFCMXoNQd0v0oiPNFezWixlMvKPrrvDIZpEaNYM=
 github.com/projectdiscovery/tlsx v0.0.9-0.20221202111311-c789c957d944/go.mod h1:q/OaJAJLpaby7UH8HilqPDi2pgYCIQ/y+nJ0+PeXTAY=
-github.com/projectdiscovery/uncover v1.0.0 h1:/ehEnuiwT1t/TYJvZu73Jpoekn42CMo9nLnj+pCojRo=
-github.com/projectdiscovery/uncover v1.0.0/go.mod h1:YU++t0LhoDs7HiY6lYlFHN23XOnEkC30YNeZrIAVnZI=
+github.com/projectdiscovery/uncover v1.0.1 h1:bhP+EW4d+e4cAizOWAEz7jeyKZGkDYYTsZlXsd11t+w=
+github.com/projectdiscovery/uncover v1.0.1/go.mod h1:/D9qxgN2iZ/C2M8eo+pNQMnTaMhTZUu40Vat/LgSIxU=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3 h1:sOvfN3xHLiBMb6GJ3yDxBmPnN0dh3xllaQXQYo7CFUo=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3/go.mod h1:PCwA5YuCYWPgHaGiZmr53/SA9iGQmAnw7DSHuhr8VPQ=
 github.com/projectdiscovery/wappalyzergo v0.0.71 h1:NEtPLEUx21rhE2H89Pc9RxImrDIG90CNXLRoSDwtiSA=
@@ -844,7 +838,6 @@ golang.org/x/net v0.0.0-20210326060303-6b1517762897/go.mod h1:uSPa2vr4CLtc/ILN5o
 golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4/go.mod h1:p54w0d4576C0XHj96bSt6lcn1PtDYWL6XObtHCRCNQM=
 golang.org/x/net v0.0.0-20210414194228-064579744ee0/go.mod h1:9tjilg8BloeKEkVJvy7fQ90B1CfIiPueXVOjqfkSzI8=
 golang.org/x/net v0.0.0-20210428140749-89ef3d95e781/go.mod h1:OJAsFXCWl8Ukc7SiCT/9KSuxbyM7479/AVlXFRxuMCk=
-golang.org/x/net v0.0.0-20210521195947-fe42d452be8f/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
