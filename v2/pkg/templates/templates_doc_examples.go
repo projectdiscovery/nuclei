@@ -1,5 +1,5 @@
 // Package templates
-//nolint //do not lint as examples with no usage
+// nolint //do not lint as examples with no usage
 package templates
 
 import (
