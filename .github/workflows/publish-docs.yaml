@@ -11,7 +11,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          persist-credentials: false
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
  
