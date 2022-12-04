@@ -67,7 +67,29 @@ func (r *Runner) listDatasources() error {
 		return err
 	}
 	for _, source := range datasources {
-		gologger.Silent().Msgf("[%s] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo)
+		gologger.Silent().Msgf("[%s] [%s] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+	}
+	return err
+}
+
+func (r *Runner) listTargets() error {
+	items, err := r.cloudClient.ListTargets()
+	if err != nil {
+		return err
+	}
+	for _, source := range items {
+		gologger.Silent().Msgf("[%s] %s", source.Type, source.Reference)
+	}
+	return err
+}
+
+func (r *Runner) listTemplates() error {
+	items, err := r.cloudClient.ListTemplates()
+	if err != nil {
+		return err
+	}
+	for _, source := range items {
+		gologger.Silent().Msgf("[%s] %s", source.Type, source.Reference)
 	}
 	return err
 }

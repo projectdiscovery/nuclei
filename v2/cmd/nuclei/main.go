@@ -294,6 +294,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.OutputLimit, "limit", "ol", 100, "limit the output at a time"),
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
+		flagSet.BoolVarP(&options.ListDatasources, "list-datasources", "ld", false, "list cloud datasources"),
+		flagSet.BoolVarP(&options.ListTargets, "list-targets", "clt", false, "list cloud targets"),
+		flagSet.BoolVarP(&options.ListTemplates, "list-templates", "ctl", false, "list cloud templates"),
 	)
 
 	_ = flagSet.Parse()

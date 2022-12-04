@@ -81,14 +81,12 @@ type GetDataSourceResponse struct {
 
 // GetTargetResponse is the response for a get target request
 type GetTargetResponse struct {
-	ID        int64  `json:"id"`
 	Reference string `json:"reference"`
 	Type      string `json:"type"`
 }
 
 // GetTemplatesResponse is the response for a get templates request
 type GetTemplatesResponse struct {
-	ID        int64  `json:"id"`
 	Reference string `json:"reference"`
 	Type      string `json:"type"`
 }
