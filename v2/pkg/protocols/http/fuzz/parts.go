@@ -68,8 +68,6 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, inter
 			return err
 		}
 		req.Header.Set("User-Agent", uarand.GetRandom())
-		req.Header.Set("Accept", "*/*")
-		req.Header.Set("Accept-Language", "en")
 	} else {
 		req = input.BaseRequest.Clone(context.Background())
 		req.URL = &parsed
