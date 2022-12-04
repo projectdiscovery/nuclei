@@ -167,7 +167,6 @@ func (i *Input) Set(value string) {
 			if i.ipOptions.IPV6 {
 				ips = append(ips, dnsData.AAAA...)
 			}
-
 			for _, ip := range ips {
 				if ip == "" {
 					continue
@@ -181,19 +180,32 @@ func (i *Input) Set(value string) {
 		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
 	}
 
-	metaInput := &contextargs.MetaInput{Input: URL}
+	ips := []string{}
 	// only scan the target but ipv6 if it has one
 	if i.ipOptions.IPV6 {
 		dnsData, err := protocolstate.Dialer.GetDNSData(host)
 		if err == nil && len(dnsData.AAAA) > 0 {
 			// pick/ prefer 1st
-			metaInput.CustomIP = dnsData.AAAA[0]
+			ips = append(ips, dnsData.AAAA[0])
 		} else {
 			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %s\n", err)
 		}
 	}
+	if i.ipOptions.IPV4 {
+		// if IPV4 is enabled do not specify ip let dialer handle it
+		ips = append(ips, "")
+	}
 
-	i.setItem(metaInput)
+	for _, ip := range ips {
+		if ip != "" {
+			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			i.setItem(metaInput)
+		} else {
+			metaInput := &contextargs.MetaInput{Input: URL}
+			i.setItem(metaInput)
+		}
+	}
+
 }
 
 // setItem in the kv store
