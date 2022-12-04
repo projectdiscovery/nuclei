@@ -75,11 +75,6 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.5
 	github.com/projectdiscovery/nvd v1.0.9
-	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
-	github.com/projectdiscovery/sliceutil v0.0.1
-	github.com/projectdiscovery/tlsx v0.0.9-0.20221031210833-ec8e1d167d8e
-	github.com/projectdiscovery/urlutil v0.0.0-20210525140139-b874f06ad921
-	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/projectdiscovery/ratelimit v0.0.2
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
