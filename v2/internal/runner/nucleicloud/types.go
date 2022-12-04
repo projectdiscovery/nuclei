@@ -69,3 +69,26 @@ type ExistsDataSourceItemRequest struct {
 	Type     string `json:"type"`
 	Contents string `json:"contents"`
 }
+
+// GetDataSourceResponse is response for a get data source request
+type GetDataSourceResponse struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Path      string    `json:"path"`
+	Repo      string    `json:"repo"`
+	Updatedat time.Time `json:"updated_at"`
+}
+
+// GetTargetResponse is the response for a get target request
+type GetTargetResponse struct {
+	ID        int64  `json:"id"`
+	Reference string `json:"reference"`
+	Type      string `json:"type"`
+}
+
+// GetTemplatesResponse is the response for a get templates request
+type GetTemplatesResponse struct {
+	ID        int64  `json:"id"`
+	Reference string `json:"reference"`
+	Type      string `json:"type"`
+}

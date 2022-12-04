@@ -2,11 +2,75 @@ package runner
 
 import (
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 )
+
+// Get all the scan lists for a user/apikey.
+func (r *Runner) getScanList(limit int) error {
+	loc, _ := time.LoadLocation("Local")
+	lastTime := "2099-01-02 15:04:05 +0000 UTC"
+
+	var e error
+	for {
+		items, err := r.cloudClient.GetScans(limit, lastTime)
+		if err != nil {
+			e = err
+			break
+		}
+		if len(items) == 0 {
+			break
+		}
+		for _, v := range items {
+			lastTime = v.CreatedAt.String()
+			status := "FINISHED"
+			t := v.FinishedAt
+			duration := t.Sub(v.CreatedAt)
+			if !v.Finished {
+				status = "RUNNING"
+				t = time.Now().UTC()
+				duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+			}
+			val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
+			gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
+		}
+	}
+	return e
+}
+
+func (r *Runner) deleteScan(id string) error {
+	deleted, err := r.cloudClient.DeleteScan(id)
+	if !deleted.OK {
+		gologger.Info().Msgf("Error in deleting the scan %s.", id)
+	} else {
+		gologger.Info().Msgf("Scan deleted %s.", id)
+	}
+	return err
+}
+
+func (r *Runner) getResults(id string, limit int) error {
+	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
+		if outputErr := r.output.Write(re); outputErr != nil {
+			gologger.Warning().Msgf("Could not write output: %s", outputErr)
+		}
+	}, false, limit)
+	return err
+}
+
+func (r *Runner) listDatasources() error {
+	datasources, err := r.cloudClient.ListDatasources()
+	if err != nil {
+		return err
+	}
+	for _, source := range datasources {
+		gologger.Silent().Msgf("[%s] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo)
+	}
+	return err
+}
 
 // initializeCloudDataSources initializes cloud data sources
 func (r *Runner) initializeCloudDataSources() ([]string, error) {
