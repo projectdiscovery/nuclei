@@ -470,6 +470,8 @@ func (r *Runner) RunEnumeration() error {
 			err = r.deleteScan(r.options.DeleteScan)
 		} else if r.options.ScanOutput != "" {
 			err = r.getResults(r.options.ScanOutput, r.options.OutputLimit)
+		} else if r.options.ListDatasources {
+			err = r.listDatasources()
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
 			results, err = r.runCloudEnumeration(store, cloudTemplates, cloudTargets, r.options.NoStore, r.options.OutputLimit)
