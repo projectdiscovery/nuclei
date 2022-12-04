@@ -3924,6 +3924,28 @@ Client Cipher Suites  - auto if not specified.
 
 <hr />
 
+<div class="dd">
+
+<code>scan_mode</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Tls Scan Mode - auto if not specified
+
+
+Valid values:
+
+
+  - <code>ctls</code>
+
+  - <code>ztls</code>
+
+  - <code>auto</code>
+</div>
+
+<hr />
+
 
 
 
