@@ -138,18 +138,18 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	address, err := getAddress(input.Input)
+	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		return nil
 	}
-	hostname, port, _ := net.SplitHostPort(address)
+	hostname, port, _ := net.SplitHostPort(hostPort)
 
 	requestOptions := request.options
 	payloadValues := make(map[string]interface{})
 	for k, v := range dynamicValues {
 		payloadValues[k] = v
 	}
-	payloadValues["Hostname"] = address
+	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
 
@@ -164,7 +164,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
 	if dataErr != nil {
-		requestOptions.Output.Request(requestOptions.TemplateID, input.Input, request.Type().String(), dataErr)
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
@@ -174,23 +174,30 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return errors.Wrap(err, "could not split input host port")
 	}
 
-	response, err := request.tlsx.Connect(host, host, port)
+	var hostIp string
+	if input.MetaInput.CustomIP != "" {
+		hostIp = input.MetaInput.CustomIP
+	} else {
+		hostIp = host
+	}
+
+	response, err := request.tlsx.Connect(host, hostIp, port)
 	if err != nil {
-		requestOptions.Output.Request(requestOptions.TemplateID, input.Input, request.Type().String(), err)
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
 
-	requestOptions.Output.Request(requestOptions.TemplateID, address, request.Type().String(), err)
-	gologger.Verbose().Msgf("Sent SSL request to %s", address)
+	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
+	gologger.Verbose().Msgf("Sent SSL request to %s", hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.Input)
+		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-			gologger.Debug().Str("address", input.Input).Msg(msg)
+			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
 		}
 		if requestOptions.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.Input, request.options.TemplateID, request.Type().String(), msg)
+			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
 		}
 	}
 
@@ -203,7 +210,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if input.MetaInput.CustomIP != "" {
+		data["ip"] = hostIp
+	} else {
+		data["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
@@ -231,13 +242,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.Input)
+		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
 			gologger.Debug().Msg(msg)
 			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
 		}
 		if requestOptions.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
+			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
 		}
 	}
 	callback(event)

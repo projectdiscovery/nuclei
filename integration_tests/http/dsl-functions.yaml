@@ -7,6 +7,7 @@ info:
 
 requests:
   - raw:
+      # Note for the integration test: dsl expression should not contain commas
       - |
         GET / HTTP/1.1
         Host: {{Hostname}}
@@ -90,9 +91,11 @@ requests:
         78: {{line_starts_with("Hi\nHello", "He")}}
         79: {{line_ends_with("Hello\nHi", "lo")}}
         80: {{sort("a1b2c3d4e5")}}
-        81: {{join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))}}
-        82: {{uniq("abcabdaabbccd")}}
+        81: {{uniq("abcabdaabbccd")}}
+        82: {{join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))}}
         83: {{join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))}}
+        84: {{split("ab,cd,efg", ",")}}
+        85: {{split("ab,cd,efg", ",", 2)}}
 
     extractors:
       - type: regex

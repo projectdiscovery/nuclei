@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -37,9 +38,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -52,7 +55,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Runner is a client for running the enumeration process.
@@ -72,7 +75,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customTemplateRepo
+	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 }
 
@@ -107,7 +110,7 @@ func New(options *types.Options) (*Runner, error) {
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.parseCustomTemplates()
+	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
@@ -254,9 +257,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
@@ -411,8 +414,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// add the hosts from the metadata queries of loaded templates into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit, r.options.UncoverField)
+		for host := range ret {
+			r.hmapInputProvider.Set(host)
+		}
+	}
 	// list all templates
-	if r.options.TemplateList {
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
@@ -478,8 +488,8 @@ func (r *Runner) RunEnumeration() error {
 
 func (r *Runner) isInputNonHTTP() bool {
 	var nonURLInput bool
-	r.hmapInputProvider.Scan(func(value string) bool {
-		if !strings.Contains(value, "://") {
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+		if !strings.Contains(value.Input, "://") {
 			nonURLInput = true
 			return false
 		}
@@ -605,7 +615,10 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
+
+	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
 }
+
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
 	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {

@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -202,6 +202,8 @@ type Options struct {
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
 	TemplatesVersion bool
+	// TemplateDisplay displays the template contents
+	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
 	// HangMonitor enables nuclei hang monitoring
@@ -240,6 +242,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
+	// Sandbox enables sandboxed nuclei template execution
+	Sandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
@@ -272,12 +276,36 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
+	// Enable uncover egine
+	Uncover bool
+	// Uncover search query
+	UncoverQuery goflags.StringSlice
+	// Uncover search engine
+	UncoverEngine goflags.StringSlice
+	// Uncover search field
+	UncoverField string
+	// Uncover search limit
+	UncoverLimit int
+	// Uncover search delay
+	UncoverDelay int
+	// ConfigPath contains the config path (used by healthcheck)
+	ConfigPath string
+	// ScanAllIPs associated to a dns record
+	ScanAllIPs bool
+	// IPVersion to scan (4,6)
+	IPVersion goflags.StringSlice
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
-	GithubTemplateRepo goflags.StringSlice
-
-	ConfigPath string // Used by healthcheck
+	GithubTemplateRepo []string
+	// AWS access key for downloading templates from s3 bucket
+	AwsAccessKey string
+	// AWS secret key for downloading templates from s3 bucket
+	AwsSecretKey string
+	// AWS bucket name for downloading templates from s3 bucket
+	AwsBucketName string
+	// AWS Region name where aws s3 bucket is located
+	AwsRegion string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

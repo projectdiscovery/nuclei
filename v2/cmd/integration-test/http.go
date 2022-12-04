@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
@@ -57,6 +57,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
 	"http/custom-attack-type.yaml":                  &customAttackType{},
+	"http/get-all-ips.yaml":                         &scanAllIPS{},
+	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 }
 
 type httpInteractshRequest struct{}
@@ -282,19 +284,22 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 		return err
 	}
 
-	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
-	submatch := resultPattern.FindStringSubmatch(results[0])
-	if len(submatch) != 2 {
-		return errors.New("could not parse the result")
+	// get result part
+	resultPart, err := stringsutil.After(results[0], ts.URL)
+	if err != nil {
+		return err
 	}
 
-	totalExtracted := strings.Split(submatch[1], ",")
-	numberOfDslFunctions := 83
-	if len(totalExtracted) != numberOfDslFunctions {
+	// remove additional characters till the first valid result and ignore last ] which doesn't alter the total count
+	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
+
+	extracted := strings.Split(resultPart, ",")
+	numberOfDslFunctions := 85
+	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
 
-	for _, header := range totalExtracted {
+	for _, header := range extracted {
 		parts := strings.Split(header, ": ")
 		index, err := strconv.Atoi(parts[0])
 		if err != nil {
@@ -1000,4 +1005,29 @@ func (h *customAttackType) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 4)
+}
+
+// Disabled as GH doesn't support ipv6
+type scanAllIPS struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *scanAllIPS) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips", "-iv", "4")
+	if err != nil {
+		return err
+	}
+	// limiting test to ipv4 (GH doesn't support ipv6)
+	return expectResultsCount(got, 1)
+}
+
+// ensure that ip|host are handled without http|https scheme
+type httpGetWithoutScheme struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetWithoutScheme) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }

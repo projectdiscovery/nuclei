@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DSLFunctionsIT" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="nuclei" />
+    <working_directory value="$PROJECT_DIR$/integration_tests" />
+    <envs>
+      <env name="DEBUG" value="true" />
+      <env name="TESTS" value="http/dsl-functions.yaml" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/projectdiscovery/nuclei/v2/cmd/integration-test" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/v2/cmd/integration-test/integration-test.go" />
+    <method v="2" />
+  </configuration>
+</component>
