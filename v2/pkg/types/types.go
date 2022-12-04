@@ -99,6 +99,10 @@ type Options struct {
 	ScanList bool
 	// ListDatasources enables listing of datasources for user
 	ListDatasources bool
+	// ListTargets enables listing of targets for user
+	ListTargets bool
+	// ListTemplates enables listing of templates for user
+	ListTemplates bool
 	// Limit the number of items at a time
 	OutputLimit int
 	// Nostore

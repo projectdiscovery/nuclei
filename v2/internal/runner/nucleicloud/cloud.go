@@ -260,15 +260,43 @@ func (c *Client) ListDatasources() ([]GetDataSourceResponse, error) {
 	return items, nil
 }
 
-/*
--lds, -list-ds              list cloud datasources
--rds, -remove-ds            remove cloud datasources
--atr, -add-target           add target(s) list to cloud
--lt, -list-target           list cloud target
--atm, -add-template         add template(s) to cloud
--tl, -list-template         list cloud templates
--rm, -remove                remove specficed cloud data
-*/
+func (c *Client) ListTargets() ([]GetTargetResponse, error) {
+	var items []GetTargetResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/targets", c.baseURL), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+func (c *Client) ListTemplates() ([]GetTemplatesResponse, error) {
+	var items []GetTemplatesResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates", c.baseURL), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
 
 const apiKeyParameter = "X-API-Key"
 
