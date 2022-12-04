@@ -97,6 +97,8 @@ type Options struct {
 	CloudAPIKey string
 	// Scanlist feature to get all the scan ids for a user
 	ScanList bool
+	// ListDatasources enables listing of datasources for user
+	ListDatasources bool
 	// Limit the number of items at a time
 	OutputLimit int
 	// Nostore

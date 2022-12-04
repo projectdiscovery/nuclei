@@ -2,6 +2,7 @@ package nucleicloud
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,15 +24,16 @@ type Client struct {
 }
 
 const (
-	pollInterval   = 1 * time.Second
-	defaultBaseURL = "http://webapp.localhost"
+	pollInterval   = 3 * time.Second
 	resultSize     = 100
+	defaultBaseURL = "https://cloud-dev.nuclei.sh"
 )
 
 // New returns a nuclei-cloud API client
 func New(baseURL, apiKey string) *Client {
 	options := retryablehttp.DefaultOptionsSingle
-	options.Timeout = 15 * time.Second
+	options.NoAdjustTimeout = true
+	options.Timeout = 60 * time.Second
 	client := retryablehttp.NewClient(options)
 
 	baseAppURL := baseURL
@@ -45,29 +47,23 @@ func New(baseURL, apiKey string) *Client {
 func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return "", errors.Wrap(err, "could not json encode scan request")
+		return "", errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/scan", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return "", errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
 
-	resp, err := c.httpclient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not do add scan request")
+		return "", errors.Wrap(err, "could not do request")
 	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
+
 	var data map[string]string
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		resp.Body.Close()
 		return "", errors.Wrap(err, "could not decode resp")
 	}
-	resp.Body.Close()
 	id := data["id"]
 	return id, nil
 }
@@ -83,17 +79,12 @@ func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), check
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
 		}
-		httpReq.Header.Set("X-API-Key", c.apiKey)
 
-		resp, err := c.httpclient.Do(httpReq)
+		resp, err := c.sendRequest(httpReq)
 		if err != nil {
-			return errors.Wrap(err, "could not do ger result request")
+			return errors.Wrap(err, "could not do request")
 		}
-		if resp.StatusCode != 200 {
-			data, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-		}
+
 		var items GetResultsResponse
 		if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
 			resp.Body.Close()
@@ -131,26 +122,16 @@ func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
 	if err != nil {
 		return items, errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
 
-	resp, err := c.httpclient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return items, errors.Wrap(err, "could not make request.")
+		return nil, errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return items, errors.Wrap(err, "could not do get response.")
-	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return items, errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
+
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
-		resp.Body.Close()
 		return items, errors.Wrap(err, "could not decode results")
 	}
-	resp.Body.Close()
-
 	return items, nil
 }
 
@@ -161,26 +142,16 @@ func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 	if err != nil {
 		return deletescan, errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
 
-	resp, err := c.httpclient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return deletescan, errors.Wrap(err, "could not make request")
+		return deletescan, errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return deletescan, errors.Wrap(err, "could not do get result request")
-	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return deletescan, errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
+
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&deletescan); err != nil {
-		resp.Body.Close()
 		return deletescan, errors.Wrap(err, "could not delete scan")
 	}
-	resp.Body.Close()
-
 	return deletescan, nil
 }
 
@@ -188,33 +159,23 @@ func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (string, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(statusRequest); err != nil {
-		return "", errors.Wrap(err, "could not json encode scan request")
+		return "", errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/status", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return "", errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
 
-	resp, err := c.httpclient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not make request")
+		return "", errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return "", errors.Wrap(err, "could not do get result request")
-	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return "", errors.Errorf("invalid status code recieved %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
 
 	var data map[string]interface{}
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		resp.Body.Close()
 		return "", errors.Wrap(err, "could not decode resp")
 	}
-	resp.Body.Close()
 	id := data["id"].(string)
 	return id, nil
 }
@@ -223,33 +184,22 @@ func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (string
 func (c *Client) AddDataSource(req AddDataSourceRequest) (string, string, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return "", "", errors.Wrap(err, "could not json encode request")
+		return "", "", errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return "", "", errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
-
-	resp, err := c.httpclient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not make request")
+		return "", "", errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return "", "", errors.Wrap(err, "could not do get result request")
-	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return "", "", errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
 
 	var data map[string]interface{}
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		resp.Body.Close()
 		return "", "", errors.Wrap(err, "could not decode resp")
 	}
-	resp.Body.Close()
 	id := data["id"].(string)
 	secret, _ := data["secret"].(string)
 	return id, secret, nil
@@ -258,24 +208,17 @@ func (c *Client) AddDataSource(req AddDataSourceRequest) (string, string, error)
 // SyncDataSource syncs contents for a data source. The call blocks until
 // update is completed.
 func (c *Client) SyncDataSource(ID string) error {
-	httpReq, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources/%s/sync", c.baseURL, ID), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources/%s/sync", c.baseURL, ID), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return errors.Wrap(err, "could not make request")
+		return errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return errors.Wrap(err, "could not do get result request")
-	}
-	if resp.StatusCode != 200 {
-		data, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
-	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
 }
 
@@ -283,25 +226,71 @@ func (c *Client) SyncDataSource(ID string) error {
 func (c *Client) ExistsDataSourceItem(req ExistsDataSourceItemRequest) error {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return errors.Wrap(err, "could not json encode request")
+		return errors.Wrap(err, "could not encode request")
 	}
-	httpReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/exists", c.baseURL), bytes.NewReader(buf.Bytes()))
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/exists", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
-	httpReq.Header.Set("X-API-Key", c.apiKey)
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
 
-	resp, err := http.DefaultClient.Do(httpReq)
+func (c *Client) ListDatasources() ([]GetDataSourceResponse, error) {
+	var items []GetDataSourceResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources", c.baseURL), nil)
 	if err != nil {
-		return errors.Wrap(err, "could not make request")
+		return items, errors.Wrap(err, "could not make request")
 	}
+
+	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return errors.Wrap(err, "could not do get result request")
+		return nil, errors.Wrap(err, "could not do request")
 	}
-	if resp.StatusCode != 200 {
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+/*
+-lds, -list-ds              list cloud datasources
+-rds, -remove-ds            remove cloud datasources
+-atr, -add-target           add target(s) list to cloud
+-lt, -list-target           list cloud target
+-atm, -add-template         add template(s) to cloud
+-tl, -list-template         list cloud templates
+-rm, -remove                remove specficed cloud data
+*/
+
+const apiKeyParameter = "X-API-Key"
+
+type errorResponse struct {
+	Message string `json:"message"`
+}
+
+func (c *Client) sendRequest(req *retryablehttp.Request) (*http.Response, error) {
+	req.Header.Set(apiKeyParameter, c.apiKey)
+
+	resp, err := c.httpclient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		data, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return errors.Errorf("could not do request %d: %s", resp.StatusCode, string(data))
+		var errRes errorResponse
+		if err = json.NewDecoder(bytes.NewReader(data)).Decode(&errRes); err == nil {
+			return nil, errors.New(errRes.Message)
+		}
+		return nil, fmt.Errorf("unknown error, status code: %d=%s", resp.StatusCode, string(data))
 	}
-	return nil
+	return resp, nil
 }
