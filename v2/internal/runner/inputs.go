@@ -3,9 +3,11 @@ package runner
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"sync/atomic"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
@@ -71,7 +73,13 @@ var (
 func probeURL(input string, httpclient *retryablehttp.Client) string {
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
-		resp, err := httpclient.Get(formedURL)
+		req, err := retryablehttp.NewRequest(http.MethodGet, formedURL, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", uarand.GetRandom())
+
+		resp, err := httpclient.Do(req)
 		if resp != nil {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()
