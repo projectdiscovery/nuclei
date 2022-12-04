@@ -7,7 +7,8 @@
 // which are then used as tags for the execution of the templates.
 //
 // Example -
-//   "Amazon Web Services,Jenkins,Atlassian Jira" -> "amazon,web,services,jenkins,atlassian,jira".
+//
+//	"Amazon Web Services,Jenkins,Atlassian Jira" -> "amazon,web,services,jenkins,atlassian,jira".
 //
 // Wappalyzergo (https://github.com/projectdiscovery/wappalyzergo) is used for wappalyzer tech
 // detection.

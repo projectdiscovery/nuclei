@@ -38,7 +38,7 @@ var MatcherTypes = map[MatcherType]string{
 	DSLMatcher:    "dsl",
 }
 
-//GetType returns the type of the matcher
+// GetType returns the type of the matcher
 func (matcher *Matcher) GetType() MatcherType {
 	return matcher.Type.MatcherType
 }
