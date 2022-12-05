@@ -2,6 +2,8 @@ name: 🔨 Build Test
 
 on:
   pull_request:
+    paths:
+      - '**.go'
   workflow_dispatch:
 
 jobs:
@@ -11,6 +13,7 @@ jobs:
       matrix:
         go-version: [1.18.x, 1.19.x]
         os: [ubuntu-latest, windows-latest, macOS-12]
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Set up Go
@@ -21,8 +24,10 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Download modules
-        run: go clean -modcache; go mod download
+      - name: Go Mod hygine
+        run: |
+          go clean -modcache
+          go mod tidy
         working-directory: v2/
 
       - name: Build
