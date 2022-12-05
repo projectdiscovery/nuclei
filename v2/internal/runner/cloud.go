@@ -94,6 +94,10 @@ func (r *Runner) listTemplates() error {
 	return err
 }
 
+func (r *Runner) removeDatasource(datasource string) error {
+	return r.cloudClient.RemoveDatasource(datasource)
+}
+
 // initializeCloudDataSources initializes cloud data sources
 func (r *Runner) initializeCloudDataSources() ([]string, error) {
 	var ids []string

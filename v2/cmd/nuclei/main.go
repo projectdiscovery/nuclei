@@ -297,6 +297,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ListDatasources, "list-datasources", "ld", false, "list cloud datasources"),
 		flagSet.BoolVarP(&options.ListTargets, "list-targets", "clt", false, "list cloud targets"),
 		flagSet.BoolVarP(&options.ListTemplates, "list-templates", "ctl", false, "list cloud templates"),
+		flagSet.StringVarP(&options.RemoveDatasource, "remove-datasource", "rds", "", "remove specified data source"),
 	)
 
 	_ = flagSet.Parse()

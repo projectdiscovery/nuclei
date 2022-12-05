@@ -109,6 +109,8 @@ type Options struct {
 	NoStore bool
 	// Delete scan
 	DeleteScan string
+	// RemoveDatasource deletes a datasource from cloud storage
+	RemoveDatasource string
 	// Get issues for a scan
 	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
