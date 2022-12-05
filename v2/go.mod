@@ -24,7 +24,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.9
-	github.com/projectdiscovery/fastdialer v0.0.18
+	github.com/projectdiscovery/fastdialer v0.0.19
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/gologger v1.1.5
 	github.com/projectdiscovery/hmap v0.0.2
@@ -167,7 +167,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
 	github.com/projectdiscovery/mapcidr v1.0.3
-	github.com/projectdiscovery/networkpolicy v0.0.2-0.20220525172507-b844eafc878d
+	github.com/projectdiscovery/networkpolicy v0.0.3
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
