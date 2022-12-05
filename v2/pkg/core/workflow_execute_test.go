@@ -25,7 +25,7 @@ func TestWorkflowsSimple(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.True(t, matched, "could not get correct match value")
 }
 
@@ -35,19 +35,19 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				firstInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				firstInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				secondInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}},
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -60,20 +60,20 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				firstInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				firstInput = input.Input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				secondInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -86,18 +86,18 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: false, executeHook: func(input string) {
-				firstInput = input
+			Executer: &mockExecuter{result: false, executeHook: func(input *contextargs.MetaInput) {
+				firstInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				secondInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}},
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -110,8 +110,8 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				firstInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				firstInput = input.Input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
 					Matches:  map[string][]string{"tomcat": {}},
@@ -119,14 +119,14 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				secondInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -139,8 +139,8 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				firstInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				firstInput = input.Input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{
 					Matches:  map[string][]string{"tomcat": {}},
@@ -148,14 +148,14 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true, executeHook: func(input string) {
-				secondInput = input
+			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow("https://test.com", workflow)
+	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -164,7 +164,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 
 type mockExecuter struct {
 	result      bool
-	executeHook func(input string)
+	executeHook func(input *contextargs.MetaInput)
 	outputs     []*output.InternalWrappedEvent
 }
 
@@ -181,7 +181,7 @@ func (m *mockExecuter) Requests() int {
 // Execute executes the protocol group and  returns true or false if results were found.
 func (m *mockExecuter) Execute(input *contextargs.Context) (bool, error) {
 	if m.executeHook != nil {
-		m.executeHook(input.Input)
+		m.executeHook(input.MetaInput)
 	}
 	return m.result, nil
 }
@@ -189,7 +189,7 @@ func (m *mockExecuter) Execute(input *contextargs.Context) (bool, error) {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (m *mockExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	if m.executeHook != nil {
-		m.executeHook(input.Input)
+		m.executeHook(input.MetaInput)
 	}
 	for _, output := range m.outputs {
 		callback(output)

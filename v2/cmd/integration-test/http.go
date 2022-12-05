@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,15 +15,18 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var httpTestcases = map[string]testutils.TestCase{
+	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
 	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
 	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
+	"http/fuzz-query.yaml":                          &httpFuzzQuery{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
 	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
@@ -34,7 +36,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-get.yaml":                             &httpRawGet{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
@@ -55,6 +56,9 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
 	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
 	"http/annotation-timeout.yaml":                  &annotationTimeout{},
+	"http/custom-attack-type.yaml":                  &customAttackType{},
+	"http/get-all-ips.yaml":                         &scanAllIPS{},
+	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 }
 
 type httpInteractshRequest struct{}
@@ -280,19 +284,22 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 		return err
 	}
 
-	resultPattern := regexp.MustCompile(`\[[^]]+] \[[^]]+] \[[^]]+] [^]]+ \[([^]]+)]`)
-	submatch := resultPattern.FindStringSubmatch(results[0])
-	if len(submatch) != 2 {
-		return errors.New("could not parse the result")
+	// get result part
+	resultPart, err := stringsutil.After(results[0], ts.URL)
+	if err != nil {
+		return err
 	}
 
-	totalExtracted := strings.Split(submatch[1], ",")
-	numberOfDslFunctions := 83
-	if len(totalExtracted) != numberOfDslFunctions {
+	// remove additional characters till the first valid result and ignore last ] which doesn't alter the total count
+	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
+
+	extracted := strings.Split(resultPart, ",")
+	numberOfDslFunctions := 85
+	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
 
-	for _, header := range totalExtracted {
+	for _, header := range extracted {
 		parts := strings.Split(header, ": ")
 		index, err := strconv.Atoi(parts[0])
 		if err != nil {
@@ -958,4 +965,69 @@ func (h *annotationTimeout) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type httpFuzzQuery struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpFuzzQuery) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		value := r.URL.Query().Get("id")
+		fmt.Fprintf(w, "This is test matcher text: %v", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type customAttackType struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *customAttackType) Execute(filePath string) error {
+	router := httprouter.New()
+	got := []string{}
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		got = append(got, r.URL.RawQuery)
+		fmt.Fprintf(w, "This is test custom payload")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-attack-type", "clusterbomb")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 4)
+}
+
+// Disabled as GH doesn't support ipv6
+type scanAllIPS struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *scanAllIPS) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-scan-all-ips", "-iv", "4")
+	if err != nil {
+		return err
+	}
+	// limiting test to ipv4 (GH doesn't support ipv6)
+	return expectResultsCount(got, 1)
+}
+
+// ensure that ip|host are handled without http|https scheme
+type httpGetWithoutScheme struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpGetWithoutScheme) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }

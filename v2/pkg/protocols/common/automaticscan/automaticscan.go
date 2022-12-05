@@ -14,11 +14,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/sliceutil"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"gopkg.in/yaml.v2"
 )
@@ -132,20 +133,22 @@ func (s *Service) executeWappalyzerTechDetection() error {
 	// Iterate through each target making http request and identifying fingerprints
 	inputPool := s.engine.WorkPool().InputPool(types.HTTPProtocol)
 
-	s.target.Scan(func(value string) {
+	s.target.Scan(func(value *contextargs.MetaInput) bool {
 		inputPool.WaitGroup.Add()
 
-		go func(input string) {
+		go func(input *contextargs.MetaInput) {
 			defer inputPool.WaitGroup.Done()
+
 			s.processWappalyzerInputPair(input)
 		}(value)
+		return true
 	})
 	inputPool.WaitGroup.Wait()
 	return nil
 }
 
-func (s *Service) processWappalyzerInputPair(input string) {
-	req, err := retryablehttp.NewRequest(http.MethodGet, input, nil)
+func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, input.Input, nil)
 	if err != nil {
 		return
 	}

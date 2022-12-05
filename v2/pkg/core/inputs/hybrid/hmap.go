@@ -5,6 +5,7 @@ package hybrid
 import (
 	"bufio"
 	"io"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -12,16 +13,23 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/filekv"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/mapcidr"
+	asn "github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
+	iputil "github.com/projectdiscovery/utils/ip"
+	readerutil "github.com/projectdiscovery/utils/reader"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // Input is a hmap/filekv backed nuclei Input provider
 type Input struct {
+	ipOptions     *ipOptions
 	inputCount    int64
 	dupeCount     int64
 	hostMap       *hybrid.HybridMap
@@ -36,7 +44,14 @@ func New(options *types.Options) (*Input, error) {
 		return nil, errors.Wrap(err, "could not create temporary input file")
 	}
 
-	input := &Input{hostMap: hm}
+	input := &Input{
+		hostMap: hm,
+		ipOptions: &ipOptions{
+			ScanAllIPs: options.ScanAllIPs,
+			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
+			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
+		},
+	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
 		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
@@ -71,16 +86,19 @@ func (i *Input) Close() {
 func (i *Input) initializeInputSources(options *types.Options) error {
 	// Handle targets flags
 	for _, target := range options.Targets {
-		if iputil.IsCIDR(target) {
+		switch {
+		case iputil.IsCIDR(target):
 			i.expandCIDRInputValue(target)
-			continue
+		case asn.IsASN(target):
+			i.expandASNInputValue(target)
+		default:
+			i.Set(target)
 		}
-		i.normalizeStoreInputValue(target)
 	}
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(fileutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
+		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
 	}
 
 	// Handle target file
@@ -89,8 +107,19 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 		if inputErr != nil {
 			return errors.Wrap(inputErr, "could not open targets file")
 		}
+		defer input.Close()
+
 		i.scanInputFromReader(input)
-		input.Close()
+	}
+	if options.Uncover && options.UncoverQuery != nil {
+		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
+		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverField, options.UncoverEngine, options.UncoverQuery)
+		if err != nil {
+			return err
+		}
+		for c := range ch {
+			i.Set(c)
+		}
 	}
 	return nil
 }
@@ -99,30 +128,103 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		if iputil.IsCIDR(scanner.Text()) {
-			i.expandCIDRInputValue(scanner.Text())
-			continue
+		item := scanner.Text()
+		switch {
+		case iputil.IsCIDR(item):
+			i.expandCIDRInputValue(item)
+		case asn.IsASN(item):
+			i.expandASNInputValue(item)
+		default:
+			i.Set(item)
 		}
-		i.normalizeStoreInputValue(scanner.Text())
 	}
 }
 
-// normalizeStoreInputValue normalizes and stores passed input values
-func (i *Input) normalizeStoreInputValue(value string) {
-	url := strings.TrimSpace(value)
-	if url == "" {
+// Set normalizes and stores passed input values
+func (i *Input) Set(value string) {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
 		return
 	}
+	// actual hostname
+	var host string
+	// parse hostname if url is given
+	parsedURL, err := url.Parse(value)
+	if err == nil && parsedURL.Host != "" {
+		host = parsedURL.Host
+	} else {
+		parsedURL = nil
+		host = value
+	}
 
-	if _, ok := i.hostMap.Get(url); ok {
+	if i.ipOptions.ScanAllIPs {
+		// scan all ips
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
+			var ips []string
+			if i.ipOptions.IPV4 {
+				ips = append(ips, dnsData.A...)
+			}
+			if i.ipOptions.IPV6 {
+				ips = append(ips, dnsData.AAAA...)
+			}
+			for _, ip := range ips {
+				if ip == "" {
+					continue
+				}
+				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+				i.setItem(metaInput)
+			}
+			return
+		}
+		// failed to scanallips falling back to defaults
+		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
+	}
+
+	ips := []string{}
+	// only scan the target but ipv6 if it has one
+	if i.ipOptions.IPV6 {
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && len(dnsData.AAAA) > 0 {
+			// pick/ prefer 1st
+			ips = append(ips, dnsData.AAAA[0])
+		} else {
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %s\n", err)
+		}
+	}
+	if i.ipOptions.IPV4 {
+		// if IPV4 is enabled do not specify ip let dialer handle it
+		ips = append(ips, "")
+	}
+
+	for _, ip := range ips {
+		if ip != "" {
+			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			i.setItem(metaInput)
+		} else {
+			metaInput := &contextargs.MetaInput{Input: URL}
+			i.setItem(metaInput)
+		}
+	}
+
+}
+
+// setItem in the kv store
+func (i *Input) setItem(metaInput *contextargs.MetaInput) {
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+	if _, ok := i.hostMap.Get(key); ok {
 		i.dupeCount++
 		return
 	}
 
-	i.inputCount++
-	_ = i.hostMap.Set(url, nil)
+	i.inputCount++ // tracks target count
+	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(url), nil)
+		_ = i.hostMapStream.Set([]byte(key), nil)
 	}
 }
 
@@ -133,9 +235,15 @@ func (i *Input) Count() int64 {
 
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
-func (i *Input) Scan(callback func(value string)) {
+func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 	callbackFunc := func(k, _ []byte) error {
-		callback(string(k))
+		metaInput := &contextargs.MetaInput{}
+		if err := metaInput.Unmarshal(string(k)); err != nil {
+			return err
+		}
+		if !callback(metaInput) {
+			return io.EOF
+		}
 		return nil
 	}
 	if i.hostMapStream != nil {
@@ -149,14 +257,29 @@ func (i *Input) Scan(callback func(value string)) {
 func (i *Input) expandCIDRInputValue(value string) {
 	ips, _ := mapcidr.IPAddressesAsStream(value)
 	for ip := range ips {
-		if _, ok := i.hostMap.Get(ip); ok {
+		metaInput := &contextargs.MetaInput{Input: ip}
+		key, err := metaInput.MarshalString()
+		if err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+			return
+		}
+		if _, ok := i.hostMap.Get(key); ok {
 			i.dupeCount++
 			continue
 		}
 		i.inputCount++
-		_ = i.hostMap.Set(ip, nil)
+		_ = i.hostMap.Set(key, nil)
 		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(ip), nil)
+			_ = i.hostMapStream.Set([]byte(key), nil)
 		}
+	}
+}
+
+// expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
+func (i *Input) expandASNInputValue(value string) {
+	asnClient := asn.New()
+	cidrs, _ := asnClient.GetCIDRsForASNNum(value)
+	for _, cidr := range cidrs {
+		i.expandCIDRInputValue(cidr.String())
 	}
 }

@@ -25,14 +25,14 @@ const maxSize = 5 * 1024 * 1024
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
-	return templateTypes.HTTPProtocol
+	return templateTypes.OfflineHTTPProtocol
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 
-	err := request.getInputPaths(input.Input, func(data string) {
+	err := request.getInputPaths(input.MetaInput.Input, func(data string) {
 		wg.Add()
 
 		go func(data string) {
@@ -98,7 +98,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 	})
 	wg.Wait()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.Input, "file", err)
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, "file", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not send file request")
 	}
