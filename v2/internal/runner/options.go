@@ -176,6 +176,10 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// verify that a valid ip version type was selected (4, 6)
+	if len(options.IPVersion) == 0 {
+		// add ipv4 as default
+		options.IPVersion = append(options.IPVersion, "4")
+	}
 	var useIPV4, useIPV6 bool
 	for _, ipv := range options.IPVersion {
 		switch ipv {
