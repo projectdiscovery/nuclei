@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '**.go'
+      - 'v2/'
   workflow_dispatch:
 
 jobs:
