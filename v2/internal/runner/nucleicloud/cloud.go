@@ -298,6 +298,21 @@ func (c *Client) ListTemplates() ([]GetTemplatesResponse, error) {
 	return items, nil
 }
 
+func (c *Client) RemoveDatasource(datasource string) error {
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/datasources/%s", c.baseURL, datasource), nil)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
 const apiKeyParameter = "X-API-Key"
 
 type errorResponse struct {
