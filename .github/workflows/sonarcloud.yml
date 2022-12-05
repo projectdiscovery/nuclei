@@ -2,7 +2,8 @@ name: 👮🏼‍♂️ Sonarcloud
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    paths:
+      - '**.go'
   workflow_dispatch:
 
 jobs:
