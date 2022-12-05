@@ -15,7 +15,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -46,7 +46,7 @@ type Writer interface {
 type StandardWriter struct {
 	json             bool
 	jsonReqResp      bool
-	noTimestamp      bool
+	timestamp        bool
 	noMetadata       bool
 	matcherStatus    bool
 	mutex            *sync.Mutex
@@ -123,7 +123,7 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, timestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
@@ -161,7 +161,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		jsonReqResp:      jsonReqResp,
 		noMetadata:       noMetadata,
 		matcherStatus:    MatcherStatus,
-		noTimestamp:      noTimestamp,
+		timestamp:        timestamp,
 		aurora:           auroraColorizer,
 		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,
