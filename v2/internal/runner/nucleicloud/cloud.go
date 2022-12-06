@@ -300,7 +300,7 @@ func (c *Client) ListTemplates(query string) ([]GetTemplatesResponse, error) {
 	}
 
 	var items []GetTemplatesResponse
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates", c.baseURL), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, builder.String(), nil)
 	if err != nil {
 		return items, errors.Wrap(err, "could not make request")
 	}
