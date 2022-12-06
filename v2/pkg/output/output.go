@@ -123,12 +123,12 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
+func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string, resumeFlag string) (*StandardWriter, error) {
 	auroraColorizer := aurora.NewAurora(colors)
 
 	var outputFile io.WriteCloser
 	if file != "" {
-		output, err := newFileOutputWriter(file)
+		output, err := newFileOutputWriter(file, resumeFlag)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create output file")
 		}
@@ -136,7 +136,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 	}
 	var traceOutput io.WriteCloser
 	if traceFile != "" {
-		output, err := newFileOutputWriter(traceFile)
+		output, err := newFileOutputWriter(traceFile, resumeFlag)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create output file")
 		}
@@ -144,7 +144,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 	}
 	var errorOutput io.WriteCloser
 	if errorFile != "" {
-		output, err := newFileOutputWriter(errorFile)
+		output, err := newFileOutputWriter(errorFile, resumeFlag)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create error file")
 		}
