@@ -295,9 +295,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "ds", "", "delete scan/output on cloud by scan id"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "so", "", "display scan output by scan id"),
 		flagSet.BoolVarP(&options.ListDatasources, "list-datasources", "ld", false, "list cloud datasources"),
-		flagSet.BoolVarP(&options.ListTargets, "list-targets", "clt", false, "list cloud targets"),
-		flagSet.BoolVarP(&options.ListTemplates, "list-templates", "ctl", false, "list cloud templates"),
+		flagSet.BoolVarP(&options.ListTargets, "list-targets", "ltr", false, "list cloud targets"),
+		flagSet.BoolVarP(&options.ListTemplates, "list-templates", "ltm", false, "list cloud templates"),
 		flagSet.StringVarP(&options.RemoveDatasource, "remove-datasource", "rds", "", "remove specified data source"),
+		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
+		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
+		flagSet.StringVarP(&options.RemoveTarget, "remove-target", "rtl", "", "remove target(s) from cloud"),
+		flagSet.StringVarP(&options.RemoveTemplate, "remove-template", "rtm", "", "remove template(s) from cloud"),
 	)
 
 	_ = flagSet.Parse()

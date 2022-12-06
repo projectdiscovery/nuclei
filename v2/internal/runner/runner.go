@@ -478,6 +478,14 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTemplates()
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.AddTarget != "" {
+			err = r.addTarget(r.options.AddTarget)
+		} else if r.options.AddTemplate != "" {
+			err = r.addTemplate(r.options.AddTemplate)
+		} else if r.options.RemoveTarget != "" {
+			err = r.removeTarget(r.options.RemoveTarget)
+		} else if r.options.RemoveTemplate != "" {
+			err = r.removeTemplate(r.options.RemoveTemplate)
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
 			results, err = r.runCloudEnumeration(store, cloudTemplates, cloudTargets, r.options.NoStore, r.options.OutputLimit)

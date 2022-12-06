@@ -111,6 +111,14 @@ type Options struct {
 	DeleteScan string
 	// RemoveDatasource deletes a datasource from cloud storage
 	RemoveDatasource string
+	// AddTemplate adds a list of templates to custom datasource
+	AddTemplate string
+	// AddTarget adds a list of targets to custom datasource
+	AddTarget string
+	// RemoveTemplate removes a list of templates
+	RemoveTemplate string
+	// RemoveTarget removes a list of targets
+	RemoveTarget string
 	// Get issues for a scan
 	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
