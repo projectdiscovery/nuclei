@@ -269,7 +269,7 @@ func (c *Client) ListTargets(query string) ([]GetTargetResponse, error) {
 	_, _ = builder.WriteString("/targets")
 	if query != "" {
 		_, _ = builder.WriteString("?query=")
-		_, _ = builder.WriteString(query)
+		_, _ = builder.WriteString(url.QueryEscape(query))
 	}
 
 	var items []GetTargetResponse
@@ -296,7 +296,7 @@ func (c *Client) ListTemplates(query string) ([]GetTemplatesResponse, error) {
 	_, _ = builder.WriteString("/templates")
 	if query != "" {
 		_, _ = builder.WriteString("?query=")
-		_, _ = builder.WriteString(query)
+		_, _ = builder.WriteString(url.QueryEscape(query))
 	}
 
 	var items []GetTemplatesResponse
