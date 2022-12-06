@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"io/fs"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -45,7 +47,7 @@ func (r *Runner) getScanList(limit int) error {
 func (r *Runner) deleteScan(id string) error {
 	deleted, err := r.cloudClient.DeleteScan(id)
 	if !deleted.OK {
-		gologger.Info().Msgf("Error in deleting the scan %s.", id)
+		gologger.Error().Msgf("Error in deleting the scan %s.", id)
 	} else {
 		gologger.Info().Msgf("Scan deleted %s.", id)
 	}
@@ -73,29 +75,98 @@ func (r *Runner) listDatasources() error {
 }
 
 func (r *Runner) listTargets() error {
-	items, err := r.cloudClient.ListTargets()
+	items, err := r.cloudClient.ListTargets("")
 	if err != nil {
 		return err
 	}
 	for _, source := range items {
-		gologger.Silent().Msgf("[%s] %s", source.Type, source.Reference)
+		gologger.Silent().Msgf("%s", source.Reference)
 	}
 	return err
 }
 
 func (r *Runner) listTemplates() error {
-	items, err := r.cloudClient.ListTemplates()
+	items, err := r.cloudClient.ListTemplates("")
 	if err != nil {
 		return err
 	}
 	for _, source := range items {
-		gologger.Silent().Msgf("[%s] %s", source.Type, source.Reference)
+		gologger.Silent().Msgf("%s", source.Reference)
 	}
 	return err
 }
 
 func (r *Runner) removeDatasource(datasource string) error {
-	return r.cloudClient.RemoveDatasource(datasource)
+	err := r.cloudClient.RemoveDatasource(datasource)
+	if err != nil {
+		gologger.Error().Msgf("Error in deleting datasource %s: %s", datasource, err)
+	} else {
+		gologger.Info().Msgf("Datasource deleted %s", datasource)
+	}
+	return err
+}
+
+func (r *Runner) addTemplate(location string) error {
+	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() || !strings.HasSuffix(path, ".yaml") {
+			return nil
+		}
+		base := filepath.Base(path)
+		reference, templateErr := r.cloudClient.AddTemplate(base, path)
+		if templateErr != nil {
+			gologger.Error().Msgf("Could not upload %s: %s", path, templateErr)
+		} else {
+			gologger.Info().Msgf("Uploaded template %s: %s", base, reference)
+		}
+		return nil
+	})
+	return walkErr
+}
+
+func (r *Runner) addTarget(location string) error {
+	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() || !strings.HasSuffix(path, ".txt") {
+			return nil
+		}
+		base := filepath.Base(location)
+		reference, targetErr := r.cloudClient.AddTarget(base, location)
+		if targetErr != nil {
+			gologger.Error().Msgf("Could not upload %s: %s", location, targetErr)
+		}
+		gologger.Info().Msgf("Uploaded target %s: %s", base, reference)
+		return nil
+	})
+	return walkErr
+}
+
+func (r *Runner) removeTarget(item string) error {
+	response, err := r.cloudClient.ListTargets(item)
+	if err != nil {
+		return errors.Wrap(err, "could not list targets")
+	}
+	for _, item := range response {
+		if err := r.cloudClient.RemoveTarget(item.ID); err != nil {
+			gologger.Error().Msgf("Error in deleting target %s: %s", item.Reference, err)
+		} else {
+			gologger.Info().Msgf("Target deleted %s", item.Reference)
+		}
+	}
+	return err
+}
+
+func (r *Runner) removeTemplate(item string) error {
+	response, err := r.cloudClient.ListTemplates(item)
+	if err != nil {
+		return errors.Wrap(err, "could not list templates")
+	}
+	for _, item := range response {
+		if err := r.cloudClient.RemoveTemplate(item.ID); err != nil {
+			gologger.Error().Msgf("Error in deleting template %s: %s", item.Reference, err)
+		} else {
+			gologger.Info().Msgf("Template deleted %s", item.Reference)
+		}
+	}
+	return err
 }
 
 // initializeCloudDataSources initializes cloud data sources

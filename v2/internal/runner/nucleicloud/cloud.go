@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -260,9 +263,17 @@ func (c *Client) ListDatasources() ([]GetDataSourceResponse, error) {
 	return items, nil
 }
 
-func (c *Client) ListTargets() ([]GetTargetResponse, error) {
+func (c *Client) ListTargets(query string) ([]GetTargetResponse, error) {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/targets")
+	if query != "" {
+		_, _ = builder.WriteString("?query=")
+		_, _ = builder.WriteString(query)
+	}
+
 	var items []GetTargetResponse
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/targets", c.baseURL), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, builder.String(), nil)
 	if err != nil {
 		return items, errors.Wrap(err, "could not make request")
 	}
@@ -279,7 +290,15 @@ func (c *Client) ListTargets() ([]GetTargetResponse, error) {
 	return items, nil
 }
 
-func (c *Client) ListTemplates() ([]GetTemplatesResponse, error) {
+func (c *Client) ListTemplates(query string) ([]GetTemplatesResponse, error) {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/templates")
+	if query != "" {
+		_, _ = builder.WriteString("?query=")
+		_, _ = builder.WriteString(query)
+	}
+
 	var items []GetTemplatesResponse
 	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates", c.baseURL), nil)
 	if err != nil {
@@ -300,6 +319,102 @@ func (c *Client) ListTemplates() ([]GetTemplatesResponse, error) {
 
 func (c *Client) RemoveDatasource(datasource string) error {
 	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/datasources/%s", c.baseURL, datasource), nil)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
+func (c *Client) AddTemplate(name, contents string) (string, error) {
+	file, err := os.Open(contents)
+	if err != nil {
+		return "", errors.Wrap(err, "could not open contents")
+	}
+	defer file.Close()
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	_ = writer.WriteField("name", name)
+	fileWriter, _ := writer.CreateFormFile("file", filepath.Base(contents))
+	_, _ = io.Copy(fileWriter, file)
+	_ = writer.Close()
+
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/templates", c.baseURL), &buf)
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return "", errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	var item AddItemResponse
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return "", errors.Wrap(err, "could not decode results")
+	}
+	return item.Ok, nil
+}
+
+func (c *Client) AddTarget(name, contents string) (string, error) {
+	file, err := os.Open(contents)
+	if err != nil {
+		return "", errors.Wrap(err, "could not open contents")
+	}
+	defer file.Close()
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	_ = writer.WriteField("name", name)
+	fileWriter, _ := writer.CreateFormFile("file", filepath.Base(contents))
+	_, _ = io.Copy(fileWriter, file)
+	_ = writer.Close()
+
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/targets", c.baseURL), &buf)
+	if err != nil {
+		return "", errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return "", errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	var item AddItemResponse
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return "", errors.Wrap(err, "could not decode results")
+	}
+	return item.Ok, nil
+}
+
+func (c *Client) RemoveTemplate(ID int64) error {
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/templates/%d", c.baseURL, ID), nil)
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
+func (c *Client) RemoveTarget(ID int64) error {
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/targets/%d", c.baseURL, ID), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
