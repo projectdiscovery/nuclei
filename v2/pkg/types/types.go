@@ -149,6 +149,8 @@ type Options struct {
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
 	OfflineHTTP bool
+	// Force HTTP2 requests
+	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
 	// Headless specifies whether to allow headless mode templates
@@ -216,8 +218,8 @@ type Options struct {
 	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
-	// NoTimestamp disables display of timestamp for the matcher
-	NoTimestamp bool
+	// Timestamp enables display of timestamp for the matcher
+	Timestamp bool
 	// Project is used to avoid sending same HTTP request multiple times
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
