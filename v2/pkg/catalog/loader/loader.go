@@ -122,7 +122,7 @@ func New(config *Config) (*Store, error) {
 		finalTemplates: config.Templates,
 		finalWorkflows: config.Workflows,
 	}
-	if fileutil.FileExists(config.ExecutorOptions.Options.Code) {
+	if config.ExecutorOptions.Options != nil && fileutil.FileExists(config.ExecutorOptions.Options.Code) {
 		oracle, err := trustoracle.NewOracle(config.ExecutorOptions.Options.Code)
 		if err != nil {
 			return nil, err

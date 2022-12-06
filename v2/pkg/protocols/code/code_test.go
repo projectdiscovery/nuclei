@@ -20,8 +20,8 @@ func TestCodeProtocol(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-code"
 	request := &Request{
-		Engine: EngineTypeHolder{EngineType: Echo},
-		Source: "",
+		Engine: EngineTypeHolder{EngineType: Command},
+		Source: "echo",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
