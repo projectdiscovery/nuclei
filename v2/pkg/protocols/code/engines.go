@@ -19,8 +19,8 @@ const (
 	Python EngineType = iota + 1
 	// name:powershell
 	Powershell
-	// name:echo
-	Echo
+	// name:command
+	Command
 	limit
 )
 
@@ -37,7 +37,7 @@ func (t EngineType) String() string {
 
 // DNSRequestTypeMapping is a table for conversion of method from string.
 var EngineTypeMapping = map[EngineType]string{
-	Echo:       "echo",
+	Command:    "command",
 	Python:     "python",
 	Powershell: "powershell",
 }

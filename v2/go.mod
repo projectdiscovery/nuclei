@@ -47,7 +47,7 @@ require (
 	github.com/xanzy/go-gitlab v0.76.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.3.0
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	golang.org/x/text v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -74,7 +74,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.5
-	github.com/projectdiscovery/gozero v0.0.0-20221130195301-bae45b361f23
+	github.com/projectdiscovery/gozero v0.0.0-20221206140751-b7695753d005
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.2
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
@@ -197,7 +197,7 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20221019170559-20944726eadf
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

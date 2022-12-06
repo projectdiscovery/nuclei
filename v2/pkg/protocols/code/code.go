@@ -1,7 +1,9 @@
 package code
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -28,12 +30,13 @@ type Request struct {
 
 	// description: |
 	//   Engine type
-	Engine EngineTypeHolder `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=echo"`
+	Engine EngineTypeHolder `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
 	// description: |
 	//   Source Snippet
 	Source  string `yaml:"source,omitempty" jsonschema:"title=source snippet,description=Source snippet"`
 	options *protocols.ExecuterOptions
 	gozero  *gozero.Gozero
+	cmd     *gozero.Command
 	src     *gozero.Source
 }
 
@@ -50,11 +53,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.gozero = engine
 
-	src, err := gozero.NewSourceWithString(request.Source)
-	if err != nil {
-		return err
+	switch request.Engine.EngineType {
+	case Command:
+		cmdTokens := strings.Split(request.Source, " ")
+		cmd, err := gozero.NewCommandWithString(cmdTokens[0], cmdTokens[1:]...)
+		if err != nil {
+			return err
+		}
+		request.cmd = cmd
+	default:
+		src, err := gozero.NewSourceWithString(request.Source)
+		if err != nil {
+			return err
+		}
+		request.src = src
 	}
-	request.src = src
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -86,7 +99,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	defer metaSrc.Cleanup() //nolint
 
-	output, err := request.gozero.Eval(request.src, metaSrc)
+	var output *gozero.Source
+	switch request.Engine.EngineType {
+	case Command:
+		output, err = request.gozero.Exec(context.Background(), metaSrc, request.cmd)
+	default:
+		output, err = request.gozero.Eval(context.Background(), request.src, metaSrc)
+	}
+
 	if err != nil {
 		return err
 	}
