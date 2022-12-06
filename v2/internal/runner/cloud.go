@@ -195,7 +195,7 @@ func (r *Runner) processDataSourceItem(repo, token, Type string) (string, error)
 	var secret string
 	ID, err := r.cloudClient.StatusDataSource(nucleicloud.StatusDataSourceRequest{Repo: repo, Token: token})
 	if err != nil {
-		if !strings.Contains(err.Error(), "invalid status code recieved") {
+		if !strings.Contains(err.Error(), "no rows in result set") {
 			return "", errors.Wrap(err, "could not get data source status")
 		}
 
