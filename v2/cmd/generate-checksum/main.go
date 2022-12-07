@@ -29,6 +29,11 @@ func main() {
 		if err != nil || d.IsDir() {
 			return nil
 		}
+		pathIndex := path[strings.Index(path, "nuclei-templates/")+17:]
+		// Ignore items starting with dots
+		if strings.HasPrefix(pathIndex, ".") {
+			return nil
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil
@@ -37,7 +42,7 @@ func main() {
 		_, _ = io.Copy(h, bytes.NewReader(data))
 		hash := hex.EncodeToString(h.Sum(nil))
 
-		_, _ = file.WriteString(path[strings.Index(path, "nuclei-templates/")+17:])
+		_, _ = file.WriteString(pathIndex)
 		_, _ = file.WriteString(":")
 		_, _ = file.WriteString(hash)
 		_, _ = file.WriteString("\n")
