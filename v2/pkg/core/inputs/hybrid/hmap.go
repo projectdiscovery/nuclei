@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
+	readerutil "github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -97,7 +98,7 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(fileutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
+		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
 	}
 
 	// Handle target file
@@ -145,32 +146,19 @@ func (i *Input) Set(value string) {
 	if URL == "" {
 		return
 	}
-
-	metaInput := &contextargs.MetaInput{Input: URL}
-	keyURL, err := metaInput.MarshalString()
-	if err != nil {
-		gologger.Warning().Msgf("%s\n", err)
-		return
+	// actual hostname
+	var host string
+	// parse hostname if url is given
+	parsedURL, err := url.Parse(value)
+	if err == nil && parsedURL.Host != "" {
+		host = parsedURL.Host
+	} else {
+		parsedURL = nil
+		host = value
 	}
 
-	if _, ok := i.hostMap.Get(keyURL); ok {
-		i.dupeCount++
-		return
-	}
-
-	switch {
-	case i.ipOptions.ScanAllIPs:
-		// we need to resolve the hostname
-		// check if it's an url
-		var host string
-		parsedURL, err := url.Parse(value)
-		if err == nil && parsedURL.Host != "" {
-			host = parsedURL.Host
-		} else {
-			parsedURL = nil
-			host = value
-		}
-
+	if i.ipOptions.ScanAllIPs {
+		// scan all ips
 		dnsData, err := protocolstate.Dialer.GetDNSData(host)
 		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
 			var ips []string
@@ -180,36 +168,63 @@ func (i *Input) Set(value string) {
 			if i.ipOptions.IPV6 {
 				ips = append(ips, dnsData.AAAA...)
 			}
-
 			for _, ip := range ips {
 				if ip == "" {
 					continue
 				}
 				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-				key, err := metaInput.MarshalString()
-				if err != nil {
-					gologger.Warning().Msgf("%s\n", err)
-					continue
-				}
-				_ = i.hostMap.Set(key, nil)
-				if i.hostMapStream != nil {
-					_ = i.hostMapStream.Set([]byte(key), nil)
-				}
+				i.setItem(metaInput)
 			}
-			break
+			return
 		}
-		fallthrough
-	default:
-		i.setItem(keyURL)
+		// failed to scanallips falling back to defaults
+		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
 	}
+
+	ips := []string{}
+	// only scan the target but ipv6 if it has one
+	if i.ipOptions.IPV6 {
+		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		if err == nil && len(dnsData.AAAA) > 0 {
+			// pick/ prefer 1st
+			ips = append(ips, dnsData.AAAA[0])
+		} else {
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %s\n", err)
+		}
+	}
+	if i.ipOptions.IPV4 {
+		// if IPV4 is enabled do not specify ip let dialer handle it
+		ips = append(ips, "")
+	}
+
+	for _, ip := range ips {
+		if ip != "" {
+			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			i.setItem(metaInput)
+		} else {
+			metaInput := &contextargs.MetaInput{Input: URL}
+			i.setItem(metaInput)
+		}
+	}
+
 }
 
 // setItem in the kv store
-func (i *Input) setItem(k string) {
-	i.inputCount++
-	_ = i.hostMap.Set(k, nil)
+func (i *Input) setItem(metaInput *contextargs.MetaInput) {
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+	if _, ok := i.hostMap.Get(key); ok {
+		i.dupeCount++
+		return
+	}
+
+	i.inputCount++ // tracks target count
+	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(k), nil)
+		_ = i.hostMapStream.Set([]byte(key), nil)
 	}
 }
 

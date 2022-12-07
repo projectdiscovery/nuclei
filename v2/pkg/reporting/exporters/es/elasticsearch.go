@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/corpix/uarand"
 	"io"
 	"net/http"
 	"time"
@@ -112,6 +113,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if len(exporter.authentication) > 0 {
 		req.Header.Add("Authorization", exporter.authentication)
 	}
+	req.Header.Set("User-Agent", uarand.GetRandom())
 	req.Header.Add("Content-Type", "application/json")
 
 	d := data{

@@ -2,6 +2,8 @@ name: 🛠 Template Validate
 
 on:
   pull_request:
+    paths:
+      - '**.go'
   workflow_dispatch:
 
 jobs:
@@ -13,19 +15,9 @@ jobs:
         with: 
           go-version: 1.18
 
-      - name: Cache Go
-        id: cache-go
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/go
-          key: ${{ runner.os }}-go
-
-      - name: Installing Nuclei
-        if: steps.cache-go.outputs.cache-hit != 'true'
-        run: |
-          go install github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
-
       - name: Template Validation
         run: |
-          nuclei -validate
-          nuclei -validate -w ./workflows
+          go run . -ut
+          go run . -validate
+          go run . -validate -w workflows
+        working-directory: v2/cmd/nuclei/
