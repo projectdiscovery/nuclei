@@ -8,14 +8,15 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Request contains a http request to be made from a template
@@ -118,6 +119,9 @@ type Request struct {
 	//     value: 2048
 	MaxSize int `yaml:"max-size,omitempty" jsonschema:"title=maximum http response body size,description=Maximum size of http response body to read in bytes"`
 
+	// Fuzzing describes schema to fuzz http requests
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz http requests"`
+
 	CompiledOperators *operators.Operators `yaml:"-"`
 
 	options           *protocols.ExecuterOptions
@@ -152,6 +156,11 @@ type Request struct {
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
 	Redirects bool `yaml:"redirects,omitempty" jsonschema:"title=follow http redirects,description=Specifies whether redirects should be followed by the HTTP Client"`
 	// description: |
+	//   Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.
+	//
+	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
+	HostRedirects bool `yaml:"host-redirects,omitempty" jsonschema:"title=follow same host http redirects,description=Specifies whether redirects to the same host should be followed by the HTTP Client"`
+	// description: |
 	//   Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 	//
 	//   All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
@@ -171,6 +180,7 @@ type Request struct {
 	//   ReqCondition automatically assigns numbers to requests and preserves their history.
 	//
 	//   This allows matching on them later for multi-request conditions.
+	// Deprecated: request condition will be detected automatically (https://github.com/projectdiscovery/nuclei/issues/2393)
 	ReqCondition bool `yaml:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
@@ -232,13 +242,21 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:         request.Threads,
-		MaxRedirects:    request.MaxRedirects,
-		NoTimeout:       false,
-		FollowRedirects: request.Redirects,
-		CookieReuse:     request.CookieReuse,
-		Connection:      &httpclientpool.ConnectionConfiguration{},
+		Threads:      request.Threads,
+		MaxRedirects: request.MaxRedirects,
+		NoTimeout:    false,
+		CookieReuse:  request.CookieReuse,
+		Connection:   &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
+		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
+
+	if request.Redirects || options.Options.FollowRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
+	}
+	if request.HostRedirects || options.Options.FollowHostRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameHostRedirect
+	}
+
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
 		if reTimeoutAnnotation.MatchString(req) {
@@ -246,11 +264,6 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		}
 	}
 	request.connConfiguration = connectionConfiguration
-
-	// if the headers contain "Connection" we need to disable the automatic keep alive of the standard library
-	if _, hasConnectionHeader := request.Headers["Connection"]; hasConnectionHeader {
-		connectionConfiguration.Connection.DisableKeepAlive = true
-	}
 
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
@@ -322,7 +335,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	unusedPayloads := make(map[string]struct{})
 	requestSectionsToCheck := []interface{}{
 		request.customHeaders, request.Headers, request.Matchers,
-		request.Extractors, request.Body, request.Path, request.Raw,
+		request.Extractors, request.Body, request.Path, request.Raw, request.Fuzzing,
 	}
 	if requestSectionsToCheckData, err := json.Marshal(requestSectionsToCheck); err == nil {
 		for payload := range request.Payloads {
@@ -332,19 +345,29 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			unusedPayloads[payload] = struct{}{}
 		}
 	}
-
 	for payload := range unusedPayloads {
 		delete(request.Payloads, payload)
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.TemplatesDirectory, request.options.Options.Sandbox, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 	}
 	request.options = options
 	request.totalRequests = request.Requests()
+
+	if len(request.Fuzzing) > 0 {
+		if request.Unsafe {
+			return errors.New("cannot use unsafe with http fuzzing templates")
+		}
+		for _, rule := range request.Fuzzing {
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
 	return nil
 }
 

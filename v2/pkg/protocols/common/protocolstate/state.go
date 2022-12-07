@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -89,6 +90,9 @@ func Init(options *types.Options) error {
 	}
 	if options.ResolversFile != "" {
 		opts.BaseResolvers = options.InternalResolversList
+	}
+	if options.Sandbox {
+		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
 	}
 	opts.WithDialerHistory = true
 	opts.WithZTLS = options.ZTLS

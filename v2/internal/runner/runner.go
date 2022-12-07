@@ -14,10 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+
 	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/ratelimit"
+	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -28,15 +30,19 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/automaticscan"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -49,7 +55,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/stringsutil"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Runner is a client for running the enumeration process.
@@ -69,6 +75,8 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	customTemplates   []customtemplates.Provider
+	cloudClient       *nucleicloud.Client
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -84,6 +92,10 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	if options.Cloud {
+		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
+	}
+
 	if options.UpdateNuclei {
 		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
 			return nil, err
@@ -96,6 +108,9 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	parsers.NoStrictSyntax = options.NoStrictSyntax
+
+	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
+	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
@@ -122,6 +137,9 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
+	if err := reporting.CreateConfigIfNotExists(); err != nil {
+		return nil, err
+	}
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
@@ -168,7 +186,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.Timestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -239,9 +257,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
@@ -363,6 +381,7 @@ func (r *Runner) RunEnumeration() error {
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:     input.NewHelper(),
 	}
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
@@ -395,20 +414,52 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// add the hosts from the metadata queries of loaded templates into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit, r.options.UncoverField)
+		for host := range ret {
+			r.hmapInputProvider.Set(host)
+		}
+	}
 	// list all templates
-	if r.options.TemplateList {
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
 	r.displayExecutionInfo(store)
 
-	var results *atomic.Bool
+	// If not explicitly disabled, check if http based protocols
+	// are used and if inputs are non-http to pre-perform probing
+	// of urls and storing them for execution.
+	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
+		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		if err != nil {
+			return errors.Wrap(err, "could not probe http input")
+		}
+		executerOpts.InputHelper.InputsHTTP = inputHelpers
+	}
 
+	enumeration := false
+	var results *atomic.Bool
 	if r.options.Cloud {
-		gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-		results, err = r.runCloudEnumeration(store)
+		if r.options.ScanList {
+			err = r.getScanList()
+		} else if r.options.DeleteScan != "" {
+			err = r.deleteScan(r.options.DeleteScan)
+		} else if r.options.ScanOutput != "" {
+			err = r.getResults(r.options.ScanOutput)
+		} else {
+			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
+			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			enumeration = true
+		}
 	} else {
 		results, err = r.runStandardEnumeration(executerOpts, store, engine)
+		enumeration = true
+	}
+
+	if !enumeration {
+		return err
 	}
 
 	if r.interactsh != nil {
@@ -419,6 +470,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.progress.Stop()
 
+	if executerOpts.InputHelper != nil {
+		_ = executerOpts.InputHelper.Close()
+	}
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
 	}
@@ -430,6 +484,18 @@ func (r *Runner) RunEnumeration() error {
 		r.browser.Close()
 	}
 	return err
+}
+
+func (r *Runner) isInputNonHTTP() bool {
+	var nonURLInput bool
+	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+		if !strings.Contains(value.Input, "://") {
+			nonURLInput = true
+			return false
+		}
+		return true
+	})
+	return nonURLInput
 }
 
 func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
@@ -549,7 +615,10 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
+
+	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
 }
+
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
 	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {

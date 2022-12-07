@@ -6,6 +6,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -42,6 +43,8 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 
 		wg.Add()
 		go func(tpl *templates.Template) {
+			defer wg.Done()
+
 			switch {
 			case tpl.SelfContained:
 				// Self Contained requests are executed here separately
@@ -50,7 +53,6 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 				// All other request types are executed here
 				e.executeModelWithInput(templateType, tpl, target, results)
 			}
-			wg.Done()
 		}(template)
 	}
 	e.workPool.Wait()
@@ -59,7 +61,7 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 
 // processSelfContainedTemplates execute a self-contained template.
 func (e *Engine) executeSelfContainedTemplateWithInput(template *templates.Template, results *atomic.Bool) {
-	match, err := template.Executer.Execute("")
+	match, err := template.Executer.Execute(contextargs.New())
 	if err != nil {
 		gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 	}
@@ -97,7 +99,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		currentInfo.Unlock()
 	}
 
-	target.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue *contextargs.MetaInput) bool {
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
@@ -121,12 +123,12 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
-			return
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.ID()) {
+			return true
 		}
 
 		wg.WaitGroup.Add()
-		go func(index uint32, skip bool, value string) {
+		go func(index uint32, skip bool, value *contextargs.MetaInput) {
 			defer wg.WaitGroup.Done()
 			defer cleanupInFlight(index)
 			if skip {
@@ -139,7 +141,9 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
-				match, err = template.Executer.Execute(value)
+				ctxArgs := contextargs.New()
+				ctxArgs.MetaInput = value
+				match, err = template.Executer.Execute(ctxArgs)
 			}
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
@@ -148,6 +152,7 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		}(index, skip, scannedValue)
 
 		index++
+		return true
 	})
 	wg.WaitGroup.Wait()
 
@@ -184,14 +189,14 @@ func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target 
 func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType, template *templates.Template, target InputProvider, results *atomic.Bool, callback func(*output.ResultEvent)) {
 	wg := e.workPool.InputPool(templateType)
 
-	target.Scan(func(scannedValue string) {
+	target.Scan(func(scannedValue *contextargs.MetaInput) bool {
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue) {
-			return
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.ID()) {
+			return true
 		}
 
 		wg.WaitGroup.Add()
-		go func(value string) {
+		go func(value *contextargs.MetaInput) {
 			defer wg.WaitGroup.Done()
 
 			var match bool
@@ -200,7 +205,9 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(value, template.CompiledWorkflow)
 			default:
-				err = template.Executer.ExecuteWithResults(value, func(event *output.InternalWrappedEvent) {
+				ctxArgs := contextargs.New()
+				ctxArgs.MetaInput = value
+				err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
 					for _, result := range event.Results {
 						callback(result)
 					}
@@ -211,6 +218,7 @@ func (e *Engine) executeModelWithInputAndResult(templateType types.ProtocolType,
 			}
 			results.CompareAndSwap(false, match)
 		}(scannedValue)
+		return true
 	})
 	wg.WaitGroup.Wait()
 }
@@ -228,7 +236,7 @@ func (e *ChildExecuter) Close() *atomic.Bool {
 }
 
 // Execute executes a template and URLs
-func (e *ChildExecuter) Execute(template *templates.Template, URL string) {
+func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs.MetaInput) {
 	templateType := template.Type()
 
 	var wg *sizedwaitgroup.SizedWaitGroup
@@ -240,12 +248,15 @@ func (e *ChildExecuter) Execute(template *templates.Template, URL string) {
 
 	wg.Add()
 	go func(tpl *templates.Template) {
-		match, err := template.Executer.Execute(URL)
+		defer wg.Done()
+
+		ctxArgs := contextargs.New()
+		ctxArgs.MetaInput = value
+		match, err := template.Executer.Execute(ctxArgs)
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 		}
 		e.results.CompareAndSwap(false, match)
-		wg.Done()
 	}(template)
 }
 

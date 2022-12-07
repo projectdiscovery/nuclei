@@ -16,13 +16,16 @@ type workflowLoader struct {
 // NewLoader returns a new workflow loader structure
 func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error) {
 	tagFilter, err := filter.New(&filter.Config{
+		Authors:           options.Options.Authors,
 		Tags:              options.Options.Tags,
 		ExcludeTags:       options.Options.ExcludeTags,
-		Authors:           options.Options.Authors,
-		Severities:        options.Options.Severities,
 		IncludeTags:       options.Options.IncludeTags,
 		IncludeIds:        options.Options.IncludeIds,
 		ExcludeIds:        options.Options.ExcludeIds,
+		Severities:        options.Options.Severities,
+		ExcludeSeverities: options.Options.ExcludeSeverities,
+		Protocols:         options.Options.Protocols,
+		ExcludeProtocols:  options.Options.ExcludeProtocols,
 		IncludeConditions: options.Options.IncludeConditions,
 	})
 	if err != nil {

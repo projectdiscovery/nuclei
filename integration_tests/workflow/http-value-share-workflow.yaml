@@ -1,0 +1,10 @@
+id: http-value-sharing-workflow
+info:
+  name: HTTP Value Sharing Test
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: workflow/http-value-share-template-1.yaml
+    subtemplates:
+      - template: workflow/http-value-share-template-2.yaml

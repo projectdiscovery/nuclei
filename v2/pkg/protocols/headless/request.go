@@ -10,12 +10,13 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	httpProtocol "github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -29,7 +30,8 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(inputURL string, metadata, previous output.InternalEvent /*TODO review unused parameter*/, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent /*TODO review unused parameter*/, callback protocols.OutputEventCallback) error {
+	inputURL := input.MetaInput.Input
 	if request.options.Browser.UserAgent() == "" {
 		request.options.Browser.SetUserAgent(request.compiledUserAgent)
 	}
@@ -70,7 +72,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	}
 	defer instance.Close()
 
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
@@ -157,5 +159,5 @@ func GenerateVariables(URL string) map[string]interface{} {
 		return nil
 	}
 
-	return httpProtocol.GenerateVariables(parsed, false)
+	return utils.GenerateVariables(parsed, false)
 }

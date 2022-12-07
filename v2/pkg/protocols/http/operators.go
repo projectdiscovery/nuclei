@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -121,13 +122,14 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["response"] = rawResp
 	data["status_code"] = resp.StatusCode
 	data["body"] = body
-	data["content_length"] = resp.ContentLength
 	data["all_headers"] = headers
 	data["header"] = headers
 	data["duration"] = duration.Seconds()
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
 	data["template-path"] = request.options.TemplatePath
+
+	data["content_length"] = utils.CalculateContentLength(resp.ContentLength, int64(len(body)))
 
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
@@ -158,8 +160,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         types.ToString(wrapped.InternalEvent["response"]),
+		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 	}
 	return data
+}
+
+func (request *Request) truncateResponse(response interface{}) string {
+	responseString := types.ToString(response)
+	if len(responseString) > request.options.Options.ResponseSaveSize {
+		return responseString[:request.options.Options.ResponseSaveSize]
+	}
+	return responseString
 }
