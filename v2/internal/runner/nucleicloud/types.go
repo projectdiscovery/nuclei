@@ -38,6 +38,13 @@ type GetScanRequest struct {
 	Matches    int64     `json:"matches"`
 }
 
+// AddDataSourceResponse is a add data source response item.
+type AddDataSourceResponse struct {
+	ID     int64  `json:"id"`
+	Hash   string `json:"hash"`
+	Secret string `json:"secret,omitempty"`
+}
+
 type GetResultsResponseItem struct {
 	ID  int64  `json:"id"`
 	Raw string `json:"raw"`
@@ -65,14 +72,14 @@ type AddDataSourceRequest struct {
 // ExistsDataSourceItemRequest is a request to identify whether a data
 // source item exists.
 type ExistsDataSourceItemRequest struct {
-	ID       string `json:"-"`
 	Type     string `json:"type"`
 	Contents string `json:"contents"`
 }
 
 // GetDataSourceResponse is response for a get data source request
 type GetDataSourceResponse struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
+	Hash      string    `json:"hash"`
 	Type      string    `json:"type"`
 	Path      string    `json:"path"`
 	Repo      string    `json:"repo"`

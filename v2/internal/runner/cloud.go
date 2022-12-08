@@ -3,6 +3,7 @@ package runner
 import (
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,7 +70,7 @@ func (r *Runner) listDatasources() error {
 		return err
 	}
 	for _, source := range datasources {
-		gologger.Silent().Msgf("[%s] [%s] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+		gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
 	}
 	return err
 }
@@ -97,7 +98,9 @@ func (r *Runner) listTemplates() error {
 }
 
 func (r *Runner) removeDatasource(datasource string) error {
-	err := r.cloudClient.RemoveDatasource(datasource)
+	ID, _ := strconv.ParseInt(datasource, 10, 64)
+
+	err := r.cloudClient.RemoveDatasource(ID)
 	if err != nil {
 		gologger.Error().Msgf("Error in deleting datasource %s: %s", datasource, err)
 	} else {
@@ -170,52 +173,47 @@ func (r *Runner) removeTemplate(item string) error {
 }
 
 // initializeCloudDataSources initializes cloud data sources
-func (r *Runner) initializeCloudDataSources() ([]string, error) {
-	var ids []string
-
+func (r *Runner) initializeCloudDataSources() error {
 	if r.options.AwsBucketName != "" {
 		token := strings.Join([]string{r.options.AwsAccessKey, r.options.AwsSecretKey, r.options.AwsRegion}, ":")
-		if ID, err := r.processDataSourceItem(r.options.AwsBucketName, token, "s3"); err != nil {
-			return nil, err
-		} else {
-			ids = append(ids, ID)
+		if _, err := r.processDataSourceItem(r.options.AwsBucketName, token, "s3"); err != nil {
+			return err
 		}
 	}
 	for _, repo := range r.options.GithubTemplateRepo {
-		if ID, err := r.processDataSourceItem(repo, r.options.GithubToken, "github"); err != nil {
-			return nil, err
-		} else {
-			ids = append(ids, ID)
+		if _, err := r.processDataSourceItem(repo, r.options.GithubToken, "github"); err != nil {
+			return err
 		}
 	}
-	return ids, nil
+	return nil
 }
 
-func (r *Runner) processDataSourceItem(repo, token, Type string) (string, error) {
+func (r *Runner) processDataSourceItem(repo, token, Type string) (int64, error) {
 	var secret string
 	ID, err := r.cloudClient.StatusDataSource(nucleicloud.StatusDataSourceRequest{Repo: repo, Token: token})
 	if err != nil {
 		if !strings.Contains(err.Error(), "no rows in result set") {
-			return "", errors.Wrap(err, "could not get data source status")
+			return 0, errors.Wrap(err, "could not get data source status")
 		}
 
 		gologger.Info().Msgf("Adding new data source + syncing: %s\n", repo)
-		ID, secret, err = r.cloudClient.AddDataSource(nucleicloud.AddDataSourceRequest{Type: Type, Repo: repo, Token: token})
+		resp, err := r.cloudClient.AddDataSource(nucleicloud.AddDataSourceRequest{Type: Type, Repo: repo, Token: token})
 		if err != nil {
-			return "", errors.Wrap(err, "could not add data source")
+			return 0, errors.Wrap(err, "could not add data source")
 		}
-		if err = r.cloudClient.SyncDataSource(ID); err != nil {
-			return "", errors.Wrap(err, "could not sync data source")
+		ID = resp.ID
+		if err = r.cloudClient.SyncDataSource(resp.ID); err != nil {
+			return 0, errors.Wrap(err, "could not sync data source")
 		}
 		if secret != "" {
-			gologger.Info().Msgf("Webhook URL for added source: %s/datasources/%s/webhook", r.options.CloudURL, ID)
+			gologger.Info().Msgf("Webhook URL for added source: %s/datasources/%s/webhook", r.options.CloudURL, resp.Hash)
 			gologger.Info().Msgf("Secret for webhook: %s", secret)
 		}
 	}
 	if r.options.UpdateTemplates {
 		gologger.Info().Msgf("Syncing data source: %s (%s)\n", repo, ID)
 		if err = r.cloudClient.SyncDataSource(ID); err != nil {
-			return "", errors.Wrap(err, "could not sync data source")
+			return 0, errors.Wrap(err, "could not sync data source")
 		}
 	}
 	gologger.Info().Msgf("Got connected data source: %s\n", ID)
