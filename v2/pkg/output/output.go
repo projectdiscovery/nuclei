@@ -46,7 +46,7 @@ type Writer interface {
 type StandardWriter struct {
 	json             bool
 	jsonReqResp      bool
-	noTimestamp      bool
+	timestamp        bool
 	noMetadata       bool
 	matcherStatus    bool
 	mutex            *sync.Mutex
@@ -161,7 +161,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		jsonReqResp:      jsonReqResp,
 		noMetadata:       noMetadata,
 		matcherStatus:    MatcherStatus,
-		noTimestamp:      noTimestamp,
+		timestamp:        timestamp,
 		aurora:           auroraColorizer,
 		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,

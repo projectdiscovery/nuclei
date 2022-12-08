@@ -149,6 +149,8 @@ type Options struct {
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
 	OfflineHTTP bool
+	// Force HTTP2 requests
+	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
 	// Headless specifies whether to allow headless mode templates
@@ -202,6 +204,8 @@ type Options struct {
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
 	TemplatesVersion bool
+	// TemplateDisplay displays the template contents
+	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
 	// HangMonitor enables nuclei hang monitoring
@@ -214,8 +218,8 @@ type Options struct {
 	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
-	// NoTimestamp disables display of timestamp for the matcher
-	NoTimestamp bool
+	// Timestamp enables display of timestamp for the matcher
+	Timestamp bool
 	// Project is used to avoid sending same HTTP request multiple times
 	Project bool
 	// NewTemplates only runs newly added templates from the repository
@@ -240,6 +244,8 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
+	// Sandbox enables sandboxed nuclei template execution
+	Sandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
@@ -293,7 +299,15 @@ type Options struct {
 	// Github token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates github repos
-	GithubTemplateRepo goflags.StringSlice
+	GithubTemplateRepo []string
+	// AWS access key for downloading templates from s3 bucket
+	AwsAccessKey string
+	// AWS secret key for downloading templates from s3 bucket
+	AwsSecretKey string
+	// AWS bucket name for downloading templates from s3 bucket
+	AwsBucketName string
+	// AWS Region name where aws s3 bucket is located
+	AwsRegion string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {

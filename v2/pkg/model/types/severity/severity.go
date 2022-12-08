@@ -64,8 +64,9 @@ func (severity Severity) String() string {
 	return severityMappings[severity]
 }
 
-//nolint:exported,revive //prefer to be explicit about the name, and make it refactor-safe
 // Holder holds a Severity type. Required for un/marshalling purposes
+//
+//nolint:exported,revive //prefer to be explicit about the name, and make it refactor-safe
 type Holder struct {
 	Severity Severity `mapping:"true"`
 }

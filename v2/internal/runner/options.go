@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/stringsutil"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -39,6 +40,9 @@ func ConfigureOptions() error {
 func ParseOptions(options *types.Options) {
 	// Check if stdin pipe was given
 	options.Stdin = !options.DisableStdin && fileutil.HasStdin()
+
+	// Read the inputs from env variables that not passed by flag.
+	readEnvInputVars(options)
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
@@ -61,7 +65,13 @@ func ParseOptions(options *types.Options) {
 		if err != nil {
 			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
 		}
-		gologger.Info().Msgf("Current nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
+		gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
+		if configuration.CustomS3TemplatesDirectory != "" {
+			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
+		}
+		if configuration.CustomGithubTemplatesDirectory != "" {
+			gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
+		}
 		os.Exit(0)
 	}
 	if options.ShowActions {
@@ -95,6 +105,11 @@ func ParseOptions(options *types.Options) {
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
+	}
+
+	// Set Github token in env variable. runner.getGHClientWithToken() reads token from env
+	if options.GithubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GithubToken {
+		os.Setenv("GITHUB_TOKEN", options.GithubToken)
 	}
 
 	if options.UncoverQuery != nil {
@@ -143,8 +158,28 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
+	// Verify aws secrets are passed if s3 template bucket passed
+	if options.AwsBucketName != "" && options.UpdateTemplates {
+		var missing []string
+		if options.AwsAccessKey == "" {
+			missing = append(missing, "AWS_ACCESS_KEY")
+		}
+		if options.AwsSecretKey == "" {
+			missing = append(missing, "AWS_SECRET_KEY")
+		}
+		if options.AwsRegion == "" {
+			missing = append(missing, "AWS_REGION")
+		}
+		if missing != nil {
+			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
+		}
+	}
 
 	// verify that a valid ip version type was selected (4, 6)
+	if len(options.IPVersion) == 0 {
+		// add ipv4 as default
+		options.IPVersion = append(options.IPVersion, "4")
+	}
 	var useIPV4, useIPV6 bool
 	for _, ipv := range options.IPVersion {
 		switch ipv {
@@ -236,4 +271,17 @@ func validateCertificatePaths(certificatePaths []string) {
 			break
 		}
 	}
+}
+
+// Read the input from env and set options
+func readEnvInputVars(options *types.Options) {
+	options.GithubToken = os.Getenv("GITHUB_TOKEN")
+	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
+	if repolist != "" {
+		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+	}
+	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
+	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
+	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
+	options.AwsRegion = os.Getenv("AWS_REGION")
 }

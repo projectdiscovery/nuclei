@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/uncover/uncover/agent/censys"
 	"github.com/projectdiscovery/uncover/uncover/agent/fofa"
 	"github.com/projectdiscovery/uncover/uncover/agent/hunter"
+	"github.com/projectdiscovery/uncover/uncover/agent/netlas"
 	"github.com/projectdiscovery/uncover/uncover/agent/quake"
 	"github.com/projectdiscovery/uncover/uncover/agent/shodan"
 	"github.com/projectdiscovery/uncover/uncover/agent/shodanidb"
@@ -28,7 +29,7 @@ import (
 const maxConcurrentAgents = 50
 
 func GetUncoverSupportedAgents() string {
-	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye"}
+	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
 
@@ -69,6 +70,8 @@ func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit
 				eng = "hunter"
 			case "zoomeye-query":
 				eng = "zoomeye"
+			case "netlas-query":
+				eng = "netlas"
 			default:
 				continue
 			}
@@ -126,6 +129,8 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 			agent, err = hunter.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "zoomeye":
 			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
+		case "netlas":
+			agent, err = netlas.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		default:
 			err = errors.Errorf("%s unknown uncover agent type", engine)
 		}
@@ -219,6 +224,12 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 			options.Provider.Quake = append(options.Provider.Quake, key)
 		} else {
 			return errors.Errorf("QUAKE_TOKEN env variable is not configured")
+		}
+	case "netlas":
+		if key, exists := os.LookupEnv("NETLAS_API_KEY"); exists {
+			options.Provider.Netlas = append(options.Provider.Netlas, key)
+		} else {
+			return errors.Errorf("NETLAS_API_KEY env variable is not configured")
 		}
 	default:
 		return errors.Errorf("unknown uncover agent")
