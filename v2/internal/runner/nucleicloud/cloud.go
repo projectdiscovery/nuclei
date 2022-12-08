@@ -159,59 +159,57 @@ func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
 }
 
 // StatusDataSource returns the status for a data source
-func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (string, error) {
+func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (int64, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(statusRequest); err != nil {
-		return "", errors.Wrap(err, "could not encode request")
+		return 0, errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/status", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return "", errors.Wrap(err, "could not make request")
+		return 0, errors.Wrap(err, "could not make request")
 	}
 
 	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not do request")
+		return 0, errors.Wrap(err, "could not do request")
 	}
 	defer resp.Body.Close()
 
 	var data map[string]interface{}
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", errors.Wrap(err, "could not decode resp")
+		return 0, errors.Wrap(err, "could not decode resp")
 	}
-	id := data["id"].(string)
+	id := data["id"].(int64)
 	return id, nil
 }
 
 // AddDataSource adds a new data source
-func (c *Client) AddDataSource(req AddDataSourceRequest) (string, string, error) {
+func (c *Client) AddDataSource(req AddDataSourceRequest) (*AddDataSourceResponse, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return "", "", errors.Wrap(err, "could not encode request")
+		return nil, errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not make request")
+		return nil, errors.Wrap(err, "could not make request")
 	}
 	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not do request")
+		return nil, errors.Wrap(err, "could not do request")
 	}
 	defer resp.Body.Close()
 
-	var data map[string]interface{}
+	var data AddDataSourceResponse
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", "", errors.Wrap(err, "could not decode resp")
+		return nil, errors.Wrap(err, "could not decode resp")
 	}
-	id := data["id"].(string)
-	secret, _ := data["secret"].(string)
-	return id, secret, nil
+	return &data, nil
 }
 
 // SyncDataSource syncs contents for a data source. The call blocks until
 // update is completed.
-func (c *Client) SyncDataSource(ID string) error {
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources/%s/sync", c.baseURL, ID), nil)
+func (c *Client) SyncDataSource(ID int64) error {
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/datasources/%d/sync", c.baseURL, ID), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
@@ -317,8 +315,8 @@ func (c *Client) ListTemplates(query string) ([]GetTemplatesResponse, error) {
 	return items, nil
 }
 
-func (c *Client) RemoveDatasource(datasource string) error {
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/datasources/%s", c.baseURL, datasource), nil)
+func (c *Client) RemoveDatasource(datasource int64) error {
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/datasources/%d", c.baseURL, datasource), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
