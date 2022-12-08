@@ -36,9 +36,20 @@ type Input struct {
 	hostMapStream *filekv.FileDB
 }
 
+// Options is a wrapper around types.Options structure
+type Options struct {
+	// Options contains options for hmap provider
+	Options *types.Options
+	// NotFoundCallback is called for each not found target
+	// This overrides error handling for not found target
+	NotFoundCallback func(template string) bool
+}
+
 // New creates a new hmap backed nuclei Input Provider
 // and initializes it based on the passed options Model.
-func New(options *types.Options) (*Input, error) {
+func New(opts *Options) (*Input, error) {
+	options := opts.Options
+
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary input file")
@@ -65,7 +76,7 @@ func New(options *types.Options) (*Input, error) {
 		}
 		input.hostMapStream = fkv
 	}
-	if initErr := input.initializeInputSources(options); initErr != nil {
+	if initErr := input.initializeInputSources(opts); initErr != nil {
 		return nil, initErr
 	}
 	if input.dupeCount > 0 {
@@ -83,7 +94,9 @@ func (i *Input) Close() {
 }
 
 // initializeInputSources initializes the input sources for hmap input
-func (i *Input) initializeInputSources(options *types.Options) error {
+func (i *Input) initializeInputSources(opts *Options) error {
+	options := opts.Options
+
 	// Handle targets flags
 	for _, target := range options.Targets {
 		switch {
@@ -105,11 +118,15 @@ func (i *Input) initializeInputSources(options *types.Options) error {
 	if options.TargetsFilePath != "" {
 		input, inputErr := os.Open(options.TargetsFilePath)
 		if inputErr != nil {
-			return errors.Wrap(inputErr, "could not open targets file")
+			// Handle cloud based input here.
+			if opts.NotFoundCallback == nil || !opts.NotFoundCallback(options.TargetsFilePath) {
+				return errors.Wrap(inputErr, "could not open targets file")
+			}
 		}
-		defer input.Close()
-
-		i.scanInputFromReader(input)
+		if input != nil {
+			i.scanInputFromReader(input)
+			input.Close()
+		}
 	}
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))

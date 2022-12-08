@@ -61,7 +61,7 @@ type Store struct {
 
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templatesss
-	NotFoundCallback func(template string)
+	NotFoundCallback func(template string) bool
 }
 
 // NewConfig returns a new loader config
@@ -394,9 +394,7 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 
 func (s *Store) logErroredTemplates(erred map[string]error) {
 	for template, err := range erred {
-		if s.NotFoundCallback != nil {
-			s.NotFoundCallback(template)
-		} else {
+		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
 	}

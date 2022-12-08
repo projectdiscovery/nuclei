@@ -77,6 +77,7 @@ type Runner struct {
 	pprofServer       *http.Server
 	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
+	cloudTargets      []string
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -179,7 +180,16 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Initialize the input source
-	hmapInput, err := hybrid.New(options)
+	hmapInput, err := hybrid.New(&hybrid.Options{
+		Options: options,
+		NotFoundCallback: func(target string) bool {
+			if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
+				runner.cloudTargets = append(runner.cloudTargets, target)
+				return true
+			}
+			return false
+		},
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
@@ -403,33 +413,20 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	var cloudTemplates []string
-	var cloudTargets []string
 	// Initialize cloud data stores if specified
 	if r.options.Cloud {
-		ids, err := r.initializeCloudDataSources()
-		if err != nil {
-			return err
+		if err := r.initializeCloudDataSources(); err != nil {
+			return errors.Wrap(err, "could not init cloud data sources")
 		}
 
 		// hook template loading
-		store.NotFoundCallback = func(template string) {
-			for _, id := range ids {
-				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Type: "templates", Contents: template}); err == nil {
-					cloudTemplates = append(cloudTemplates, template)
-					break
-				}
+		store.NotFoundCallback = func(template string) bool {
+			if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
+				cloudTemplates = append(cloudTemplates, template)
+				return true
 			}
+			return false
 		}
-		// identify cloud targets
-		r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
-			for _, id := range ids {
-				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Contents: value.Input, Type: "targets"}); err == nil {
-					cloudTargets = append(cloudTargets, value.Input)
-					break
-				}
-			}
-			return true
-		})
 	}
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
@@ -496,7 +493,7 @@ func (r *Runner) RunEnumeration() error {
 			err = r.removeTemplate(r.options.RemoveTemplate)
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, cloudTemplates, cloudTargets, r.options.NoStore, r.options.OutputLimit)
+			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
 			enumeration = true
 		}
 	} else {
