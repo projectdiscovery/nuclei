@@ -1,10 +1,13 @@
 package hybrid
 
 import (
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/miekg/dns"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
@@ -46,8 +49,41 @@ func Test_expandCIDRInputValue(t *testing.T) {
 	}
 }
 
+type mockDnsHandler struct{}
+
+func (this *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	msg := dns.Msg{}
+	msg.SetReply(r)
+	switch r.Question[0].Qtype {
+	case dns.TypeA:
+		msg.Authoritative = true
+		domain := msg.Question[0].Name
+		msg.Answer = append(msg.Answer, &dns.A{
+			Hdr: dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+			A:   net.ParseIP("128.199.158.128"),
+		})
+	case dns.TypeAAAA:
+		msg.Authoritative = true
+		domain := msg.Question[0].Name
+		msg.Answer = append(msg.Answer, &dns.AAAA{
+			Hdr:  dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+			AAAA: net.ParseIP("2400:6180:0:d0::91:1001"),
+		})
+	}
+	_ = w.WriteMsg(&msg)
+}
+
 func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
+	srv := &dns.Server{Addr: ":" + strconv.Itoa(61234), Net: "udp"}
+	srv.Handler = &mockDnsHandler{}
+
+	go func() {
+		err := srv.ListenAndServe()
+		require.Nil(t, err)
+	}()
+
 	defaultOpts := types.DefaultOptions()
+	defaultOpts.InternalResolversList = []string{"127.0.0.1:61234"}
 	_ = protocolstate.Init(defaultOpts)
 	tests := []struct {
 		hostname string
@@ -87,7 +123,7 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			},
 		}
 
-		input.normalizeStoreInputValue(tt.hostname)
+		input.Set(tt.hostname)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {

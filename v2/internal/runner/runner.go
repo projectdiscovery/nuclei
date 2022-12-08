@@ -42,6 +42,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -74,7 +75,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   *[]customtemplates.CustomTemplateProvider
+	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 }
 
@@ -185,7 +186,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.Timestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -256,9 +257,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
@@ -443,8 +444,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// add the hosts from the metadata queries of loaded templates into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit, r.options.UncoverField)
+		for host := range ret {
+			r.hmapInputProvider.Set(host)
+		}
+	}
 	// list all templates
-	if r.options.TemplateList {
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}

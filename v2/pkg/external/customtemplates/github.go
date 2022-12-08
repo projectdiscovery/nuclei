@@ -24,7 +24,7 @@ type customTemplateGithubRepo struct {
 
 // This function download the custom github template repository
 func (customTemplate *customTemplateGithubRepo) Download(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, customGithubTemplateDirectory)
+	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
 	if !fileutil.FolderExists(clonePath) {
@@ -39,7 +39,7 @@ func (customTemplate *customTemplateGithubRepo) Download(location string, ctx co
 }
 
 func (customTemplate *customTemplateGithubRepo) Update(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, customGithubTemplateDirectory)
+	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
 	// If folder does not exits then clone/download the repo

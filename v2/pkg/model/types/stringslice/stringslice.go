@@ -52,10 +52,14 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 
 	result := make([]string, 0, len(marshalledSlice))
 	for _, value := range marshalledSlice {
-		result = append(result, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
+		result = append(result, stringSlice.normalize(value))
 	}
 	stringSlice.Value = result
 	return nil
+}
+
+func (stringSlice StringSlice) normalize(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {
@@ -82,7 +86,7 @@ func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 	switch {
 	case len(marshalledValuesAsSlice) > 0:
 		result = marshalledValuesAsSlice
-	case utils.IsNotBlank(marshalledValueAsString):
+	case !utils.IsBlank(marshalledValueAsString):
 		result = strings.Split(marshalledValueAsString, ",")
 	default:
 		result = []string{}
@@ -90,7 +94,7 @@ func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 
 	values := make([]string, 0, len(result))
 	for _, value := range result {
-		values = append(values, strings.ToLower(strings.TrimSpace(value))) // TODO do we need to introduce RawStringSlice and/or NormalizedStringSlices?
+		values = append(values, stringSlice.normalize(value))
 	}
 	stringSlice.Value = values
 	return nil
@@ -112,7 +116,7 @@ func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
 	switch {
 	case len(marshalledValuesAsSlice) > 0:
 		result = marshalledValuesAsSlice
-	case utils.IsNotBlank(marshalledValueAsString):
+	case !utils.IsBlank(marshalledValueAsString):
 		result = strings.Split(marshalledValueAsString, ",")
 	default:
 		result = []string{}

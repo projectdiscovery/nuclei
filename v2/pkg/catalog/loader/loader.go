@@ -2,6 +2,7 @@ package loader
 
 import (
 	"os"
+	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -291,6 +292,11 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
+
+	sort.SliceStable(loadedTemplates, func(i, j int) bool {
+		return loadedTemplates[i].Path < loadedTemplates[j].Path
+	})
+
 	return loadedTemplates
 }
 
