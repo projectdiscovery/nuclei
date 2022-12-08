@@ -405,7 +405,7 @@ func (r *Runner) RunEnumeration() error {
 	var cloudTemplates []string
 	var cloudTargets []string
 	// Initialize cloud data stores if specified
-	if r.options.Cloud && (r.options.GithubToken != "" || r.options.AwsBucketName != "") {
+	if r.options.Cloud {
 		ids, err := r.initializeCloudDataSources()
 		if err != nil {
 			return err
