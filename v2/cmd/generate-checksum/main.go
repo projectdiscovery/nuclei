@@ -30,6 +30,7 @@ func main() {
 			return nil
 		}
 		pathIndex := path[strings.Index(path, "nuclei-templates/")+17:]
+		pathIndex = strings.TrimPrefix(pathIndex, "nuclei-templates/")
 		// Ignore items starting with dots
 		if strings.HasPrefix(pathIndex, ".") {
 			return nil
