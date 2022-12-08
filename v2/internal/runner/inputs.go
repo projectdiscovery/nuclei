@@ -3,9 +3,11 @@ package runner
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"sync/atomic"
 
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
@@ -29,7 +31,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
-	gologger.Info().Msgf("Running httpx on input to execute http based template")
+	gologger.Info().Msgf("Running httpx on input host")
 
 	var bulkSize = probeBulkSize
 	if r.options.BulkSize > probeBulkSize {
@@ -56,7 +58,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Discovered %d URL from input", atomic.LoadInt32(&count))
+	gologger.Info().Msgf("Found %d URL from httpx", atomic.LoadInt32(&count))
 	return hm, nil
 }
 
@@ -71,7 +73,13 @@ var (
 func probeURL(input string, httpclient *retryablehttp.Client) string {
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
-		resp, err := httpclient.Get(formedURL)
+		req, err := retryablehttp.NewRequest(http.MethodGet, formedURL, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", uarand.GetRandom())
+
+		resp, err := httpclient.Do(req)
 		if resp != nil {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
 			resp.Body.Close()

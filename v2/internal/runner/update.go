@@ -25,8 +25,9 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei-updatecheck-api/client"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
+	client "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/updatecheck"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -37,12 +38,10 @@ import (
 )
 
 const (
-	userName                      = "projectdiscovery"
-	repoName                      = "nuclei-templates"
-	nucleiIgnoreFile              = ".nuclei-ignore"
-	nucleiConfigFilename          = ".templates-config.json"
-	customGithubTemplateDirectory = "github"
-	customS3TemplateDirectory     = "s3"
+	userName             = "projectdiscovery"
+	repoName             = "nuclei-templates"
+	nucleiIgnoreFile     = ".nuclei-ignore"
+	nucleiConfigFilename = ".templates-config.json"
 )
 
 var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
@@ -105,11 +104,9 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// download | update the custom templates repos
-	for _, ct := range *r.customTemplates {
-		if r.options.UpdateTemplates {
+	if r.options.UpdateTemplates {
+		for _, ct := range r.customTemplates {
 			ct.Update(r.templatesConfig.TemplatesDirectory, ctx)
-		} else {
-			ct.Download(r.templatesConfig.TemplatesDirectory, ctx)
 		}
 	}
 
@@ -133,10 +130,13 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 
 // createDefaultConfig create template config file is template config is not found
 func (r *Runner) createDefaultConfig(defaultTemplatesDirectory string) error {
-	if r.templatesConfig == nil {
+	// TODO remove customTemplate check in next version.
+	if r.templatesConfig == nil || r.templatesConfig.CustomGithubTemplatesDirectory == "" || r.templatesConfig.CustomS3TemplatesDirectory == "" {
 		currentConfig := &config.Config{
-			TemplatesDirectory: defaultTemplatesDirectory,
-			NucleiVersion:      config.Version,
+			TemplatesDirectory:             defaultTemplatesDirectory,
+			NucleiVersion:                  config.Version,
+			CustomS3TemplatesDirectory:     filepath.Join(defaultTemplatesDirectory, customtemplates.CustomS3TemplateDirectory),
+			CustomGithubTemplatesDirectory: filepath.Join(defaultTemplatesDirectory, customtemplates.CustomGithubTemplateDirectory),
 		}
 		r.templatesConfig = currentConfig
 		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
@@ -175,7 +175,7 @@ func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context
 	gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 	// case where -gtr flag is passed for the first time installation
-	for _, ct := range *r.customTemplates {
+	for _, ct := range r.customTemplates {
 		ct.Download(r.templatesConfig.TemplatesDirectory, ctx)
 	}
 	return nil

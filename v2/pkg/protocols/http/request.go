@@ -755,26 +755,19 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	case AWSSignature:
 		var awsSigner signer.Signer
 		vars := request.options.Options.Vars.AsMap()
-		awsAccessKeyId := types.ToString(vars["aws-id"])
-		awsSecretAccessKey := types.ToString(vars["aws-secret"])
-		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
-		service := types.ToString(generatedRequest.dynamicValues["service"])
-		region := types.ToString(generatedRequest.dynamicValues["region"])
-		// if region is empty use default value
-		if region == "" {
-			region = types.ToString(signer.AwsDefaultVars["region"])
+		awsopts := signer.AWSOptions{
+			AwsID:          types.ToString(vars["aws-id"]),
+			AwsSecretToken: types.ToString(vars["aws-secret"]),
 		}
-		awsSignatureArguments := signer.AwsSignatureArguments{
-			Service: types.ToString(service),
-			Region:  types.ToString(region),
-			Time:    time.Now(),
-		}
+		// type ctxkey string
+		ctx := context.WithValue(context.Background(), signer.SignerArg("service"), generatedRequest.dynamicValues["service"])
+		ctx = context.WithValue(ctx, signer.SignerArg("region"), generatedRequest.dynamicValues["region"])
 
-		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}
-		err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
+		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err
 		}

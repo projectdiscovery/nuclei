@@ -203,6 +203,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	transport := &http.Transport{
+		ForceAttemptHTTP2:   options.ForceAttemptHTTP2,
 		DialContext:         Dialer.Dial,
 		DialTLSContext:      Dialer.DialTLS,
 		MaxIdleConns:        maxIdleConns,
@@ -211,6 +212,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		TLSClientConfig:     tlsConfig,
 		DisableKeepAlives:   disableKeepAlives,
 	}
+
 	if types.ProxyURL != "" {
 		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)

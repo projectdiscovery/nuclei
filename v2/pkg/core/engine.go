@@ -31,6 +31,8 @@ type InputProvider interface {
 	// Scan iterates the input and each found item is passed to the
 	// callback consumer.
 	Scan(callback func(value *contextargs.MetaInput) bool)
+	// Set adds item to input provider
+	Set(value string)
 }
 
 // New returns a new Engine instance

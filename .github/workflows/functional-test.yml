@@ -1,7 +1,9 @@
 name: 🧪 Functional Test
+
 on:
-  push:
   pull_request:
+    paths:
+      - '**.go'
   workflow_dispatch:
 
 
