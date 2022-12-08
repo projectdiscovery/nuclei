@@ -9,23 +9,19 @@ import (
 )
 
 const (
-	customGithubTemplateDirectory = "github"
-	customS3TemplateDirectory     = "s3"
+	CustomGithubTemplateDirectory = "github"
+	CustomS3TemplateDirectory     = "s3"
 )
 
-type CustomTemplateProvider interface {
+type Provider interface {
 	Download(location string, ctx context.Context)
 	Update(location string, ctx context.Context)
 }
 
 // parseCustomTemplates function reads the options.GithubTemplateRepo list,
 // Checks the given repos are valid or not and stores them into runner.CustomTemplates
-func ParseCustomTemplates(options *types.Options) *[]CustomTemplateProvider {
-	// do not sync templates in case of cloud
-	if options.Cloud {
-		return nil
-	}
-	var customTemplates []CustomTemplateProvider
+func ParseCustomTemplates(options *types.Options) []Provider {
+	var customTemplates []Provider
 	gitHubClient := getGHClientIncognito()
 
 	for _, repoName := range options.GithubTemplateRepo {
@@ -51,7 +47,7 @@ func ParseCustomTemplates(options *types.Options) *[]CustomTemplateProvider {
 		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion)
 		if err != nil {
 			gologger.Error().Msgf("error downloading s3 bucket %s %s", options.AwsBucketName, err)
-			return &customTemplates
+			return customTemplates
 		}
 		ctBucket := &customTemplateS3Bucket{
 			bucketName: options.AwsBucketName,
@@ -64,5 +60,5 @@ func ParseCustomTemplates(options *types.Options) *[]CustomTemplateProvider {
 		}
 		customTemplates = append(customTemplates, ctBucket)
 	}
-	return &customTemplates
+	return customTemplates
 }

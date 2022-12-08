@@ -1,7 +1,6 @@
 name: 🙏🏻 Lint Test
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -17,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3.3.0
+        uses: golangci/golangci-lint-action@v3.3.1
         with:
           version: latest
           args: --timeout 5m

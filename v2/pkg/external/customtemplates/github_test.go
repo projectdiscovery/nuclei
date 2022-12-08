@@ -20,10 +20,10 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 
 	options := testutils.DefaultOptions
 	options.GithubTemplateRepo = []string{"projectdiscovery/nuclei-templates", "ehsandeep/nuclei-templates"}
-
+	options.GithubToken = os.Getenv("GITHUB_TOKEN")
 	customTemplates := ParseCustomTemplates(options)
 
-	for _, ct := range *customTemplates {
+	for _, ct := range customTemplates {
 		ct.Download(templatesDirectory, context.Background())
 	}
 

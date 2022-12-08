@@ -17,7 +17,7 @@ type ExcludeMatchers struct {
 // <template-id>:<matcher-name> is the syntax. Wildcards can be specified
 // using * character for either value.
 //
-//  Ex- http-missing-security-headers:* skips all http-missing-security-header templates
+//	Ex- http-missing-security-headers:* skips all http-missing-security-header templates
 func New(values []string) *ExcludeMatchers {
 	excludeMatchers := &ExcludeMatchers{
 		values:       make(map[string]struct{}),
