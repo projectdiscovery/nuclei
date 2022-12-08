@@ -161,7 +161,7 @@ func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, Match
 		jsonReqResp:      jsonReqResp,
 		noMetadata:       noMetadata,
 		matcherStatus:    MatcherStatus,
-		timestamp:        timestamp,
+		timestamp:        noTimestamp,
 		aurora:           auroraColorizer,
 		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,
