@@ -66,12 +66,6 @@ const (
 // Various formats are supported for inputs and their transformation
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	notURL := !strings.Contains(input, "://")
-	if strings.Contains(input, "/") {
-		// edge case if input is similar to github.com/projectdiscovery or
-		// example.com:80/admin
-		notURL = false
-		input = "http://" + input
-	}
 	parsed, _ := url.Parse(input)
 	var host, port string
 	if !notURL && parsed != nil {
