@@ -577,8 +577,6 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e h1:hEZVGt0VriAqweU8wHHTY+fLuGC7GMEz8xUhseJgl6A=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
-github.com/projectdiscovery/tlsx v1.0.0 h1:krS0QRbh4wHqeOybVQwBImY9PmIqzFOYM9Q+cKlEiZE=
-github.com/projectdiscovery/tlsx v1.0.0/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
 github.com/projectdiscovery/uncover v1.0.1 h1:bhP+EW4d+e4cAizOWAEz7jeyKZGkDYYTsZlXsd11t+w=
 github.com/projectdiscovery/uncover v1.0.1/go.mod h1:/D9qxgN2iZ/C2M8eo+pNQMnTaMhTZUu40Vat/LgSIxU=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3 h1:sOvfN3xHLiBMb6GJ3yDxBmPnN0dh3xllaQXQYo7CFUo=
