@@ -418,6 +418,10 @@ func (r *Runner) RunEnumeration() error {
 		if err := r.initializeCloudDataSources(); err != nil {
 			return errors.Wrap(err, "could not init cloud data sources")
 		}
+		// Only update if asked
+		if r.options.UpdateTemplates {
+			return nil
+		}
 
 		// hook template loading
 		store.NotFoundCallback = func(template string) bool {
@@ -658,8 +662,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
-
-	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	if r.hmapInputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	}
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
