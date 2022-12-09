@@ -58,5 +58,5 @@ func TestVariables(t *testing.T) {
 	require.Equal(t, values["Port"], "80", "incorrect port number")
 	require.Equal(t, values["Scheme"], "http", "incorrect scheme")
 	require.Equal(t, values["Hostname"], "scanme.sh", "incorrect hostname")
-	require.Equal(t, values["Ip"], "1.2.3.4", "incorrect ip")
+	require.Equal(t, values["ip"], "1.2.3.4", "incorrect ip")
 }
