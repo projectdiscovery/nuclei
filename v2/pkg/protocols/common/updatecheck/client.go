@@ -3,7 +3,6 @@ package updatecheck
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -54,7 +53,7 @@ func GetLatestIgnoreFile() ([]byte, error) {
 	}
 	defer body.Close()
 
-	data, err := ioutil.ReadAll(body)
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
