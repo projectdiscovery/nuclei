@@ -113,6 +113,9 @@ func (r *Runner) removeDatasource(datasource string) error {
 
 func (r *Runner) addTemplate(location string) error {
 	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() || !strings.HasSuffix(path, ".yaml") {
 			return nil
 		}
@@ -130,6 +133,9 @@ func (r *Runner) addTemplate(location string) error {
 
 func (r *Runner) addTarget(location string) error {
 	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() || !strings.HasSuffix(path, ".txt") {
 			return nil
 		}
