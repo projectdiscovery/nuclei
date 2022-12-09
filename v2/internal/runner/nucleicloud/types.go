@@ -56,9 +56,13 @@ type DeleteScanResults struct {
 
 // StatusDataSourceRequest is a add data source request item.
 type StatusDataSourceRequest struct {
-	ID    string `json:"id"`
 	Repo  string `json:"repo"`
 	Token string `json:"token"`
+}
+
+// StatusDataSourceResponse is a add data source response item.
+type StatusDataSourceResponse struct {
+	ID int64 `json:"id"`
 }
 
 // AddDataSourceRequest is a add data source request item.
