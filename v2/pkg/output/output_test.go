@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStandardWriterRequest(t *testing.T) {
 	t.Run("WithoutTraceAndError", func(t *testing.T) {
-		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "", "")
+		w, err := NewStandardWriter(&types.Options{})
 		require.NoError(t, err)
 		require.NotPanics(t, func() {
 			w.Request("path", "input", "http", nil)
@@ -23,7 +24,7 @@ func TestStandardWriterRequest(t *testing.T) {
 		traceWriter := &testWriteCloser{}
 		errorWriter := &testWriteCloser{}
 
-		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "", "")
+		w, err := NewStandardWriter(&types.Options{})
 		w.traceFile = traceWriter
 		w.errorFile = errorWriter
 		require.NoError(t, err)
@@ -36,7 +37,7 @@ func TestStandardWriterRequest(t *testing.T) {
 	t.Run("ErrorWithWrappedError", func(t *testing.T) {
 		errorWriter := &testWriteCloser{}
 
-		w, err := NewStandardWriter(false, false, false, false, false, false, false, "", "", "", "", "")
+		w, err := NewStandardWriter(&types.Options{})
 		w.errorFile = errorWriter
 		require.NoError(t, err)
 		w.Request(

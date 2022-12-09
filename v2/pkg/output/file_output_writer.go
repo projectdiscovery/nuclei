@@ -12,20 +12,18 @@ type fileWriter struct {
 }
 
 // NewFileOutputWriter creates a new buffered writer for a file
-func newFileOutputWriter(file string, resume string) (*fileWriter, error) {
-	if resume != "" {
-		output, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
-		return &fileWriter{file: output}, nil
+func newFileOutputWriter(file string, resume bool) (*fileWriter, error) {
+	var flags int
+	if resume {
+		flags = os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	} else {
-		output, err := os.Create(file)
-		if err != nil {
-			return nil, err
-		}
-		return &fileWriter{file: output}, nil
+		flags = os.O_CREATE
 	}
+	output, err := os.OpenFile(file, flags, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &fileWriter{file: output}, nil
 }
 
 // WriteString writes an output to the underlying file
