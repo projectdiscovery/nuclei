@@ -20,7 +20,7 @@ func TestBaseURLWithTemplatePrefs(t *testing.T) {
 	parsed, _ := url.Parse(baseURL)
 
 	data := "{{BaseURL}}:8000/newpath"
-	data, parsed = baseURLWithTemplatePrefs(data, parsed)
+	data, parsed = baseURLWithTemplatePrefs(data, parsed, false)
 	require.Equal(t, "http://localhost:8000/test", parsed.String(), "could not get correct value")
 	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
 }

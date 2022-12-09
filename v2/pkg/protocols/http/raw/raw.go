@@ -60,7 +60,7 @@ read_line:
 	// Check if we have also a path from the passed base URL and if yes,
 	// append that to the unsafe request as well.
 	if parsedURL.Path != "" && parts[1] != "" && parts[1] != parsedURL.Path {
-		rawRequest.UnsafeRawBytes = fixUnsafeRequestPath(parsedURL, parts[1], rawRequest.UnsafeRawBytes)
+		rawRequest.UnsafeRawBytes, parts[1] = fixUnsafeRequestPath(parsedURL, parts[1], rawRequest.UnsafeRawBytes)
 	}
 	// Set the request Method
 	rawRequest.Method = parts[0]
@@ -156,7 +156,20 @@ read_line:
 	return rawRequest, nil
 }
 
-func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) []byte {
+func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) ([]byte, string) {
+	reqpath, err := url.Parse(requestPath)
+	if err == nil {
+		rawqueries := reqpath.Query()
+		if len(rawqueries) != 0 {
+			baseparams := baseURL.Query()
+			for k := range rawqueries {
+				baseparams.Add(k, rawqueries.Get(k))
+			}
+			baseURL.RawQuery = baseparams.Encode()
+			reqpath.RawQuery = ""
+			requestPath = reqpath.String()
+		}
+	}
 	var fixedPath string
 	if stringsutil.HasPrefixAny(requestPath, "/") {
 		fixedPath = path.Join(baseURL.Path, requestPath)
@@ -164,7 +177,7 @@ func fixUnsafeRequestPath(baseURL *url.URL, requestPath string, request []byte) 
 		fixedPath = fmt.Sprintf("%s%s", baseURL.Path, requestPath)
 	}
 
-	return bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1)
+	return bytes.Replace(request, []byte(requestPath), []byte(fixedPath), 1), requestPath
 }
 
 // TryFillCustomHeaders after the Host header
