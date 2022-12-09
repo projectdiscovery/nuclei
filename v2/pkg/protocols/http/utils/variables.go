@@ -6,12 +6,22 @@ import (
 	"path"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 )
 
-// GenerateVariables will create default variables after parsing a url
-func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface{} {
+// GenerateVariables will create default variables with context args
+func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
+	parsed, err := url.Parse(input.MetaInput.Input)
+	if err != nil {
+		return nil
+	}
+	return GenerateVariablesWithURL(parsed, trailingSlash, contextargs.GenerateVariables(input))
+}
+
+// GenerateVariables will create default variables after parsing a url with additional variables
+func GenerateVariablesWithURL(parsed *url.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
 	domain := parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
@@ -49,5 +59,5 @@ func GenerateVariables(parsed *url.URL, trailingSlash bool) map[string]interface
 		"File":     base,
 		"Scheme":   parsed.Scheme,
 	}
-	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain))
+	return generators.MergeMaps(httpVariables, dns.GenerateVariables(domain), additionalVars)
 }
