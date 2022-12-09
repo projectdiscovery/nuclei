@@ -98,12 +98,14 @@ func (r *Runner) listTemplates() error {
 }
 
 func (r *Runner) removeDatasource(datasource string) error {
-	ID, _ := strconv.ParseInt(datasource, 10, 64)
+	var source string
+	ID, parseErr := strconv.ParseInt(datasource, 10, 64)
+	if parseErr != nil {
+		source = datasource
+	}
 
-	err := r.cloudClient.RemoveDatasource(ID)
-	if err != nil {
-		gologger.Error().Msgf("Error in deleting datasource %s: %s", datasource, err)
-	} else {
+	err := r.cloudClient.RemoveDatasource(ID, source)
+	if err == nil {
 		gologger.Info().Msgf("Datasource deleted %s", datasource)
 	}
 	return err
@@ -189,7 +191,6 @@ func (r *Runner) initializeCloudDataSources() error {
 }
 
 func (r *Runner) processDataSourceItem(repo, token, Type string) (int64, error) {
-	var secret string
 	ID, err := r.cloudClient.StatusDataSource(nucleicloud.StatusDataSourceRequest{Repo: repo, Token: token})
 	if err != nil {
 		if !strings.Contains(err.Error(), "no rows in result set") {
@@ -205,17 +206,16 @@ func (r *Runner) processDataSourceItem(repo, token, Type string) (int64, error) 
 		if err = r.cloudClient.SyncDataSource(resp.ID); err != nil {
 			return 0, errors.Wrap(err, "could not sync data source")
 		}
-		if secret != "" {
+		if resp.Secret != "" {
 			gologger.Info().Msgf("Webhook URL for added source: %s/datasources/%s/webhook", r.options.CloudURL, resp.Hash)
-			gologger.Info().Msgf("Secret for webhook: %s", secret)
+			gologger.Info().Msgf("Secret for webhook: %s", resp.Secret)
 		}
 	}
 	if r.options.UpdateTemplates {
-		gologger.Info().Msgf("Syncing data source: %s (%s)\n", repo, ID)
+		gologger.Info().Msgf("Syncing data source: %s (%d)\n", repo, ID)
 		if err = r.cloudClient.SyncDataSource(ID); err != nil {
 			return 0, errors.Wrap(err, "could not sync data source")
 		}
 	}
-	gologger.Info().Msgf("Got connected data source: %s\n", ID)
 	return ID, nil
 }

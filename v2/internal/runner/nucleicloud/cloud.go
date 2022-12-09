@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,12 +176,11 @@ func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (int64,
 	}
 	defer resp.Body.Close()
 
-	var data map[string]interface{}
+	var data StatusDataSourceResponse
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return 0, errors.Wrap(err, "could not decode resp")
 	}
-	id := data["id"].(int64)
-	return id, nil
+	return data.ID, nil
 }
 
 // AddDataSource adds a new data source
@@ -315,8 +315,20 @@ func (c *Client) ListTemplates(query string) ([]GetTemplatesResponse, error) {
 	return items, nil
 }
 
-func (c *Client) RemoveDatasource(datasource int64) error {
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/datasources/%d", c.baseURL, datasource), nil)
+func (c *Client) RemoveDatasource(datasource int64, name string) error {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/datasources")
+
+	if name != "" {
+		_, _ = builder.WriteString("?name=")
+		_, _ = builder.WriteString(name)
+	} else if datasource != 0 {
+		_, _ = builder.WriteString("?id=")
+		_, _ = builder.WriteString(strconv.FormatInt(datasource, 10))
+	}
+
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, builder.String(), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
