@@ -123,7 +123,7 @@ func (r *Runner) addTemplate(location string) error {
 		reference, templateErr := r.cloudClient.AddTemplate(base, path)
 		if templateErr != nil {
 			gologger.Error().Msgf("Could not upload %s: %s", path, templateErr)
-		} else {
+		} else if reference != "" {
 			gologger.Info().Msgf("Uploaded template %s: %s", base, reference)
 		}
 		return nil
@@ -143,8 +143,9 @@ func (r *Runner) addTarget(location string) error {
 		reference, targetErr := r.cloudClient.AddTarget(base, location)
 		if targetErr != nil {
 			gologger.Error().Msgf("Could not upload %s: %s", location, targetErr)
+		} else if reference != "" {
+			gologger.Info().Msgf("Uploaded target %s: %s", base, reference)
 		}
-		gologger.Info().Msgf("Uploaded target %s: %s", base, reference)
 		return nil
 	})
 	return walkErr
