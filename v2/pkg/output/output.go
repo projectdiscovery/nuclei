@@ -123,9 +123,6 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-//
-//	func NewStandardWriter(colors, noMetadata, noTimestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string, resumeFlag string) (*StandardWriter, error) {
-//			 NewStandardWriter(!options.NoColor, options.NoMeta, options.Timestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir, options.Resume)
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	resumeBool := false
 	if options.Resume != "" {
