@@ -43,17 +43,16 @@ const (
 
 // ExtractorTypes is a table for conversion of extractor type from string.
 var protocolMappings = map[ProtocolType]string{
-	InvalidProtocol:     "invalid",
-	DNSProtocol:         "dns",
-	FileProtocol:        "file",
-	HTTPProtocol:        "http",
-	OfflineHTTPProtocol: "offlinehttp",
-	HeadlessProtocol:    "headless",
-	NetworkProtocol:     "network",
-	WorkflowProtocol:    "workflow",
-	SSLProtocol:         "ssl",
-	WebsocketProtocol:   "websocket",
-	WHOISProtocol:       "whois",
+	InvalidProtocol:   "invalid",
+	DNSProtocol:       "dns",
+	FileProtocol:      "file",
+	HTTPProtocol:      "http",
+	HeadlessProtocol:  "headless",
+	NetworkProtocol:   "network",
+	WorkflowProtocol:  "workflow",
+	SSLProtocol:       "ssl",
+	WebsocketProtocol: "websocket",
+	WHOISProtocol:     "whois",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {
@@ -158,7 +157,11 @@ func (protocolTypes *ProtocolTypes) UnmarshalYAML(unmarshal func(interface{}) er
 func (protocolTypes ProtocolTypes) String() string {
 	var stringTypes []string
 	for _, t := range protocolTypes {
-		stringTypes = append(stringTypes, t.String())
+		protocolMapping := t.String()
+		if protocolMapping != "" {
+			stringTypes = append(stringTypes, protocolMapping)
+		}
+
 	}
 	return strings.Join(stringTypes, ", ")
 }
