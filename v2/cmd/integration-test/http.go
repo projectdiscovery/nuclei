@@ -19,7 +19,7 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
+	//"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
