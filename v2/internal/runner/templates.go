@@ -2,7 +2,7 @@ package runner
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -46,7 +46,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 				colorize := !r.options.NoColor
 
 				path := tpl.Path
-				tplBody, err := ioutil.ReadFile(path)
+				tplBody, err := os.ReadFile(path)
 				if err != nil {
 					gologger.Error().Msgf("Could not read the template %s: %s", path, err)
 					continue
