@@ -282,10 +282,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
-		flagSet.StringVarEnv(&options.AwsAccessKey, "aws-access-key", "aak", "", "AWS_ACCESS_KEY", "aws access key to download template from bucket (AWS_ACCESS_KEY)"),
-		flagSet.StringVarEnv(&options.AwsSecretKey, "aws-secret-key", "ask", "", "AWS_SECRET_KEY", "aws secret key to download template from bucket (AWS_SECRET_KEY)"),
-		flagSet.StringVarEnv(&options.AwsRegion, "aws-region-name", "arg", "", "AWS_REGION", "aws s3 bucket region name to download template(AWS_REGION)"),
-		flagSet.StringVarEnv(&options.AwsBucketName, "aws-bucket-name", "abn", "", "AWS_BUCKET_NAME", "aws s3 bucket name to download template(AWS_BUCKET_NAME)"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",
