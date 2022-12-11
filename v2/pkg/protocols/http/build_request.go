@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -59,7 +60,7 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, data, payloads, dynamicValues)
 	}
@@ -74,7 +75,7 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 		}
 	}
 
-	parsed, err := url.Parse(baseURL)
+	parsed, err := url.Parse(input.MetaInput.Input)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 	}
 
 	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, trailingSlash)),
+		generators.MergeMaps(dynamicValues, utils.GenerateVariablesWithURL(parsed, trailingSlash, contextargs.GenerateVariables(input))),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 	if vardump.EnableVarDump {
@@ -152,10 +153,8 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
 				return nil, err
 			}
-		} else { // the url might contain placeholders
-			if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
-				return nil, err
-			}
+		} else if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil { // the url might contain placeholders
+			return nil, err
 		}
 
 		parsed, err := url.Parse(parts[1])
@@ -163,7 +162,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, false)),
+			generators.MergeMaps(dynamicValues, utils.GenerateVariablesWithURL(parsed, false, nil)),
 			values,
 		)
 
