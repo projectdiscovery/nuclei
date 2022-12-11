@@ -426,6 +426,11 @@ func (r *Runner) RunEnumeration() error {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
+	// list all tags
+	if r.options.TemplateTags {
+		r.listAvailableStoreTemplateTags(store)
+		os.Exit(0)
+	}
 	r.displayExecutionInfo(store)
 
 	// If not explicitly disabled, check if http based protocols

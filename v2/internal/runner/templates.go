@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -34,6 +36,63 @@ func (r *Runner) verboseTemplate(tpl *templates.Template) {
 		tpl.Info.SeverityHolder.Severity))
 }
 
+// templateTags returns a slice of all available template tags
+func (r *Runner) templateTags(store *loader.Store) []string {
+	var tags []string
+	for _, tpl := range store.Templates() {
+		tags = append(tags, tpl.Info.Tags.ToSlice()...)
+	}
+	tags = utils.RemoveDuplicate(tags)
+	sort.Strings(tags)
+
+	return tags
+}
+
+// groupedTemplateTags returns a map of tags grouped by alphabet
+func (r *Runner) groupedTemplateTags(store *loader.Store) map[string][]string {
+	tagMap := make(map[string][]string)
+	for _, tag := range r.templateTags(store) {
+		if tag == "" {
+			continue
+		}
+		groupingChar := tag[0:1]
+		if groupingChar == "" {
+			continue
+		}
+		tagMap[groupingChar] = append(tagMap[groupingChar], tag)
+	}
+
+	return tagMap
+}
+
+// listAvailableStoreTemplateTags list all available template tags
+func (r *Runner) listAvailableStoreTemplateTags(store *loader.Store) {
+	gologger.Print().Msgf(
+		"\nListing available v.%s nuclei template tags for %s",
+		r.templatesConfig.TemplateVersion,
+		r.templatesConfig.TemplatesDirectory,
+	)
+	tagMap := r.groupedTemplateTags(store)
+
+	groupingChars := make([]string, len(tagMap))
+	i := 0
+	for key := range tagMap {
+		groupingChars[i] = key
+		i++
+	}
+	sort.Strings(groupingChars)
+
+	for _, groupingChar := range groupingChars {
+		gologger.Silent().Msgf("\n%s\n", strings.ToUpper(groupingChar))
+		// gologger.Silent().Msgf("- %s", strings.Join(tagMap[groupingChar][:], ", "))
+		for _, tag := range tagMap[groupingChar] {
+			gologger.Silent().Msgf("- %s", tag)
+		}
+
+	}
+}
+
+// listAvailableStoreTemplates list all avaiable templates
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	gologger.Print().Msgf(
 		"\nListing available v.%s nuclei templates for %s",
