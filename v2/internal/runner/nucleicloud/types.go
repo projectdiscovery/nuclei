@@ -106,3 +106,13 @@ type GetTemplatesResponse struct {
 type AddItemResponse struct {
 	Ok string `json:"ok"`
 }
+
+type ListScanOutput struct {
+	Timestamp  string `json:"timestamp"`
+	ScanID     string `json:"scan_id"`
+	ScanTime   string `json:"scan_time"`
+	ScanResult int    `json:"scan_result"`
+	ScanStatus string `json:"scan_status"`
+	Target     int    `json:"target"`
+	Template   int    `json:"template"`
+}

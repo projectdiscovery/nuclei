@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -15,7 +14,6 @@ import (
 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
-	loc, _ := time.LoadLocation("Local")
 	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
 	var e error
@@ -30,16 +28,12 @@ func (r *Runner) getScanList(limit int) error {
 		}
 		for _, v := range items {
 			lastTime = v.CreatedAt.String()
-			status := "FINISHED"
-			t := v.FinishedAt
-			duration := t.Sub(v.CreatedAt)
-			if !v.Finished {
-				status = "RUNNING"
-				t = time.Now().UTC()
-				duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
+			res := nucleicloud.PrepareScanListOutput(v)
+			if r.options.JSON {
+				nucleicloud.DisplayScanListInJson(res)
+			} else {
+				nucleicloud.DisplayScanList(res)
 			}
-			val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
-			gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
 		}
 	}
 	return e
@@ -70,7 +64,7 @@ func (r *Runner) listDatasources() error {
 		return err
 	}
 	for _, source := range datasources {
-		gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+		gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
 	}
 	return err
 }
