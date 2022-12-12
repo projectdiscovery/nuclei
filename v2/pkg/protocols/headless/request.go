@@ -109,7 +109,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 			reqBuilder.WriteString("\t" + actStepStr)
 			reqBuilder.WriteString("\n")
 		}
-		gologger.Info().Msgf(reqBuilder.String())
+		gologger.Debug().Msgf(reqBuilder.String())
 
 	}
 
