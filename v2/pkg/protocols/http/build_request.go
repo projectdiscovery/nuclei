@@ -215,18 +215,13 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL, isRaw bool) (string,
 
 	if dataURLrelpath == "" || dataURLrelpath == "/" {
 		// just attach raw query to data
-		dataURLrelpath = "/?" + params.Encode()
+		dataURLrelpath += "?" + params.Encode()
 	} else {
-		// parse existing data
-		if strings.HasPrefix(dataURLrelpath, "?") {
-			// if it is {{BaseURL}}?s=xx add path in between
-			dataURLrelpath = "/" + dataURLrelpath
-		}
 		// /?action=x or /metrics/ parse it
 		payloadpath, err := url.Parse(dataURLrelpath)
 		if err != nil {
 			// payload not possible to parse (edgecase)
-			dataURLrelpath = dataURLrelpath + "?" + params.Encode()
+			dataURLrelpath += "?" + params.Encode()
 		} else {
 			payloadparams := payloadpath.Query()
 			if len(payloadparams) != 0 {
