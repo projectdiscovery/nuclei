@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/corpix/uarand"
 	"io"
+	"net"
 	"net/http"
 	"time"
+
+	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
@@ -19,27 +21,27 @@ import (
 type Options struct {
 	// Host is the hostname and port of the splunk instance
 	Host string `yaml:"host" validate:"required"`
-	Port int `yaml:"port" validate:"gte=0,lte=65535"`
+	Port int    `yaml:"port" validate:"gte=0,lte=65535"`
 	// SSL (optional) enables ssl for splunk connection
 	SSL bool `yaml:"ssl"`
 	// SSLVerification (optional) disables SSL verification for splunk
 	SSLVerification bool `yaml:"ssl-verification"`
 	// Token for HEC instance
-	Token string `yaml:"token"  validate:"required"`
+	Token     string `yaml:"token"  validate:"required"`
 	IndexName string `yaml:"index-name"  validate:"required"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 }
 
 type data struct {
-	Event     *output.ResultEvent `json:"event"`
+	Event *output.ResultEvent `json:"event"`
 }
 
 // Exporter type for splunk
 type Exporter struct {
 	url            string
 	authentication string
-	splunk  *http.Client
+	splunk         *http.Client
 }
 
 // New creates and returns a new exporter for splunk
@@ -73,22 +75,22 @@ func New(option *Options) (*Exporter, error) {
 
 	// add HEC endpoint, index, source, sourcetype
 	addr := option.Host
-	if option.Port != 0 {
-		addr += fmt.Sprintf(":%d", option.Port)
+	if option.Port > 0 {
+		addr = net.JoinHostPort(addr, fmt.Sprint(option.Port))
 	}
 	base_url := fmt.Sprintf("%s%s", scheme, addr)
 	sourcetype := "nuclei:splunk-hec:exporter:json"
 	url := fmt.Sprintf("%s/services/collector/event?index=%s&sourcetype=%s&source=%s", base_url, option.IndexName, sourcetype, base_url)
-	
+
 	ei = &Exporter{
 		url:            url,
 		authentication: authentication,
-		splunk:  client,
+		splunk:         client,
 	}
 	return ei, nil
 }
 
-// Export exports a passed result event to Splunk 
+// Export exports a passed result event to Splunk
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	// creating a request
 	req, err := http.NewRequest(http.MethodPost, exporter.url, nil)
@@ -101,9 +103,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	req.Header.Set("User-Agent", uarand.GetRandom())
 	req.Header.Add("Content-Type", "application/json")
 
-	d := data{
-		Event:      event,
-	}
+	d := data{Event: event}
 	b, err := json.Marshal(&d)
 	if err != nil {
 		return err
@@ -119,8 +119,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by splunk " + string(b))
 	}
-
-	if res.StatusCode >= 300 {
+	if res.StatusCode >= http.StatusMultipleChoices {
 		return errors.New("splunk responded with an error: " + string(b))
 	}
 	return nil
