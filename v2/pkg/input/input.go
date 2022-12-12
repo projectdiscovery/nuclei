@@ -68,7 +68,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 	notURL := !strings.Contains(input, "://")
 	parsed, _ := url.Parse(input)
 	var host, port string
-	if !notURL {
+	if !notURL && parsed != nil {
 		host, port, _ = net.SplitHostPort(parsed.Host)
 	} else {
 		host, port, _ = net.SplitHostPort(input)
