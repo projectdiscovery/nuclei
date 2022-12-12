@@ -31,40 +31,6 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 	return r.executeTemplatesInput(store, engine)
 }
 
-// Get all the scan lists for a user/apikey.
-func (r *Runner) getScanList() error {
-	items, err := r.cloudClient.GetScans()
-
-	for _, v := range items {
-		res := nucleicloud.PrepareScanListOutput(v)
-		if r.options.JSON {
-			output.DisplayScanListInJson(res)
-		} else {
-			output.DisplayScanList(res)
-		}
-	}
-	return err
-}
-
-func (r *Runner) deleteScan(id string) error {
-	deleted, err := r.cloudClient.DeleteScan(id)
-	if !deleted.OK {
-		gologger.Info().Msgf("Error in deleting the scan %s.", id)
-	} else {
-		gologger.Info().Msgf("Scan deleted %s.", id)
-	}
-	return err
-}
-
-func (r *Runner) getResults(id string) error {
-	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
-		if outputErr := r.output.Write(re); outputErr != nil {
-			gologger.Warning().Msgf("Could not write output: %s", outputErr)
-		}
-	}, false)
-	return err
-}
-
 // runCloudEnumeration runs cloud based enumeration
 func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
 	now := time.Now()

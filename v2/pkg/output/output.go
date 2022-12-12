@@ -1,7 +1,6 @@
 package output
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,7 +18,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -321,13 +319,4 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		f.Close()
 	}
 
-}
-
-func DisplayScanListInJson(output nucleicloud.ListScanOutput) {
-	bytes, _ := json.Marshal(output)
-	os.Stdout.Write(bytes)
-}
-
-func DisplayScanList(output nucleicloud.ListScanOutput) {
-	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, strings.ToUpper(output.ScanStatus), output.ScanResult, output.Target, output.Template, output.ScanTime)
 }
