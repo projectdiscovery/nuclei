@@ -487,6 +487,10 @@ func (r *Runner) RunEnumeration() error {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {
 			err = r.addTemplate(r.options.AddTemplate)
+		} else if r.options.GetTarget != "" {
+			err = r.getTarget(r.options.GetTarget)
+		} else if r.options.GetTemplate != "" {
+			err = r.getTemplate(r.options.GetTemplate)
 		} else if r.options.RemoveTarget != "" {
 			err = r.removeTarget(r.options.RemoveTarget)
 		} else if r.options.RemoveTemplate != "" {

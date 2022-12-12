@@ -1,11 +1,14 @@
 package runner
 
 import (
+	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
@@ -30,9 +33,9 @@ func (r *Runner) getScanList(limit int) error {
 			lastTime = v.CreatedAt.String()
 			res := nucleicloud.PrepareScanListOutput(v)
 			if r.options.JSON {
-				nucleicloud.DisplayScanListInJson(res)
+				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
 			} else {
-				nucleicloud.DisplayScanList(res)
+				gologger.Silent().Msgf("%s [%d] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.Timestamp, res.ScanID, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
 			}
 		}
 	}
@@ -60,13 +63,41 @@ func (r *Runner) getResults(id string, limit int) error {
 	return err
 }
 
+func (r *Runner) getTarget(id string) error {
+	ID, _ := strconv.ParseInt(id, 10, 64)
+	reader, err := r.cloudClient.GetTarget(ID)
+	if err != nil {
+		return errors.Wrap(err, "could not get target")
+	}
+	defer reader.Close()
+
+	_, _ = io.Copy(os.Stdout, reader)
+	return err
+}
+
+func (r *Runner) getTemplate(id string) error {
+	ID, _ := strconv.ParseInt(id, 10, 64)
+	reader, err := r.cloudClient.GetTemplate(ID)
+	if err != nil {
+		return errors.Wrap(err, "could not get template")
+	}
+	defer reader.Close()
+
+	_, _ = io.Copy(os.Stdout, reader)
+	return err
+}
+
 func (r *Runner) listDatasources() error {
 	datasources, err := r.cloudClient.ListDatasources()
 	if err != nil {
 		return err
 	}
 	for _, source := range datasources {
-		gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else {
+			gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+		}
 	}
 	return err
 }
@@ -77,7 +108,11 @@ func (r *Runner) listTargets() error {
 		return err
 	}
 	for _, source := range items {
-		gologger.Silent().Msgf("%s", source.Reference)
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else {
+			gologger.Silent().Msgf("[%d] %s", source.ID, source.Reference)
+		}
 	}
 	return err
 }
@@ -88,7 +123,11 @@ func (r *Runner) listTemplates() error {
 		return err
 	}
 	for _, source := range items {
-		gologger.Silent().Msgf("%s", source.Reference)
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else {
+			gologger.Silent().Msgf("[%d] %s", source.ID, source.Reference)
+		}
 	}
 	return err
 }

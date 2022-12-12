@@ -115,6 +115,10 @@ type Options struct {
 	AddTemplate string
 	// AddTarget adds a list of targets to custom datasource
 	AddTarget string
+	// GetTemplate gets a template by id
+	GetTemplate string
+	// GetTarget gets a target by id
+	GetTarget string
 	// RemoveTemplate removes a list of templates
 	RemoveTemplate string
 	// RemoveTarget removes a list of targets
