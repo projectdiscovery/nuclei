@@ -102,10 +102,15 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, inputURL)
 
 		for _, act := range request.Steps {
-			reqBuilder.WriteString(act.String())
+			actStepStr := act.String()
+			if strings.Contains(actStepStr, "{{BaseURL}}") {
+				actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
+			}
+			reqBuilder.WriteString("\t" + actStepStr)
 			reqBuilder.WriteString("\n")
 		}
-		gologger.Print().Msgf(reqBuilder.String())
+		gologger.Info().Msgf(reqBuilder.String())
+
 	}
 
 	var responseBody string
