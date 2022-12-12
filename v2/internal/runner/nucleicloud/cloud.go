@@ -450,6 +450,32 @@ func (c *Client) RemoveTarget(ID int64) error {
 	return nil
 }
 
+func (c *Client) GetTarget(ID int64) (io.ReadCloser, error) {
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/targets/%d", c.baseURL, ID), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	return resp.Body, nil
+}
+
+func (c *Client) GetTemplate(ID int64) (io.ReadCloser, error) {
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates/%d", c.baseURL, ID), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	return resp.Body, nil
+}
+
 const apiKeyParameter = "X-API-Key"
 
 type errorResponse struct {

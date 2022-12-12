@@ -308,6 +308,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.RemoveDatasource, "remove-datasource", "rds", "", "remove specified data source"),
 		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
 		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
+		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target id from cloud"),
+		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template id from cloud"),
 		flagSet.StringVarP(&options.RemoveTarget, "remove-target", "rtl", "", "remove target(s) from cloud"),
 		flagSet.StringVarP(&options.RemoveTemplate, "remove-template", "rtm", "", "remove template(s) from cloud"),
 	)

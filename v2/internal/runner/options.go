@@ -195,6 +195,19 @@ func validateOptions(options *types.Options) error {
 		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
 
+	// Validate cloud option
+	if err := validateCloudOptions(options); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateCloudOptions(options *types.Options) error {
+	if options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != "" {
+		if !options.Cloud {
+			return errors.New("cloud flags cannot be used without cloud option")
+		}
+	}
 	return nil
 }
 
@@ -275,6 +288,9 @@ func validateCertificatePaths(certificatePaths []string) {
 
 // Read the input from env and set options
 func readEnvInputVars(options *types.Options) {
+	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
+		options.Cloud = true
+	}
 	options.GithubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {

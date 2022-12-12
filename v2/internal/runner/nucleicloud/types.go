@@ -92,14 +92,22 @@ type GetDataSourceResponse struct {
 
 // GetTargetResponse is the response for a get target request
 type GetTargetResponse struct {
-	ID        int64  `json:"id"`
-	Reference string `json:"reference"`
+	ID         int64  `json:"id"`
+	DataSource int64  `json:"data_source"`
+	Name       string `json:"name"`
+	Reference  string `json:"reference"`
+	Hash       string `json:"hash"`
+	Type       string `json:"type"`
 }
 
 // GetTemplatesResponse is the response for a get templates request
 type GetTemplatesResponse struct {
-	ID        int64  `json:"id"`
-	Reference string `json:"reference"`
+	ID         int64  `json:"id,omitempty"`
+	DataSource int64  `json:"data_source,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Reference  string `json:"reference,omitempty"`
+	Hash       string `json:"hash,omitempty"`
+	Type       string `json:"type,omitempty"`
 }
 
 // AddItemResponse is the response to add item request
