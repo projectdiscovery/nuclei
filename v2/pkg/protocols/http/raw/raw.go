@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"path"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/rawhttp/client"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -40,9 +40,10 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		// Join path with input along with parameters
 		relUrl, relerr := url.Parse(relpath)
 		if relUrl == nil {
-			newpath = path.Join(inputURL.Path, relpath)
+			// special case when url.Parse fails
+			newpath = utils.JoinURLPath(inputURL.Path, relpath)
 		} else {
-			newpath = path.Join(inputURL.Path, relUrl.Path)
+			newpath = utils.JoinURLPath(inputURL.Path, relUrl.Path)
 			if len(relUrl.Query()) > 0 {
 				relParam := relUrl.Query()
 				for k := range relParam {
