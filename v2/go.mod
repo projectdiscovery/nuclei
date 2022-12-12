@@ -99,7 +99,7 @@ require (
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
-	github.com/pjbgf/sha1cd v0.2.0 // indirect
+	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
