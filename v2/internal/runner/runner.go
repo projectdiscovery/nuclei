@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -41,6 +42,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
@@ -73,8 +75,9 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customTemplateRepo
+	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
+	cloudTargets      []string
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -108,7 +111,7 @@ func New(options *types.Options) (*Runner, error) {
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.parseCustomTemplates()
+	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if err := runner.updateTemplates(); err != nil {
 		gologger.Error().Msgf("Could not update templates: %s\n", err)
@@ -177,14 +180,23 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// Initialize the input source
-	hmapInput, err := hybrid.New(options)
+	hmapInput, err := hybrid.New(&hybrid.Options{
+		Options: options,
+		NotFoundCallback: func(target string) bool {
+			if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
+				runner.cloudTargets = append(runner.cloudTargets, target)
+				return true
+			}
+			return false
+		},
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.NoTimestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
+	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.Timestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -255,9 +267,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimitMinute, time.Minute)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), options.RateLimit, time.Second)
+		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
@@ -401,33 +413,24 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	var cloudTemplates []string
-	var cloudTargets []string
 	// Initialize cloud data stores if specified
-	if r.options.Cloud && r.options.GithubToken != "" && len(r.options.GithubTemplateRepo) > 0 {
-		ids, err := r.initializeCloudDataSources()
-		if err != nil {
-			return err
+	if r.options.Cloud {
+		if err := r.initializeCloudDataSources(); err != nil {
+			return errors.Wrap(err, "could not init cloud data sources")
+		}
+		// Only update if asked
+		if r.options.UpdateTemplates {
+			return nil
 		}
 
 		// hook template loading
-		store.NotFoundCallback = func(template string) {
-			for _, id := range ids {
-				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Type: "templates", Contents: template}); err == nil {
-					cloudTemplates = append(cloudTemplates, template)
-					break
-				}
+		store.NotFoundCallback = func(template string) bool {
+			if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
+				cloudTemplates = append(cloudTemplates, template)
+				return true
 			}
+			return false
 		}
-		// identify cloud targets
-		r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
-			for _, id := range ids {
-				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{ID: id, Contents: value.Input, Type: "targets"}); err == nil {
-					cloudTargets = append(cloudTargets, value.Input)
-					break
-				}
-			}
-			return true
-		})
 	}
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
@@ -442,8 +445,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 
+	// add the hosts from the metadata queries of loaded templates into input provider
+	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
+		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit, r.options.UncoverField)
+		for host := range ret {
+			r.hmapInputProvider.Set(host)
+		}
+	}
 	// list all templates
-	if r.options.TemplateList {
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
@@ -464,14 +474,30 @@ func (r *Runner) RunEnumeration() error {
 	var results *atomic.Bool
 	if r.options.Cloud {
 		if r.options.ScanList {
-			err = r.getScanList()
+			err = r.getScanList(r.options.OutputLimit)
 		} else if r.options.DeleteScan != "" {
 			err = r.deleteScan(r.options.DeleteScan)
 		} else if r.options.ScanOutput != "" {
-			err = r.getResults(r.options.ScanOutput)
+			err = r.getResults(r.options.ScanOutput, r.options.OutputLimit)
+		} else if r.options.ListDatasources {
+			err = r.listDatasources()
+		} else if r.options.ListTargets {
+			err = r.listTargets()
+		} else if r.options.ListTemplates {
+			err = r.listTemplates()
+		} else if r.options.RemoveDatasource != "" {
+			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.AddTarget != "" {
+			err = r.addTarget(r.options.AddTarget)
+		} else if r.options.AddTemplate != "" {
+			err = r.addTemplate(r.options.AddTemplate)
+		} else if r.options.RemoveTarget != "" {
+			err = r.removeTarget(r.options.RemoveTarget)
+		} else if r.options.RemoveTemplate != "" {
+			err = r.removeTemplate(r.options.RemoveTemplate)
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, cloudTemplates, cloudTargets, r.options.NoStore)
+			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
 			enumeration = true
 		}
 	} else {
@@ -636,8 +662,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
-
-	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	if r.hmapInputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	}
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {

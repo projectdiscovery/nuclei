@@ -38,6 +38,13 @@ type GetScanRequest struct {
 	Matches    int64     `json:"matches"`
 }
 
+// AddDataSourceResponse is a add data source response item.
+type AddDataSourceResponse struct {
+	ID     int64  `json:"id"`
+	Hash   string `json:"hash"`
+	Secret string `json:"secret,omitempty"`
+}
+
 type GetResultsResponseItem struct {
 	ID  int64  `json:"id"`
 	Raw string `json:"raw"`
@@ -49,9 +56,13 @@ type DeleteScanResults struct {
 
 // StatusDataSourceRequest is a add data source request item.
 type StatusDataSourceRequest struct {
-	ID    string `json:"id"`
 	Repo  string `json:"repo"`
 	Token string `json:"token"`
+}
+
+// StatusDataSourceResponse is a add data source response item.
+type StatusDataSourceResponse struct {
+	ID int64 `json:"id"`
 }
 
 // AddDataSourceRequest is a add data source request item.
@@ -65,7 +76,33 @@ type AddDataSourceRequest struct {
 // ExistsDataSourceItemRequest is a request to identify whether a data
 // source item exists.
 type ExistsDataSourceItemRequest struct {
-	ID       string `json:"-"`
 	Type     string `json:"type"`
 	Contents string `json:"contents"`
+}
+
+// GetDataSourceResponse is response for a get data source request
+type GetDataSourceResponse struct {
+	ID        int64     `json:"id"`
+	Hash      string    `json:"hash"`
+	Type      string    `json:"type"`
+	Path      string    `json:"path"`
+	Repo      string    `json:"repo"`
+	Updatedat time.Time `json:"updated_at"`
+}
+
+// GetTargetResponse is the response for a get target request
+type GetTargetResponse struct {
+	ID        int64  `json:"id"`
+	Reference string `json:"reference"`
+}
+
+// GetTemplatesResponse is the response for a get templates request
+type GetTemplatesResponse struct {
+	ID        int64  `json:"id"`
+	Reference string `json:"reference"`
+}
+
+// AddItemResponse is the response to add item request
+type AddItemResponse struct {
+	Ok string `json:"ok"`
 }

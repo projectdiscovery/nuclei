@@ -68,7 +68,7 @@ func (r *Runner) getResults(id string) error {
 }
 
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
 	now := time.Now()
 	defer func() {
 		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
@@ -125,7 +125,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-	}, true)
+	}, true, limit)
 	return results, err
 }
 

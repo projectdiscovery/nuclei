@@ -2,6 +2,7 @@ package loader
 
 import (
 	"os"
+	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -60,7 +61,7 @@ type Store struct {
 
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templatesss
-	NotFoundCallback func(template string)
+	NotFoundCallback func(template string) bool
 }
 
 // NewConfig returns a new loader config
@@ -291,6 +292,11 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
 		}
 	}
+
+	sort.SliceStable(loadedTemplates, func(i, j int) bool {
+		return loadedTemplates[i].Path < loadedTemplates[j].Path
+	})
+
 	return loadedTemplates
 }
 
@@ -388,9 +394,7 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 
 func (s *Store) logErroredTemplates(erred map[string]error) {
 	for template, err := range erred {
-		if s.NotFoundCallback != nil {
-			s.NotFoundCallback(template)
-		} else {
+		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
 	}

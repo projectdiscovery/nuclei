@@ -1717,7 +1717,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 7)
+	SSLRequestDoc.Fields = make([]encoder.Doc, 8)
 	SSLRequestDoc.Fields[0].Name = "matchers"
 	SSLRequestDoc.Fields[0].Type = "[]matchers.Matcher"
 	SSLRequestDoc.Fields[0].Note = ""
@@ -1771,6 +1771,16 @@ func init() {
 	SSLRequestDoc.Fields[6].Note = ""
 	SSLRequestDoc.Fields[6].Description = "Client Cipher Suites  - auto if not specified."
 	SSLRequestDoc.Fields[6].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[7].Name = "scan_mode"
+	SSLRequestDoc.Fields[7].Type = "string"
+	SSLRequestDoc.Fields[7].Note = ""
+	SSLRequestDoc.Fields[7].Description = "Tls Scan Mode - auto if not specified"
+	SSLRequestDoc.Fields[7].Comments[encoder.LineComment] = "Tls Scan Mode - auto if not specified"
+	SSLRequestDoc.Fields[7].Values = []string{
+		"ctls",
+		"ztls",
+		"auto",
+	}
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
