@@ -60,7 +60,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		return nil
 	}
 	ctx := request.newContext(input)
-	requestForDump, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
+	requestForDump, err := generator.Make(ctx, input, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			break
 		}
 		ctx := request.newContext(input)
-		generatedRequest, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 		ctx := request.newContext(input)
-		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -201,7 +201,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 		ctx := request.newContext(input)
-		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -289,7 +289,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input.MetaInput.Input, value, payloads, nil)
+		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
 		if err != nil {
 			continue
 		}
@@ -354,7 +354,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
 
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input.MetaInput.Input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
 					return true, nil
@@ -454,6 +454,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// Try to evaluate any payloads before replacement
 	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
+
+	// add known variables from metainput
+	if _, ok := finalMap["ip"]; !ok && input.MetaInput.CustomIP != "" {
+		finalMap["ip"] = input.MetaInput.CustomIP
+	}
+
 	for payloadName, payloadValue := range generatedRequest.dynamicValues {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.dynamicValues[payloadName] = data
@@ -755,26 +761,19 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	case AWSSignature:
 		var awsSigner signer.Signer
 		vars := request.options.Options.Vars.AsMap()
-		awsAccessKeyId := types.ToString(vars["aws-id"])
-		awsSecretAccessKey := types.ToString(vars["aws-secret"])
-		awsSignerArgs := signer.AwsSignerArgs{AwsId: awsAccessKeyId, AwsSecretToken: awsSecretAccessKey}
-		service := types.ToString(generatedRequest.dynamicValues["service"])
-		region := types.ToString(generatedRequest.dynamicValues["region"])
-		// if region is empty use default value
-		if region == "" {
-			region = types.ToString(signer.AwsDefaultVars["region"])
+		awsopts := signer.AWSOptions{
+			AwsID:          types.ToString(vars["aws-id"]),
+			AwsSecretToken: types.ToString(vars["aws-secret"]),
 		}
-		awsSignatureArguments := signer.AwsSignatureArguments{
-			Service: types.ToString(service),
-			Region:  types.ToString(region),
-			Time:    time.Now(),
-		}
+		// type ctxkey string
+		ctx := context.WithValue(context.Background(), signer.SignerArg("service"), generatedRequest.dynamicValues["service"])
+		ctx = context.WithValue(ctx, signer.SignerArg("region"), generatedRequest.dynamicValues["region"])
 
-		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: awsSignerArgs})
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}
-		err = awsSigner.SignHTTP(generatedRequest.request.Request, awsSignatureArguments)
+		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err
 		}

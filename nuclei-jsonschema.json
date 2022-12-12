@@ -1121,7 +1121,7 @@
             "tls13"
           ],
           "type": "string",
-          "title": "TLS version",
+          "title": "Min. TLS version",
           "description": "Minimum tls version - automatic if not specified."
         },
         "max_version": {
@@ -1133,7 +1133,7 @@
             "tls13"
           ],
           "type": "string",
-          "title": "TLS version",
+          "title": "Max. TLS version",
           "description": "Max tls version - automatic if not specified."
         },
         "cipher_suites": {
@@ -1141,6 +1141,16 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "scan_mode": {
+          "enum": [
+            "ctls",
+            "ztls",
+            "auto"
+          ],
+          "type": "string",
+          "title": "Scan Mode",
+          "description": "Scan Mode - auto if not specified."
         }
       },
       "additionalProperties": false,

@@ -85,9 +85,9 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	// TODO: Add payload file and workflow support for private templates
 	catalogChecksums := nucleicloud.ReadCatalogChecksum()
 
-	targets := make([]*contextargs.MetaInput, 0, r.hmapInputProvider.Count())
+	targets := make([]string, 0, r.hmapInputProvider.Count())
 	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
-		targets = append(targets, value)
+		targets = append(targets, value.Input)
 		return true
 	})
 	templates := make([]string, 0, len(store.Templates()))

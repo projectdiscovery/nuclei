@@ -1,21 +1,17 @@
 name: ⏰ Publish Docs
 
 on:
-  push:
-    branches:
-      - dev
+  pull_request:
+    paths:
+      - '**.go'
   workflow_dispatch:
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
  
       - name: "Set up Go"
         uses: actions/setup-go@v3
@@ -32,11 +28,11 @@ jobs:
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
           ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
-          echo "::set-output name=changes::$(git status -s | wc -l)"
+          git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
         working-directory: v2
 
       - name: Commit files
-        if: steps.generate-docs.outputs.changes > 0
+        if: steps.generate-docs.outputs.CHANGES > 0
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -44,7 +40,7 @@ jobs:
           git commit -m "Auto Generate Syntax Docs + JSONSchema [$(date)] :robot:" -a
 
       - name: Push changes
-        if: steps.generate-docs.outputs.changes > 0
+        if: steps.generate-docs.outputs.CHANGES > 0
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
