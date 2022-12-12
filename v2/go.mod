@@ -33,7 +33,7 @@ require (
 	github.com/projectdiscovery/nuclei-updatecheck-api v0.0.0-20211006155443-c0a8d610a4df
 	github.com/projectdiscovery/rawhttp v0.1.2
 	github.com/projectdiscovery/retryabledns v1.0.17
-	github.com/projectdiscovery/retryablehttp-go v1.0.3
+	github.com/projectdiscovery/retryablehttp-go v1.0.7
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -49,9 +49,9 @@ require (
 	github.com/xanzy/go-gitlab v0.74.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.4.0
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
-	golang.org/x/text v0.4.0
+	golang.org/x/text v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.0-20221004232058-7b82379157fa
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/tlsx v0.0.9
-	github.com/projectdiscovery/utils v0.0.2
+	github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3
 	github.com/projectdiscovery/wappalyzergo v0.0.67
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -182,7 +182,7 @@ require (
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/exp v0.0.0-20221019170559-20944726eadf
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
