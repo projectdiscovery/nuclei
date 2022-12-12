@@ -27,7 +27,7 @@ type GetResultsResponse struct {
 }
 
 type GetScanRequest struct {
-	Id         string    `json:"id"`
+	Id         int64     `json:"id"`
 	Total      int32     `json:"total"`
 	Current    int32     `json:"current"`
 	Finished   bool      `json:"finished"`
@@ -109,7 +109,7 @@ type AddItemResponse struct {
 
 type ListScanOutput struct {
 	Timestamp  string `json:"timestamp"`
-	ScanID     string `json:"scan_id"`
+	ScanID     int64  `json:"scan_id"`
 	ScanTime   string `json:"scan_time"`
 	ScanResult int    `json:"scan_result"`
 	ScanStatus string `json:"scan_status"`
