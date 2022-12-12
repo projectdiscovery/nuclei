@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -322,21 +323,11 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 
 }
 
-type ListScanOutput struct {
-	Timestamp  string `json:"timestamp"`
-	ScanID     string `json:"scan_id"`
-	ScanTime   string `json:"scan_time"`
-	ScanResult int    `json:"scan_result"`
-	ScanStatus string `json:"scan_status"`
-	Target     int    `json:"target"`
-	Template   int    `json:"template"`
-}
-
-func DisplayScanListInJson(output ListScanOutput) {
+func DisplayScanListInJson(output nucleicloud.ListScanOutput) {
 	bytes, _ := json.Marshal(output)
 	os.Stdout.Write(bytes)
 }
 
-func DisplayScanList(output ListScanOutput) {
+func DisplayScanList(output nucleicloud.ListScanOutput) {
 	gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", output.Timestamp, output.ScanID, strings.ToUpper(output.ScanStatus), output.ScanResult, output.Target, output.Template, output.ScanTime)
 }

@@ -23,8 +23,6 @@ import (
 	"go.uber.org/atomic"
 )
 
-const DDMMYYYYhhmmss = "2006-01-02 15:04:05"
-
 // runStandardEnumeration runs standard enumeration
 func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	if r.options.AutomaticScan {
@@ -38,7 +36,7 @@ func (r *Runner) getScanList() error {
 	items, err := r.cloudClient.GetScans()
 
 	for _, v := range items {
-		res := prepareScanListOutput(v)
+		res := nucleicloud.PrepareScanListOutput(v)
 		if r.options.JSON {
 			output.DisplayScanListInJson(res)
 		} else {
@@ -144,30 +142,4 @@ func gzipBase64EncodeData(data []byte) string {
 	_ = writer.Close()
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return encoded
-}
-
-func prepareScanListOutput(v nucleicloud.GetScanRequest) output.ListScanOutput {
-	output := output.ListScanOutput{}
-	loc, _ := time.LoadLocation("Local")
-	status := "finished"
-
-	t := v.FinishedAt
-	duration := t.Sub(v.CreatedAt)
-
-	if !v.Finished {
-		status = "running"
-		t = time.Now().UTC()
-		duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
-	}
-
-	val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
-
-	output.Timestamp = val
-	output.ScanID = v.Id
-	output.ScanTime = duration.String()
-	output.ScanResult = int(v.Matches)
-	output.ScanStatus = status
-	output.Target = int(v.Targets)
-	output.Template = int(v.Templates)
-	return output
 }
