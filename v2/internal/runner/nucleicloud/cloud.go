@@ -2,6 +2,7 @@ package nucleicloud
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,11 +34,22 @@ const (
 	defaultBaseURL = "https://cloud-dev.nuclei.sh"
 )
 
+// HTTPErrorRetryPolicy is to retry for HTTPCodes >= 500.
+func HTTPErrorRetryPolicy() func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return true, errors.New(resp.Status)
+		}
+		return retryablehttp.CheckRecoverableErrors(ctx, resp, err)
+	}
+}
+
 // New returns a nuclei-cloud API client
 func New(baseURL, apiKey string) *Client {
 	options := retryablehttp.DefaultOptionsSingle
 	options.NoAdjustTimeout = true
 	options.Timeout = 60 * time.Second
+	options.CheckRetry = HTTPErrorRetryPolicy()
 	client := retryablehttp.NewClient(options)
 
 	baseAppURL := baseURL
