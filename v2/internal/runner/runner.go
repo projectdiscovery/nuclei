@@ -418,10 +418,6 @@ func (r *Runner) RunEnumeration() error {
 		if err := r.initializeCloudDataSources(); err != nil {
 			return errors.Wrap(err, "could not init cloud data sources")
 		}
-		// Only update if asked
-		if r.options.UpdateTemplates {
-			return nil
-		}
 
 		// hook template loading
 		store.NotFoundCallback = func(template string) bool {

@@ -40,7 +40,8 @@ func (r *Runner) getScanList(limit int) error {
 }
 
 func (r *Runner) deleteScan(id string) error {
-	deleted, err := r.cloudClient.DeleteScan(id)
+	ID, _ := strconv.ParseInt(id, 10, 64)
+	deleted, err := r.cloudClient.DeleteScan(ID)
 	if !deleted.OK {
 		gologger.Error().Msgf("Error in deleting the scan %s.", id)
 	} else {
@@ -50,7 +51,8 @@ func (r *Runner) deleteScan(id string) error {
 }
 
 func (r *Runner) getResults(id string, limit int) error {
-	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
+	ID, _ := strconv.ParseInt(id, 10, 64)
+	err := r.cloudClient.GetResults(ID, func(re *output.ResultEvent) {
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
 		}

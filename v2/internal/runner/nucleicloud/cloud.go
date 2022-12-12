@@ -48,25 +48,25 @@ func New(baseURL, apiKey string) *Client {
 }
 
 // AddScan adds a scan for templates and target to nuclei server
-func (c *Client) AddScan(req *AddScanRequest) (string, error) {
+func (c *Client) AddScan(req *AddScanRequest) (int64, error) {
 	var buf bytes.Buffer
 	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return "", errors.Wrap(err, "could not encode request")
+		return 0, errors.Wrap(err, "could not encode request")
 	}
 	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/scan", c.baseURL), bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return "", errors.Wrap(err, "could not make request")
+		return 0, errors.Wrap(err, "could not make request")
 	}
 
 	resp, err := c.sendRequest(httpReq)
 	if err != nil {
-		return "", errors.Wrap(err, "could not do request")
+		return 0, errors.Wrap(err, "could not do request")
 	}
 	defer resp.Body.Close()
 
-	var data map[string]string
+	var data map[string]int64
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", errors.Wrap(err, "could not decode resp")
+		return 0, errors.Wrap(err, "could not decode resp")
 	}
 	id := data["id"]
 	return id, nil
@@ -74,11 +74,11 @@ func (c *Client) AddScan(req *AddScanRequest) (string, error) {
 
 // GetResults gets results from nuclei server for an ID
 // until there are no more results left to retrieve.
-func (c *Client) GetResults(ID string, callback func(*output.ResultEvent), checkProgress bool, limit int) error {
+func (c *Client) GetResults(ID int64, callback func(*output.ResultEvent), checkProgress bool, limit int) error {
 	lastID := int64(0)
 
 	for {
-		uri := fmt.Sprintf("%s/results?id=%s&from=%d&size=%d", c.baseURL, ID, lastID, limit)
+		uri := fmt.Sprintf("%s/results?id=%d&from=%d&size=%d", c.baseURL, ID, lastID, limit)
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
@@ -140,9 +140,9 @@ func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
 }
 
 // Delete a scan and it's issues by the scan id.
-func (c *Client) DeleteScan(id string) (DeleteScanResults, error) {
+func (c *Client) DeleteScan(id int64) (DeleteScanResults, error) {
 	deletescan := DeleteScanResults{}
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%s", c.baseURL, id), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%d", c.baseURL, id), nil)
 	if err != nil {
 		return deletescan, errors.Wrap(err, "could not make request")
 	}

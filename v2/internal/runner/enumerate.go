@@ -75,7 +75,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 	if err != nil {
 		return results, err
 	}
-	gologger.Info().Msgf("Created task with ID: %s", taskID)
+	gologger.Info().Msgf("Created task with ID: %d", taskID)
 	time.Sleep(3 * time.Second)
 
 	err = r.cloudClient.GetResults(taskID, func(re *output.ResultEvent) {
