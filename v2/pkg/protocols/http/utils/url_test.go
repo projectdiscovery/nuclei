@@ -9,7 +9,6 @@ import (
 )
 
 func TestURLJoin(t *testing.T) {
-
 	fmt.Println(path.Join("/wp-content", "/wp-content/admin.php"))
 	testcases := []struct {
 		URL1         string

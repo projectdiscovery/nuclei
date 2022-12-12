@@ -13,17 +13,16 @@ func JoinURLPath(elem1 string, elem2 string) string {
 		Path.Join converts /test/ to /test
 		this should be handled manually
 	*/
-	if elem2 == "" || elem2 == "/" || elem2 == "/?" {
-		if elem2 == "" {
-			return elem1
-		} else {
-			// check for extra slash
-			if strings.HasSuffix(elem1, "/") && strings.HasPrefix(elem2, "/") {
-				elem1 = strings.TrimRight(elem1, "/")
-			}
-			// merge and return
-			return fmt.Sprintf("%v%v", elem1, elem2)
+	if elem2 == "" {
+		return elem1
+	}
+	if elem2 == "/" || elem2 == "/?" {
+		// check for extra slash
+		if strings.HasSuffix(elem1, "/") && strings.HasPrefix(elem2, "/") {
+			elem1 = strings.TrimRight(elem1, "/")
 		}
+		// merge and return
+		return fmt.Sprintf("%v%v", elem1, elem2)
 	} else {
 		if strings.HasPrefix(elem2, "?") {
 			// path2 is parameter and not a url append and return
@@ -34,5 +33,4 @@ func JoinURLPath(elem1 string, elem2 string) string {
 		// if not encoded properly
 		return path.Join(elem1, elem2)
 	}
-
 }
