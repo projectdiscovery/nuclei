@@ -96,6 +96,7 @@ type GetTargetResponse struct {
 	DataSource int64  `json:"data_source"`
 	Name       string `json:"name"`
 	Reference  string `json:"reference"`
+	Count      int64  `json:"count"`
 	Hash       string `json:"hash"`
 	Type       string `json:"type"`
 }
