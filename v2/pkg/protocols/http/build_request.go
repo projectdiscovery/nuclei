@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -59,7 +60,7 @@ func (g *generatedRequest) URL() string {
 
 // Make creates a http request for the provided input.
 // It returns io.EOF as error when all the requests have been exhausted.
-func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, data, payloads, dynamicValues)
 	}
@@ -74,14 +75,13 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 		}
 	}
 
-	parsed, err := url.Parse(baseURL)
+	parsed, err := url.Parse(input.MetaInput.Input)
 	if err != nil {
 		return nil, err
 	}
 
-	data, parsed = baseURLWithTemplatePrefs(data, parsed)
-
 	isRawRequest := len(r.request.Raw) > 0
+	data, parsed = baseURLWithTemplatePrefs(data, parsed, isRawRequest)
 
 	// If the request is not a raw request, and the URL input path is suffixed with
 	// a trailing slash, and our Input URL is also suffixed with a trailing slash,
@@ -94,7 +94,7 @@ func (r *requestGenerator) Make(ctx context.Context, baseURL, data string, paylo
 	}
 
 	values := generators.MergeMaps(
-		generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, trailingSlash)),
+		generators.MergeMaps(dynamicValues, utils.GenerateVariablesWithURL(parsed, trailingSlash, contextargs.GenerateVariables(input))),
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 	if vardump.EnableVarDump {
@@ -152,10 +152,8 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
 				return nil, err
 			}
-		} else { // the url might contain placeholders
-			if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
-				return nil, err
-			}
+		} else if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil { // the url might contain placeholders
+			return nil, err
 		}
 
 		parsed, err := url.Parse(parts[1])
@@ -163,7 +161,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, utils.GenerateVariables(parsed, false)),
+			generators.MergeMaps(dynamicValues, utils.GenerateVariablesWithURL(parsed, false, nil)),
 			values,
 		)
 
@@ -185,19 +183,61 @@ func (r *requestGenerator) Total() int {
 }
 
 // baseURLWithTemplatePrefs returns the url for BaseURL keeping
-// the template port and path preference over the user provided one.
-func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
+// the template port along with any query parameters over the user provided one.
+func baseURLWithTemplatePrefs(data string, parsed *url.URL, isRaw bool) (string, *url.URL) {
 	// template port preference over input URL port if template has a port
 	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
-	if len(matches) == 0 {
+	if len(matches) > 0 {
+		port := matches[0][1]
+		parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
+		data = strings.ReplaceAll(data, ":"+port, "")
+		if parsed.Path == "" {
+			parsed.Path = "/"
+		}
+	}
+
+	if isRaw {
+		// do not swap parameters from parsedURL to base
 		return data, parsed
 	}
-	port := matches[0][1]
-	parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
-	data = strings.ReplaceAll(data, ":"+port, "")
-	if parsed.Path == "" {
-		parsed.Path = "/"
+
+	// transfer any parmas from URL to data( i.e {{BaseURL}} )
+	params := parsed.Query()
+	if len(params) == 0 {
+		return data, parsed
 	}
+	// remove any existing params from parsedInput (tracked using params)
+	// parsed.RawQuery = ""
+
+	// ex: {{BaseURL}}/metrics?user=xxx
+	dataURLrelpath := strings.TrimLeft(data, "{{BaseURL}}") //nolint:all
+
+	if dataURLrelpath == "" || dataURLrelpath == "/" {
+		// just attach raw query to data
+		dataURLrelpath += "?" + params.Encode()
+	} else {
+		// /?action=x or /metrics/ parse it
+		payloadpath, err := url.Parse(dataURLrelpath)
+		if err != nil {
+			// payload not possible to parse (edgecase)
+			dataURLrelpath += "?" + params.Encode()
+		} else {
+			payloadparams := payloadpath.Query()
+			if len(payloadparams) != 0 {
+				// ex: /?action=x
+				for k := range payloadparams {
+					params.Add(k, payloadparams.Get(k))
+				}
+			}
+			//ex: /?admin=user&action=x
+			payloadpath.RawQuery = params.Encode()
+			dataURLrelpath = payloadpath.String()
+		}
+
+	}
+
+	data = "{{BaseURL}}" + dataURLrelpath
+	parsed.RawQuery = ""
 	return data, parsed
 }
 

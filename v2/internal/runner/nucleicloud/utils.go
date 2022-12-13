@@ -30,7 +30,11 @@ func ReadCatalogChecksum() map[string]string {
 		if len(text) < 2 {
 			continue
 		}
-		checksums[text[0]] = text[1]
+		path := strings.TrimPrefix(text[0], "nuclei-templates/")
+		if strings.HasPrefix(path, ".") {
+			continue
+		}
+		checksums[path] = text[1]
 	}
 	return checksums
 }
