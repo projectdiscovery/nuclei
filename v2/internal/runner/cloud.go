@@ -111,7 +111,7 @@ func (r *Runner) listTargets() error {
 		if r.options.JSON {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else {
-			gologger.Silent().Msgf("[%d] %s", source.ID, source.Reference)
+			gologger.Silent().Msgf("[%d] %s (%d)", source.ID, source.Reference, source.Count)
 		}
 	}
 	return err
