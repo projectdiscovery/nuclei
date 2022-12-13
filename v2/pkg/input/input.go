@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Helper is a structure for helping with input transformation
@@ -65,17 +66,22 @@ const (
 // convertInputToType converts an input based on an inputType.
 // Various formats are supported for inputs and their transformation
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
-	notURL := !strings.Contains(input, "://")
-	parsed, _ := url.Parse(input)
+	isURL := strings.Contains(input, "://")
+	uri, _ := url.Parse(input)
+
 	var host, port string
-	if !notURL && parsed != nil {
-		host, port, _ = net.SplitHostPort(parsed.Host)
+	if isURL && uri != nil {
+		host, port, _ = net.SplitHostPort(uri.Host)
 	} else {
 		host, port, _ = net.SplitHostPort(input)
 	}
-	hasPort := port != ""
 
-	if inputType == typeFilepath {
+	hasHost := host != ""
+	hasPort := port != ""
+	hasDefaultPort := defaultPort != ""
+
+	switch inputType {
+	case typeFilepath:
 		// if it has ports most likely it's not a file
 		if hasPort {
 			return ""
@@ -86,20 +92,19 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if absPath, _ := filepath.Abs(input); absPath != "" && fileOrFolderExists(absPath) {
 			return input
 		}
-		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && notURL {
+		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && !isURL {
 			return input
 		}
-	} else if inputType == typeHostOnly {
-		if host != "" {
+	case typeHostOnly:
+		if hasHost {
 			return host
 		}
-		if !notURL {
-			return parsed.Hostname()
-		} else {
-			return input
+		if isURL {
+			return uri.Hostname()
 		}
-	} else if inputType == typeURL {
-		if parsed != nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+		return input
+	case typeURL:
+		if uri != nil && stringsutil.EqualFoldAny(uri.Scheme, "http", "https") {
 			return input
 		}
 		if h.InputsHTTP != nil {
@@ -107,29 +112,21 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 				return string(probed)
 			}
 		}
-	} else if inputType == typeHostWithPort {
-		if host != "" && port != "" {
+	case typeHostWithPort, typeHostWithOptionalPort:
+		if hasHost && hasPort {
 			return net.JoinHostPort(host, port)
 		}
-		if parsed != nil && port == "" && parsed.Scheme == "https" {
-			return net.JoinHostPort(parsed.Host, "443")
+		if uri != nil && !hasPort && uri.Scheme == "https" {
+			return net.JoinHostPort(uri.Host, "443")
 		}
-		if defaultPort != "" {
+		if hasDefaultPort {
 			return net.JoinHostPort(input, defaultPort)
 		}
-	} else if inputType == typeHostWithOptionalPort {
-		if host != "" && port != "" {
-			return net.JoinHostPort(host, port)
+		if inputType == typeHostWithOptionalPort {
+			return input
 		}
-		if parsed != nil && port == "" && parsed.Scheme == "https" {
-			return net.JoinHostPort(parsed.Host, "443")
-		}
-		if defaultPort != "" {
-			return net.JoinHostPort(input, defaultPort)
-		}
-		return input
-	} else if inputType == typeWebsocket {
-		if parsed != nil && (parsed.Scheme == "ws" || parsed.Scheme == "wss") {
+	case typeWebsocket:
+		if uri != nil && stringsutil.EqualFoldAny(uri.Scheme, "ws", "wss") {
 			return input
 		}
 	}
