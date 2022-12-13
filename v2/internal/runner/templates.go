@@ -84,11 +84,10 @@ func (r *Runner) listAvailableStoreTemplateTags(store *loader.Store) {
 
 	for _, groupingChar := range groupingChars {
 		gologger.Silent().Msgf("\n%s\n", strings.ToUpper(groupingChar))
-		// gologger.Silent().Msgf("- %s", strings.Join(tagMap[groupingChar][:], ", "))
-		for _, tag := range tagMap[groupingChar] {
-			gologger.Silent().Msgf("- %s", tag)
-		}
-
+		gologger.Silent().Msgf("- %s", strings.Join(tagMap[groupingChar][:], ", "))
+		// for _, tag := range tagMap[groupingChar] {
+		// 	gologger.Silent().Msgf("- %s", tag)
+		// }
 	}
 }
 
