@@ -98,7 +98,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	gologger.Verbose().Msgf("Sent Headless request to %s", inputURL)
 
 	reqBuilder := &strings.Builder{}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, inputURL)
 
 		for _, act := range request.Steps {
