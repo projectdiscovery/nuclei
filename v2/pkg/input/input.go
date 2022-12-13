@@ -100,9 +100,8 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 		if isURL {
 			return uri.Hostname()
-		} else {
-			return input
 		}
+		return input
 	case typeURL:
 		if uri != nil && (uri.Scheme == "http" || uri.Scheme == "https") {
 			return input
@@ -122,6 +121,12 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if hasDefaultPort {
 			return net.JoinHostPort(input, defaultPort)
 		}
+
+		if inputType == typeHostWithOptionalPort {
+			return input
+		}
+
+		return ""
 	case typeWebsocket:
 		if uri != nil && (uri.Scheme == "ws" || uri.Scheme == "wss") {
 			return input
