@@ -42,6 +42,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloads = generators.MergeMaps(variablesMap, payloads)
 
+	// check for operator matches by wrapping callback
+	gotmatches := false
+	wrappedCallback := func(results *output.InternalWrappedEvent) {
+		callback(results)
+		if results != nil && results.OperatorsResult != nil {
+			gotmatches = results.OperatorsResult.Matched
+		}
+	}
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -49,14 +58,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
+			if request.StopAtFirstMatch && gotmatches {
+				return nil
+			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(inputURL, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := generators.CopyMap(payloads)
-		if err := request.executeRequestWithPayloads(inputURL, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
 			return err
 		}
 	}
