@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
-	pdyaml "github.com/projectdiscovery/nuclei/v2/pkg/yaml"
 	"gopkg.in/yaml.v2"
 )
 
@@ -120,12 +119,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		return value.(*templates.Template), err
 	}
 	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
-	if err != nil {
-		return nil, err
-	}
-
-	// pre-process yaml directives
-	data, err = pdyaml.PreProcess(data)
 	if err != nil {
 		return nil, err
 	}

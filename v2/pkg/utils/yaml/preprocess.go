@@ -6,18 +6,16 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/fileutil"
-	"github.com/projectdiscovery/stringsutil"
+	fileutil "github.com/projectdiscovery/utils/file"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var (
-	regexImports = regexp.MustCompile(`(?m)# !include:(.+[].yaml])$`)
-)
+var reImportsPattern = regexp.MustCompile(`(?m)# !include:(.+.yaml)`)
 
 // PreProcess all include directives
 func PreProcess(data []byte) ([]byte, error) {
 	// find all matches like !include:path\n
-	importMatches := regexImports.FindAllSubmatch(data, -1)
+	importMatches := reImportsPattern.FindAllSubmatch(data, -1)
 
 	var replaceItems []string
 
@@ -31,6 +29,7 @@ func PreProcess(data []byte) ([]byte, error) {
 		if len(match) > 0 {
 			includeFileName = string(match[1])
 		}
+
 		// gets the number of tabs/spaces between the last \n and the beginning of the match
 		matchIndex := bytes.Index(data, matchBytes)
 		lastNewLineIndex := bytes.LastIndex(data[:matchIndex], []byte("\n"))
