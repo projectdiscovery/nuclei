@@ -12,12 +12,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-         with: 
+        with:
           fetch-depth: 0
 
       - name: "Set up Go"
         uses: actions/setup-go@v3
-        with: 
+        with:
           go-version: 1.18
 
       - name: Generate YAML Syntax Documentation
@@ -28,7 +28,7 @@ jobs:
             go install github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen@main
           fi
           go generate pkg/templates/templates.go
-          go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
+          go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go
           ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
           git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
         working-directory: v2
