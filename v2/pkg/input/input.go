@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Helper is a structure for helping with input transformation
@@ -103,7 +104,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 		return input
 	case typeURL:
-		if uri != nil && (uri.Scheme == "http" || uri.Scheme == "https") {
+		if uri != nil && stringsutil.EqualFoldAny(uri.Scheme, "http", "https") {
 			return input
 		}
 		if h.InputsHTTP != nil {
@@ -121,14 +122,11 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if hasDefaultPort {
 			return net.JoinHostPort(input, defaultPort)
 		}
-
 		if inputType == typeHostWithOptionalPort {
 			return input
 		}
-
-		return ""
 	case typeWebsocket:
-		if uri != nil && (uri.Scheme == "ws" || uri.Scheme == "wss") {
+		if uri != nil && stringsutil.EqualFoldAny(uri.Scheme, "ws", "wss") {
 			return input
 		}
 	}
