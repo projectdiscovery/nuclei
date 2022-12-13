@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.0
 	github.com/projectdiscovery/uncover v1.0.1
-	github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3
+	github.com/projectdiscovery/utils v0.0.4-0.20221213233942-285e3953868f
 	github.com/projectdiscovery/wappalyzergo v0.0.73
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -93,6 +93,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
+	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
@@ -235,7 +236,6 @@ require (
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/fileutil v0.0.3
 	github.com/projectdiscovery/iputil v0.0.2 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
