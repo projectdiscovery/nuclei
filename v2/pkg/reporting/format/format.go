@@ -241,5 +241,5 @@ func createBoldMarkdown(value string) string {
 }
 
 func lineBreakToHTML(text string) string {
-	return strings.Replace(text, "\n", "<br>", -1)
+	return strings.ReplaceAll(text, "\n", "<br>")
 }
