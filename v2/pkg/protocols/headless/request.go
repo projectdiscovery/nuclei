@@ -103,11 +103,8 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 
 		for _, act := range request.Steps {
 			actStepStr := act.String()
-			if strings.Contains(actStepStr, "{{BaseURL}}") {
-				actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
-			}
-			reqBuilder.WriteString("\t" + actStepStr)
-			reqBuilder.WriteString("\n")
+			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
+			reqBuilder.WriteString("\t" + actStepStr + "\n")
 		}
 		gologger.Debug().Msgf(reqBuilder.String())
 
