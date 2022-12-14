@@ -111,6 +111,8 @@ type Options struct {
 	DeleteScan string
 	// RemoveDatasource deletes a datasource from cloud storage
 	RemoveDatasource string
+	// AddDatasource adds a datasource to cloud storage
+	AddDatasource bool
 	// AddTemplate adds a list of templates to custom datasource
 	AddTemplate string
 	// AddTarget adds a list of targets to custom datasource

@@ -415,10 +415,6 @@ func (r *Runner) RunEnumeration() error {
 	var cloudTemplates []string
 	// Initialize cloud data stores if specified
 	if r.options.Cloud {
-		if err := r.initializeCloudDataSources(); err != nil {
-			return errors.Wrap(err, "could not init cloud data sources")
-		}
-
 		// hook template loading
 		store.NotFoundCallback = func(template string) bool {
 			if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
@@ -483,6 +479,8 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTemplates()
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.AddDatasource {
+			err = r.initializeCloudDataSources()
 		} else if r.options.AddTarget != "" {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {

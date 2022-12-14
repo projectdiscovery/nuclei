@@ -300,4 +300,7 @@ func readEnvInputVars(options *types.Options) {
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
 	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
 	options.AwsRegion = os.Getenv("AWS_REGION")
+	if (options.AwsAccessKey != "" && options.AwsSecretKey != "" && options.AwsBucketName != "" && options.AwsRegion != "") || (len(options.GithubTemplateRepo) > 0 && options.GithubToken != "") {
+		options.AddDatasource = true
+	}
 }
