@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -55,7 +56,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 		}
 	} else {
-		value := generators.CopyMap(payloads)
+		value := maps.Clone(payloads)
 		if err := request.executeRequestWithPayloads(inputURL, value, previous, callback); err != nil {
 			return err
 		}
