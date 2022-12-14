@@ -37,6 +37,10 @@ const (
 // HTTPErrorRetryPolicy is to retry for HTTPCodes >= 500.
 func HTTPErrorRetryPolicy() func(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if resp == nil {
+			return false, err
+		}
+
 		if resp.StatusCode >= http.StatusInternalServerError {
 			return true, errors.New(resp.Status)
 		}
