@@ -94,18 +94,16 @@ func (c *Cache) Check(value string) bool {
 	}
 	numberOfErrorsValue := numberOfErrors.(int)
 
-	if numberOfErrors == -1 {
+	if numberOfErrorsValue >= c.MaxHostError+1 {
 		return true
 	}
-	fmt.Println("A", finalValue, numberOfErrorsValue, numberOfErrors, c.MaxHostError)
 	if numberOfErrorsValue >= c.MaxHostError {
-		_ = c.failedTargets.Set(finalValue, -1)
 		if c.verbose {
 			gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, numberOfErrorsValue)
 		}
 		return true
 	}
-	fmt.Println("B", finalValue, numberOfErrorsValue, numberOfErrors, c.MaxHostError)
+	fmt.Println(finalValue, numberOfErrorsValue, numberOfErrors, c.MaxHostError)
 	return false
 }
 
