@@ -1,6 +1,7 @@
 package hosterrorscache
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 	"regexp"
@@ -96,6 +97,7 @@ func (c *Cache) Check(value string) bool {
 	if numberOfErrors == -1 {
 		return true
 	}
+	fmt.Println("A", finalValue, numberOfErrorsValue, numberOfErrors, c.MaxHostError)
 	if numberOfErrorsValue >= c.MaxHostError {
 		_ = c.failedTargets.Set(finalValue, -1)
 		if c.verbose {
@@ -103,6 +105,7 @@ func (c *Cache) Check(value string) bool {
 		}
 		return true
 	}
+	fmt.Println("B", finalValue, numberOfErrorsValue, numberOfErrors, c.MaxHostError)
 	return false
 }
 
