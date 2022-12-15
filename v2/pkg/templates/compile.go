@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -37,44 +38,25 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		return value.(*Template), err
 	}
 
-	template := &Template{}
-
-	data, err := utils.ReadFromPathOrURL(filePath, options.Catalog)
+	var reader io.ReadCloser
+	if utils.IsURL(filePath) {
+		resp, err := http.Get(filePath)
+		if err != nil {
+			return nil, err
+		}
+		reader = resp.Body
+	} else {
+		var err error
+		reader, err = options.Catalog.OpenFile(filePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	defer reader.Close()
+	template, err := ParseFromReader(reader, preprocessor, options)
 	if err != nil {
 		return nil, err
 	}
-
-	data = template.expandPreprocessors(data)
-	if preprocessor != nil {
-		data = preprocessor.Process(data)
-	}
-
-	if err := yaml.Unmarshal(data, template); err != nil {
-		return nil, err
-	}
-
-	if utils.IsBlank(template.Info.Name) {
-		return nil, errors.New("no template name field provided")
-	}
-	if template.Info.Authors.IsEmpty() {
-		return nil, errors.New("no template author field provided")
-	}
-
-	// Setting up variables regarding template metadata
-	options.TemplateID = template.ID
-	options.TemplateInfo = template.Info
-	options.TemplatePath = filePath
-	options.StopAtFirstMatch = template.StopAtFirstMatch
-
-	if template.Variables.Len() > 0 {
-		options.Variables = template.Variables
-	}
-
-	// If no requests, and it is also not a workflow, return error.
-	if template.Requests() == 0 {
-		return nil, fmt.Errorf("no requests defined for %s", template.ID)
-	}
-
 	// Compile the workflow request
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
@@ -83,24 +65,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.CompiledWorkflow = compiled
 		template.CompiledWorkflow.Options = &options
 	}
-
-	if err := template.compileProtocolRequests(options); err != nil {
-		return nil, err
-	}
-
-	if template.Executer != nil {
-		if err := template.Executer.Compile(); err != nil {
-			return nil, errors.Wrap(err, "could not compile request")
-		}
-		template.TotalRequests = template.Executer.Requests()
-	}
-	if template.Executer == nil && template.CompiledWorkflow == nil {
-		return nil, ErrCreateTemplateExecutor
-	}
 	template.Path = filePath
-
-	template.parseSelfContainedRequests()
-
 	parsedTemplatesCache.Store(filePath, template, err)
 	return template, nil
 }
@@ -226,13 +191,19 @@ mainLoop:
 
 // ParseFromReader reads the template from reader
 // returns the parsed template
-func ParseFromReader(reader io.Reader, options protocols.ExecuterOptions) (*Template, error) {
+func ParseFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
 
 	template := &Template{}
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
+
+	data = template.expandPreprocessors(data)
+	if preprocessor != nil {
+		data = preprocessor.Process(data)
+	}
+
 	if err := yaml.Unmarshal(data, template); err != nil {
 		return nil, err
 	}
