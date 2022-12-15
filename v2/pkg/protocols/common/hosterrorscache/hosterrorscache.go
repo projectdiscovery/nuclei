@@ -5,9 +5,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/bluele/gcache"
-
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -29,6 +30,11 @@ type Cache struct {
 	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
+}
+
+type cacheItem struct {
+	errors atomic.Int32
+	sync.Once
 }
 
 const DefaultMaxHostsCount = 10000
@@ -87,18 +93,17 @@ func (c *Cache) Check(value string) bool {
 		return false
 	}
 
-	numberOfErrors, err := c.failedTargets.GetIFPresent(finalValue)
+	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
 	if err != nil {
 		return false
 	}
-	numberOfErrorsValue := numberOfErrors.(int)
+	existingCacheItemValue := existingCacheItem.(*cacheItem)
 
-	if numberOfErrorsValue >= c.MaxHostError+1 {
-		return true
-	}
-	if numberOfErrorsValue >= c.MaxHostError {
+	if existingCacheItemValue.errors.Load() >= int32(c.MaxHostError) {
 		if c.verbose {
-			gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, numberOfErrorsValue)
+			existingCacheItemValue.Do(func() {
+				gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, existingCacheItemValue.errors.Load())
+			})
 		}
 		return true
 	}
@@ -112,18 +117,22 @@ func (c *Cache) MarkFailed(value string, err error) {
 	}
 	finalValue := c.normalizeCacheValue(value)
 	if !c.failedTargets.Has(finalValue) {
-		_ = c.failedTargets.Set(finalValue, 1)
+		newItem := &cacheItem{errors: atomic.Int32{}}
+		newItem.errors.Store(1)
+		_ = c.failedTargets.Set(finalValue, newItem)
 		return
 	}
 
-	numberOfErrors, err := c.failedTargets.GetIFPresent(finalValue)
-	if err != nil || numberOfErrors == nil {
-		_ = c.failedTargets.Set(finalValue, 1)
+	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
+	if err != nil || existingCacheItem == nil {
+		newItem := &cacheItem{errors: atomic.Int32{}}
+		newItem.errors.Store(1)
+		_ = c.failedTargets.Set(finalValue, newItem)
 		return
 	}
-	numberOfErrorsValue := numberOfErrors.(int)
-
-	_ = c.failedTargets.Set(finalValue, numberOfErrorsValue+1)
+	existingCacheItemValue := existingCacheItem.(*cacheItem)
+	existingCacheItemValue.errors.Add(1)
+	_ = c.failedTargets.Set(finalValue, existingCacheItemValue)
 }
 
 var checkErrorRegexp = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
