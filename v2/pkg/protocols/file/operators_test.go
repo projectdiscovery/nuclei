@@ -14,6 +14,19 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
+func newMockOperator() operators.Operators {
+	operators := operators.Operators{
+		Matchers: []*matchers.Matcher{
+			{
+				Type: matchers.MatcherTypeHolder{
+					MatcherType: matchers.WordsMatcher,
+				},
+			},
+		},
+	}
+	return operators
+}
+
 func TestResponseToDSLMap(t *testing.T) {
 	options := testutils.DefaultOptions
 
@@ -25,6 +38,7 @@ func TestResponseToDSLMap(t *testing.T) {
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
+		Operators:   newMockOperator(),
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -50,6 +64,7 @@ func TestFileOperatorMatch(t *testing.T) {
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
+		Operators:   newMockOperator(),
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
@@ -138,6 +153,7 @@ func TestFileOperatorExtract(t *testing.T) {
 		NoRecursive: false,
 		Extensions:  []string{"*", ".lock"},
 		DenyList:    []string{".go"},
+		Operators:   newMockOperator(),
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
