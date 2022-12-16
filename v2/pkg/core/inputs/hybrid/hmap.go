@@ -252,7 +252,9 @@ func (i *Input) Count() int64 {
 func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 	if i.hostMapStream != nil {
 		i.hostMapStreamOnce.Do(func() {
-			i.hostMapStream.Process()
+			if err := i.hostMapStream.Process(); err != nil {
+				gologger.Warning().Msgf("error in stream mode processing: %s\n", err)
+			}
 		})
 	}
 	callbackFunc := func(k, _ []byte) error {
