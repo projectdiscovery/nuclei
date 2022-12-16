@@ -328,7 +328,7 @@ func readEnvInputVars(options *types.Options) {
 	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
 		options.CloudURL = "https://cloud-dev.nuclei.sh"
 	}
-	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_APIKEY")
+	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_API")
 
 	options.GithubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
