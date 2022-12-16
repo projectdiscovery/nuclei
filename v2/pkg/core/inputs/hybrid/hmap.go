@@ -8,12 +8,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/filekv"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/mapcidr"
 	asn "github.com/projectdiscovery/mapcidr/asn"
@@ -27,13 +28,17 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
+const DefaultMaxDedupeItemsCount = 10000
+
 // Input is a hmap/filekv backed nuclei Input provider
 type Input struct {
-	ipOptions     *ipOptions
-	inputCount    int64
-	dupeCount     int64
-	hostMap       *hybrid.HybridMap
-	hostMapStream *filekv.FileDB
+	ipOptions         *ipOptions
+	inputCount        int64
+	dupeCount         int64
+	hostMap           *hybrid.HybridMap
+	hostMapStream     *filekv.FileDB
+	hostMapStreamOnce sync.Once
+	sync.Once
 }
 
 // New creates a new hmap backed nuclei Input Provider
@@ -54,6 +59,7 @@ func New(options *types.Options) (*Input, error) {
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
+		fkvOptions.MaxItems = DefaultMaxDedupeItemsCount
 		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
 			return nil, errors.Wrap(err, "could not create temporary input file")
 		} else {
@@ -224,7 +230,15 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 	i.inputCount++ // tracks target count
 	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
-		_ = i.hostMapStream.Set([]byte(key), nil)
+		i.setHostMapStream(key)
+	}
+}
+
+// setHostMapStream sets iteam in stream mode
+func (i *Input) setHostMapStream(data string) {
+	if _, err := i.hostMapStream.Merge([][]byte{[]byte(data)}); err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
 	}
 }
 
@@ -236,6 +250,11 @@ func (i *Input) Count() int64 {
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
 func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
+	if i.hostMapStream != nil {
+		i.hostMapStreamOnce.Do(func() {
+			i.hostMapStream.Process()
+		})
+	}
 	callbackFunc := func(k, _ []byte) error {
 		metaInput := &contextargs.MetaInput{}
 		if err := metaInput.Unmarshal(string(k)); err != nil {
@@ -270,7 +289,7 @@ func (i *Input) expandCIDRInputValue(value string) {
 		i.inputCount++
 		_ = i.hostMap.Set(key, nil)
 		if i.hostMapStream != nil {
-			_ = i.hostMapStream.Set([]byte(key), nil)
+			i.setHostMapStream(key)
 		}
 	}
 }
