@@ -39,7 +39,6 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	data, err := utils.ReadFromPathOrURL(filePath, options.Catalog)
 	if err != nil {
-		panic("Error 1")
 		return nil, err
 	}
 
@@ -49,7 +48,6 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	}
 
 	if err := yaml.Unmarshal(data, template); err != nil {
-		panic("Error 2")
 		return nil, err
 	}
 
@@ -85,20 +83,16 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	}
 
 	if err := template.compileProtocolRequests(options); err != nil {
-		panic("Error 3")
 		return nil, err
 	}
 
 	if template.Executer != nil {
 		if err := template.Executer.Compile(); err != nil {
-			panic("Error 4")
 			return nil, errors.Wrap(err, "could not compile request")
 		}
 		template.TotalRequests = template.Executer.Requests()
 	}
 	if template.Executer == nil && template.CompiledWorkflow == nil {
-		// fmt.Println("")
-		panic("Error 5")
 		return nil, ErrCreateTemplateExecutor
 	}
 	template.Path = filePath
