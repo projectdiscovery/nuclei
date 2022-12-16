@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -183,8 +184,16 @@ func New(options *types.Options) (*Runner, error) {
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
 		NotFoundCallback: func(target string) bool {
-			if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
-				runner.cloudTargets = append(runner.cloudTargets, target)
+			parsed, parseErr := strconv.ParseInt(target, 10, 64)
+			if parseErr != nil {
+				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
+					runner.cloudTargets = append(runner.cloudTargets, target)
+					return true
+				}
+				return false
+			}
+			if exists, err := runner.cloudClient.ExistsTarget(parsed); err == nil {
+				runner.cloudTargets = append(runner.cloudTargets, exists.Reference)
 				return true
 			}
 			return false
@@ -413,16 +422,19 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	var cloudTemplates []string
-	// Initialize cloud data stores if specified
 	if r.options.Cloud {
-		if err := r.initializeCloudDataSources(); err != nil {
-			return errors.Wrap(err, "could not init cloud data sources")
-		}
-
 		// hook template loading
 		store.NotFoundCallback = func(template string) bool {
-			if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
-				cloudTemplates = append(cloudTemplates, template)
+			parsed, parseErr := strconv.ParseInt(template, 10, 64)
+			if parseErr != nil {
+				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
+					cloudTemplates = append(cloudTemplates, template)
+					return true
+				}
+				return false
+			}
+			if exists, err := r.cloudClient.ExistsTemplate(parsed); err == nil {
+				cloudTemplates = append(cloudTemplates, exists.Reference)
 				return true
 			}
 			return false
@@ -481,6 +493,8 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTargets()
 		} else if r.options.ListTemplates {
 			err = r.listTemplates()
+		} else if r.options.AddDatasource != "" {
+			err = r.addCloudDataSource(r.options.AddDatasource)
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
 		} else if r.options.AddTarget != "" {

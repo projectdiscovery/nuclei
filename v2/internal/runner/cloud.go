@@ -19,6 +19,7 @@ import (
 func (r *Runner) getScanList(limit int) error {
 	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
+	var count int
 	var e error
 	for {
 		items, err := r.cloudClient.GetScans(limit, lastTime)
@@ -30,14 +31,18 @@ func (r *Runner) getScanList(limit int) error {
 			break
 		}
 		for _, v := range items {
+			count++
 			lastTime = v.CreatedAt.String()
 			res := nucleicloud.PrepareScanListOutput(v)
 			if r.options.JSON {
 				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
 			} else {
-				gologger.Silent().Msgf("%s [%d] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.Timestamp, res.ScanID, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
+				gologger.Silent().Msgf("%d. [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.ScanID, res.Timestamp, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
 			}
 		}
+	}
+	if count == 0 {
+		return errors.New("no scan list found")
 	}
 	return e
 }
@@ -92,11 +97,14 @@ func (r *Runner) listDatasources() error {
 	if err != nil {
 		return err
 	}
+	if len(datasources) == 0 {
+		return errors.New("no cloud datasource list found")
+	}
 	for _, source := range datasources {
 		if r.options.JSON {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else {
-			gologger.Silent().Msgf("[%s] [%d] [%s] [%s] %s", source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.ID, source.Type, source.Repo, source.Path)
+			gologger.Silent().Msgf("%d. [%s] [%s] [%s] %s", source.ID, source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path)
 		}
 	}
 	return err
@@ -107,11 +115,14 @@ func (r *Runner) listTargets() error {
 	if err != nil {
 		return err
 	}
+	if len(items) == 0 {
+		return errors.New("no target list found")
+	}
 	for _, source := range items {
 		if r.options.JSON {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else {
-			gologger.Silent().Msgf("[%d] %s (%d)", source.ID, source.Reference, source.Count)
+			gologger.Silent().Msgf("%d. %s (%d)", source.ID, source.Reference, source.Count)
 		}
 	}
 	return err
@@ -122,11 +133,14 @@ func (r *Runner) listTemplates() error {
 	if err != nil {
 		return err
 	}
+	if len(items) == 0 {
+		return errors.New("no template list found")
+	}
 	for _, source := range items {
 		if r.options.JSON {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else {
-			gologger.Silent().Msgf("[%d] %s", source.ID, source.Reference)
+			gologger.Silent().Msgf("%d. %s", source.ID, source.Reference)
 		}
 	}
 	return err
@@ -217,16 +231,18 @@ func (r *Runner) removeTemplate(item string) error {
 }
 
 // initializeCloudDataSources initializes cloud data sources
-func (r *Runner) initializeCloudDataSources() error {
-	if r.options.AwsBucketName != "" {
+func (r *Runner) addCloudDataSource(source string) error {
+	switch source {
+	case "s3":
 		token := strings.Join([]string{r.options.AwsAccessKey, r.options.AwsSecretKey, r.options.AwsRegion}, ":")
 		if _, err := r.processDataSourceItem(r.options.AwsBucketName, token, "s3"); err != nil {
 			return err
 		}
-	}
-	for _, repo := range r.options.GithubTemplateRepo {
-		if _, err := r.processDataSourceItem(repo, r.options.GithubToken, "github"); err != nil {
-			return err
+	case "github":
+		for _, repo := range r.options.GithubTemplateRepo {
+			if _, err := r.processDataSourceItem(repo, r.options.GithubToken, "github"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

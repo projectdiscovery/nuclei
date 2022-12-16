@@ -33,9 +33,10 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 
 // runCloudEnumeration runs cloud based enumeration
 func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
+	count := &atomic.Int64{}
 	now := time.Now()
 	defer func() {
-		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
+		gologger.Info().Msgf("Scan execution took %s and found %d results", time.Since(now), count.Load())
 	}()
 	results := &atomic.Bool{}
 
@@ -76,10 +77,14 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		return results, err
 	}
 	gologger.Info().Msgf("Created task with ID: %d", taskID)
+	if nostore {
+		gologger.Info().Msgf("Cloud scan storage: disabled")
+	}
 	time.Sleep(3 * time.Second)
 
 	err = r.cloudClient.GetResults(taskID, func(re *output.ResultEvent) {
 		results.CompareAndSwap(false, true)
+		_ = count.Inc()
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)

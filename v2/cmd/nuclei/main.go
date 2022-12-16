@@ -295,8 +295,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarEnv(&options.CloudURL, "cloud-server", "cs", "https://cloud-dev.nuclei.sh", "NUCLEI_CLOUD_SERVER", "nuclei cloud server to use (NUCLEI_CLOUD_SERVER)"),
-		flagSet.StringVarEnv(&options.CloudAPIKey, "cloud-api-key", "ak", "", "NUCLEI_CLOUD_APIKEY", "api-key for the nuclei cloud server (NUCLEI_CLOUD_APIKEY)"),
 		flagSet.BoolVarP(&options.ScanList, "list-scan", "ls", false, "list previous cloud scans"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "ns", false, "disable scan/output storage on cloud"),
 		flagSet.IntVarP(&options.OutputLimit, "limit", "ol", 100, "limit the output at a time"),
@@ -305,6 +303,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ListDatasources, "list-datasources", "ld", false, "list cloud datasources"),
 		flagSet.BoolVarP(&options.ListTargets, "list-targets", "ltr", false, "list cloud targets"),
 		flagSet.BoolVarP(&options.ListTemplates, "list-templates", "ltm", false, "list cloud templates"),
+		flagSet.StringVarP(&options.AddDatasource, "add-datasource", "ads", "", "add specified data source (s3,github)"),
 		flagSet.StringVarP(&options.RemoveDatasource, "remove-datasource", "rds", "", "remove specified data source"),
 		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
 		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),

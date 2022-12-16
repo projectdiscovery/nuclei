@@ -160,16 +160,7 @@ func validateOptions(options *types.Options) error {
 	}
 	// Verify aws secrets are passed if s3 template bucket passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
-		var missing []string
-		if options.AwsAccessKey == "" {
-			missing = append(missing, "AWS_ACCESS_KEY")
-		}
-		if options.AwsSecretKey == "" {
-			missing = append(missing, "AWS_SECRET_KEY")
-		}
-		if options.AwsRegion == "" {
-			missing = append(missing, "AWS_REGION")
-		}
+		missing := validateMissingS3Options(options)
 		if missing != nil {
 			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
 		}
@@ -208,7 +199,50 @@ func validateCloudOptions(options *types.Options) error {
 			return errors.New("cloud flags cannot be used without cloud option")
 		}
 	}
+	if options.Cloud {
+		if options.CloudAPIKey == "" {
+			return errors.New("missing NUCLEI_CLOUD_API env variable")
+		}
+		var missing []string
+		switch options.AddDatasource {
+		case "s3":
+			missing = validateMissingS3Options(options)
+		case "github":
+			missing = validateMissingGithubOptions(options)
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("missing %v env variables", strings.Join(missing, ", "))
+		}
+	}
 	return nil
+}
+
+func validateMissingS3Options(options *types.Options) []string {
+	var missing []string
+	if options.AwsBucketName == "" {
+		missing = append(missing, "AWS_TEMPLATE_BUCKET")
+	}
+	if options.AwsAccessKey == "" {
+		missing = append(missing, "AWS_ACCESS_KEY")
+	}
+	if options.AwsSecretKey == "" {
+		missing = append(missing, "AWS_SECRET_KEY")
+	}
+	if options.AwsRegion == "" {
+		missing = append(missing, "AWS_REGION")
+	}
+	return missing
+}
+
+func validateMissingGithubOptions(options *types.Options) []string {
+	var missing []string
+	if options.GithubToken == "" {
+		missing = append(missing, "GITHUB_TOKEN")
+	}
+	if len(options.GithubTemplateRepo) == 0 {
+		missing = append(missing, "GITHUB_TEMPLATE_REPO")
+	}
+	return missing
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -291,6 +325,11 @@ func readEnvInputVars(options *types.Options) {
 	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
 		options.Cloud = true
 	}
+	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
+		options.CloudURL = "https://cloud-dev.nuclei.sh"
+	}
+	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_APIKEY")
+
 	options.GithubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {
