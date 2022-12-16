@@ -145,8 +145,10 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	var requests []protocols.Request
 
 	if options.Options.OfflineHTTP {
-		template.compileOfflineHTTPRequest(options)
-		template.Executer = executer.NewExecuter(requests, &options)
+		err := template.compileOfflineHTTPRequest(options)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -200,7 +202,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) {
+func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) error {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -220,6 +222,8 @@ mainLoop:
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
 		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		return nil
 	}
+	return errors.New("template can't be used for offline matching")
 
 }
