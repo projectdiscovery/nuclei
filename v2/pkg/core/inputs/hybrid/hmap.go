@@ -54,6 +54,7 @@ func New(options *types.Options) (*Input, error) {
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
+		fkvOptions.MaxItems = uint(len(options.Targets) * 100)
 		if tmpFileName, err := fileutil.GetTempFileName(); err != nil {
 			return nil, errors.Wrap(err, "could not create temporary input file")
 		} else {
