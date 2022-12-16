@@ -476,6 +476,44 @@ func (c *Client) GetTemplate(ID int64) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
+func (c *Client) ExistsTarget(id int64) (ExistsInputResponse, error) {
+	var item ExistsInputResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/targets/%d/exists", c.baseURL, id), nil)
+	if err != nil {
+		return item, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return item, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return item, errors.Wrap(err, "could not decode results")
+	}
+	return item, nil
+}
+
+func (c *Client) ExistsTemplate(id int64) (ExistsInputResponse, error) {
+	var item ExistsInputResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates/%d/exists", c.baseURL, id), nil)
+	if err != nil {
+		return item, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return item, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return item, errors.Wrap(err, "could not decode results")
+	}
+	return item, nil
+}
+
 const apiKeyParameter = "X-API-Key"
 
 type errorResponse struct {

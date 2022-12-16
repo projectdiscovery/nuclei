@@ -109,6 +109,8 @@ type Options struct {
 	NoStore bool
 	// Delete scan
 	DeleteScan string
+	// AddDatasource adds a datasource to cloud storage
+	AddDatasource string
 	// RemoveDatasource deletes a datasource from cloud storage
 	RemoveDatasource string
 	// AddTemplate adds a list of templates to custom datasource

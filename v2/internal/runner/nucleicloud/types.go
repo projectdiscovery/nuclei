@@ -125,3 +125,7 @@ type ListScanOutput struct {
 	Target     int    `json:"target"`
 	Template   int    `json:"template"`
 }
+
+type ExistsInputResponse struct {
+	Reference string `json:"reference"`
+}
