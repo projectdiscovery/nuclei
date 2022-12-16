@@ -307,10 +307,17 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.RemoveDatasource, "remove-datasource", "rds", "", "remove specified data source"),
 		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
 		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
-		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target id from cloud"),
-		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template id from cloud"),
-		flagSet.StringVarP(&options.RemoveTarget, "remove-target", "rtl", "", "remove target(s) from cloud"),
-		flagSet.StringVarP(&options.RemoveTemplate, "remove-template", "rtm", "", "remove template(s) from cloud"),
+		flagSet.BoolVarP(&options.ScanList, "list-scan", "lsn", false, "list previous cloud scans"),
+		flagSet.BoolVarP(&options.ListTargets, "list-target", "ltr", false, "list cloud target by id"),
+		flagSet.BoolVarP(&options.ListTemplates, "list-template", "ltm", false, "list cloud template by id"),
+		flagSet.BoolVarP(&options.ListDatasources, "list-datasource", "lds", false, "list cloud datasource by id"),
+		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target content by id"),
+		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
+		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "dsn", "", "delete cloud scan by id"),
+		flagSet.StringVarP(&options.RemoveTarget, "delete-target", "dtr", "", "delete target(s) from cloud"),
+		flagSet.StringVarP(&options.RemoveTemplate, "delete-template", "dtm", "", "delete template(s) from cloud"),
+		flagSet.StringVarP(&options.RemoveDatasource, "delete-datasource", "dds", "", "delete specified data source"),
+		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)
 
 	_ = flagSet.Parse()
