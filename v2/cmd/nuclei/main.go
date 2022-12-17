@@ -310,6 +310,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "nos", false, "disable scan/output storage on cloud"),
 		flagSet.StringVarP(&options.ScanOutput, "scan-output", "sno", "", "display scan output by scan id"),
+		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
 		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)
 

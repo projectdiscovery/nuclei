@@ -181,6 +181,8 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
+	// NoTables disables pretty printing of cloud results in tables
+	NoTables bool
 	// DisableClustering disables clustering of templates
 	DisableClustering bool
 	// UseInstalledChrome skips chrome install and use local instance
