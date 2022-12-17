@@ -50,6 +50,14 @@ func TestConvertInputToType(t *testing.T) {
 		// host-port with default port
 		{"google.com", typeHostWithPort, "google.com:443", "443"},
 
+		// host with optional port
+		{"google.com", typeHostWithOptionalPort, "google.com", ""},
+		{"google.com:443", typeHostWithOptionalPort, "google.com:443", ""},
+		{"https://google.com", typeHostWithOptionalPort, "google.com:443", ""},
+		{"https://google.com:443", typeHostWithOptionalPort, "google.com:443", ""},
+		// host with optional port and default port
+		{"google.com", typeHostWithOptionalPort, "google.com:443", "443"},
+
 		// websocket
 		{"google.com", typeWebsocket, "", ""},
 		{"google.com:443", typeWebsocket, "", ""},
