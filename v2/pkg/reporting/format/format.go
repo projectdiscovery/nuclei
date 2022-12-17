@@ -160,8 +160,8 @@ func ToMarkdownTableString(templateInfo *model.Info) string {
 	fields.Set("Authors", templateInfo.Authors.String())
 	fields.Set("Tags", templateInfo.Tags.String())
 	fields.Set("Severity", templateInfo.SeverityHolder.Severity.String())
-	fields.Set("Description", templateInfo.Description)
-	fields.Set("Remediation", templateInfo.Remediation)
+	fields.Set("Description", lineBreakToHTML(templateInfo.Description))
+	fields.Set("Remediation", lineBreakToHTML(templateInfo.Remediation))
 
 	classification := templateInfo.Classification
 	if classification != nil {
@@ -238,4 +238,8 @@ func createMarkdownCodeBlock(title string, content string, language string) stri
 
 func createBoldMarkdown(value string) string {
 	return "**" + value + "**"
+}
+
+func lineBreakToHTML(text string) string {
+	return strings.ReplaceAll(text, "\n", "<br>")
 }
