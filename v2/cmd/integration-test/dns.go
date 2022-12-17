@@ -8,6 +8,7 @@ var dnsTestCases = map[string]testutils.TestCase{
 	"dns/basic.yaml":     &dnsBasic{},
 	"dns/ptr.yaml":       &dnsPtr{},
 	"dns/caa.yaml":       &dnsCAA{},
+	"dns/tlsa.yaml":      &dnsCAA{},
 	"dns/variables.yaml": &dnsVariables{},
 }
 
@@ -57,6 +58,22 @@ func (h *dnsCAA) Execute(filePath string) error {
 		return routerErr
 	}
 	return expectResultsCount(results, 1)
+}
+
+type dnsTLSA struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *dnsTLSA) Execute(filePath string) error {
+	var routerErr error
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "google.com", debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return routerErr
+	}
+	return expectResultsCount(results, 0)
 }
 
 type dnsVariables struct{}
