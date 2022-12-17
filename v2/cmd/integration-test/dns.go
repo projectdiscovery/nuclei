@@ -8,7 +8,7 @@ var dnsTestCases = map[string]testutils.TestCase{
 	"dns/basic.yaml":     &dnsBasic{},
 	"dns/ptr.yaml":       &dnsPtr{},
 	"dns/caa.yaml":       &dnsCAA{},
-	"dns/tlsa.yaml":      &dnsCAA{},
+	"dns/tlsa.yaml":      &dnsTLSA{},
 	"dns/variables.yaml": &dnsVariables{},
 }
 
