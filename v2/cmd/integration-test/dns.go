@@ -73,7 +73,7 @@ func (h *dnsTLSA) Execute(filePath string) error {
 	if routerErr != nil {
 		return routerErr
 	}
-	return expectResultsCount(results, 0)
+	return expectResultsCount(results, 1)
 }
 
 type dnsVariables struct{}
