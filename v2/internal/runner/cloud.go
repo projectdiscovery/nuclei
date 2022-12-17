@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
@@ -17,8 +18,10 @@ import (
 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
-	lastTime := "2099-01-02 15:04:05 +0000 UTC"
+	lastTime := "2099-01-02 1 5:04:05 +0000 UTC"
 
+	header := []string{"ID", "Timestamp", "Status", "Matched", "Targets", "Templates", "Duration"}
+	var values [][]string
 	var count int
 	var e error
 	for {
@@ -36,6 +39,8 @@ func (r *Runner) getScanList(limit int) error {
 			res := nucleicloud.PrepareScanListOutput(v)
 			if r.options.JSON {
 				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
+			} else if !r.options.NoTables {
+				values = append(values, []string{strconv.FormatInt(res.ScanID, 10), res.Timestamp, strings.ToUpper(res.ScanStatus), strconv.Itoa(res.ScanResult), strconv.Itoa(res.Target), strconv.Itoa(res.Template), res.ScanTime})
 			} else {
 				gologger.Silent().Msgf("%d. [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.ScanID, res.Timestamp, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
 			}
@@ -44,7 +49,95 @@ func (r *Runner) getScanList(limit int) error {
 	if count == 0 {
 		return errors.New("no scan list found")
 	}
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
 	return e
+}
+
+func (r *Runner) listDatasources() error {
+	datasources, err := r.cloudClient.ListDatasources()
+	if err != nil {
+		return err
+	}
+	if len(datasources) == 0 {
+		return errors.New("no cloud datasource list found")
+	}
+
+	header := []string{"ID", "UpdatedAt", "Type", "Repo", "Path"}
+	var values [][]string
+	for _, source := range datasources {
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else if !r.options.NoTables {
+			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path})
+		} else {
+			gologger.Silent().Msgf("%d. [%s] [%s] [%s] %s", source.ID, source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path)
+		}
+	}
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
+	return err
+}
+
+func (r *Runner) listTargets() error {
+	items, err := r.cloudClient.ListTargets("")
+	if err != nil {
+		return err
+	}
+	if len(items) == 0 {
+		return errors.New("no target list found")
+	}
+
+	header := []string{"ID", "Reference", "Count"}
+	var values [][]string
+	for _, source := range items {
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else if !r.options.NoTables {
+			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference, strconv.FormatInt(source.Count, 10)})
+		} else {
+			gologger.Silent().Msgf("%d. %s (%d)", source.ID, source.Reference, source.Count)
+		}
+	}
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
+	return err
+}
+
+func (r *Runner) listTemplates() error {
+	items, err := r.cloudClient.ListTemplates("")
+	if err != nil {
+		return err
+	}
+	if len(items) == 0 {
+		return errors.New("no template list found")
+	}
+
+	header := []string{"ID", "Reference"}
+	var values [][]string
+	for _, source := range items {
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else if !r.options.NoTables {
+			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference})
+		} else {
+			gologger.Silent().Msgf("%d. %s", source.ID, source.Reference)
+		}
+	}
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
+	return err
+}
+
+func (r *Runner) prettyPrintTable(header []string, values [][]string) {
+	writer := tablewriter.NewWriter(os.Stdout)
+	writer.SetHeader(header)
+	writer.AppendBulk(values)
+	writer.Render()
 }
 
 func (r *Runner) deleteScan(id string) error {
@@ -89,60 +182,6 @@ func (r *Runner) getTemplate(id string) error {
 	defer reader.Close()
 
 	_, _ = io.Copy(os.Stdout, reader)
-	return err
-}
-
-func (r *Runner) listDatasources() error {
-	datasources, err := r.cloudClient.ListDatasources()
-	if err != nil {
-		return err
-	}
-	if len(datasources) == 0 {
-		return errors.New("no cloud datasource list found")
-	}
-	for _, source := range datasources {
-		if r.options.JSON {
-			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
-		} else {
-			gologger.Silent().Msgf("%d. [%s] [%s] [%s] %s", source.ID, source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path)
-		}
-	}
-	return err
-}
-
-func (r *Runner) listTargets() error {
-	items, err := r.cloudClient.ListTargets("")
-	if err != nil {
-		return err
-	}
-	if len(items) == 0 {
-		return errors.New("no target list found")
-	}
-	for _, source := range items {
-		if r.options.JSON {
-			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
-		} else {
-			gologger.Silent().Msgf("%d. %s (%d)", source.ID, source.Reference, source.Count)
-		}
-	}
-	return err
-}
-
-func (r *Runner) listTemplates() error {
-	items, err := r.cloudClient.ListTemplates("")
-	if err != nil {
-		return err
-	}
-	if len(items) == 0 {
-		return errors.New("no template list found")
-	}
-	for _, source := range items {
-		if r.options.JSON {
-			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
-		} else {
-			gologger.Silent().Msgf("%d. %s", source.ID, source.Reference)
-		}
-	}
 	return err
 }
 
