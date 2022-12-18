@@ -18,7 +18,7 @@ import (
 
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
-	lastTime := "2099-01-02 1 5:04:05 +0000 UTC"
+	lastTime := "2099-01-02 15:04:05 +0000 UTC"
 
 	header := []string{"ID", "Timestamp", "Status", "Matched", "Targets", "Templates", "Duration"}
 	var values [][]string
@@ -46,13 +46,16 @@ func (r *Runner) getScanList(limit int) error {
 			}
 		}
 	}
+	if e != nil {
+		return e
+	}
 	if count == 0 {
 		return errors.New("no scan list found")
 	}
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
 	}
-	return e
+	return nil
 }
 
 func (r *Runner) listDatasources() error {
