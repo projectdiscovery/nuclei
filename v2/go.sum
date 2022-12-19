@@ -72,8 +72,9 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkY
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
-github.com/aws/aws-sdk-go-v2 v1.17.2 h1:r0yRZInwiPBNpQ4aDy/Ssh3ROWsGtKDwar2JS8Lm+N8=
 github.com/aws/aws-sdk-go-v2 v1.17.2/go.mod h1:uzbQtefpm44goOPmdKyAlXSNcwlRgF3ePWVW6EtJvvw=
+github.com/aws/aws-sdk-go-v2 v1.17.3 h1:shN7NlnVzvDUgPQ+1rLMSxY8OWRNDRYtiqe0p/PgrhY=
+github.com/aws/aws-sdk-go-v2 v1.17.3/go.mod h1:uzbQtefpm44goOPmdKyAlXSNcwlRgF3ePWVW6EtJvvw=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 h1:dK82zF6kkPeCo8J1e+tGx4JdvDIQzj7ygIoLg8WMuGs=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10/go.mod h1:VeTZetY5KRJLuD/7fkQXMU6Mw7H5m/KP2J5Iy9osMno=
 github.com/aws/aws-sdk-go-v2/config v1.18.4 h1:VZKhr3uAADXHStS/Gf9xSYVmmaluTUfkc0dcbPiDsKE=
@@ -577,8 +578,6 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e h1:hEZVGt0VriAqweU8wHHTY+fLuGC7GMEz8xUhseJgl6A=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
-github.com/projectdiscovery/tlsx v1.0.0 h1:krS0QRbh4wHqeOybVQwBImY9PmIqzFOYM9Q+cKlEiZE=
-github.com/projectdiscovery/tlsx v1.0.0/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
 github.com/projectdiscovery/uncover v1.0.1 h1:bhP+EW4d+e4cAizOWAEz7jeyKZGkDYYTsZlXsd11t+w=
 github.com/projectdiscovery/uncover v1.0.1/go.mod h1:/D9qxgN2iZ/C2M8eo+pNQMnTaMhTZUu40Vat/LgSIxU=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3 h1:sOvfN3xHLiBMb6GJ3yDxBmPnN0dh3xllaQXQYo7CFUo=
