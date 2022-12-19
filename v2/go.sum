@@ -558,8 +558,8 @@ github.com/projectdiscovery/networkpolicy v0.0.3 h1:OZFPkMVY6SJxc1ncuRXB2VlT6xlz
 github.com/projectdiscovery/networkpolicy v0.0.3/go.mod h1:DIXwKs3sQyfCoWHKRLQiRrEorSQW4Zrh4ftu7oDVK6w=
 github.com/projectdiscovery/nvd v1.0.9 h1:2DdMm7lu3GnCQsyYDEQiQ/LRYDmpEm654kvGQS6jzjE=
 github.com/projectdiscovery/nvd v1.0.9/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiBoKqAQrn3X4Og=
-github.com/projectdiscovery/ratelimit v0.0.2 h1:vRscyCcmTWndd16Ed3lC51196eKYena+xpYfrDomjMg=
-github.com/projectdiscovery/ratelimit v0.0.2/go.mod h1:WBz8N1P+CyxnfUoGfVCqah4NZ2SreSX7v9dY8wIlK70=
+github.com/projectdiscovery/ratelimit v0.0.3 h1:6c8QKL3ivOdjXqbP+UA2jsTNHcH0OMHk+4AMkanOkUo=
+github.com/projectdiscovery/ratelimit v0.0.3/go.mod h1:WBz8N1P+CyxnfUoGfVCqah4NZ2SreSX7v9dY8wIlK70=
 github.com/projectdiscovery/rawhttp v0.1.4 h1:zdOqU1DUY2dGoyCzBqzHnHVwPyv32j+Hke8KfLRUouI=
 github.com/projectdiscovery/rawhttp v0.1.4/go.mod h1:mhSXo96awUUr20VdReDYUKxldsvR5841FRgiaoaxDCY=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
@@ -577,8 +577,6 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e h1:hEZVGt0VriAqweU8wHHTY+fLuGC7GMEz8xUhseJgl6A=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
-github.com/projectdiscovery/tlsx v1.0.0 h1:krS0QRbh4wHqeOybVQwBImY9PmIqzFOYM9Q+cKlEiZE=
-github.com/projectdiscovery/tlsx v1.0.0/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
 github.com/projectdiscovery/uncover v1.0.1 h1:bhP+EW4d+e4cAizOWAEz7jeyKZGkDYYTsZlXsd11t+w=
 github.com/projectdiscovery/uncover v1.0.1/go.mod h1:/D9qxgN2iZ/C2M8eo+pNQMnTaMhTZUu40Vat/LgSIxU=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3 h1:sOvfN3xHLiBMb6GJ3yDxBmPnN0dh3xllaQXQYo7CFUo=
