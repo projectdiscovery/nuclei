@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 
@@ -192,9 +191,8 @@ mainLoop:
 // ParseFromReader reads the template from reader
 // returns the parsed template
 func ParseFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-
 	template := &Template{}
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
