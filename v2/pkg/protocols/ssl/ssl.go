@@ -206,6 +206,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	data := make(map[string]interface{})
 
+	payloadFromOption := generators.BuildPayloadFromOptions(request.options.Options)
+	for k, v := range payloadFromOption {
+		data[k] = v
+	}
+
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input
