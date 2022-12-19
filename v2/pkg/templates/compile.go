@@ -145,11 +145,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	var requests []protocols.Request
 
 	if options.Options.OfflineHTTP {
-		err := template.compileOfflineHTTPRequest(options)
-		if err != nil {
-			return err
-		}
-		return nil
+		return template.compileOfflineHTTPRequest(options)
 	}
 
 	if len(template.RequestsDNS) > 0 {
