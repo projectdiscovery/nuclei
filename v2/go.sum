@@ -577,8 +577,6 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e h1:hEZVGt0VriAqweU8wHHTY+fLuGC7GMEz8xUhseJgl6A=
 github.com/projectdiscovery/tlsx v0.0.10-0.20221214133108-b1c80ad6876e/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
-github.com/projectdiscovery/tlsx v1.0.0 h1:krS0QRbh4wHqeOybVQwBImY9PmIqzFOYM9Q+cKlEiZE=
-github.com/projectdiscovery/tlsx v1.0.0/go.mod h1:LOgQpCTE96d/18+Zwu8p5b8ujOGPn6lIDqMIQCJHoXM=
 github.com/projectdiscovery/uncover v1.0.1 h1:bhP+EW4d+e4cAizOWAEz7jeyKZGkDYYTsZlXsd11t+w=
 github.com/projectdiscovery/uncover v1.0.1/go.mod h1:/D9qxgN2iZ/C2M8eo+pNQMnTaMhTZUu40Vat/LgSIxU=
 github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3 h1:sOvfN3xHLiBMb6GJ3yDxBmPnN0dh3xllaQXQYo7CFUo=
@@ -701,8 +699,8 @@ github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37/go.mod h
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220704091424-e0182326a282/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 h1:3UeQBvD0TFrlVjOeLOBz+CPAI8dnbqNSVwUwRrkp7vQ=
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0/go.mod h1:IXCdmsXIht47RaVFLEdVnh1t+pgYtTAhQGj73kz+2DM=
-github.com/xanzy/go-gitlab v0.76.0 h1:mkmuB27RDVZY/iXR61pEUfIqJ15Iivfu1kc3KZtBICI=
-github.com/xanzy/go-gitlab v0.76.0/go.mod h1:d/a0vswScO7Agg1CZNz15Ic6SSvBG9vfw8egL99t4kA=
+github.com/xanzy/go-gitlab v0.77.0 h1:UrbGlxkWVCbkpa6Fk6cM8ARh+rLACWemkJnsawT7t98=
+github.com/xanzy/go-gitlab v0.77.0/go.mod h1:d/a0vswScO7Agg1CZNz15Ic6SSvBG9vfw8egL99t4kA=
 github.com/xanzy/ssh-agent v0.2.1/go.mod h1:mLlQY/MoOhWBj+gOGMQkOeiEvkx+8pJSI+0Bx9h2kr4=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
