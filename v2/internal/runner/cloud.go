@@ -19,16 +19,16 @@ import (
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
 	lastTime := "2099-01-02 15:04:05 +0000 UTC"
-
 	header := []string{"ID", "Timestamp", "Status", "Matched", "Targets", "Templates", "Duration"}
-	var values [][]string
-	var count int
-	var e error
+
+	var (
+		values [][]string
+		count  int
+	)
 	for {
 		items, err := r.cloudClient.GetScans(limit, lastTime)
 		if err != nil {
-			e = err
-			break
+			return err
 		}
 		if len(items) == 0 {
 			break
@@ -45,9 +45,6 @@ func (r *Runner) getScanList(limit int) error {
 				gologger.Silent().Msgf("%d. [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.ScanID, res.Timestamp, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
 			}
 		}
-	}
-	if e != nil {
-		return e
 	}
 	if count == 0 {
 		return errors.New("no scan list found")
@@ -81,7 +78,7 @@ func (r *Runner) listDatasources() error {
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
 	}
-	return err
+	return nil
 }
 
 func (r *Runner) listTargets() error {
@@ -107,7 +104,7 @@ func (r *Runner) listTargets() error {
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
 	}
-	return err
+	return nil
 }
 
 func (r *Runner) listTemplates() error {
@@ -133,7 +130,7 @@ func (r *Runner) listTemplates() error {
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
 	}
-	return err
+	return nil
 }
 
 func (r *Runner) prettyPrintTable(header []string, values [][]string) {
@@ -156,11 +153,11 @@ func (r *Runner) deleteScan(id string) error {
 
 func (r *Runner) getResults(id string, limit int) error {
 	ID, _ := strconv.ParseInt(id, 10, 64)
-	err := r.cloudClient.GetResults(ID, func(re *output.ResultEvent) {
+	err := r.cloudClient.GetResults(ID, false, limit, func(re *output.ResultEvent) {
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
 		}
-	}, false, limit)
+	})
 	return err
 }
 
@@ -173,7 +170,7 @@ func (r *Runner) getTarget(id string) error {
 	defer reader.Close()
 
 	_, _ = io.Copy(os.Stdout, reader)
-	return err
+	return nil
 }
 
 func (r *Runner) getTemplate(id string) error {
@@ -185,7 +182,7 @@ func (r *Runner) getTemplate(id string) error {
 	defer reader.Close()
 
 	_, _ = io.Copy(os.Stdout, reader)
-	return err
+	return nil
 }
 
 func (r *Runner) removeDatasource(datasource string) error {
@@ -207,7 +204,7 @@ func (r *Runner) addTemplate(location string) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".yaml") {
+		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".yaml") {
 			return nil
 		}
 		base := filepath.Base(path)
@@ -227,7 +224,7 @@ func (r *Runner) addTarget(location string) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".txt") {
+		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".txt") {
 			return nil
 		}
 		base := filepath.Base(location)
@@ -254,7 +251,7 @@ func (r *Runner) removeTarget(item string) error {
 			gologger.Info().Msgf("Target deleted %s", item.Reference)
 		}
 	}
-	return err
+	return nil
 }
 
 func (r *Runner) removeTemplate(item string) error {
@@ -269,7 +266,7 @@ func (r *Runner) removeTemplate(item string) error {
 			gologger.Info().Msgf("Template deleted %s", item.Reference)
 		}
 	}
-	return err
+	return nil
 }
 
 // initializeCloudDataSources initializes cloud data sources

@@ -194,10 +194,8 @@ func validateOptions(options *types.Options) error {
 }
 
 func validateCloudOptions(options *types.Options) error {
-	if options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != "" {
-		if !options.Cloud {
-			return errors.New("cloud flags cannot be used without cloud option")
-		}
+	if options.HasCloudOptions() && !options.Cloud {
+		return errors.New("cloud flags cannot be used without cloud option")
 	}
 	if options.Cloud {
 		if options.CloudAPIKey == "" {
