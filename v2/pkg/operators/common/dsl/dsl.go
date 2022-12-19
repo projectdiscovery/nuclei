@@ -52,14 +52,12 @@ var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
 var dslFunctions map[string]dslFunction
 
 var (
-	// FunctionNames is a list of function names for expression evaluation usages
-	FunctionNames []string
 	// HelperFunctions is a pre-compiled list of govaluate DSL functions
 	HelperFunctions map[string]govaluate.ExpressionFunction
 )
 
-var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
-var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
+var reFunctionSignature = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+var reDateFormat = regexp.MustCompile("%([A-Za-z])")
 
 type dslFunction struct {
 	signatures  []string
@@ -236,7 +234,7 @@ func init() {
 			"(dateTimeFormat string, optionalUnixTime interface{}) string",
 			func(arguments ...interface{}) (interface{}, error) {
 				dateTimeFormat := types.ToString(arguments[0])
-				dateTimeFormatFragment := dateFormatRegex.FindAllStringSubmatch(dateTimeFormat, -1)
+				dateTimeFormatFragment := reDateFormat.FindAllStringSubmatch(dateTimeFormat, -1)
 
 				argumentsSize := len(arguments)
 				if argumentsSize < 1 && argumentsSize > 2 {
@@ -818,10 +816,6 @@ func init() {
 		dslFunctions[funcName] = dslFunc(funcName)
 	}
 	HelperFunctions = helperFunctions()
-	FunctionNames = make([]string, 0, len(HelperFunctions))
-	for k := range HelperFunctions {
-		FunctionNames = append(FunctionNames, k)
-	}
 }
 
 func makeDslWithOptionalArgsFunction(signaturePart string, dslFunctionLogic govaluate.ExpressionFunction) func(functionName string) dslFunction {
@@ -929,7 +923,7 @@ func colorizeDslFunctionSignatures() []string {
 	result := make([]string, 0, len(signatures))
 
 	for _, signature := range signatures {
-		subMatchSlices := functionSignaturePattern.FindAllStringSubmatch(signature, -1)
+		subMatchSlices := reFunctionSignature.FindAllStringSubmatch(signature, -1)
 		if len(subMatchSlices) != 1 {
 			result = append(result, signature)
 			continue

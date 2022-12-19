@@ -121,21 +121,19 @@ func findExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 
 func isExpression(data string, base map[string]interface{}) bool {
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
-		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
-			return true
-		} else if stringsutil.ContainsAny(data, dsl.FunctionNames...) {
-			return true
-		}
-		return false
+		return stringContainsAnyMapKey(data, base) || stringContainsAnyMapKey(data, dsl.HelperFunctions)
 	}
 	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
 }
 
-func getFunctionsNames(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func stringContainsAnyMapKey[T any](str string, maps ...map[string]T) bool {
+	for _, m := range maps {
+		for key := range m {
+			if strings.Contains(str, key) {
+				return true
+			}
+		}
 	}
-	return keys
+	return false
 }
