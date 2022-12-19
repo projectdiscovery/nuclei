@@ -58,7 +58,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
-			if request.StopAtFirstMatch && gotmatches {
+			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 				return nil
 			}
 			value = generators.MergeMaps(value, payloads)
