@@ -347,7 +347,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
 // any templates.
 func IsHTTPBasedProtocolUsed(store *Store) bool {
-	templates := store.Templates()
+	templates := append(store.Templates(), store.Workflows()...)
 
 	for _, template := range templates {
 		if len(template.RequestsHTTP) > 0 || len(template.RequestsHeadless) > 0 {
