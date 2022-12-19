@@ -378,3 +378,8 @@ func DefaultOptions() *Options {
 		MaxHostError:            30,
 	}
 }
+
+// HasCloudOptions returns true if cloud options have been specified
+func (options *Options) HasCloudOptions() bool {
+	return options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != ""
+}

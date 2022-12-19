@@ -86,7 +86,7 @@ func (c *Client) AddScan(req *AddScanRequest) (int64, error) {
 
 // GetResults gets results from nuclei server for an ID
 // until there are no more results left to retrieve.
-func (c *Client) GetResults(ID int64, callback func(*output.ResultEvent), checkProgress bool, limit int) error {
+func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback func(*output.ResultEvent)) error {
 	lastID := int64(0)
 
 	for {

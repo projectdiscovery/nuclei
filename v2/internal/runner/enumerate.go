@@ -82,7 +82,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 	}
 	time.Sleep(3 * time.Second)
 
-	err = r.cloudClient.GetResults(taskID, func(re *output.ResultEvent) {
+	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
 		results.CompareAndSwap(false, true)
 		_ = count.Inc()
 
@@ -94,7 +94,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-	}, true, limit)
+	})
 	return results, err
 }
 
