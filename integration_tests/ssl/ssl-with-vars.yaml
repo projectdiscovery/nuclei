@@ -1,0 +1,15 @@
+id: check-ssl-test
+
+info:
+  name: test SSL Certificate
+  author: pdteam
+  severity: low
+  tags: ssl
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    matchers:
+      - type: dsl
+        dsl:
+          - "print_debug(test)"
+        condition: and
