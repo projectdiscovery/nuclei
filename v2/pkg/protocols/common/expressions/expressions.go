@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Knetic/govaluate"
@@ -8,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -33,28 +35,63 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
-	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
-	data = replacer.Replace(data, base)
+	var (
+		iterations      int
+		lastExpressions []string
+	)
+	hasExpression := true
 
 	// expressions can be:
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
-	for _, expression := range expressions {
-		// replace variable placeholders with base values
-		expression = replacer.Replace(expression, base)
-		// turns expressions (either helper functions+base values or base values)
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
-		if err != nil {
-			continue
+	for hasExpression {
+		// breakout check #1 - check if we reached the maximum number of iterations
+		if iterations > maxIterations {
+			break
 		}
-		result, err := compiled.Evaluate(base)
-		if err != nil {
-			continue
+		iterations++
+
+		expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+
+		// breakout check #2 - expressions are the same of last iteration
+		if sliceutil.ElementsMatch(lastExpressions, expressions) {
+			break
 		}
-		// replace incrementally
-		data = replacer.ReplaceOne(data, expression, result)
+
+		hasExpression = len(expressions) > 0
+		for _, expression := range expressions {
+			// turns expressions (either helper functions+base values or base values)
+			var (
+				retried  bool
+				err      error
+				compiled *govaluate.EvaluableExpression
+			)
+		expr_parse:
+			compiled, err = govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+			if err != nil {
+				// attempt to resolve it recursively
+				if !retried {
+					expression, err = evaluate(expression, base)
+					if err == nil {
+						continue
+					}
+					retried = true
+					goto expr_parse
+				}
+				continue
+			}
+			result, err := compiled.Evaluate(base)
+			if err != nil {
+				continue
+			}
+			// replace incrementally
+			data = replacer.ReplaceOne(data, expression, result)
+			base[expression] = result
+			base[fmt.Sprint(result)] = fmt.Sprint(result)
+		}
+
+		lastExpressions = expressions
 	}
 	return data, nil
 }

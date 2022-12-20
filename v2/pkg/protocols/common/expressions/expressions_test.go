@@ -34,6 +34,8 @@ func TestEvaluate(t *testing.T) {
 		{input: `_IWP_JSON_PREFIX_{{base64("{\"iwp_action\":\"add_site\",\"params\":{\"username\":\"\"}}")}}`, expected: "_IWP_JSON_PREFIX_eyJpd3BfYWN0aW9uIjoiYWRkX3NpdGUiLCJwYXJhbXMiOnsidXNlcm5hbWUiOiIifX0=", extra: map[string]interface{}{}},
 		{input: "{{}}", expected: "{{}}", extra: map[string]interface{}{}},
 		{input: `"{{hex_encode('PING')}}"`, expected: `"50494e47"`, extra: map[string]interface{}{}},
+		{input: "{{a+{{c+d}}+b+{{e}}}}", expected: "aa1cc3dd4bb2ee5", extra: map[string]interface{}{"a": "aa1", "b": "bb2", "c": "cc3", "d": "dd4", "e": "ee5"}},
+		{input: "{{a+{{c+d}}+b+{{e}}}}", expected: "{{a+cc3dd4+b+ee5}}", extra: map[string]interface{}{"c": "cc3", "d": "dd4", "e": "ee5"}},
 	}
 	for _, item := range items {
 		value, err := Evaluate(item.input, item.extra)
