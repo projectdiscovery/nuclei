@@ -42,7 +42,7 @@ type FileMatch struct {
 	Raw       string
 }
 
-var emptyResultErr = errors.New("Empty result")
+var errEmptyResult = errors.New("Empty result")
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
@@ -65,7 +65,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						archiveFileName := filepath.Join(filePath, file.Name())
 						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input.MetaInput.Input, file.Size(), previous)
 						if err != nil {
-							if errors.Is(err, emptyResultErr) {
+							if errors.Is(err, errEmptyResult) {
 								// no matches but one file elaborated
 								request.options.Progress.IncrementRequests()
 								return nil
@@ -118,7 +118,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 					_, _ = tmpFileOut.Seek(0, 0)
 					event, fileMatches, err := request.processReader(tmpFileOut, filePath, input.MetaInput.Input, fileStat.Size(), previous)
 					if err != nil {
-						if errors.Is(err, emptyResultErr) {
+						if errors.Is(err, errEmptyResult) {
 							// no matches but one file elaborated
 							request.options.Progress.IncrementRequests()
 							return
@@ -138,7 +138,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				request.options.Progress.AddToTotal(1)
 				event, fileMatches, err := request.processFile(filePath, input.MetaInput.Input, previous)
 				if err != nil {
-					if errors.Is(err, emptyResultErr) {
+					if errors.Is(err, errEmptyResult) {
 						// no matches but one file elaborated
 						request.options.Progress.IncrementRequests()
 						return
@@ -188,7 +188,7 @@ func (request *Request) processReader(reader io.Reader, filePath, input string, 
 	fileReader := io.LimitReader(reader, request.maxSize)
 	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytes, previousInternalEvent)
 	if opResult == nil && len(fileMatches) == 0 {
-		return nil, nil, emptyResultErr
+		return nil, nil, errEmptyResult
 	}
 
 	// build event structure to interface with internal logic
