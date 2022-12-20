@@ -329,3 +329,13 @@ func (operators *Operators) ExecuteInternalExtractors(data map[string]interface{
 	}
 	return dynamicValues
 }
+
+// IsEmpty determines if the operator has matchers or extractors
+func (operators *Operators) IsEmpty() bool {
+	return operators.Len() == 0
+}
+
+// Len calculates the sum of the number of matchers and extractors
+func (operators *Operators) Len() int {
+	return len(operators.Matchers) + len(operators.Extractors)
+}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -91,7 +92,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			}
 		}
 	} else {
-		value := generators.CopyMap(payloads)
+		value := maps.Clone(payloads)
 		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
 			return err
 		}
