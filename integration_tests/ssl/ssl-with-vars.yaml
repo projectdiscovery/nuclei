@@ -1,9 +1,9 @@
-id: check-ssl-test
+id: ssl-with-vars
 
 info:
-  name: test SSL Certificate
+  name: SSL with variables
   author: pdteam
-  severity: low
+  severity: info
   tags: ssl
 
 ssl:
@@ -12,4 +12,3 @@ ssl:
       - type: dsl
         dsl:
           - "print_debug(test)"
-        condition: and
