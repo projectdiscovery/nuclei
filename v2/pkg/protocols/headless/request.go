@@ -43,6 +43,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloads = generators.MergeMaps(variablesMap, payloads)
 
+	// check for operator matches by wrapping callback
+	gotmatches := false
+	wrappedCallback := func(results *output.InternalWrappedEvent) {
+		callback(results)
+		if results != nil && results.OperatorsResult != nil {
+			gotmatches = results.OperatorsResult.Matched
+		}
+	}
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -50,14 +59,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
+			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+				return nil
+			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(inputURL, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(payloads)
-		if err := request.executeRequestWithPayloads(inputURL, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
 			return err
 		}
 	}
@@ -99,14 +111,16 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	gologger.Verbose().Msgf("Sent Headless request to %s", inputURL)
 
 	reqBuilder := &strings.Builder{}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, inputURL)
 
 		for _, act := range request.Steps {
-			reqBuilder.WriteString(act.String())
-			reqBuilder.WriteString("\n")
+			actStepStr := act.String()
+			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
+			reqBuilder.WriteString("\t" + actStepStr + "\n")
 		}
-		gologger.Print().Msgf(reqBuilder.String())
+		gologger.Debug().Msgf(reqBuilder.String())
+
 	}
 
 	var responseBody string
