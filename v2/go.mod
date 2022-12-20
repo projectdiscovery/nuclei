@@ -43,7 +43,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37
-	github.com/xanzy/go-gitlab v0.76.0
+	github.com/xanzy/go-gitlab v0.77.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.8.0
 	golang.org/x/net v0.4.0
@@ -57,7 +57,7 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/antchfx/xmlquery v1.3.13
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
-	github.com/aws/aws-sdk-go-v2 v1.17.2
+	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.4
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.4
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.43
@@ -75,13 +75,13 @@ require (
 	github.com/projectdiscovery/filekv v0.0.0-20210915124239-3467ef45dd08
 	github.com/projectdiscovery/goflags v0.1.5
 	github.com/projectdiscovery/nvd v1.0.9
-	github.com/projectdiscovery/ratelimit v0.0.2
+	github.com/projectdiscovery/ratelimit v0.0.3
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.0
 	github.com/projectdiscovery/uncover v1.0.1
 	github.com/projectdiscovery/utils v0.0.4-0.20221201124851-f8524345b6d3
-	github.com/projectdiscovery/wappalyzergo v0.0.73
+	github.com/projectdiscovery/wappalyzergo v0.0.74
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
