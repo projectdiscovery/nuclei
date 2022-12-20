@@ -28,20 +28,20 @@ type AddScanRequest struct {
 
 // AddScanRequestConfiguration contains filtering options for scan addition
 type AddScanRequestConfiguration struct {
-	Authors           []string            `json:"author"`
-	Tags              []string            `json:"tags"`
-	ExcludeTags       []string            `json:"exclude-tags"`
-	IncludeTags       []string            `json:"include-tags"`
-	IncludeIds        []string            `json:"include-ids"`
-	ExcludeIds        []string            `json:"exclude-ids"`
-	IncludeTemplates  []string            `json:"include-templates"`
-	ExcludedTemplates []string            `json:"exclude-templates"`
-	ExcludeMatchers   []string            `json:"exclude-matchers"`
-	Severities        severity.Severities `json:"severities"`
-	ExcludeSeverities severity.Severities `json:"exclude-severities"`
-	Protocols         types.ProtocolTypes `json:"protocols"`
-	ExcludeProtocols  types.ProtocolTypes `json:"exclude-protocols"`
-	IncludeConditions []string            `json:"include-conditions"`
+	Authors           []string            `json:"author,omitempty"`
+	Tags              []string            `json:"tags,omitempty"`
+	ExcludeTags       []string            `json:"exclude-tags,omitempty"`
+	IncludeTags       []string            `json:"include-tags,omitempty"`
+	IncludeIds        []string            `json:"include-ids,omitempty"`
+	ExcludeIds        []string            `json:"exclude-ids,omitempty"`
+	IncludeTemplates  []string            `json:"include-templates,omitempty"`
+	ExcludedTemplates []string            `json:"exclude-templates,omitempty"`
+	ExcludeMatchers   []string            `json:"exclude-matchers,omitempty"`
+	Severities        severity.Severities `json:"severities,omitempty"`
+	ExcludeSeverities severity.Severities `json:"exclude-severities,omitempty"`
+	Protocols         types.ProtocolTypes `json:"protocols,omitempty"`
+	ExcludeProtocols  types.ProtocolTypes `json:"exclude-protocols,omitempty"`
+	IncludeConditions []string            `json:"include-conditions,omitempty"`
 }
 
 type GetResultsResponse struct {
