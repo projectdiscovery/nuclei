@@ -221,5 +221,4 @@ mainLoop:
 		return nil
 	}
 	return errors.New("template can't be used for offline matching")
-
 }
