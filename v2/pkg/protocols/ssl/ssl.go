@@ -149,6 +149,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for k, v := range dynamicValues {
 		payloadValues[k] = v
 	}
+
+	payloadFromOption := generators.BuildPayloadFromOptions(request.options.Options)
+	for k, v := range payloadFromOption {
+		payloadValues[k] = v
+	}
 	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
@@ -205,11 +210,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-
-	payloadFromOption := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range payloadFromOption {
-		data[k] = v
-	}
 
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
