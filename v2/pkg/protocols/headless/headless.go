@@ -43,6 +43,9 @@ type Request struct {
 	// 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request.
 	CustomUserAgent   string `yaml:"custom_user_agent,omitempty" jsonschema:"title=custom user agent for the headless request,description=Custom user agent for the headless request"`
 	compiledUserAgent string
+	// description: |
+	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
