@@ -12,6 +12,7 @@ var sslTestcases = map[string]testutils.TestCase{
 	"ssl/basic-ztls.yaml":     &sslBasicZtls{},
 	"ssl/custom-cipher.yaml":  &sslCustomCipher{},
 	"ssl/custom-version.yaml": &sslCustomVersion{},
+	"ssl/ssl-with-vars.yaml":  &sslWithVars{},
 }
 
 type sslBasic struct{}
@@ -91,6 +92,26 @@ func (h *sslCustomVersion) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type sslWithVars struct{}
+
+func (h *sslWithVars) Execute(filePath string) error {
+	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
+		defer conn.Close()
+		data := make([]byte, 4)
+		if _, err := conn.Read(data); err != nil {
+			return
+		}
+	})
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-V", "test=asdasdas")
 	if err != nil {
 		return err
 	}
