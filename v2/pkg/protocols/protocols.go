@@ -65,7 +65,8 @@ type ExecuterOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
-	// Stop execution once first match is found
+	// Stop execution once first match is found (Assigned while parsing templates)
+	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
 	// Variables is a list of variables from template
 	Variables variables.Variable
