@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/atomic"
 )
 
@@ -72,6 +73,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		CloudTemplates:   cloudTemplates,
 		PrivateTemplates: privateTemplates,
 		IsTemporary:      nostore,
+		Filtering:        getCloudFilteringFromOptions(r.options),
 	})
 	if err != nil {
 		return results, err
@@ -113,4 +115,23 @@ func gzipBase64EncodeData(data []byte) string {
 	_ = writer.Close()
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return encoded
+}
+
+func getCloudFilteringFromOptions(options *types.Options) *nucleicloud.AddScanRequestConfiguration {
+	return &nucleicloud.AddScanRequestConfiguration{
+		Authors:           options.Authors,
+		Tags:              options.Tags,
+		ExcludeTags:       options.ExcludeTags,
+		IncludeTags:       options.IncludeTags,
+		IncludeIds:        options.IncludeIds,
+		ExcludeIds:        options.ExcludeIds,
+		IncludeTemplates:  options.IncludeTemplates,
+		ExcludedTemplates: options.ExcludedTemplates,
+		ExcludeMatchers:   options.ExcludeMatchers,
+		Severities:        options.Severities,
+		ExcludeSeverities: options.ExcludeSeverities,
+		Protocols:         options.Protocols,
+		ExcludeProtocols:  options.ExcludeProtocols,
+		IncludeConditions: options.IncludeConditions,
+	}
 }

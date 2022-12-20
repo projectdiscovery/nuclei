@@ -2,6 +2,9 @@ package nucleicloud
 
 import (
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
 // AddScanRequest is a nuclei scan input item.
@@ -17,8 +20,28 @@ type AddScanRequest struct {
 	CloudTargets []string `json:"cloud_targets,omitempty"`
 	// CloudTemplates is a list of cloud templates for the scan
 	CloudTemplates []string `json:"cloud_templates,omitempty"`
+	// Filtering contains optional filtering options for scan additions
+	Filtering *AddScanRequestConfiguration `json:"filtering"`
 
 	IsTemporary bool `json:"is_temporary"`
+}
+
+// AddScanRequestConfiguration contains filtering options for scan addition
+type AddScanRequestConfiguration struct {
+	Authors           []string            `json:"author"`
+	Tags              []string            `json:"tags"`
+	ExcludeTags       []string            `json:"exclude-tags"`
+	IncludeTags       []string            `json:"include-tags"`
+	IncludeIds        []string            `json:"include-ids"`
+	ExcludeIds        []string            `json:"exclude-ids"`
+	IncludeTemplates  []string            `json:"include-templates"`
+	ExcludedTemplates []string            `json:"exclude-templates"`
+	ExcludeMatchers   []string            `json:"exclude-matchers"`
+	Severities        severity.Severities `json:"severities"`
+	ExcludeSeverities severity.Severities `json:"exclude-severities"`
+	Protocols         types.ProtocolTypes `json:"protocols"`
+	ExcludeProtocols  types.ProtocolTypes `json:"exclude-protocols"`
+	IncludeConditions []string            `json:"include-conditions"`
 }
 
 type GetResultsResponse struct {
