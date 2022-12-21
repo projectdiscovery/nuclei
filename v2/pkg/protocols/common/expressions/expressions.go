@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
@@ -24,6 +25,10 @@ const maxIterations = 250
 type expressionMarker struct {
 	Open  string
 	Close string
+}
+
+func (e expressionMarker) String(v string) string {
+	return e.Open + v + e.Close
 }
 
 // Evaluate checks if the match contains a dynamic variable, for each
@@ -48,8 +53,15 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	values := maps.Clone(base)
+	for k, v := range base {
+		resolvedV := fmt.Sprint(v)
+		if stringsutil.ContainsAny(data, expMarkerParenthesis.String(k), expMarkerGeneral.String(k)) {
+			values[resolvedV] = resolvedV
+		}
+	}
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
-	data = replacer.Replace(data, base)
+	data = replacer.Replace(data, values)
 
 	var (
 		iterations      int
@@ -68,7 +80,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		}
 		iterations++
 
-		expressions := findExpressions(data, base, expMarkerParenthesis, expMarkerGeneral)
+		expressions := findExpressions(data, values, expMarkerParenthesis, expMarkerGeneral)
 
 		// breakout check #2 - expressions are the same of last iteration
 		if sliceutil.ElementsMatch(lastExpressions, expressions) {
@@ -77,9 +89,6 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 
 		hasExpression = len(expressions) > 0
 		for _, expression := range expressions {
-			// replace variable placeholders with base values {{var}} and §var§ => value
-			expression = replacer.Replace(expression, base)
-
 			// turns expressions (either helper functions+base values or base values)
 			var (
 				retried  bool
@@ -91,7 +100,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 			if err != nil {
 				// attempt to resolve it recursively
 				if !retried {
-					expression, err = evaluate(expression, base)
+					expression, err = evaluate(expression, values)
 					if err == nil {
 						continue
 					}
@@ -100,14 +109,14 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 				}
 				continue
 			}
-			result, err := compiled.Evaluate(base)
+			result, err := compiled.Evaluate(values)
 			if err != nil {
 				continue
 			}
 			// replace incrementally
 			data = replacer.ReplaceOne(data, expression, result)
-			base[expression] = result
-			base[fmt.Sprint(result)] = fmt.Sprint(result)
+			values[expression] = result
+			values[fmt.Sprint(result)] = fmt.Sprint(result)
 		}
 
 		lastExpressions = expressions
@@ -115,7 +124,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	return data, nil
 }
 
-func findExpressions(data string, base map[string]interface{}, markers ...expressionMarker) []string {
+func findExpressions(data string, values map[string]interface{}, markers ...expressionMarker) []string {
 	var exps []string
 	for _, marker := range markers {
 		iterations := 0
@@ -151,7 +160,7 @@ func findExpressions(data string, base map[string]interface{}, markers ...expres
 				indexCloseMarkerOffset = indexCloseMarker + len(marker.Close)
 
 				potentialMatch = innerData[indexOpenMarkerOffset:indexCloseMarker]
-				if isExpression(potentialMatch, base) {
+				if isExpression(potentialMatch, values) {
 					closeMarkerFound = true
 					shouldSearchCloseMarker = false
 					exps = append(exps, potentialMatch)
@@ -172,9 +181,9 @@ func findExpressions(data string, base map[string]interface{}, markers ...expres
 	return exps
 }
 
-func isExpression(data string, base map[string]interface{}) bool {
+func isExpression(data string, values map[string]interface{}) bool {
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
-		return stringContainsAnyMapKey(data, base) || stringContainsAnyMapKey(data, dsl.HelperFunctions)
+		return stringContainsAnyMapKey(data, values) || stringContainsAnyMapKey(data, dsl.HelperFunctions)
 	}
 	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
