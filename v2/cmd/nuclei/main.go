@@ -143,6 +143,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
+		flagSet.BoolVar(&options.LazyVariableEval, "lazy-vars-eval", false, "lazy variables eval (only when used)"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
