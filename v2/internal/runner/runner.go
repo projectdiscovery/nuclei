@@ -44,6 +44,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
@@ -108,6 +109,8 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 	parsers.NoStrictSyntax = options.NoStrictSyntax
+
+	variables.LazyEval = options.LazyVariableEval
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
 	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)

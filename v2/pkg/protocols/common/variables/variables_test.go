@@ -15,7 +15,7 @@ a4: "{{date_time('%Y-%M-%D')}}"
 a5: "{{reverse(hostname)}}"
 a6: "123456"`
 
-	variables := Variable{}
+	variables := Variables{}
 	err := yaml.Unmarshal([]byte(data), &variables)
 	require.NoError(t, err, "could not unmarshal variables")
 

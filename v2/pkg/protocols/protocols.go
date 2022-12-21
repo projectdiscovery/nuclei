@@ -69,7 +69,7 @@ type ExecuterOptions struct {
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
 	// Variables is a list of variables from template
-	Variables variables.Variable
+	Variables variables.Variables
 	// ExcludeMatchers is the list of matchers to exclude
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization

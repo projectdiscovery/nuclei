@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	expMarkerParenthesis expressionMarker = expressionMarker{Open: marker.ParenthesisOpen, Close: marker.ParenthesisClose}
-	expMarkerGeneral     expressionMarker = expressionMarker{Open: marker.General, Close: marker.General}
+	ExpMarkerParenthesis expressionMarker = expressionMarker{Open: marker.ParenthesisOpen, Close: marker.ParenthesisClose}
+	ExpMarkerGeneral     expressionMarker = expressionMarker{Open: marker.General, Close: marker.General}
 )
 
 // maxIterations to avoid infinite loop
@@ -56,7 +56,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	values := maps.Clone(base)
 	for k, v := range base {
 		resolvedV := fmt.Sprint(v)
-		if stringsutil.ContainsAny(data, expMarkerParenthesis.String(k), expMarkerGeneral.String(k)) {
+		if stringsutil.ContainsAny(data, ExpMarkerParenthesis.String(k), ExpMarkerGeneral.String(k)) {
 			values[resolvedV] = resolvedV
 		}
 	}
@@ -80,7 +80,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		}
 		iterations++
 
-		expressions := findExpressions(data, values, expMarkerParenthesis, expMarkerGeneral)
+		expressions := findExpressions(data, values, ExpMarkerParenthesis, ExpMarkerGeneral)
 
 		// breakout check #2 - expressions are the same of last iteration
 		if sliceutil.ElementsMatch(lastExpressions, expressions) {

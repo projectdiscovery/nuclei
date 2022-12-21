@@ -310,6 +310,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where aws s3 bucket is located
 	AwsRegion string
+	// Lazy variable evaluation
+	LazyVariableEval bool
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
