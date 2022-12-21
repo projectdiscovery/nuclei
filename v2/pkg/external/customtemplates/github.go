@@ -30,7 +30,7 @@ func (customTemplate *customTemplateGithubRepo) Download(location string, ctx co
 	if !fileutil.FolderExists(clonePath) {
 		err := customTemplate.cloneRepo(clonePath, customTemplate.githubToken)
 		if err != nil {
-			gologger.Info().Msgf("%s", err)
+			gologger.Error().Msgf("%s", err)
 		} else {
 			gologger.Info().Msgf("Repo %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
 		}
@@ -49,7 +49,7 @@ func (customTemplate *customTemplateGithubRepo) Update(location string, ctx cont
 	}
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
 	if err != nil {
-		gologger.Info().Msgf("%s", err)
+		gologger.Error().Msgf("%s", err)
 	} else {
 		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 	}

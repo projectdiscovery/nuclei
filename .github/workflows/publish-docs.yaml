@@ -12,12 +12,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
       - name: "Set up Go"
         uses: actions/setup-go@v3
-        with:
+        with: 
           go-version: 1.18
 
       - name: Generate YAML Syntax Documentation
@@ -28,7 +26,7 @@ jobs:
             go install github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen@main
           fi
           go generate pkg/templates/templates.go
-          go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go
+          go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
           ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
           git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
         working-directory: v2
@@ -38,6 +36,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull
           git add SYNTAX-REFERENCE.md nuclei-jsonschema.json
           git commit -m "Auto Generate Syntax Docs + JSONSchema [$(date)] :robot:" -a
 
@@ -46,4 +45,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          branch: ${{ github.head_ref }}

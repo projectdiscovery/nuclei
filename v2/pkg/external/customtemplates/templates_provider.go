@@ -21,18 +21,21 @@ type Provider interface {
 // parseCustomTemplates function reads the options.GithubTemplateRepo list,
 // Checks the given repos are valid or not and stores them into runner.CustomTemplates
 func ParseCustomTemplates(options *types.Options) []Provider {
+	if options.Cloud {
+		return nil
+	}
 	var customTemplates []Provider
 	gitHubClient := getGHClientIncognito()
 
 	for _, repoName := range options.GithubTemplateRepo {
 		owner, repo, err := getOwnerAndRepo(repoName)
 		if err != nil {
-			gologger.Info().Msgf("%s", err)
+			gologger.Error().Msgf("%s", err)
 			continue
 		}
 		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
 		if err != nil {
-			gologger.Info().Msgf("%s", err)
+			gologger.Error().Msgf("%s", err)
 			continue
 		}
 		customTemplateRepo := &customTemplateGithubRepo{
