@@ -20,10 +20,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"go.uber.org/atomic"
 )
-
-const DDMMYYYYhhmmss = "2006-01-02 15:04:05"
 
 // runStandardEnumeration runs standard enumeration
 func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
@@ -33,52 +32,12 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, 
 	return r.executeTemplatesInput(store, engine)
 }
 
-// Get all the scan lists for a user/apikey.
-func (r *Runner) getScanList() error {
-	items, err := r.cloudClient.GetScans()
-	loc, _ := time.LoadLocation("Local")
-
-	for _, v := range items {
-		status := "FINISHED"
-		t := v.FinishedAt
-		duration := t.Sub(v.CreatedAt)
-		if !v.Finished {
-			status = "RUNNING"
-			t = time.Now().UTC()
-			duration = t.Sub(v.CreatedAt).Round(60 * time.Second)
-		}
-
-		val := v.CreatedAt.In(loc).Format(DDMMYYYYhhmmss)
-
-		gologger.Silent().Msgf("%s [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", v.Id, val, status, v.Matches, v.Targets, v.Templates, duration)
-	}
-	return err
-}
-
-func (r *Runner) deleteScan(id string) error {
-	deleted, err := r.cloudClient.DeleteScan(id)
-	if !deleted.OK {
-		gologger.Info().Msgf("Error in deleting the scan %s.", id)
-	} else {
-		gologger.Info().Msgf("Scan deleted %s.", id)
-	}
-	return err
-}
-
-func (r *Runner) getResults(id string) error {
-	err := r.cloudClient.GetResults(id, func(re *output.ResultEvent) {
-		if outputErr := r.output.Write(re); outputErr != nil {
-			gologger.Warning().Msgf("Could not write output: %s", outputErr)
-		}
-	}, false)
-	return err
-}
-
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
+	count := &atomic.Int64{}
 	now := time.Now()
 	defer func() {
-		gologger.Info().Msgf("Scan execution took %s", time.Since(now))
+		gologger.Info().Msgf("Scan execution took %s and found %d results", time.Since(now), count.Load())
 	}()
 	results := &atomic.Bool{}
 
@@ -110,17 +69,24 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 	taskID, err := r.cloudClient.AddScan(&nucleicloud.AddScanRequest{
 		RawTargets:       targets,
 		PublicTemplates:  templates,
+		CloudTargets:     cloudTargets,
+		CloudTemplates:   cloudTemplates,
 		PrivateTemplates: privateTemplates,
 		IsTemporary:      nostore,
+		Filtering:        getCloudFilteringFromOptions(r.options),
 	})
 	if err != nil {
 		return results, err
 	}
-	gologger.Info().Msgf("Created task with ID: %s", taskID)
+	gologger.Info().Msgf("Created task with ID: %d", taskID)
+	if nostore {
+		gologger.Info().Msgf("Cloud scan storage: disabled")
+	}
 	time.Sleep(3 * time.Second)
 
-	err = r.cloudClient.GetResults(taskID, func(re *output.ResultEvent) {
+	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
 		results.CompareAndSwap(false, true)
+		_ = count.Inc()
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)
@@ -130,7 +96,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, nostore bool) (*atomic
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-	}, true)
+	})
 	return results, err
 }
 
@@ -149,4 +115,23 @@ func gzipBase64EncodeData(data []byte) string {
 	_ = writer.Close()
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return encoded
+}
+
+func getCloudFilteringFromOptions(options *types.Options) *nucleicloud.AddScanRequestConfiguration {
+	return &nucleicloud.AddScanRequestConfiguration{
+		Authors:           options.Authors,
+		Tags:              options.Tags,
+		ExcludeTags:       options.ExcludeTags,
+		IncludeTags:       options.IncludeTags,
+		IncludeIds:        options.IncludeIds,
+		ExcludeIds:        options.ExcludeIds,
+		IncludeTemplates:  options.IncludeTemplates,
+		ExcludedTemplates: options.ExcludedTemplates,
+		ExcludeMatchers:   options.ExcludeMatchers,
+		Severities:        options.Severities,
+		ExcludeSeverities: options.ExcludeSeverities,
+		Protocols:         options.Protocols,
+		ExcludeProtocols:  options.ExcludeProtocols,
+		IncludeConditions: options.IncludeConditions,
+	}
 }
