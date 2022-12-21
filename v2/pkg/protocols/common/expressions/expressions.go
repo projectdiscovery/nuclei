@@ -13,6 +13,19 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+var (
+	expMarkerParenthesis expressionMarker = expressionMarker{Open: marker.ParenthesisOpen, Close: marker.ParenthesisClose}
+	expMarkerGeneral     expressionMarker = expressionMarker{Open: marker.General, Close: marker.General}
+)
+
+// maxIterations to avoid infinite loop
+const maxIterations = 250
+
+type expressionMarker struct {
+	Open  string
+	Close string
+}
+
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
 // be compiled, it will be evaluated and the results will be returned.
@@ -52,7 +65,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		}
 		iterations++
 
-		expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+		expressions := findExpressions(data, base, expMarkerParenthesis, expMarkerGeneral)
 
 		// breakout check #2 - expressions are the same of last iteration
 		if sliceutil.ElementsMatch(lastExpressions, expressions) {
@@ -96,61 +109,58 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	return data, nil
 }
 
-// maxIterations to avoid infinite loop
-const maxIterations = 250
-
-func findExpressions(data, OpenMarker, CloseMarker string, base map[string]interface{}) []string {
-	var (
-		iterations int
-		exps       []string
-	)
-	for {
-		// check if we reached the maximum number of iterations
-		if iterations > maxIterations {
-			break
-		}
-		iterations++
-		// attempt to find open markers
-		indexOpenMarker := strings.Index(data, OpenMarker)
-		// exits if not found
-		if indexOpenMarker < 0 {
-			break
-		}
-
-		indexOpenMarkerOffset := indexOpenMarker + len(OpenMarker)
-
-		shouldSearchCloseMarker := true
-		closeMarkerFound := false
-		innerData := data
-		var potentialMatch string
-		var indexCloseMarker, indexCloseMarkerOffset int
-		skip := indexOpenMarkerOffset
-		for shouldSearchCloseMarker {
-			// attempt to find close marker
-			indexCloseMarker = stringsutil.IndexAt(innerData, CloseMarker, skip)
-			// if no close markers are found exit
-			if indexCloseMarker < 0 {
-				shouldSearchCloseMarker = false
-				continue
+func findExpressions(data string, base map[string]interface{}, markers ...expressionMarker) []string {
+	var exps []string
+	for _, marker := range markers {
+		iterations := 0
+		for {
+			// check if we reached the maximum number of iterations
+			if iterations > maxIterations {
+				break
 			}
-			indexCloseMarkerOffset = indexCloseMarker + len(CloseMarker)
+			iterations++
+			// attempt to find open markers
+			indexOpenMarker := strings.Index(data, marker.Open)
+			// exits if not found
+			if indexOpenMarker < 0 {
+				break
+			}
 
-			potentialMatch = innerData[indexOpenMarkerOffset:indexCloseMarker]
-			if isExpression(potentialMatch, base) {
-				closeMarkerFound = true
-				shouldSearchCloseMarker = false
-				exps = append(exps, potentialMatch)
+			indexOpenMarkerOffset := indexOpenMarker + len(marker.Open)
+
+			shouldSearchCloseMarker := true
+			closeMarkerFound := false
+			innerData := data
+			var potentialMatch string
+			var indexCloseMarker, indexCloseMarkerOffset int
+			skip := indexOpenMarkerOffset
+			for shouldSearchCloseMarker {
+				// attempt to find close marker
+				indexCloseMarker = stringsutil.IndexAt(innerData, marker.Close, skip)
+				// if no close markers are found exit
+				if indexCloseMarker < 0 {
+					shouldSearchCloseMarker = false
+					continue
+				}
+				indexCloseMarkerOffset = indexCloseMarker + len(marker.Close)
+
+				potentialMatch = innerData[indexOpenMarkerOffset:indexCloseMarker]
+				if isExpression(potentialMatch, base) {
+					closeMarkerFound = true
+					shouldSearchCloseMarker = false
+					exps = append(exps, potentialMatch)
+				} else {
+					skip = indexCloseMarkerOffset
+				}
+			}
+
+			if closeMarkerFound {
+				// move after the close marker
+				data = data[indexCloseMarkerOffset:]
 			} else {
-				skip = indexCloseMarkerOffset
+				// move after the open marker
+				data = data[indexOpenMarkerOffset:]
 			}
-		}
-
-		if closeMarkerFound {
-			// move after the close marker
-			data = data[indexCloseMarkerOffset:]
-		} else {
-			// move after the open marker
-			data = data[indexOpenMarkerOffset:]
 		}
 	}
 	return exps
