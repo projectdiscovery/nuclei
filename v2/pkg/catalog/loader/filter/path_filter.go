@@ -18,12 +18,13 @@ type PathFilterConfig struct {
 
 // NewPathFilter creates a new path filter from provided config
 func NewPathFilter(config *PathFilterConfig, catalogClient catalog.Catalog) *PathFilter {
+	paths, _ := catalogClient.GetTemplatesPath(config.ExcludedTemplates)
 	filter := &PathFilter{
-		excludedTemplates:          catalogClient.GetTemplatesPath(config.ExcludedTemplates),
+		excludedTemplates:          paths,
 		alwaysIncludedTemplatesMap: make(map[string]struct{}),
 	}
 
-	alwaysIncludeTemplates := catalogClient.GetTemplatesPath(config.IncludedTemplates)
+	alwaysIncludeTemplates, _ := catalogClient.GetTemplatesPath(config.IncludedTemplates)
 	for _, tpl := range alwaysIncludeTemplates {
 		filter.alwaysIncludedTemplatesMap[tpl] = struct{}{}
 	}
