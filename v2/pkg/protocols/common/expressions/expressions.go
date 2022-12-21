@@ -48,6 +48,9 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
+	data = replacer.Replace(data, base)
+
 	var (
 		iterations      int
 		lastExpressions []string
@@ -74,6 +77,9 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 
 		hasExpression = len(expressions) > 0
 		for _, expression := range expressions {
+			// replace variable placeholders with base values {{var}} and §var§ => value
+			expression = replacer.Replace(expression, base)
+
 			// turns expressions (either helper functions+base values or base values)
 			var (
 				retried  bool
