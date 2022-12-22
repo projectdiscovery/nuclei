@@ -5,6 +5,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -18,20 +19,13 @@ import (
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
 func (e *Engine) Execute(templates []*templates.Template, target InputProvider) *atomic.Bool {
-	return e.ExecuteWithOpts(templates, target, false)
+	return e.ExecuteScanWithOpts(templates, target, false)
 }
 
-// ExecuteWithOpts executes with the full options
-func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
-	var finalTemplates []*templates.Template
-	if !noCluster {
-		finalTemplates, _ = templates.ClusterTemplates(templatesList, e.executerOpts)
-	} else {
-		finalTemplates = templatesList
-	}
-
+// executeTemplateSpray executes scan using template spray strategy where targets are iterated over each template
+func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
-	for _, template := range finalTemplates {
+	for _, template := range templatesList {
 		templateType := template.Type()
 
 		var wg *sizedwaitgroup.SizedWaitGroup
@@ -56,6 +50,53 @@ func (e *Engine) ExecuteWithOpts(templatesList []*templates.Template, target Inp
 		}(template)
 	}
 	e.workPool.Wait()
+	return results
+}
+
+// executeHostSpray executes scan using host spray strategy where templates are iterated over each target
+func (e *Engine) executeHostSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
+	results := &atomic.Bool{}
+	hostwg := sizedwaitgroup.New(e.options.BulkSize)
+	target.Scan(func(value *contextargs.MetaInput) bool {
+		host := inputs.SimpleInputProvider{
+			Inputs: []*contextargs.MetaInput{
+				value,
+			},
+		}
+		hostwg.Add()
+		go func(result *atomic.Bool) {
+			defer hostwg.Done()
+			status := e.executeTemplateSpray(templatesList, &host)
+			results.CompareAndSwap(false, status.Load())
+		}(results)
+		return true
+	})
+	hostwg.Wait()
+	return results
+}
+
+// ExecuteScanWithOpts executes scan with given scanStatergy
+func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
+	var results *atomic.Bool
+
+	var finalTemplates []*templates.Template
+	if !noCluster {
+		finalTemplates, _ = templates.ClusterTemplates(templatesList, e.executerOpts)
+	} else {
+		finalTemplates = templatesList
+	}
+
+	if e.options.ScanStrategy == "auto" {
+		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
+		// based on no of hosts , templates , stream and other optimization parameters
+		e.options.ScanStrategy = "template-spray"
+	}
+	switch e.options.ScanStrategy {
+	case "template-spray":
+		results = e.executeTemplateSpray(finalTemplates, target)
+	case "host-spray":
+		results = e.executeHostSpray(finalTemplates, target)
+	}
 	return results
 }
 
