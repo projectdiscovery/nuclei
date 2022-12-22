@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"regexp"
 	"strings"
@@ -17,11 +18,12 @@ var StrictSyntax bool
 
 // PreProcess all include directives
 func PreProcess(data []byte) ([]byte, error) {
-	if StrictSyntax {
-		return data, nil
-	}
 	// find all matches like !include:path\n
 	importMatches := reImportsPattern.FindAllSubmatch(data, -1)
+
+	if StrictSyntax {
+		return data, errors.New("include directive preprocessing is disabled")
+	}
 
 	var replaceItems []string
 
