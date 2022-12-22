@@ -52,7 +52,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		}
 	}
 	defer reader.Close()
-	template, err := ParseFromReader(reader, preprocessor, options)
+	template, err := ParseTemplateFromReader(reader, preprocessor, options)
 	if err != nil {
 		return nil, err
 	}
@@ -188,9 +188,9 @@ mainLoop:
 	}
 }
 
-// ParseFromReader reads the template from reader
+// ParseTemplateFromReader reads the template from reader
 // returns the parsed template
-func ParseFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
