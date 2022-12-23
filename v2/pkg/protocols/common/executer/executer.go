@@ -72,7 +72,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	for _, req := range e.requests {
 		inputItem := input.Clone()
 		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
-			if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, req.Type()); input.MetaInput.Input == "" {
+			if inputItem.MetaInput.Input = e.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
 				return false, nil
 			}
 		}

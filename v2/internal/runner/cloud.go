@@ -20,7 +20,7 @@ import (
 // Get all the scan lists for a user/apikey.
 func (r *Runner) getScanList(limit int) error {
 	lastTime := "2099-01-02 15:04:05 +0000 UTC"
-	header := []string{"ID", "Timestamp", "Status", "Matched", "Targets", "Templates", "Duration"}
+	header := []string{"ID", "Timestamp", "Targets", "Templates", "Matched", "Duration", "Status"}
 
 	var (
 		values [][]string
@@ -41,14 +41,15 @@ func (r *Runner) getScanList(limit int) error {
 			if r.options.JSON {
 				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
 			} else if !r.options.NoTables {
-				values = append(values, []string{strconv.FormatInt(res.ScanID, 10), res.Timestamp, strings.ToUpper(res.ScanStatus), strconv.Itoa(res.ScanResult), strconv.Itoa(res.Target), strconv.Itoa(res.Template), res.ScanTime})
+				values = append(values, []string{strconv.FormatInt(res.ScanID, 10), res.Timestamp, strconv.Itoa(res.Target), strconv.Itoa(res.Template), strconv.Itoa(res.ScanResult), res.ScanTime, res.ScanStatus})
 			} else {
-				gologger.Silent().Msgf("%d. [%s] [STATUS: %s] [MATCHED: %d] [TARGETS: %d] [TEMPLATES: %d] [DURATION: %s]\n", res.ScanID, res.Timestamp, strings.ToUpper(res.ScanStatus), res.ScanResult, res.Target, res.Template, res.ScanTime)
+				gologger.Silent().Msgf("%d. [%s] [TARGETS: %d] [TEMPLATES: %d] [MATCHED: %d] [DURATION: %s] [STATUS: %s]\n", res.ScanID, res.Timestamp, res.Target, res.Template, res.ScanResult, res.ScanTime, strings.ToUpper(res.ScanStatus))
+
 			}
 		}
 	}
 	if count == 0 {
-		return errors.New("no scan list found")
+		return errors.New("no scan found")
 	}
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
@@ -62,7 +63,7 @@ func (r *Runner) listDatasources() error {
 		return err
 	}
 	if len(datasources) == 0 {
-		return errors.New("no cloud datasource list found")
+		return errors.New("no cloud datasource found")
 	}
 
 	header := []string{"ID", "UpdatedAt", "Type", "Repo", "Path"}
@@ -88,7 +89,7 @@ func (r *Runner) listTargets() error {
 		return err
 	}
 	if len(items) == 0 {
-		return errors.New("no target list found")
+		return errors.New("no target found")
 	}
 
 	header := []string{"ID", "Reference", "Count"}
@@ -114,7 +115,7 @@ func (r *Runner) listTemplates() error {
 		return err
 	}
 	if len(items) == 0 {
-		return errors.New("no template list found")
+		return errors.New("no template found")
 	}
 
 	header := []string{"ID", "Reference"}
