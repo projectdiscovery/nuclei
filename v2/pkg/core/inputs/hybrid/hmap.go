@@ -4,7 +4,9 @@ package hybrid
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -174,7 +176,11 @@ func (i *Input) Set(value string) {
 	// parse hostname if url is given
 	parsedURL, err := url.Parse(value)
 	if err == nil && parsedURL.Host != "" {
-		host = parsedURL.Host
+		var erx error
+		host, _, erx = net.SplitHostPort(parsedURL.Host)
+		if erx != nil {
+			gologger.Debug().Msgf("failed to parse host and port")
+		}
 	} else {
 		parsedURL = nil
 		host = value
@@ -201,7 +207,13 @@ func (i *Input) Set(value string) {
 			return
 		}
 		// failed to scanallips falling back to defaults
-		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
+		gologger.Error().MsgFunc(func() string {
+			if err == nil {
+				return "scanAllIps: no ip's found reverting to default"
+			} else {
+				return fmt.Sprintf("scanAllIps: dns resoution failed reverting to default: %v", err.Error())
+			}
+		})
 	}
 
 	ips := []string{}

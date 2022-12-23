@@ -51,7 +51,7 @@ func Test_expandCIDRInputValue(t *testing.T) {
 
 type mockDnsHandler struct{}
 
-func (this *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+func (m *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	msg := dns.Msg{}
 	msg.SetReply(r)
 	switch r.Question[0].Qtype {
