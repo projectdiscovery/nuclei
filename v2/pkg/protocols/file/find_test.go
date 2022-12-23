@@ -23,6 +23,7 @@ func TestFindInputPaths(t *testing.T) {
 		NoRecursive: false,
 		Extensions:  []string{"all", ".lock"},
 		DenyList:    []string{".go"},
+		Operators:   newMockOperator(),
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,

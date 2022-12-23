@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -67,7 +68,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 		}
 	} else {
-		value := generators.CopyMap(payloads)
+		value := maps.Clone(payloads)
 		if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
 			return err
 		}
@@ -110,14 +111,16 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	gologger.Verbose().Msgf("Sent Headless request to %s", inputURL)
 
 	reqBuilder := &strings.Builder{}
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
+	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, inputURL)
 
 		for _, act := range request.Steps {
-			reqBuilder.WriteString(act.String())
-			reqBuilder.WriteString("\n")
+			actStepStr := act.String()
+			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
+			reqBuilder.WriteString("\t" + actStepStr + "\n")
 		}
-		gologger.Print().Msgf(reqBuilder.String())
+		gologger.Debug().Msgf(reqBuilder.String())
+
 	}
 
 	var responseBody string
