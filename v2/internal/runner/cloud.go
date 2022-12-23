@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -141,14 +142,20 @@ func (r *Runner) prettyPrintTable(header []string, values [][]string) {
 }
 
 func (r *Runner) deleteScan(id string) error {
-	ID, _ := strconv.ParseInt(id, 10, 64)
+	ID, parseErr := strconv.ParseInt(id, 10, 64)
+	if parseErr != nil {
+		return errors.Wrap(parseErr, "could not parse scan id")
+	}
 	deleted, err := r.cloudClient.DeleteScan(ID)
+	if err != nil {
+		return errors.Wrap(err, "could not delete scan")
+	}
 	if !deleted.OK {
 		gologger.Error().Msgf("Error in deleting the scan %s.", id)
 	} else {
 		gologger.Info().Msgf("Scan deleted %s.", id)
 	}
-	return err
+	return nil
 }
 
 func (r *Runner) getResults(id string, limit int) error {
@@ -162,8 +169,13 @@ func (r *Runner) getResults(id string, limit int) error {
 }
 
 func (r *Runner) getTarget(id string) error {
-	ID, _ := strconv.ParseInt(id, 10, 64)
-	reader, err := r.cloudClient.GetTarget(ID)
+	var name string
+	ID, parseErr := strconv.ParseInt(id, 10, 64)
+	if parseErr != nil {
+		name = id
+	}
+
+	reader, err := r.cloudClient.GetTarget(ID, name)
 	if err != nil {
 		return errors.Wrap(err, "could not get target")
 	}
@@ -174,8 +186,13 @@ func (r *Runner) getTarget(id string) error {
 }
 
 func (r *Runner) getTemplate(id string) error {
-	ID, _ := strconv.ParseInt(id, 10, 64)
-	reader, err := r.cloudClient.GetTemplate(ID)
+	var name string
+	ID, parseErr := strconv.ParseInt(id, 10, 64)
+	if parseErr != nil {
+		name = id
+	}
+
+	reader, err := r.cloudClient.GetTemplate(ID, name)
 	if err != nil {
 		return errors.Wrap(err, "could not get template")
 	}
@@ -240,12 +257,29 @@ func (r *Runner) addTarget(location string) error {
 }
 
 func (r *Runner) removeTarget(item string) error {
+	var err error
+	if ID, parseErr := strconv.ParseInt(item, 10, 64); parseErr == nil {
+		err = r.cloudClient.RemoveTarget(ID, "")
+	} else if strings.EqualFold(path.Ext(item), ".txt") {
+		err = r.cloudClient.RemoveTarget(0, item)
+	} else {
+		return r.removeTargetPrefix(item)
+	}
+	if err != nil {
+		gologger.Error().Msgf("Error in deleting target %s: %s", item, err)
+	} else {
+		gologger.Info().Msgf("Target deleted %s", item)
+	}
+	return nil
+}
+
+func (r *Runner) removeTargetPrefix(item string) error {
 	response, err := r.cloudClient.ListTargets(item)
 	if err != nil {
 		return errors.Wrap(err, "could not list targets")
 	}
 	for _, item := range response {
-		if err := r.cloudClient.RemoveTarget(item.ID); err != nil {
+		if err := r.cloudClient.RemoveTarget(item.ID, ""); err != nil {
 			gologger.Error().Msgf("Error in deleting target %s: %s", item.Reference, err)
 		} else {
 			gologger.Info().Msgf("Target deleted %s", item.Reference)
@@ -255,12 +289,29 @@ func (r *Runner) removeTarget(item string) error {
 }
 
 func (r *Runner) removeTemplate(item string) error {
+	var err error
+	if ID, parseErr := strconv.ParseInt(item, 10, 64); parseErr == nil {
+		err = r.cloudClient.RemoveTemplate(ID, "")
+	} else if strings.EqualFold(path.Ext(item), ".yaml") {
+		err = r.cloudClient.RemoveTemplate(0, item)
+	} else {
+		return r.removeTemplatePrefix(item)
+	}
+	if err != nil {
+		gologger.Error().Msgf("Error in deleting template %s: %s", item, err)
+	} else {
+		gologger.Info().Msgf("Template deleted %s", item)
+	}
+	return nil
+}
+
+func (r *Runner) removeTemplatePrefix(item string) error {
 	response, err := r.cloudClient.ListTemplates(item)
 	if err != nil {
 		return errors.Wrap(err, "could not list templates")
 	}
 	for _, item := range response {
-		if err := r.cloudClient.RemoveTemplate(item.ID); err != nil {
+		if err := r.cloudClient.RemoveTemplate(item.ID, ""); err != nil {
 			gologger.Error().Msgf("Error in deleting template %s: %s", item.Reference, err)
 		} else {
 			gologger.Info().Msgf("Template deleted %s", item.Reference)
