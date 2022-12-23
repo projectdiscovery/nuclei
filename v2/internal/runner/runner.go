@@ -510,6 +510,9 @@ func (r *Runner) RunEnumeration() error {
 		} else if r.options.RemoveTemplate != "" {
 			err = r.removeTemplate(r.options.RemoveTemplate)
 		} else {
+			if len(store.Templates())+len(store.Workflows())+len(cloudTemplates) == 0 {
+				return errors.New("no templates provided for scan")
+			}
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
 			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
 			enumeration = true
