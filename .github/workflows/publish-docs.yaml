@@ -36,6 +36,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull
           git add SYNTAX-REFERENCE.md nuclei-jsonschema.json
           git commit -m "Auto Generate Syntax Docs + JSONSchema [$(date)] :robot:" -a
 
