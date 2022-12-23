@@ -4,7 +4,6 @@ package hybrid
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -189,31 +188,30 @@ func (i *Input) Set(value string) {
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
 		dnsData, err := protocolstate.Dialer.GetDNSData(host)
-		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
-			var ips []string
-			if i.ipOptions.IPV4 {
-				ips = append(ips, dnsData.A...)
-			}
-			if i.ipOptions.IPV6 {
-				ips = append(ips, dnsData.AAAA...)
-			}
-			for _, ip := range ips {
-				if ip == "" {
-					continue
+		if err == nil {
+			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
+				var ips []string
+				if i.ipOptions.IPV4 {
+					ips = append(ips, dnsData.A...)
 				}
-				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-				i.setItem(metaInput)
-			}
-			return
-		}
-		// failed to scanallips falling back to defaults
-		gologger.Error().MsgFunc(func() string {
-			if err == nil {
-				return "scanAllIps: no ip's found reverting to default"
+				if i.ipOptions.IPV6 {
+					ips = append(ips, dnsData.AAAA...)
+				}
+				for _, ip := range ips {
+					if ip == "" {
+						continue
+					}
+					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					i.setItem(metaInput)
+				}
+				return
 			} else {
-				return fmt.Sprintf("scanAllIps: dns resoution failed reverting to default: %v", err.Error())
+				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
 			}
-		})
+		} else {
+			// failed to scanallips falling back to defaults
+			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
+		}
 	}
 
 	ips := []string{}
