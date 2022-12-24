@@ -576,6 +576,11 @@
           "title": "custom user agent for the headless request",
           "description": "Custom user agent for the headless request"
         },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
+        },
         "matchers": {
           "items": {
             "$ref": "#/definitions/matchers.Matcher"
