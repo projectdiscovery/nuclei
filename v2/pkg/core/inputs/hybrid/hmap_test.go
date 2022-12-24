@@ -51,7 +51,7 @@ func Test_expandCIDRInputValue(t *testing.T) {
 
 type mockDnsHandler struct{}
 
-func (this *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+func (m *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	msg := dns.Msg{}
 	msg.SetReply(r)
 	switch r.Question[0].Qtype {
@@ -85,18 +85,14 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 	defaultOpts := types.DefaultOptions()
 	defaultOpts.InternalResolversList = []string{"127.0.0.1:61234"}
 	_ = protocolstate.Init(defaultOpts)
-	tests := []struct {
+	type testcase struct {
 		hostname string
 		ipv4     bool
 		ipv6     bool
 		expected []string
-	}{
+	}
+	tests := []testcase{
 		{
-			hostname: "scanme.sh",
-			ipv4:     true,
-			ipv6:     true,
-			expected: []string{"128.199.158.128", "2400:6180:0:d0::91:1001"},
-		}, {
 			hostname: "scanme.sh",
 			ipv4:     true,
 			expected: []string{"128.199.158.128"},
@@ -104,12 +100,27 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			hostname: "scanme.sh",
 			ipv6:     true,
 			expected: []string{"2400:6180:0:d0::91:1001"},
-		}, {
-			hostname: "http://scanme.sh",
+		},
+	}
+	// add extra edge cases
+	urls := []string{
+		"https://scanme.sh/",
+		"http://scanme.sh",
+		"https://scanme.sh:443/",
+		"https://scanme.sh:443/somepath",
+		"http://scanme.sh:80/?with=param",
+		"scanme.sh/home",
+		"scanme.sh",
+	}
+	resolvedIps := []string{"128.199.158.128", "2400:6180:0:d0::91:1001"}
+
+	for _, v := range urls {
+		tests = append(tests, testcase{
+			hostname: v,
 			ipv4:     true,
 			ipv6:     true,
-			expected: []string{"128.199.158.128", "2400:6180:0:d0::91:1001"},
-		},
+			expected: resolvedIps,
+		})
 	}
 	for _, tt := range tests {
 		hm, err := hybrid.New(hybrid.DefaultDiskOptions)
@@ -134,7 +145,7 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			got = append(got, metainput.CustomIP)
 			return nil
 		})
-		require.ElementsMatch(t, tt.expected, got, "could not get correct ips")
+		require.ElementsMatchf(t, tt.expected, got, "could not get correct ips for hostname %v", tt.hostname)
 		input.Close()
 	}
 }
