@@ -82,6 +82,7 @@ func main() {
 	// Setup graceful exits
 	resumeFileName := types.DefaultResumeFilePath()
 	c := make(chan os.Signal, 1)
+	defer close(c)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
