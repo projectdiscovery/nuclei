@@ -5,7 +5,7 @@ package hybrid
 import (
 	"bufio"
 	"io"
-	"net/url"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	readerutil "github.com/projectdiscovery/utils/reader"
@@ -169,39 +170,49 @@ func (i *Input) Set(value string) {
 	if URL == "" {
 		return
 	}
-	// actual hostname
-	var host string
 	// parse hostname if url is given
-	parsedURL, err := url.Parse(value)
-	if err == nil && parsedURL.Host != "" {
-		host = parsedURL.Host
+	host := utils.ParseHostname(value)
+	if host == "" {
+		// not a valid url hence scanallips is skipped
+		gologger.Debug().Msgf("scanAllIps: failed to parse hostname of %v falling back to default", value)
+		i.setItem(&contextargs.MetaInput{Input: value})
+		return
 	} else {
-		parsedURL = nil
-		host = value
+		// case when hostname contains port
+		hostwithoutport, _, erx := net.SplitHostPort(host)
+		if erx == nil && hostwithoutport != "" {
+			// given host contains port
+			host = hostwithoutport
+		}
 	}
 
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
 		dnsData, err := protocolstate.Dialer.GetDNSData(host)
-		if err == nil && (len(dnsData.A)+len(dnsData.AAAA)) > 0 {
-			var ips []string
-			if i.ipOptions.IPV4 {
-				ips = append(ips, dnsData.A...)
-			}
-			if i.ipOptions.IPV6 {
-				ips = append(ips, dnsData.AAAA...)
-			}
-			for _, ip := range ips {
-				if ip == "" {
-					continue
+		if err == nil {
+			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
+				var ips []string
+				if i.ipOptions.IPV4 {
+					ips = append(ips, dnsData.A...)
 				}
-				metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-				i.setItem(metaInput)
+				if i.ipOptions.IPV6 {
+					ips = append(ips, dnsData.AAAA...)
+				}
+				for _, ip := range ips {
+					if ip == "" {
+						continue
+					}
+					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					i.setItem(metaInput)
+				}
+				return
+			} else {
+				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
 			}
-			return
+		} else {
+			// failed to scanallips falling back to defaults
+			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
 		}
-		// failed to scanallips falling back to defaults
-		gologger.Error().Msgf("failed to scan all ips reverting to default %v", err)
 	}
 
 	ips := []string{}
@@ -212,7 +223,7 @@ func (i *Input) Set(value string) {
 			// pick/ prefer 1st
 			ips = append(ips, dnsData.AAAA[0])
 		} else {
-			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %s\n", err)
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
 		}
 	}
 	if i.ipOptions.IPV4 {
