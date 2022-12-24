@@ -261,6 +261,18 @@ func (c *Client) Close() bool {
 		c.interactsh.StopPolling()
 		c.interactsh.Close()
 	}
+
+	closeCache := func(cc *ccache.Cache) {
+		if cc != nil {
+			cc.Clear()
+			cc.Stop()
+		}
+	}
+	closeCache(c.requests)
+	closeCache(c.interactions)
+	closeCache(c.matchedTemplates)
+	closeCache(c.interactshURLs)
+
 	return c.matched
 }
 

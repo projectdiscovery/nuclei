@@ -332,6 +332,9 @@ func (r *Runner) Close() {
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}
+	if r.ratelimiter != nil {
+		r.ratelimiter.Stop()
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
