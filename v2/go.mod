@@ -74,7 +74,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.6
 	github.com/projectdiscovery/nvd v1.0.9
-	github.com/projectdiscovery/ratelimit v0.0.3
+	github.com/projectdiscovery/ratelimit v0.0.4-0.20221222024635-17151503fe59
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.0
