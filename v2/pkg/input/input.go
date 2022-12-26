@@ -100,7 +100,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if hasHost {
 			return host
 		}
-		if isURL {
+		if isURL && uri != nil {
 			return uri.Hostname()
 		}
 		return input
