@@ -45,7 +45,7 @@ require (
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37
 	github.com/xanzy/go-gitlab v0.77.0
 	go.uber.org/atomic v1.10.0
-	go.uber.org/multierr v1.8.0
+	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.4.0
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	golang.org/x/text v0.5.0
