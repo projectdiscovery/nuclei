@@ -59,6 +59,23 @@ Nuclei requires **go1.18** to install successfully. Run the following command to
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
+<details>
+  <summary>Brew</summary>
+  
+  ```sh
+  brew install nuclei
+  ```
+  
+</details>
+<details>
+  <summary>Docker</summary>
+  
+  ```sh
+  docker pull projectdiscovery/nuclei:latest
+  ```
+  
+</details>
+
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
