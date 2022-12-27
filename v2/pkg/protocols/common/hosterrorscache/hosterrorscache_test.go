@@ -10,22 +10,23 @@ import (
 func TestCacheCheckMarkFailed(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount)
 
-	if failedTarget, err := cache.failedTargets.Get("http://example.com:80"); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
+	tests := []struct {
+		host     string
+		expected int
+	}{
+		{"http://example.com:80", 1},
+		{"example.com:80", 2},
+		{"example.com", 1},
 	}
 
-	if failedTarget, err := cache.failedTargets.Get("example.com:80"); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
-	}
+	for _, test := range tests {
+		failedTarget, err := cache.failedTargets.Get(test.host)
+		require.Nil(t, err)
+		require.NotNil(t, failedTarget)
 
-	if failedTarget, err := cache.failedTargets.Get("example.com"); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
+		value, ok := failedTarget.(*cacheItem)
+		require.True(t, ok)
+		require.EqualValues(t, test.expected, value.errors.Load())
 	}
 
 	for i := 0; i < 3; i++ {
