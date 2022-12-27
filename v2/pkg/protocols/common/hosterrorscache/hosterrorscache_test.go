@@ -20,6 +20,7 @@ func TestCacheCheckMarkFailed(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		cache.MarkFailed(test.host, fmt.Errorf("no address found for host"))
 		failedTarget, err := cache.failedTargets.Get(test.host)
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
