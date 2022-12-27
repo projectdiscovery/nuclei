@@ -20,8 +20,9 @@ func TestCacheCheckMarkFailed(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		normalizedCacheValue := cache.normalizeCacheValue(test.host)
 		cache.MarkFailed(test.host, fmt.Errorf("no address found for host"))
-		failedTarget, err := cache.failedTargets.Get(test.host)
+		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
 
@@ -43,54 +44,29 @@ func TestCacheItemCheckMarkFailedMultipleCalls(t *testing.T) {
 
 	cache := New(3, DefaultMaxHostsCount)
 
-	hostValue := "http://asdasjkdashkjdahsjkdhas:80"
-
-	if failedTarget, err := cache.failedTargets.Get(hostValue); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
+	tests := []struct {
+		host     string
+		expected int
+	}{
+		{"http://asdasjkdashkjdahsjkdhas:80", 1},
+		{"asdasjkdashkjdahsjkdhas:80", 2},
+		{"asdasjkdashkjdahsjkdhas", 1},
 	}
 
-	existingCacheItem, err := cache.failedTargets.GetIFPresent(hostValue)
-	if err == nil {
+	for _, test := range tests {
+		normalizedCacheValue := cache.normalizeCacheValue(test.host)
+		cache.MarkFailed(test.host, fmt.Errorf("no address found for host"))
+		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
+		require.Nil(t, err)
+		require.NotNil(t, failedTarget)
+
 		skippingValue := false
+
+		existingCacheItem, err := cache.failedTargets.GetIFPresent(normalizedCacheValue)
+		require.Nil(t, err)
+		require.NotNil(t, existingCacheItem)
 		existingCacheItemValue := existingCacheItem.(*cacheItem)
-		if existingCacheItemValue.errors.Load() >= int32(cache.MaxHostError) {
-			skippingValue = true
-		}
-		require.Equal(t, true, skippingValue, "Didn't skipped host")
-	}
-
-	hostValue = "asdasjkdashkjdahsjkdhas:80"
-
-	if failedTarget, err := cache.failedTargets.Get(hostValue); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
-	}
-
-	existingCacheItem, err = cache.failedTargets.GetIFPresent(hostValue)
-	if err == nil {
-		skippingValue := false
-		existingCacheItemValue := existingCacheItem.(*cacheItem)
-		if existingCacheItemValue.errors.Load() >= int32(cache.MaxHostError) {
-			skippingValue = true
-		}
-		require.Equal(t, true, skippingValue, "Didn't skipped host")
-	}
-
-	hostValue = "asdasjkdashkjdahsjkdhas"
-
-	if failedTarget, err := cache.failedTargets.Get(hostValue); err == nil && failedTarget != nil {
-		if value, ok := failedTarget.(*cacheItem); ok {
-			require.EqualValues(t, 1, value.errors.Load(), "could not get correct number of marked failed hosts")
-		}
-	}
-
-	existingCacheItem, err = cache.failedTargets.GetIFPresent(hostValue)
-	if err == nil {
-		skippingValue := false
-		existingCacheItemValue := existingCacheItem.(*cacheItem)
+		require.NotNil(t, existingCacheItem)
 		if existingCacheItemValue.errors.Load() >= int32(cache.MaxHostError) {
 			skippingValue = true
 		}
