@@ -46,7 +46,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}, payloads: payloads}
 
 	// in case the page has request/response modification rules - enable global hijacking
-	if createdPage.hasModificationRules() {
+	if createdPage.hasModificationRules() || containsModificationActions(actions...) {
 		hijackRouter := page.HijackRequests()
 		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler); err != nil {
 			return nil, nil, err
@@ -145,7 +145,26 @@ func (p *Page) addInteractshURL(URLs ...string) {
 
 func (p *Page) hasModificationRules() bool {
 	for _, rule := range p.rules {
-		switch rule.Action {
+		if containsAnyModificationActionType(rule.Action) {
+			return true
+		}
+
+	}
+	return false
+}
+
+func containsModificationActions(actions ...*Action) bool {
+	for _, action := range actions {
+		if containsAnyModificationActionType(action.ActionType.ActionType) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAnyModificationActionType(actionTypes ...ActionType) bool {
+	for _, actionType := range actionTypes {
+		switch actionType {
 		case ActionSetMethod:
 			return true
 		case ActionAddHeader:

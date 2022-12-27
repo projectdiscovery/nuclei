@@ -15,7 +15,7 @@ headless:
       args:
         by: xpath
         xpath: /html/body/form/input[1]
-        value: file-upload.yaml
+        value: headless/file-upload.yaml
     - action: sleep
       args:
         duration: 2
