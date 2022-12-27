@@ -23,7 +23,7 @@ import (
 
 var _ protocols.Request = &Request{}
 
-const couldGetHtmlElementErrorMessage = "could get html element"
+const errCouldGetHtmlElement = "could get html element"
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -81,7 +81,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, couldGetHtmlElementErrorMessage)
+		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	defer instance.Close()
 
@@ -95,14 +95,14 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, couldGetHtmlElementErrorMessage)
+		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	timeout := time.Duration(request.options.Options.PageTimeout) * time.Second
 	out, page, err := instance.Run(parsedURL, request.Steps, payloads, timeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, couldGetHtmlElementErrorMessage)
+		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	defer page.Close()
 

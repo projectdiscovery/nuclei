@@ -13,9 +13,10 @@ import (
 // Page is a single page in an isolated browser instance
 type Page struct {
 	page           *rod.Page
-	rules          []requestRule
+	rules          []rule
 	instance       *Instance
-	router         *rod.HijackRouter
+	hijackRouter   *rod.HijackRouter
+	hijackNative   *Hijack
 	mutex          *sync.RWMutex
 	History        []HistoryData
 	InteractshURLs []string
@@ -43,11 +44,27 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 	}
 
 	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}, payloads: payloads}
-	router := page.HijackRequests()
-	if routerErr := router.Add("*", "", createdPage.routingRuleHandler); routerErr != nil {
-		return nil, nil, routerErr
+
+	// in case the page has request/response modification rules - enable global hijacking
+	if createdPage.hasModificationRules() {
+		hijackRouter := page.HijackRequests()
+		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler); err != nil {
+			return nil, nil, err
+		}
+		createdPage.hijackRouter = hijackRouter
+		go hijackRouter.Run()
+	} else {
+		hijackRouter := NewHijack(page)
+		hijackRouter.SetPattern(&proto.FetchRequestPattern{
+			URLPattern:   "*",
+			RequestStage: proto.FetchRequestStageResponse,
+		})
+		createdPage.hijackNative = hijackRouter
+		hijackRouterHandler := hijackRouter.Start(createdPage.routingRuleHandlerNative)
+		go func() {
+			_ = hijackRouterHandler()
+		}()
 	}
-	createdPage.router = router
 
 	if err := page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{Viewport: &proto.PageViewport{
 		Scale:  1,
@@ -61,7 +78,6 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 		return nil, nil, err
 	}
 
-	go router.Run()
 	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {
 		return nil, nil, err
@@ -71,7 +87,12 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 
 // Close closes a browser page
 func (p *Page) Close() {
-	_ = p.router.Stop()
+	if p.hijackRouter != nil {
+		_ = p.hijackRouter.Stop()
+	}
+	if p.hijackNative != nil {
+		_ = p.hijackNative.Stop()
+	}
 	p.page.Close()
 }
 
@@ -120,4 +141,22 @@ func (p *Page) addInteractshURL(URLs ...string) {
 	defer p.mutex.Unlock()
 
 	p.InteractshURLs = append(p.InteractshURLs, URLs...)
+}
+
+func (p *Page) hasModificationRules() bool {
+	for _, rule := range p.rules {
+		switch rule.Action {
+		case ActionSetMethod:
+			return true
+		case ActionAddHeader:
+			return true
+		case ActionSetHeader:
+			return true
+		case ActionDeleteHeader:
+			return true
+		case ActionSetBody:
+			return true
+		}
+	}
+	return false
 }
