@@ -336,6 +336,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where aws s3 bucket is located
 	AwsRegion string
+	// Scan Strategy (auto,hosts-spray,templates-spray)
+	ScanStrategy string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
