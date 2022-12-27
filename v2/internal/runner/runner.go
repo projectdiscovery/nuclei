@@ -627,7 +627,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	// tracks global progress and captures stdout/stderr until p.Wait finishes
 	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
 
-	results := engine.ExecuteWithOpts(finalTemplates, r.hmapInputProvider, true)
+	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, true)
 	return results, nil
 }
 
