@@ -99,15 +99,17 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
-	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
-		compiled := &request.Operators
-		compiled.ExcludeMatchers = options.ExcludeMatchers
-		compiled.TemplateID = options.TemplateID
-		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
-		}
-		request.CompiledOperators = compiled
+	// if there are no matchers/extractors, we trigger an error as no operation would be performed on the template
+	if request.Operators.IsEmpty() {
+		return errors.New("empty operators")
 	}
+	compiled := &request.Operators
+	compiled.ExcludeMatchers = options.ExcludeMatchers
+	compiled.TemplateID = options.TemplateID
+	if err := compiled.Compile(); err != nil {
+		return errors.Wrap(err, "could not compile operators")
+	}
+	request.CompiledOperators = compiled
 
 	// By default, use default max size if not defined
 	switch {

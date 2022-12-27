@@ -10,13 +10,11 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
+        with: 
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
- 
+
       - name: "Set up Go"
         uses: actions/setup-go@v3
         with: 
@@ -48,4 +46,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          branch: ${{ github.head_ref }}

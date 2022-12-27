@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,6 +78,7 @@ type Runner struct {
 	pprofServer       *http.Server
 	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
+	cloudTargets      []string
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -174,19 +176,36 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && (options.UpdateTemplates && !options.Cloud) {
 		os.Exit(0)
 	}
 
 	// Initialize the input source
-	hmapInput, err := hybrid.New(options)
+	hmapInput, err := hybrid.New(&hybrid.Options{
+		Options: options,
+		NotFoundCallback: func(target string) bool {
+			parsed, parseErr := strconv.ParseInt(target, 10, 64)
+			if parseErr != nil {
+				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
+					runner.cloudTargets = append(runner.cloudTargets, target)
+					return true
+				}
+				return false
+			}
+			if exists, err := runner.cloudClient.ExistsTarget(parsed); err == nil {
+				runner.cloudTargets = append(runner.cloudTargets, exists.Reference)
+				return true
+			}
+			return false
+		},
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
 	runner.hmapInputProvider = hmapInput
 
 	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(!options.NoColor, options.NoMeta, options.Timestamp, options.JSON, options.JSONRequests, options.MatcherStatus, options.StoreResponse, options.Output, options.TraceLogFile, options.ErrorLogFile, options.StoreResponseDir)
+	outputWriter, err := output.NewStandardWriter(options)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
@@ -313,6 +332,9 @@ func (r *Runner) Close() {
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}
+	if r.ratelimiter != nil {
+		r.ratelimiter.Stop()
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -401,6 +423,26 @@ func (r *Runner) RunEnumeration() error {
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
+
+	var cloudTemplates []string
+	if r.options.Cloud {
+		// hook template loading
+		store.NotFoundCallback = func(template string) bool {
+			parsed, parseErr := strconv.ParseInt(template, 10, 64)
+			if parseErr != nil {
+				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
+					cloudTemplates = append(cloudTemplates, template)
+					return true
+				}
+				return false
+			}
+			if exists, err := r.cloudClient.ExistsTemplate(parsed); err == nil {
+				cloudTemplates = append(cloudTemplates, exists.Reference)
+				return true
+			}
+			return false
+		}
+	}
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -448,14 +490,36 @@ func (r *Runner) RunEnumeration() error {
 	var results *atomic.Bool
 	if r.options.Cloud {
 		if r.options.ScanList {
-			err = r.getScanList()
+			err = r.getScanList(r.options.OutputLimit)
 		} else if r.options.DeleteScan != "" {
 			err = r.deleteScan(r.options.DeleteScan)
 		} else if r.options.ScanOutput != "" {
-			err = r.getResults(r.options.ScanOutput)
+			err = r.getResults(r.options.ScanOutput, r.options.OutputLimit)
+		} else if r.options.ListDatasources {
+			err = r.listDatasources()
+		} else if r.options.ListTargets {
+			err = r.listTargets()
+		} else if r.options.ListTemplates {
+			err = r.listTemplates()
+		} else if r.options.AddDatasource != "" {
+			err = r.addCloudDataSource(r.options.AddDatasource)
+		} else if r.options.RemoveDatasource != "" {
+			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.AddTarget != "" {
+			err = r.addTarget(r.options.AddTarget)
+		} else if r.options.AddTemplate != "" {
+			err = r.addTemplate(r.options.AddTemplate)
+		} else if r.options.GetTarget != "" {
+			err = r.getTarget(r.options.GetTarget)
+		} else if r.options.GetTemplate != "" {
+			err = r.getTemplate(r.options.GetTemplate)
+		} else if r.options.RemoveTarget != "" {
+			err = r.removeTarget(r.options.RemoveTarget)
+		} else if r.options.RemoveTemplate != "" {
+			err = r.removeTemplate(r.options.RemoveTemplate)
 		} else {
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, r.options.NoStore)
+			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
 			enumeration = true
 		}
 	} else {
@@ -620,8 +684,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for scan: %d", len(store.Workflows()))
 	}
-
-	gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	if r.hmapInputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
+	}
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {

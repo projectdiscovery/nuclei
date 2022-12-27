@@ -32,7 +32,7 @@ type Config struct {
 const nucleiConfigFilename = ".templates-config.json"
 
 // Version is the current version of nuclei
-const Version = `2.8.2`
+const Version = `2.8.4-dev`
 
 var customConfigDirectory string
 

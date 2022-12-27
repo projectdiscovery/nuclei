@@ -107,6 +107,9 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 	} else {
 		rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
+	if rateLimiter != nil {
+		defer rateLimiter.Stop()
+	}
 	var agents []uncover.Agent
 	// declare clients
 	for _, engine := range uncoverOptions.Engine {
