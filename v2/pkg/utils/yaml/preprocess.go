@@ -20,8 +20,9 @@ var StrictSyntax bool
 func PreProcess(data []byte) ([]byte, error) {
 	// find all matches like !include:path\n
 	importMatches := reImportsPattern.FindAllSubmatch(data, -1)
+	hasImportDirectives := len(importMatches) > 0
 
-	if StrictSyntax {
+	if hasImportDirectives && StrictSyntax {
 		return data, errors.New("include directive preprocessing is disabled")
 	}
 
