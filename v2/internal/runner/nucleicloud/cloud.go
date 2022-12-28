@@ -420,8 +420,19 @@ func (c *Client) AddTarget(name, contents string) (string, error) {
 	return item.Ok, nil
 }
 
-func (c *Client) RemoveTemplate(ID int64) error {
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/templates/%d", c.baseURL, ID), nil)
+func (c *Client) RemoveTemplate(ID int64, name string) error {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/templates")
+
+	if name != "" {
+		_, _ = builder.WriteString("?name=")
+		_, _ = builder.WriteString(name)
+	} else if ID != 0 {
+		_, _ = builder.WriteString("?id=")
+		_, _ = builder.WriteString(strconv.FormatInt(ID, 10))
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, builder.String(), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
@@ -435,8 +446,19 @@ func (c *Client) RemoveTemplate(ID int64) error {
 	return nil
 }
 
-func (c *Client) RemoveTarget(ID int64) error {
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/targets/%d", c.baseURL, ID), nil)
+func (c *Client) RemoveTarget(ID int64, name string) error {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/targets")
+
+	if name != "" {
+		_, _ = builder.WriteString("?name=")
+		_, _ = builder.WriteString(name)
+	} else if ID != 0 {
+		_, _ = builder.WriteString("?id=")
+		_, _ = builder.WriteString(strconv.FormatInt(ID, 10))
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, builder.String(), nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
 	}
@@ -450,8 +472,19 @@ func (c *Client) RemoveTarget(ID int64) error {
 	return nil
 }
 
-func (c *Client) GetTarget(ID int64) (io.ReadCloser, error) {
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/targets/%d", c.baseURL, ID), nil)
+func (c *Client) GetTarget(ID int64, name string) (io.ReadCloser, error) {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/targets/get")
+
+	if name != "" {
+		_, _ = builder.WriteString("?name=")
+		_, _ = builder.WriteString(name)
+	} else if ID != 0 {
+		_, _ = builder.WriteString("?id=")
+		_, _ = builder.WriteString(strconv.FormatInt(ID, 10))
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, builder.String(), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make request")
 	}
@@ -463,8 +496,19 @@ func (c *Client) GetTarget(ID int64) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (c *Client) GetTemplate(ID int64) (io.ReadCloser, error) {
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/templates/%d", c.baseURL, ID), nil)
+func (c *Client) GetTemplate(ID int64, name string) (io.ReadCloser, error) {
+	var builder strings.Builder
+	_, _ = builder.WriteString(c.baseURL)
+	_, _ = builder.WriteString("/templates/get")
+
+	if name != "" {
+		_, _ = builder.WriteString("?name=")
+		_, _ = builder.WriteString(name)
+	} else if ID != 0 {
+		_, _ = builder.WriteString("?id=")
+		_, _ = builder.WriteString(strconv.FormatInt(ID, 10))
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, builder.String(), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not make request")
 	}
