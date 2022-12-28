@@ -483,6 +483,10 @@ func (r *Runner) RunEnumeration() error {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+
+	if len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
+		return errors.New("missing required input (http response) to run passive templates")
+	}
 	return err
 }
 
@@ -557,6 +561,9 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
+		// if len(options.Options.Targets) == 0 || options.Options.TargetsFilePath == "" {
+		// 	return errors.New("Could not run nuclei: missing required input (http response) to run passive templates")
+		// }
 		return &atomic.Bool{}, errors.New("no valid templates were found")
 	}
 
