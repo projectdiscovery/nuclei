@@ -54,6 +54,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -109,7 +110,10 @@ func New(options *types.Options) (*Runner, error) {
 		// Does not update the templates when validate flag is used
 		options.NoUpdateTemplates = true
 	}
+
+	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
+	yaml.StrictSyntax = !options.NoStrictSyntax
 
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
 	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
