@@ -59,6 +59,23 @@ Nuclei requires **go1.18** to install successfully. Run the following command to
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
 
+<details>
+  <summary>Brew</summary>
+  
+  ```sh
+  brew install nuclei
+  ```
+  
+</details>
+<details>
+  <summary>Docker</summary>
+  
+  ```sh
+  docker pull projectdiscovery/nuclei:latest
+  ```
+  
+</details>
+
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
@@ -369,6 +386,7 @@ import (
    "github.com/projectdiscovery/nuclei/v2/pkg/output"
    "github.com/projectdiscovery/nuclei/v2/pkg/parsers"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -439,7 +457,13 @@ func main() {
    }
    store.Load()
 
-   input := &inputs.SimpleInputProvider{Inputs: []string{"docs.hackerone.com"}}
+   inputArgs := []*contextargs.MetaInput{
+      &contextargs.MetaInput{
+         Input: "docs.hackerone.com",
+      },
+   }
+
+   input := &inputs.SimpleInputProvider{Inputs: inputArgs}
    _ = engine.Execute(store.Templates(), input)
    engine.WorkPool().Wait() // Wait for the scan to finish
 }
