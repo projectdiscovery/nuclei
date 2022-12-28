@@ -658,9 +658,7 @@ func init() {
 							return parsedTime.Unix(), nil
 						}
 					}
-					errorMessage := "could not parse the current input with the default layouts"
-					gologger.Debug().Msg(errorMessage + ":\n" + strings.Join(defaultDateTimeLayouts, "\t\n"))
-					return nil, fmt.Errorf(errorMessage)
+					return nil, fmt.Errorf("could not parse the current input with the default layouts")
 				} else if len(args) == 2 {
 					layout := types.ToString(args[1])
 					parsedTime, err := time.Parse(layout, input)
