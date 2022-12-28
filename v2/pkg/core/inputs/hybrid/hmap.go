@@ -50,15 +50,6 @@ type Options struct {
 	NotFoundCallback func(template string) bool
 }
 
-// Options is a wrapper around types.Options structure
-type Options struct {
-	// Options contains options for hmap provider
-	Options *types.Options
-	// NotFoundCallback is called for each not found target
-	// This overrides error handling for not found target
-	NotFoundCallback func(template string) bool
-}
-
 // New creates a new hmap backed nuclei Input Provider
 // and initializes it based on the passed options Model.
 func New(opts *Options) (*Input, error) {

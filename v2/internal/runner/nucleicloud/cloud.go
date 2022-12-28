@@ -163,81 +163,10 @@ func (c *Client) DeleteScan(id int64) (DeleteScanResults, error) {
 	if err != nil {
 		return deletescan, errors.Wrap(err, "could not do request")
 	}
-	if err != nil {
-		return nil, errors.Wrap(err, "could not do request")
-	}
-	defer resp.Body.Close()
-
-	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return items, errors.Wrap(err, "could not decode results")
-	}
-	return items, nil
-}
-
-// Delete a scan and it's issues by the scan id.
-func (c *Client) DeleteScan(id int64) (DeleteScanResults, error) {
-	deletescan := DeleteScanResults{}
-	httpReq, err := retryablehttp.NewRequest(http.MethodDelete, fmt.Sprintf("%s/scan?id=%d", c.baseURL, id), nil)
-	if err != nil {
-		return deletescan, errors.Wrap(err, "could not make request")
-	}
-
-	resp, err := c.sendRequest(httpReq)
-	if err != nil {
-		return deletescan, errors.Wrap(err, "could not do request")
-	}
 	defer resp.Body.Close()
 
 	if err := jsoniter.NewDecoder(resp.Body).Decode(&deletescan); err != nil {
 		return deletescan, errors.Wrap(err, "could not delete scan")
-	}
-	return deletescan, nil
-}
-
-// StatusDataSource returns the status for a data source
-func (c *Client) StatusDataSource(statusRequest StatusDataSourceRequest) (int64, error) {
-	var buf bytes.Buffer
-	if err := jsoniter.NewEncoder(&buf).Encode(statusRequest); err != nil {
-		return 0, errors.Wrap(err, "could not encode request")
-	}
-	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources/status", c.baseURL), bytes.NewReader(buf.Bytes()))
-	if err != nil {
-		return 0, errors.Wrap(err, "could not make request")
-	}
-
-	resp, err := c.sendRequest(httpReq)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not do request")
-	}
-	defer resp.Body.Close()
-
-	var data StatusDataSourceResponse
-	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return 0, errors.Wrap(err, "could not decode resp")
-	}
-	return data.ID, nil
-}
-
-// AddDataSource adds a new data source
-func (c *Client) AddDataSource(req AddDataSourceRequest) (*AddDataSourceResponse, error) {
-	var buf bytes.Buffer
-	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
-		return nil, errors.Wrap(err, "could not encode request")
-	}
-	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/datasources", c.baseURL), bytes.NewReader(buf.Bytes()))
-	if err != nil {
-		return nil, errors.Wrap(err, "could not make request")
-	}
-	resp, err := c.sendRequest(httpReq)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not do request")
-	}
-	defer resp.Body.Close()
-
-	var data AddDataSourceResponse
-	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, errors.Wrap(err, "could not decode resp")
-	}
 	}
 	return deletescan, nil
 }
