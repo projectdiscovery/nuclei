@@ -1,0 +1,22 @@
+id: tlsa-fingerprinting
+
+info:
+  name: TLSA Fingerprint
+  author: pdteam
+  severity: info
+  tags: dns,tlsa
+
+dns:
+  - name: "{{FQDN}}"
+    type: TLSA
+
+    matchers:
+      - type: word
+        words:
+          - "IN\tTLSA"
+
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "IN\tTLSA\t(.+)"
