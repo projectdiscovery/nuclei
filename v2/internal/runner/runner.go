@@ -484,7 +484,7 @@ func (r *Runner) RunEnumeration() error {
 		r.browser.Close()
 	}
 
-	if len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
+	if len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" && r.options.OfflineHTTP {
 		return errors.New("missing required input (http response) to run passive templates")
 	}
 	return err
