@@ -561,9 +561,6 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 
 	// 0 matches means no templates were found in directory
 	if templateCount == 0 {
-		// if len(options.Options.Targets) == 0 || options.Options.TargetsFilePath == "" {
-		// 	return errors.New("Could not run nuclei: missing required input (http response) to run passive templates")
-		// }
 		return &atomic.Bool{}, errors.New("no valid templates were found")
 	}
 
