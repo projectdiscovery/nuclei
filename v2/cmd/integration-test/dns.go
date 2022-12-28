@@ -66,7 +66,7 @@ type dnsTLSA struct{}
 func (h *dnsTLSA) Execute(filePath string) error {
 	var routerErr error
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "google.com", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
 	if err != nil {
 		return err
 	}
