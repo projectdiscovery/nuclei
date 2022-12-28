@@ -77,3 +77,24 @@ func StringSliceContains(slice []string, item string) bool {
 	}
 	return false
 }
+
+// ParseHostname returns hostname
+func ParseHostname(inputURL string) string {
+	/*
+		currently if URL is scanme.sh/path or scanme.sh:443 i.e without protocol then
+		url.Parse considers this as valid url but fails to parse hostname
+		this can be handled by adding schema
+	*/
+	input, err := url.Parse(inputURL)
+	if err != nil {
+		return ""
+	}
+	if input.Host == "" {
+		newinput, err := url.Parse("https://" + inputURL)
+		if err != nil {
+			return ""
+		}
+		return newinput.Host
+	}
+	return input.Host
+}

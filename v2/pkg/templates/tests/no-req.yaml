@@ -1,0 +1,9 @@
+id: basic-get
+
+info:
+  name: Basic GET Request
+  author: pdteam
+  severity: info
+
+requests:
+
