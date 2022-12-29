@@ -2,12 +2,24 @@ package hosterrorscache
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestCacheCheckMarkFailed(t *testing.T) {
+func TestCacheCheck(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount)
+
+	for i := 0; i < 3; i++ {
+		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
+	}
+
+	value := cache.Check("test")
+	require.Equal(t, true, value, "could not get checked value")
+}
+
+func TestCacheMarkFailed(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount)
 
 	tests := []struct {
@@ -30,27 +42,18 @@ func TestCacheCheckMarkFailed(t *testing.T) {
 		require.True(t, ok)
 		require.EqualValues(t, test.expected, value.errors.Load())
 	}
-
-	for i := 0; i < 3; i++ {
-		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
-	}
-
-	value := cache.Check("test")
-	require.Equal(t, true, value, "could not get checked value")
 }
 
-func TestCacheItemCheckMarkFailedMultipleCalls(t *testing.T) {
-	t.Parallel()
-
+func TestCacheMarkFailedMultipleCalls(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount)
 
 	tests := []struct {
 		host     string
 		expected int
 	}{
-		{"http://asdasjkdashkjdahsjkdhas:80", 1},
-		{"asdasjkdashkjdahsjkdhas:80", 2},
-		{"asdasjkdashkjdahsjkdhas", 1},
+		{"http://example.com:80", 1},
+		{"example.com:80", 2},
+		{"example.com", 1},
 	}
 
 	for _, test := range tests {
@@ -60,23 +63,51 @@ func TestCacheItemCheckMarkFailedMultipleCalls(t *testing.T) {
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
 
-		skippingValue := false
+		value, ok := failedTarget.(*cacheItem)
+		require.True(t, ok)
+		require.EqualValues(t, test.expected, value.errors.Load())
 
 		existingCacheItem, err := cache.failedTargets.GetIFPresent(normalizedCacheValue)
 		require.Nil(t, err)
 		require.NotNil(t, existingCacheItem)
 		existingCacheItemValue := existingCacheItem.(*cacheItem)
-		require.NotNil(t, existingCacheItem)
-		if existingCacheItemValue.errors.Load() >= int32(cache.MaxHostError) {
-			skippingValue = true
-		}
+		skippingValue := existingCacheItemValue.errors.Load() >= int32(test.expected)
 		require.Equal(t, true, skippingValue, "Didn't skipped host")
 	}
+}
 
-	for i := 0; i < 3; i++ {
-		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
+func TestCacheMarkFailedConcurrent(t *testing.T) {
+	t.Parallel()
+
+	cache := New(3, DefaultMaxHostsCount)
+
+	tests := []struct {
+		host     string
+		expected int32
+	}{
+		{"http://example.com:80", 5},
+		{"example.com:80", 10},
+		{"example.com", 5},
 	}
 
-	value := cache.Check("test")
-	require.Equal(t, true, value, "could not get checked value")
+	for _, test := range tests {
+		normalizedCacheValue := cache.normalizeCacheValue(test.host)
+		wg := sync.WaitGroup{}
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			go func() {
+				cache.MarkFailed(normalizedCacheValue, fmt.Errorf("could not resolve host"))
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
+		require.Nil(t, err)
+		require.NotNil(t, failedTarget)
+
+		value, ok := failedTarget.(*cacheItem)
+		require.True(t, ok)
+		require.EqualValues(t, test.expected, value.errors.Load())
+	}
 }
