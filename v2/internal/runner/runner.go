@@ -759,7 +759,6 @@ func (r *Runner) countNewTemplates() int {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
-
 		if text == "" {
 			continue
 		}
