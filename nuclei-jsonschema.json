@@ -368,7 +368,8 @@
         "MX",
         "TXT",
         "AAAA",
-        "CAA"
+        "CAA",
+        "TLSA"
       ],
       "type": "string",
       "title": "type of DNS request to make",

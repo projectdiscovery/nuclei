@@ -2813,6 +2813,8 @@ Enum Values:
   - <code>AAAA</code>
 
   - <code>CAA</code>
+
+  - <code>TLSA</code>
 </div>
 
 <hr />
