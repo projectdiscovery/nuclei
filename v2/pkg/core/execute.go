@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -86,7 +87,7 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 		finalTemplates = templatesList
 	}
 
-	if e.options.ScanStrategy == "auto" {
+	if stringsutil.EqualFoldAny(e.options.ScanStrategy, "auto", "") {
 		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
 		// based on no of hosts , templates , stream and other optimization parameters
 		e.options.ScanStrategy = "template-spray"
