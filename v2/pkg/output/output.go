@@ -82,7 +82,7 @@ type ResultEvent struct {
 	// TemplateID is the ID of the template for the result.
 	TemplateID string `json:"template-id"`
 	// TemplatePath is the path of template
-	TemplatePath string `json:"-"`
+	TemplatePath string `json:"template-path,omitempty"`
 	// Info contains information block of the template for the result.
 	Info model.Info `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
@@ -123,53 +123,57 @@ type ResultEvent struct {
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
-func NewStandardWriter(colors, noMetadata, timestamp, json, jsonReqResp, MatcherStatus, storeResponse bool, file, traceFile string, errorFile string, storeResponseDir string) (*StandardWriter, error) {
-	auroraColorizer := aurora.NewAurora(colors)
+func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
+	resumeBool := false
+	if options.Resume != "" {
+		resumeBool = true
+	}
+	auroraColorizer := aurora.NewAurora(!options.NoColor)
 
 	var outputFile io.WriteCloser
-	if file != "" {
-		output, err := newFileOutputWriter(file)
+	if options.Output != "" {
+		output, err := newFileOutputWriter(options.Output, resumeBool)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create output file")
 		}
 		outputFile = output
 	}
 	var traceOutput io.WriteCloser
-	if traceFile != "" {
-		output, err := newFileOutputWriter(traceFile)
+	if options.TraceLogFile != "" {
+		output, err := newFileOutputWriter(options.TraceLogFile, resumeBool)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create output file")
 		}
 		traceOutput = output
 	}
 	var errorOutput io.WriteCloser
-	if errorFile != "" {
-		output, err := newFileOutputWriter(errorFile)
+	if options.ErrorLogFile != "" {
+		output, err := newFileOutputWriter(options.ErrorLogFile, resumeBool)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create error file")
 		}
 		errorOutput = output
 	}
 	// Try to create output folder if it doesn't exist
-	if storeResponse && !fileutil.FolderExists(storeResponseDir) {
-		if err := fileutil.CreateFolder(storeResponseDir); err != nil {
-			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", storeResponseDir, err)
+	if options.StoreResponse && !fileutil.FolderExists(options.StoreResponseDir) {
+		if err := fileutil.CreateFolder(options.StoreResponseDir); err != nil {
+			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", options.StoreResponseDir, err)
 		}
 	}
 	writer := &StandardWriter{
-		json:             json,
-		jsonReqResp:      jsonReqResp,
-		noMetadata:       noMetadata,
-		matcherStatus:    MatcherStatus,
-		timestamp:        timestamp,
+		json:             options.JSON,
+		jsonReqResp:      options.JSONRequests,
+		noMetadata:       options.NoMeta,
+		matcherStatus:    options.MatcherStatus,
+		timestamp:        options.Timestamp,
 		aurora:           auroraColorizer,
 		mutex:            &sync.Mutex{},
 		outputFile:       outputFile,
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
 		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    storeResponse,
-		storeResponseDir: storeResponseDir,
+		storeResponse:    options.StoreResponse,
+		storeResponseDir: options.StoreResponseDir,
 	}
 	return writer, nil
 }

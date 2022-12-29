@@ -12,7 +12,7 @@ type Catalog interface {
 	// or folders provided as in.
 	GetTemplatePath(target string) ([]string, error)
 	// GetTemplatesPath returns a list of absolute paths for the provided template list.
-	GetTemplatesPath(definitions []string) []string
+	GetTemplatesPath(definitions []string) ([]string, map[string]error)
 	// ResolvePath resolves the path to an absolute one in various ways.
 	//
 	// It checks if the filename is an absolute path, looks in the current directory

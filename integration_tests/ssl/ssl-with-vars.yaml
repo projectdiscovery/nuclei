@@ -1,0 +1,14 @@
+id: ssl-with-vars
+
+info:
+  name: SSL with variables
+  author: pdteam
+  severity: info
+  tags: ssl
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    matchers:
+      - type: dsl
+        dsl:
+          - "print_debug(test)"
