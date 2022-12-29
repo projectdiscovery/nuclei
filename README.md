@@ -76,6 +76,29 @@ go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
   
 </details>
 
+<details>
+  <summary>Ubuntu</summary>
+
+> It's recommended to install the following prerequisites -
+```sh
+sudo apt update
+sudo snap refresh
+sudo apt install zip curl wget git
+sudo snap install golang --classic
+wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 
+sudo sh -c 'echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+sudo apt update 
+sudo apt install google-chrome-stable
+```
+
+> install nuclei -
+
+```sh
+go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+```
+
+</details>
+
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
 <table>
