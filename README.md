@@ -91,6 +91,7 @@ sudo apt update
 sudo apt install google-chrome-stable
 ```
 
+
 > install nuclei -
 
 ```sh
