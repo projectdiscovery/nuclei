@@ -142,11 +142,11 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 		return fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
-	var requests []protocols.Request
-
 	if options.Options.OfflineHTTP {
 		return template.compileOfflineHTTPRequest(options)
 	}
+
+	var requests []protocols.Request
 
 	if len(template.RequestsDNS) > 0 {
 		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
