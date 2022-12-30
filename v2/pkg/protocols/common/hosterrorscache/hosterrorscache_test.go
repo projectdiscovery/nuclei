@@ -8,18 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func markFailedConcurrently(cache *Cache, host string, numCalls int) {
-	wg := sync.WaitGroup{}
-	for i := 0; i < numCalls; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			cache.MarkFailed(host, fmt.Errorf("could not resolve host"))
-		}()
-	}
-	wg.Wait()
-}
-
 func TestCacheCheck(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount)
 
@@ -98,9 +86,18 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 		{"example.com", 100},
 	}
 
+	wg := sync.WaitGroup{}
 	for _, test := range tests {
-		markFailedConcurrently(cache, test.host, 100)
+		currentTest := test
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				cache.MarkFailed(currentTest.host, fmt.Errorf("could not resolve host"))
+			}()
+		}
 	}
+	wg.Wait()
 
 	for _, test := range tests {
 		require.True(t, cache.Check(test.host))
