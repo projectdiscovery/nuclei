@@ -40,8 +40,6 @@ func TestCacheCheck(t *testing.T) {
 }
 
 func TestCacheItemDo(t *testing.T) {
-	t.Parallel()
-
 	var (
 		count int
 		item  cacheItem
@@ -88,41 +86,7 @@ func TestCacheMarkFailed(t *testing.T) {
 	}
 }
 
-func TestCacheMarkFailedMultipleCalls(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
-
-	tests := []struct {
-		host     string
-		expected int
-	}{
-		{"http://example.com:80", 1},
-		{"example.com:80", 2},
-		{"example.com", 1},
-	}
-
-	for _, test := range tests {
-		normalizedCacheValue := cache.normalizeCacheValue(test.host)
-		cache.MarkFailed(test.host, fmt.Errorf("no address found for host"))
-		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
-		require.Nil(t, err)
-		require.NotNil(t, failedTarget)
-
-		value, ok := failedTarget.(*cacheItem)
-		require.True(t, ok)
-		require.EqualValues(t, test.expected, value.errors.Load())
-
-		existingCacheItem, err := cache.failedTargets.GetIFPresent(normalizedCacheValue)
-		require.Nil(t, err)
-		require.NotNil(t, existingCacheItem)
-		existingCacheItemValue := existingCacheItem.(*cacheItem)
-		skippingValue := existingCacheItemValue.errors.Load() >= int32(test.expected)
-		require.Equal(t, true, skippingValue, "Didn't skipped host")
-	}
-}
-
 func TestCacheMarkFailedConcurrent(t *testing.T) {
-	t.Parallel()
-
 	cache := New(3, DefaultMaxHostsCount)
 
 	tests := []struct {
