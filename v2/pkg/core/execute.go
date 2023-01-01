@@ -146,13 +146,13 @@ func (e *Engine) executeModelWithInput(templateType types.ProtocolType, template
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
 		if resumeFromInfo.Completed { // the template was completed
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed\n", template.ID, scannedValue)
+			gologger.Debug().TimeStamp().Msgf("[%s] Skipping \"%s\": Resume - Template already completed\n", template.ID, scannedValue)
 			skip = true
 		} else if index < resumeFromInfo.SkipUnder { // index lower than the sliding window (bulk-size)
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed\n", template.ID, scannedValue)
+			gologger.Debug().TimeStamp().Msgf("[%s] Skipping \"%s\": Resume - Target already processed\n", template.ID, scannedValue)
 			skip = true
 		} else if _, isInFlight := resumeFromInfo.InFlight[index]; isInFlight { // the target wasn't completed successfully
-			gologger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed\n", template.ID, scannedValue)
+			gologger.Debug().TimeStamp().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed\n", template.ID, scannedValue)
 			// skip is already false, but leaving it here for clarity
 			skip = false
 		} else if index > resumeFromInfo.DoAbove { // index above the sliding window (bulk-size)

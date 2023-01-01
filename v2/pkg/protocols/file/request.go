@@ -334,7 +334,7 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 				lineContent = hex.Dump([]byte(lineContent))
 			}
 			highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, lineContent, cliOptions.NoColor, hexDump)
-			gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
+			gologger.Debug().TimeStamp().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
 		}
 	}
 }
