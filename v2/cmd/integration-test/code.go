@@ -93,13 +93,15 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
+	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
+	defer ratelimiter.Stop()
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
+		RateLimiter:     ratelimiter,
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),

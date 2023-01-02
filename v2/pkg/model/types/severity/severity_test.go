@@ -6,6 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestYamlUnmarshal(t *testing.T) {
@@ -64,4 +65,13 @@ func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error
 
 func createYAML(value string) string {
 	return "severity: " + value + "\n"
+}
+
+func TestMarshalJSON(t *testing.T) {
+	unmarshalled := Severities{Low, Medium}
+	data, err := unmarshalled.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, "[\"low\",\"medium\"]", string(data), "could not marshal json")
 }

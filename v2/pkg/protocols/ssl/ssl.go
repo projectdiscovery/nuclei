@@ -145,10 +145,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	hostname, port, _ := net.SplitHostPort(hostPort)
 
 	requestOptions := request.options
-	payloadValues := make(map[string]interface{})
+	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
 	for k, v := range dynamicValues {
 		payloadValues[k] = v
 	}
+
 	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port

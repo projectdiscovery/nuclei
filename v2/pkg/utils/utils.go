@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 func IsBlank(value string) bool {
@@ -27,42 +29,42 @@ func UnwrapError(err error) error {
 
 // IsURL tests a string to determine if it is a well-structured url or not.
 func IsURL(input string) bool {
-	_, err := url.ParseRequestURI(input)
-	if err != nil {
-		return false
-	}
-
 	u, err := url.Parse(input)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-
-	return true
+	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
 // ReadFromPathOrURL reads and returns the contents of a file or url.
 func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byte, err error) {
+	var reader io.Reader
 	if IsURL(templatePath) {
 		resp, err := http.Get(templatePath)
 		if err != nil {
 			return nil, err
 		}
 		defer resp.Body.Close()
-		data, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
+		reader = resp.Body
 	} else {
 		f, err := catalog.OpenFile(templatePath)
 		if err != nil {
 			return nil, err
 		}
 		defer f.Close()
-		data, err = io.ReadAll(f)
+		reader = f
+	}
+
+	data, err = io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// pre-process directives only for local files
+	if fileutil.FileExists(templatePath) {
+		data, err = yaml.PreProcess(data)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return
 }
 
@@ -74,4 +76,25 @@ func StringSliceContains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// ParseHostname returns hostname
+func ParseHostname(inputURL string) string {
+	/*
+		currently if URL is scanme.sh/path or scanme.sh:443 i.e without protocol then
+		url.Parse considers this as valid url but fails to parse hostname
+		this can be handled by adding schema
+	*/
+	input, err := url.Parse(inputURL)
+	if err != nil {
+		return ""
+	}
+	if input.Host == "" {
+		newinput, err := url.Parse("https://" + inputURL)
+		if err != nil {
+			return ""
+		}
+		return newinput.Host
+	}
+	return input.Host
 }
