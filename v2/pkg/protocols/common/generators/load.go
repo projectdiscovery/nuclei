@@ -11,7 +11,7 @@ import (
 )
 
 // loadPayloads loads the input payloads from a map to a data map
-func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}, templatePath, templateDirectory string, sandbox bool) (map[string][]string, error) {
+func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}, templatePath, templateDirectory, noise string, sandbox bool) (map[string][]string, error) {
 	loadedPayloads := make(map[string][]string)
 
 	for name, payload := range payloads {
@@ -35,11 +35,60 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 				}
 				loadedPayloads[name] = payloads
 			}
+		case map[interface{}]interface{}:
+			if noise == "" {
+				return nil, errors.New("noise payloads cannot be used without fuzzing")
+			}
+			noiseValues, err := convertMapInterfaceToNoiseMapping(pt)
+			if err != nil {
+				return nil, err
+			}
+			switch strings.ToLower(noise) {
+			case "low":
+				loadedPayloads[name] = noiseValues.low
+			case "medium":
+				loadedPayloads[name] = append(noiseValues.low, noiseValues.medium...)
+			case "high":
+				medium := append(noiseValues.low, noiseValues.medium...)
+				loadedPayloads[name] = append(medium, noiseValues.high...)
+			}
 		case interface{}:
 			loadedPayloads[name] = cast.ToStringSlice(pt)
 		}
 	}
 	return loadedPayloads, nil
+}
+
+type noiseToPayloads struct {
+	low    []string
+	medium []string
+	high   []string
+}
+
+func convertMapInterfaceToNoiseMapping(slice map[interface{}]interface{}) (*noiseToPayloads, error) {
+	s := &noiseToPayloads{}
+	for k, v := range slice {
+		key, ok := k.(string)
+		if !ok {
+			return nil, errors.Errorf("invalid type specified for key: %v", k)
+		}
+		values := cast.ToStringSlice(v)
+		if len(values) == 0 {
+			return nil, errors.Errorf("invalid blank payload set specified: %s", key)
+		}
+		switch strings.ToLower(key) {
+		case "low":
+			s.low = values
+		case "medium":
+			s.medium = values
+		case "high":
+			s.high = values
+		}
+	}
+	if len(s.low) == 0 || len(s.medium) == 0 || len(s.high) == 0 {
+		return nil, errors.Errorf("invalid noise payload set: %v", slice)
+	}
+	return s, nil
 }
 
 // loadPayloadsFromFile loads a file to a string slice

@@ -350,7 +350,12 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.TemplatesDirectory, request.options.Options.Sandbox, request.options.Catalog, request.options.Options.AttackType)
+		// Use a noise value if http fuzzing is being used
+		var noiseValue string
+		if len(request.Fuzzing) > 0 {
+			noiseValue = options.Options.Noise
+		}
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.TemplatesDirectory, noiseValue, request.options.Options.Sandbox, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
