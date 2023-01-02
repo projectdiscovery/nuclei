@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.0.0
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.4-0.20221214110533-9f95ee986a54
-	github.com/projectdiscovery/wappalyzergo v0.0.75
+	github.com/projectdiscovery/wappalyzergo v0.0.76
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
