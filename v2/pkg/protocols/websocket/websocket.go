@@ -210,7 +210,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -252,7 +252,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	requestOptions.Progress.IncrementRequests()
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-		gologger.Debug().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", requestOptions.TemplateID, input)
+		gologger.Debug().TimeStamp().Str("address", input).Msgf("[%s] Dumped Websocket request for %s", requestOptions.TemplateID, input)
 		gologger.Print().Msgf("%s", requestOutput)
 	}
 
@@ -280,7 +280,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	})
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
 		responseOutput := responseBuilder.String()
-		gologger.Debug().Msgf("[%s] Dumped Websocket response for %s", requestOptions.TemplateID, input)
+		gologger.Debug().TimeStamp().Msgf("[%s] Dumped Websocket response for %s", requestOptions.TemplateID, input)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, requestOptions.Options.NoColor, false))
 	}
 

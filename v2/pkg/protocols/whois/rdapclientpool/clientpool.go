@@ -18,7 +18,7 @@ func Init(options *types.Options) error {
 	normalClient = &rdap.Client{}
 	if options.Verbose || options.Debug || options.DebugRequests || options.DebugResponse {
 		normalClient.Verbose = func(text string) {
-			gologger.Debug().Msgf("rdap: %s", text)
+			gologger.Debug().TimeStamp().Msgf("rdap: %s", text)
 		}
 	}
 	return nil

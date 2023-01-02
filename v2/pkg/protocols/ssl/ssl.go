@@ -160,7 +160,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -195,7 +195,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
+			gologger.Debug().TimeStamp().Str("address", input.MetaInput.Input).Msg(msg)
 		}
 		if requestOptions.Options.StoreResponse {
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
@@ -245,7 +245,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
-			gologger.Debug().Msg(msg)
+			gologger.Debug().TimeStamp().Msg(msg)
 			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
 		}
 		if requestOptions.Options.StoreResponse {

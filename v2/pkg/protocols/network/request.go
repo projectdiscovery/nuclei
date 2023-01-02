@@ -132,7 +132,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	interimValues := generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(interimValues))
+		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(interimValues))
 	}
 
 	inputEvents := make(map[string]interface{})
@@ -312,7 +312,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, response
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), cliOptions.NoColor, true)
 		msg := fmt.Sprintf("[%s] Dumped Network response for %s\n\n", request.options.TemplateID, actualAddress)
 		if cliOptions.Debug || cliOptions.DebugResponse {
-			gologger.Debug().Msg(fmt.Sprintf("%s%s", msg, highlightedResponse))
+			gologger.Debug().TimeStamp().Msg(fmt.Sprintf("%s%s", msg, highlightedResponse))
 		}
 		if cliOptions.StoreResponse {
 			request.options.Output.WriteStoreDebugData(address, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s%s", msg, hex.Dump(requestBytes)))
