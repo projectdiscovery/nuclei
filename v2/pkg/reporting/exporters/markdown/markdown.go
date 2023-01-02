@@ -66,6 +66,34 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(description)
 	data := dataBuilder.Bytes()
 
+	// index generation
+
+	file, err := os.OpenFile(filepath.Join(exporter.directory, "index.md"), os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("|Hostname/IP|Finding|Severity|\n")
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString("|-|-|-|\n")
+	if err != nil {
+		return err
+	}
+
+	file, err = os.OpenFile(filepath.Join(exporter.directory, "index.md"), os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("|" + event.Host + "|" + event.Info.Name + "|" + event.Info.SeverityHolder.Severity.String() + "|\n")
+	if err != nil {
+		return err
+	}
+
 	return os.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
 }
 
