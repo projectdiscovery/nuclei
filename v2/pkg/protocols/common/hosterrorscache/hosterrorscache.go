@@ -100,11 +100,9 @@ func (c *Cache) Check(value string) bool {
 	existingCacheItemValue := existingCacheItem.(*cacheItem)
 
 	if existingCacheItemValue.errors.Load() >= int32(c.MaxHostError) {
-		if c.verbose {
-			existingCacheItemValue.Do(func() {
-				gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, existingCacheItemValue.errors.Load())
-			})
-		}
+		existingCacheItemValue.Do(func() {
+			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, existingCacheItemValue.errors.Load())
+		})
 		return true
 	}
 	return false
@@ -128,7 +126,7 @@ func (c *Cache) MarkFailed(value string, err error) {
 	_ = c.failedTargets.Set(finalValue, existingCacheItemValue)
 }
 
-var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused|context deadline exceeded)`)
+var reCheckError = regexp.MustCompile(`(no address found for host|could not connect to any address|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused|context deadline exceeded)`)
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
