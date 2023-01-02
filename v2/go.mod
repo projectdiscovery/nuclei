@@ -30,7 +30,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.4
 	github.com/projectdiscovery/retryabledns v1.0.17
-	github.com/projectdiscovery/retryablehttp-go v1.0.6-0.20221206071935-7924d7d34953
+	github.com/projectdiscovery/retryablehttp-go v1.0.7
 	github.com/projectdiscovery/stringsutil v0.0.2
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -74,11 +74,11 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.6
 	github.com/projectdiscovery/nvd v1.0.9
-	github.com/projectdiscovery/ratelimit v0.0.4-0.20221222024635-17151503fe59
+	github.com/projectdiscovery/ratelimit v0.0.4
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.0
-	github.com/projectdiscovery/uncover v1.0.1
+	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.4-0.20221214110533-9f95ee986a54
 	github.com/projectdiscovery/wappalyzergo v0.0.75
 	github.com/stretchr/testify v1.8.1
@@ -208,7 +208,7 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20221019170559-20944726eadf
+	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
