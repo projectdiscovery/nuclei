@@ -7,14 +7,14 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
-func (c *DiskCatalog) GetTemplatesPath(definitions []string) []string {
+func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[string]error) {
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
+	erred := make(map[string]error)
 
 	for _, t := range definitions {
 		if strings.HasPrefix(t, "http") && (strings.HasSuffix(t, ".yaml") || strings.HasSuffix(t, ".yml")) {
@@ -25,7 +25,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) []string {
 		} else {
 			paths, err := c.GetTemplatePath(t)
 			if err != nil {
-				gologger.Error().Msgf("Could not find template '%s': %s\n", t, err)
+				erred[t] = err
 			}
 			for _, path := range paths {
 				if _, ok := processed[path]; !ok {
@@ -35,7 +35,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) []string {
 			}
 		}
 	}
-	return allTemplates
+	return allTemplates, erred
 }
 
 // GetTemplatePath parses the specified input template path and returns a compiled

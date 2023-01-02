@@ -26,7 +26,7 @@ requests:
         13: {{date_time("02-01-2006 15:04")}}
         14: {{date_time("02-01-2006 15:04", unix_time())}}
         15: {{dec_to_hex(11111)}}
-        16: {{generate_java_gadget("commons-collections3.1", "wget http://{{interactsh-url}}", "base64")}}
+        16: {{generate_java_gadget("commons-collections3.1", "wget http://scanme.sh", "base64")}}
         17: {{gzip("Hello")}}
         18: {{gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))}}
         19: {{hex_decode("6161")}}

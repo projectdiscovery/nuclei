@@ -86,7 +86,7 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	}
 
 	// if disable update check flag is passed and no update template flag is passed
-	if r.options.NoUpdateTemplates && !r.options.UpdateTemplates {
+	if (r.options.NoUpdateTemplates && !r.options.UpdateTemplates) || r.options.Cloud {
 		return nil
 	}
 

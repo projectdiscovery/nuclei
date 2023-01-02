@@ -3,10 +3,10 @@ package generators
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	folderutil "github.com/projectdiscovery/utils/folder"
 )
@@ -22,7 +22,7 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 			}
 
 			// check if it's a file and try to load it
-			if fileExists(payloadType) {
+			if fileutil.FileExists(payloadType) {
 				continue
 			}
 
@@ -33,7 +33,7 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 			payloadPathsToProbe, _ := templatePathInfo.MeshWith(payloadType)
 
 			for _, payloadPath := range payloadPathsToProbe {
-				if fileExists(payloadPath) {
+				if fileutil.FileExists(payloadPath) {
 					payloads[name] = payloadPath
 					changed = true
 					break
@@ -52,16 +52,4 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 		}
 	}
 	return nil
-}
-
-// fileExists checks if a file exists and is not a directory
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	if info == nil {
-		return false
-	}
-	return !info.IsDir()
 }
