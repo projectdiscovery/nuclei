@@ -1,6 +1,7 @@
 .idea
 .vscode
 v2/vendor
+v2/dist
 integration_tests/nuclei
 integration_tests/integration-test
 v2/cmd/nuclei/main
