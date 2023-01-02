@@ -26,7 +26,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.9
 	github.com/projectdiscovery/fastdialer v0.0.19
 	github.com/projectdiscovery/gologger v1.1.5
-	github.com/projectdiscovery/hmap v0.0.4-0.20221216170133-1c84843c1dd8
+	github.com/projectdiscovery/hmap v0.0.6
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.4
 	github.com/projectdiscovery/retryabledns v1.0.17
@@ -47,7 +47,7 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.4.0
-	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
+	golang.org/x/oauth2 v0.3.0
 	golang.org/x/text v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
@@ -97,18 +97,19 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.3.1 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/getsentry/sentry-go v0.16.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
 	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
-	github.com/prometheus/client_golang v1.12.0 // indirect
-	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a // indirect
-	github.com/prometheus/common v0.32.1 // indirect
-	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/prometheus/client_golang v1.14.0 // indirect
+	github.com/prometheus/client_model v0.3.0 // indirect
+	github.com/prometheus/common v0.39.0 // indirect
+	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/tidwall/btree v1.4.3 // indirect
 	github.com/tidwall/buntdb v1.2.10 // indirect
@@ -124,7 +125,7 @@ require (
 
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
-	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
 	github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd // indirect
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
@@ -136,13 +137,12 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/caddyserver/certmagic v0.16.3 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
-	github.com/cockroachdb/errors v1.8.1 // indirect
-	github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f // indirect
-	github.com/cockroachdb/pebble v0.0.0-20221115214559-95662c240d17 // indirect
-	github.com/cockroachdb/redact v1.0.8 // indirect
-	github.com/cockroachdb/sentry-go v0.6.1-cockroachdb.2 // indirect
+	github.com/cockroachdb/errors v1.9.0 // indirect
+	github.com/cockroachdb/logtags v0.0.0-20211118104740-dabe8e521a4f // indirect
+	github.com/cockroachdb/pebble v0.0.0-20221229212011-811a8c0e741b // indirect
+	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
@@ -208,7 +208,7 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15
+	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
