@@ -116,13 +116,6 @@ func (c *Cache) MarkFailed(value string, err error) {
 		return
 	}
 	finalValue := c.normalizeCacheValue(value)
-	if !c.failedTargets.Has(finalValue) {
-		newItem := &cacheItem{errors: atomic.Int32{}}
-		newItem.errors.Store(1)
-		_ = c.failedTargets.Set(finalValue, newItem)
-		return
-	}
-
 	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
 	if err != nil || existingCacheItem == nil {
 		newItem := &cacheItem{errors: atomic.Int32{}}
@@ -135,11 +128,11 @@ func (c *Cache) MarkFailed(value string, err error) {
 	_ = c.failedTargets.Set(finalValue, existingCacheItemValue)
 }
 
-var checkErrorRegexp = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
+var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
 	errString := err.Error()
-	return checkErrorRegexp.MatchString(errString)
+	return reCheckError.MatchString(errString)
 }

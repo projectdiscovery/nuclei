@@ -3,6 +3,7 @@ package hosterrorscache
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -84,6 +85,14 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 		{"http://example.com:80", 200},
 		{"example.com:80", 200},
 		{"example.com", 100},
+	}
+
+	// the cache is not atomic during items creation, so we pre-create them with counter to zero
+	for _, test := range tests {
+		normalizedValue := cache.normalizeCacheValue(test.host)
+		newItem := &cacheItem{errors: atomic.Int32{}}
+		newItem.errors.Store(0)
+		_ = cache.failedTargets.Set(normalizedValue, newItem)
 	}
 
 	wg := sync.WaitGroup{}
