@@ -1,0 +1,13 @@
+id: basic-raw-example
+
+info:
+  name: Test RAW Template
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        GET /test/..;/..;/ HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
