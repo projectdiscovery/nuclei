@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
-	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.
@@ -49,20 +47,8 @@ var errNoValidCombination = errors.New("no valid combination found")
 
 // tryResolve attempts to load locate the target by iterating across all the folders tree
 func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
-	dir, filename := filepath.Split(fullPath)
-	pathInfo, err := folderutil.NewPathInfo(dir)
-	if err != nil {
-		return "", err
+	if _, err := os.Stat(fullPath); !os.IsNotExist(err) {
+		return fullPath, nil
 	}
-	pathInfoItems, err := pathInfo.MeshWith(filename)
-	if err != nil {
-		return "", err
-	}
-	for _, pathInfoItem := range pathInfoItems {
-		if _, err := os.Stat(pathInfoItem); !os.IsNotExist(err) {
-			return pathInfoItem, nil
-		}
-	}
-
 	return "", errNoValidCombination
 }
