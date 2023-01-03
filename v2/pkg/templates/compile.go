@@ -52,6 +52,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		}
 	}
 	defer reader.Close()
+	options.TemplatePath = filePath
 	template, err := ParseTemplateFromReader(reader, preprocessor, options)
 	if err != nil {
 		return nil, err
