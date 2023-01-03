@@ -322,7 +322,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	_ = flagSet.Parse()
 
-	gologger.Debug().SetDebugTimestamp(options.Timestamp)
+	gologger.Debug().SetTimestamp(options.Timestamp)
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
