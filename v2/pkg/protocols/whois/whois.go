@@ -88,7 +88,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	variables := generateVariables(input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
 	}
 
 	// and replace placeholders
@@ -102,7 +102,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	gologger.Verbose().Msgf("Sent WHOIS request to %s", query)
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().TimeStamp().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, query)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, query)
 	}
 
 	data := make(map[string]interface{})
@@ -127,7 +127,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().TimeStamp().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
+		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
 	}
 

@@ -200,7 +200,7 @@ func isConditionMatch(tagFilter *TagFilter, template *templates.Template) bool {
 		// in case of errors  => skip
 		if err != nil {
 			// Using debug as the failure here might be legitimate (eg. template not having optional metadata fields => missing required fields)
-			gologger.Debug().TimeStamp().Msgf("The expression condition couldn't be evaluated correctly for template \"%s\": %s\n", template.ID, err)
+			gologger.Debug().Msgf("The expression condition couldn't be evaluated correctly for template \"%s\": %s\n", template.ID, err)
 			return false
 		}
 		resultBool, ok := result.(bool)

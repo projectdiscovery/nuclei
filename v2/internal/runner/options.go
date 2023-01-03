@@ -82,7 +82,7 @@ func ParseOptions(options *types.Options) {
 		os.Exit(0)
 	}
 	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
-		gologger.Debug().TimeStamp().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
+		gologger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
 		options.StoreResponse = true
 	}
 	// Validate the options passed by the user and if any

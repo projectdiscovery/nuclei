@@ -98,7 +98,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		generators.BuildPayloadFromOptions(r.request.options.Options),
 	)
 	if vardump.EnableVarDump {
-		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(values))
 	}
 
 	// If data contains \n it's a raw request, process it like raw. Else

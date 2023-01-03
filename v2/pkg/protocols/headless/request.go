@@ -86,7 +86,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	defer instance.Close()
 
 	if vardump.EnableVarDump {
-		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)
@@ -119,7 +119,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
 			reqBuilder.WriteString("\t" + actStepStr + "\n")
 		}
-		gologger.Debug().TimeStamp().Msgf(reqBuilder.String())
+		gologger.Debug().Msgf(reqBuilder.String())
 
 	}
 
@@ -163,6 +163,6 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
-		gologger.Debug().TimeStamp().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
+		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
 	}
 }

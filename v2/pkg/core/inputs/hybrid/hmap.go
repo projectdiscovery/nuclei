@@ -174,7 +174,7 @@ func (i *Input) Set(value string) {
 	host := utils.ParseHostname(value)
 	if host == "" {
 		// not a valid url hence scanallips is skipped
-		gologger.Debug().TimeStamp().Msgf("scanAllIps: failed to parse hostname of %v falling back to default", value)
+		gologger.Debug().Msgf("scanAllIps: failed to parse hostname of %v falling back to default", value)
 		i.setItem(&contextargs.MetaInput{Input: value})
 		return
 	} else {
@@ -207,11 +207,11 @@ func (i *Input) Set(value string) {
 				}
 				return
 			} else {
-				gologger.Debug().TimeStamp().Msgf("scanAllIps: no ip's found reverting to default")
+				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
 			}
 		} else {
 			// failed to scanallips falling back to defaults
-			gologger.Debug().TimeStamp().Msgf("scanAllIps: dns resolution failed: %v", err)
+			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
 		}
 	}
 

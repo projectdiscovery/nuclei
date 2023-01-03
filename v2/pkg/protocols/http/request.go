@@ -817,7 +817,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirect
 		}
 		fMsg := fmt.Sprintf(msg, request.options.TemplateID, formedURL, highlightedResult)
 		if cliOptions.Debug || cliOptions.DebugResponse {
-			gologger.Debug().TimeStamp().Msg(fMsg)
+			gologger.Debug().Msg(fMsg)
 		}
 		if cliOptions.StoreResponse {
 			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fMsg)

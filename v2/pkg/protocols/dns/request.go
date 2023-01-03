@@ -52,7 +52,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars = generators.MergeMaps(variablesMap, vars)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().TimeStamp().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
+		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
 
 	// Compile each request for the template based on the URL
@@ -159,7 +159,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestO
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, hexDump)
 		msg := fmt.Sprintf("[%s] Dumped DNS response for %s\n\n%s", request.options.TemplateID, domain, highlightedResponse)
 		if cliOptions.Debug || cliOptions.DebugResponse {
-			gologger.Debug().TimeStamp().Msg(msg)
+			gologger.Debug().Msg(msg)
 		}
 		if cliOptions.StoreResponse {
 			request.options.Output.WriteStoreDebugData(domain, request.options.TemplateID, request.Type().String(), msg)
@@ -176,7 +176,7 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 			traceData = hex.Dump([]byte(traceData))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
-		gologger.Debug().TimeStamp().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }
 
