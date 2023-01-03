@@ -33,7 +33,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
 	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
 	"http/raw-get.yaml":                             &httpRawGet{},
-	"http/raw-path.yaml":                            &httpRawPath{},
+	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
@@ -506,9 +506,9 @@ func (h *httpRawGet) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
-type httpRawPath struct{}
+type httpRawPathTrailingSlash struct{}
 
-func (h *httpRawPath) Execute(filepath string) error {
+func (h *httpRawPathTrailingSlash) Execute(filepath string) error {
 	router := httprouter.New()
 	var routerErr error
 
