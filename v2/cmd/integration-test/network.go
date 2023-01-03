@@ -99,8 +99,6 @@ type networkRequestSelContained struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *networkRequestSelContained) Execute(filePath string) error {
-	var routerErr error
-
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
@@ -110,9 +108,6 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
 		return err
-	}
-	if routerErr != nil {
-		return routerErr
 	}
 
 	return expectResultsCount(results, 1)
