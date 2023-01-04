@@ -21,14 +21,10 @@ type templateDirWithTargetTest struct{}
 func (h *templateDirWithTargetTest) Execute(filePath string) error {
 	defer os.RemoveAll(getTemplatesDir())
 
-	var routerErr error
-
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-ud", getTemplatesDir())
 	if err != nil {
 		return err
 	}
-	if routerErr != nil {
-		return routerErr
-	}
+
 	return expectResultsCount(results, 1)
 }
