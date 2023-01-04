@@ -59,6 +59,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/custom-attack-type.yaml":                  &customAttackType{},
 	"http/get-all-ips.yaml":                         &scanAllIPS{},
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
+	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
+	"http/cl-body-with-wrong-header.yaml":           &httpCLBodyWithWrongHeader{},
 }
 
 type httpInteractshRequest struct{}
@@ -1032,6 +1034,46 @@ type httpGetWithoutScheme struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpGetWithoutScheme) Execute(filePath string) error {
 	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+// content-length in case the response has no header but has a body
+type httpCLBodyWithoutHeader struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpCLBodyWithoutHeader) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header()["Content-Length"] = []string{"-1"}
+		fmt.Fprintf(w, "this is a test")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+// content-length in case the response has wrong content-length header and a body
+type httpCLBodyWithWrongHeader struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpCLBodyWithWrongHeader) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header()["Content-Length"] = []string{"50000"}
+		fmt.Fprintf(w, "this is a test")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
 	}
