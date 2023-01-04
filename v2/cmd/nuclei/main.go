@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -322,8 +323,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	_ = flagSet.Parse()
 
-	logger := gologger.Logger{}
-	logger.SetTimestamp(options.Timestamp)
+	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
