@@ -60,7 +60,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-all-ips.yaml":                         &scanAllIPS{},
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
-	"http/cl-body-with-wrong-header.yaml":           &httpCLBodyWithWrongHeader{},
+	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
 }
 
 type httpInteractshRequest struct{}
@@ -1060,11 +1060,11 @@ func (h *httpCLBodyWithoutHeader) Execute(filePath string) error {
 	return expectResultsCount(got, 1)
 }
 
-// content-length in case the response has wrong content-length header and a body
-type httpCLBodyWithWrongHeader struct{}
+// content-length in case the response has content-length header and a body
+type httpCLBodyWithHeader struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *httpCLBodyWithWrongHeader) Execute(filePath string) error {
+func (h *httpCLBodyWithHeader) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header()["Content-Length"] = []string{"50000"}

@@ -1,7 +1,7 @@
-id: cl-body-without-header
+id: cl-body-with-header
 
 info:
-  name: CL Get Request - Body without header
+  name: CL Get Request - Body with header
   author: pdteam
   severity: info
 
@@ -12,4 +12,4 @@ requests:
     matchers:
       - type: dsl
         dsl:
-          - "content_length==14"
+          - "content_length==50000 && len(body)==14"
