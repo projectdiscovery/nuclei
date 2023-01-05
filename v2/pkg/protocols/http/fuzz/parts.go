@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // executePartRule executes part rules based on type
@@ -25,7 +26,7 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error
 // executeQueryPartRule executes query part rules
 func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
 	requestURL := *input.URL
-	temp := url.Values{}
+	temp := urlutil.NewParams()
 	for k, v := range input.URL.Query() {
 		temp[k] = v
 	}

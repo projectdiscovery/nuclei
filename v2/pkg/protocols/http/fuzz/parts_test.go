@@ -31,9 +31,9 @@ func TestExecuteQueryPartRule(t *testing.T) {
 		}, "1337'")
 		require.NoError(t, err, "could not execute part rule")
 		require.ElementsMatch(t, []string{
-			"http://localhost:8080/?file=passwdfile&mode=multiple&url=localhost1337%27",
-			"http://localhost:8080/?file=passwdfile&mode=multiple1337%27&url=localhost",
-			"http://localhost:8080/?file=passwdfile1337%27&mode=multiple&url=localhost",
+			"http://localhost:8080/?file=passwdfile&mode=multiple&url=localhost1337'",
+			"http://localhost:8080/?file=passwdfile&mode=multiple1337'&url=localhost",
+			"http://localhost:8080/?file=passwdfile1337'&mode=multiple&url=localhost",
 		}, generatedURL, "could not get generated url")
 	})
 	t.Run("multiple", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestExecuteQueryPartRule(t *testing.T) {
 			},
 		}, "1337'")
 		require.NoError(t, err, "could not execute part rule")
-		require.Equal(t, "http://localhost:8080/?file=passwdfile1337%27&mode=multiple1337%27&url=localhost1337%27", generatedURL, "could not get generated url")
+		require.Equal(t, "http://localhost:8080/?file=passwdfile1337'&mode=multiple1337'&url=localhost1337'", generatedURL, "could not get generated url")
 	})
 }
 
