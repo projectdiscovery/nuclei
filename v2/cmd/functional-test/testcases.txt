@@ -55,10 +55,10 @@
 {{binary}} -tc contains(authors,'pdteam')
 {{binary}} -t cves/ -t exposures/ -tc contains(tags,'cve') -exclude-templates cves/2020/CVE-2020-9757.yaml
 {{binary}} -tc protocol=='dns'
-{{binary}} -tc contains(http_methods,'GET')
-{{binary}} -tc len(bodies)>0
-{{binary}} -tc contains(matcher_types,'word')
-{{binary}} -tc contains(extractor_types,'regex')
+{{binary}} -tc contains(http_method,'GET')
+{{binary}} -tc len(body)>0
+{{binary}} -tc contains(matcher_type,'word')
+{{binary}} -tc contains(extractor_type,'regex')
 {{binary}} -tc contains(description,'wordpress')
 
 # Workflow Filters

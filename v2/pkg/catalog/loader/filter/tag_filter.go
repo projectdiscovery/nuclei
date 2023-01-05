@@ -187,8 +187,8 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 	// attempts to unwrap fields to their basic types
 	// mapping must be manual because of various abstraction layers, custom marshaling and forceful validation
 	parameters := map[string]interface{}{
-		"id":          template.ID,
-		"name":        template.Info.Name,
+		"id":          strings.ToLower(template.ID),
+		"name":        strings.ToLower(template.Info.Name),
 		"description": strings.ToLower(template.Info.Description),
 		"tags":        template.Info.Tags.ToSlice(),
 		"authors":     template.Info.Authors.ToSlice(),
@@ -217,9 +217,9 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 			}
 		}
 		httpMethods = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(httpMethods))
-		parameters["http_methods"] = httpMethods
+		parameters["http_method"] = httpMethods
 		bodies = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(bodies))
-		parameters["bodies"] = strings.ToLower(strings.Join(bodies, "\n"))
+		parameters["body"] = strings.ToLower(strings.Join(bodies, "\n"))
 	}
 
 	// collect matchers types
@@ -249,7 +249,7 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
 	}
 	matcherTypes = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(matcherTypes))
-	parameters["matcher_types"] = matcherTypes
+	parameters["matcher_type"] = matcherTypes
 
 	// collect extractors types
 	var extractorTypes []string
@@ -278,7 +278,7 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
 	}
 	extractorTypes = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(extractorTypes))
-	parameters["extractor_types"] = extractorTypes
+	parameters["extractor_type"] = extractorTypes
 
 	return parameters
 }
