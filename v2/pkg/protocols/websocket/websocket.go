@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the Websocket protocol
@@ -179,7 +180,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	payloadValues["Host"] = parsed.Hostname()
 	payloadValues["Scheme"] = parsed.Scheme
 	requestPath := parsed.Path
-	if values := parsed.Query(); len(values) > 0 {
+	if values := urlutil.GetParams(parsed.Query()); len(values) > 0 {
 		requestPath = requestPath + "?" + values.Encode()
 	}
 	payloadValues["Path"] = requestPath

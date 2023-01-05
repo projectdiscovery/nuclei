@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (
@@ -202,7 +203,7 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL, isRaw bool) (string,
 	}
 
 	// transfer any parmas from URL to data( i.e {{BaseURL}} )
-	params := parsed.Query()
+	params := urlutil.GetParams(parsed.Query())
 	if len(params) == 0 {
 		return data, parsed
 	}
@@ -222,7 +223,7 @@ func baseURLWithTemplatePrefs(data string, parsed *url.URL, isRaw bool) (string,
 			// payload not possible to parse (edgecase)
 			dataURLrelpath += "?" + params.Encode()
 		} else {
-			payloadparams := payloadpath.Query()
+			payloadparams := urlutil.GetParams(payloadpath.Query())
 			if len(payloadparams) != 0 {
 				// ex: /?action=x
 				for k := range payloadparams {
