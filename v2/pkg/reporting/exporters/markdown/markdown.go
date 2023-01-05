@@ -37,12 +37,11 @@ func New(options *Options) (*Exporter, error) {
 	_ = os.MkdirAll(directory, 0755)
 
 	// index generation header
-	dataBuilder := &bytes.Buffer{}
-	dataBuilder.WriteString("|Hostname/IP|Finding|Severity|\n")
-	dataBuilder.WriteString("|-|-|-|\n")
-	data := dataBuilder.Bytes()
+	dataHeader := "" +
+		"|Hostname/IP|Finding|Severity|\n" +
+		"|-|-|-|\n"
 
-	err := os.WriteFile(filepath.Join(directory, indexFileName), data, 0644)
+	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
 	if err != nil {
 		return nil, err
 	}
