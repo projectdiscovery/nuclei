@@ -189,7 +189,7 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 	parameters := map[string]interface{}{
 		"id":          template.ID,
 		"name":        template.Info.Name,
-		"description": template.Info.Description,
+		"description": strings.ToLower(template.Info.Description),
 		"tags":        template.Info.Tags.ToSlice(),
 		"authors":     template.Info.Authors.ToSlice(),
 		"severity":    template.Info.SeverityHolder.Severity.String(),
@@ -219,7 +219,7 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		httpMethods = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(httpMethods))
 		parameters["http_methods"] = httpMethods
 		bodies = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(bodies))
-		parameters["bodies"] = strings.Join(bodies, "\n")
+		parameters["bodies"] = strings.ToLower(strings.Join(bodies, "\n"))
 	}
 
 	// collect matchers types
