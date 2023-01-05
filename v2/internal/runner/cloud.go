@@ -385,9 +385,9 @@ func (r *Runner) addCloudReportingSource() error {
 			Payload: payload,
 		}
 		if _, err := r.cloudClient.AddReportingSource(requestObj); err != nil {
-			return errors.New("could not add reporting source")
+			return errors.Wrap(err, "could not add reporting source")
 		}
-		gologger.Info().Msgf("Reporting source and webhook added template %s: %s", "jira", r.options.CloudURL)
+		gologger.Info().Msgf("Reporting source and webhook added for %s: %s", "jira", r.options.CloudURL)
 	}
 	return nil
 }
