@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -15,6 +16,7 @@ var headlessTestcases = map[string]testutils.TestCase{
 	"headless/headless-extract-values.yaml": &headlessExtractValues{},
 	"headless/headless-payloads.yaml":       &headlessPayloads{},
 	"headless/variables.yaml":               &headlessVariables{},
+	"headless/file-upload.yaml":             &headlessFileUpload{},
 }
 
 type headlessBasic struct{}
@@ -104,6 +106,51 @@ func (h *headlessVariables) Execute(filePath string) error {
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-headless")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type headlessFileUpload struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *headlessFileUpload) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte(`
+		<!doctype html>
+			<body>
+				<form method=post enctype=multipart/form-data>
+				<input type=file name=file>
+				<input type=submit value=Upload>
+				</form>
+			</body>
+		</html>
+		`))
+	})
+	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		defer file.Close()
+
+		content, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		_, _ = w.Write(content)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-headless")
 	if err != nil {
 		return err
