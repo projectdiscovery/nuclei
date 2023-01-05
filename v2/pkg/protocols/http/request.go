@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -523,7 +524,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
 			} else {
 				urlx.Path = generatedRequest.rawRequest.Path
-				formedURL = urlx.String()
+				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
 			}
 		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
