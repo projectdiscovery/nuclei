@@ -11,7 +11,7 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var indexFileName = "index.md"
+const indexFileName = "index.md"
 
 type Exporter struct {
 	directory string
@@ -37,20 +37,16 @@ func New(options *Options) (*Exporter, error) {
 	_ = os.MkdirAll(directory, 0755)
 
 	// index generation header
-	file, err := os.OpenFile(filepath.Join(directory, indexFileName), os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	dataBuilder := &bytes.Buffer{}
+	dataBuilder.WriteString("|Hostname/IP|Finding|Severity|\n")
+	dataBuilder.WriteString("|-|-|-|\n")
+	data := dataBuilder.Bytes()
 
-	_, err = file.WriteString("|Hostname/IP|Finding|Severity|\n")
+	err := os.WriteFile(filepath.Join(directory, indexFileName), data, 0644)
 	if err != nil {
 		return nil, err
 	}
-	_, err = file.WriteString("|-|-|-|\n")
-	if err != nil {
-		return nil, err
-	}
+
 	return &Exporter{options: options, directory: directory}, nil
 }
 
