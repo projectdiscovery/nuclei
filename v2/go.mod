@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.9
 	github.com/projectdiscovery/fastdialer v0.0.19
-	github.com/projectdiscovery/gologger v1.1.6-0.20230104075207-1c357ca8209b
+	github.com/projectdiscovery/gologger v1.1.6
 	github.com/projectdiscovery/hmap v0.0.4-0.20221216170133-1c84843c1dd8
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.4
