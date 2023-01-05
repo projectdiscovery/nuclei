@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/rawhttp/client"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request defines a basic HTTP raw request
@@ -32,7 +33,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse request URL: %w", err)
 	}
-	inputParams := inputURL.Query()
+	inputParams := urlutil.GetParams(inputURL.Query())
 
 	// Joins input url and new url preserving query parameters
 	joinPath := func(relpath string) (string, error) {
@@ -45,7 +46,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 		} else {
 			newpath = utils.JoinURLPath(inputURL.Path, relUrl.Path)
 			if len(relUrl.Query()) > 0 {
-				relParam := relUrl.Query()
+				relParam := urlutil.GetParams(relUrl.Query())
 				for k := range relParam {
 					inputParams.Add(k, relParam.Get(k))
 				}

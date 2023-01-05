@@ -91,7 +91,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 
 			builder.WriteString(w.aurora.BrightYellow(name).String())
 			builder.WriteRune('=')
-			builder.WriteString(w.aurora.BrightYellow(types.ToString(value)).String())
+			builder.WriteString(w.aurora.BrightYellow(strconv.QuoteToASCII(types.ToString(value))).String())
 		}
 		builder.WriteString("]")
 	}
