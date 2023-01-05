@@ -43,6 +43,8 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label" json:"severity_as_label"`
+	// Severity (optional) is the severity of the issue.
+	Severity []string `yaml:"severity" json:"severity"`
 
 	HttpClient *retryablehttp.Client `yaml:"-" json:"-"`
 }
