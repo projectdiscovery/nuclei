@@ -14,6 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	logutil "github.com/projectdiscovery/utils/logs"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -1045,6 +1046,9 @@ type httpCLBodyWithoutHeader struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *httpCLBodyWithoutHeader) Execute(filePath string) error {
+	logutil.DisableDefaultLogger()
+	defer logutil.EnableDefaultLogger()
+
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header()["Content-Length"] = []string{"-1"}
