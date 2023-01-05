@@ -13,8 +13,11 @@ func JoinURLPath(elem1 string, elem2 string) string {
 		Path.Join converts /test/ to /test
 		this should be handled manually
 	*/
+	// if any one of path is empty path.Join removes trailing slash
 	if elem2 == "" {
 		return elem1
+	} else if elem1 == "" {
+		return elem2
 	}
 	if elem2 == "/" || elem2 == "/?" {
 		// check for extra slash

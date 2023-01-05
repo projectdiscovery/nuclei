@@ -33,6 +33,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
 	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
 	"http/raw-get.yaml":                             &httpRawGet{},
+	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
@@ -460,8 +461,6 @@ type httpRawGetQuery struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpRawGetQuery) Execute(filePath string) error {
 	router := httprouter.New()
-	var routerErr error
-
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
 			fmt.Fprintf(w, "Test is test raw-get-query-matcher text")
@@ -474,9 +473,6 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	if routerErr != nil {
-		return routerErr
-	}
 
 	return expectResultsCount(results, 1)
 }
@@ -486,8 +482,6 @@ type httpRawGet struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpRawGet) Execute(filePath string) error {
 	router := httprouter.New()
-	var routerErr error
-
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "Test is test raw-get-matcher text")
 	})
@@ -498,11 +492,33 @@ func (h *httpRawGet) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpRawPathTrailingSlash struct{}
+
+func (h *httpRawPathTrailingSlash) Execute(filepath string) error {
+	router := httprouter.New()
+	var routerErr error
+
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.RequestURI != "/test/..;/..;/" {
+			routerErr = fmt.Errorf("expected path /test/..;/..;/ but got %v", r.RequestURI)
+			return
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	_, err := testutils.RunNucleiTemplateAndGetResults(filepath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
 	if routerErr != nil {
 		return routerErr
 	}
-
-	return expectResultsCount(results, 1)
+	return nil
 }
 
 type httpRawPayload struct{}
@@ -613,6 +629,7 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+// TODO: excluded due to parsing errors with console
 // type httpRawUnsafeRequest struct{
 // Execute executes a test case and returns an error if occurred
 // func (h *httpRawUnsafeRequest) Execute(filePath string) error {
@@ -640,13 +657,12 @@ type httpRequestCondition struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpRequestCondition) Execute(filePath string) error {
 	router := httprouter.New()
-	var routerErr error
 
 	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	})
 	router.GET("/400", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -654,9 +670,6 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
-	}
-	if routerErr != nil {
-		return routerErr
 	}
 
 	return expectResultsCount(results, 1)
@@ -667,8 +680,6 @@ type httpRequestSelContained struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpRequestSelContained) Execute(filePath string) error {
 	router := httprouter.New()
-	var routerErr error
-
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		_, _ = w.Write([]byte("This is self-contained response"))
 	})
@@ -684,9 +695,6 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
 		return err
-	}
-	if routerErr != nil {
-		return routerErr
 	}
 
 	return expectResultsCount(results, 1)
