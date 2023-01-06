@@ -838,7 +838,7 @@ func init() {
 			return tokenString, nil
 		}),
 		"json_minify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			var data map[string]string
+			var data map[string]interface{}
 
 			err := json.Unmarshal([]byte(args[0].(string)), &data)
 			if err != nil {
