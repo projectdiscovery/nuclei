@@ -15,6 +15,7 @@ import (
 	ucRunner "github.com/projectdiscovery/uncover/runner"
 	"github.com/projectdiscovery/uncover/uncover"
 	"github.com/projectdiscovery/uncover/uncover/agent/censys"
+	"github.com/projectdiscovery/uncover/uncover/agent/criminalip"
 	"github.com/projectdiscovery/uncover/uncover/agent/fofa"
 	"github.com/projectdiscovery/uncover/uncover/agent/hunter"
 	"github.com/projectdiscovery/uncover/uncover/agent/netlas"
@@ -29,7 +30,7 @@ import (
 const maxConcurrentAgents = 50
 
 func GetUncoverSupportedAgents() string {
-	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas"}
+	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "criminalip"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
 
@@ -72,6 +73,8 @@ func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit
 				eng = "zoomeye"
 			case "netlas-query":
 				eng = "netlas"
+			case "criminalip-query":
+				eng = "criminalip"
 			default:
 				continue
 			}
@@ -134,6 +137,8 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "netlas":
 			agent, err = netlas.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
+		case "criminalip":
+			agent, err = criminalip.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		default:
 			err = errors.Errorf("%s unknown uncover agent type", engine)
 		}
@@ -233,6 +238,12 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 			options.Provider.Netlas = append(options.Provider.Netlas, key)
 		} else {
 			return errors.Errorf("NETLAS_API_KEY env variable is not configured")
+		}
+	case "criminalip":
+		if key, exists := os.LookupEnv("CRIMINALIP_API_KEY"); exists {
+			options.Provider.Criminalip = append(options.Provider.Criminalip, key)
+		} else {
+			return errors.Errorf("CRIMINALIP_API_KEY env variable is not configured")
 		}
 	default:
 		return errors.Errorf("unknown uncover agent")
