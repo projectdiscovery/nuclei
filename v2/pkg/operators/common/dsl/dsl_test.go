@@ -119,6 +119,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	html_unescape(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
 	join(separator string, elements []interface{}) string
+	json_minify(arg1 interface{}) interface{}
+	json_prettify(arg1 interface{}) interface{}
 	len(arg1 interface{}) interface{}
 	line_ends_with(str string, suffix ...string) bool
 	line_starts_with(str string, prefix ...string) bool
@@ -126,6 +128,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
 	print_debug(args ...interface{})
+	quote_escape(arg1 interface{}) interface{}
 	rand_base(length uint, optionalCharSet string) string
 	rand_char(optionalCharSet string) string
 	rand_int(optionalMin, optionalMax uint) int

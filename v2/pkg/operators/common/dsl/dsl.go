@@ -837,6 +837,37 @@ func init() {
 
 			return tokenString, nil
 		}),
+		"json_minify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			var data map[string]string
+
+			err := json.Unmarshal([]byte(args[0].(string)), &data)
+			if err != nil {
+				return nil, err
+			}
+
+			minified, err := json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+
+			return string(minified), nil
+		}),
+		"json_prettify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			var buf bytes.Buffer
+
+			err := json.Indent(&buf, []byte(args[0].(string)), "", "    ")
+			if err != nil {
+				return nil, err
+			}
+
+			return buf.String(), nil
+		}),
+		"quote_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			escaped := strconv.Quote(args[0].(string))
+			trimmed := strings.Trim(escaped, `"`)
+
+			return trimmed, nil
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
