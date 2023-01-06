@@ -14,6 +14,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"html"
@@ -31,6 +32,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-version"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
@@ -808,6 +810,32 @@ func init() {
 			}
 			data := gcm.Seal(nonce, nonce, []byte(value), nil)
 			return data, nil
+		}),
+		"generate_jwt": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
+			var claims jwt.MapClaims
+
+			jsonData := []byte(args[0].(string))
+			signature := []byte(args[1].(string))
+			algorithm := args[2].(string)
+
+			signingMethod := jwt.GetSigningMethod(algorithm)
+			if signingMethod == nil || signingMethod == jwt.SigningMethodNone {
+				return nil, fmt.Errorf("invalid algorithm: %s", algorithm)
+			}
+
+			err := json.Unmarshal(jsonData, &claims)
+			if err != nil {
+				return nil, err
+			}
+
+			token := jwt.NewWithClaims(signingMethod, claims)
+
+			tokenString, err := token.SignedString(signature)
+			if err != nil {
+				return nil, err
+			}
+
+			return tokenString, nil
 		}),
 	}
 
