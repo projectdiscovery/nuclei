@@ -818,6 +818,9 @@ func init() {
 			signature := []byte(args[1].(string))
 			algorithm := args[2].(string)
 
+			// Valid algorithms are: RS256, HS256, RS384, RS512, PS384, ES256, EdDSA, HS384, HS512, PS256, ES384, ES512, PS512.
+			// Use github.com/golang-jwt/jwt/v4.GetAlgorithms().
+
 			signingMethod := jwt.GetSigningMethod(algorithm)
 			if signingMethod == nil || signingMethod == jwt.SigningMethodNone {
 				return nil, fmt.Errorf("invalid algorithm: %s", algorithm)
