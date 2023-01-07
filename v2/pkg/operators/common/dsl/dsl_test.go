@@ -128,7 +128,6 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
 	print_debug(args ...interface{})
-	quote_escape(arg1 interface{}) interface{}
 	rand_base(length uint, optionalCharSet string) string
 	rand_char(optionalCharSet string) string
 	rand_int(optionalMin, optionalMax uint) int
@@ -271,7 +270,6 @@ func TestDslExpressions(t *testing.T) {
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
 		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`: "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
 		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`quote_escape("Hell\"o, www\"or\"ld")`:                                 "Hell\\\"o, www\\\"or\\\"ld",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)

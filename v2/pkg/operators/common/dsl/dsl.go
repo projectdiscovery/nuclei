@@ -919,12 +919,6 @@ func init() {
 
 			return buf.String(), nil
 		}),
-		"quote_escape": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			escaped := strconv.Quote(args[0].(string))
-			trimmed := strings.Trim(escaped, `"`)
-
-			return trimmed, nil
-		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
