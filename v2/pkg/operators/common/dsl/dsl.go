@@ -32,8 +32,8 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-version"
+	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -811,35 +811,89 @@ func init() {
 			data := gcm.Seal(nonce, nonce, []byte(value), nil)
 			return data, nil
 		}),
-		"generate_jwt": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
-			var claims jwt.MapClaims
+		"generate_jwt": makeDslWithOptionalArgsFunction(
+			"(jsonString, optionalAlgorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string",
+			func(args ...interface{}) (interface{}, error) {
+				var optionalAlgorithm string
+				var optionalSignature []byte
+				var optionalMaxAgeUnix time.Time
 
-			jsonData := []byte(args[0].(string))
-			signature := []byte(args[1].(string))
-			algorithm := args[2].(string)
+				var signOpts []jwt.SignOption
+				var jsonData jwt.Map
 
-			// Valid algorithms are: RS256, HS256, RS384, RS512, PS384, ES256, EdDSA, HS384, HS512, PS256, ES384, ES512, PS512.
-			// Use github.com/golang-jwt/jwt/v4.GetAlgorithms().
+				argSize := len(args)
 
-			signingMethod := jwt.GetSigningMethod(algorithm)
-			if signingMethod == nil || signingMethod == jwt.SigningMethodNone {
-				return nil, fmt.Errorf("invalid algorithm: %s", algorithm)
-			}
+				if argSize < 1 || argSize > 4 {
+					return nil, invalidDslFunctionError
+				}
+				jsonString := args[0].(string)
 
-			err := json.Unmarshal(jsonData, &claims)
-			if err != nil {
-				return nil, err
-			}
+				err := json.Unmarshal([]byte(jsonString), &jsonData)
+				if err != nil {
+					return nil, err
+				}
 
-			token := jwt.NewWithClaims(signingMethod, claims)
+				var algorithm jwt.Alg
 
-			tokenString, err := token.SignedString(signature)
-			if err != nil {
-				return nil, err
-			}
+				if argSize > 1 {
+					optionalAlgorithm = strings.ToUpper(args[1].(string))
 
-			return tokenString, nil
-		}),
+					switch optionalAlgorithm {
+					case "NONE", "":
+						algorithm = jwt.NONE
+					case "HS256":
+						algorithm = jwt.HS256
+					case "HS384":
+						algorithm = jwt.HS384
+					case "HS512":
+						algorithm = jwt.HS512
+					case "RS256":
+						algorithm = jwt.RS256
+					case "RS384":
+						algorithm = jwt.RS384
+					case "RS512":
+						algorithm = jwt.RS512
+					case "PS256":
+						algorithm = jwt.PS256
+					case "PS384":
+						algorithm = jwt.PS384
+					case "PS512":
+						algorithm = jwt.PS512
+					case "ES256":
+						algorithm = jwt.ES256
+					case "ES384":
+						algorithm = jwt.ES384
+					case "ES512":
+						algorithm = jwt.ES512
+					case "EDDSA":
+						algorithm = jwt.EdDSA
+					}
+
+					if algorithm == nil {
+						return nil, fmt.Errorf("invalid algorithm: %s", optionalAlgorithm)
+					}
+				}
+
+				if argSize > 2 {
+					optionalSignature = []byte(args[2].(string))
+				}
+
+				if argSize > 3 {
+					times := make([]interface{}, 2)
+					times[0] = nil
+					times[1] = args[3]
+
+					optionalMaxAgeUnix, err = getCurrentTimeFromUserInput(times)
+					if err != nil {
+						return nil, err
+					}
+
+					duration := optionalMaxAgeUnix.Sub(time.Now())
+					signOpts = append(signOpts, jwt.MaxAge(duration))
+				}
+
+				return jwt.Sign(algorithm, optionalSignature, jsonData, signOpts...)
+			}),
 		"json_minify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			var data map[string]interface{}
 

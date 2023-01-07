@@ -67,6 +67,7 @@ require (
 	github.com/go-git/go-git/v5 v5.5.1
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
+	github.com/kataras/jwt v0.1.8
 	github.com/klauspost/compress v1.15.13
 	github.com/labstack/echo/v4 v4.10.0
 	github.com/mholt/archiver v3.1.1+incompatible
