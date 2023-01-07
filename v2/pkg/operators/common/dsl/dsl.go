@@ -888,7 +888,7 @@ func init() {
 						return nil, err
 					}
 
-					duration := optionalMaxAgeUnix.Sub(time.Now())
+					duration := time.Until(optionalMaxAgeUnix)
 					signOpts = append(signOpts, jwt.MaxAge(duration))
 				}
 
