@@ -46,9 +46,9 @@ require (
 	github.com/xanzy/go-gitlab v0.77.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/multierr v1.9.0
-	golang.org/x/net v0.4.0
+	golang.org/x/net v0.5.0
 	golang.org/x/oauth2 v0.3.0
-	golang.org/x/text v0.5.0
+	golang.org/x/text v0.6.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
@@ -210,7 +210,7 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
