@@ -558,6 +558,8 @@ github.com/projectdiscovery/goflags v0.1.6 h1:EXigzX4lJmn/fLMnULdc03O7WW+DjiYZhN
 github.com/projectdiscovery/goflags v0.1.6/go.mod h1:yILgA7gbrHuTpIvMfikbivzoxkyxBD1Y5/PRHiGTIFk=
 github.com/projectdiscovery/gologger v1.1.5 h1:CT2Jrpzusca+dwNREMMz4RnAreJ0RqaISRU4SBcZC+M=
 github.com/projectdiscovery/gologger v1.1.5/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
+github.com/projectdiscovery/gologger v1.1.6-0.20230104075207-1c357ca8209b h1:OL6uH2ystqHFnfoeei0VbOpsHQkCTpVBVo1BbrNKgfA=
+github.com/projectdiscovery/gologger v1.1.6-0.20230104075207-1c357ca8209b/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
 github.com/projectdiscovery/hmap v0.0.6 h1:nwF553wjvDdFF6QtlVfB80koojn8WfJGOQvkW0dzDuk=
 github.com/projectdiscovery/hmap v0.0.6/go.mod h1:xXSxFWk/zyiBrreQqgLTEnGYhufafVcCSXESBnqKOBU=
 github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053 h1:8Dr2q8BWxNgG5EO/YTyNyL83xzmYSDwysx4pMZzZx7I=
