@@ -26,6 +26,8 @@ type Progress interface {
 	AddToTotal(delta int64)
 	// IncrementRequests increments the requests counter by 1.
 	IncrementRequests()
+	// SetRequests sets the counter by incrementing it with a delta
+	SetRequests(count uint64)
 	// IncrementMatched increments the matched counter by 1.
 	IncrementMatched()
 	// IncrementErrorsBy increments the error counter by count.
@@ -49,7 +51,7 @@ type StatsTicker struct {
 // NewStatsTicker creates and returns a new progress tracking object.
 func NewStatsTicker(duration int, active, outputJSON, metrics bool, port int) (Progress, error) {
 	var tickDuration time.Duration
-	if active {
+	if active && duration != -1 {
 		tickDuration = time.Duration(duration) * time.Second
 	} else {
 		tickDuration = -1
@@ -115,6 +117,13 @@ func (p *StatsTicker) AddToTotal(delta int64) {
 // IncrementRequests increments the requests counter by 1.
 func (p *StatsTicker) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
+}
+
+// SetRequests sets the counter by incrementing it with a delta
+func (p *StatsTicker) SetRequests(count uint64) {
+	value, _ := p.stats.GetCounter("requests")
+	delta := count - value
+	p.stats.AddCounter("requests", delta)
 }
 
 // IncrementMatched increments the matched counter by 1.
