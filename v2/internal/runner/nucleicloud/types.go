@@ -1,6 +1,7 @@
 package nucleicloud
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -151,4 +152,15 @@ type ListScanOutput struct {
 
 type ExistsInputResponse struct {
 	Reference string `json:"reference"`
+}
+
+// AddReportingSourceRequest is a add reporting source request item.
+type AddReportingSourceRequest struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+// AddReportingSourceResponse is a add reporting source response item.
+type AddReportingSourceResponse struct {
+	Ok string `json:"ok"`
 }

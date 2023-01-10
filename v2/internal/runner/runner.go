@@ -516,6 +516,8 @@ func (r *Runner) RunEnumeration() error {
 			err = r.removeTarget(r.options.RemoveTarget)
 		} else if r.options.RemoveTemplate != "" {
 			err = r.removeTemplate(r.options.RemoveTemplate)
+		} else if r.options.ReportingConfig != "" {
+			err = r.addCloudReportingSource()
 		} else {
 			if len(store.Templates())+len(store.Workflows())+len(cloudTemplates) == 0 {
 				return errors.New("no templates provided for scan")
