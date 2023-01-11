@@ -3,12 +3,13 @@ package input
 import (
 	"net"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/projectdiscovery/utils/ports"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -77,8 +78,8 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 	}
 
 	hasHost := host != ""
-	hasPort := port != ""
-	hasDefaultPort := defaultPort != ""
+	hasPort := ports.IsValid(port)
+	hasDefaultPort := ports.IsValid(defaultPort)
 
 	switch inputType {
 	case typeFilepath:
@@ -89,7 +90,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if filepath.IsAbs(input) {
 			return input
 		}
-		if absPath, _ := filepath.Abs(input); absPath != "" && fileOrFolderExists(absPath) {
+		if absPath, _ := filepath.Abs(input); absPath != "" && fileutil.FileOrFolderExists(absPath) {
 			return input
 		}
 		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && !isURL {
@@ -99,7 +100,7 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if hasHost {
 			return host
 		}
-		if isURL {
+		if isURL && uri != nil {
 			return uri.Hostname()
 		}
 		return input
@@ -131,9 +132,4 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 	}
 	return ""
-}
-
-func fileOrFolderExists(filename string) bool {
-	_, err := os.Stat(filename)
-	return !os.IsNotExist(err)
 }

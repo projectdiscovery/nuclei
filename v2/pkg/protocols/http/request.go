@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -518,9 +519,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
-			formedURL = input.MetaInput.Input
-			if generatedRequest.rawRequest.Path != "" {
+			urlx, err := url.Parse(input.MetaInput.Input)
+			if err != nil {
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
+			} else {
+				urlx.Path = generatedRequest.rawRequest.Path
+				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
 			}
 		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
@@ -689,8 +693,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			continue // Skip nil responses
 		}
 		matchedURL := input.MetaInput.Input
-		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
-			matchedURL = generatedRequest.rawRequest.FullURL
+		if generatedRequest.rawRequest != nil {
+			if generatedRequest.rawRequest.FullURL != "" {
+				matchedURL = generatedRequest.rawRequest.FullURL
+			} else {
+				matchedURL = formedURL
+			}
 		}
 		if generatedRequest.request != nil {
 			matchedURL = generatedRequest.request.URL.String()
