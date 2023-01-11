@@ -88,7 +88,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 
 	scanResponse, err := r.cloudClient.GetScan(taskID)
 	if err != nil {
-		return results, errors.Wrap(err, "could not get created scan from db")
+		return results, errors.Wrap(err, "could not get scan status")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
