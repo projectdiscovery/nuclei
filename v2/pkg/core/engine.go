@@ -37,17 +37,21 @@ type InputProvider interface {
 
 // New returns a new Engine instance
 func New(options *types.Options) *Engine {
-	workPool := NewWorkPool(WorkPoolConfig{
-		InputConcurrency:         options.BulkSize,
-		TypeConcurrency:          options.TemplateThreads,
-		HeadlessInputConcurrency: options.HeadlessBulkSize,
-		HeadlessTypeConcurrency:  options.HeadlessTemplateThreads,
-	})
-	engine := &Engine{
-		options:  options,
-		workPool: workPool,
+	e := &Engine{
+		options: options,
 	}
-	return engine
+	e.workPool = e.CreateWorkPool()
+	return e
+}
+
+// CreateWorkPool Creates and returns workpool based on options
+func (e *Engine) CreateWorkPool() *WorkPool {
+	return NewWorkPool(WorkPoolConfig{
+		InputConcurrency:         e.options.BulkSize,
+		TypeConcurrency:          e.options.TemplateThreads,
+		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
+		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
+	})
 }
 
 // SetExecuterOptions sets the executer options for the engine. This is required
