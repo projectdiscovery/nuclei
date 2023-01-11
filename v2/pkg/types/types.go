@@ -103,6 +103,12 @@ type Options struct {
 	ListTargets bool
 	// ListTemplates enables listing of templates for user
 	ListTemplates bool
+	// ListReportingSources enables listing of reporting source
+	ListReportingSources bool
+	// DisableReportingSource disables a reporting source
+	DisableReportingSource string
+	// EnableReportingSource enables a reporting source
+	EnableReportingSource string
 	// Limit the number of items at a time
 	OutputLimit int
 	// Nostore

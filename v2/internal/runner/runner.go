@@ -500,10 +500,16 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTargets()
 		} else if r.options.ListTemplates {
 			err = r.listTemplates()
+		} else if r.options.ListReportingSources {
+			err = r.listReportingSources()
 		} else if r.options.AddDatasource != "" {
 			err = r.addCloudDataSource(r.options.AddDatasource)
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.DisableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.DisableReportingSource, false)
+		} else if r.options.EnableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.EnableReportingSource, true)
 		} else if r.options.AddTarget != "" {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {
