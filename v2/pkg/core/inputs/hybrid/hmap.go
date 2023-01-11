@@ -171,14 +171,13 @@ func (i *Input) Set(value string) {
 		return
 	}
 	// parse hostname if url is given
-	urlx, er := urlutil.ParseWithScheme(URL)
-	if er != nil || urlx != nil && urlx.Host == "" {
+	urlx, err := urlutil.ParseWithScheme(URL)
+	if err != nil || urlx != nil && urlx.Host == "" {
 		gologger.Debug().Label("url").MsgFunc(func() string {
-			if er != nil {
-				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, er)
-			} else {
-				return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+			if err != nil {
+				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
 			}
+			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
 		})
 		metaInput := &contextargs.MetaInput{Input: URL}
 		i.setItem(metaInput)
@@ -246,7 +245,6 @@ func (i *Input) Set(value string) {
 			i.setItem(metaInput)
 		}
 	}
-
 }
 
 // setItem in the kv store
