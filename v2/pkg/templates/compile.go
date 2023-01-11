@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
+	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
+	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
 )
 
 var parsedTemplatesCache *cache.Templates
@@ -186,7 +187,8 @@ mainLoop:
 		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
 		return nil
 	}
-	return errors.New("template can't be used for offline matching")
+
+	return ErrIncompatibleWithOfflineMatching
 }
 
 // ParseTemplateFromReader reads the template from reader

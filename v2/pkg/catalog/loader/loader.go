@@ -309,7 +309,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				stats.Increment(parsers.RuntimeWarningsStats)
+				// exclude templates not compatible with offline matching from total runtime warning stats
+				if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
+					stats.Increment(parsers.RuntimeWarningsStats)
+				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
