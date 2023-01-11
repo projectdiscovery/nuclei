@@ -257,10 +257,10 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 }
 
 func isParsingError(message string, template string, err error) bool {
-	if err == filter.ErrExcluded {
+	if errors.Is(err, filter.ErrExcluded) {
 		return false
 	}
-	if err == templates.ErrCreateTemplateExecutor {
+	if errors.Is(err, templates.ErrCreateTemplateExecutor) {
 		return false
 	}
 	gologger.Error().Msgf(message, template, err)

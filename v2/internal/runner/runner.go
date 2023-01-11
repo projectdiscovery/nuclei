@@ -648,9 +648,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
-	if r.options.Debug {
-		stats.Display(parsers.RuntimeWarningsStats)
-	}
+	stats.Display(parsers.RuntimeWarningsStats)
 
 	builder := &strings.Builder{}
 	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
