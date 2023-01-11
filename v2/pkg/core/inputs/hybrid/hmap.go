@@ -4,8 +4,8 @@ package hybrid
 
 import (
 	"bufio"
+	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 	"sync"
@@ -22,11 +22,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	readerutil "github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 const DefaultMaxDedupeItemsCount = 10000
@@ -170,32 +170,31 @@ func (i *Input) Set(value string) {
 	if URL == "" {
 		return
 	}
-	// Check if input is ip or hostname
-	if iputil.IsIP(value) {
+	// parse hostname if url is given
+	urlx, er := urlutil.ParseWithScheme(URL)
+	if er != nil || urlx != nil && urlx.Host == "" {
+		gologger.Debug().Label("url").MsgFunc(func() string {
+			if er != nil {
+				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, er)
+			} else {
+				return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+			}
+		})
 		metaInput := &contextargs.MetaInput{Input: URL}
 		i.setItem(metaInput)
 		return
 	}
 
-	// parse hostname if url is given
-	host := utils.ParseHostname(value)
-	if host == "" {
-		// not a valid url hence scanallips is skipped
-		gologger.Debug().Msgf("scanAllIps: failed to parse hostname of %v falling back to default", value)
-		i.setItem(&contextargs.MetaInput{Input: value})
+	// Check if input is ip or hostname
+	if iputil.IsIP(urlx.Host) {
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.setItem(metaInput)
 		return
-	} else {
-		// case when hostname contains port
-		hostwithoutport, _, erx := net.SplitHostPort(host)
-		if erx == nil && hostwithoutport != "" {
-			// given host contains port
-			host = hostwithoutport
-		}
 	}
 
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
-		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Host)
 		if err == nil {
 			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
 				var ips []string
@@ -225,7 +224,7 @@ func (i *Input) Set(value string) {
 	ips := []string{}
 	// only scan the target but ipv6 if it has one
 	if i.ipOptions.IPV6 {
-		dnsData, err := protocolstate.Dialer.GetDNSData(host)
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Host)
 		if err == nil && len(dnsData.AAAA) > 0 {
 			// pick/ prefer 1st
 			ips = append(ips, dnsData.AAAA[0])
